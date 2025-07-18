@@ -23,13 +23,13 @@ def ask():
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
-        prompt = f"Contesto tecnico:
+        prompt = f"""Contesto tecnico:
 {context}
 
 Domanda:
 {user_prompt}
 
-Risposta tecnica:"
+Risposta tecnica:"""
         response = openai.ChatCompletion.create(
             model="gpt-4o",
             messages=[
