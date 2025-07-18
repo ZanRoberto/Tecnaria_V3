@@ -1,11 +1,12 @@
+
 from flask import Flask, request, jsonify, render_template
-import openai
 import os
 from bridge_scraper import estrai_testo_vocami
 from scraper_tecnaria import scrape_tecnaria_results
+from openai import OpenAI
 
 app = Flask(__name__)
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.route("/")
 def index():
@@ -30,7 +31,8 @@ Domanda:
 {user_prompt}
 
 Risposta tecnica:"""
-        response = openai.ChatCompletion.create(
+
+        response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "Sei un esperto tecnico dei prodotti Tecnaria. Rispondi con precisione e chiarezza."},
