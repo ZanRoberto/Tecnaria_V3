@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bot Tecnaria</title>
+</head>
+<body>
+    <h2>Bot Tecnaria</h2>
+    <input type="text" id="prompt" placeholder="Fai una domanda">
+    <button onclick="ask()">Invia</button>
+    <pre id="response"></pre>
+    <script>
+        function ask() {
+            const prompt = document.getElementById("prompt").value;
+            fetch("/ask", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({prompt})
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("response").innerText = data.answer || data.error;
+            });
+        }
+    </script>
+</body>
+</html>
