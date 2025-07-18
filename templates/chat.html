@@ -93,9 +93,15 @@
 
   <script>
     function linkify(text) {
-      return text.replace(/(https?:\/\/[^\s]+)/g, function(url) {
+      // Trasforma [testo](url) in hyperlink
+      text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function(_, text, url) {
+        return '<a href="' + url + '" target="_blank">' + text + '</a>';
+      });
+      // Trasforma http://... in hyperlink
+      text = text.replace(/(https?:\/\/[^\s]+)/g, function(url) {
         return '<a href="' + url + '" target="_blank">' + url + '</a>';
       });
+      return text;
     }
 
     function sendMessage() {
