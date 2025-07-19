@@ -18,39 +18,41 @@ def ask():
     try:
         user_prompt = request.json.get("prompt", "").strip()
 
-        # 🌍 Rileva lingua del prompt
+        # 🌍 Rileva lingua
         try:
             lang = detect(user_prompt)
         except:
-            lang = "en"  # fallback se detection fallisce
+            lang = "en"
 
-        # 📌 Istruzioni multilingua
+        # 🧠 Istruzione multilingua
         istruzioni = {
-            "it": "Sei un esperto tecnico dei prodotti Tecnaria. Rispondi con precisione e chiarezza in italiano.",
-            "en": "You are a technical expert on Tecnaria products. Answer clearly and precisely in English.",
-            "fr": "Vous êtes un expert technique des produits Tecnaria. Répondez de manière claire et précise en français.",
-            "de": "Sie sind ein technischer Experte für Tecnaria-Produkte. Antworten Sie klar und präzise auf Deutsch.",
-            "es": "Eres un experto técnico en productos Tecnaria. Responde con claridad y precisión en español."
+            "it": "Sei un esperto tecnico dei prodotti Tecnaria. Rispondi solo sulla base del testo fornito. Non inventare.",
+            "en": "You are a technical expert on Tecnaria products. Answer only based on the provided text. Do not improvise.",
+            "fr": "Vous êtes un expert technique de Tecnaria. Répondez uniquement à partir du texte fourni. N'inventez rien.",
+            "de": "Sie sind ein technischer Experte für Tecnaria-Produkte. Antworten Sie nur auf Grundlage des bereitgestellten Textes.",
+            "es": "Eres un experto técnico en productos Tecnaria. Responde solo en base al texto proporcionado. No inventes."
         }
         system_prompt = istruzioni.get(lang, istruzioni["en"])
 
-        # 🔍 Estrai contenuto dal documento Google
+        # 🔍 Estrazione primaria da Google Doc
         context = estrai_testo_vocami()
 
-        # Se il contenuto non include la domanda, fallback su scraping
+        # Se il contesto non contiene la domanda → fallback su scraping
         if user_prompt.lower() not in context.lower():
             context = scrape_tecnaria_results(user_prompt)
 
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
-        prompt = f"""Contesto tecnico:
+        prompt = f"""Il testo seguente è tratto direttamente dalla documentazione ufficiale Tecnaria. Utilizza solo queste informazioni per rispondere alla domanda, senza inventare o generalizzare.
+
+TESTO ORIGINALE:
 {context}
 
-Domanda:
+DOMANDA:
 {user_prompt}
 
-Risposta tecnica:"""
+RISPOSTA TECNICA (solo basata sul testo):"""
 
         response = client.chat.completions.create(
             model="gpt-4o",
@@ -58,7 +60,7 @@ Risposta tecnica:"""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.3
+            temperature=0.2
         )
         answer = response.choices[0].message.content
         return jsonify({"answer": answer})
