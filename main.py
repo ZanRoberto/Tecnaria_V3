@@ -26,33 +26,36 @@ def ask():
 
         # 🧠 Istruzione multilingua
         istruzioni = {
-            "it": "Sei un esperto tecnico dei prodotti Tecnaria. Rispondi solo sulla base del testo fornito. Non inventare.",
-            "en": "You are a technical expert on Tecnaria products. Answer only based on the provided text. Do not improvise.",
-            "fr": "Vous êtes un expert technique de Tecnaria. Répondez uniquement à partir du texte fourni. N'inventez rien.",
-            "de": "Sie sind ein technischer Experte für Tecnaria-Produkte. Antworten Sie nur auf Grundlage des bereitgestellten Textes.",
-            "es": "Eres un experto técnico en productos Tecnaria. Responde solo en base al texto proporcionado. No inventes."
+            "it": "Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo preciso, chiaro e professionale.",
+            "en": "You are a technical expert on Tecnaria products. Answer clearly, precisely and professionally.",
+            "fr": "Vous êtes un expert technique des produits Tecnaria. Répondez de manière claire, précise et professionnelle.",
+            "de": "Sie sind ein technischer Experte für Tecnaria-Produkte. Antworten Sie klar, präzise und professionell.",
+            "es": "Eres un experto técnico en productos Tecnaria. Responde con claridad, precisión y profesionalidad."
         }
         system_prompt = istruzioni.get(lang, istruzioni["en"])
 
-        # 🔍 Estrazione primaria da Google Doc
+        # 🔍 Estrazione primaria da Google Docs
         context = estrai_testo_vocami()
 
-        # Se il contesto non contiene la domanda → fallback su scraping
+        # Fallback: se non contiene la domanda → cerca dal sito Tecnaria
         if user_prompt.lower() not in context.lower():
             context = scrape_tecnaria_results(user_prompt)
 
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
-        prompt = f"""Il testo seguente è tratto direttamente dalla documentazione ufficiale Tecnaria. Utilizza solo queste informazioni per rispondere alla domanda, senza inventare o generalizzare.
+        # ✅ Prompt flessibile e realistico
+        prompt = f"""Il seguente testo tecnico contiene informazioni reali tratte dalla documentazione ufficiale di Tecnaria (Google Docs o sito).
 
-TESTO ORIGINALE:
+Usa queste informazioni per rispondere alla domanda, ma puoi riorganizzare e spiegare meglio se necessario.
+
+TESTO TECNICO:
 {context}
 
 DOMANDA:
 {user_prompt}
 
-RISPOSTA TECNICA (solo basata sul testo):"""
+RISPOSTA TECNICA:"""
 
         response = client.chat.completions.create(
             model="gpt-4o",
@@ -60,7 +63,7 @@ RISPOSTA TECNICA (solo basata sul testo):"""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.2
+            temperature=0.3
         )
         answer = response.choices[0].message.content
         return jsonify({"answer": answer})
