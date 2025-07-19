@@ -1,3 +1,4 @@
+
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -9,8 +10,13 @@ def estrai_testo_vocami():
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
-        testo = soup.get_text(separator=" ", strip=True)
-        testo_pulito = re.sub(r"\s+", " ", testo)
+
+        # Trova i paragrafi ed elimina contenuti vuoti
+        paragraphs = [p.get_text(strip=True) for p in soup.find_all("p") if p.get_text(strip=True)]
+
+        testo_pulito = "\n".join(paragraphs)
+        print(f"[SCRAPER] Documento caricato: {len(paragraphs)} paragrafi, {len(testo_pulito)} caratteri")
         return testo_pulito
     except Exception as e:
+        print(f"[SCRAPER ERROR] {e}")
         return ""
