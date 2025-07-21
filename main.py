@@ -4,15 +4,12 @@ from bridge_scraper import estrai_testo_vocami
 from scraper_tecnaria import scrape_tecnaria_results
 from openai import OpenAI
 import fasttext
-import re
+
+# Caricamento modello lingua FastText
+lang_model = fasttext.load_model("lid.176.ftz")
 
 app = Flask(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-lang_model = fasttext.load_model("lid.176.bin")
-
-def detect_language(text):
-    prediction = lang_model.predict(text.replace("\n", " "))[0][0]
-    return prediction.replace("__label__", "")
 
 @app.route("/")
 def index():
@@ -22,34 +19,40 @@ def index():
 def ask():
     try:
         user_prompt = request.json.get("prompt", "").strip()
-        language = detect_language(user_prompt)
+        if not user_prompt:
+            return jsonify({"error": "Domanda non valida."}), 400
 
+        # Rilevamento lingua della domanda
+        detected_lang = lang_model.predict(user_prompt)[0][0].replace("__label__", "")
+
+        # Estrazione testo dai documenti condivisi
         context = estrai_testo_vocami()
-        smart_match = ""
 
+        # Se la domanda non è coperta dal contesto, fallback con scraping
         if user_prompt.lower() not in context.lower():
-            smart_match = scrape_tecnaria_results(user_prompt)
+            extra_context = scrape_tecnaria_results(user_prompt)
+            context += f"\n\n{extra_context}"
 
-        if not smart_match.strip():
-            smart_match = context  # fallback
+        # Prompt intelligente
+        prompt = f"""Sei un esperto tecnico di Tecnaria. Rispondi in modo preciso e utile alla domanda seguente. Se nel testo sono presenti strumenti consigliati (es. Spit Pulsa 560), includili come se fossero ufficialmente associati.
 
-        prompt = f"""Contesto tecnico:
-{smart_match}
+Testo disponibile:
+{context}
 
 Domanda:
 {user_prompt}
 
-Rispondi nella lingua: {language}.
-Risposta tecnica:"""
+Risposta nella stessa lingua della domanda:"""
 
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo chiaro e pertinente."},
+                {"role": "system", "content": "Rispondi usando solo le informazioni fornite nel testo, includendo anche strumenti consigliati come se fossero prodotti ufficiali. Usa la lingua della domanda."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3
         )
+
         answer = response.choices[0].message.content
         return jsonify({"answer": answer})
 
