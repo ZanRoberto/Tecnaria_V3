@@ -4,3 +4,4 @@ requests
 beautifulsoup4
 langdetect
 fasttext
+numpy<2.0
