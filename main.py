@@ -1,13 +1,18 @@
-
 from flask import Flask, request, jsonify, render_template
 import os
 from bridge_scraper import estrai_testo_vocami
 from scraper_tecnaria import scrape_tecnaria_results
 from openai import OpenAI
-from langdetect import detect
+import fasttext
+import re
 
 app = Flask(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+lang_model = fasttext.load_model("lid.176.bin")
+
+def detect_language(text):
+    prediction = lang_model.predict(text.replace("\n", " "))[0][0]
+    return prediction.replace("__label__", "")
 
 @app.route("/")
 def index():
@@ -17,56 +22,37 @@ def index():
 def ask():
     try:
         user_prompt = request.json.get("prompt", "").strip()
+        language = detect_language(user_prompt)
 
-        # 🌍 Rileva lingua
-        try:
-            lang = detect(user_prompt)
-        except:
-            lang = "en"
-
-        # 🧠 Istruzione multilingua
-        istruzioni = {
-            "it": "Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo preciso, chiaro e professionale.",
-            "en": "You are a technical expert on Tecnaria products. Answer clearly, precisely and professionally.",
-            "fr": "Vous êtes un expert technique des produits Tecnaria. Répondez de manière claire, précise et professionnelle.",
-            "de": "Sie sind ein technischer Experte für Tecnaria-Produkte. Antworten Sie klar, präzise und professionell.",
-            "es": "Eres un experto técnico en productos Tecnaria. Responde con claridad, precisión y profesionalidad."
-        }
-        system_prompt = istruzioni.get(lang, istruzioni["en"])
-
-        # 🔍 Estrazione primaria da Google Docs
         context = estrai_testo_vocami()
+        smart_match = ""
 
-        # Fallback: se non contiene la domanda → cerca dal sito Tecnaria
         if user_prompt.lower() not in context.lower():
-            context = scrape_tecnaria_results(user_prompt)
+            smart_match = scrape_tecnaria_results(user_prompt)
 
-        if not context.strip():
-            return jsonify({"error": "Nessuna informazione trovata."}), 400
+        if not smart_match.strip():
+            smart_match = context  # fallback
 
-        # ✅ Prompt flessibile e realistico
-        prompt = f"""Il seguente testo tecnico contiene informazioni reali tratte dalla documentazione ufficiale di Tecnaria (Google Docs o sito).
+        prompt = f"""Contesto tecnico:
+{smart_match}
 
-Usa queste informazioni per rispondere alla domanda, ma puoi riorganizzare e spiegare meglio se necessario.
-
-TESTO TECNICO:
-{context}
-
-DOMANDA:
+Domanda:
 {user_prompt}
 
-RISPOSTA TECNICA:"""
+Rispondi nella lingua: {language}.
+Risposta tecnica:"""
 
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": "Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo chiaro e pertinente."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3
         )
         answer = response.choices[0].message.content
         return jsonify({"answer": answer})
+
     except Exception as e:
         return jsonify({"error": f"Errore: {str(e)}"}), 500
 
