@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify, render_template
 import os
 from bridge_scraper import estrai_testo_vocami
