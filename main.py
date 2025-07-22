@@ -5,7 +5,7 @@ import fasttext
 from langdetect import detect
 from deep_translator import GoogleTranslator
 
-# Carica modello fastText una sola volta
+# Load fastText model una sola volta
 lang_model = fasttext.load_model("lid.176.ftz")
 
 app = Flask(__name__)
