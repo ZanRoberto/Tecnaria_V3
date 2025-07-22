@@ -70,10 +70,12 @@ Risposta:"""
 
         risposta = response.choices[0].message.content.strip()
 
-        # 🔁 Forza traduzione sempre nella lingua della domanda
-        risposta_finale = traduci_testo(risposta, lingua_domanda)
+        # 🔁 Forza la traduzione se la lingua della risposta NON è quella della domanda
+        lingua_risposta = rileva_lingua(risposta)
+        if lingua_risposta != lingua_domanda:
+            risposta = traduci_testo(risposta, lingua_domanda)
 
-        return jsonify({"answer": risposta_finale})
+        return jsonify({"answer": risposta})
 
     except Exception as e:
         return jsonify({"error": f"Errore: {str(e)}"}), 500
@@ -81,4 +83,3 @@ Risposta:"""
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
