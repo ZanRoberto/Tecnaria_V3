@@ -1,22 +1,27 @@
-
 import requests
 from bs4 import BeautifulSoup
 import re
+import os
 
 def estrai_testo_vocami():
-    url = "https://docs.google.com/document/d/e/2PACX-1vSqy0-FZAqOGvnCFZwwuBfT1cwXFpmSpkWfrRiT8RlbQpdQy-_1hOaqIslih5ULSa0XhVt0V8QeWJDP/pub"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+    links_file = "documenti.txt"
+    testo_completo = ""
 
-        # Trova i paragrafi ed elimina contenuti vuoti
-        paragraphs = [p.get_text(strip=True) for p in soup.find_all("p") if p.get_text(strip=True)]
-
-        testo_pulito = "\n".join(paragraphs)
-        print(f"[SCRAPER] Documento caricato: {len(paragraphs)} paragrafi, {len(testo_pulito)} caratteri")
-        return testo_pulito
-    except Exception as e:
-        print(f"[SCRAPER ERROR] {e}")
+    if not os.path.exists(links_file):
         return ""
+
+    with open(links_file, "r") as file:
+        links = [line.strip() for line in file if line.strip()]
+
+    for url in links:
+        try:
+            response = requests.get(url)
+            soup = BeautifulSoup(response.text, "html.parser")
+            blocchi_testo = soup.find_all(['p', 'h1', 'h2', 'h3', 'li'])
+            contenuto = "\n".join([blocco.get_text(strip=True) for blocco in blocchi_testo])
+            contenuto = re.sub(r'\s+', ' ', contenuto)
+            testo_completo += contenuto + "\n"
+        except Exception as e:
+            print(f"Errore durante l'accesso a {url}: {str(e)}")
+
+    return testo_completo.strip()
