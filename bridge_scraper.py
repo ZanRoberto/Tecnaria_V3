@@ -1,30 +1,18 @@
-from scraper_tecnaria import scrape_tecnaria_results
+from bs4 import BeautifulSoup
 
-# 🔍 Elenco delle sole query chiave, fondamentali
-query_list = [
-    "connettori",
-    "chiodatrice P560",
-    "sede Tecnaria",
-    "contatti Tecnaria",
-    "applicazioni",
-    "FAQ"
-]
-
-contenuti = []
-
-# 🔄 Ciclo su tutte le query
-for query in query_list:
-    print(f"🔎 Cerco: {query}...")
-    risultato = scrape_tecnaria_results(query)
-    if risultato:
-        # 🧠 Etichetta coerente e utile per il bot
-        blocco = f"📌 {query.upper()}\n{risultato.strip()}\n"
-        contenuti.append(blocco)
-    else:
-        print(f"⚠️ Nessun risultato trovato per: {query}")
-
-# 📝 Scrive tutto nel file usato dal bot
-with open("documenti.txt", "w", encoding="utf-8") as f:
-    f.write("\n\n".join(contenuti))
-
-print("✅ File documenti.txt aggiornato con contenuti reali e coerenti.")
+def estrai_testo_da_url(link):
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(link, headers=headers, timeout=10)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, "html.parser")
+            paragrafi = soup.find_all("p")
+            testo = "\n".join(p.get_text().strip() for p in paragrafi if len(p.get_text()) > 30)
+            print(f"✅ Testo estratto da: {link}")
+            return testo
+        else:
+            print(f"⚠️ Errore HTTP: {response.status_code} per {link}")
+            return ""
+    except Exception as e:
+        print(f"⚠️ Errore durante l'accesso a {link}: {e}")
+        return ""
