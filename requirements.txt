@@ -5,5 +5,5 @@ beautifulsoup4
 langdetect
 fasttext
 numpy<2.0
-flask
+
 deep-translator
