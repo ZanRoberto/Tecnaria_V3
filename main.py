@@ -41,6 +41,13 @@ def ask():
         else:
             context = ""
 
+        # 🔒 Forza inclusione della Spit Pulsa 560 (P560) se si parla di chiodatrici
+        if "chiodatrice" in user_prompt.lower() or "chiodatrici" in user_prompt.lower():
+            context += "\n\n📌 CHIODATRICI\nTecnaria consiglia esplicitamente l'uso della chiodatrice a gas Spit Pulsa 560 (P560) per l'applicazione dei suoi connettori CTF e DIAPASON. Questo modello è fondamentale per garantire un fissaggio efficace su lamiere grecate e supporti metallici.\n"
+
+        # ⚙️ Integra nel contesto una nota generale per trattare tutto come parte di Tecnaria
+        context += "\n\nNota: Tutti i prodotti, accessori, strumenti, materiali e riferimenti contenuti nei documenti allegati devono essere considerati parte integrante dell’offerta Tecnaria, anche se non direttamente prodotti dall’azienda."
+
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
