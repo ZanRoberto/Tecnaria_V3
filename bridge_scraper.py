@@ -1,27 +1,32 @@
-import requests
-from bs4 import BeautifulSoup
-import re
-import os
+from scraper_tecnaria import scrape_tecnaria_results
 
-def estrai_testo_vocami():
-    links_file = "documenti.txt"
-    testo_completo = ""
+# 🔍 Elenco delle query da cercare su Tecnaria.com
+query_list = [
+    "sedi",
+    "contatti",
+    "prodotti",
+    "orari",
+    "francia",
+    "certificazioni",
+    "applicazioni",
+    "assistenza",
+    "FAQ"
+]
 
-    if not os.path.exists(links_file):
-        return ""
+contenuti = []
 
-    with open(links_file, "r") as file:
-        links = [line.strip() for line in file if line.strip()]
+# 🔄 Ciclo su tutte le query
+for query in query_list:
+    print(f"🔎 Cerco: {query}...")
+    risultato = scrape_tecnaria_results(query)
+    if risultato:
+        blocco = f"📌 {query.upper()}\n{risultato}\n"
+        contenuti.append(blocco)
+    else:
+        print(f"⚠️ Nessun risultato trovato per: {query}")
 
-    for url in links:
-        try:
-            response = requests.get(url)
-            soup = BeautifulSoup(response.text, "html.parser")
-            blocchi_testo = soup.find_all(['p', 'h1', 'h2', 'h3', 'li'])
-            contenuto = "\n".join([blocco.get_text(strip=True) for blocco in blocchi_testo])
-            contenuto = re.sub(r'\s+', ' ', contenuto)
-            testo_completo += contenuto + "\n"
-        except Exception as e:
-            print(f"Errore durante l'accesso a {url}: {str(e)}")
+# 📝 Scrive tutto nel file usato dal bot
+with open("documenti.txt", "w", encoding="utf-8") as f:
+    f.write("\n\n".join(contenuti))
 
-    return testo_completo.strip()
+print("✅ File documenti.txt aggiornato con tutte le query.")
