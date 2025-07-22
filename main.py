@@ -1,32 +1,9 @@
 from flask import Flask, request, jsonify, render_template
 from openai import OpenAI
 import os
-import fasttext
-from langdetect import detect
-from deep_translator import GoogleTranslator
-
-# Carica il modello fastText una volta sola
-lang_model = fasttext.load_model("lid.176.ftz")
 
 app = Flask(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-def rileva_lingua(prompt):
-    try:
-        pred = lang_model.predict(prompt.replace("\n", ""))[0][0]
-        return pred.replace("__label__", "")
-    except:
-        return detect(prompt)
-
-def traduci_testo(testo, lingua_target):
-    try:
-        lingua_risposta = rileva_lingua(testo)
-        if lingua_risposta != lingua_target:
-            tradotto = GoogleTranslator(source='auto', target=lingua_target).translate(testo)
-            return tradotto if isinstance(tradotto, str) else testo
-        return testo
-    except:
-        return testo
 
 @app.route("/")
 def index():
@@ -36,7 +13,6 @@ def index():
 def ask():
     try:
         user_prompt = request.json.get("prompt", "").strip()
-        lingua_domanda = rileva_lingua(user_prompt)
 
         if os.path.exists("documenti.txt"):
             with open("documenti.txt", "r", encoding="utf-8") as f:
@@ -53,13 +29,7 @@ def ask():
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
-        # Prompt potenziato: obbliga a rispondere nella lingua della domanda
-        system_prompt = (
-            "Sei un esperto tecnico dei prodotti Tecnaria. "
-            f"Rispondi sempre in modo preciso, professionale e SOLO nella lingua: {lingua_domanda}. "
-            "NON usare mai una lingua diversa, anche se i documenti contengono testi multilingua. "
-            "Se la lingua della domanda è l'italiano, la risposta deve essere esclusivamente in italiano, senza eccezioni."
-        )
+        system_prompt = "Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo professionale e sempre in italiano."
 
         prompt = f"""Contesto tecnico:
 {context}
@@ -79,9 +49,7 @@ Risposta:"""
         )
 
         risposta = response.choices[0].message.content.strip()
-        risposta_finale = traduci_testo(risposta, lingua_domanda)
-
-        return jsonify({"answer": risposta_finale})
+        return jsonify({"answer": risposta})
 
     except Exception as e:
         return jsonify({"error": f"Errore: {str(e)}"}), 500
