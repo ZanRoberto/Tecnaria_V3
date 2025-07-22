@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify, render_template
 from openai import OpenAI
-from estrai_testo_vocami import estrai_testo_vocami
 import os
 import fasttext
 from langdetect import detect
@@ -14,7 +13,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def rileva_lingua(prompt):
     try:
-        pred = lang_model.predict(prompt.replace("\n", " "))[0][0]
+        pred = lang_model.predict(prompt.replace("\n", ""))[0][0]
         return pred.replace("__label__", "")
     except:
         return detect(prompt)
@@ -35,7 +34,7 @@ def ask():
         user_prompt = request.json.get("prompt", "").strip()
         lingua = rileva_lingua(user_prompt)
 
-        context = estrai_testo_vocami()
+        context = ""  # ❗️Nessun estrattore di testo attivo ora
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
