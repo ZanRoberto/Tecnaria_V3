@@ -20,7 +20,11 @@ def rileva_lingua(prompt):
 
 def traduci_testo(testo, lingua_target):
     try:
-        return GoogleTranslator(source='auto', target=lingua_target).translate(testo)
+        lingua_risposta = rileva_lingua(testo)
+        if lingua_risposta != lingua_target:
+            tradotto = GoogleTranslator(source='auto', target=lingua_target).translate(testo)
+            return tradotto if isinstance(tradotto, str) else testo
+        return testo
     except:
         return testo
 
@@ -40,6 +44,7 @@ def ask():
         else:
             context = ""
 
+        # Forza inclusione P560 se si parla di chiodatrici
         if "chiodatrice" in user_prompt.lower() or "chiodatrici" in user_prompt.lower():
             context += "\n\n📌 CHIODATRICI\nTecnaria consiglia esplicitamente l'uso della chiodatrice a gas Spit Pulsa 560 (P560) per l'applicazione dei suoi connettori CTF e DIAPASON. Questo modello è fondamentale per garantire un fissaggio efficace su lamiere grecate e supporti metallici.\n"
 
@@ -48,7 +53,13 @@ def ask():
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
-        system_prompt = f"Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo professionale nella lingua: {lingua_domanda}."
+        # Prompt potenziato: obbliga a rispondere nella lingua della domanda
+        system_prompt = (
+            "Sei un esperto tecnico dei prodotti Tecnaria. "
+            f"Rispondi sempre in modo preciso, professionale e SOLO nella lingua: {lingua_domanda}. "
+            "NON usare mai una lingua diversa, anche se i documenti contengono testi multilingua. "
+            "Se la lingua della domanda è l'italiano, la risposta deve essere esclusivamente in italiano, senza eccezioni."
+        )
 
         prompt = f"""Contesto tecnico:
 {context}
@@ -68,11 +79,9 @@ Risposta:"""
         )
 
         risposta = response.choices[0].message.content.strip()
+        risposta_finale = traduci_testo(risposta, lingua_domanda)
 
-        # FORZA TRADUZIONE SEMPRE nella lingua della domanda
-        risposta = traduci_testo(risposta, lingua_domanda)
-
-        return jsonify({"answer": risposta})
+        return jsonify({"answer": risposta_finale})
 
     except Exception as e:
         return jsonify({"error": f"Errore: {str(e)}"}), 500
