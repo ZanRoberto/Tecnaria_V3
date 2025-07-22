@@ -20,7 +20,9 @@ def rileva_lingua(prompt):
 
 def traduci_testo(testo, lingua_target):
     try:
-        # Traduci SEMPRE nella lingua target, anche se sembra già corretta
+        lingua_testo = rileva_lingua(testo)
+        if lingua_testo == lingua_target:
+            return testo
         return GoogleTranslator(source='auto', target=lingua_target).translate(testo)
     except:
         return testo
@@ -33,7 +35,7 @@ def index():
 def ask():
     try:
         user_prompt = request.json.get("prompt", "").strip()
-        lingua = rileva_lingua(user_prompt)
+        lingua_domanda = rileva_lingua(user_prompt)
 
         # 🔁 Legge il contenuto tecnico dal file aggiornato da bridge_scraper
         if os.path.exists("documenti.txt"):
@@ -52,7 +54,7 @@ def ask():
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
-        system_prompt = f"Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo professionale nella lingua: {lingua}."
+        system_prompt = f"Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo professionale nella lingua: {lingua_domanda}."
 
         prompt = f"""Contesto tecnico:
 {context}
@@ -73,8 +75,10 @@ Risposta:"""
 
         risposta = response.choices[0].message.content.strip()
 
-        # 🔁 Traduzione forzata nella lingua della domanda (anche se già in quella lingua)
-        risposta = traduci_testo(risposta, lingua)
+        # 🔁 Traduzione se lingua della risposta diversa da quella della domanda o dubbia
+        lingua_risposta = rileva_lingua(risposta)
+        if lingua_risposta != lingua_domanda or lingua_risposta not in ['it', 'en', 'fr', 'de', 'es']:
+            risposta = traduci_testo(risposta, lingua_domanda)
 
         return jsonify({"answer": risposta})
 
