@@ -20,10 +20,7 @@ def rileva_lingua(prompt):
 
 def traduci_testo(testo, lingua_target):
     try:
-        lingua_detected = rileva_lingua(testo)
-        if lingua_detected != lingua_target:
-            return GoogleTranslator(source='auto', target=lingua_target).translate(testo)
-        return testo
+        return GoogleTranslator(source='auto', target=lingua_target).translate(testo)
     except:
         return testo
 
@@ -52,7 +49,7 @@ def ask():
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
-        system_prompt = f"Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo professionale nella lingua: {lingua_domanda}."
+        system_prompt = f"Sei un esperto tecnico dei prodotti Tecnaria. Rispondi sempre nella lingua: {lingua_domanda}."
 
         prompt = f"""Contesto tecnico:
 {context}
@@ -72,7 +69,10 @@ Risposta:"""
         )
 
         risposta = response.choices[0].message.content.strip()
+
+        # 🔁 Forza traduzione sempre nella lingua della domanda
         risposta_finale = traduci_testo(risposta, lingua_domanda)
+
         return jsonify({"answer": risposta_finale})
 
     except Exception as e:
