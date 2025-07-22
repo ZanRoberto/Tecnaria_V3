@@ -51,7 +51,7 @@ def ask():
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
-        system_prompt = f"Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo professionale nella lingua: {lingua}."
+        system_prompt = f"Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo professionale e nella stessa lingua della domanda."
 
         prompt = f"""Contesto tecnico:
 {context}
