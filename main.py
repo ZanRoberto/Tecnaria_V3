@@ -20,7 +20,8 @@ def rileva_lingua(prompt):
 
 def traduci_testo(testo, lingua_target):
     try:
-        return GoogleTranslator(source='auto', target=lingua_target).translate(testo)
+        tradotto = GoogleTranslator(source='auto', target=lingua_target).translate(testo)
+        return tradotto if isinstance(tradotto, str) else testo
     except:
         return testo
 
@@ -70,10 +71,12 @@ Risposta:"""
 
         risposta = response.choices[0].message.content.strip()
 
-        # 🔁 Forza sempre la traduzione nella lingua della domanda, anche se sembra corretta
-        risposta_tradotta = traduci_testo(risposta, lingua_domanda)
+        # Forza la lingua della risposta a essere uguale a quella della domanda
+        lingua_risposta = rileva_lingua(risposta)
+        if lingua_risposta != lingua_domanda:
+            risposta = traduci_testo(risposta, lingua_domanda)
 
-        return jsonify({"answer": risposta_tradotta})
+        return jsonify({"answer": risposta})
 
     except Exception as e:
         return jsonify({"error": f"Errore: {str(e)}"}), 500
@@ -81,3 +84,4 @@ Risposta:"""
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
