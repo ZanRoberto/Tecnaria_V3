@@ -70,12 +70,10 @@ Risposta:"""
 
         risposta = response.choices[0].message.content.strip()
 
-        # 🔁 Forza la traduzione se la lingua della risposta NON è quella della domanda
-        lingua_risposta = rileva_lingua(risposta)
-        if lingua_risposta != lingua_domanda:
-            risposta = traduci_testo(risposta, lingua_domanda)
+        # 🔁 Forza sempre la traduzione nella lingua della domanda, anche se sembra corretta
+        risposta_tradotta = traduci_testo(risposta, lingua_domanda)
 
-        return jsonify({"answer": risposta})
+        return jsonify({"answer": risposta_tradotta})
 
     except Exception as e:
         return jsonify({"error": f"Errore: {str(e)}"}), 500
