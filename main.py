@@ -75,10 +75,8 @@ Risposta:"""
 
         risposta = response.choices[0].message.content.strip()
 
-        # 🔁 Traduzione se lingua della risposta diversa da quella della domanda o dubbia
-        lingua_risposta = rileva_lingua(risposta)
-        if lingua_risposta != lingua_domanda or lingua_risposta not in ['it', 'en', 'fr', 'de', 'es']:
-            risposta = traduci_testo(risposta, lingua_domanda)
+        # 🔁 Traduzione obbligatoria se la lingua non è quella della domanda
+        risposta = traduci_testo(risposta, lingua_domanda)
 
         return jsonify({"answer": risposta})
 
