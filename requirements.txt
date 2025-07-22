@@ -2,8 +2,7 @@ flask
 openai
 requests
 beautifulsoup4
+fasttext-wheel
 langdetect
-fasttext
-numpy<2.0
-
 deep-translator
+numpy<2.0
