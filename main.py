@@ -20,8 +20,7 @@ def rileva_lingua(prompt):
 
 def traduci_testo(testo, lingua_target):
     try:
-        tradotto = GoogleTranslator(source='auto', target=lingua_target).translate(testo)
-        return tradotto if isinstance(tradotto, str) else testo
+        return GoogleTranslator(source='auto', target=lingua_target).translate(testo)
     except:
         return testo
 
@@ -41,7 +40,6 @@ def ask():
         else:
             context = ""
 
-        # Forza inclusione P560 se si parla di chiodatrici
         if "chiodatrice" in user_prompt.lower() or "chiodatrici" in user_prompt.lower():
             context += "\n\n📌 CHIODATRICI\nTecnaria consiglia esplicitamente l'uso della chiodatrice a gas Spit Pulsa 560 (P560) per l'applicazione dei suoi connettori CTF e DIAPASON. Questo modello è fondamentale per garantire un fissaggio efficace su lamiere grecate e supporti metallici.\n"
 
@@ -50,7 +48,7 @@ def ask():
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
-        system_prompt = f"Sei un esperto tecnico dei prodotti Tecnaria. Rispondi sempre nella lingua: {lingua_domanda}."
+        system_prompt = f"Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo professionale nella lingua: {lingua_domanda}."
 
         prompt = f"""Contesto tecnico:
 {context}
@@ -71,10 +69,8 @@ Risposta:"""
 
         risposta = response.choices[0].message.content.strip()
 
-        # Forza la lingua della risposta a essere uguale a quella della domanda
-        lingua_risposta = rileva_lingua(risposta)
-        if lingua_risposta != lingua_domanda:
-            risposta = traduci_testo(risposta, lingua_domanda)
+        # FORZA TRADUZIONE SEMPRE nella lingua della domanda
+        risposta = traduci_testo(risposta, lingua_domanda)
 
         return jsonify({"answer": risposta})
 
@@ -84,4 +80,3 @@ Risposta:"""
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
