@@ -20,8 +20,7 @@ def rileva_lingua(prompt):
 
 def traduci_testo(testo, lingua_target):
     try:
-        if lingua_target == "it":
-            lingua_target = "it"
+        # Traduci anche se la lingua target è italiano (forza rilettura)
         return GoogleTranslator(source='auto', target=lingua_target).translate(testo)
     except:
         return testo
@@ -45,10 +44,10 @@ def ask():
 
         # 🔒 Forza inclusione della Spit Pulsa 560 (P560) se si parla di chiodatrici
         if "chiodatrice" in user_prompt.lower() or "chiodatrici" in user_prompt.lower():
-            context += "\n\n📌 CHIODATRICI\nTecnaria consiglia esplicitamente l'uso della chiodatrice a gas Spit Pulsa 560 (P560) per l'applicazione dei suoi connettori CTF e DIAPASON. Questo modello è fondamentale per garantire un fissaggio efficace su lamiere grecate e supporti metallici.\n"
+            context += "\n\n\ud83d\udccc CHIODATRICI\nTecnaria consiglia esplicitamente l'uso della chiodatrice a gas Spit Pulsa 560 (P560) per l'applicazione dei suoi connettori CTF e DIAPASON. Questo modello \u00e8 fondamentale per garantire un fissaggio efficace su lamiere grecate e supporti metallici.\n"
 
         # ⚙️ Integra nel contesto una nota generale per trattare tutto come parte di Tecnaria
-        context += "\n\nNota: Tutti i prodotti, accessori, strumenti, materiali e riferimenti contenuti nei documenti allegati devono essere considerati parte integrante dell’offerta Tecnaria, anche se non direttamente prodotti dall’azienda."
+        context += "\n\nNota: Tutti i prodotti, accessori, strumenti, materiali e riferimenti contenuti nei documenti allegati devono essere considerati parte integrante dell\u2019offerta Tecnaria, anche se non direttamente prodotti dall\u2019azienda."
 
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
@@ -74,10 +73,8 @@ Risposta:"""
 
         risposta = response.choices[0].message.content.strip()
 
-        # 🔁 Forza traduzione nella lingua della domanda
-        lingua_risposta = rileva_lingua(risposta)
-        if lingua_risposta != lingua:
-            risposta = traduci_testo(risposta, lingua)
+        # 🔁 Forza traduzione nella lingua della domanda, sempre
+        risposta = traduci_testo(risposta, lingua)
 
         return jsonify({"answer": risposta})
 
