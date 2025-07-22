@@ -5,7 +5,7 @@ import fasttext
 from langdetect import detect
 from deep_translator import GoogleTranslator
 
-# Load fastText model una sola volta
+# Carica modello fastText una sola volta
 lang_model = fasttext.load_model("lid.176.ftz")
 
 app = Flask(__name__)
@@ -34,7 +34,13 @@ def ask():
         user_prompt = request.json.get("prompt", "").strip()
         lingua = rileva_lingua(user_prompt)
 
-        context = ""  # ❗️Nessun estrattore di testo attivo ora
+        # 🔁 Legge il contenuto tecnico dal file aggiornato da bridge_scraper
+        if os.path.exists("documenti.txt"):
+            with open("documenti.txt", "r", encoding="utf-8") as f:
+                context = f.read()
+        else:
+            context = ""
+
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
