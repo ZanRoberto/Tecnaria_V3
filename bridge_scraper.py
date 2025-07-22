@@ -10,7 +10,13 @@ query_list = [
     "certificazioni",
     "applicazioni",
     "assistenza",
-    "FAQ"
+    "FAQ",
+    "chiodatrice",
+    "chiodatrici",
+    "connettori CTF",
+    "connettori DIAPASON",
+    "P560",
+    "Pulsa 560"
 ]
 
 contenuti = []
