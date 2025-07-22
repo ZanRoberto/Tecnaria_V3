@@ -5,7 +5,7 @@ import fasttext
 from langdetect import detect
 from deep_translator import GoogleTranslator
 
-# Carica modello fastText una sola volta
+# Carica il modello fastText una volta sola
 lang_model = fasttext.load_model("lid.176.ftz")
 
 app = Flask(__name__)
@@ -20,10 +20,10 @@ def rileva_lingua(prompt):
 
 def traduci_testo(testo, lingua_target):
     try:
-        lingua_testo = rileva_lingua(testo)
-        if lingua_testo == lingua_target:
-            return testo
-        return GoogleTranslator(source='auto', target=lingua_target).translate(testo)
+        lingua_detected = rileva_lingua(testo)
+        if lingua_detected != lingua_target:
+            return GoogleTranslator(source='auto', target=lingua_target).translate(testo)
+        return testo
     except:
         return testo
 
@@ -37,19 +37,17 @@ def ask():
         user_prompt = request.json.get("prompt", "").strip()
         lingua_domanda = rileva_lingua(user_prompt)
 
-        # 🔁 Legge il contenuto tecnico dal file aggiornato da bridge_scraper
         if os.path.exists("documenti.txt"):
             with open("documenti.txt", "r", encoding="utf-8") as f:
                 context = f.read()
         else:
             context = ""
 
-        # 🔒 Forza inclusione della Spit Pulsa 560 (P560) se si parla di chiodatrici
+        # Forza inclusione P560 se si parla di chiodatrici
         if "chiodatrice" in user_prompt.lower() or "chiodatrici" in user_prompt.lower():
             context += "\n\n📌 CHIODATRICI\nTecnaria consiglia esplicitamente l'uso della chiodatrice a gas Spit Pulsa 560 (P560) per l'applicazione dei suoi connettori CTF e DIAPASON. Questo modello è fondamentale per garantire un fissaggio efficace su lamiere grecate e supporti metallici.\n"
 
-        # ⚙️ Integra nel contesto una nota generale per trattare tutto come parte di Tecnaria
-        context += "\n\nNota: Tutti i prodotti, accessori, strumenti, materiali e riferimenti contenuti nei documenti allegati devono essere considerati parte integrante dell’offerta Tecnaria, anche se non direttamente prodotti dall’azienda."
+        context += "\n\nNota: Ogni contenuto presente nei documenti allegati è parte integrante dell'offerta Tecnaria."
 
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
@@ -74,11 +72,8 @@ Risposta:"""
         )
 
         risposta = response.choices[0].message.content.strip()
-
-        # 🔁 Traduzione obbligatoria se la lingua non è quella della domanda
-        risposta = traduci_testo(risposta, lingua_domanda)
-
-        return jsonify({"answer": risposta})
+        risposta_finale = traduci_testo(risposta, lingua_domanda)
+        return jsonify({"answer": risposta_finale})
 
     except Exception as e:
         return jsonify({"error": f"Errore: {str(e)}"}), 500
