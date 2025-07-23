@@ -3,6 +3,7 @@ from openai import OpenAI
 import os
 from langdetect import detect
 from deep_translator import GoogleTranslator
+from scraper_tecnaria import scrape_tecnaria_results
 
 app = Flask(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -23,23 +24,29 @@ def ask():
         user_prompt = request.json.get("prompt", "").strip()
         lingua_domanda = detect(user_prompt)
 
-        if os.path.exists("documenti.txt"):
-            with open("documenti.txt", "r", encoding="utf-8") as f:
-                context = f.read()
-        else:
-            context = ""
-
-        # Forza inclusione P560 se si parla di chiodatrici
-        if "chiodatrice" in user_prompt.lower() or "chiodatrici" in user_prompt.lower():
-            context += "\n\n📌 CHIODATRICI\nTecnaria consiglia esplicitamente l'uso della chiodatrice a gas Spit Pulsa 560 (P560) per l'applicazione dei suoi connettori CTF e DIAPASON. Questo modello è fondamentale per garantire un fissaggio efficace su lamiere grecate e supporti metallici.\n"
-
-        context += "\n\nNota: Ogni contenuto presente nei documenti allegati è parte integrante dell'offerta Tecnaria."
-
-        if not context.strip():
-            return jsonify({"error": "Nessuna informazione trovata."}), 400
-
-        # FLUSSO PRINCIPALE IN ITALIANO
         if lingua_domanda == "it":
+            # Legge il documento tecnico principale
+            context = ""
+            if os.path.exists("documenti.txt"):
+                with open("documenti.txt", "r", encoding="utf-8") as f:
+                    context = f.read()
+
+            # Integrazione scraping se necessario
+            risposta_scraping = scrape_tecnaria_results(user_prompt)
+            if risposta_scraping and risposta_scraping not in context:
+                context += f"\n\n📌 AGGIUNTA DA TECNARIA.COM\n{risposta_scraping}"
+
+            # Inserimento obbligatorio P560 se si parla di chiodatrici
+            if "chiodatrice" in user_prompt.lower() or "chiodatrici" in user_prompt.lower():
+                context += ("\n\n📌 CHIODATRICI\nTecnaria consiglia esplicitamente l'uso della chiodatrice a gas Spit Pulsa 560 "
+                            "(P560) per l'applicazione dei suoi connettori CTF e DIAPASON. Questo modello è fondamentale per "
+                            "garantire un fissaggio efficace su lamiere grecate e supporti metallici.\n")
+
+            context += "\n\nNota: Ogni contenuto presente nei documenti allegati o raccolto dal sito Tecnaria.com è parte integrante dell'offerta Tecnaria."
+
+            if not context.strip():
+                return jsonify({"error": "Nessuna informazione trovata."}), 400
+
             system_prompt = (
                 "Sei un esperto tecnico dei prodotti Tecnaria. "
                 "Devi rispondere esclusivamente in base ai contenuti forniti. "
@@ -68,8 +75,9 @@ Risposta:"""
             return jsonify({"answer": risposta})
 
         else:
-            # FLUSSO MULTILINGUA
-            risposta_it = "Questo chatbot è progettato per rispondere solo in italiano. Per assistenza in altre lingue, contattaci via email a info@tecnaria.com."
+            # Flusso multilingua - solo risposta predefinita tradotta
+            risposta_it = ("Questo chatbot è progettato per rispondere solo in italiano. "
+                           "Per assistenza in altre lingue, contattaci via email a info@tecnaria.com.")
             return jsonify({"answer": traduci_testo(risposta_it, lingua_domanda)})
 
     except Exception as e:
