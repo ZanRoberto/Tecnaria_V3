@@ -1,63 +1,45 @@
-from flask import Flask, request, jsonify, render_template
-from openai import OpenAI
-import os
+import langdetect
+from difflib import get_close_matches
 
-app = Flask(__name__)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# 📂 Legge il contenuto del file italiano ufficiale
+with open("documenti_ordini.txt", "r", encoding="utf-8") as f:
+    testo_it = f.read()
 
-@app.route("/")
-def index():
-    return render_template("chat.html")
+# 📂 (Opzionale) Carica i file in altre lingue se presenti
+try:
+    with open("documenti_ordini_en.txt", "r", encoding="utf-8") as f:
+        testo_en = f.read()
+except:
+    testo_en = ""
 
-@app.route("/ask", methods=["POST"])
-def ask():
+# 🔍 Funzione di risposta intelligente basata su similarità
+def trova_risposta(domanda, testo):
+    domanda = domanda.lower()
+    frasi = testo.split(".")
+    frasi = [f.strip() for f in frasi if len(f.strip()) > 20]
+    match = get_close_matches(domanda, frasi, n=1, cutoff=0.3)
+    if match:
+        return match[0] + "."
+    else:
+        return "Non ho trovato una risposta precisa nei materiali ufficiali Tecnaria. Ti consiglio di scrivere a info@tecnaria.com o chiamare il numero 0424 502029."
+
+# 🌐 Rilevamento lingua della domanda
+def rileva_lingua(testo):
     try:
-        user_prompt = request.json.get("prompt", "").strip()
+        return langdetect.detect(testo)
+    except:
+        return "unknown"
 
-        if os.path.exists("documenti.txt"):
-            with open("documenti.txt", "r", encoding="utf-8") as f:
-                context = f.read()
-        else:
-            context = ""
+# 💬 Ciclo di dialogo
+while True:
+    domanda = input("Tu: ")
+    lingua = rileva_lingua(domanda)
 
-        # Forza inclusione P560 se si parla di chiodatrici
-        if "chiodatrice" in user_prompt.lower() or "chiodatrici" in user_prompt.lower():
-            context += "\n\n📌 CHIODATRICI\nTecnaria consiglia esplicitamente l'uso della chiodatrice a gas Spit Pulsa 560 (P560) per l'applicazione dei suoi connettori CTF e DIAPASON. Questo modello è fondamentale per garantire un fissaggio efficace su lamiere grecate e supporti metallici.\n"
+    if lingua == "it":
+        risposta = trova_risposta(domanda, testo_it)
+    elif lingua == "en" and testo_en:
+        risposta = trova_risposta(domanda, testo_en)
+    else:
+        risposta = "Sorry, I can only reply in Italian using official content from Tecnaria. Please ask your question in Italian, or send an email to info@tecnaria.com."
 
-        context += "\n\nNota: Ogni contenuto presente nei documenti allegati è parte integrante dell'offerta Tecnaria."
-
-        if not context.strip():
-            return jsonify({"error": "Nessuna informazione trovata."}), 400
-
-        system_prompt = (
-            "Sei un esperto tecnico dei prodotti Tecnaria. Tutte le risposte devono essere riferite esclusivamente ai connettori strutturali e agli accessori prodotti o raccomandati da Tecnaria."
-            " Se una domanda non è coerente con l'ambito dei connettori Tecnaria, rispondi che non puoi aiutare."
-            " Rispondi sempre in modo professionale e in lingua italiana."
-        )
-
-        prompt = f"""Contesto tecnico:
-{context}
-
-Domanda:
-{user_prompt}
-
-Risposta:"""
-
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3
-        )
-
-        risposta = response.choices[0].message.content.strip()
-        return jsonify({"answer": risposta})
-
-    except Exception as e:
-        return jsonify({"error": f"Errore: {str(e)}"}), 500
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    print("Bot:", risposta)
