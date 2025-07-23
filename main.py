@@ -29,7 +29,11 @@ def ask():
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
-        system_prompt = "Sei un esperto tecnico dei prodotti Tecnaria. Rispondi in modo professionale e sempre in italiano."
+        system_prompt = (
+            "Sei un esperto tecnico dei prodotti Tecnaria. Tutte le risposte devono essere riferite esclusivamente ai connettori strutturali e agli accessori prodotti o raccomandati da Tecnaria."
+            " Se una domanda non è coerente con l'ambito dei connettori Tecnaria, rispondi che non puoi aiutare."
+            " Rispondi sempre in modo professionale e in lingua italiana."
+        )
 
         prompt = f"""Contesto tecnico:
 {context}
