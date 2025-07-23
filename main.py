@@ -54,6 +54,7 @@ def ask():
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
+        # Costruisce un system prompt specifico a ogni domanda
         system_prompt = (
             "Sei un esperto tecnico dei prodotti Tecnaria. "
             "Devi rispondere esclusivamente in base ai contenuti forniti. "
