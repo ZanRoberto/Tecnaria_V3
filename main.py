@@ -38,9 +38,16 @@ def ask():
         if not context.strip():
             return jsonify({"error": "Nessuna informazione trovata."}), 400
 
-        system_prompt = "Sei un esperto tecnico dei prodotti Tecnaria. Rispondi sempre in italiano in modo preciso e professionale."
+        # FLUSSO PRINCIPALE IN ITALIANO
+        if lingua_domanda == "it":
+            system_prompt = (
+                "Sei un esperto tecnico dei prodotti Tecnaria. "
+                "Devi rispondere esclusivamente in base ai contenuti forniti. "
+                "Non dire mai che non hai accesso ai documenti Google o ad altre fonti. "
+                "Rispondi sempre in modo tecnico, preciso e coerente con le informazioni ufficiali."
+            )
 
-        prompt = f"""Contesto tecnico:
+            prompt = f"""Contesto tecnico:
 {context}
 
 Domanda:
@@ -48,23 +55,22 @@ Domanda:
 
 Risposta:"""
 
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3
-        )
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3
+            )
 
-        risposta_it = response.choices[0].message.content.strip()
+            risposta = response.choices[0].message.content.strip()
+            return jsonify({"answer": risposta})
 
-        # Se la domanda non è in italiano, traduci la risposta nella lingua della domanda
-        if lingua_domanda != "it":
-            risposta_tradotta = traduci_testo(risposta_it, lingua_domanda)
-            return jsonify({"answer": risposta_tradotta})
-
-        return jsonify({"answer": risposta_it})
+        else:
+            # FLUSSO MULTILINGUA
+            risposta_it = "Questo chatbot è progettato per rispondere solo in italiano. Per assistenza in altre lingue, contattaci via email a info@tecnaria.com."
+            return jsonify({"answer": traduci_testo(risposta_it, lingua_domanda)})
 
     except Exception as e:
         return jsonify({"error": f"Errore: {str(e)}"}), 500
@@ -72,4 +78,3 @@ Risposta:"""
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
