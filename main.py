@@ -3,20 +3,28 @@ from openai import OpenAI
 import os
 import fasttext
 from deep_translator import GoogleTranslator
-from scraper_tecnaria import scrape_tecnaria_results
 
+# Carica modello per rilevamento lingua
+lang_model = fasttext.load_model("lid.176.ftz")
+
+# Inizializza Flask e OpenAI
 app = Flask(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Carica modello di lingua fastText
-lang_model = fasttext.load_model("lid.176.ftz")
-
-def rileva_lingua(prompt):
+# Funzione per rilevare la lingua della domanda
+def rileva_lingua(testo):
     try:
-        pred = lang_model.predict(prompt.replace("\n", ""))[0][0]
+        pred = lang_model.predict(testo.replace("\n", ""))[0][0]
         return pred.replace("__label__", "")
     except:
-        return "it"  # fallback sicuro
+        return "it"
+
+# Funzione per tradurre la risposta (in fallback)
+def traduci(testo, target_lang):
+    try:
+        return GoogleTranslator(source='auto', target=target_lang).translate(testo)
+    except:
+        return testo
 
 @app.route("/")
 def index():
@@ -28,61 +36,65 @@ def ask():
         user_prompt = request.json.get("prompt", "").strip()
         lingua_domanda = rileva_lingua(user_prompt)
 
-        domanda = user_prompt
-        context = ""
+        # Flusso ITALIANO - usa solo documenti.txt + scraping sito Tecnaria
+        if lingua_domanda == "it":
+            if os.path.exists("documenti.txt"):
+                with open("documenti.txt", "r", encoding="utf-8") as f:
+                    context = f.read()
+            else:
+                context = ""
 
-        if os.path.exists("documenti.txt"):
-            with open("documenti.txt", "r", encoding="utf-8") as f:
-                context = f.read()
+            # Prompt tecnico
+            system_prompt = "Sei un esperto dei prodotti Tecnaria. Rispondi sempre in italiano, in modo tecnico, solo con contenuti del file e/o dal sito Tecnaria.com."
 
-        risposta_scraping = scrape_tecnaria_results(domanda)
-        if risposta_scraping and risposta_scraping not in context:
-            context += f"\n\n📌 AGGIUNTA DA TECNARIA.COM\n{risposta_scraping}"
-
-        if "chiodatrice" in domanda.lower() or "chiodatrici" in domanda.lower():
-            context += ("\n\n📌 CHIODATRICI\nTecnaria consiglia esplicitamente l'uso della chiodatrice a gas Spit Pulsa 560 "
-                        "(P560) per l'applicazione dei suoi connettori CTF e DIAPASON. Questo modello è fondamentale per "
-                        "garantire un fissaggio efficace su lamiere grecate e supporti metallici.\n")
-
-        context += "\n\nNota: Ogni contenuto presente nei documenti allegati o raccolto dal sito Tecnaria.com è parte integrante dell'offerta Tecnaria."
-
-        if not context.strip():
-            return jsonify({"error": "Nessuna informazione trovata."}), 400
-
-        system_prompt = (
-            "Sei un esperto tecnico dei prodotti Tecnaria. "
-            "Devi rispondere esclusivamente in base ai contenuti forniti. "
-            "Non dire mai che non hai accesso ai documenti Google o ad altre fonti. "
-            "Rispondi sempre in modo tecnico, preciso e coerente con le informazioni ufficiali."
-        )
-
-        prompt = f"""Contesto tecnico:
+            prompt = f"""Contesto:
 {context}
 
 Domanda:
-{domanda}
+{user_prompt}
 
 Risposta:"""
 
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3
-        )
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3
+            )
+            risposta = response.choices[0].message.content.strip()
+            return jsonify({"answer": risposta})
 
-        risposta = response.choices[0].message.content.strip()
+        # Flusso MULTILINGUA
+        else:
+            # Risposta in quella lingua basata su breve descrizione generale
+            system_prompt = f"You are a multilingual assistant that responds in {lingua_domanda} with technical, professional tone about Tecnaria products."
+            base_context = """Tecnaria produces structural connectors for composite floors: wood-concrete, steel-concrete and concrete-concrete. These connectors are used to increase the bearing capacity of slabs and meet seismic regulations. Visit www.tecnaria.com for more."""
 
-        # Se la domanda è in una lingua diversa dall'italiano, traduciamo la risposta
-        if lingua_domanda != "it":
-            risposta = GoogleTranslator(source='auto', target=lingua_domanda).translate(risposta)
+            prompt = f"""
+Context:
+{base_context}
 
-        return jsonify({"answer": risposta})
+User question:
+{user_prompt}
+
+Answer in {lingua_domanda}:
+"""
+
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.4
+            )
+            risposta = response.choices[0].message.content.strip()
+            return jsonify({"answer": risposta})
 
     except Exception as e:
-        return jsonify({"error": f"Errore: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
