@@ -1,6 +1,5 @@
 import os
 import re
-import json
 
 from flask import Flask, request, render_template
 
@@ -10,34 +9,31 @@ app = Flask(__name__)
 with open("documenti.txt", "r", encoding="utf-8") as f:
     documenti = f.read()
 
-# Funzione base di risposta
+
 def risposta_bot(domanda):
     domanda = domanda.strip()
     lingua = rileva_lingua(domanda)
 
     if lingua != "it":
-        return None  # Flusso esterno gestito da altro modulo
+        return None  # DOMANDA NON ITALIANA: flusso esterno
 
-    risposta = cerca_risposta_italiana(domanda)
-    return risposta
+    # Se è in italiano → cerca la risposta
+    return cerca_risposta_italiana(domanda)
 
 
 def rileva_lingua(testo):
-    if re.search(r"[àèéìòù]", testo, re.IGNORECASE):
+    testo = testo.lower()
+    parole_italiane = ["il", "la", "di", "un", "una", "per", "con", "che", "del", "dei", "della", "mi", "dove", "come"]
+    if any(p in testo.split() for p in parole_italiane):
         return "it"
-    if re.search(r"[a-zA-Z]", testo):
-        parole = testo.lower().split()
-        if any(p in parole for p in ["il", "la", "di", "un", "una", "per", "con", "che"]):
-            return "it"
-        else:
-            return "en"
-    return "unknown"
+    return "altro"
 
 
 def cerca_risposta_italiana(domanda):
-    domanda_bassa = domanda.lower()
+    domanda = domanda.lower()
 
-    if "contatti" in domanda_bassa:
+    # Risposta diretta se domanda contiene "contatti"
+    if "contatti" in domanda or "telefono" in domanda or "email" in domanda:
         return (
             "<strong>Contatti Tecnaria</strong><br>"
             "Tecnaria S.p.A.<br>"
@@ -50,13 +46,13 @@ def cerca_risposta_italiana(domanda):
             "Sito web: <a href=\"https://www.tecnaria.com\">www.tecnaria.com</a>"
         )
 
-    # Cerca risposta generica nei documenti
-    pattern = re.compile(rf".*{re.escape(domanda_bassa)}.*", re.IGNORECASE)
-    for riga in documenti.splitlines():
-        if pattern.match(riga):
-            return riga
+    # Altrimenti cerca corrispondenza nei documenti
+    for paragrafo in documenti.split("\n\n"):
+        if domanda in paragrafo.lower():
+            return paragrafo
 
-    return "Mi dispiace, non ho trovato informazioni precise nella documentazione."  # fallback
+    # Altrimenti risposta fallback
+    return "Mi dispiace, non ho trovato informazioni precise nella documentazione."
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -67,10 +63,10 @@ def index():
         risposta = risposta_bot(domanda)
 
         if risposta is None:
-            return render_template("index.html", risposta="Questo chatbot è progettato per rispondere solo in italiano. Per assistenza in altre lingue, contattaci via email a info@tecnaria.com.")
+            risposta = "Mi dispiace, posso rispondere solo a domande in italiano."
 
     return render_template("index.html", risposta=risposta)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    app.run(debug=True)
