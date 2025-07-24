@@ -11,7 +11,6 @@ with open("documenti.txt", "r", encoding="utf-8") as f:
     documenti = f.read()
 
 # Funzione base di risposta
-
 def risposta_bot(domanda):
     domanda = domanda.strip()
     lingua = rileva_lingua(domanda)
@@ -74,4 +73,4 @@ def index():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
