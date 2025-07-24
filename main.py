@@ -1,50 +1,34 @@
-import os
-import openai
 from flask import Flask, render_template, request
-from bs4 import BeautifulSoup
+import os
+from bridge_scraper import ottieni_risposta_unificata
+from langdetect import detect
 
 app = Flask(__name__)
 
-# Usa la nuova interfaccia OpenAI >= 1.0
-client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
-# Carica tutti i contenuti dai documenti .txt nella cartella "documenti"
-def carica_documenti():
-    documenti = []
-    cartella = "documenti"
-    for nome_file in os.listdir(cartella):
-        if nome_file.endswith(".txt"):
-            with open(os.path.join(cartella, nome_file), "r", encoding="utf-8") as file:
-                documenti.append(file.read())
-    return "\n".join(documenti)
-
-# Pulizia base per contenuti HTML
-def rendi_html_sicuro(risposta):
-    soup = BeautifulSoup(risposta, "html.parser")
-    return str(soup)
-
+# Homepage con form
 @app.route("/", methods=["GET", "POST"])
 def index():
     risposta = ""
     if request.method == "POST":
+        # Acquisizione domanda dell’utente
         domanda = request.form["domanda"]
-        contesto = carica_documenti()
-        messaggi = [
-            {"role": "system", "content": "Sei un assistente di Tecnaria. Rispondi solo in italiano e solo usando informazioni dai documenti forniti. Includi link cliccabili se presenti nei documenti."},
-            {"role": "user", "content": f"{contesto}\n\nDomanda: {domanda}"}
-        ]
-        try:
-            completion = client.chat.completions.create(
-                model="gpt-4",
-                messages=messaggi,
-                temperature=0.2
-            )
-            risposta = completion.choices[0].message.content
-            risposta = rendi_html_sicuro(risposta)
-        except Exception as e:
-            risposta = f"Si è verificato un errore: {str(e)}"
+
+        # Rileva la lingua della domanda (per capire se usare italiano o no)
+        lingua = rileva_lingua(domanda)
+
+        # Ottiene la risposta da documenti + sito Tecnaria
+        risposta = ottieni_risposta_unificata(domanda, lingua)
+
+    # Mostra la pagina HTML con la risposta
     return render_template("index.html", risposta=risposta)
 
+# Funzione che rileva automaticamente la lingua della domanda
+def rileva_lingua(testo):
+    try:
+        return detect(testo)
+    except:
+        return "it"  # default italiano se qualcosa va storto
+
+# Avvio server Flask
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(debug=True, host="0.0.0.0", port=10000)
