@@ -1,50 +1,62 @@
-from flask import Flask, render_template, request
+from flask import Flask, request, render_template
+from deep_translator import GoogleTranslator
+from langdetect import detect
 import os
 import openai
-from bs4 import BeautifulSoup
 
-# Inizializza Flask
+# Inizializzazione Flask
 app = Flask(__name__)
 
-# Chiave API OpenAI (deve essere impostata come variabile d’ambiente su Render)
+# API Key OpenAI da variabile d’ambiente
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Caricamento del contenuto del file documenti.txt
-with open("documenti.txt", "r", encoding="utf-8") as file:
-    documenti = file.read()
+# Carica i documenti
+with open("documenti.txt", "r", encoding="utf-8") as f:
+    documenti = f.read()
 
-# Funzione per pulire e formattare HTML nella risposta
-def formatta_testo_html(text):
-    return BeautifulSoup(text, "html.parser").prettify()
+# Funzione per rilevare lingua
+def rileva_lingua(testo):
+    try:
+        return detect(testo)
+    except Exception:
+        return "unknown"
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     risposta = ""
     if request.method == "POST":
         domanda = request.form["domanda"]
+        lingua = rileva_lingua(domanda)
 
-        # Prompt al modello
-        prompt = f"""
-Rispondi alla seguente domanda utilizzando solo le informazioni contenute nel seguente documento tecnico di Tecnaria (formattato in HTML):
-
-DOMANDA: {domanda}
-DOCUMENTO:
-{documenti}
-Rispondi in italiano e includi link cliccabili se presenti nel testo.
-"""
         try:
-            completamento = openai.ChatCompletion.create(
+            # Prompt finale
+            prompt = f"""Agisci come un assistente esperto di prodotti Tecnaria. Usa solo il contenuto seguente per rispondere:
+
+{documenti}
+
+Domanda: {domanda}
+Risposta:"""
+
+            # Nuova sintassi OpenAI >=1.0.0
+            response = openai.chat.completions.create(
                 model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
+                messages=[
+                    {"role": "system", "content": "Sei un esperto dei prodotti Tecnaria. Rispondi solo con informazioni contenute nel documento fornito. Se non sai qualcosa, dì che non è specificato."},
+                    {"role": "user", "content": prompt}
+                ],
                 temperature=0.3,
-                max_tokens=1000
+                max_tokens=1000,
             )
-            risposta = completamento["choices"][0]["message"]["content"]
+            risposta = response.choices[0].message.content.strip()
+
+            # Traduci se domanda non in italiano
+            if lingua != "it":
+                risposta = GoogleTranslator(source='it', target=lingua).translate(risposta)
+
         except Exception as e:
-            risposta = f"Si è verificato un errore: {e}"
+            risposta = f"Si è verificato un errore interno: {str(e)}"
 
     return render_template("index.html", risposta=risposta)
 
-# Avvio del server Flask con host e porta compatibili con Render
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000, debug=True)
+    app.run(debug=True)
