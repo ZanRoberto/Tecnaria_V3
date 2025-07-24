@@ -1,62 +1,50 @@
-from flask import Flask, request, render_template
-from deep_translator import GoogleTranslator
-from langdetect import detect
 import os
 import openai
+from flask import Flask, render_template, request
+from bs4 import BeautifulSoup
 
-# Inizializzazione Flask
 app = Flask(__name__)
 
-# API Key OpenAI da variabile d’ambiente
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Usa la nuova interfaccia OpenAI >= 1.0
+client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-# Carica i documenti
-with open("documenti.txt", "r", encoding="utf-8") as f:
-    documenti = f.read()
+# Carica tutti i contenuti dai documenti .txt nella cartella "documenti"
+def carica_documenti():
+    documenti = []
+    cartella = "documenti"
+    for nome_file in os.listdir(cartella):
+        if nome_file.endswith(".txt"):
+            with open(os.path.join(cartella, nome_file), "r", encoding="utf-8") as file:
+                documenti.append(file.read())
+    return "\n".join(documenti)
 
-# Funzione per rilevare lingua
-def rileva_lingua(testo):
-    try:
-        return detect(testo)
-    except Exception:
-        return "unknown"
+# Pulizia base per contenuti HTML
+def rendi_html_sicuro(risposta):
+    soup = BeautifulSoup(risposta, "html.parser")
+    return str(soup)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     risposta = ""
     if request.method == "POST":
         domanda = request.form["domanda"]
-        lingua = rileva_lingua(domanda)
-
+        contesto = carica_documenti()
+        messaggi = [
+            {"role": "system", "content": "Sei un assistente di Tecnaria. Rispondi solo in italiano e solo usando informazioni dai documenti forniti. Includi link cliccabili se presenti nei documenti."},
+            {"role": "user", "content": f"{contesto}\n\nDomanda: {domanda}"}
+        ]
         try:
-            # Prompt finale
-            prompt = f"""Agisci come un assistente esperto di prodotti Tecnaria. Usa solo il contenuto seguente per rispondere:
-
-{documenti}
-
-Domanda: {domanda}
-Risposta:"""
-
-            # Nuova sintassi OpenAI >=1.0.0
-            response = openai.chat.completions.create(
+            completion = client.chat.completions.create(
                 model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "Sei un esperto dei prodotti Tecnaria. Rispondi solo con informazioni contenute nel documento fornito. Se non sai qualcosa, dì che non è specificato."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
-                max_tokens=1000,
+                messages=messaggi,
+                temperature=0.2
             )
-            risposta = response.choices[0].message.content.strip()
-
-            # Traduci se domanda non in italiano
-            if lingua != "it":
-                risposta = GoogleTranslator(source='it', target=lingua).translate(risposta)
-
+            risposta = completion.choices[0].message.content
+            risposta = rendi_html_sicuro(risposta)
         except Exception as e:
-            risposta = f"Si è verificato un errore interno: {str(e)}"
-
+            risposta = f"Si è verificato un errore: {str(e)}"
     return render_template("index.html", risposta=risposta)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, debug=True)
