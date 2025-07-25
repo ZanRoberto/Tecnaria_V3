@@ -1,29 +1,51 @@
 # bridge_scraper.py
+
 import os
-from openai import OpenAI
+import openai
+import requests
+from bs4 import BeautifulSoup
 from documenti_utils import estrai_testo_dai_documenti
 
-# ✅ Inizializza il client moderno OpenAI
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+def esegui_scraping_tecnaria(domanda: str) -> str:
+    url = "https://www.tecnaria.com"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        testo_estratto = soup.get_text(separator=' ', strip=True)
+        if domanda.lower() in testo_estratto.lower():
+            return f"🌐 Sito Tecnaria:\n{testo_estratto[:3000]}..."
+        else:
+            return "🔍 Nessuna informazione rilevante trovata direttamente sul sito Tecnaria."
+    except Exception as e:
+        return f"⚠️ Errore durante lo scraping del sito Tecnaria: {str(e)}"
 
 def ottieni_risposta_unificata(domanda: str) -> str:
-    """
-    Unisce contenuti documentali e risposta AI in un'unica risposta finale.
-    """
-    contesto_documenti = estrai_testo_dai_documenti(domanda)
+    testo_sito = esegui_scraping_tecnaria(domanda)
+    testo_documenti = estrai_testo_dai_documenti(domanda)
+
+    prompt = f"""
+Rispondi come se fossi un tecnico esperto di Tecnaria. Fornisci una risposta chiara, utile e basata su fonti reali.
+Domanda: {domanda}
+
+📄 Dai documenti:
+{testo_documenti}
+
+🌐 Dal sito:
+{testo_sito}
+
+Scrivi solo la risposta finale. Non elencare le fonti.
+"""
 
     try:
-        risposta_ai = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Sei un esperto tecnico dei prodotti Tecnaria. Dai risposte serie e precise solo basate sui documenti aziendali e contenuti presenti."},
-                {"role": "user", "content": f"{domanda}\n\nContesto dai documenti:\n{contesto_documenti}"}
-            ],
-            temperature=0.4,
-            max_tokens=500
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800,
+            temperature=0.3
         )
-        testo_ai = risposta_ai.choices[0].message.content.strip()
-        return testo_ai
-
+        return response.choices[0].message['content'].strip()
     except Exception as e:
-        return f"⚠️ Errore durante la generazione della risposta AI: {str(e)}"
+        return f"❌ Errore nel generare la risposta: {str(e)}"
