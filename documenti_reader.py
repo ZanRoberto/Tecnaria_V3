@@ -1,41 +1,38 @@
-# documenti_reader.py
+# bridge_scraper.py
+from scraper_tecnaria import estrai_info_tecnaria
+from documenti_reader import estrai_testo_dai_documenti
+from openai import OpenAI
+import os
 
-from pathlib import Path
-from langdetect import detect
-from deep_translator import GoogleTranslator
+# Inizializza OpenAI Client con API Key
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-DOCUMENTI_PATH = Path("documenti")
+def ottieni_risposta_unificata(domanda_utente: str) -> str:
+    risposta_documenti = estrai_testo_dai_documenti(domanda_utente)
+    risposta_tecnaria = estrai_info_tecnaria(domanda_utente)
 
-def estrai_testo_dai_documenti():
-    """Estrae testo da tutti i file .txt nella cartella 'documenti'."""
-    testo_completo = ""
-    if not DOCUMENTI_PATH.exists():
-        print("📂 Cartella 'documenti' non trovata.")
-        return testo_completo
+    prompt = f"""Agisci come esperto tecnico dei prodotti Tecnaria.
+Rispondi in modo dettagliato, concreto e senza frasi vaghe.
+Consulta anche le seguenti informazioni:
 
-    for file in DOCUMENTI_PATH.glob("*.txt"):
-        try:
-            with open(file, 'r', encoding='utf-8') as f:
-                testo = f.read()
-                testo_completo += f"\n📄 [Documento: {file.name}]\n" + testo
-        except Exception as e:
-            print(f"Errore nella lettura di {file.name}: {e}")
-    
-    return testo_completo.strip()
+📄 Dai documenti:
+{risposta_documenti}
 
-def rileva_lingua(testo):
-    """Rileva la lingua del testo."""
+🌐 Dal sito Tecnaria:
+{risposta_tecnaria}
+
+🧾 Domanda dell’utente:
+{domanda_utente}
+
+Rispondi come se fossi un tecnico specializzato di Tecnaria, chiaro e preciso, senza citare fonti.
+"""
+
     try:
-        return detect(testo)
-    except Exception:
-        return "unknown"
-
-def traduci_in_italiano(testo):
-    """Traduce in italiano se rilevata lingua diversa."""
-    try:
-        lingua = rileva_lingua(testo)
-        if lingua != "it":
-            return GoogleTranslator(source='auto', target='it').translate(testo)
+        completamento = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4
+        )
+        return completamento.choices[0].message.content.strip()
     except Exception as e:
-        print(f"Errore nella traduzione: {e}")
-    return testo
+        return f"❌ Errore nel generare la risposta AI: {str(e)}"
