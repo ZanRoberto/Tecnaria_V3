@@ -1,5 +1,5 @@
 import os
-from fuzzywuzzy import fuzz
+from rapidfuzz import fuzz
 from datetime import datetime
 
 LOG_FILE = "log_interazioni.txt"
