@@ -1,46 +1,45 @@
 import os
-import openai
-from flask import Flask, render_template, request
-from documenti_utils import estrai_testo_dai_documenti
+from fuzzywuzzy import fuzz
+from datetime import datetime
 
-app = Flask(__name__)
-openai.api_key = os.getenv("OPENAI_API_KEY")
+LOG_FILE = "log_interazioni.txt"
 
-def ottieni_risposta_unificata(domanda: str) -> str:
+
+def log_interazione(domanda, risultati):
+    with open(LOG_FILE, 'a', encoding='utf-8') as log:
+        log.write(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Domanda: {domanda}\n")
+        for nome_file, score, contenuto in risultati:
+            log.write(f"  - {nome_file} (score: {score})\n")
+
+
+def estrai_testo_dai_documenti(domanda: str, soglia_similitudine: int = 65) -> str:
     """
-    Combina il contenuto rilevante dai documenti e invia tutto a OpenAI per generare la risposta.
+    Scansiona i file .txt nella cartella 'documenti' e restituisce una concatenazione dei contenuti
+    rilevanti rispetto alla domanda fornita, con fuzzy matching.
     """
-    contesto_documenti = estrai_testo_dai_documenti(domanda)
+    cartella = 'documenti'
+    if not os.path.exists(cartella):
+        return "❌ Nessun documento trovato nella cartella."
 
-    prompt = f"""
-    Domanda dell'utente: {domanda}
+    risultati = []
 
-    Documenti rilevanti:
-    {contesto_documenti}
+    for nome_file in os.listdir(cartella):
+        if nome_file.endswith(".txt"):
+            percorso = os.path.join(cartella, nome_file)
+            try:
+                with open(percorso, 'r', encoding='utf-8') as f:
+                    testo = f.read()
+                    score = fuzz.partial_ratio(domanda.lower(), testo.lower())
+                    if score >= soglia_similitudine:
+                        risultati.append((nome_file, score, testo.strip()))
+            except Exception as e:
+                risultati.append((nome_file, 0, f"⚠️ Errore leggendo {nome_file}: {str(e)}"))
 
-    Rispondi nel modo più preciso possibile utilizzando le informazioni trovate nei documenti. Se ci sono dati chiari (es. indirizzi, orari, contatti), fornisci risposta diretta e completa.
-    """
-
-    try:
-        completamento = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Sei un assistente esperto di Tecnaria."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        risposta = completamento.choices[0].message.content.strip()
-        return risposta
-    except Exception as e:
-        return f"❌ Errore nel generare la risposta: {str(e)}"
-
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    risposta = ""
-    if request.method == 'POST':
-        domanda = request.form['domanda']
-        risposta = ottieni_risposta_unificata(domanda)
-    return render_template('index.html', risposta=risposta)
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    if risultati:
+        # Ordina per punteggio decrescente
+        risultati.sort(key=lambda x: x[1], reverse=True)
+        log_interazione(domanda, risultati)
+        return "\n\n".join([f"📄 {nome} (score: {score}):\n{contenuto}" for nome, score, contenuto in risultati])
+    else:
+        log_interazione(domanda, [])
+        return "Nessun documento contiene informazioni rilevanti rispetto alla tua domanda."
