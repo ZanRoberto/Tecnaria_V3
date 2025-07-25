@@ -1,54 +1,49 @@
-from scraper_tecnaria import estrai_info_tecnaria
-from deep_translator import GoogleTranslator
-from langdetect import detect
+# bridge_scraper.py
 import os
+from scraper_tecnaria import estrai_info_tecnaria
+from documenti_reader import estrai_info_documenti
+from openai import OpenAI
+from dotenv import load_dotenv
 
-def traduci_se_necessario(testo, target='it'):
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+
+client = OpenAI(api_key=api_key)
+
+def ottieni_risposta_unificata(domanda_utente):
+    risposta_sito = estrai_info_tecnaria(domanda_utente)
+    risposta_doc = estrai_info_documenti(domanda_utente)
+    
+    # Componi il prompt con contesto
+    prompt = f"""
+Rispondi come se fossi un esperto tecnico dell’azienda Tecnaria, usando tono chiaro, professionale ma diretto. 
+Analizza la seguente domanda dell’utente:
+"{domanda_utente}"
+
+Hai a disposizione queste due fonti:
+1. Contenuto del sito Tecnaria (🔍): {risposta_sito}
+2. Contenuto dei documenti ufficiali (📄): {risposta_doc}
+
+Se non trovi nulla, rispondi con “Mi dispiace, non ho trovato informazioni rilevanti.”
+
+Dai una risposta unica e utile, senza citare fonti esplicitamente.
+    """
+
     try:
-        lingua = detect(testo)
-        if lingua != target:
-            return GoogleTranslator(source='auto', target=target).translate(testo)
-        return testo
-    except Exception:
-        return testo
-
-def carica_documenti_locali():
-    cartella = "documenti"
-    testo_completo = ""
-    if os.path.exists(cartella):
-        for nome_file in os.listdir(cartella):
-            if nome_file.endswith(".txt"):
-                percorso = os.path.join(cartella, nome_file)
-                with open(percorso, "r", encoding="utf-8") as f:
-                    testo_completo += "\n" + f.read()
-    return testo_completo
-
-def ottieni_risposta_unificata(domanda, openai_client=None):
-    try:
-        domanda = traduci_se_necessario(domanda)
-        
-        contenuto_sito = estrai_info_tecnaria(domanda)
-        contenuto_locale = carica_documenti_locali()
-
-        prompt_finale = (
-            "Rispondi alla domanda usando tutte le informazioni possibili derivate da sito e documenti.\n\n"
-            f"DOMANDA:\n{domanda}\n\n"
-            f"CONTENUTO SITO:\n{contenuto_sito}\n\n"
-            f"CONTENUTO DOCUMENTI:\n{contenuto_locale}\n\n"
-            "Risposta:"
+        risposta_ai = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Sei un assistente esperto di prodotti Tecnaria."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.4,
         )
-
-        if openai_client:
-            risposta = openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "user", "content": prompt_finale}
-                ],
-                temperature=0.3
-            )
-            return risposta.choices[0].message.content.strip()
+        risposta_finale = risposta_ai.choices[0].message.content.strip()
+        # Aggiungi solo l’icona silenziosa a fine risposta
+        if "non ho trovato" in risposta_finale.lower():
+            return "❌ " + risposta_finale
         else:
-            return "🧠 (Simulazione) Risposta da AI non disponibile senza OpenAI Client."
+            return risposta_finale + " 🤖"
 
     except Exception as e:
-        return f"❌ Errore durante la generazione della risposta: {str(e)}"
+        return "⚠️ Errore nel generare la risposta AI. Controlla l’API key e riprova."
