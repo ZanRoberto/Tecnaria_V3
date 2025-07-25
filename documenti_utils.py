@@ -1,38 +1,30 @@
-# bridge_scraper.py
-from scraper_tecnaria import estrai_info_tecnaria
-from documenti_reader import estrai_testo_dai_documenti
-from openai import OpenAI
+# documenti_utils.py
+
 import os
 
-# Inizializza OpenAI Client con API Key
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+def estrai_testo_dai_documenti(domanda: str) -> str:
+    """
+    Scansiona i file .txt nella cartella 'documenti' e restituisce una concatenazione dei contenuti
+    rilevanti rispetto alla domanda fornita.
+    """
+    cartella = 'documenti'
+    if not os.path.exists(cartella):
+        return "❌ Nessun documento trovato nella cartella."
 
-def ottieni_risposta_unificata(domanda_utente: str) -> str:
-    risposta_documenti = estrai_testo_dai_documenti(domanda_utente)
-    risposta_tecnaria = estrai_info_tecnaria(domanda_utente)
+    testi_rilevanti = []
 
-    prompt = f"""Agisci come esperto tecnico dei prodotti Tecnaria.
-Rispondi in modo dettagliato, concreto e senza frasi vaghe.
-Consulta anche le seguenti informazioni:
+    for nome_file in os.listdir(cartella):
+        if nome_file.endswith(".txt"):
+            percorso = os.path.join(cartella, nome_file)
+            try:
+                with open(percorso, 'r', encoding='utf-8') as f:
+                    testo = f.read()
+                    if domanda.lower() in testo.lower():
+                        testi_rilevanti.append(f"📄 {nome_file}:\n{testo}")
+            except Exception as e:
+                testi_rilevanti.append(f"⚠️ Errore leggendo {nome_file}: {str(e)}")
 
-📄 Dai documenti:
-{risposta_documenti}
-
-🌐 Dal sito Tecnaria:
-{risposta_tecnaria}
-
-🧾 Domanda dell’utente:
-{domanda_utente}
-
-Rispondi come se fossi un tecnico specializzato di Tecnaria, chiaro e preciso, senza citare fonti.
-"""
-
-    try:
-        completamento = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.4
-        )
-        return completamento.choices[0].message.content.strip()
-    except Exception as e:
-        return f"❌ Errore nel generare la risposta AI: {str(e)}"
+    if testi_rilevanti:
+        return "\n\n".join(testi_rilevanti)
+    else:
+        return "Nessun documento contiene informazioni rilevanti rispetto alla tua domanda."
