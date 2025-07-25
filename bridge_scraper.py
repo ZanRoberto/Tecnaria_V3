@@ -1,36 +1,50 @@
-from scraper_tecnaria import estrai_info_tecnaria
-from documenti_utils import estrai_testo_dai_documenti  # <- nome aggiornato qui
-from openai import OpenAI
 import os
+import openai
+from documenti_utils import estrai_testo_dai_documenti
+from deep_translator import GoogleTranslator
+from langdetect import detect
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-def ottieni_risposta_unificata(domanda_utente: str) -> str:
-    risposta_documenti = estrai_testo_dai_documenti(domanda_utente)
-    risposta_tecnaria = estrai_info_tecnaria(domanda_utente)
+def ottieni_risposta_unificata(domanda):
+    # Estrai contenuto dei documenti da Google Drive o altre fonti
+    testo_documenti = estrai_testo_dai_documenti(domanda)
 
-    prompt = f"""Agisci come esperto tecnico dei prodotti Tecnaria.
-Rispondi in modo dettagliato, concreto e senza frasi vaghe.
-Consulta anche le seguenti informazioni:
+    # Lingua originale della domanda
+    lingua = detect(domanda)
+    if lingua != "it":
+        domanda = GoogleTranslator(source=lingua, target='it').translate(domanda)
 
-📄 Dai documenti:
-{risposta_documenti}
+    prompt = f"""
+CONTENUTO DOCUMENTI TECNARIA:
+{testo_documenti}
 
-🌐 Dal sito Tecnaria:
-{risposta_tecnaria}
+DOMANDA UTENTE:
+{domanda}
 
-🧾 Domanda dell’utente:
-{domanda_utente}
+ISTRUZIONI:
+- Rispondi sempre come tecnico esperto di Tecnaria.
+- Non menzionare mai prodotti concorrenti o generici.
+- Basati solo sulle informazioni ufficiali di Tecnaria.
+- Se la risposta non è nei documenti, ammetti che non è disponibile.
 
-Rispondi come se fossi un tecnico specializzato di Tecnaria, chiaro e preciso, senza citare fonti.
+RISPOSTA:
 """
 
-    try:
-        completamento = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.4
-        )
-        return completamento.choices[0].message.content.strip()
-    except Exception as e:
-        return f"❌ Errore nel generare la risposta AI: {str(e)}"
+    risposta = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "Sei un assistente tecnico specializzato nei prodotti e nelle soluzioni Tecnaria."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3,
+        max_tokens=800
+    )
+
+    contenuto_risposta = risposta.choices[0].message["content"]
+
+    # Se la lingua originale era diversa da italiano, ritraduci
+    if lingua != "it":
+        contenuto_risposta = GoogleTranslator(source='it', target=lingua).translate(contenuto_risposta)
+
+    return contenuto_risposta
