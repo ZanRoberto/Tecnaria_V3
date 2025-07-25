@@ -1,56 +1,45 @@
 # scraper_tecnaria.py
-
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
-from langdetect import detect
-from deep_translator import GoogleTranslator
+from urllib.parse import urljoin
 
 BASE_URL = "https://www.tecnaria.com"
-MAX_PAGINE = 50  # limite di sicurezza
-
-def estrai_testo_pagina(url):
-    try:
-        response = requests.get(url, timeout=10)
-        soup = BeautifulSoup(response.content, "html.parser")
-        paragrafi = soup.find_all(["p", "h1", "h2", "h3", "li"])
-        testo = "\n".join(p.get_text(strip=True) for p in paragrafi if p.get_text(strip=True))
-        return testo
-    except Exception as e:
-        return ""
 
 def estrai_info_tecnaria(domanda):
-    visitati = set()
-    da_visitare = [BASE_URL]
-    testi_rilevanti = []
+    try:
+        links_esplorati = set()
+        testo_completo = ""
 
-    while da_visitare and len(visitati) < MAX_PAGINE:
-        url = da_visitare.pop(0)
-        if url in visitati:
-            continue
-        visitati.add(url)
+        def esplora_link(url, profondita=0, max_prof=2):
+            if profondita > max_prof or url in links_esplorati:
+                return
+            links_esplorati.add(url)
 
-        try:
-            response = requests.get(url, timeout=10)
-            soup = BeautifulSoup(response.content, "html.parser")
-            testo_pagina = estrai_testo_pagina(url)
+            try:
+                response = requests.get(url, timeout=10)
+                if response.status_code != 200:
+                    return
+                soup = BeautifulSoup(response.text, 'html.parser')
 
-            if domanda.lower() in testo_pagina.lower():
-                testi_rilevanti.append(f"\n🔗 {url}\n{testo_pagina[:1000]}...")
+                # Aggiungi tutto il testo utile di ogni pagina
+                testo_pagina = soup.get_text(separator=' ', strip=True)
+                testo_completo_nonlocal[0] += f"\n\n[{url}]\n{testo_pagina}"
 
-            # Scansiona nuovi link da seguire
-            for link in soup.find_all("a", href=True):
-                href = link['href']
-                full_url = urljoin(url, href)
-                if BASE_URL in full_url and full_url not in visitati:
-                    da_visitare.append(full_url)
+                # Trova tutti i link interni e prosegui
+                for link_tag in soup.find_all('a', href=True):
+                    href = link_tag['href']
+                    link_assoluto = urljoin(BASE_URL, href)
+                    if BASE_URL in link_assoluto:
+                        esplora_link(link_assoluto, profondita + 1, max_prof)
 
-        except Exception:
-            continue
+            except Exception:
+                pass
 
-    # Se nulla trovato, prova a tradurre la domanda e ripetere
-    if not testi_rilevanti and detect(domanda) != "it":
-        domanda_it = GoogleTranslator(source='auto', target='it').translate(domanda)
-        return estrai_info_tecnaria(domanda_it)
+        testo_completo_nonlocal = [""]
+        esplora_link(BASE_URL)
 
-    return "\n\n".join(testi_rilevanti[:3]) if testi_rilevanti else ""
+        # Selezione semplice: restituisce primi 4000 caratteri rilevanti
+        return testo_completo_nonlocal[0][:4000]
+
+    except Exception as e:
+        return "❌ Errore nello scraping del sito Tecnaria."
