@@ -1,49 +1,36 @@
-# bridge_scraper.py
-import os
 from scraper_tecnaria import estrai_info_tecnaria
-from documenti_reader import estrai_info_documenti
+from documenti_utils import estrai_testo_dai_documenti  # <- nome aggiornato qui
 from openai import OpenAI
-from dotenv import load_dotenv
+import os
 
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-client = OpenAI(api_key=api_key)
+def ottieni_risposta_unificata(domanda_utente: str) -> str:
+    risposta_documenti = estrai_testo_dai_documenti(domanda_utente)
+    risposta_tecnaria = estrai_info_tecnaria(domanda_utente)
 
-def ottieni_risposta_unificata(domanda_utente):
-    risposta_sito = estrai_info_tecnaria(domanda_utente)
-    risposta_doc = estrai_info_documenti(domanda_utente)
-    
-    # Componi il prompt con contesto
-    prompt = f"""
-Rispondi come se fossi un esperto tecnico dell’azienda Tecnaria, usando tono chiaro, professionale ma diretto. 
-Analizza la seguente domanda dell’utente:
-"{domanda_utente}"
+    prompt = f"""Agisci come esperto tecnico dei prodotti Tecnaria.
+Rispondi in modo dettagliato, concreto e senza frasi vaghe.
+Consulta anche le seguenti informazioni:
 
-Hai a disposizione queste due fonti:
-1. Contenuto del sito Tecnaria (🔍): {risposta_sito}
-2. Contenuto dei documenti ufficiali (📄): {risposta_doc}
+📄 Dai documenti:
+{risposta_documenti}
 
-Se non trovi nulla, rispondi con “Mi dispiace, non ho trovato informazioni rilevanti.”
+🌐 Dal sito Tecnaria:
+{risposta_tecnaria}
 
-Dai una risposta unica e utile, senza citare fonti esplicitamente.
-    """
+🧾 Domanda dell’utente:
+{domanda_utente}
+
+Rispondi come se fossi un tecnico specializzato di Tecnaria, chiaro e preciso, senza citare fonti.
+"""
 
     try:
-        risposta_ai = client.chat.completions.create(
+        completamento = client.chat.completions.create(
             model="gpt-4",
-            messages=[
-                {"role": "system", "content": "Sei un assistente esperto di prodotti Tecnaria."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.4,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4
         )
-        risposta_finale = risposta_ai.choices[0].message.content.strip()
-        # Aggiungi solo l’icona silenziosa a fine risposta
-        if "non ho trovato" in risposta_finale.lower():
-            return "❌ " + risposta_finale
-        else:
-            return risposta_finale + " 🤖"
-
+        return completamento.choices[0].message.content.strip()
     except Exception as e:
-        return "⚠️ Errore nel generare la risposta AI. Controlla l’API key e riprova."
+        return f"❌ Errore nel generare la risposta AI: {str(e)}"
