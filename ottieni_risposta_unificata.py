@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 from dotenv import load_dotenv
 from openai import OpenAI
 
+# Carica chiave API da .env o Render
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -28,8 +29,9 @@ def estrai_testo_dai_documenti(domanda: str, soglia_similitudine: int = 65) -> s
     risultati = []
     for nome_file in os.listdir(CARTELLA_DOCUMENTI):
         if nome_file.endswith(".txt"):
+            percorso = os.path.join(CARTELLA_DOCUMENTI, nome_file)
             try:
-                with open(os.path.join(CARTELLA_DOCUMENTI, nome_file), 'r', encoding='utf-8') as f:
+                with open(percorso, 'r', encoding='utf-8') as f:
                     testo = f.read()
                     score = fuzz.partial_ratio(domanda.lower(), testo.lower())
                     if score >= soglia_similitudine:
@@ -39,8 +41,7 @@ def estrai_testo_dai_documenti(domanda: str, soglia_similitudine: int = 65) -> s
     if risultati:
         risultati.sort(reverse=True)
         return risultati[0][2][:3000]
-    else:
-        return ""
+    return ""
 
 def estrai_testo_da_url(url):
     try:
@@ -75,7 +76,7 @@ def ottieni_risposta_unificata(domanda):
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "Rispondi come se fossi un esperto tecnico di Tecnaria."},
+                    {"role": "system", "content": "Rispondi solo come un tecnico esperto dei prodotti Tecnaria, usando solo le informazioni disponibili nei documenti aziendali e sul sito www.tecnaria.com. Evita ogni riferimento ad aziende o prodotti non presenti nel sito ufficiale."},
                     {"role": "user", "content": domanda}
                 ],
                 temperature=0.2,
