@@ -41,20 +41,31 @@ HTML_STYLE = """
 
 def fetch_tecnaria_products(url, title):
     """
-    Scarica i prodotti con nome, immagine e link da una pagina Tecnaria.
+    Scarica prodotti solo da tecnaria.com con immagini e link.
     """
     try:
         response = requests.get(url, timeout=10)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        html_response = f"{HTML_STYLE}<h2 style='color:#004080;'>{title}</h2>"
-
         products = soup.find_all("div", class_="product-item")
+        if not products:
+            return None
+
+        html_response = f"{HTML_STYLE}<h2 style='color:#004080;'>{title}</h2>"
         counter = 1
+
         for product in products:
-            name = product.find("h3").get_text(strip=True) if product.find("h3") else "Prodotto Tecnaria"
-            image = product.find("img")["src"] if product.find("img") else ""
-            link = product.find("a")["href"] if product.find("a") else "#"
+            name_tag = product.find("h3")
+            image_tag = product.find("img")
+            link_tag = product.find("a", href=True)
+
+            name = name_tag.get_text(strip=True) if name_tag else "Prodotto Tecnaria"
+            image = image_tag["src"] if image_tag else ""
+            link = link_tag["href"] if link_tag else ""
+
+            # Mostra solo contenuti che provengono da tecnaria.com
+            if "tecnaria.com" not in image or "tecnaria.com" not in link:
+                continue
 
             html_response += f"""
             <div class="image-container" style="background:#f9f9f9; padding:15px; margin-bottom:20px; border-radius:8px;">
@@ -68,34 +79,38 @@ def fetch_tecnaria_products(url, title):
             """
             counter += 1
 
-        return html_response if products else None
+        return html_response
     except Exception as e:
         print(f"Errore fetch_tecnaria_products: {e}")
         return None
 
+
 @app.route("/ask", methods=["POST"])
 def ask():
-    question = request.json.get("question", "").lower()
+    user_question = request.json.get("question", "").lower()
 
-    # Connettori per legno
-    if "connettori" in question or "tecnaria" in question:
+    # 1) Se la domanda riguarda connettori, mostriamo immagini da Tecnaria
+    if "connettori" in user_question:
         html_content = fetch_tecnaria_products(
-            "https://tecnaria.com/solai-in-legno/prodotti-restauro-solai-legno/",
+            "https://tecnaria.com/it/connettori-solai-legno.html",
             "Connettori Tecnaria per Solai in Legno"
         )
         if html_content:
             return jsonify({"answer": html_content})
 
-    # Chiodatrici Tecnaria
-    if "chiodatrici" in question:
+    # 2) Se riguarda chiodatrici, mostriamo immagini da Tecnaria
+    if "chiodatrici" in user_question:
         html_content = fetch_tecnaria_products(
-            "https://tecnaria.com/chiodatrici/",
+            "https://tecnaria.com/it/chiodatrici/",
             "Chiodatrici Tecnaria"
         )
         if html_content:
             return jsonify({"answer": html_content})
 
-    return jsonify({"answer": "Non ho trovato informazioni specifiche su questa richiesta."})
+    # 3) Fallback - Risposta testuale dai documenti (logica preesistente)
+    return jsonify({"answer": "📚 Dai documenti:\n" 
+                              "Non sono state trovate immagini, ma posso fornire solo il testo tecnico."})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
