@@ -10,7 +10,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def ottieni_risposta_unificata(domanda):
     try:
-        # 🔍 Unisce il contenuto di tutti i file .txt nella cartella 'documenti'
+        # 🔍 Legge tutti i file .txt nella cartella /documenti
         documenti_dir = "documenti"
         contesto = ""
         for nome_file in os.listdir(documenti_dir):
@@ -18,30 +18,42 @@ def ottieni_risposta_unificata(domanda):
                 percorso = os.path.join(documenti_dir, nome_file)
                 try:
                     with open(percorso, "r", encoding="utf-8") as f:
-                        contesto += f"\n\n### CONTENUTO DI {nome_file} ###\n"
+                        contesto += f"\n\n### FILE: {nome_file} ###\n"
                         contesto += f.read()
                 except Exception as e:
-                    contesto += f"\n[errore nella lettura di {nome_file}: {e}]\n"
+                    contesto += f"\n[Errore nella lettura di {nome_file}: {e}]\n"
 
-        # 🔤 Rileva lingua e traduce la domanda in inglese per compatibilità con OpenAI
+        # 🔤 Traduzione domanda (per compatibilità con OpenAI)
         lingua_originale = detect(domanda)
         domanda_en = GoogleTranslator(source='auto', target='en').translate(domanda)
 
-        # 🤖 Chiamata all'API OpenAI
+        # ⚠️ Prompt rigido: NO invenzioni
+        prompt = f"""You are a technical assistant for the company Tecnaria. 
+Only answer using the content provided in the 'context' below. 
+If the answer is not explicitly found in the context, simply reply:
+"I'm sorry, I could not find any relevant information in the documents provided."
+
+CONTEXT:
+{contesto}
+
+QUESTION:
+{domanda_en}
+"""
+
+        # 🧠 Chiamata all’API OpenAI
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a technical assistant specialized in Tecnaria products. You only answer using the content below. Do not invent."},
-                {"role": "user", "content": f"Context:\n{contesto}"},
-                {"role": "user", "content": f"Question: {domanda_en}"}
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
             ],
-            temperature=0.4,
+            temperature=0.0,
             max_tokens=1200
         )
 
         risposta_en = response.choices[0].message["content"]
 
-        # 🔁 Traduci di nuovo la risposta nella lingua originale (se non inglese)
+        # 🔁 Traduzione finale nella lingua dell’utente
         if lingua_originale != "en":
             risposta = GoogleTranslator(source='en', target=lingua_originale).translate(risposta_en)
         else:
@@ -50,4 +62,4 @@ def ottieni_risposta_unificata(domanda):
         return risposta
 
     except Exception as e:
-        return f"Si è verificato un errore: {e}"
+        return f"Errore durante l'elaborazione: {e}"
