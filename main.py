@@ -4,58 +4,98 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-def get_tecnaria_connectors():
+HTML_STYLE = """
+<style>
+  .image-container img {
+    max-width: 250px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: transform 0.2s ease-in-out;
+  }
+  .image-container img:hover {
+    transform: scale(1.05);
+  }
+  .lightbox {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    padding-top: 60px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+  .lightbox img {
+    display: block;
+    margin: auto;
+    max-width: 90%;
+    max-height: 80%;
+  }
+  .lightbox:target {
+    display: block;
+  }
+</style>
+"""
+
+def fetch_tecnaria_products(url, title):
     """
-    Recupera automaticamente i dati e le immagini dei connettori per legno da tecnaria.com.
+    Scarica i prodotti con nome, immagine e link da una pagina Tecnaria.
     """
-    url = "https://tecnaria.com/solai-in-legno/prodotti-restauro-solai-legno/"
-    response = requests.get(url, timeout=10)
-    soup = BeautifulSoup(response.text, "html.parser")
+    try:
+        response = requests.get(url, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
 
-    results = []
+        html_response = f"{HTML_STYLE}<h2 style='color:#004080;'>{title}</h2>"
 
-    products = soup.find_all("div", class_="product-item")
-    for product in products:
-        name_tag = product.find("h3")
-        img_tag = product.find("img")
-        link_tag = product.find("a", href=True)
+        products = soup.find_all("div", class_="product-item")
+        counter = 1
+        for product in products:
+            name = product.find("h3").get_text(strip=True) if product.find("h3") else "Prodotto Tecnaria"
+            image = product.find("img")["src"] if product.find("img") else ""
+            link = product.find("a")["href"] if product.find("a") else "#"
 
-        name = name_tag.get_text(strip=True) if name_tag else "Prodotto senza nome"
-        img_url = img_tag["src"] if img_tag and "src" in img_tag.attrs else ""
-        product_link = link_tag["href"] if link_tag else ""
+            html_response += f"""
+            <div class="image-container" style="background:#f9f9f9; padding:15px; margin-bottom:20px; border-radius:8px;">
+              <h3>🔩 {name}</h3>
+              <a href="#img{counter}"><img src="{image}" alt="{name}"></a>
+              <div id="img{counter}" class="lightbox">
+                <img src="{image}" alt="{name} grande">
+              </div>
+              <p><a href="{link}" target="_blank">Scheda tecnica</a></p>
+            </div>
+            """
+            counter += 1
 
-        results.append({
-            "name": name,
-            "image": img_url,
-            "link": product_link
-        })
-
-    return results
-
+        return html_response if products else None
+    except Exception as e:
+        print(f"Errore fetch_tecnaria_products: {e}")
+        return None
 
 @app.route("/ask", methods=["POST"])
 def ask():
-    user_question = request.json.get("question", "").lower()
+    question = request.json.get("question", "").lower()
 
-    if "connettori" in user_question or "tecnaria" in user_question:
-        products = get_tecnaria_connectors()
-        if not products:
-            return jsonify({"answer": "Non ho trovato connettori Tecnaria al momento."})
+    # Connettori per legno
+    if "connettori" in question or "tecnaria" in question:
+        html_content = fetch_tecnaria_products(
+            "https://tecnaria.com/solai-in-legno/prodotti-restauro-solai-legno/",
+            "Connettori Tecnaria per Solai in Legno"
+        )
+        if html_content:
+            return jsonify({"answer": html_content})
 
-        html_response = "<h2>Connettori Tecnaria per Legno</h2>"
-        for p in products:
-            html_response += f"""
-            <div style='margin-bottom: 20px;'>
-                <h3>{p['name']}</h3>
-                <img src='{p['image']}' alt='{p['name']}' width='300'><br>
-                <a href='{p['link']}' target='_blank'>Vai alla scheda prodotto</a>
-            </div>
-            """
+    # Chiodatrici Tecnaria
+    if "chiodatrici" in question:
+        html_content = fetch_tecnaria_products(
+            "https://tecnaria.com/chiodatrici/",
+            "Chiodatrici Tecnaria"
+        )
+        if html_content:
+            return jsonify({"answer": html_content})
 
-        return jsonify({"answer": html_response})
-
-    return jsonify({"answer": "Non ho informazioni su questa richiesta."})
-
+    return jsonify({"answer": "Non ho trovato informazioni specifiche su questa richiesta."})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
