@@ -1,4 +1,5 @@
-# main.py
+# app.py
+from flask import Flask, request, jsonify
 import os
 import openai
 import requests
@@ -7,9 +8,11 @@ from rapidfuzz import fuzz
 from urllib.parse import urljoin
 from dotenv import load_dotenv
 
-# Carica API Key
+# Carica chiavi API
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+app = Flask(__name__)
 
 # --- CONFIG ---
 CARTELLA_DOCUMENTI = "documenti"
@@ -30,7 +33,7 @@ PAGINE_TECNARIA = [
 def estrai_testo_dai_documenti(domanda: str, soglia_similitudine: int = 65) -> str:
     if not os.path.exists(CARTELLA_DOCUMENTI):
         return ""
-    
+
     risultati = []
     for nome_file in os.listdir(CARTELLA_DOCUMENTI):
         if nome_file.endswith(".txt"):
@@ -101,10 +104,18 @@ def ottieni_risposta_unificata(domanda):
     else:
         return risposta_web
 
-# --- LOOP INTERATTIVO (PER TEST) ---
+# --- ROUTE API ---
+@app.route("/", methods=["GET"])
+def home():
+    return "🤖 Bot Tecnaria attivo su Render."
+
+@app.route("/ask", methods=["POST"])
+def ask():
+    data = request.get_json()
+    domanda = data.get("domanda", "")
+    risposta = ottieni_risposta_unificata(domanda)
+    return jsonify({"risposta": risposta})
+
+# --- AVVIO ---
 if __name__ == "__main__":
-    print("🤖 BOT TECNARIA ATTIVO. Scrivi una domanda o premi CTRL+C per uscire.\n")
-    while True:
-        domanda = input("❓ > ")
-        risposta = ottieni_risposta_unificata(domanda)
-        print(f"\n✅ RISPOSTA:\n{risposta}\n")
+    app.run(host="0.0.0.0", port=10000)
