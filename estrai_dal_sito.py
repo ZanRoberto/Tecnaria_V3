@@ -1,19 +1,12 @@
-# estrai_dal_sito.py
 import requests
 from bs4 import BeautifulSoup
 from rapidfuzz import fuzz
-from urllib.parse import urljoin
 
 PAGINE_TECNARIA = [
-    "https://www.tecnaria.com/it/index.html",
-    "https://www.tecnaria.com/it/prodotti.html",
-    "https://www.tecnaria.com/it/connettori-solai-legno.html",
-    "https://www.tecnaria.com/it/connettori-solai-acciaio.html",
-    "https://www.tecnaria.com/it/connettori-solai-calcestruzzo.html",
-    "https://www.tecnaria.com/it/applicazioni.html",
-    "https://www.tecnaria.com/it/chiodatrici.html",
-    "https://www.tecnaria.com/it/download.html",
-    "https://www.tecnaria.com/it/contatti.html"
+    "https://www.tecnaria.com/it/prodotto/chiodatrice-p560-per-connettori-ctf/",
+    "https://www.tecnaria.com/it/prodotto/chiodatrice-p560-per-connettori-diapason/",
+    "https://www.tecnaria.com/it/prodotti/connettori-solai-calcestruzzo.html",
+    "https://www.tecnaria.com/it/prodotti/connettori-solai-acciaio.html"
 ]
 
 def estrai_testo_da_url(url):
@@ -22,25 +15,22 @@ def estrai_testo_da_url(url):
         if r.status_code == 200:
             soup = BeautifulSoup(r.text, 'html.parser')
             return soup.get_text(separator='\n', strip=True)
-        else:
-            return ""
     except:
         return ""
+    return ""
 
-def estrai_contenuto_dal_sito(domanda: str, soglia_similitudine: int = 60) -> str:
-    migliori_risultati = []
-
+def cerca_sul_sito(domanda: str, soglia: int = 60) -> str:
+    risultati = []
     for url in PAGINE_TECNARIA:
         testo = estrai_testo_da_url(url)
         if testo:
             score = fuzz.partial_ratio(domanda.lower(), testo.lower())
-            if score >= soglia_similitudine:
-                migliori_risultati.append((score, url, testo))
+            if score >= soglia:
+                risultati.append((score, url, testo))
 
-    if migliori_risultati:
-        migliori_risultati.sort(reverse=True)
-        testo_rilevante = migliori_risultati[0][2][:3000]
-        url_rilevante = migliori_risultati[0][1]
-        return f"🌐 Contenuto rilevante da:\n{url_rilevante}\n\n{testo_rilevante}"
-    else:
-        return ""
+    if risultati:
+        risultati.sort(reverse=True)
+        score, url, testo = risultati[0]
+        snippet = '\n'.join(testo.split('\n')[:20])
+        return f"🌐 Tecnaria.com – Pagina trovata: {url}\n\n{snippet}"
+    return ""
