@@ -1,18 +1,44 @@
 <!DOCTYPE html>
-<html>
+<html lang="it">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <title>Chatbot Tecnaria</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            background-color: #111;
+            color: #eee;
+            font-family: Arial, sans-serif;
+            padding: 2rem;
+        }
+        input, textarea, button {
+            font-size: 1rem;
+            padding: 0.5rem;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .risposta {
+            margin-top: 2rem;
+            white-space: pre-wrap;
+            background: #222;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+    </style>
 </head>
 <body>
-    <h1>Chatbot Tecnaria</h1>
-    <form method="post">
-        <input type="text" name="domanda" placeholder="Fai una domanda..." required>
+    <h1>🤖 Chatbot Tecnaria</h1>
+    <form method="POST">
+        <label for="domanda">Scrivi la tua domanda:</label>
+        <textarea id="domanda" name="domanda" rows="4"></textarea>
         <button type="submit">Invia</button>
     </form>
+
     {% if risposta %}
-        <h2>Risposta:</h2>
-        <div>{{ risposta|safe }}</div>
+    <div class="risposta">
+        <strong>Risposta:</strong>
+        <p>{{ risposta }}</p>
+    </div>
     {% endif %}
 </body>
 </html>
