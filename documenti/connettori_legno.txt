@@ -51,64 +51,26 @@ Quali sono i connettori per solai in legno di Tecnaria?
 Ogni connettore è progettato per ottimizzare la connessione legno-calcestruzzo, migliorare la portanza statica e ridurre le vibrazioni strutturali. La posa può avvenire con chiodatrici automatiche o viti tecniche, a seconda del modello.
 🔗 https://www.tecnaria.com/it/connettori-solai-legno.html
 
- Nuove risposte dettagliate su connettori legno Tecnaria
 🔧 CTL MAXI – fissaggio sopra l’assito
 Descrizione: connettore a piolo Ø12 mm, vite Ø10 mm con piastra base 75×50 ×4 mm con ramponi.
-
 Caratteristiche: certificazione CE, zincatura elettrolitica (~8 μm), resistenza alla corrosione.
-
 Dimensioni disponibili: altezze del gambo da 20 a 200 mm; viti da 100/120/140 mm.
-
 Applicazione: ideale su assito continuo, posato sopra l’assito in legno.
-
 Vantaggi: maggiore portanza e rigidezza grazie all’applicazione esterna.
-
-🔗 [Scheda CTL MAXI Tecnaria]
-Tecnaria SPA
-+15
-Tecnaria SPA
-+15
-Tecnaria SPA
-+15
-Edilportale
 
 🔧 CTL BASE – montaggio a diretto contatto
 Descrizione: piastre rame ramponate 50×50×4 mm, piolo Ø12 mm, vite Ø8 mm.
-
 Certificazioni: CE; prestazioni meccaniche validate per legno C16‑GL24.
-
 Applicazioni standard: interfaccia diretta con travi in legno.
-
 Variazioni: viti Ø8 mm con lunghezze da 70 a 200 mm.
-
-🔗 [Dettagli tecnici CTL BASE]
-ordini.tecnaria.com
-+6
-Tecnaria SPA
-+6
-Edilportale
-+6
 
 🔧 CTL OMEGA – per travetti sottili
 Descrizione: piastra sagomata a forma di omega (H38×30×L90 mm, spessore 4 mm), vite Ø10 mm.
-
 Scopo: travetti secondari o legno dolce con minori sollecitazioni.
-
 Disponibilità: viti da 100·120·140 mm (modello CVT 40V‑10/...).
-
-🔗 [Scheda CTL OMEGA Tecnaria]
-Archiproducts
-+12
-Tecnaria SPA
-+12
-Tecnaria SPA
-+12
 
 🧾 Un elenco completo, puntuale e strutturato:
 Modello	Tipo travi	Applicazione	Viti consigliate
 CTL MAXI	Travi massello	Sopra assito	Ø10 mm, lunghezza 100–140 mm
 CTL BASE	Travi in legno massiccio	Contatto diretto con trave	Ø8 mm, lunghezza 70–200 mm
 CTL OMEGA	Travetti sottili o pannelli leggeri	Posa su travetti secondari o dolci	Ø10 mm, lunghezza 100–140 mm
-
-✅ Integrazione consigliata per i tuoi documenti
-Puoi aggiornare il file /documenti/connettori_legno.txt con queste nuove schede tecniche per ogni connettore. In alternativa, puoi creare un nuovo file chiamato connettori_legno_dettagli.txt o simile.
