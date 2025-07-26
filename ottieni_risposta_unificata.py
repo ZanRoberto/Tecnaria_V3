@@ -1,22 +1,53 @@
-# ottieni_risposta_unificata.py
+import os
+import openai
+from langdetect import detect
+from deep_translator import GoogleTranslator
+from dotenv import load_dotenv
 
-from estrai_dal_sito import estrai_contenuto_dal_sito
-from estrai_dai_documenti import estrai_testo_dai_documenti
-from documenti_utils import normalizza_testo
+load_dotenv()
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def ottieni_risposta_unificata(domanda):
     try:
-        with open("documenti/connettori_legno_tecnaria_immagini.html", "r", encoding="utf-8") as f:
-            testo_documento = f.read()
-    except FileNotFoundError:
-        testo_documento = ""
+        # 🔍 Unisce il contenuto di tutti i file .txt nella cartella 'documenti'
+        documenti_dir = "documenti"
+        contesto = ""
+        for nome_file in os.listdir(documenti_dir):
+            if nome_file.endswith(".txt"):
+                percorso = os.path.join(documenti_dir, nome_file)
+                try:
+                    with open(percorso, "r", encoding="utf-8") as f:
+                        contesto += f"\n\n### CONTENUTO DI {nome_file} ###\n"
+                        contesto += f.read()
+                except Exception as e:
+                    contesto += f"\n[errore nella lettura di {nome_file}: {e}]\n"
 
-    contenuto_sito = estrai_contenuto_dal_sito("https://www.tecnaria.com/it/connettori-solai-legno.html")
-    
-    testo_completo = normalizza_testo(testo_documento + "\n" + contenuto_sito)
+        # 🔤 Rileva lingua e traduce la domanda in inglese per compatibilità con OpenAI
+        lingua_originale = detect(domanda)
+        domanda_en = GoogleTranslator(source='auto', target='en').translate(domanda)
 
-    if "immagine" in domanda.lower() or ".jpg" in testo_completo.lower():
-        return testo_completo  # Mantiene tag HTML intatti per visualizzare immagini
-    else:
-        return testo_completo.replace("<", "").replace(">", "")  # per sicurezza, se non HTML
+        # 🤖 Chiamata all'API OpenAI
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a technical assistant specialized in Tecnaria products. You only answer using the content below. Do not invent."},
+                {"role": "user", "content": f"Context:\n{contesto}"},
+                {"role": "user", "content": f"Question: {domanda_en}"}
+            ],
+            temperature=0.4,
+            max_tokens=1200
+        )
 
+        risposta_en = response.choices[0].message["content"]
+
+        # 🔁 Traduci di nuovo la risposta nella lingua originale (se non inglese)
+        if lingua_originale != "en":
+            risposta = GoogleTranslator(source='en', target=lingua_originale).translate(risposta_en)
+        else:
+            risposta = risposta_en
+
+        return risposta
+
+    except Exception as e:
+        return f"Si è verificato un errore: {e}"
