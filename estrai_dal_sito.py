@@ -1,12 +1,18 @@
+# estrai_dal_sito.py
 import requests
 from bs4 import BeautifulSoup
 from rapidfuzz import fuzz
 
 PAGINE_TECNARIA = [
-    "https://www.tecnaria.com/it/prodotto/chiodatrice-p560-per-connettori-ctf/",
-    "https://www.tecnaria.com/it/prodotto/chiodatrice-p560-per-connettori-diapason/",
-    "https://www.tecnaria.com/it/prodotti/connettori-solai-calcestruzzo.html",
-    "https://www.tecnaria.com/it/prodotti/connettori-solai-acciaio.html"
+    "https://www.tecnaria.com/it/index.html",
+    "https://www.tecnaria.com/it/prodotti.html",
+    "https://www.tecnaria.com/it/connettori-solai-legno.html",
+    "https://www.tecnaria.com/it/connettori-solai-acciaio.html",
+    "https://www.tecnaria.com/it/connettori-solai-calcestruzzo.html",
+    "https://www.tecnaria.com/it/applicazioni.html",
+    "https://www.tecnaria.com/it/chiodatrici.html",
+    "https://www.tecnaria.com/it/download.html",
+    "https://www.tecnaria.com/it/contatti.html"
 ]
 
 def estrai_testo_da_url(url):
@@ -19,18 +25,17 @@ def estrai_testo_da_url(url):
         return ""
     return ""
 
-def cerca_sul_sito(domanda: str, soglia: int = 60) -> str:
+def estrai_contenuto_dal_sito(domanda: str, soglia_similitudine: int = 60) -> str:
     risultati = []
     for url in PAGINE_TECNARIA:
         testo = estrai_testo_da_url(url)
         if testo:
             score = fuzz.partial_ratio(domanda.lower(), testo.lower())
-            if score >= soglia:
+            if score >= soglia_similitudine:
                 risultati.append((score, url, testo))
-
+    
     if risultati:
         risultati.sort(reverse=True)
-        score, url, testo = risultati[0]
-        snippet = '\n'.join(testo.split('\n')[:20])
-        return f"🌐 Tecnaria.com – Pagina trovata: {url}\n\n{snippet}"
+        top_score, top_url, top_testo = risultati[0]
+        return f"🌐 Contenuto rilevante da: {top_url}\n\n{top_testo[:3000]}"
     return ""
