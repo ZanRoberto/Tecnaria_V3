@@ -1,0 +1,41 @@
+Deutsches Institut für Bautechnik DIBt
+European Technical Assessment
+ETA-08/0040 - 16 May 2018
+
+Prodotto: Fissaggi a sparo HSBR 14, HSBR 14 Tube, HSBR 14 Strip
+Utensili: P230, P230L, P525L, P560
+Fabbricante: SPIT (Francia)
+
+Impiego previsto:
+- Fissaggio di lamiere in acciaio a strutture in acciaio (pareti e coperture)
+- Acciaio base: S235, S275, S355 (EN 10025), spessore ≥ 6 mm
+- Lamiera: acciaio ≥ S280 (EN 10346), spessore da 0,63 mm a 3,0 mm
+
+Caratteristiche meccaniche:
+- Diametro chiodo: 4,5 mm, con rondella guida
+- Carico di trazione NRK: fino a 10,5 kN (secondo spessore)
+- Carico di taglio VRK: fino a 10,0 kN
+- Interazione trazione/taglio: valutata secondo EN 1993-1-3
+
+Utensili:
+- P230 → singolo fissaggio
+- P230L → con tubo
+- P525L → con tubo
+- P560 → singolo o striscia (con adattatore)
+- Cartucce disponibili: giallo (medio), blu (alto), rosso (molto alto), nero (extra)
+
+Durabilità: prevista vita utile ≥ 25 anni
+Condizioni: solo ambienti asciutti e non esposti
+
+Resistenza al fuoco:
+- Classe A1 (reazione al fuoco)
+- Nessuna prestazione determinata per la resistenza al fuoco (da testare secondo EN 13501)
+
+Montaggio:
+- Solo da personale qualificato
+- Secondo istruzioni SPIT
+- La lamiera deve essere in contatto diretto con la struttura
+
+Nota:
+- Utilizzare il fattore di sicurezza YM = 1.25
+- Per sollecitazioni cicliche (vento), usare coefficiente acycl = 1.0
