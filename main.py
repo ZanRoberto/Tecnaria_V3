@@ -1,121 +1,61 @@
-# app.py
 from flask import Flask, request, jsonify
-import os
-import openai
 import requests
 from bs4 import BeautifulSoup
-from rapidfuzz import fuzz
-from urllib.parse import urljoin
-from dotenv import load_dotenv
-
-# Carica chiavi API
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 
-# --- CONFIG ---
-CARTELLA_DOCUMENTI = "documenti"
-PAGINE_TECNARIA = [
-    "https://www.tecnaria.com/it/index.html",
-    "https://www.tecnaria.com/it/prodotti.html",
-    "https://www.tecnaria.com/it/connettori-solai-legno.html",
-    "https://www.tecnaria.com/it/connettori-solai-acciaio.html",
-    "https://www.tecnaria.com/it/connettori-solai-calcestruzzo.html",
-    "https://www.tecnaria.com/it/applicazioni.html",
-    "https://www.tecnaria.com/it/chiodatrici.html",
-    "https://www.tecnaria.com/it/download.html",
-    "https://www.tecnaria.com/it/contatti.html"
-]
+def get_tecnaria_connectors():
+    """
+    Recupera automaticamente i dati e le immagini dei connettori per legno da tecnaria.com.
+    """
+    url = "https://tecnaria.com/solai-in-legno/prodotti-restauro-solai-legno/"
+    response = requests.get(url, timeout=10)
+    soup = BeautifulSoup(response.text, "html.parser")
 
-# --- FUNZIONI ---
+    results = []
 
-def estrai_testo_dai_documenti(domanda: str, soglia_similitudine: int = 65) -> str:
-    if not os.path.exists(CARTELLA_DOCUMENTI):
-        return ""
+    products = soup.find_all("div", class_="product-item")
+    for product in products:
+        name_tag = product.find("h3")
+        img_tag = product.find("img")
+        link_tag = product.find("a", href=True)
 
-    risultati = []
-    for nome_file in os.listdir(CARTELLA_DOCUMENTI):
-        if nome_file.endswith(".txt"):
-            percorso = os.path.join(CARTELLA_DOCUMENTI, nome_file)
-            try:
-                with open(percorso, 'r', encoding='utf-8') as f:
-                    testo = f.read()
-                    score = fuzz.partial_ratio(domanda.lower(), testo.lower())
-                    if score >= soglia_similitudine:
-                        risultati.append((score, nome_file, testo.strip()))
-            except:
-                continue
+        name = name_tag.get_text(strip=True) if name_tag else "Prodotto senza nome"
+        img_url = img_tag["src"] if img_tag and "src" in img_tag.attrs else ""
+        product_link = link_tag["href"] if link_tag else ""
 
-    if risultati:
-        risultati.sort(reverse=True)
-        return risultati[0][2][:3000]
-    else:
-        return ""
+        results.append({
+            "name": name,
+            "image": img_url,
+            "link": product_link
+        })
 
-def estrai_testo_da_url(url):
-    try:
-        r = requests.get(url, timeout=10)
-        if r.status_code == 200:
-            soup = BeautifulSoup(r.text, 'html.parser')
-            return soup.get_text(separator='\n', strip=True)
-    except:
-        return ""
-    return ""
+    return results
 
-def estrai_contenuto_dal_sito(domanda: str, soglia_similitudine: int = 60) -> str:
-    risultati = []
-    for url in PAGINE_TECNARIA:
-        testo = estrai_testo_da_url(url)
-        if testo:
-            score = fuzz.partial_ratio(domanda.lower(), testo.lower())
-            if score >= soglia_similitudine:
-                risultati.append((score, url, testo))
-    
-    if risultati:
-        risultati.sort(reverse=True)
-        top_score, top_url, top_testo = risultati[0]
-        return f"🌐 Contenuto rilevante da:\n{top_url}\n\n{top_testo[:3000]}"
-    return ""
-
-def ottieni_risposta_unificata(domanda):
-    risposta_doc = estrai_testo_dai_documenti(domanda)
-    risposta_web = estrai_contenuto_dal_sito(domanda)
-
-    if not risposta_doc and not risposta_web:
-        try:
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "Rispondi come se fossi un esperto tecnico di Tecnaria."},
-                    {"role": "user", "content": domanda}
-                ],
-                temperature=0.2,
-                max_tokens=1000
-            )
-            return response['choices'][0]['message']['content'].strip()
-        except Exception as e:
-            return f"❌ Errore OpenAI: {e}"
-
-    if risposta_doc and risposta_web:
-        return f"📚 Dai documenti:\n{risposta_doc}\n\n🌐 Dal sito:\n{risposta_web}"
-    elif risposta_doc:
-        return risposta_doc
-    else:
-        return risposta_web
-
-# --- ROUTE API ---
-@app.route("/", methods=["GET"])
-def home():
-    return "🤖 Bot Tecnaria attivo su Render."
 
 @app.route("/ask", methods=["POST"])
 def ask():
-    data = request.get_json()
-    domanda = data.get("domanda", "")
-    risposta = ottieni_risposta_unificata(domanda)
-    return jsonify({"risposta": risposta})
+    user_question = request.json.get("question", "").lower()
 
-# --- AVVIO ---
+    if "connettori" in user_question or "tecnaria" in user_question:
+        products = get_tecnaria_connectors()
+        if not products:
+            return jsonify({"answer": "Non ho trovato connettori Tecnaria al momento."})
+
+        html_response = "<h2>Connettori Tecnaria per Legno</h2>"
+        for p in products:
+            html_response += f"""
+            <div style='margin-bottom: 20px;'>
+                <h3>{p['name']}</h3>
+                <img src='{p['image']}' alt='{p['name']}' width='300'><br>
+                <a href='{p['link']}' target='_blank'>Vai alla scheda prodotto</a>
+            </div>
+            """
+
+        return jsonify({"answer": html_response})
+
+    return jsonify({"answer": "Non ho informazioni su questa richiesta."})
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=5000)
