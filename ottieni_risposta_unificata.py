@@ -1,9 +1,8 @@
-# ottieni_risposta_unificata.py
-
 import os
 import requests
 from bs4 import BeautifulSoup
 from rapidfuzz import fuzz
+from urllib.parse import urljoin
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -26,20 +25,17 @@ PAGINE_TECNARIA = [
 def estrai_testo_dai_documenti(domanda: str, soglia_similitudine: int = 65) -> str:
     if not os.path.exists(CARTELLA_DOCUMENTI):
         return ""
-
     risultati = []
     for nome_file in os.listdir(CARTELLA_DOCUMENTI):
         if nome_file.endswith(".txt"):
-            percorso = os.path.join(CARTELLA_DOCUMENTI, nome_file)
             try:
-                with open(percorso, 'r', encoding='utf-8') as f:
+                with open(os.path.join(CARTELLA_DOCUMENTI, nome_file), 'r', encoding='utf-8') as f:
                     testo = f.read()
                     score = fuzz.partial_ratio(domanda.lower(), testo.lower())
                     if score >= soglia_similitudine:
                         risultati.append((score, nome_file, testo.strip()))
             except:
                 continue
-
     if risultati:
         risultati.sort(reverse=True)
         return risultati[0][2][:3000]
@@ -64,7 +60,6 @@ def estrai_contenuto_dal_sito(domanda: str, soglia_similitudine: int = 60) -> st
             score = fuzz.partial_ratio(domanda.lower(), testo.lower())
             if score >= soglia_similitudine:
                 risultati.append((score, url, testo))
-
     if risultati:
         risultati.sort(reverse=True)
         top_score, top_url, top_testo = risultati[0]
