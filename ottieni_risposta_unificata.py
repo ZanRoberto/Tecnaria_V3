@@ -1,35 +1,24 @@
+# ottieni_risposta_unificata.py
+
 from estrai_dai_documenti import estrai_testo_dai_documenti
-from deep_translator import GoogleTranslator
+from estrai_dal_sito import estrai_contenuto_dal_sito
 from documenti_utils import normalizza_testo
-import os
 
-def ottieni_risposta_unificata(domanda, lingua="it"):
-    risposta = ""
+def ottieni_risposta_unificata(domanda):
+    # Carica il file HTML con immagini invece del .txt
+    with open("documenti/connettori_legno_tecnaria_immagini.html", "r", encoding="utf-8") as f:
+        testo_locale = f.read()
 
-    # Estrai testo dai documenti nella cartella /documenti
-    testo_completo = estrai_testo_dai_documenti("documenti")
+    testo_locale = normalizza_testo(testo_locale)
 
-    # Applichiamo normalizzazione
-    testo_normalizzato = normalizza_testo(testo_completo)
+    risposta_documenti = estrai_testo_dai_documenti(domanda, testo_locale)
+    risposta_online = estrai_contenuto_dal_sito(domanda)
 
-    # Verifica se la domanda è in una lingua diversa
-    if lingua != "it":
-        domanda = GoogleTranslator(source='auto', target='it').translate(domanda)
-
-    # Logica di risposta semplificata (sostituibile con AI avanzata o regex mirata)
-    if "connettori" in domanda.lower() and "legno" in domanda.lower():
-        if "immagini" in domanda.lower() or "foto" in domanda.lower():
-            with open("documenti/connettori_legno_tecnaria_immagini.html", "r", encoding="utf-8") as f:
-                risposta = f.read()
-        else:
-            with open("documenti/connettori_legno_tecnaria.txt", "r", encoding="utf-8") as f:
-                risposta = f.read()
+    if risposta_documenti and risposta_online:
+        return f"<b>📚 Dai documenti:</b><br>{risposta_documenti}<hr><b>🌐 Dal sito:</b><br>{risposta_online}"
+    elif risposta_documenti:
+        return f"<b>📚 Dai documenti:</b><br>{risposta_documenti}"
+    elif risposta_online:
+        return f"<b>🌐 Dal sito:</b><br>{risposta_online}"
     else:
-        # Risposta generica se non c'è un match specifico
-        risposta = "🔍 Al momento non ho trovato una risposta precisa. Prova a riformulare la domanda oppure consulta i documenti ufficiali su https://www.tecnaria.com."
-
-    # Traduzione finale se serve
-    if lingua != "it":
-        risposta = GoogleTranslator(source='auto', target=lingua).translate(risposta)
-
-    return risposta
+        return "❌ Nessuna risposta trovata nei documenti o online."
