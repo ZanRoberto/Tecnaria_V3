@@ -1,3 +1,4 @@
+# ottieni_risposta_unificata.py
 from documenti_utils import estrai_testo_dai_documenti
 from estrai_dal_sito import estrai_contenuto_dal_sito
 import openai
@@ -10,7 +11,6 @@ def ottieni_risposta_unificata(domanda):
     risposta_web = estrai_contenuto_dal_sito(domanda)
 
     if not risposta_doc and not risposta_web:
-        # fallback OpenAI
         try:
             response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
@@ -25,7 +25,6 @@ def ottieni_risposta_unificata(domanda):
         except Exception as e:
             return f"❌ Errore API OpenAI: {e}"
 
-    # Fusione intelligente
     if risposta_doc and risposta_web:
         return f"📚 Dai documenti:\n{risposta_doc}\n\n🌐 Dal sito:\n{risposta_web}"
     elif risposta_doc:
