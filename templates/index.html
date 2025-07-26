@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
     <title>Chatbot Tecnaria</title>
 </head>
 <body>
-    <h1>🤖 Bot Tecnaria</h1>
+    <h1>Chatbot Tecnaria</h1>
     <form method="post">
         <input type="text" name="domanda" placeholder="Fai una domanda..." required>
         <button type="submit">Invia</button>
     </form>
     {% if risposta %}
-        <p><strong>Risposta:</strong> {{ risposta }}</p>
+        <h2>Risposta:</h2>
+        <div>{{ risposta|safe }}</div>
     {% endif %}
 </body>
 </html>
