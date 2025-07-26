@@ -1,9 +1,9 @@
+# estrai_dal_sito.py
 import requests
 from bs4 import BeautifulSoup
 from rapidfuzz import fuzz
 from urllib.parse import urljoin
 
-# Lista di pagine da visitare (modificabile a piacere)
 PAGINE_TECNARIA = [
     "https://www.tecnaria.com/it/index.html",
     "https://www.tecnaria.com/it/prodotti.html",
@@ -39,7 +39,7 @@ def estrai_contenuto_dal_sito(domanda: str, soglia_similitudine: int = 60) -> st
 
     if migliori_risultati:
         migliori_risultati.sort(reverse=True)
-        testo_rilevante = migliori_risultati[0][2][:3000]  # Max 3000 caratteri
+        testo_rilevante = migliori_risultati[0][2][:3000]
         url_rilevante = migliori_risultati[0][1]
         return f"🌐 Contenuto rilevante da:\n{url_rilevante}\n\n{testo_rilevante}"
     else:
