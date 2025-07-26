@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, request
 from ottieni_risposta_unificata import ottieni_risposta_unificata
 
@@ -7,9 +8,12 @@ app = Flask(__name__)
 def home():
     risposta = ""
     if request.method == "POST":
-        domanda = request.form["domanda"]
-        risposta = ottieni_risposta_unificata(domanda)
+        domanda = request.form.get("domanda", "")
+        if domanda.strip():
+            risposta = ottieni_risposta_unificata(domanda)
     return render_template("index.html", risposta=risposta)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    # ⚠️ Render imposta la porta tramite variabile d'ambiente PORT
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
