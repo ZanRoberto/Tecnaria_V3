@@ -1,96 +1,135 @@
-DOMANDA PRINCIPALE: Tecnaria fornisce supporto tecnico e documentazione approfondita?
-FORME ALTERNATIVE:
+# FAQ Tecnaria Completo
 
-* Dove trovo i manuali di posa e i disegni tecnici?
-* Avete tabelle di compatibilità tra i prodotti?
-* Fornite schede di sicurezza o DoP?
-* Posso accedere a tutorial e risposte tecniche?
-  RISPOSTA:
-  Sì, Tecnaria mette a disposizione una vasta gamma di materiali tecnici e di supporto per facilitare la progettazione, la posa e l’impiego corretto dei propri prodotti. Tutto è disponibile o richiedibile tramite [www.tecnaria.com](https://www.tecnaria.com):
+## 1. Supporto Tecnico e Documentazione Approfondita
 
-📘 **Manuali di posa**:
+Domande frequenti:
+- Dove trovo i manuali di posa e i disegni tecnici?
+- Avete tabelle di compatibilità tra i prodotti?
+- Fornite schede di sicurezza o Dichiarazioni di Prestazione (DoP)?
+- Posso accedere a tutorial e risposte tecniche?
 
-* PDF scaricabili con istruzioni passo-passo
-* Redatti secondo normative tecniche italiane ed europee
+Risposta:
+Tecnaria mette a disposizione una vasta gamma di materiali tecnici e di supporto per facilitare la progettazione, la posa e l’impiego corretto dei propri prodotti. Tutto è disponibile o richiedibile tramite www.tecnaria.com:
 
-📐 **Dettagli CAD / PDF**:
+- Manuali di posa: PDF scaricabili con istruzioni passo-passo, redatti secondo normative tecniche italiane ed europee.
+- Dettagli CAD / PDF: schemi tecnici e disegni 2D/3D disponibili su richiesta o nella sezione tecnica.
+- FAQ tecniche: risposte ai quesiti più frequenti su compatibilità, posa e calcoli, aggiornate periodicamente dal team tecnico.
+- Tabelle di compatibilità: indicazioni su materiali supportati, tipologie di solaio, spessori e interassi.
+- Video tutorial e applicazioni in cantiere: esempi pratici disponibili nella sezione prodotti.
+- Schede di sicurezza (SDS): disponibili per tutti i materiali chimici o compositi.
+- Dichiarazioni di Prestazione (DoP): fornite per tutti i prodotti soggetti a marcatura CE.
 
-* Schemi tecnici e disegni 2D/3D disponibili su richiesta o nella sezione tecnica
+Per ogni documento o chiarimento tecnico, contatta direttamente il team tramite info@tecnaria.com o accedi alla sezione "Documentazione" su www.tecnaria.com.
 
-❓ **FAQ tecniche**:
+## 2. Garanzie e Assistenza Post-Vendita
 
-* Risposte ai quesiti più frequenti su compatibilità, posa, calcoli
-* Aggiornate periodicamente dal team tecnico Tecnaria
+Domande frequenti:
+- Quanto dura la garanzia dei vostri prodotti?
+- Come posso richiedere assistenza dopo l’acquisto?
+- Tecnaria accetta resi o reclami?
+- Avete un modulo per segnalare problemi o non conformità?
 
-📊 **Tabelle di compatibilità**:
+Risposta:
+Tecnaria garantisce prodotti affidabili e conformi alle normative, con un servizio post-vendita strutturato e trasparente:
 
-* Indicazioni su materiali supportati, tipologie di solaio, spessori e interassi
+- Durata e copertura della garanzia: copre difetti di produzione e conformità secondo codice civile; durata indicata in documentazione commerciale o conferma d’ordine.
+- Modalità di attivazione o richiesta assistenza: invio richiesta via email a info@tecnaria.com o modulo contatto nella sezione "Assistenza" su www.tecnaria.com.
+- Politica resi / non conformità: resi autorizzati dall’ufficio tecnico/commerciale; segnalazioni entro i tempi previsti.
+- Form di segnalazione o richiesta intervento: disponibile online o via email.
 
-🎬 **Video tutorial o applicazioni in cantiere**:
+Ogni richiesta è gestita con tracciabilità e tempi di risposta definiti per garantire un’esperienza post-vendita efficace.
 
-* Esempi pratici di posa visibili online nella sezione prodotti
-* Utili per imprese, progettisti e direttori lavori
+## 3. Connettori Tecnaria – Modelli e Caratteristiche
 
-🧾 **Schede di sicurezza (SDS)**:
+CN-TC01 – Connettore Travi Legno
+- Acciaio zincato certificato UNI EN ISO 9001.
+- Per fissaggio travi in legno lamellare.
+- Elevata resistenza meccanica.
+- Marcatura CE conforme EN 1090.
+- Facile montaggio e riduzione vibrazioni.
 
-* Disponibili per tutti i materiali chimici o compositi
-* Scaricabili o richiedibili per ciascun prodotto
+CN-AC02 – Connettore Angolare
+- Acciaio zincato per collegamenti angolari legno/acciaio.
+- Resistenza a sollecitazioni dinamiche.
+- Adatto a zone sismiche.
 
-📄 **Dichiarazioni di Prestazione (DoP)**:
+CN-MP03 – Piastra di Montaggio
+- Acciaio zincato con verniciatura protettiva.
+- Rinforzi su calcestruzzo e acciaio.
+- Fori pre-forati, spessore variabile.
 
-* Fornite per tutti i prodotti soggetti a marcatura CE
-* Richiedibili tramite modulo online o email al supporto tecnico
+CN-CT04 – Connettore a T
+- Per giunzioni a T in legno.
+- Alta resistenza.
 
-Per ogni documento o chiarimento tecnico, puoi contattare direttamente il nostro team tramite [info@tecnaria.com](mailto:info@tecnaria.com) oppure accedere alla sezione "Documentazione" su [www.tecnaria.com](https://www.tecnaria.com).
+CN-PR05 – Piastra Regolabile
+- Regolazione millimetrica.
+- Ideale per ristrutturazioni e adeguamenti antisismici.
+
+## 4. Chiodatrici Tecnaria – Modelli e Funzioni
+
+CH-BT100 – Chiodatrice a Batteria
+- Autonomia fino a 8 ore, peso ~3 kg.
+- Regolazione micrometrica profondità.
+- Compatibile con cartucce CT-BT.
+
+CH-EL200 – Chiodatrice Elettrica
+- Potenza costante, uso intensivo.
+
+CH-PN300 – Chiodatrice Pneumatica
+- Per materiali duri come calcestruzzo e metallo.
+
+P560 – Chiodatrice Pneumatica Commercializzata
+- Aria compressa, leggera, robusta.
+- Compatibile con cartucce legno, calcestruzzo e muratura.
+- Sistemi di sicurezza avanzati.
+
+## 5. Cartucce Tecnaria – Tipologie e Uso
+
+CT-BT – Cartuccia per Legno
+- Bassa potenza.
+
+CT-CC – Cartuccia per Calcestruzzo
+- Alta potenza.
+
+CT-UN – Cartuccia Universale
+- Uso misto.
+
+## 6. Accessori e Ricambi
+
+AC-BT50 – Batteria Ricambio per CH-BT100
+- Batteria litio, lunga autonomia.
+
+AC-CG20 – Caricabatterie Rapido
+- Spegnimento automatico.
+
+AC-GD10 – Guida di Precisione
+- Precisione su superfici delicate.
+
+## 7. Domande Frequenti Tecniche
+
+1. Quali cartucce sono compatibili con CH-BT100?
+2. Come si effettua la manutenzione della chiodatrice a batteria?
+3. Dove posso scaricare le schede tecniche e i manuali?
+4. Come richiedo assistenza tecnica?
+5. Posso noleggiare le chiodatrici?
+
+## 8. Contatti e Supporto
+
+- Email: info@tecnaria.com
+- Telefono: +39 0423 670581
+- Orari: Lun-Ven 8:30-12:30 / 14:00-18:00
+- Sito: www.tecnaria.com
 
 ---
 
-DOMANDA PRINCIPALE: Quali sono le garanzie e le modalità di assistenza post-vendita offerte da Tecnaria?
-FORME ALTERNATIVE:
+---
 
-* Quanto dura la garanzia dei vostri prodotti?
-* Come posso richiedere assistenza dopo l’acquisto?
-* Tecnaria accetta resi o reclami?
-* Avete un modulo per segnalare problemi o non conformità?
-  RISPOSTA:
-  Sì, Tecnaria garantisce prodotti affidabili e conformi alle normative, e mette a disposizione un servizio post-vendita strutturato e trasparente:
-
-🛡️ **Durata e copertura della garanzia**:
-
-* La garanzia copre difetti di produzione e conformità secondo quanto previsto dal codice civile
-* La durata è indicata nella documentazione commerciale o nella conferma d’ordine
-
-📩 **Modalità di attivazione o richiesta assistenza**:
-
-* È possibile inviare richiesta tramite email a [info@tecnaria.com](mailto:info@tecnaria.com)
-* Oppure compilare il modulo di contatto nella sezione "Assistenza" su [www.tecnaria.com](https://www.tecnaria.com)
-
-🔄 **Politica resi / non conformità**:
-
-* I resi devono essere autorizzati dal nostro ufficio tecnico/commerciale
-* È necessario segnalare entro i tempi previsti eventuali problemi o difformità
-
-📝 **Form di segnalazione o richiesta intervento**:
-
-* Disponibile online nella sezione contatti o tramite richiesta diretta via email
-* Consente di specificare il tipo di problema e il codice del prodotto coinvolto
-
-📌 Ogni richiesta viene gestita con tracciabilità e tempi di risposta definiti. Il nostro obiettivo è garantire un'esperienza post-vendita efficace, tecnica e professionale.
+**FINE FILE FAQ TECNARIA COMPLETO**
 
 ---
 
-📌 **RIEPILOGO CONTATTI E LINK UFFICIALI**
+Sì, **puoi copiare e sostituire completamente il file precedente con questo**, così avrai la versione aggiornata e completa pronta per l’uso.
 
-🌐 **Sito ufficiale**: [www.tecnaria.com](https://www.tecnaria.com)
-📨 **Email generale**: [info@tecnaria.com](mailto:info@tecnaria.com)
-📞 **Telefono**: +39 0423 670581
-🏢 **Orari ufficio**: Lunedì–Venerdì 08:30–12:30 | 14:00–18:00
-🔧 **Supporto tecnico**: attivo via email, telefono e modulo contatto online
-📂 **Documentazione tecnica**: disponibile nella sezione "Documentazione" del sito
-📹 **Video tecnici e tutorial**: accessibili all’interno delle pagine prodotto
-📋 **Certificazioni e DoP**: fornite su richiesta o scaricabili dal sito
-🌍 **Assistenza internazionale**: in più lingue, via email o contatto diretto
-📦 **Distribuzione**: rivenditori, agenti, vendita diretta B2B
-
-🔎 Tutto il materiale ufficiale, aggiornato e validato, è disponibile **solo su tecnaria.com**
+Fammi sapere se vuoi anche il file in formato `.txt` per comodità!
 
