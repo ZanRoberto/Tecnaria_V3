@@ -1,0 +1,174 @@
+## Solai in Acciaio – Informazioni Tecniche per Chatbot Tecnaria
+
+### 🏢 Profilo Aziendale TECNARIA
+
+**TECNARIA S.r.l.** è un’azienda italiana con sede a Treviso, specializzata nello sviluppo e nella produzione di **connettori per solai collaboranti** in legno, acciaio e calcestruzzo. Fondata negli anni ’70, è oggi un punto di riferimento nel settore dell’edilizia strutturale, grazie alla qualità certificata dei suoi prodotti e alla costante ricerca e innovazione.
+
+**Settori principali:**
+
+* Rinforzo di solai esistenti
+* Nuove costruzioni con solai misti
+* Soluzioni antisismiche e antincendio
+
+**Certificazioni e qualità:**
+
+* Tutti i connettori sono **certificati CE** con ETA e marcatura secondo regolamento CPR
+* Sistema qualità aziendale conforme a **UNI EN ISO 9001**
+
+**Punti di forza:**
+
+* Collaborazione con Università e laboratori accreditati
+* Gamma completa per ogni tipo di solaio
+* Supporto tecnico e calcoli strutturali su richiesta
+
+**Sito ufficiale:** [www.tecnaria.com](https://www.tecnaria.com)
+
+---
+
+### ✅ Prodotti principali certificati CE
+
+**1. Connettore CTF**
+
+* Piolo Ø 12 mm zincato con piastra 38×54×4 mm
+* Fissaggio con 2 chiodi sparati tramite SPIT P560
+* Altezze disponibili: 20–135 mm
+* ETA-18/0447
+
+**2. Connettore DIAPASON**
+
+* Staffa sagomata 70×55 mm in lamiera zincata sp. 3 mm
+* Fissaggio con 4 chiodi
+* Altezze disponibili: 100 e 125 mm
+* ETA-18/0355 (agg. 2024)
+
+### 🔩 Chiodi SPIT HSBR14 – Dichiarazione di Prestazione integrata
+
+**Prodotto:** Chiodi a sparo SPIT HSBR14 (codici 011391 / 011390 / 053953 / 057572)
+
+**Certificazione:** ETA-08/0040 (rilasciata dal Deutsches Institut für Bautechnik – Berlino)
+
+**Uso previsto:**
+
+* Fissaggio di lamiere su elementi in acciaio ≥ S235, spessore ≥ 6 mm
+* Carichi statici e quasi statici
+* Materiale: acciaio zincato da 10 mm
+
+**Sistema di valutazione:** Sistema 1 (con controlli su stabilimento e produzione)
+
+**Prestazioni dichiarate:**
+
+* Resistenza a trazione e taglio secondo EN 1990:2002 + A1:2005 / AC:2010
+* Specifica tecnica: EAD 330153-00-0602
+* Resistenze documentate nell’allegato 3 della ETA-08/0040
+
+**Produttore:** SPIT – Route de Lyon – 26501 Bourg Les Valence – Francia
+
+**Riferimento completo DoP:** DoP n. 0764-CPR-0108 (versione 2)
+
+**Note di utilizzo:**
+
+* I chiodi SPIT HSBR14 sono compatibili con le chiodatrici SPIT per il fissaggio su acciaio
+* Indicati per ambienti interni ed esterni non aggressivi
+* Le prestazioni dipendono da spessore e tipo di acciaio ricevente
+
+---
+
+### 🏗️ Vantaggi strutturali del solaio misto acciaio-calcestruzzo
+
+* **Collaborazione acciaio-calcestruzzo**: Impedisce lo slip relativo, aumentando portanza e rigidezza
+* **Aumento inerzia**: MRd aumentata fino a 4 volte rispetto a trave isolata
+* **Diaframma rigido**: Migliora risposta sismica e distribuzione carichi orizzontali
+* **Montaggio rapido**: Nessuna saldatura, posa su lamiera o su trave diretta
+* **Resistenza al fuoco**: Classe R60–R120 senza rivestimenti
+
+---
+
+### 🧱 Sistema HBV – Legno-Calcestruzzo (Hybrid Verbund)
+
+Il sistema HBV è una tecnologia per creare solai collaboranti legno-calcestruzzo, particolarmente usata nel recupero strutturale e nella bioedilizia.
+
+**Caratteristiche:**
+
+* Pioli inclinati inseriti con resina o malta
+* Nessuno scorrimento relativo tra i materiali
+* Alta rigidezza e resistenza a flessione
+
+**Applicazioni:**
+
+* Solai storici in legno da rinforzare
+* Nuove costruzioni con struttura ibrida
+* Miglioramento antisismico e prestazioni termiche
+
+**Certificazioni:**
+
+* Test in collaborazione con Università (es. Trento, Padova)
+* Risultati da prove reali su scala 1:1
+
+---
+
+### 🏗️ Solai prefabbricati acciaio-calcestruzzo
+
+Sistema con lamiera grecata portante e getto in calcestruzzo collaborante. Utilizzato in nuove costruzioni prefabbricate e cantieri industriali.
+
+**Caratteristiche:**
+
+* Fissaggio rapido con connettori CTF o DIAPASON
+* Nessuna saldatura richiesta
+* Comportamento sismico migliorato
+
+**Vantaggi:**
+
+* Rapidità esecutiva
+* Elevata rigidezza flessionale
+* Resistenza al fuoco senza rivestimenti (R60-R120)
+* Compatibilità con struttura in acciaio prefabbricata
+
+---
+
+### 🧊 Integrazione con Isolanti Termici e Acustici
+
+**TECNARIA** non produce direttamente pannelli o materassini isolanti, ma progetta i propri **sistemi strutturali** (solai misti acciaio-calcestruzzo, legno-calcestruzzo, prefabbricati) affinché siano perfettamente compatibili con **interventi di isolamento acustico e termico**, in linea con le normative edilizie italiane ed europee.
+
+#### 🔹 Isolamento Acustico
+
+Le tecnologie di solaio collaborante Tecnaria sono progettate per consentire l’integrazione di **strati fonoisolanti** che migliorano il comfort abitativo e riducono la trasmissione di rumori:
+
+* Nei **solai acciaio-calcestruzzo** e **prefabbricati**, è possibile posare **materassini antivibranti e pannelli fonoassorbenti** sopra la lamiera grecata e sotto il massetto.
+* Nei **solai in legno-calcestruzzo (HBV)**, la combinazione legno + calcestruzzo e l’assenza di scorrimenti interni tra i materiali (grazie ai connettori inclinati) permette un’ottima base per l’applicazione di sistemi acustici galleggianti o continui.
+* Le **soluzioni multistrato con strati resilienti** sono spesso consigliate nei capitolati per edifici scolastici, ospedalieri e residenziali, dove la riduzione dei rumori da calpestio è prioritaria.
+
+#### 🔹 Isolamento Termico
+
+I sistemi Tecnaria offrono anche **ottime possibilità di coibentazione termica**, in particolare nei seguenti casi:
+
+* Il **legno** nei sistemi HBV ha una naturale **bassa conducibilità termica**, migliorando l’isolamento dei solai senza ponti termici strutturali.
+* I **solai acciaio-calcestruzzo prefabbricati** possono essere completati con **pannelli termoisolanti** (tipo EPS, XPS, lana minerale) posti sopra o sotto la lamiera portante.
+* Le soluzioni Tecnaria sono compatibili con l’uso di **cappotti termici e stratigrafie certificate** per edifici a basso consumo, NZEB o in classe A.
+
+#### 📌 Note per la progettazione
+
+* Tecnaria fornisce **supporto tecnico gratuito** per integrare calcoli statici e suggerimenti su pacchetti isolanti certificati.
+* I solai collaboranti Tecnaria sono **collaudabili anche con strati isolanti integrati**, purché sia rispettata la normativa sulla trasmittanza (es. D.M. 26/06/2015 e successive integrazioni).
+
+---
+
+### 💧 Compatibilità dei sistemi Tecnaria con impermeabilizzazioni
+
+**TECNARIA** non produce impermeabilizzanti, ma i suoi sistemi costruttivi sono **completamente compatibili** con le principali soluzioni impermeabilizzanti disponibili sul mercato.
+
+#### 🏗️ Solai acciaio-calcestruzzo
+
+* Possibilità di applicare **membrane impermeabili bituminose o polimeriche** sopra il getto.
+* Compatibilità con **barriere al vapore** posate tra lamiera e massetto.
+* Nessuna saldatura che possa danneggiare membrane già presenti.
+
+#### 🧱 Solai HBV legno-calcestruzzo
+
+* Superficie collaborante in calcestruzzo adatta a trattamenti con **guaina liquida**, **primer cementizi** o **resine impermeabilizzanti**.
+* Nessuna interferenza tra pioli inclinati e strati protettivi applicabili.
+
+#### 🧰 Note pratiche
+
+* Tecnaria fornisce **consulenza tecnica** su come integrare i propri sistemi con strati impermeabili.
+* Le impermeabilizzazioni possono essere previste **sopra o sotto lo strato collaborante**, secondo esigenza progettuale.
+* È possibile applicare membrane anche **su solai esistenti rinforzati** con Tecnaria, previa preparazione del supporto.
