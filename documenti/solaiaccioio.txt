@@ -208,5 +208,3 @@ Diapason = staffa alta fino a 125 mm
 
 Possibili sostituzioni ai connettori Hilti HVB e Nelson, da valutare con Uff. Tecnico
 
-Tutte le informazioni sono ufficiali Tecnaria e provengono dal sito www.tecnaria.com o da documentazione tecnica aziendale.
-Il bot può utilizzare solo queste fonti per rispondere su prodotti, posa, software e certificazioni dei solai in acciaio.
