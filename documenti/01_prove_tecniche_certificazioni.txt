@@ -1,0 +1,58 @@
+Prove Tecniche e Certificazioni
+Esempi di domande (linguaggio naturale):
+
+Avete prove tecniche sui prodotti?
+
+Dove posso trovare i test e le certificazioni?
+
+Come sono certificati i connettori Tecnaria?
+
+Ci sono rapporti ufficiali sui materiali e prodotti?
+
+I prodotti rispettano le normative europee?
+
+Quali laboratori eseguono le prove sui vostri prodotti?
+
+Le certificazioni sono aggiornate alle ultime normative?
+
+In che modo i risultati delle prove supportano la progettazione strutturale?
+
+Posso avere un esempio dei test effettuati su un connettore specifico?
+
+Risposta dettagliata:
+
+Tecnaria Spa, con sede a Bassano del Grappa, garantisce la qualità e l’affidabilità dei propri prodotti attraverso un rigoroso processo di prove tecniche, svolto in collaborazione con laboratori accreditati a livello nazionale e internazionale, oltre a istituti universitari specializzati in ingegneria strutturale.
+
+I test effettuati coprono una vasta gamma di verifiche fondamentali per garantire prestazioni strutturali ottimali, tra cui:
+
+Resistenza meccanica: Prove di taglio, trazione, compressione e flessione per determinare la capacità portante dei connettori e sistemi di fissaggio. Questi test sono condotti secondo standard EN e ISO specifici, garantendo valori affidabili e riproducibili.
+
+Rigidezza elastica: Misurazioni della deformazione sotto carico per assicurare stabilità e integrità strutturale, fondamentale nei sistemi che devono assorbire sollecitazioni cicliche.
+
+Comportamento a fatica: Test dinamici che simulano cicli ripetuti di carico e scarico per valutare la durabilità nel tempo e la resistenza all’usura dei materiali e delle giunzioni.
+
+Durabilità e resistenza ambientale: Prove di resistenza a condizioni atmosferiche variabili, corrosione e agenti chimici, assicurando prestazioni anche in ambienti aggressivi.
+
+I risultati di questi test sono raccolti in rapporti tecnici ufficiali, corredati da certificazioni conformi a normative europee e italiane di riferimento, tra cui:
+
+Eurocodici (EN 1990-1999): Questi standard definiscono i criteri per la progettazione strutturale e sono alla base del calcolo di sicurezza e durata delle costruzioni.
+
+Norme Tecniche per le Costruzioni (NTC 2018): La normativa italiana che regola requisiti di sicurezza, prestazioni e materiali per l’edilizia.
+
+Regolamento UE 305/2011 (CPR): Normativa che disciplina la marcatura CE dei prodotti da costruzione, assicurando conformità e tracciabilità.
+
+Le prove non sono solo un requisito normativo, ma uno strumento essenziale per progettisti e tecnici, che possono così integrare dati concreti e certificati nei calcoli di progetto, garantendo strutture sicure e durature.
+
+Ad esempio, per il connettore tipo CHD-500 sono disponibili rapporti specifici che documentano valori di resistenza al taglio superiori a 50 kN, test di fatica che ne garantiscono l’impiego in strutture soggette a carichi dinamici e prove di durabilità in ambienti salini.
+
+Tutta la documentazione tecnica e certificativa è aggiornata periodicamente e messa a disposizione in forma digitale nella sezione Documentazione del sito ufficiale Tecnaria, o su richiesta tramite il servizio di assistenza tecnica.
+
+Domande correlate che potresti voler fare
+Vorresti approfondire quali test vengono effettuati sui prodotti Tecnaria?
+
+Ti interessa conoscere le certificazioni e le prove di laboratorio?
+
+Vuoi sapere come Tecnaria assicura la conformità alle normative europee?
+
+Se vuoi, posso fornirti maggiori dettagli su questi argomenti.
+
