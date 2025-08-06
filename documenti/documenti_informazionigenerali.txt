@@ -4,7 +4,7 @@ DOCUMENTAZIONE TECNARIA - INFORMAZIONI GENERALI E COMMERCIALI
    Sul sito web [www.tecnaria.com](https://www.tecnaria.com) è possibile scaricare il catalogo PDF completo dei prodotti Tecnaria in cinque lingue: italiano, inglese, francese, spagnolo e portoghese.
 
 2. **Modalità di Acquisto**
-https://i.imgur.com/kevTG9N.png
+![macchina](https://i.imgur.com/kevTG9N.png) 
 
 * È possibile acquistare i prodotti Tecnaria inviando una mail a [info@tecnaria.com](mailto:info@tecnaria.com) o telefonando al numero +39 0424 502029 (assistenza in italiano, inglese, francese e spagnolo).
 * Gli acquisti possono essere effettuati anche direttamente presso la sede Tecnaria di Bassano del Grappa (VI), oppure tramite rivenditori autorizzati.
@@ -82,3 +82,4 @@ https://i.imgur.com/kevTG9N.png
     Fax: +39 0424 502386
     Email: [info@tecnaria.com](mailto:info@tecnaria.com)
     Sito web: [www.tecnaria.com](https://www.tecnaria.com)
+
