@@ -1,17 +1,29 @@
 # knowledge_loader.py
-import os, re, time, json
+import os, re, json
 from pathlib import Path
 from bs4 import BeautifulSoup
 
+# PDF
 try:
     import pypdf
     HAS_PDF = True
 except Exception:
     HAS_PDF = False
 
+# DOCX
+try:
+    import docx  # package: python-docx
+    HAS_DOCX = True
+except Exception:
+    HAS_DOCX = False
+
 TEXT_EXT = {".txt", ".md", ".csv"}
 HTML_EXT = {".html", ".htm"}
 PDF_EXT  = {".pdf"}
+DOCX_EXT = {".docx"}  # NEW
+
+def _normalize(s: str) -> str:
+    return re.sub(r"\s+", " ", (s or "")).strip()
 
 def _read_text(fp: Path) -> str:
     try:
@@ -24,8 +36,7 @@ def _read_html(fp: Path) -> str:
     soup = BeautifulSoup(raw, "html.parser")
     for tag in soup(["script","style","iframe","noscript"]):
         tag.decompose()
-    text = soup.get_text(" ")
-    return re.sub(r"\s+", " ", text).strip()
+    return _normalize(soup.get_text(" "))
 
 def _read_pdf(fp: Path) -> str:
     if not HAS_PDF:
@@ -33,23 +44,39 @@ def _read_pdf(fp: Path) -> str:
     try:
         reader = pypdf.PdfReader(str(fp))
         pages = [p.extract_text() or "" for p in reader.pages]
-        text = "\n".join(pages)
-        return re.sub(r"\s+", " ", text).strip()
+        return _normalize("\n".join(pages))
     except Exception:
         return ""
 
-def _normalize(s: str) -> str:
-    return re.sub(r"\s+", " ", s).strip()
+def _read_docx(fp: Path) -> str:
+    if not HAS_DOCX:
+        return ""
+    try:
+        d = docx.Document(str(fp))
+        chunks = []
+        # paragrafi
+        for p in d.paragraphs:
+            if p.text:
+                chunks.append(p.text)
+        # tabelle (righe > celle in pipe)
+        for tbl in d.tables:
+            for row in tbl.rows:
+                cells = [c.text for c in row.cells]
+                if any(cells):
+                    chunks.append(" | ".join(cells))
+        return _normalize("\n".join(chunks))
+    except Exception:
+        return ""
 
 def walk_knowledge(base_dir: str) -> list[dict]:
     """
-    Ritorna una lista di record: [{path, relpath, mtime, text}, ...]
-    Scende nelle sottocartelle e legge i formati supportati.
+    Ritorna: [{path, relpath, mtime, text}, ...] per tutti i file supportati,
+    scendendo ricorsivamente nelle sottocartelle.
     """
     base = Path(base_dir).resolve()
     out = []
     for fp in base.rglob("*"):
-        if not fp.is_file(): 
+        if not fp.is_file():
             continue
         ext = fp.suffix.lower()
         text = ""
@@ -59,6 +86,8 @@ def walk_knowledge(base_dir: str) -> list[dict]:
             text = _read_html(fp)
         elif ext in PDF_EXT:
             text = _read_pdf(fp)
+        elif ext in DOCX_EXT:  # NEW
+            text = _read_docx(fp)
         if not text:
             continue
         out.append({
@@ -69,14 +98,13 @@ def walk_knowledge(base_dir: str) -> list[dict]:
         })
     return out
 
-# cache leggera su disco (rigenera solo se cambiano i file)
 def load_with_cache(base_dir: str, cache_path: str = ".knowledge_cache.json") -> list[dict]:
+    # cache leggera su disco (rigenera solo se cambiano i file)
     try:
         cache = json.loads(Path(cache_path).read_text())
     except Exception:
         cache = {}
     recs = walk_knowledge(base_dir)
-    # se mtime+dimensione non cambiano, riusa testo (utile per pdf/html pesanti)
     changed = False
     for r in recs:
         key = r["path"]
