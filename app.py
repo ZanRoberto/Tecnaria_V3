@@ -39,8 +39,12 @@ def index():
 @app.route("/health", methods=["GET"])
 def health():
     return "ok", 200
-
-
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port)
+from scraper_tecnaria import reload_index
+
+@app.route("/reload", methods=["POST","GET"])
+def reload_route():
+    n = reload_index()
+    return f"Indice ricaricato. Documenti indicizzati: {n}", 200
