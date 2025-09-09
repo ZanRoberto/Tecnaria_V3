@@ -4,7 +4,7 @@ import os
 from flask import Flask, render_template, request
 from dotenv import load_dotenv
 
-from scraper_tecnaria import risposta_document_first
+from scraper_tecnaria import risposta_document_first, reload_index
 # Fallback LLM opzionale:
 # from scraper_tecnaria import risposta_llm
 
@@ -31,20 +31,17 @@ def index():
                 "Prova a riformulare la domanda oppure abbassa la soglia di similarità "
                 f"(attuale: {os.getenv('SIMILARITY_THRESHOLD','65')})."
             )
-
-    # Nota: si assume esista templates/index.html con un form che posta 'domanda'
     return render_template("index.html", risposta=risposta)
-
 
 @app.route("/health", methods=["GET"])
 def health():
     return "ok", 200
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", "5000"))
-    app.run(host="0.0.0.0", port=port)
-from scraper_tecnaria import reload_index
 
-@app.route("/reload", methods=["POST","GET"])
+@app.route("/reload", methods=["POST", "GET"])
 def reload_route():
     n = reload_index()
     return f"Indice ricaricato. Documenti indicizzati: {n}", 200
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port)
