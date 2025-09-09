@@ -1,0 +1,130 @@
+RECUPERO 
+RISTRUTTURAZIONE MANUTENZIONE
+A9 
+OPERE 
+COMPIUTE 
+OPERE DI 
+CONSOLIDAMENTO STATICO 
+MO% NO% MT% 
+267 
+
+A95164 
+diametro barra 12 mm, carico di rottura a trazione > 28,3 kN, carico di rottura a taglio ≥ 17 kN; modulo elastico > 150 GPa; deformazione ultima a rottura ≥ 3%; area nominale 29,8 mm2 
+
+a lunghezza 800 mm.............................................................................................................. cad 32 1 67 55,07 b lunghezza 1.000 mm........................................................................................................... cad 32 1 67 68,52 c lunghezza 1.250 mm........................................................................................................... cad 31 1 68 84,51 d lunghezza 1.500 mm........................................................................................................... cad 30 1 69 98,80 
+
+A95165 a 
+b 
+c 
+A95166 a 
+b 
+c 
+A95167 
+Rinforzo e consolidamento di elementi in muratura, mediante inserimento di diatoni artificiali (n. 4 al m2) realizzati con tessuto unidirezionale in fibra di acciaio galvanizzato ad altissima resistenza, formato da micro-trefoli di acciaio fissati su una microrete in fibra di vetro, resistenza a trazione valore caratteristico > 3000 MPa; modulo elastico > 190 GPa; area effettiva di un trefolo 3 × 2 (5 fili) = 0,538 mm2, con avvolgimento dei fili ad elevato angolo di torsione conforme alla norma ISO/DIS 17832, compresa esecuzione dei fori, iniezione a bassa pressione di geomalta ad altissima igroscopicità e traspirabilità, iperfluida, ad elevata ritenzione d'acqua a base di pura calce naturale NHL 3.5, installazione dei trefoli sfiocchettati e contestuale stilatura dei giunti con la stessa geomalta, esclusi eventuale bonifica delle zone degradate e ripristino del substrato, le prove di accettazione del materiale, le indagini pre e post-intervento e tutti i sussidi necessari per l'esecuzione dei lavori: 
+con geomalta in ragione di 2 kg/m2 per rendere collaborante il singolo connettore, per uno spessore del maschio murario di circa 30 cm: 
+diatoni realizzati con una striscia di tessuto del peso netto di fibra di circa 670 g/m2, di larghezza 10 cm, lunghezza 30 cm e raggio di sfiocco di 10 cm, n. trefoli per cm = 1,57, spessore equivalente del nastro = 0,084 mm..................................................................... diatoni realizzati con una striscia di tessuto del peso netto di fibra di circa 1200 g/m2, di larghezza 10 cm, lunghezza 30 cm e raggio di sfiocco di 10 cm, n. trefoli per cm = 3,14, spessore equivalente del nastro = 0,169 mm..................................................................... diatoni realizzati con una striscia di tessuto del peso netto di fibra di circa 2000 g/m2, di larghezza 10 cm, lunghezza 30 cm e raggio di sfiocco di 10 cm, n. trefoli per cm = 3,14, spessore equivalente del nastro = 0,169 mm..................................................................... 
+con geomalta in ragione di 40 kg/m2 per rendere collaborante il singolo connettore e consolidare la muratura, per uno spessore del maschio murario di circa 50 cm: diatoni realizzati con una striscia di tessuto del peso netto di fibra di circa 670 g/m2, di larghezza 10 cm, lunghezza 50 cm e raggio di sfiocco di 10 cm, n. trefoli per cm = 1,57, spessore equivalente del nastro = 0,084 mm..................................................................... diatoni realizzati con una striscia di tessuto del peso netto di fibra di circa 1200 g/m2, di larghezza 10 cm, lunghezza 50 cm e raggio di sfiocco di 10 cm, n. trefoli per cm = 3,14, spessore equivalente del nastro = 0,169 mm..................................................................... diatoni realizzati con una striscia di tessuto del peso netto di fibra di circa 2000 g/m2, di larghezza 10 cm, lunghezza 50 cm e raggio di sfiocco di 10 cm, n. trefoli per cm = 3,14, spessore equivalente del nastro = 0,169 mm..................................................................... 
+Giunzione assiale per l'unione meccanica di barre d'armatura da cemento armato in acciaio C45 zincato elettroliticamente, di sezione quadrata, con foro centrale filettato, per il ripristino della continuità delle barre di armatura negli interventi di rinforzo di travi, pilastri, setti e nodi in cemento armato, mediante chiodi di diametro 5 mm in acciaio zincato ad alta resistenza inseriti nei relativi fori con speciali pinze idrauliche, esclusi i costi dell'armatura e del calcestruzzo d'apporto: 
+77 
+73 
+71 
+2 
+2 
+2 
+21 
+25 
+27 
+67 
+63 
+61 
+2 
+2 
+2 
+31 
+35 
+37 
+
+
+
+m2 87,77 m2 92,71 m2 95,07 
+m2 110,07 m2 116,99 m2 120,29 
+
+a per barre diametro 8 mm.................................................................................................... cad 18 2 80 14,12 b per barre diametro 10 mm.................................................................................................. cad 15 2 83 17,51 c per barre diametro 12 mm.................................................................................................. cad 12 2 86 20,71 
+
+OPERE 
+280 COMPIUTE
+OPERE DI 
+CONSOLIDAMENTO STATICO 
+PREZZI 
+INFORMATIVI A9 DELL'EDILIZIA MO% NO% MT% 
+
+A95199 
+Consolidamento di solaio in laterocemento con problemi di sfondellamento in presenza di intonaco esistente mediante l'utilizzo di sistema composito a matrice inorganica realizzato con rete impregnata con intonaco-rasante naturale ad altissima igroscopicità e traspirabilità a base di pura calce idraulica naturale NHL 3.5, reazione al fuoco classe A1 (EN 13501- 1), ancoraggio della rete al solaio mediante barre elicoidali di diametro 8 mm in acciaio inox AISI 316, in apposito foro pilota nell'elemento strutturale con tassello in propilene armato con fibra di vetro sulla parte terminale della barra precedentemente installata, eventuale sostituzione delle cartelle in laterizio danneggiate con posa di pannelli di EPS, incollati al supporto in laterizio e opportunamente rasati con spatola dentata mediante adesivo-rasante minerale eco-compatibile, compresa la preparazione del supporto e bagnatura a rifiuto; la stesura di due strati di intonaco-rasante con interposto rete in fibra di basalto, le zone di sovrapposizione; due ancoraggi al m2 mediante barre elicoidali di diametro 8 mm di lunghezza 200 mm, esclusi l'asportazione delle pitture, la demolizione delle cartelle di laterizio danneggiate, la ricostruzione volumetrica delle cartelle danneggiate con pannelli in EPS e loro incollaggio; le prove di accettazione del materiale; le indagini pre e post-intervento e tutti i sussidi necessari per l'esecuzione dei lavori: 
+con rete bilanciata in fibra di basalto con trattamento protettivo alcali-resistente con resina all'acqua priva di solventi; resistenza a trazione > 1250 MPa, modulo elastico E > 56 GPa; dimensione della maglia 22 × 22 mm: 
+
+a spessore totale 5 ÷ 8 mm.................................................................................................... m2 51 7 42 55,43 b per strati successivi di massimo 5 mm compreso tessuto.................................................. m2 41 9 50 41,24 
+
+A95200 
+con rete di armatura in fibra di vetro alcali resistente idonea per il rinforzo di rasature su intonaci nuovi o da recuperare (applicata con sovrapposizione minima di cm 10): 
+59 
+50 
+8 
+11 
+33 
+39 
+49 
+
+
+51 
+54 
+
+
+46 
+
+
+
+
+a spessore totale 5 ÷ 8 mm.................................................................................................... m2 47,87 b per strati successivi di massimo 5 mm compreso tessuto.................................................. m2 33,67 
+
+A95201 
+A95202 
+A95203 a 
+Contenimento di solai in latero-cemento soggetti al fenomeno di sfondellamento, mediante controsoffitto ribassato rispetto al solaio, con resistenza al fuoco certificata REI 120, realizzato con lastre in gesso rivestito su orditura doppia in acciaio 10/10, di cui la primaria, posta ad interasse di 750 mm fissata al solaio tramite sospensioni applicate ad interasse non superiore a 500 mm, la secondaria agganciata alla primaria tramite ganci ortogonali a base doppia con interasse non superiore a 400 mm, le lastre idrorepellenti dello spessore di 12,5 mm, peso 10 kg/m2, classe di reazione al fuoco A2-s1, d0, comprese tutte le stuccature dei giunti tra le lastre armati con nastro ad elevata resistenza, per dare la superficie pronta per la finitura da pagare a parte.......................................................... 
+Contenimento di solai in latero-cemento soggetti al fenomeno di sfondellamento, mediante controsoffitto in aderenza rispetto al solaio, realizzato con lastre in gesso rivestito su orditura singola in acciaio 10/10, fissata al solaio ad interasse non superiore a 400 mm tramite ganci posti ad interasse non superiore a 1.000 mm, le lastre idrorepellenti dello spessore di 12,5 mm, peso 10 kg/m2, classe di reazione al fuoco A2-s1, d0, comprese tutte le stuccature dei giunti tra le lastre armati con nastro ad elevata resistenza, per dare la superficie pronta per la finitura da pagare a parte.......................................................... 
+Intervento di consolidamento di solaio in latero-cemento composto da travetti di almeno 8 cm di spessore con connettori in acciaio, mediante pulizia superficiale dell'estradosso di separazione tra la nuova soletta e il piano esistente, getto di calcestruzzo strutturale con inerti normali avente classe di resistenza minima C25/30 di spessore 5 cm, compresa lisciatura superficiale e annegata rete elettrosaldata in acciaio di diametro minimo 6 mm e maglia 10 cm × 10 cm, compresa la puntellatura o tirantatura delle travi del solaio fino a completa maturazione: 
+con connettori a vite e piastra dentata zincati, previo preforo con punta da trapano diametro 11 mm in ragione di 5 connettori al m2, composti da un gambo in acciaio 10.9, diametro 14 mm, con rondella e testa esagonale 15 mm, corpo filettato diametro 12 mm, avente una sezione tronco-conica in corrispondenza dell'inizio della parte filettata che permette l'inserimento della piastra stabilizzatrice avente foro centrale di dimensioni 60 × 50 × 4 mm e ripiegata su due lati di cui una ancorata su apposita incisione trasvesale alla direzione del travetto mediante smerigliatrice.................................................................................... 
+m2 55,46 m2 43,90 
+m2 41 2 57 48,12 
+
+RECUPERO 
+RISTRUTTURAZIONE MANUTENZIONE
+A9 
+OPERE 
+COMPIUTE 
+OPERE DI 
+CONSOLIDAMENTO STATICO 
+MO% NO% MT% 
+281 
+
+b 
+A95204 A95205 
+A95206 
+con connettori a vite zincati, previo preforo con punta da trapano diametro 11 mm, in ragione di 9 connettori al m2, composti da un gambo in acciaio 10.9, diametro 14 mm, con rondella e testa esagonale 15 mm, corpo filettato diametro 12 mm e lunghezza 60 mm, per una lunghezza totale di 110 mm................................................................................... 
+Recupero di solai in ferro e voltine laterizie con intervento dal basso mirante al recupero del campo voltato deformato e con elementi mancanti o da sostituire, l'operazione prevede la riconfigurazione della voltina mediante puntellatura dell'apparecchio murario e integrazione delle pianelle danneggiate o mancanti fino al 30% della superficie, compresi la centina in legno curva per il ripristino della geometria, gli elementi laterizi necessari delle stesse dimensioni di quelli esistenti, l'impiego di malta di calce idraulica, la rinzeppatura dei giunti per stabilizzare l'apparecchio laterizio e la ripulitura a fine lavoro, esclusi gli interventi eventualmente necessari per le parti metalliche, valutato a m2.......... 
+
+Trasformazione delle travi di solaio in elemento strutturale avente funzione di trattenuta tramite l'ancoraggio delle stesse all'esterno della parete di riferimento con paletto o piastrina di contrasto, compresi l'eventuale pulitura dell'elemento strutturale al fine di garantire l'applicazione della protesi in acciaio, la protesi e la connessione della stessa alla trave, il foro sulla muratura per consentire il passaggio all'esterno, il paletto o la piastrina di contrasto, il ripristino del foro con idonea malta e quanto necessario per dare l'opera finita a regola d'arte, escluse le eventuali opere di finitura quali intonaco e tinteggiatura, valutato ad elemento........................................................................................................................ 
+
+PIATTABANDE ED ARCHITRAVI 
+Consolidamento di piattabande tramite splintaggio degli elementi laterizi, da eseguire con mattoni pieni o parti di essi previa disposizione di supporti, finalizzato al ripristino della configurazione originaria dell'elemento di sormonto dell'apertura; compresi l'eventuale pulitura dell'elemento strutturale al fine di metterlo in luce e predisporre la lavorazione, la scarnitura dei giunti di malta deteriorati, la sostituzione degli elementi laterizi fratturati o consunti, la rinzeppatura dei giunti con l'impiego di cunei di legno in essenza dura o di scaglie di laterizio, il reintegro e la stilatura dei giunti e quanto necessario per dare l'opera finita secondo la regola dell'arte, escluse le eventuali opere di finitura quali intonaco e tinteggiatura, valutato al m.................................................................................................. 
+m2 44 2 54 47,48 
+
+
+
+
+
+
+
+
+
+m2 148,09 cad 93,55 
+m 128,09 
