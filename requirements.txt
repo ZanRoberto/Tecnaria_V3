@@ -6,3 +6,4 @@ pypdf
 langdetect
 deep-translator
 openai
+python-docx
