@@ -1,0 +1,6 @@
+[TAGS: normative, NTC 2018, Eurocodici, EN 1995, EN 1994, EN 26891, certificazioni CE]
+I prodotti Tecnaria rispettano le Norme Tecniche per le Costruzioni (NTC 2018).
+Sono conformi agli Eurocodici pertinenti: EN 1995 per legno, EN 1994 per acciaio-calcestruzzo.
+Le prove di laboratorio sono condotte secondo EN 26891 per resistenze e slip.
+Ogni connettore è corredato da certificazione CE e DoP.
+Le relazioni tecniche richiamano sempre normative nazionali ed europee vigenti.
