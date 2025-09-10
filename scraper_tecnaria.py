@@ -1,152 +1,109 @@
 # scraper_tecnaria.py
-# -*- coding: utf-8 -*-
-"""
-Ricerca document-first veloce:
-- Indicizza una sola volta all'avvio (RAM)
-- Prefiltro rapido su mini-testo
-- RapidFuzz solo su pochi candidati
-- LRU cache per query ripetute
-- Snippet centrato sui termini
-- reload_index() per ricaricare senza redeploy
-"""
+# Modalità "document-only" per Tecnaria: ricerca esclusiva nei .txt locali.
 
-from __future__ import annotations
-import os, re, time
-from typing import List, Dict, Optional, Tuple
-from functools import lru_cache
-from dotenv import load_dotenv
-from rapidfuzz import fuzz, process
-from knowledge_loader import load_with_cache
+import os
+import glob
+import re
+from typing import List, Tuple
 
-load_dotenv()
+DOC_FOLDER = os.getenv("DOC_FOLDER", "./documenti_gTab")
+BOT_OFFLINE_ONLY = os.getenv("BOT_OFFLINE_ONLY", "true").lower() == "true"
 
-# ===== Config da ENV =====
-KNOWLEDGE_DIR = os.getenv("KNOWLEDGE_DIR", "./documenti_gTab")
-SIM_THRESHOLD = int(os.getenv("SIMILARITY_THRESHOLD", "65"))
-MAX_MATCHES   = int(os.getenv("MAX_MATCHES", "6"))
+# Cache documenti: lista di tuple (path, text)
+_DOCS_CACHE: List[Tuple[str, str]] = []
 
-# Tuning performance
-MAX_TEXT_PER_DOC   = int(os.getenv("MAX_TEXT_PER_DOC",  "20000"))
-MINI_TEXT_PER_DOC  = int(os.getenv("MINI_TEXT_PER_DOC", "3000"))
-CANDIDATES_K       = int(os.getenv("CANDIDATES_K",      "30"))
-MIN_TOKEN_LEN      = int(os.getenv("MIN_TOKEN_LEN",     "3"))
 
-# ===== Indice in memoria =====
-CORPUS: Dict[str, str] = {}
-MINI: Dict[str, str] = {}
-DOCS_LIST: List[Tuple[str, str]] = []
-INDEX_STAMP: float = 0.0
+# -------------------------
+# Caricamento / indicizzazione
+# -------------------------
+def _read_txt(path: str) -> str:
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read()
 
-def _normalize_text(s: str) -> str:
-    return re.sub(r"\s+", " ", (s or "")).strip().lower()
+def _build_cache() -> None:
+    global _DOCS_CACHE
+    paths = sorted(glob.glob(os.path.join(DOC_FOLDER, "*.txt")))
+    _DOCS_CACHE = [(p, _read_txt(p)) for p in paths]
 
-def _tokenize(s: str) -> List[str]:
-    tokens = re.findall(r"[a-zA-ZÀ-ÖØ-öø-ÿ0-9_]+", (s or "").lower())
-    return [t for t in tokens if len(t) >= MIN_TOKEN_LEN]
-
-def _build_index() -> None:
-    global CORPUS, MINI, DOCS_LIST, INDEX_STAMP
-    recs = load_with_cache(KNOWLEDGE_DIR)
-    corpus = {}
-    mini   = {}
-    for r in recs:
-        rel = r["relpath"]
-        t = (r.get("text") or "")
-        if not t:
-            continue
-        t = t[:MAX_TEXT_PER_DOC]
-        t_low = _normalize_text(t)
-        corpus[rel] = t_low
-        mini[rel]   = t_low[:MINI_TEXT_PER_DOC]
-    CORPUS = corpus
-    MINI = mini
-    DOCS_LIST = list(CORPUS.items())
-    INDEX_STAMP = time.time()
-
-# Costruisci indice all'import
-_build_index()
+# carica all'import
+_build_cache()
 
 def reload_index() -> int:
-    """Ricarica l'indice (dopo nuovi file). Ritorna quanti documenti indicizzati."""
-    _build_index()
-    _search_cached.cache_clear()
-    return len(CORPUS)
+    """
+    Ricarica l'indice dei .txt.
+    Richiamare dopo aver aggiunto/modificato file in documenti_gTab/.
+    Ritorna il numero di documenti indicizzati.
+    """
+    _build_cache()
+    return len(_DOCS_CACHE)
 
-def _prefilter_candidates(domanda: str, k: int) -> List[str]:
-    """Candidati veloci via overlap token nel mini-testo."""
-    if not MINI:
-        return []
-    q_tokens = set(_tokenize(domanda))
-    if not q_tokens:
-        return [rel for rel, _ in DOCS_LIST[:k]]
-    scored: List[Tuple[str, int]] = []
-    for rel, txt in MINI.items():
-        hit = 0
-        for t in q_tokens:
-            if t in txt:
-                hit += 1
-        if hit > 0:
-            scored.append((rel, hit))
-    if not scored:
-        return [rel for rel, _ in DOCS_LIST[:k]]
-    scored.sort(key=lambda x: x[1], reverse=True)
-    return [rel for rel, _ in scored[:k]]
 
-def _best_snippet(text: str, domanda: str, width: int = 360) -> str:
-    """Snippet centrato sul primo token della query."""
-    if not text:
-        return ""
-    t = text
-    tokens = _tokenize(domanda)
-    pos = -1
-    for tok in tokens:
-        pos = t.find(tok)
-        if pos != -1:
-            break
-    if pos == -1:
-        return (t[:width] + "…") if len(t) > width else t
-    start = max(0, pos - width // 2)
-    end = min(len(t), pos + width // 2)
-    snippet = t[start:end]
-    if start > 0: snippet = "…" + snippet
-    if end < len(t): snippet = snippet + "…"
-    return snippet
+# -------------------------
+# Ricerca locale (no web)
+# -------------------------
+def _score(query: str, text: str) -> float:
+    """
+    Semplice scoring: somma delle occorrenze dei token della query nel testo,
+    con bonus per match esatto della query completa.
+    """
+    q = query.lower().strip()
+    t = text.lower()
+    words = set(re.findall(r"\w+", q))
+    overlap = sum(t.count(w) for w in words if len(w) > 2)
+    exact = 2.0 if q and q in t else 0.0
+    return overlap + exact
 
-@lru_cache(maxsize=128)
-def _search_cached(domanda: str, th: int, k: int) -> List[Dict]:
-    if not (domanda or "").strip():
-        return []
-    candidates = _prefilter_candidates(domanda, CANDIDATES_K)
-    if not candidates:
-        return []
-    cand_corpus = {rel: CORPUS.get(rel, "") for rel in candidates if CORPUS.get(rel)}
-    if not cand_corpus:
-        return []
-    results = process.extract(
-        domanda, cand_corpus,
-        scorer=fuzz.token_set_ratio,
-        limit=max(k, 10),
-        score_cutoff=th
-    )
-    hits: List[Dict] = []
-    for rel, score, txt in results:
-        hits.append({
-            "file": rel,
-            "score": int(score),
-            "snippet": _best_snippet(txt, domanda, width=360)
-        })
-        if len(hits) >= k:
-            break
-    return hits
+def _top_hits(query: str, k: int = 5):
+    """
+    Restituisce i migliori k documenti come lista di tuple (score, path, snippet).
+    Lo snippet è un estratto intorno alla prima occorrenza della query.
+    """
+    results = []
+    ql = query.lower()
+    for path, text in _DOCS_CACHE:
+        s = _score(query, text)
+        if s <= 0:
+            continue
+        idx = text.lower().find(ql)
+        if idx < 0:
+            idx = 0
+        s0 = max(0, idx - 320)
+        s1 = min(len(text), idx + 320)
+        snippet = text[s0:s1].strip()
+        results.append((s, path, snippet))
+    results.sort(key=lambda x: x[0], reverse=True)
+    return results[:k]
 
-def cerca_nei_documenti(domanda: str, threshold: Optional[int] = None, max_matches: Optional[int] = None) -> List[Dict]:
-    th = int(threshold or SIM_THRESHOLD)
-    k  = int(max_matches or MAX_MATCHES)
-    return _search_cached((domanda or "").strip(), th, k)
 
-def risposta_document_first(domanda: str) -> Optional[str]:
-    hits = cerca_nei_documenti(domanda)
-    if not hits:
-        return None
-    blocchi = [f"📄 **{h['file']}** (score: {h['score']})\n\n{h['snippet']}" for h in hits]
-    return "\n\n---\n\n".join(blocchi)
+# -------------------------
+# Risposta SOLO da documenti
+# -------------------------
+def risposta_document_first(question: str) -> dict:
+    """
+    Risponde ESCLUSIVAMENTE usando i .txt locali in documenti_gTab/.
+    Nessun accesso web. Nessun fallback esterno.
+    """
+    hits = _top_hits(question, k=5)
+    THRESHOLD = 3.0  # alza/abbassa se vuoi più/meno prudenza
+
+    if not hits or hits[0][0] < THRESHOLD:
+        return {
+            "found": False,
+            "answer": (
+                "Non trovo riferimenti sufficienti nella documentazione locale Tecnaria "
+                "per questa domanda. Per favore specifica prodotto/argomento Tecnaria "
+                "oppure riformula la richiesta."
+            ),
+            "sources": []
+        }
+
+    # Costruzione risposta con fonti
+    parts = []
+    sources = []
+    for _, path, snippet in hits:
+        title = os.path.basename(path).replace(".txt", "")
+        parts.append(f"📄 **{title}**\n{snippet}")
+        sources.append(path)
+
+    answer = "Risposta basata su documentazione Tecnaria locale:\n\n" + "\n\n---\n\n".join(parts)
+    return {"found": True, "answer": answer, "sources": sources}
