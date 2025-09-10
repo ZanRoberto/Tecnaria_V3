@@ -1,14 +1,68 @@
-<section class="card response">
-  <h2 class="card-subtitle">Risposta</h2>
-  {% if risposta %}
-    <div class="answer">
-      <p><em>Risposta basata su documentazione Tecnaria locale:</em></p>
-      {{ risposta|safe }}
-    </div>
-    {% if fonti %}
-      <div class="sources">Fonti: {{ fonti }}</div>
-    {% endif %}
-  {% else %}
-    <div class="placeholder">...</div>
-  {% endif %}
-</section>
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ BRAND_NAME }} · Assistente</title>
+    <link rel="icon" href="{{ BRAND_LOGO_URL }}" />
+    <style>
+      :root{
+        --bg:#0b1220; --surface:#121a2b; --text:#e6edf6; --muted:#9aa4b8; --brand:#2bb673; --border:#263149;
+      }
+      *{box-sizing:border-box}
+      body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+      .container{width:min(980px,92vw);margin:0 auto;padding:20px}
+      header{position:sticky;top:0;background:#0f172a;border-bottom:1px solid var(--border);padding:10px 0;z-index:5}
+      .brand{display:flex;align-items:center;gap:10px}
+      .brand img{width:34px;height:34px}
+      h1{margin:14px 0 12px;font-size:24px}
+      .card{background:linear-gradient(180deg,#131c30,#0f172a);border:1px solid var(--border);border-radius:14px;padding:18px;margin:16px 0}
+      .row{display:grid;grid-template-columns:1fr auto; gap:10px}
+      input[type="text"]{padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:#0d1424;color:var(--text);outline:none}
+      input[type="text"]:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(43,182,115,.25)}
+      button{background:var(--brand);border:0;color:#fff;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer}
+      .hint{color:var(--muted);font-size:13px;margin:8px 0 0}
+      .answer{white-space:pre-wrap;background:#0d1424;border:1px solid var(--border);border-radius:10px;padding:14px}
+      .toolbar{display:flex;gap:8px;align-items:center}
+      .toolbar form{display:inline}
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container" style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="brand">
+          <img src="{{ BRAND_LOGO_URL }}" alt="logo">
+          <strong>{{ BRAND_NAME }} · Assistente documentale</strong>
+        </div>
+        <div class="toolbar">
+          <form action="/reload" method="post"><button type="submit" title="Ricarica indice documenti">Ricarica indice</button></form>
+          <a href="/health" style="color:var(--muted);text-decoration:none">Health</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <h1>Chiedi a {{ BRAND_NAME }}</h1>
+        <form method="POST" class="ask">
+          <div class="row">
+            <input type="text" name="domanda" placeholder="Scrivi qui la domanda libera…" value="{{ domanda|default('') }}" autocomplete="off" />
+            <button type="submit">Chiedi</button>
+          </div>
+          <p class="hint">Esempi: "orari sede", "mi dai i contatti", "certificazioni CE", "stabilimenti produzione".</p>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2 style="margin:0 0 10px;color:var(--muted);font-size:18px">Risposta</h2>
+        <div class="answer">
+          {% if risposta %}
+            {{ risposta|safe }}
+          {% else %}
+            Qui comparirà la risposta presa dai file locali.
+          {% endif %}
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
