@@ -1,47 +1,33 @@
-# -*- coding: utf-8 -*-
-from __future__ import annotations
+# app.py — Tecnaria Bot (Document-Only, FastAPI + Uvicorn)
+
 import os
-from flask import Flask, render_template, request
-from dotenv import load_dotenv
-
+from fastapi import FastAPI
+from pydantic import BaseModel
 from scraper_tecnaria import risposta_document_first, reload_index
-# Fallback LLM opzionale:
-# from scraper_tecnaria import risposta_llm
 
-load_dotenv()
+BOT_OFFLINE_ONLY = os.getenv("BOT_OFFLINE_ONLY", "true").lower() == "true"
+DOC_FOLDER = os.getenv("DOC_FOLDER", "./documenti_gTab")
 
-app = Flask(__name__)
+app = FastAPI(title="Tecnaria Bot - Document Only")
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    risposta = ""
-    if request.method == "POST":
-        domanda = (request.form.get("domanda") or "").strip()
+class Query(BaseModel):
+    question: str
 
-        # 1) Prova document-first
-        risposta = risposta_document_first(domanda) or ""
+@app.get("/healthz")
+def healthz():
+    return {"ok": True, "offline_only": BOT_OFFLINE_ONLY, "doc_folder": DOC_FOLDER}
 
-        # 2) (Opzionale) Fallback LLM se non trovato nulla nei documenti
-        # if not risposta:
-        #     risposta = risposta_llm(domanda)
+@app.post("/ask")
+def ask(q: Query):
+    # Sempre e solo dai documenti locali
+    return risposta_document_first(q.question)
 
-        if not risposta:
-            risposta = (
-                "Non ho trovato riferimenti nei documenti locali. "
-                "Prova a riformulare la domanda oppure abbassa la soglia di similarità "
-                f"(attuale: {os.getenv('SIMILARITY_THRESHOLD','65')})."
-            )
-    return render_template("index.html", risposta=risposta)
-
-@app.route("/health", methods=["GET"])
-def health():
-    return "ok", 200
-
-@app.route("/reload", methods=["POST", "GET"])
-def reload_route():
+@app.post("/reload")
+def reload_docs():
     n = reload_index()
-    return f"Indice ricaricato. Documenti indicizzati: {n}", 200
+    return {"ok": True, "documents": n}
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "5000"))
-    app.run(host="0.0.0.0", port=port)
+    # Avvio locale (Render usa lo Start Command uvicorn)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8000")), log_level="info")
