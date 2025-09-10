@@ -1,0 +1,32 @@
+[TAGS: P560, connettori P560, rinforzo calcestruzzo-calcestruzzo, solai collaboranti, posa P560, capitolato Tecnaria, certificazioni CE, DoP]
+Il sistema P560 Tecnaria collega vecchio e nuovo getto di calcestruzzo, creando solai collaboranti calcestruzzo-calcestruzzo.
+L’ancoraggio meccanico assicura trasferimento del taglio e aumento della rigidezza del solaio.
+La geometria del connettore è ottimizzata per contrastare scorrimenti e azioni cicliche.
+Il prodotto è certificato CE e corredato da Dichiarazione di Prestazione (DoP).
+Le prove di laboratorio forniscono valori di resistenza caratteristica e rigidezza da usare nei calcoli.
+È indicato per adeguamenti strutturali e rinforzi di solai in calcestruzzo esistenti.
+Consente di ridurre deformazioni a lungo termine e migliorare comportamento dinamico.
+La posa prevede foratura del supporto, inserimento del connettore e fissaggio secondo manuale Tecnaria.
+Il supporto deve essere preparato con pulizia e scarifica o sabbiatura per garantire aderenza.
+Il passo dei connettori è definito dal progettista, con esempi nelle schede Tecnaria.
+Le istruzioni esecutive riportano profondità di ancoraggio e coppia di serraggio.
+Compatibile con calcestruzzi strutturali conformi a NTC 2018.
+La superficie del vecchio calcestruzzo deve essere rugosa e pulita.
+P560 è idoneo anche per ripartizione di carichi puntuali su travetti.
+Il calcolo si basa su modelli di trasferimento taglio allo SLU e SLE.
+I connettori sono zincati per protezione dalla corrosione.
+Le schede riportano resistenze a taglio e valori di slip medio.
+Può essere usato con reti o armature integrative della soletta.
+La posa deve rispettare distanze minime da bordi e spigoli.
+Adatto a ristrutturazioni e nuove costruzioni con getti collaboranti.
+Tecnaria fornisce capitolati e voci di computo dedicati.
+Il servizio tecnico assiste nella definizione di passo e verifiche.
+Il controllo di cantiere include verifica visiva di ancoraggi e getti.
+Manuali indicano trapani, diametri e profondità di foratura idonei.
+Compatibile con calcestruzzi di diversa classe di resistenza.
+Il rinforzo con P560 migliora vibrazione e controllo fessurazione.
+Documentazione con dettagli costruttivi per travi e giunti.
+Permette miglioramenti locali senza aumento rilevante di peso proprio.
+Ogni connettore ha codice prodotto e lotto tracciabile.
+DoP e certificati di prova accompagnano la fornitura.
+Manuali mostrano disposizione tipica in campate e zone critiche.
