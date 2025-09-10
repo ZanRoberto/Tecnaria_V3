@@ -1,66 +1,14 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>Bot Tecnaria</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 40px;
-            background-color: #f4f4f4;
-        }
-        textarea, input[type=submit] {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-        }
-        .box {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            max-width: 800px;
-            margin: auto;
-        }
-        h1 {
-            text-align: center;
-        }
-        .risposta {
-            background: #eef;
-            padding: 15px;
-            border-radius: 6px;
-            white-space: pre-wrap;
-            margin-top: 20px;
-        }
-        img {
-            max-width: 100%;
-            height: auto;
-            margin: 10px 0;
-            border-radius: 6px;
-        }
-        a {
-            color: #0077cc;
-            text-decoration: none;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body>
-    <div class="box">
-        <h1>🤖 Bot Tecnaria</h1>
-        <form method="post">
-            <label for="domanda">Fai una domanda sui prodotti Tecnaria:</label><br>
-            <textarea name="domanda" rows="5" required></textarea><br>
-            <input type="submit" value="Chiedi">
-        </form>
-
-        {% if risposta %}
-        <h2>Risposta:</h2>
-        <div class="risposta">
-            {{ risposta | safe }}
-        </div>
-        {% endif %}
+<section class="card response">
+  <h2 class="card-subtitle">Risposta</h2>
+  {% if risposta %}
+    <div class="answer">
+      <p><em>Risposta basata su documentazione Tecnaria locale:</em></p>
+      {{ risposta|safe }}
     </div>
-</body>
-</html>
+    {% if fonti %}
+      <div class="sources">Fonti: {{ fonti }}</div>
+    {% endif %}
+  {% else %}
+    <div class="placeholder">...</div>
+  {% endif %}
+</section>
