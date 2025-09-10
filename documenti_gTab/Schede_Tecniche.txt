@@ -1,0 +1,6 @@
+[TAGS: schede tecniche, dati di progetto, resistenze caratteristiche, rigidezze, slip medio, DoP, CE]
+Le schede tecniche Tecnaria riportano valori caratteristici di resistenza e rigidezza dei connettori.
+Indicano slip medio, kser e parametri sperimentali per i calcoli strutturali.
+Sono disponibili per ogni prodotto della gamma: HBV, ALFA, P560, FVA, CLS, CLSR, CT-L, X-HBV, T-Connect.
+Contengono dettagli costruttivi, distanze minime e istruzioni di posa.
+Ogni scheda è accompagnata da Dichiarazione di Prestazione (DoP) e marcatura CE.
