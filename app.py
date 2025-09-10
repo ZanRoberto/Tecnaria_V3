@@ -1,116 +1,76 @@
-# app.py — Tecnaria Bot (Document-Only, FastAPI + Uvicorn)
-
+# -*- coding: utf-8 -*-
+from __future__ import annotations
 import os
-from fastapi import FastAPI
-from pydantic import BaseModel
-from fastapi.responses import HTMLResponse
-from scraper_tecnaria import risposta_document_first, reload_index
+from flask import Flask, render_template, request, redirect, url_for, jsonify
+from dotenv import load_dotenv
 
-BOT_OFFLINE_ONLY = os.getenv("BOT_OFFLINE_ONLY", "true").lower() == "true"
-DOC_FOLDER = os.getenv("DOC_FOLDER", "./documenti_gTab")
+load_dotenv()
 
-app = FastAPI(title="Tecnaria Bot - Document Only")
+# Import motore document-first
+try:
+    from scraper_tecnaria import risposta_document_first, reload_index  # type: ignore
+except Exception:
+    # Fallback sicuro per sviluppo: non stampa prefissi, non mostra "undefined"
+    def risposta_document_first(domanda: str) -> str:
+        return ""
+    def reload_index() -> None:
+        pass
 
-class Query(BaseModel):
-    question: str
+app = Flask(__name__, template_folder="templates", static_folder="static")
 
-# -----------------------------
-# Home page (mini UI)
-# -----------------------------
-@app.get("/", response_class=HTMLResponse)
-def home():
-    return """
-<!doctype html>
-<html lang="it">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tecnaria Bot (document-only)</title>
-  <style>
-    :root{--b:#111827;--g:#e5e7eb;--m:#6b7280}
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-         margin:24px;line-height:1.45;background:#fff}
-    .card{max-width:960px;margin:auto;border:1px solid var(--g);border-radius:14px;padding:20px}
-    textarea{width:100%;min-height:110px;padding:10px;border:1px solid var(--g);border-radius:10px}
-    button{padding:10px 16px;border:0;border-radius:10px;background:var(--b);color:#fff;cursor:pointer}
-    .muted{color:var(--m);font-size:14px}
-    pre{white-space:pre-wrap;border:1px solid var(--g);border-radius:10px;padding:12px;background:#fafafa}
-    .src{font-size:13px;color:#374151}
-    a{color:var(--b);text-decoration:none}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>🧠 Tecnaria Bot — solo documenti locali</h2>
-    <p class="muted">Il bot risponde esclusivamente leggendo i file <code>.txt</code> in <code>documenti_gTab/</code>.</p>
-    <textarea id="q" placeholder="Esempio: Come funziona il noleggio della P560?"></textarea>
-    <div style="margin-top:10px;display:flex;gap:12px;align-items:center;">
-      <button onclick="ask()">Chiedi</button>
-      <a href="/docs">→ Open API Docs</a>
-      <a href="/healthz">→ Health</a>
-      <button onclick="reloadIdx()" title="Ricarica l'indice dei .txt">Ricarica indice</button>
-    </div>
-    <div id="out" style="margin-top:18px;"></div>
-  </div>
-<script>
-async function ask(){
-  const q = document.getElementById('q').value.trim();
-  const out = document.getElementById('out');
-  if(!q){ out.innerHTML = '<p class="muted">Scrivi una domanda…</p>'; return; }
-  out.innerHTML = '<p class="muted">Sto cercando nei documenti…</p>';
-  try{
-    const res = await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
-    const data = await res.json();
-    if(!data.found){
-      out.innerHTML = `<pre>${data.answer}</pre>`;
-      return;
-    }
-    const src = (data.sources||[]).map(s=>`• ${s}`).join('\\n');
-    out.innerHTML = `<pre>${data.answer}</pre><p class="src"><b>Fonti:</b><br>${src}</p>`;
-  }catch(e){
-    out.innerHTML = `<pre>Errore di rete: ${e}</pre>`;
-  }
-}
-async function reloadIdx(){
-  const out = document.getElementById('out');
-  out.innerHTML = '<p class="muted">Ricarico indice…</p>';
-  try{
-    const res = await fetch('/reload',{method:'POST'});
-    const data = await res.json();
-    out.innerHTML = `<pre>Indice ricaricato. Documenti indicizzati: ${data.documents}</pre>`;
-  }catch(e){
-    out.innerHTML = `<pre>Errore: ${e}</pre>`;
-  }
-}
-</script>
-</body>
-</html>
-    """
+# ---- Branding opzionale via .env ----
+BRAND_NAME = os.getenv("BRAND_NAME", "Tecnaria")
+BRAND_LOGO_URL = os.getenv("BRAND_LOGO_URL", "/static/img/logo-placeholder.svg")
 
-# -----------------------------
-# Health
-# -----------------------------
-@app.get("/healthz")
-def healthz():
-    return {"ok": True, "offline_only": BOT_OFFLINE_ONLY, "doc_folder": DOC_FOLDER}
+@app.context_processor
+def inject_brand():
+    return dict(BRAND_NAME=BRAND_NAME, BRAND_LOGO_URL=BRAND_LOGO_URL)
 
-# -----------------------------
-# Q&A endpoint (document-only)
-# -----------------------------
-@app.post("/ask")
-def ask(q: Query):
-    # Sempre e solo dai documenti locali
-    return risposta_document_first(q.question)
+def _sanitize(text: str) -> str:
+    """Rimuove eventuali prefissi rumorosi inseriti a monte (no 'documentazione locale', no 'Fonti', no 'undefined')."""
+    if not text:
+        return ""
+    # rimuovi parole inutili/prefissi noti
+    bad_prefixes = (
+        "🧠", "Risposta basata su documentazione", "Fonti:", "Capitolo_", "undefined"
+    )
+    lines = []
+    for ln in text.splitlines():
+        ln_strip = ln.strip()
+        if not ln_strip:
+            lines.append(ln)  # mantieni righe vuote per spaziatura
+            continue
+        if any(ln_strip.startswith(p) for p in bad_prefixes):
+            continue
+        lines.append(ln)
+    cleaned = "\n".join(lines).strip()
+    return cleaned or ""
 
-# -----------------------------
-# Reload indice documenti
-# -----------------------------
-@app.post("/reload")
-def reload_docs():
-    n = reload_index()
-    return {"ok": True, "documents": n}
+@app.route("/", methods=["GET", "POST"])
+def index():
+    risposta = ""
+    domanda = ""
+    if request.method == "POST":
+        domanda = (request.form.get("domanda") or "").strip()
+        if domanda:
+            risposta = risposta_document_first(domanda) or ""
+            risposta = _sanitize(risposta)
+        if not risposta:
+            risposta = "Non ho trovato riferimenti utili nei file locali. Prova a riformulare la domanda."
+    return render_template("index.html", risposta=risposta, domanda=domanda)
 
-# Avvio locale (Render usa lo Start Command con uvicorn)
+@app.route("/reload", methods=["POST"])
+def reload():
+    try:
+        reload_index()
+    except Exception:
+        pass
+    # Torna alla home dopo il reload
+    return redirect(url_for("index"))
+
+@app.route("/health")
+def health():
+    return jsonify(status="ok")
+
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8000")), log_level="info")
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=True)
