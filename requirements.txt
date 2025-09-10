@@ -1,5 +1,11 @@
+# --- Core per il server ---
 fastapi==0.115.0
 uvicorn==0.30.6
 pydantic==2.11.1
+
+# --- Configurazione & utilità ---
 python-dotenv==1.0.1
 requests==2.32.3
+
+# --- Opzionale (per servire HTML statici o index.html) ---
+jinja2==3.1.6
