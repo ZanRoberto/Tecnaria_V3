@@ -1,157 +1,242 @@
-# -*- coding: utf-8 -*-
-"""
-SCRAPER TECNARIA - versione ultra-semplice e affidabile
-- 1 file TXT = 1 blocco, niente chunking complicato
-- Nessuna soglia: restituisce sempre il best match
-- Ignora la parola "tecnaria"
-- Percorso robusto: usa la cartella documenti_gTab accanto al file
-- Debug disponibile con funzione debug_info()
-"""
+# scraper_tecnaria.py
+# ------------------------------------------------------------
+# Knowledge base loader + simple semantic retrieval for Tecnaria
+# - Indicizza automaticamente TUTTI i .txt in documenti_gTab/
+# - Formato atteso: prima riga opzionale [TAGS: ...], poi 1 riga = 1 risposta
+# - Nessuna "Q:" nelle risposte. Il cliente vede solo la risposta.
+# - Stopwords MINIME: "tecnaria", "spa", "s.p.a." (Tecnaria è scontata).
+# - Soglia morbida: scegliamo sempre il best match (no silenzi inutili).
+# - Utilities: reload(), answer(), answer_with_source(), debug_candidates()
+# ------------------------------------------------------------
 
-import os, re, glob
+from __future__ import annotations
+
+import os
+import re
 from dataclasses import dataclass
-from typing import List, Tuple, Optional
+from pathlib import Path
+from typing import List, Dict, Tuple
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DOC_DIR = os.getenv("DOC_DIR") or os.path.join(BASE_DIR, "documenti_gTab")
-DEBUG    = os.getenv("DEBUG", "1") == "1"
+# -----------------------------
+# Configurazione cartelle
+# -----------------------------
+BASE_DIR = Path(__file__).parent.resolve()
+DOC_DIR = BASE_DIR / "documenti_gTab"
 
+# -----------------------------
+# Stopwords (minimali)
+# -----------------------------
 STOPWORDS = {"tecnaria", "spa", "s.p.a."}
 
-# Intent map: forziamo alcune domande a certi file
-INTENTS = {
-    "contatti": {
-        "keywords": ["contatti","telefono","email","orari","sede","indirizzo"],
-        "prefer_file_substr": ["contatti","orari"],
-    },
-    "stabilimenti": {
-        "keywords": ["stabilimenti","produzione","reparto","logistica","fabbrica","impianto"],
-        "prefer_file_substr": ["stabilimenti","produzione"],
-    },
-    "certificazioni": {
-        "keywords": ["certificazioni","iso","ce","dop","eurocodici","ntc"],
-        "prefer_file_substr": ["certificaz"],
-    },
-    "profilo": {
-        "keywords": ["profilo","chi siete","chi siamo","azienda","storia","presentazione"],
-        "prefer_file_substr": ["profilo"],
-    },
-    "vision": {
-        "keywords": ["vision","visione","futuro","strategia"],
-        "prefer_file_substr": ["vision"],
-    },
-    "mission": {
-        "keywords": ["mission","missione","valori","obiettivi"],
-        "prefer_file_substr": ["mission"],
-    },
-}
+# Regex per tokenizzazione semplice (parole in minuscolo)
+TOKEN_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]+")
 
+# -----------------------------
+# Dataclass per una riga indicizzata
+# -----------------------------
 @dataclass
-class Doc:
-    name: str
-    tags: List[str]
-    body: str
+class KBEntry:
+    text: str                 # la riga/risposta
+    filename: str             # nome file
+    tags: List[str]           # tags puliti
+    tokens: List[str]         # token della riga
+    tag_tokens: List[str]     # token dai TAGS
 
-_INDEX: List[Doc] = []
-_LAST_LOAD_SUMMARY = ""
+# -----------------------------
+# Utility di normalizzazione
+# -----------------------------
+def normalize_text(s: str) -> str:
+    return " ".join(s.strip().split())
 
-def _dbg(msg: str):
-    if DEBUG:
-        print(f"[DEBUG] {msg}")
+def tokenize(s: str) -> List[str]:
+    toks = [t.lower() for t in TOKEN_RE.findall(s)]
+    return [t for t in toks if t not in STOPWORDS]
 
-def _tokenize(s: str) -> List[str]:
-    s = s.lower()
-    s = re.sub(r"[^a-z0-9àèéìòóùüç]+"," ", s)
-    return [t for t in s.split() if t and t not in STOPWORDS]
+def parse_tags(line: str) -> List[str]:
+    # line es.: [TAGS: a, b, c]
+    inside = line.strip()[1:-1]  # rimuove [ ]
+    after = inside.split(":", 1)[1] if ":" in inside else inside
+    parts = [p.strip() for p in after.split(",")]
+    return [p for p in parts if p]
 
-def _extract_tags_and_body(text: str) -> Tuple[List[str], str]:
-    tags: List[str] = []
-    lines = text.splitlines()
-    if lines and lines[0].strip().lower().startswith("[tags:"):
-        m = re.match(r"^\[tags:\s*(.*?)\s*\]\s*$", lines[0].strip(), flags=re.IGNORECASE)
-        if m:
-            raw = m.group(1)
-            tags = [t.strip().lower() for t in re.split(r"[;,]", raw) if t.strip()]
-        body = "\n".join(lines[1:]).strip()
-        return tags, body
-    return tags, text.strip()
+# -----------------------------
+# Indicizzazione
+# -----------------------------
+class KnowledgeBase:
+    def __init__(self, doc_dir: Path):
+        self.doc_dir = Path(doc_dir)
+        self.entries: List[KBEntry] = []
+        self.files_loaded: List[str] = []
+        self._index()
 
-def reload_index() -> None:
-    global _INDEX, _LAST_LOAD_SUMMARY
-    _INDEX = []
-    pattern = os.path.join(DOC_DIR, "**", "*.txt")
-    files = sorted(glob.glob(pattern, recursive=True))
-    lines = [f"DOC_DIR={DOC_DIR}", f"FILES={len(files)}"]
-    _dbg(f"DOC_DIR={DOC_DIR}")
-    _dbg(f"Trovati {len(files)} file")
-    for fp in files:
-        try:
-            raw = open(fp, "r", encoding="utf-8").read()
-        except Exception as e:
-            _dbg(f"Impossibile leggere {fp}: {e}")
-            continue
-        tags, body = _extract_tags_and_body(raw)
-        _INDEX.append(Doc(name=os.path.basename(fp), tags=tags, body=body))
-        _dbg(f" - {os.path.basename(fp)} tags={tags} bytes={len(raw)}")
-        lines.append(f" - {os.path.basename(fp)} tags={tags} bytes={len(raw)}")
-    _LAST_LOAD_SUMMARY = "\n".join(lines)
+    def _index(self):
+        self.entries.clear()
+        self.files_loaded.clear()
 
-def _intent_router(q: str) -> Optional[str]:
-    qlow = q.lower()
-    for intent, cfg in INTENTS.items():
-        if any(k in qlow for k in cfg["keywords"]):
-            for d in _INDEX:
-                if any(p in d.name.lower() for p in cfg["prefer_file_substr"]):
-                    _dbg(f"Intent '{intent}' → {d.name}")
-                    return d.body.strip()
-            q_toks = set(_tokenize(qlow))
-            for d in _INDEX:
-                if q_toks & set(d.tags):
-                    _dbg(f"Intent '{intent}' via TAGS → {d.name}")
-                    return d.body.strip()
-    return None
+        if not self.doc_dir.exists():
+            print(f"[scraper_tecnaria] ATTENZIONE: cartella non trovata: {self.doc_dir}")
+            return
 
-def _keyword_overlap_score(q: str, doc: Doc) -> float:
-    q_toks = _tokenize(q)
-    d_toks = set(_tokenize(" ".join(doc.tags) + " " + doc.body[:1500]))
-    if not q_toks or not d_toks:
-        return 0.0
-    hits = sum(1 for t in q_toks if t in d_toks)
-    return hits / max(1, len(set(q_toks)))
+        for path in sorted(self.doc_dir.rglob("*.txt")):
+            try:
+                text = path.read_text(encoding="utf-8", errors="ignore")
+            except Exception as e:
+                print(f"[scraper_tecnaria] ERRORE lettura {path}: {e}")
+                continue
 
-def risposta_document_first(domanda: str) -> str:
-    domanda = (domanda or "").strip()
-    if not domanda:
-        return ""
-    if not _INDEX:
-        reload_index()
-    # 1) intent router
-    fast = _intent_router(domanda)
-    if fast:
-        return fast
-    # 2) overlap su tutti i file
-    scores = [(_keyword_overlap_score(domanda, d), d) for d in _INDEX]
-    scores.sort(key=lambda x: x[0], reverse=True)
-    if not scores or scores[0][0] == 0:
-        _dbg(f"Nessun overlap per: {domanda}")
-        return ""
-    best = scores[0][1]
-    _dbg(f"Best by overlap → {best.name} score={scores[0][0]:.2f}")
-    return best.body.strip()
+            lines = [normalize_text(l) for l in text.splitlines()]
+            lines = [l for l in lines if l]  # rimuove righe vuote
 
-def debug_info(query: Optional[str] = None, top_k: int = 5) -> str:
-    if not _INDEX:
-        reload_index()
-    out = ["# DEBUG SNAPSHOT", _LAST_LOAD_SUMMARY or "(no load info)"]
-    if query:
-        pairs = [(_keyword_overlap_score(query, d), d) for d in _INDEX]
-        pairs.sort(key=lambda x: x[0], reverse=True)
-        out.append(f"\n# QUERY: {query}\n")
-        for i,(s,d) in enumerate(pairs[:top_k],1):
-            out.append(f"{i}. {d.name}  overlap={s:.2f}  tags={d.tags}")
-    return "\n".join(out)
+            tags: List[str] = []
+            tag_tokens: List[str] = []
 
-try:
-    reload_index()
-except Exception as e:
-    _dbg(f"reload_index() failed: {e}")
+            # Se la prima riga è [TAGS: ...], estrai
+            if lines and lines[0].startswith("[TAGS:") and lines[0].endswith("]"):
+                tags = parse_tags(lines[0])
+                tag_tokens = tokenize(" ".join(tags))
+                # resto delle righe sono risposte
+                content_lines = lines[1:]
+            else:
+                content_lines = lines
+
+            # Indicizza ogni riga come risposta autonoma
+            for line in content_lines:
+                if not line:
+                    continue
+                entry = KBEntry(
+                    text=line,
+                    filename=path.name,
+                    tags=tags,
+                    tokens=tokenize(line),
+                    tag_tokens=tag_tokens,
+                )
+                self.entries.append(entry)
+
+            self.files_loaded.append(path.name)
+
+        print(f"[scraper_tecnaria] Indicizzati {len(self.entries)} blocchi da {len(self.files_loaded)} file.")
+
+    # -------------------------
+    # Scoring semplice + boost TAGS
+    # -------------------------
+    @staticmethod
+    def _overlap_score(q_tokens: List[str], e_tokens: List[str]) -> float:
+        if not q_tokens or not e_tokens:
+            return 0.0
+        q = set(q_tokens)
+        e = set(e_tokens)
+        inter = len(q & e)
+        # piccola normalizzazione per non favorire frasi lunghissime
+        return inter / (0.5 * (len(q) + len(e)))
+
+    @staticmethod
+    def _bigram_boost(q_tokens: List[str], e_tokens: List[str]) -> float:
+        # boost se compaiono bigrammi interi della query nel testo
+        def bigrams(toks):
+            return set(zip(toks, toks[1:])) if len(toks) > 1 else set()
+        q_bi = bigrams(q_tokens)
+        e_bi = bigrams(e_tokens)
+        if not q_bi or not e_bi:
+            return 0.0
+        inter = len(q_bi & e_bi)
+        return 0.15 * inter  # boost moderato
+
+    @staticmethod
+    def _tag_boost(q_tokens: List[str], tag_tokens: List[str]) -> float:
+        if not q_tokens or not tag_tokens:
+            return 0.0
+        q = set(q_tokens)
+        t = set(tag_tokens)
+        inter = len(q & t)
+        # i TAGS sono un forte segnale: boost lineare
+        return 0.25 * inter
+
+    def _score_entry(self, q_tokens: List[str], e: KBEntry) -> float:
+        base = self._overlap_score(q_tokens, e.tokens)
+        return base + self._bigram_boost(q_tokens, e.tokens) + self._tag_boost(q_tokens, e.tag_tokens)
+
+    # -------------------------
+    # API pubbliche
+    # -------------------------
+    def reload(self) -> Dict[str, int]:
+        self._index()
+        return {"files": len(self.files_loaded), "entries": len(self.entries)}
+
+    def answer(self, query: str) -> str:
+        """
+        Restituisce SOLO la risposta (testo della riga migliore).
+        Mai menzionare 'documentazione locale' o il nome file al cliente.
+        """
+        if not self.entries:
+            return "Nessun documento caricato. Aggiungi file in 'documenti_gTab/' e ricarica l'indice."
+
+        q_tokens = tokenize(query)
+        # se la query è troppo corta, non scartiamo nulla: prendiamo comunque il best match
+        best_score = -1.0
+        best_entry = None
+
+        for e in self.entries:
+            s = self._score_entry(q_tokens, e)
+            if s > best_score:
+                best_score = s
+                best_entry = e
+
+        # Ritorna sempre il best match, anche se scarso
+        return best_entry.text if best_entry else "Non ho trovato contenuti utili."
+
+    def answer_with_source(self, query: str) -> Tuple[str, str, float]:
+        """
+        Come answer(), ma restituisce anche (filename, punteggio) per debug/log.
+        NON mostrare filename all'utente finale.
+        """
+        if not self.entries:
+            return ("Nessun documento caricato. Aggiungi file in 'documenti_gTab/' e ricarica l'indice.", "", 0.0)
+
+        q_tokens = tokenize(query)
+        best_score = -1.0
+        best_entry = None
+
+        for e in self.entries:
+            s = self._score_entry(q_tokens, e)
+            if s > best_score:
+                best_score = s
+                best_entry = e
+
+        if best_entry is None:
+            return ("Non ho trovato contenuti utili.", "", 0.0)
+
+        return (best_entry.text, best_entry.filename, best_score)
+
+    def debug_candidates(self, query: str, top: int = 5) -> List[Tuple[str, str, float]]:
+        """
+        Ritorna i TOP candidati con (filename, testo, punteggio) per ispezione.
+        Utile per endpoint /debug del tuo backend.
+        """
+        q_tokens = tokenize(query)
+        scored = []
+        for e in self.entries:
+            s = self._score_entry(q_tokens, e)
+            scored.append((e, s))
+        scored.sort(key=lambda x: x[1], reverse=True)
+        out = []
+        for e, s in scored[:top]:
+            out.append((e.filename, e.text, round(s, 4)))
+        return out
+
+# Istanza globale pronta da importare
+kb = KnowledgeBase(DOC_DIR)
+
+# -----------------------------
+# CLI di test (opzionale)
+# -----------------------------
+if __name__ == "__main__":
+    print(">>> Tecnaria KB - Test rapido")
+    print(f"Cartella documenti: {DOC_DIR}")
+    print(f"File indicizzati: {len(kb.files_loaded)} | Righe indicizzate: {len(kb.entries)}\n")
+
+    import sys
+    q = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else "mi dai i contatti?"
+    ans, src, score = kb.answer_with_source(q)
+    print(f"Q: {q}")
+    print(f"A: {ans}")
+    print(f"[DEBUG] source={src} score={score:.4f}")
