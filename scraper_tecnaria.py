@@ -16,10 +16,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DOC_DIR = os.getenv("DOC_DIR") or os.path.join(BASE_DIR, "documenti_gTab")
 DEBUG    = os.getenv("DEBUG", "1") == "1"
 
-STOPWORDS = {"tecnaria","spa","s.p.a.","il","lo","la","i","gli","le","un","uno","una",
-             "di","del","della","dell","dei","degli","delle","e","ed","o","con","per",
-             "su","tra","fra","in","da","al","allo","ai","agli","alla","alle","che",
-             "come","quale","quali","dove","quando","anche"}
+STOPWORDS = {"tecnaria", "spa", "s.p.a."}
 
 # Intent map: forziamo alcune domande a certi file
 INTENTS = {
