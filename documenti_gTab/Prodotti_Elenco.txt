@@ -1,3 +1,22 @@
 [TAGS: codici connettori tecnaria, elenco prodotti, catalogo, lista codici]
+
 D: Quali sono i codici dei connettori Tecnaria?
-R: (qui la tua lista completa…)
+R: Tecnaria produce diverse famiglie di connettori per solai collaboranti. 
+Ecco i principali codici:
+
+- **CTF**: CTF020, CTF025, CTF030, CTF040, CTF060, CTF070, CTF080, CTF090, CTF105, CTF125, CTF135  
+- **CEM-E**: CT CEM-E 14/040, V CEM-E 14/040-E  
+- **MINI CEM-E**: MINI CEM-E 10/020, MINI CEM-E 10/030, MINI CEM-E 10/040  
+- **CTL Base**: CTLB020 … CTLB200 (20–200 mm)  
+- **CTL Maxi**: CTLM020 … CTLM200 (20–200 mm)  
+- **CTL Omega**: CVT 40V-10/100, 40/120, 40/140  
+- **Diapason**: CTFD100, CTFD125  
+- **HBV**: connettore per legno–calcestruzzo (codici HBV standard)  
+- **X-HBV**: versione rinforzata per travi in legno di grande sezione  
+- **FVA e FVA-L**: connettori per legno lamellare con viti inclinate  
+- **CLS e CLSR**: connettori per calcestruzzo leggero o rinforzato  
+- **ALFA**: connettore speciale per applicazioni particolari  
+- **Accessori**: pistola P560, chiodi SBR14, guidapunte CTF, pistone e anello ammortizzatore
+
+Questa è la panoramica dei codici principali. 
+Per ogni prodotto Tecnaria esistono schede tecniche e DoP consultabili nei rispettivi file dedicati.
