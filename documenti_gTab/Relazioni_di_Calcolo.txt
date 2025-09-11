@@ -1,7 +1,0 @@
-[TAGS: relazioni di calcolo, verifiche SLU SLE, Eurocodici, NTC 2018, esempi di progetto, rigidezza kser, slip]
-Forniamo relazioni di calcolo precompilate per solai collaboranti legno-calcestruzzo e acciaio-calcestruzzo.
-Le relazioni includono assunzioni di carico, combinazioni, verifiche SLU/SLE e controlli di deformazione.
-Sono riportati i parametri sperimentali (resistenze, kser, slip) dei connettori Tecnaria.
-Vengono indicati passo/interassi con tabelle esemplificative per diverse luci e carichi.
-Sono inclusi dettagli costruttivi e note di posa per la corretta esecuzione in cantiere.
-I file sono forniti in formato editabile su richiesta per adattamento al progetto.
