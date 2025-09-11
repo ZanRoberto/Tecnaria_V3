@@ -1,7 +1,0 @@
-[TAGS: manuali di posa, istruzioni cantiere, distanze minime, interassi, controlli, chiodatrice HBV, foratura profili]
-I manuali di posa definiscono step operativi per ogni sistema (HBV, ALFA, P560, FVA/CLSR/CLS, TRALICCIO).
-Sono riportati prefori, profondità di inserimento, pressioni/chiodatrice e coppie di serraggio.
-Vengono specificate distanze minime da bordi, interassi e tolleranze dimensionali.
-Sono descritte verifiche visive e documentali (foto, lotti, conformità).
-Include elenco attrezzature e DPI consigliati per la sicurezza.
-Sono presenti check-list di fine posa da allegare ai SAL.
