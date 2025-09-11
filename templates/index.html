@@ -2,85 +2,300 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <title>Tecnaria · Assistente documentale</title>
+  <meta http-equiv="x-ua-compatible" content="ie=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tecnaria · Assistente documentale</title>
+
+  <!-- Favicon opzionale -->
+  <link rel="icon" href="/static/logo.png" />
+
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
-    header { display:flex; align-items:center; gap:12px; }
-    header img { height:44px; }
-    h1 { font-size: 20px; margin: 0; }
-    .bar { margin: 14px 0; display:flex; gap: 8px; flex-wrap: wrap; }
-    button { padding: 8px 12px; border-radius: 8px; border:1px solid #ccc; cursor:pointer; }
-    input { width: 100%; max-width: 720px; padding: 10px; border-radius: 8px; border:1px solid #ccc; }
-    .answer { background:#f7f7f9; border:1px solid #e5e5ef; padding:12px; border-radius:8px; white-space:pre-wrap; }
-    .muted { color:#666; font-size: 13px; }
-    .debug { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color:#333; }
-    .welcome { padding:12px; background:#eef7ff; border:1px solid #cde6ff; border-radius:8px; max-width: 720px; }
+    :root{
+      --bg:#0b1220;          /* blu notte */
+      --card:#0f1a2e;        /* blu ardesia */
+      --muted:#5f7aa3;       /* blu/grigio testo secondario */
+      --text:#eaf2ff;        /* testo principale */
+      --brand:#2b8cff;       /* azzurro Tecnaria */
+      --brand-2:#1e6ed6;
+      --ring:#82b6ff;
+      --ok:#36c48e;
+      --warn:#ffb020;
+      --danger:#ff6b6b;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      background: radial-gradient(1200px 800px at 10% -10%, #16233c 0%, transparent 60%), var(--bg);
+      color:var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    .shell{
+      max-width: 980px;
+      margin: 36px auto;
+      padding: 0 16px;
+    }
+
+    .header{
+      display:flex; align-items:center; gap:14px; margin-bottom:18px;
+    }
+    .logo{
+      width:44px; height:44px; border-radius:12px;
+      background:#0a1528 url('/static/logo.png') center/contain no-repeat;
+      box-shadow: var(--shadow);
+      border:1px solid rgba(255,255,255,.06);
+    }
+    .titles h1{
+      margin:0; font-size:20px; letter-spacing:.2px;
+    }
+    .titles small{
+      display:block; margin-top:2px; color:var(--muted);
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    .welcome{
+      padding:22px 22px 8px 22px; border-bottom:1px solid rgba(255,255,255,.06);
+      display:flex; align-items:center; gap:12px;
+    }
+    .welcome .dot{ width:10px; height:10px; border-radius:50%; background: var(--ok); box-shadow:0 0 0 4px rgba(54,196,142,.15); }
+    .welcome p{ margin:0; color:var(--muted); }
+
+    .messages{
+      padding:18px; max-height:58vh; overflow:auto; scroll-behavior:smooth;
+    }
+    .msg{ display:grid; grid-template-columns: 28px 1fr; gap:12px; padding:14px; margin:10px 0; border-radius:14px; }
+    .msg.user{ background: rgba(255,255,255,.04); }
+    .msg.bot{ background: rgba(27,57,102,.35); border:1px solid rgba(130,182,255,.15);}
+    .msg .avatar{
+      width:28px; height:28px; border-radius:9px; background:#123; display:grid; place-items:center; font-size:12px; color:#a7c8ff; border:1px solid rgba(255,255,255,.05);
+    }
+    .msg .content{ white-space:pre-wrap; }
+
+    .composer{
+      display:flex; gap:10px; padding:14px; border-top:1px solid rgba(255,255,255,.06); background:rgba(0,0,0,.1);
+      position:sticky; bottom:0; backdrop-filter: blur(6px);
+    }
+
+    .input{
+      position:relative; flex:1;
+    }
+    .input input{
+      width:100%; background:#0b1426; color:var(--text); border:1px solid rgba(255,255,255,.08);
+      border-radius:14px; padding:14px 42px 14px 14px; outline:none; font-size:16px;
+      transition: border .15s ease, box-shadow .15s ease;
+    }
+    .input input:focus{ border-color: var(--ring); box-shadow: 0 0 0 4px rgba(130,182,255,.15); }
+
+    .icon-btn{
+      min-width:44px; height:44px; border-radius:12px; border:1px solid rgba(255,255,255,.1);
+      background: linear-gradient(180deg, #173059, #112545);
+      color:var(--text); cursor:pointer; display:grid; place-items:center; padding:0 14px; gap:8px;
+      transition: transform .05s ease, border .15s ease;
+    }
+    .icon-btn:hover{ border-color: rgba(130,182,255,.3); }
+    .icon-btn:active{ transform: translateY(1px); }
+    .icon-btn.primary{ background: linear-gradient(180deg, var(--brand), var(--brand-2)); border-color: rgba(255,255,255,.18); }
+    .icon-btn[disabled]{ opacity:.6; cursor:not-allowed; }
+
+    .mic{
+      position:absolute; right:8px; top:50%; transform: translateY(-50%);
+      width:28px; height:28px; border-radius:8px; border:1px solid rgba(255,255,255,.12);
+      background: #122649; color:#a7c8ff; display:grid; place-items:center; cursor:pointer;
+    }
+    .mic.recording{ background:#1a2f58; border-color:#7fb1ff; box-shadow:0 0 0 6px rgba(130,182,255,.12); }
+
+    .helper{
+      color:var(--muted); font-size:13px; padding: 0 18px 14px 18px;
+    }
+    .helper code{ background: rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; }
+
+    .hidden{ display:none !important; }
+    .sr{ position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   </style>
 </head>
 <body>
-  <header>
-    <img src="/static/logo.png" alt="Logo" onerror="this.style.display='none'">
-    <h1>Tecnaria · Assistente documentale</h1>
-  </header>
+  <div class="shell">
+    <header class="header" aria-label="Intestazione">
+      <div class="logo" aria-hidden="true"></div>
+      <div class="titles">
+        <h1>Tecnaria · Assistente documentale</h1>
+        <small>Fai una domanda sui prodotti o sulla documentazione. Puoi anche dettare con il microfono.</small>
+      </div>
+    </header>
 
-  <div class="bar">
-    <button onclick="reloadIdx()">Ricarica indice</button>
-    <button onclick="health()">Health</button>
+    <main class="card" aria-live="polite" aria-busy="false">
+      <div class="welcome">
+        <div class="dot" aria-hidden="true"></div>
+        <p id="welcome-text">👋 Benvenuto nell’assistente documentale Tecnaria. Inizia scrivendo o tocca il microfono per parlare.</p>
+      </div>
+
+      <section id="messages" class="messages" tabindex="0" aria-label="Conversazione">
+        <!-- Messaggi dinamici -->
+        <div class="msg bot">
+          <div class="avatar">AI</div>
+          <div class="content">
+Benvenuto nell’assistente documentale di Tecnaria.
+Sono pronto a rispondere utilizzando esclusivamente i documenti tecnici caricati.
+Esempi rapidi: “mi dai i contatti”, “P560 come si usa”, “differenza CTF125 vs CTF090”, “codici connettori Tecnaria”.
+          </div>
+        </div>
+      </section>
+
+      <div class="composer" role="search">
+        <label class="sr" for="q">Domanda</label>
+        <div class="input">
+          <input id="q" type="text" placeholder="Scrivi qui la tua domanda…" autocomplete="off" />
+          <button id="mic" class="mic" title="Detta con il microfono" aria-label="Detta con il microfono">
+            🎤
+          </button>
+        </div>
+        <button id="send" class="icon-btn primary" title="Invia" aria-label="Invia domanda">Chiedi</button>
+      </div>
+
+      <div class="helper">
+        Suggerimenti: prova <code>mi dai i codici dei connettori</code>, <code>chi contatto per un ordine</code>, <code>manuali di posa HBV</code>.
+      </div>
+    </main>
   </div>
-
-  <div id="info" class="muted">
-    👋 Benvenuto nell’assistente documentale Tecnaria.<br/>
-    Carica i file .txt in <code>documenti_gTab/</code>, premi “Ricarica indice” e inizia a fare domande.
-  </div>
-
-  <div style="margin:14px 0;">
-    <input id="q" placeholder="Chiedi a Tecnaria (es: orari sede, P560, CTF su lamiera, riprese di getto…)" />
-    <div class="bar">
-      <button onclick="ask()">Chiedi</button>
-    </div>
-  </div>
-
-  <div id="welcome" class="welcome">
-    Questo messaggio scompare alla prima risposta.<br/>
-    Scrivi la tua domanda qui sopra e premi “Chiedi”.
-  </div>
-
-  <div id="out" class="answer" style="display:none;"></div>
-  <details style="margin-top:8px;">
-    <summary class="muted">Mostra debug</summary>
-    <pre id="debug" class="debug"></pre>
-  </details>
 
   <script>
-    async function reloadIdx(){
-      const r = await fetch('/reload', {method:'POST'});
-      const j = await r.json();
-      document.getElementById('info').textContent =
-        'Indice ricaricato: ' + j.blocks + ' blocchi / ' + j.docs + ' file / ' + j.lines + ' righe';
+    // -----------------------
+    // Config
+    // -----------------------
+    const ASK_ENDPOINT = "/ask";   // deve esistere in app.py
+    const MAX_SHOW_DEBUG = false;  // lascia false: interfaccia pulita
+
+    // -----------------------
+    // UI helpers
+    // -----------------------
+    const $messages = document.getElementById('messages');
+    const $input = document.getElementById('q');
+    const $send = document.getElementById('send');
+    const $mic  = document.getElementById('mic');
+    const $welcome = document.getElementById('welcome-text');
+
+    function el(tag, cls){ const n = document.createElement(tag); if(cls) n.className = cls; return n; }
+    function addMsg(role, text){
+      const row = el('div', `msg ${role}`);
+      const avatar = el('div','avatar'); avatar.textContent = role==='user' ? 'TU' : 'AI';
+      const content = el('div','content'); content.textContent = text;
+      row.appendChild(avatar); row.appendChild(content);
+      $messages.appendChild(row);
+      $messages.scrollTop = $messages.scrollHeight;
+      if($welcome) $welcome.parentElement.parentElement.classList.add('hidden'); // nasconde barra benvenuto dopo primo scambio
+    }
+    function setBusy(b){ document.querySelector('main').setAttribute('aria-busy', b ? 'true' : 'false'); }
+
+    async function ask(q){
+      if(!q || !q.trim()) return;
+      addMsg('user', q.trim());
+      setBusy(true);
+      $send.disabled = true;
+
+      try{
+        const res = await fetch(ASK_ENDPOINT, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ question: q.trim() })
+        });
+        if(!res.ok){
+          addMsg('bot', '⚠️ Errore di rete. Riprova tra poco.');
+          return;
+        }
+        const data = await res.json();
+        // atteso: { answer, found, score, path, line, ... }
+        let text = (data && data.answer) ? data.answer : "Non ho trovato una risposta precisa nei documenti locali.";
+        addMsg('bot', text);
+
+        if(MAX_SHOW_DEBUG && data){
+          const dbg = [`— debug —`,
+            `found: ${data.found}`,
+            `score: ${data.score}`,
+            `file: ${data.path || '-'}`,
+            `linea: ${data.line || '-'}`].join('\n');
+          addMsg('bot', dbg);
+        }
+      }catch(e){
+        addMsg('bot', '⚠️ Errore temporaneo. Controlla la connessione o riprova.');
+      }finally{
+        setBusy(false);
+        $send.disabled = false;
+      }
     }
 
-    async function health(){
-      const r = await fetch('/health');
-      const j = await r.json();
-      document.getElementById('info').textContent =
-        'Health: '+j.status+' | blocchi='+j.blocks+' | docs='+j.docs+' | lines='+j.lines;
+    // Invio con click o Invio
+    $send.addEventListener('click', () => ask($input.value));
+    $input.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){ ask($input.value); $input.value=''; }
+    });
+
+    // -----------------------
+    // Microfono (Web Speech API)
+    // -----------------------
+    let rec = null;
+    let recording = false;
+
+    function supportedSpeech(){
+      return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
     }
 
-    async function ask(){
-      const q = document.getElementById('q').value;
-      const r = await fetch('/ask', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({q})
-      });
-      const j = await r.json();
-      document.getElementById('welcome').style.display = 'none';
-      const out = document.getElementById('out');
-      out.style.display = 'block';
-      out.textContent = j.answer || '(nessuna risposta)';
-      document.getElementById('debug').textContent = JSON.stringify(j.debug, null, 2);
+    if(!supportedSpeech()){
+      $mic.title = "Il microfono non è supportato da questo browser";
+      $mic.style.opacity = .5;
     }
+
+    $mic.addEventListener('click', () => {
+      if(!supportedSpeech()) return;
+      if(!rec){
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        rec = new SR();
+        rec.lang = 'it-IT';
+        rec.interimResults = false;
+        rec.maxAlternatives = 1;
+
+        rec.onresult = (ev) => {
+          const text = ev.results[0][0].transcript;
+          if(text){
+            $input.value = text;
+            ask(text);
+            $input.value = '';
+          }
+        };
+        rec.onerror = () => {
+          $mic.classList.remove('recording');
+          recording = false;
+        };
+        rec.onend = () => {
+          $mic.classList.remove('recording');
+          recording = false;
+        };
+      }
+
+      if(!recording){
+        try{
+          rec.start();
+          recording = true;
+          $mic.classList.add('recording');
+        }catch(_){}
+      }else{
+        try{
+          rec.stop();
+          recording = false;
+          $mic.classList.remove('recording');
+        }catch(_){}
+      }
+    });
   </script>
 </body>
 </html>
