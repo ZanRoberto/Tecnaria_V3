@@ -50,3 +50,32 @@ Riduce tempi di calcolo e garantisce sicurezza normativa.
 ────────────────────────────
 D: E per l’impresa?
 R: Rapidità di posa, riduzione costi di manodopera e accesso a noleggio/acquisto delle attrezzature necessarie.
+[TAGS: Diapason, connettori acciaio-calcestruzzo, barre integrate, posa con P560, solai collaboranti]
+
+D: Che cos’è un connettore Diapason?
+R: Il connettore Diapason Tecnaria è un elemento in lamiera zincata stampata con due ali che accolgono barre d’armatura Ø10 mm. 
+Serve per collegare travi o lamiere in acciaio a nuove solette in calcestruzzo, creando solai collaboranti. 
+Si fissa rapidamente con 4 chiodi utilizzando la pistola P560.
+
+D: Quali sono i codici disponibili del Diapason?
+R: I principali codici sono:  
+- CTFD100  
+- CTFD125  
+dove il numero indica l’altezza utile del connettore in mm.
+
+D: A cosa serve il Diapason D100?
+R: Il Diapason D100 (CTFD100) è adatto per solette di circa 100 mm. 
+Offre un ancoraggio sicuro e favorisce il trasferimento del taglio tra acciaio e calcestruzzo.
+
+D: E il Diapason D125?
+R: Il Diapason D125 (CTFD125) ha le stesse caratteristiche del D100, ma maggiore altezza (125 mm) per solette più spesse o quando serve più capacità di ancoraggio.
+
+D: Come avviene la posa dei connettori Diapason?
+R: La posa prevede il fissaggio con 4 chiodi tramite la pistola sparachiodi P560. 
+Le barre Ø10 mm vengono poi integrate nel getto di calcestruzzo. 
+Tecnaria fornisce manuali di posa con schemi, distanze e valori di resistenza.
+
+D: Che certificazioni hanno i connettori Diapason?
+R: Sono certificati ETA e marcati CE. 
+Ogni lotto è tracciabile e accompagnato da Dichiarazione di Prestazione (DoP).
+
