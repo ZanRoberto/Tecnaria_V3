@@ -51,3 +51,31 @@ R: Disporre di un sistema certificato e versatile, con dati sperimentali pronti 
 D: E per l’impresa?
 R: Posa semplice con avvitatori standard, ampia disponibilità a magazzino e supporto tecnico per ogni fase di cantiere.
 
+[TAGS: CTL, connettori legno-calcestruzzo, Base, Maxi, Omega, solai collaboranti, viti, piastre]
+
+D: Che cos’è un connettore CTL?
+R: I connettori CTL Tecnaria sono progettati per collegare travi e solai in legno con nuove solette in calcestruzzo. 
+Creano un sistema collaborante legno–calcestruzzo che migliora rigidezza, resistenza e comportamento dinamico. 
+Sono disponibili in diverse versioni: Base, Maxi e Omega.
+
+D: Quali sono i codici della serie CTL Base?
+R: I connettori CTL Base sono identificati dai codici: CTLB020 … CTLB200 (altezze da 20 a 200 mm). 
+Hanno piastra 50×50 mm sp. 4 mm e viti Ø8 mm. 
+Si utilizzano in solai collaboranti con travi di piccola e media sezione.
+
+D: Che differenza c’è tra CTL Base e CTL Maxi?
+R: I CTL Maxi (CTLM020 … CTLM200) hanno viti Ø10 mm e maggiore capacità portante. 
+Si usano con travi di grande sezione o quando serve più trasferimento del taglio rispetto alla serie Base.
+
+D: A cosa serve il connettore CTL Omega?
+R: Il CTL Omega (CVT 40V-10/100, 40/120, 40/140) è un connettore con piastra sagomata a Ω e vite tirafondo Ø10 mm. 
+È ideale per applicazioni su travi in legno lamellare o massiccio, con alte prestazioni di ancoraggio.
+
+D: Come si posano i connettori CTL?
+R: I connettori CTL si avvitano direttamente nel legno con le viti in dotazione e vengono annegati nella soletta di calcestruzzo. 
+La posa è semplice e non richiede utensili speciali, ma va rispettata la profondità minima e le distanze dai bordi. 
+Tecnaria fornisce manuali con istruzioni, distanze minime e schede DoP.
+
+D: Che certificazioni hanno i connettori CTL?
+R: Tutti i connettori CTL sono certificati ETA e marcati CE. 
+Ogni lotto è tracciabile e corredato da Dichiarazione di Prestazione (DoP).
