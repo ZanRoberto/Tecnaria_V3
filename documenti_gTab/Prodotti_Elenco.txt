@@ -15,8 +15,8 @@ Ecco i principali codici:
 - **X-HBV**: versione rinforzata per travi in legno di grande sezione  
 - **FVA e FVA-L**: connettori per legno lamellare con viti inclinate  
 - **CLS e CLSR**: connettori per calcestruzzo leggero o rinforzato  
-- **ALFA**: connettore speciale per applicazioni particolari  
 - **Accessori**: pistola P560, chiodi SBR14, guidapunte CTF, pistone e anello ammortizzatore
 
 Questa è la panoramica dei codici principali. 
 Per ogni prodotto Tecnaria esistono schede tecniche e DoP consultabili nei rispettivi file dedicati.
+
