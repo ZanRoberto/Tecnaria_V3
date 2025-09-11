@@ -45,3 +45,27 @@ R: Sì, sono disponibili schede con valori caratteristici, DoP, ETA e manuali di
 D: Qual è il vantaggio per il progettista?  
 R: Disporre di un sistema certificato e rapido da posare, con dati di calcolo già pronti e riconosciuti.  
 Riduce tempi e rischi nella progettazione.
+[TAGS: HBV, connettori legno-calcestruzzo, solai collaboranti, travi in legno, posa viti, certificazioni]
+
+D: Che cos’è un connettore HBV?
+R: I connettori HBV Tecnaria sono progettati per collegare travi in legno e nuove solette in calcestruzzo, realizzando solai collaboranti legno–calcestruzzo. 
+Sono costituiti da una piastra in acciaio zincato con denti e viti autofilettanti che garantiscono l’ancoraggio. 
+Sono certificati ETA e marcati CE.
+
+D: Quali sono i vantaggi dei connettori HBV?
+R: Migliorano rigidezza e resistenza del solaio, riducono le deformazioni e aumentano la capacità di portata. 
+Assicurano anche un miglior comportamento dinamico (vibrazioni) e sismico, mantenendo il fascino delle strutture in legno originali.
+
+D: Quali codici comprende la gamma HBV?
+R: I connettori HBV sono disponibili in più versioni e dimensioni per travi di legno massiccio o lamellare. 
+La gamma è ampia e copre diversi spessori di soletta, con codici standard HBV riportati nelle schede tecniche Tecnaria.
+
+D: Come si posano i connettori HBV?
+R: La posa avviene fissando la piastra metallica alla trave in legno con viti autofilettanti inclinate secondo lo schema Tecnaria. 
+Successivamente il connettore viene annegato nella soletta in calcestruzzo. 
+Le istruzioni di posa definiscono diametri, profondità, inclinazione delle viti e distanze minime dai bordi.
+
+D: Che certificazioni hanno i connettori HBV?
+R: Sono certificati ETA e marcati CE, con Dichiarazione di Prestazione (DoP). 
+Ogni lotto è tracciabile e corredato da schede tecniche e relazioni di calcolo.
+
