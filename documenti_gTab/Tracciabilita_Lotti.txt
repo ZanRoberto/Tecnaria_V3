@@ -1,6 +1,0 @@
-[TAGS: tracciabilità lotti, controllo qualità, documentazione forniture, marcatura CE, DoP]
-Ogni fornitura Tecnaria è accompagnata da documenti di tracciabilità dei lotti.
-I connettori riportano codici identificativi legati alla produzione.
-La documentazione allegata include DoP, marcatura CE e certificati di prova.
-Il sistema qualità ISO 9001 assicura che i dati di lotto siano registrati e disponibili.
-Questo permette controlli di conformità in cantiere e verifica in caso di audit.
