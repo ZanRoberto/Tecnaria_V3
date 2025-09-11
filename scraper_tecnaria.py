@@ -37,14 +37,22 @@ def _tokenize(s: str) -> List[str]:
     toks = _clean(s).split()
     return [t for t in toks if t not in STOPWORDS]
 
+# ===== NUOVA METRICA: robusta per domande brevi =====
 def _score(q_tokens: List[str], text: str) -> float:
+    """
+    Score = max(recall, jaccard)
+    - recall: quota di token della query trovati nel testo (ottimo per domande corte)
+    - jaccard: intersezione/unione (bilancia quando i testi sono comparabili)
+    """
     t_tokens = _tokenize(text)
-    if not t_tokens:
+    if not t_tokens or not q_tokens:
         return 0.0
     A, B = set(q_tokens), set(t_tokens)
     inter = len(A & B)
     union = len(A | B) or 1
-    return inter / union
+    jacc = inter / union
+    recall = inter / (len(A) or 1)
+    return max(recall, jacc)
 
 # ===== PARSER FILE TXT =====
 def _finish_block(cur: Dict[str, Any], blocks: List[Dict[str, Any]]):
@@ -54,7 +62,7 @@ def _finish_block(cur: Dict[str, Any], blocks: List[Dict[str, Any]]):
     if MAX_RETURN_CHARS > 0 and len(ans) > MAX_RETURN_CHARS:
         ans = ans[:MAX_RETURN_CHARS].rstrip() + "…"
     cur["answer"] = ans
-    # testo per il match: tags + domanda + tutta la risposta
+    # testo per il match: tags + domanda + TUTTA la risposta
     tag = cur.get("tags", "")
     q = cur.get("question", "")
     ans_full = cur["answer"]
@@ -116,7 +124,7 @@ def build_index(folder: str = DOCS_FOLDER) -> Dict[str, Any]:
     tot_blocks = 0
     folder_abs = os.path.abspath(folder)
     if DEBUG:
-        print(f"[scraper_tecnaria] Inizio indicizzazione da: {folder_abs}")
+        print(f"[scraper_tecnaria] Inizio indicizzazione da: {folder_abs}\n")
     files = sorted(glob.glob(os.path.join(folder_abs, "*.txt")))
     if DEBUG:
         print(f"[scraper_tecnaria] Trovati {len(files)} file .txt:")
@@ -142,19 +150,19 @@ def list_index() -> Dict[str, Any]:
 # ===== SEARCH =====
 def search_best_answer(query: str) -> Dict[str, Any]:
     q_tokens = _tokenize(query)
-    best: Tuple[int, float] = (-1, -1.0)
+    best_idx, best_score = -1, -1.0
     for i, blk in enumerate(_index):
         sc = _score(q_tokens, blk["text_for_match"])
-        if sc > best[1]:
-            best = (i, sc)
+        if sc > best_score:
+            best_idx, best_score = i, sc
 
-    if best[0] < 0:
+    if best_idx < 0:
         return {"found": False, "score": 0.0, "path": None, "line": None, "question": "", "answer": ""}
 
-    blk = _index[best[0]]
+    blk = _index[best_idx]
     result = {
-        "found": best[1] >= SIM_THRESHOLD,
-        "score": round(best[1], 3),
+        "found": best_score >= SIM_THRESHOLD,
+        "score": round(best_score, 3),
         "path": blk["path"],
         "line": blk["start_line"],
         "question": blk.get("question",""),
