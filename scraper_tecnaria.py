@@ -23,7 +23,8 @@ _last_build_info: Dict[str, Any] = {"count": 0, "lines": 0, "blocks": 0, "ts": 0
 STOPWORDS = {
     "il","lo","la","i","gli","le","un","uno","una","di","del","della","dell","dei","degli","delle",
     "e","ed","o","con","per","su","tra","fra","in","da","al","allo","ai","agli","alla","alle",
-    "che","come","quale","quali","dove","quando","anche","mi","parli","parlami","dimmi","cos", "cos’è", "cos'e"
+    "che","come","quale","quali","dove","quando","anche","mi","parli","parlami","dimmi",
+    "cos", "cos’è", "cos'e"
 }
 _token_pat = re.compile(r"[^a-z0-9àèéìòóùç\-/ ]+", flags=re.IGNORECASE)
 
@@ -41,8 +42,8 @@ def _tokenize(s: str) -> List[str]:
 def _score(q_tokens: List[str], text: str) -> float:
     """
     Score = max(recall, jaccard)
-    - recall: quota token query trovati (robusto per domande corte)
-    - jaccard: intersezione/unione (bilancia testi lunghi)
+    - recall: quota token query trovati
+    - jaccard: intersezione/unione
     """
     t_tokens = _tokenize(text)
     if not t_tokens or not q_tokens:
@@ -70,7 +71,7 @@ def _finish_block(cur: Dict[str, Any], blocks: List[Dict[str, Any]]):
     # Replica TAGS per dargli peso
     cur["text_for_match"] = " ".join([tag, tag, q, ans_full]).strip()
 
-    # Prepara lista tag per euristiche
+    # Lista tag per euristiche
     tags_norm = [t.strip().lower() for t in tag.split(",")] if tag else []
     cur["tags_list"] = tags_norm
     cur["first_tag"] = tags_norm[0] if tags_norm else ""
@@ -103,13 +104,15 @@ def parse_txt_file(path: str) -> Tuple[List[Dict[str, Any]], int]:
                 if line.lstrip().startswith("D:"):
                     _finish_block(cur, blocks)
                     q = line.split("D:", 1)[1].strip()
-                    cur = {"path": path, "start_line": line_no, "tags": tags, "question": q, "answer": "" }
+                    cur = {"path": path, "start_line": line_no, "tags": tags,
+                           "question": q, "answer": "" }
                     continue
 
                 if line.lstrip().startswith("R:"):
                     r = line.split("R:", 1)[1].strip()
                     if "answer" not in cur:
-                        cur = {"path": path, "start_line": line_no, "tags": tags, "question": "", "answer": r}
+                        cur = {"path": path, "start_line": line_no, "tags": tags,
+                               "question": "", "answer": r}
                     else:
                         cur["answer"] = (cur.get("answer","") + ("\n" if cur.get("answer") else "") + r)
                     continue
@@ -144,7 +147,8 @@ def build_index(folder: str = DOCS_FOLDER) -> Dict[str, Any]:
         tot_blocks += len(blocks)
         _index.extend(blocks)
 
-    _last_build_info = {"count": len(files), "lines": tot_lines, "blocks": tot_blocks, "ts": time.time()}
+    _last_build_info = {"count": len(files), "lines": tot_lines,
+                        "blocks": tot_blocks, "ts": time.time()}
     if DEBUG:
         print(f"[scraper_tecnaria] Indicizzati {tot_blocks} blocchi / {tot_lines} righe da {len(files)} file.")
     return _last_build_info
@@ -160,7 +164,7 @@ def _filename_token(path: str) -> str:
     try:
         base = os.path.basename(path)
         name, _ = os.path.splitext(base)
-        return _clean(name)  # es. "p560", "hbv_chiodatrice"
+        return _clean(name)
     except:
         return ""
 
@@ -170,12 +174,29 @@ def _tags_tokens(blk: Dict[str, Any]) -> set:
         toks |= set(_tokenize(t))
     return toks
 
-# ===== SEARCH con filtro deterministico =====
+# ===== SEARCH con filtro deterministico e intento catalogo =====
 def search_best_answer(query: str) -> Dict[str, Any]:
     q_tokens = _tokenize(query)
     qset = set(q_tokens)
 
-    # ---- PASSO 1: trova candidati forti (nome file o tag coincidono con query) ----
+    # ---- INTENTO "CATALOGO/CODICI" ----
+    catalogo_terms = {"codici", "elenco", "catalogo", "lista", "listino"}
+    is_catalogo_query = bool(qset & catalogo_terms)
+
+    intent_candidates = []
+    if is_catalogo_query:
+        for i, blk in enumerate(_index):
+            ftoken = _filename_token(blk.get("path", ""))
+            fname_tok = set(_tokenize(ftoken))
+            tags_tok  = _tags_tokens(blk)
+            first_tok = set(_tokenize(blk.get("first_tag", "")))
+
+            if (fname_tok & {"prodotti", "elenco", "catalogo"}) \
+               or (first_tok & catalogo_terms) \
+               or (tags_tok & catalogo_terms):
+                intent_candidates.append(i)
+
+    # ---- PASSO 1: candidati normali ----
     candidates = []
     for i, blk in enumerate(_index):
         ftoken = _filename_token(blk.get("path", ""))
@@ -185,34 +206,33 @@ def search_best_answer(query: str) -> Dict[str, Any]:
         match_on_filename = ftoken and (qset & set(_tokenize(ftoken)))
         match_on_firsttag = bool(qset & first_tag_tok)
         match_on_anytag   = bool(qset & tags_tok)
-
         if match_on_filename or match_on_firsttag or match_on_anytag:
             candidates.append(i)
 
-    # Se ho candidati, considero SOLO quelli; altrimenti considero tutto l'indice
-    pool = candidates if candidates else list(range(len(_index)))
+    # ---- PRIORITÀ ----
+    if intent_candidates:
+        pool = intent_candidates
+    elif candidates:
+        pool = candidates
+    else:
+        pool = list(range(len(_index)))
 
+    # ---- SCORING ----
     best_idx, best_score = -1, -1.0
     for i in pool:
         blk = _index[i]
         sc = _score(q_tokens, blk["text_for_match"])
 
-        # --- BONUS DISAMBIGUAZIONE ---
+        # bonus
         bonus = 0.0
-
-        # nome file ≡ token query
         ftoken = _filename_token(blk.get("path",""))
         if ftoken and (qset & set(_tokenize(ftoken))):
             bonus += 0.60
-
-        # primo TAG ≡ token query
         first_tag = blk.get("first_tag", "")
         if first_tag:
             first_tag_tokens = set(_tokenize(first_tag))
             if qset & first_tag_tokens:
                 bonus += 0.40
-
-        # qualsiasi TAG ≡ token query
         if _tags_tokens(blk) & qset:
             bonus += 0.15
 
@@ -221,7 +241,8 @@ def search_best_answer(query: str) -> Dict[str, Any]:
             best_idx, best_score = i, sc_final
 
     if best_idx < 0:
-        return {"found": False, "score": 0.0, "path": None, "line": None, "question": "", "answer": ""}
+        return {"found": False, "score": 0.0, "path": None, "line": None,
+                "question": "", "answer": ""}
 
     blk = _index[best_idx]
     result = {
@@ -233,6 +254,7 @@ def search_best_answer(query: str) -> Dict[str, Any]:
         "answer": blk.get("answer",""),
         "tags": blk.get("tags","")
     }
+
     if DEBUG:
         fname = os.path.basename(result["path"]) if result["path"] else "?"
         print("─────────────── SEARCH DEBUG ───────────────")
@@ -244,4 +266,5 @@ def search_best_answer(query: str) -> Dict[str, Any]:
         print("--------------------------------------------")
         if not result["found"]:
             print(f"[scraper_tecnaria][SEARCH] Nessun blocco sopra soglia ({SIM_THRESHOLD}).")
+
     return result
