@@ -1,0 +1,52 @@
+[TAGS: connettori CTL, Base, Maxi, legno-calcestruzzo, solai collaboranti, viti, CE, DoP, ETA, legno lamellare, CLT, legno massiccio]
+
+────────────────────────────
+D: Che cosa sono i connettori CTL?
+R: I CTL sono connettori Tecnaria per solai collaboranti legno–calcestruzzo. 
+Sono disponibili nelle versioni Base (CTLB) e Maxi (CTLM), con dimensioni e capacità differenti.
+
+────────────────────────────
+D: Qual è la differenza tra CTL Base e CTL Maxi?
+R: CTL Base ha viti Ø8 mm ed è adatto a spessori ridotti, mentre CTL Maxi ha viti Ø10 mm ed è idoneo a solai con carichi più elevati. 
+La scelta dipende dal progetto e dalle prestazioni richieste.
+
+────────────────────────────
+D: In quali strutture si utilizzano i CTL?
+R: In solai con travi in legno massiccio, lamellare e pannelli CLT, sia per nuove costruzioni che per consolidamenti di solai esistenti.
+
+────────────────────────────
+D: Come si posano i CTL?
+R: Con avvitatori standard e viti certificate. 
+Il manuale Tecnaria riporta inclinazioni, passi e distanze minime da rispettare.
+
+────────────────────────────
+D: Che certificazioni hanno?
+R: Tutti i modelli CTL sono marcati CE, con Dichiarazioni di Prestazione (DoP) e valutazioni ETA che riportano valori caratteristici di resistenza e rigidezza.
+
+────────────────────────────
+D: Quali sono i vantaggi dei CTL?
+R: Versatilità, posa rapida, certificazioni europee, ampia gamma di altezze disponibili (20–200 mm) e adattabilità a diversi spessori di soletta.
+
+────────────────────────────
+D: I CTL sono adatti anche in zona sismica?
+R: Sì, le prove ETA includono verifiche cicliche che ne garantiscono l’idoneità anche per interventi in zona sismica.
+
+────────────────────────────
+D: Esistono più varianti di altezza?
+R: Sì, la gamma copre diverse altezze (da 20 a 200 mm) per adattarsi a solette di diverso spessore e prestazioni richieste.
+
+────────────────────────────
+D: I CTL sono zincati?
+R: Sì, le piastre sono zincate per garantire protezione dalla corrosione in ambienti ordinari.
+
+────────────────────────────
+D: Che documentazione accompagna i CTL?
+R: Schede tecniche, DoP, ETA, manuali di posa e relazioni di calcolo con esempi pratici.
+
+────────────────────────────
+D: Qual è il vantaggio per il progettista?
+R: Disporre di un sistema certificato e versatile, con dati sperimentali pronti all’uso, che riduce tempi di calcolo e garantisce conformità normativa.
+
+────────────────────────────
+D: E per l’impresa?
+R: Posa semplice con avvitatori standard, ampia disponibilità a magazzino e supporto tecnico per ogni fase di cantiere.

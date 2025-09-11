@@ -1,0 +1,46 @@
+[TAGS: connettori FVA-L, legno-calcestruzzo, solai collaboranti, viti inclinate lunghe, CE, DoP, ETA, consolidamento, CLT, legno lamellare, legno massiccio]
+
+────────────────────────────
+D: Che cosa sono i connettori FVA-L?
+R: I connettori FVA-L sono la variante lunga della famiglia FVA. 
+Utilizzano viti di maggiore lunghezza per incrementare l’ancoraggio e la resistenza nei solai collaboranti legno–calcestruzzo.
+
+────────────────────────────
+D: In quali strutture si impiegano?
+R: In solai con travi in legno massiccio, lamellare e pannelli CLT. 
+Sono ideali quando è richiesta maggiore profondità di ancoraggio o spessori di soletta più ampi.
+
+────────────────────────────
+D: Quali sono i vantaggi principali dei FVA-L?
+R: Prestazioni meccaniche superiori, certificazioni CE ed ETA, compatibilità con diversi spessori di calcestruzzo e possibilità di ridurre il numero totale di connettori.
+
+────────────────────────────
+D: Che certificazioni hanno?
+R: Sono marcati CE, corredati da Dichiarazioni di Prestazione (DoP) e valutazioni ETA, con valori caratteristici di resistenza e rigidezza.
+
+────────────────────────────
+D: Come avviene la posa dei FVA-L?
+R: Con avvitatori standard, inserendo le viti inclinate a 45° o secondo schema indicato nei manuali Tecnaria. 
+Il maggiore sviluppo assicura trasferimento di taglio superiore.
+
+────────────────────────────
+D: Sono adatti anche in zona sismica?
+R: Sì, grazie alla maggiore capacità di ancoraggio e al comportamento ciclico validato nei test di laboratorio.
+
+────────────────────────────
+D: Qual è la differenza rispetto agli FVA standard?
+R: La lunghezza maggiore delle viti. 
+Gli FVA-L permettono resistenze più alte e riduzione del numero di fissaggi, ma richiedono solette di spessore adeguato.
+
+────────────────────────────
+D: Quanto tempo richiede la posa?
+R: È simile agli FVA standard: pochi secondi per fissaggio. 
+La maggiore lunghezza delle viti non compromette la velocità di installazione.
+
+────────────────────────────
+D: Tecnaria fornisce schede tecniche anche per i FVA-L?
+R: Certamente. Sono disponibili schede tecniche, DoP, ETA e manuali di posa specifici.
+
+────────────────────────────
+D: Qual è il vantaggio per il progettista?
+R: Avere un sistema certificato ad alte prestazioni, con possibilità di ottimizzare il numero di connettori e aumentare la sicurezza strutturale.

@@ -1,0 +1,81 @@
+[TAGS: qualità, ISO 9001, certificazione aziendale, controllo qualità, tracciabilità lotti, audit, procedure, collaudo, documentazione, miglioramento continuo]
+
+────────────────────────────
+D: Che cosa significa per Tecnaria essere certificata ISO 9001?
+R: Significa che tutti i processi – dalla progettazione alla produzione, dalla logistica all’assistenza – sono governati da procedure controllate, con obiettivi, indicatori e audit periodici. È una garanzia concreta di qualità e ripetibilità.
+
+────────────────────────────
+D: Su quali processi si applica l’ISO 9001 in Tecnaria?
+R: Progettazione e sviluppo, qualifica fornitori, ricevimento materiali, produzione, controlli in-process e finali, gestione non conformità, logistica, assistenza tecnica e customer care.
+
+────────────────────────────
+D: Come avviene il controllo qualità sui connettori?
+R: Con piani di controllo per lotto: verifiche dimensionali, materie prime certificate, controlli visivi al 100% su caratteristiche critiche e prove a campione secondo specifica.
+
+────────────────────────────
+D: Cosa garantisce la tracciabilità del lotto?
+R: Ogni confezione riporta codice e lotto; dai registri interni risaliamo a materia prima, turno macchina, parametri di produzione e controlli eseguiti. Questo accelera qualunque verifica o supporto post-vendita.
+
+────────────────────────────
+D: E se in cantiere rileviamo una non conformità?
+R: Attiviamo subito l’iter ISO: segregazione, analisi delle cause (5-Why/diagrammi causa-effetto), azioni correttive e preventive. Il cliente riceve feedback e sostituzione/integrazione quando necessario.
+
+────────────────────────────
+D: Quali prove di laboratorio eseguite?
+R: Prove meccaniche su connettori (taglio, estrazione), verifiche cicliche, controlli metallografici e su rivestimenti. Le famiglie coperte da ETA hanno piani prova conformi alla valutazione tecnica.
+
+────────────────────────────
+D: Come selezionate e qualificate i fornitori?
+R: Valutazione iniziale (requisiti tecnici/qualità), audit e scoring continuo su consegne, conformità e tempi. I fornitori critici sono soggetti a piani di miglioramento condivisi.
+
+────────────────────────────
+D: In che modo l’ISO 9001 impatta sulla logistica?
+R: Procedure per imballo, etichettatura, lotti separati e FIFO; controllo in uscita su quantità/codici; monitoraggio lead time e anomalie di trasporto con azioni preventive.
+
+────────────────────────────
+D: Che documenti riceve il cliente con la fornitura?
+R: Schede tecniche, DoP, eventuale ETA di famiglia, manuali di posa e indicazioni di lotto. Su richiesta, attestazioni specifiche di controllo.
+
+────────────────────────────
+D: Come gestite le modifiche progettuali?
+R: Con change management ISO: valutazione tecnica, aggiornamento disegni/schede, comunicazione agli stakeholder interni/esterni e tracciabilità delle revisioni.
+
+────────────────────────────
+D: Fate audit interni?
+R: Sì, pianificati su tutti i processi chiave. I risultati alimentano il riesame della direzione e il piano di miglioramento continuo.
+
+────────────────────────────
+D: Come misurate la soddisfazione del cliente?
+R: KPI su tempi di risposta tecnica, puntualità consegne, reclami, richieste di documenti. Le analisi guidano azioni correttive e training mirati.
+
+────────────────────────────
+D: In cantiere servono verifiche specifiche?
+R: Sì: check-list di posa (battuta chiodi/viti, coppie, passi), pulizia supporti, conferma lotti. Queste evidenze rientrano nella nostra gestione qualità.
+
+────────────────────────────
+D: Come gestite i prodotti migliorati nel tempo?
+R: Ogni miglioramento è validato con prove e documentato; nuova revisione di schede/DoP/ETA se necessario. Informiamo progettisti e imprese dei cambi rilevanti.
+
+────────────────────────────
+D: La certificazione ISO 9001 copre anche l’assistenza tecnica?
+R: Sì: SLA di risposta, registrazione richieste, tracciamento soluzioni e feedback. Tutto rientra nel sistema qualità.
+
+────────────────────────────
+D: Che ruolo ha la formazione del personale?
+R: Piani formativi annuali per produzione, controllo qualità e ufficio tecnico; registriamo competenze e riqualifichiamo in caso di nuovi processi o attrezzature.
+
+────────────────────────────
+D: Come trattate i resi?
+R: Procedura ISO dedicata: identificazione lotto, verifica tecnica, analisi causa e report al cliente. Se dovuto, sostituzione rapida e azioni preventive.
+
+────────────────────────────
+D: La marcatura CE e l’ETA rientrano nel sistema qualità?
+R: Certo. La gestione documentale CE/DoP/ETA è parte del SGQ, con controlli di versione e scadenze di riesame.
+
+────────────────────────────
+D: Qual è il vantaggio pratico per il progettista?
+R: Dati affidabili, documenti aggiornati e tempi certi. Il progettista lavora con parametri validati e riduce i rischi di cantiere.
+
+────────────────────────────
+D: E per l’impresa?
+R: Forniture tracciate, manuali chiari, assistenza rapida e ricambi/attrezzature disponibili: meno imprevisti, più produttività.

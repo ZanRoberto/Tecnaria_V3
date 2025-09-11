@@ -1,0 +1,92 @@
+[TAGS: relazioni di calcolo, progettazione, solai collaboranti, verifiche strutturali, NTC 2018, Eurocodici, documentazione tecnica, supporto progettisti, esempi, software]
+
+────────────────────────────
+D: Che cos’è una relazione di calcolo Tecnaria?  
+R: È un documento tecnico che riporta le verifiche strutturali dei solai collaboranti realizzati con i connettori Tecnaria.  
+Contiene ipotesi di progetto, modelli di calcolo, valori sperimentali, tabelle e grafici.
+
+────────────────────────────
+D: Quali normative seguono le relazioni di calcolo?  
+R: Le relazioni seguono le NTC 2018 e gli Eurocodici (EN 1992 per calcestruzzo, EN 1994 per acciaio–calcestruzzo, EN 1995 per legno–calcestruzzo).  
+Includono anche i riferimenti ETA delle famiglie di connettori.
+
+────────────────────────────
+D: Per quali prodotti sono disponibili le relazioni?  
+R: Per tutte le famiglie: CTF, Diapason, HBV, X-HBV, CTL, CT-L, CLS, CLSR, FVA, CEM-E.  
+Ogni relazione è specifica e contiene schemi di disposizione dei connettori.
+
+────────────────────────────
+D: Quali contenuti includono le relazioni di calcolo?  
+R: Premesse progettuali, modelli teorici, valori sperimentali da ETA, verifiche di resistenza e deformabilità, esempi di dimensionamento, capitolati e schemi di posa.
+
+────────────────────────────
+D: Possono essere usate direttamente dal progettista?  
+R: Sì, sono pensate per essere integrate nei progetti esecutivi.  
+Contengono già formule, valori e tabelle pronti per il dimensionamento.
+
+────────────────────────────
+D: Le relazioni includono esempi pratici?  
+R: Sì, riportano casi tipo con luci e carichi diversi, schemi di passo dei connettori e verifiche eseguite.  
+Sono una guida utile e immediata per i progettisti.
+
+────────────────────────────
+D: Sono disponibili in formato digitale?  
+R: Sì, le relazioni vengono fornite in PDF.  
+Su richiesta possiamo fornire anche versioni editabili o tabelle Excel.
+
+────────────────────────────
+D: Tecnaria aggiorna periodicamente le relazioni?  
+R: Sì, vengono aggiornate in base a modifiche normative, nuovi test di laboratorio o introduzione di nuovi prodotti.  
+La versione aggiornata è sempre disponibile.
+
+────────────────────────────
+D: Le relazioni includono verifiche sismiche?  
+R: Certamente. Prevedono analisi cicliche e indicazioni per l’uso dei connettori in zona sismica, con valori sperimentali validati.
+
+────────────────────────────
+D: Le relazioni sono riconosciute ufficialmente?  
+R: Sì, sono documenti redatti secondo normative vigenti e basati su prove ETA.  
+Sono utilizzabili come parte integrante dei progetti esecutivi.
+
+────────────────────────────
+D: Tecnaria fornisce software di supporto?  
+R: Sì, è disponibile un software di calcolo gratuito che permette di simulare solai collaboranti e genera automaticamente la relazione di calcolo.  
+In alternativa, l’ufficio tecnico può fornire relazioni su richiesta.
+
+────────────────────────────
+D: Che ruolo ha il progettista nella personalizzazione delle relazioni?  
+R: Può adattare le ipotesi di carico, luci e tipologia di solaio.  
+Noi forniamo i dati certificati, ma le verifiche finali restano responsabilità del progettista.
+
+────────────────────────────
+D: Quanto tempo serve per ottenere una relazione da Tecnaria?  
+R: In genere pochi giorni dalla richiesta, a seconda della complessità.  
+L’assistenza tecnica è molto rapida per non rallentare i progetti.
+
+────────────────────────────
+D: Qual è il legame tra relazioni e DoP/ETA?  
+R: Le relazioni riportano i valori caratteristici validati nelle ETA e dichiarati nelle DoP.  
+Così il progettista lavora con parametri certificati e riconosciuti.
+
+────────────────────────────
+D: Le relazioni includono anche note di cantiere?  
+R: Sì, indicano controlli da eseguire in fase di posa (battuta chiodi, passi, pulizia supporti).  
+In questo modo il DL ha strumenti pratici di verifica.
+
+────────────────────────────
+D: Possono essere usate per gare d’appalto?  
+R: Certamente. Sono spesso richieste come parte della documentazione tecnica nelle gare pubbliche.  
+Rendono più semplice l’accettazione dei prodotti.
+
+────────────────────────────
+D: Tecnaria fornisce assistenza per interpretare le relazioni?  
+R: Sì, l’ufficio tecnico è disponibile per chiarimenti, modifiche e spiegazioni ai progettisti e alle imprese.  
+È parte del nostro servizio di supporto.
+
+────────────────────────────
+D: Qual è il vantaggio pratico per il progettista?  
+R: Disporre di dati pronti, certificati e aggiornati, riducendo tempi di calcolo e aumentando la sicurezza normativa.
+
+────────────────────────────
+D: E per l’impresa?  
+R: Avere schemi di posa chiari, quantità definite e documenti ufficiali che semplificano la fase esecutiva e il controllo in cantiere.

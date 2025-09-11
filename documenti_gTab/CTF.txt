@@ -1,0 +1,66 @@
+[TAGS: connettori CTF, pioli, acciaio-calcestruzzo, lamiera grecata, solai collaboranti, P560, Diapason, CE, DoP, ETA, posa rapida]
+
+────────────────────────────
+D: Che cosa sono i connettori CTF?
+R: I CTF sono connettori a piolo Tecnaria per solai collaboranti acciaio–calcestruzzo, idonei anche su lamiera grecata. 
+Trasferiscono il taglio tra trave/lamiera in acciaio e soletta in calcestruzzo.
+
+────────────────────────────
+D: Come si posano i CTF?
+R: Con la pistola P560 e chiodi speciali ad alta resistenza. 
+La posa è rapida e non richiede saldatura in opera.
+
+────────────────────────────
+D: Quali applicazioni tipiche?
+R: Solai su travi in acciaio con lamiera grecata, ampliamenti di impalcati metallici, nuove costruzioni e ristrutturazioni dove serva collaborazione acciaio–calcestruzzo.
+
+────────────────────────────
+D: I CTF sono certificati?
+R: Sì, marcati CE con DoP e valutazioni ETA, con valori caratteristici di resistenza e rigidezza utilizzabili nei calcoli.
+
+────────────────────────────
+D: Che differenza c’è tra CTF e Diapason?
+R: CTF è un piolo su piastra fissato con chiodi; Diapason è un connettore in lamiera sagomata con staffa. 
+Entrambi sono per acciaio–calcestruzzo; la scelta dipende da geometria e prestazioni richieste.
+
+────────────────────────────
+D: I CTF sono compatibili con lamiera grecata?
+R: Sì, sono progettati per lavorare su lamiera grecata con solette di spessore adeguato. 
+Sono disponibili esempi di posa e schemi di disposizione.
+
+────────────────────────────
+D: Che attrezzature servono?
+R: Pistola P560, guidapunte CTF, chiodi certificati e DPI. 
+Tecnaria fornisce accessori e ricambi originali.
+
+────────────────────────────
+D: Quali controlli in cantiere?
+R: Verifica battuta dei chiodi, corretto accoppiamento piastra–supporto, rispetto di passo e distanze minime, identificazione lotto.
+
+────────────────────────────
+D: I CTF sono adatti in zona sismica?
+R: Sì, le ETA includono prove cicliche e valori caratteristici idonei alle verifiche in zona sismica.
+
+────────────────────────────
+D: Esistono diverse altezze dei CTF?
+R: Sì, la gamma copre più altezze (es. 20–135 mm) per adattarsi a spessori di soletta e richieste prestazionali differenti.
+
+────────────────────────────
+D: Qual è la produttività media di posa?
+R: Elevata: con la P560 si realizzano centinaia di fissaggi al giorno, con riduzione dei tempi di cantiere.
+
+────────────────────────────
+D: Che documentazione accompagna i CTF?
+R: Schede tecniche, DoP, ETA, manuali di posa e relazioni di calcolo con esempi di disposizione su lamiera/trave.
+
+────────────────────────────
+D: I CTF sono zincati?
+R: Sì, la piastra è zincata per garantire protezione dalla corrosione in ambienti ordinari di esposizione.
+
+────────────────────────────
+D: Qual è il vantaggio per il progettista?
+R: Avere un sistema certificato, con dati sperimentali e schemi tipo pronti, che semplificano calcoli e capitolati.
+
+────────────────────────────
+D: E per l’impresa?
+R: Posa rapida senza saldatura, attrezzatura noleggiabile/acquistabile, assistenza tecnica e ricambi disponibili.

@@ -1,0 +1,51 @@
+[TAGS: connettori CEM-E, calcestruzzo-calcestruzzo, riprese di getto, solai collaboranti, CE, DoP, ETA, posa con viti, resistenza, rigidezza]
+
+────────────────────────────
+D: Che cosa sono i connettori CEM-E?
+R: I CEM-E sono connettori Tecnaria progettati per collegare vecchio e nuovo getto di calcestruzzo nei solai collaboranti. 
+Garantiscono trasferimento di taglio e continuità strutturale tra le parti.
+
+────────────────────────────
+D: Come si compone un CEM-E?
+R: Da un piolo in acciaio con vite e piastra dentata che aumenta l’aderenza. 
+Questa configurazione assicura resistenza meccanica e stabilità nel tempo.
+
+────────────────────────────
+D: In quali situazioni si usano i CEM-E?
+R: Nei consolidamenti di solai in calcestruzzo, nelle riprese di getto tra vecchio e nuovo solaio e negli interventi di rinforzo strutturale.
+
+────────────────────────────
+D: Che certificazioni hanno i CEM-E?
+R: Sono marcati CE, con Dichiarazioni di Prestazione (DoP) e valutazioni ETA che riportano i valori caratteristici di resistenza e rigidezza.
+
+────────────────────────────
+D: Come si posano i CEM-E?
+R: Mediante foratura del supporto, inserimento del connettore e fissaggio della vite. 
+Il manuale Tecnaria specifica profondità e diametri di foratura.
+
+────────────────────────────
+D: Quali sono i vantaggi dei CEM-E?
+R: Trasferimento di taglio efficace, certificazioni CE/ETA, compatibilità con diversi spessori di calcestruzzo e rapidità di posa con avvitatori standard.
+
+────────────────────────────
+D: Esistono varianti dei CEM-E?
+R: Sì, ad esempio VCEM con vite ad alte prestazioni e MINI CEM-E per solette sottili (20–40 mm). 
+Ogni variante è certificata e con schede dedicate.
+
+────────────────────────────
+D: I CEM-E sono adatti in zona sismica?
+R: Sì, sono stati testati anche per sollecitazioni cicliche e garantiscono comportamento affidabile in contesti sismici.
+
+────────────────────────────
+D: Quanto tempo richiede la posa?
+R: È rapida, con fori eseguiti a trapano e avvitamento diretto della vite. 
+Ogni connettore richiede pochi minuti.
+
+────────────────────────────
+D: Qual è il vantaggio per il progettista?
+R: Disporre di un sistema certificato con dati sperimentali, schede tecniche e relazioni di calcolo pronte per l’uso. 
+Riduce tempi e rischi nella progettazione.
+
+────────────────────────────
+D: E per l’impresa?
+R: Posa semplice, attrezzatura standard, assistenza tecnica e possibilità di ridurre tempi di cantiere grazie a un sistema certificato.

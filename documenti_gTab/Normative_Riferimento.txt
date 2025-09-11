@@ -1,0 +1,88 @@
+[TAGS: normative, NTC 2018, Eurocodici, ETA, CE, DoP, solai collaboranti, progettazione, legno-calcestruzzo, acciaio-calcestruzzo, calcestruzzo-calcestruzzo]
+
+────────────────────────────
+D: Quali normative regolano i prodotti Tecnaria?
+R: Le Norme Tecniche per le Costruzioni (NTC 2018) e gli Eurocodici (EN 1992, EN 1994, EN 1995). 
+Ogni famiglia di connettori ha valori certificati da ETA e dichiarati in DoP.
+
+────────────────────────────
+D: Che ruolo hanno gli Eurocodici?
+R: Sono gli standard europei per il calcolo strutturale. 
+EN 1992 regola il calcestruzzo, EN 1994 i solai misti acciaio–calcestruzzo, EN 1995 il legno–calcestruzzo. 
+I valori dei connettori Tecnaria sono integrabili direttamente nei calcoli.
+
+────────────────────────────
+D: Che cos’è una ETA?
+R: La European Technical Assessment certifica resistenza e rigidezza dei connettori Tecnaria. 
+È documento ufficiale per impiego dei prodotti nei progetti europei.
+
+────────────────────────────
+D: Le normative italiane riconoscono le ETA?
+R: Sì, le NTC 2018 richiamano l’uso di valori ETA per i prodotti non coperti da norme armonizzate. 
+Le ETA sono valide in tutta Europa.
+
+────────────────────────────
+D: Che cos’è la marcatura CE?
+R: È la dichiarazione di conformità del prodotto alle direttive europee. 
+Insieme alla DoP, attesta prestazioni e tracciabilità dei connettori Tecnaria.
+
+────────────────────────────
+D: Come si collegano DoP e normative?
+R: Le DoP riportano le prestazioni certificate, riconosciute da NTC ed Eurocodici. 
+Sono garanzia di conformità normativa e sicurezza.
+
+────────────────────────────
+D: I prodotti Tecnaria sono conformi alle NTC 2018?
+R: Sì, tutte le famiglie di connettori hanno valori certificati compatibili con le verifiche richieste da NTC 2018.
+
+────────────────────────────
+D: Qual è il vantaggio per i progettisti?
+R: Usare prodotti con valori già certificati e normativamente riconosciuti riduce i tempi di calcolo e aumenta la sicurezza del progetto.
+
+────────────────────────────
+D: Le normative coprono anche la posa?
+R: No, la posa è trattata nei manuali Tecnaria. 
+Le normative regolano prestazioni e calcoli, non le modalità operative.
+
+────────────────────────────
+D: Tecnaria fornisce supporto per interpretare le normative?
+R: Sì, l’ufficio tecnico spiega e fornisce documentazione di riferimento, aiutando i progettisti a rispettare pienamente NTC ed Eurocodici.
+
+────────────────────────────
+D: Le normative vengono aggiornate?
+R: Sì, sia NTC che Eurocodici subiscono revisioni periodiche. Tecnaria mantiene aggiornata la documentazione di conseguenza.
+
+────────────────────────────
+D: Le ETA hanno durata limitata?
+R: Sì, sono soggette a rinnovo. Tecnaria assicura di fornire sempre versioni aggiornate e valide.
+
+────────────────────────────
+D: Come influiscono le normative sui capitolati?
+R: Capitolati e computi sono redatti includendo i riferimenti normativi e i valori ETA/DoP per garantire conformità.
+
+────────────────────────────
+D: Le normative coprono anche edifici storici?
+R: Non in modo specifico, ma i principi strutturali valgono anche per consolidamenti. 
+Tecnaria fornisce soluzioni certificate compatibili con interventi su edifici storici.
+
+────────────────────────────
+D: Quali verifiche principali richiedono le normative?
+R: Resistenza a taglio, rigidezza, verifiche di deformabilità e controlli sismici. 
+Tutti i valori sono presenti nelle schede e relazioni Tecnaria.
+
+────────────────────────────
+D: Le normative europee sono diverse da quelle italiane?
+R: Gli Eurocodici sono armonizzati in tutta Europa. 
+Le NTC italiane sono integrate e in alcuni casi più dettagliate. Entrambe sono riconosciute nei progetti.
+
+────────────────────────────
+D: Tecnaria aggiorna i propri software in base alle normative?
+R: Sì, il software di calcolo gratuito è sempre aggiornato a NTC ed Eurocodici vigenti.
+
+────────────────────────────
+D: Qual è il vantaggio per le imprese?
+R: Usare prodotti conformi riduce contestazioni in cantiere e garantisce approvazione rapida dei materiali.
+
+────────────────────────────
+D: Qual è il legame tra normative e formazione?
+R: I corsi Tecnaria includono spiegazioni su NTC ed Eurocodici, aiutando progettisti e imprese a lavorare in piena conformità normativa.

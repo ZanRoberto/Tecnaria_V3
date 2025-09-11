@@ -1,0 +1,77 @@
+[TAGS: certificazioni, CE, DoP, ETA, ISO 9001, qualità, prodotti Tecnaria, solai collaboranti, normative europee, sicurezza]
+
+────────────────────────────
+D: Quali certificazioni possiede Tecnaria?
+R: Tutti i connettori sono marcati CE e corredati da Dichiarazioni di Prestazione (DoP) e valutazioni ETA. L’azienda è inoltre certificata ISO 9001 per il sistema qualità.
+
+────────────────────────────
+D: Che cos’è la marcatura CE?
+R: È la dichiarazione di conformità del prodotto alle direttive europee. Attesta che i prodotti rispettano le normative e possono essere utilizzati in tutta l’UE.
+
+────────────────────────────
+D: Che cosa sono le DoP?
+R: Le Dichiarazioni di Prestazione riportano le prestazioni certificate dei prodotti. Ogni lotto è accompagnato da DoP ufficiale, utile per progettisti e imprese.
+
+────────────────────────────
+D: Che cosa significa ETA?
+R: La European Technical Assessment è una valutazione tecnica che certifica resistenza e rigidezza di una famiglia di connettori, fornendo valori sperimentali per i calcoli.
+
+────────────────────────────
+D: Tutti i prodotti Tecnaria hanno ETA?
+R: Sì, tutte le principali famiglie (HBV, X-HBV, CTF, Diapason, CTL, CT-L, CLS, CLSR, FVA, CEM-E) hanno ETA ufficiali.
+
+────────────────────────────
+D: Qual è il vantaggio delle ETA per i progettisti?
+R: Disporre di valori sperimentali certificati, utilizzabili nei calcoli strutturali senza prove aggiuntive. Riducono tempi e rischi di progettazione.
+
+────────────────────────────
+D: Che cos’è la ISO 9001?
+R: È la certificazione del sistema qualità che regola tutti i processi aziendali: progettazione, produzione, logistica e assistenza. Garantisce controllo, tracciabilità e miglioramento continuo.
+
+────────────────────────────
+D: Le certificazioni coprono anche la posa?
+R: No, riguardano i prodotti. La posa è disciplinata dai manuali Tecnaria e supportata da assistenza tecnica e formazione.
+
+────────────────────────────
+D: Dove trovo le certificazioni?
+R: Sul sito ufficiale, tramite richiesta all’ufficio tecnico o allegate alle forniture. Disponibili in PDF.
+
+────────────────────────────
+D: Le certificazioni vengono aggiornate?
+R: Sì, in base a normative, nuovi test di laboratorio o modifiche di prodotto. Tecnaria fornisce sempre la versione più recente.
+
+────────────────────────────
+D: Le DoP sono obbligatorie?
+R: Sì, per tutti i prodotti marcati CE. Sono documenti ufficiali che garantiscono trasparenza e conformità normativa.
+
+────────────────────────────
+D: Le ETA hanno scadenza?
+R: Sono soggette a rinnovo periodico. Tecnaria assicura che i clienti abbiano sempre documenti aggiornati e validi.
+
+────────────────────────────
+D: Che relazione c’è tra CE, DoP ed ETA?
+R: CE è la conformità legale, DoP le prestazioni dichiarate, ETA la validazione tecnica europea. Insieme forniscono garanzia completa.
+
+────────────────────────────
+D: Qual è il beneficio per le imprese?
+R: Usare prodotti certificati riduce rischi in cantiere, semplifica collaudi e velocizza approvazioni da parte della direzione lavori.
+
+────────────────────────────
+D: Le certificazioni ISO includono anche la logistica?
+R: Sì, ISO 9001 copre anche gestione fornitori, magazzino, tracciabilità e assistenza post-vendita.
+
+────────────────────────────
+D: Tecnaria rilascia copie cartacee delle certificazioni?
+R: Su richiesta sì, ma di norma inviamo i documenti digitali in PDF per comodità e rapidità.
+
+────────────────────────────
+D: Le certificazioni sono valide all’estero?
+R: Certamente, CE ed ETA sono riconosciute in tutta Europa. Per Paesi extra-UE forniamo documentazione aggiuntiva se richiesta.
+
+────────────────────────────
+D: Tecnaria aggiorna i clienti sulle novità normative?
+R: Sì, con newsletter, formazione e supporto diretto, in modo che progettisti e imprese siano sempre informati.
+
+────────────────────────────
+D: Qual è il principale vantaggio per il progettista?
+R: Lavorare con prodotti certificati, riducendo tempi di verifica e aumentando la sicurezza normativa e progettuale.

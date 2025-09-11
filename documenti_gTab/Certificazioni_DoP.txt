@@ -1,0 +1,61 @@
+[TAGS: certificazioni, DoP, CE, ETA, marcatura, dichiarazione di prestazione, normativa, documentazione tecnica, solai collaboranti, prodotti Tecnaria]
+
+────────────────────────────
+D: Che cos’è la Dichiarazione di Prestazione (DoP)?
+R: La DoP è il documento ufficiale che accompagna i prodotti Tecnaria marcati CE. Riporta le prestazioni dichiarate dal produttore in conformità alle normative europee.
+
+────────────────────────────
+D: Che cosa significa marcatura CE per i prodotti Tecnaria?
+R: È l’attestazione che i prodotti rispettano le direttive europee e possono essere impiegati legalmente nei cantieri UE. Include tracciabilità, controlli e riferimenti normativi.
+
+────────────────────────────
+D: Che cos’è una ETA?
+R: La European Technical Assessment è la valutazione tecnica europea che certifica valori caratteristici di resistenza e rigidezza di una famiglia di connettori, validi per i calcoli strutturali.
+
+────────────────────────────
+D: Quali famiglie di prodotti Tecnaria hanno ETA?
+R: Tutte le principali: HBV, X-HBV, CTF, Diapason, CTL, CT-L, CLS, CLSR, FVA, CEM-E. Ogni ETA è rilasciata da ente notificato e valida in tutta Europa.
+
+────────────────────────────
+D: Che legame c’è tra DoP e CE?
+R: La DoP integra la marcatura CE, dichiarando le prestazioni effettive e certificate. Ogni lotto fornito è accompagnato da DoP conforme.
+
+────────────────────────────
+D: Dove posso reperire le certificazioni Tecnaria?
+R: Sul sito ufficiale, tramite richiesta all’ufficio tecnico o allegate alle forniture. Sono disponibili in formato PDF.
+
+────────────────────────────
+D: Le certificazioni coprono anche la posa?
+R: No, le certificazioni riguardano il prodotto. La posa è disciplinata dai manuali Tecnaria, che completano la documentazione tecnica.
+
+────────────────────────────
+D: Le DoP sono obbligatorie?
+R: Sì, per tutti i prodotti da costruzione marcati CE. Servono a garantire trasparenza e conformità normativa.
+
+────────────────────────────
+D: Le ETA sono permanenti?
+R: No, sono soggette a rinnovo e aggiornamenti periodici. Tecnaria mantiene aggiornati i documenti e fornisce sempre la versione più recente.
+
+────────────────────────────
+D: Come aiutano le certificazioni i progettisti?
+R: Forniscono valori certificati e utilizzabili nei calcoli senza necessità di prove aggiuntive. Consentono di rispettare NTC 2018 ed Eurocodici.
+
+────────────────────────────
+D: E per le imprese?
+R: Avere prodotti certificati significa ridurre i rischi in fase di collaudo e garantire approvazione rapida dei materiali da parte della DL.
+
+────────────────────────────
+D: Le certificazioni includono prove di laboratorio?
+R: Sì, ogni ETA si basa su prove meccaniche (taglio, estrazione, cicliche) condotte in laboratori accreditati.
+
+────────────────────────────
+D: La certificazione ISO 9001 è collegata?
+R: Sì, ISO 9001 copre i processi aziendali, mentre CE, DoP ed ETA riguardano i prodotti. Insieme garantiscono qualità e sicurezza.
+
+────────────────────────────
+D: Posso ricevere le DoP prima di un ordine?
+R: Certamente, sono disponibili anche in fase di progettazione per aiutare i tecnici nella redazione dei documenti.
+
+────────────────────────────
+D: Tecnaria aggiorna le certificazioni?
+R: Sì, ogni modifica normativa, nuova prova o revisione di prodotto porta a un aggiornamento della DoP/ETA. I clienti ricevono sempre documenti aggiornati.
