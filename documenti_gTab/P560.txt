@@ -1,1 +1,37 @@
+[TAGS: P560, pistola, sparachiodi, posa CTF, posa Diapason, fissaggio connettori, accessori P560, noleggio pistola]
 
+────────────────────────────
+D: Che cos’è la P560?
+R: La P560 è la pistola sparachiodi a cartuccia propulsiva utilizzata per fissare i connettori Tecnaria della serie CTF e Diapason. 
+È prodotta da SPIT, pesa circa 4,1 kg e appartiene alla classe A degli utensili di fissaggio. 
+Permette di realizzare rapidamente solai collaboranti senza ricorrere alla saldatura.
+
+────────────────────────────
+D: Quali sono i principali vantaggi della P560?
+R: Consente fissaggi veloci e ripetibili, riducendo i tempi di posa in cantiere. 
+Garantisce precisione e sicurezza, soprattutto in lavori su lamiera grecata e travi d’acciaio. 
+Con l’uso degli accessori dedicati si ottiene sempre la posizione corretta dei connettori.
+
+────────────────────────────
+D: Che accessori sono disponibili per la P560?
+R: Gli accessori principali sono:
+• Guidapunte CTF (cod. 013994) per il corretto posizionamento dei connettori CTF.  
+• Pistone di ricambio (cod. 013997), che trasmette l’energia dello sparo al chiodo.  
+• Anello ammortizzatore Ø22 mm (cod. 014136), che riduce vibrazioni e protegge la pistola.  
+• Chiodi speciali SBR14 ad alta resistenza, certificati per il fissaggio dei connettori.
+
+────────────────────────────
+D: È possibile noleggiare la P560?
+R: Sì, Tecnaria mette a disposizione la P560 sia per l’acquisto sia per il noleggio a breve termine. 
+Questa opzione è utile per imprese che devono eseguire interventi limitati e non vogliono sostenere il costo dell’acquisto.
+
+────────────────────────────
+D: Quali connettori si posano con la P560?
+R: La P560 è dedicata principalmente al fissaggio dei connettori CTF (pioli su piastra) e dei connettori Diapason. 
+La posa avviene senza saldatura, garantendo resistenze certificate a taglio e trazione. 
+È compatibile con le ETA e le DoP dei prodotti fissati.
+
+────────────────────────────
+D: Quali sono le raccomandazioni d’uso?
+R: Seguire i manuali Tecnaria e SPIT, verificare sempre la corretta posizione del connettore con l’apposito guidapunte, 
+sostituire regolarmente gli accessori soggetti a usura (pistone e anello ammortizzatore) e utilizzare esclusivamente cartucce e chiodi certificati.
