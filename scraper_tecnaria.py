@@ -1,270 +1,360 @@
 # scraper_tecnaria.py
-import os, re, glob, time
-from typing import List, Dict, Any, Tuple
+# Indicizzazione e ricerca su file .txt (documenti_gTab/)
+# - Nessuna dipendenza extra (solo stdlib) per restare compatibile con Render.
+# - Blocchi separati da una riga "────" oppure per gruppi Q:/R: e [TAGS: ...]
+# - Ricerca full-text + peso TAG + piccola fuzzy/overlap per domande libere.
+# - Restituisce SOLO la risposta (niente "documentazione locale", niente Q:).
+#
+# API attese da app.py:
+#   build_index(docs_dir) -> dict {blocks, files, lines, data}
+#   search_best_answer(index, question) -> (answer, found, score, path, line)
+#   (alias) search_answer(index, question) -> come sopra
 
-# ===== ENV HELPERS =====
-def _pick_env(*keys, default=None):
-    for k in keys:
-        v = os.environ.get(k)
-        if v:
-            return v
-    return default
+import os
+import re
+import unicodedata
+from collections import defaultdict, Counter
 
-DOCS_FOLDER = _pick_env("DOCS_FOLDER", "DOC_DIR", "KNOWLEDGE_DIR", default="documenti_gTab")
-SIM_THRESHOLD = float(_pick_env("SIM_THRESHOLD", "SIMILARITY_THRESHOLD", default="0.35"))
-MAX_RETURN_CHARS = int(os.environ.get("MAX_RETURN_CHARS", "1600"))
-DEBUG = os.environ.get("DEBUG_SCRAPER", "1") == "1"
+# -------------------------------
+# Config da ENV (valori robusti)
+# -------------------------------
+SIM_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))  # soglia per accettare una risposta
+TOPK = int(os.environ.get("TOPK_SEMANTIC", "12"))                      # quanti blocchi tenere in shortlist
+MIN_CHARS = int(os.environ.get("MIN_CHARS_PER_CHUNK", "120"))          # evita blocchi troppo corti
 
-# ===== STATO =====
-_index: List[Dict[str, Any]] = []
-_last_build_info: Dict[str, Any] = {"count": 0, "lines": 0, "blocks": 0, "ts": 0.0}
+DEBUG = os.environ.get("DEBUG_SCRAPER", os.environ.get("DEBUG", "0")) == "1"
 
-# ===== TOKENIZZAZIONE =====
+# Stopwords essenziali italiane (non rimuovere termini tecnici)
 STOPWORDS = {
     "il","lo","la","i","gli","le","un","uno","una","di","del","della","dell","dei","degli","delle",
     "e","ed","o","con","per","su","tra","fra","in","da","al","allo","ai","agli","alla","alle",
-    "che","come","quale","quali","dove","quando","anche","mi","parli","parlami","dimmi",
-    "cos", "cos’è", "cos'e"
+    "che","come","quale","quali","dove","quando","anche","ma","se","si","no","mi","ti","ci","vi",
+    "dei","agli","dai","nel","nella","nelle","nei","sul","sulla","sulle","sui"
 }
-_token_pat = re.compile(r"[^a-z0-9àèéìòóùç\-/ ]+", flags=re.IGNORECASE)
 
-def _clean(s: str) -> str:
-    s = s.lower()
-    s = _token_pat.sub(" ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+# Regex utili
+RE_TAGS   = re.compile(r"^\s*\[TAGS:\s*(.*?)\s*\]\s*$", re.IGNORECASE)
+RE_Q      = re.compile(r"^\s*D:\s*(.+)$", re.IGNORECASE)
+RE_A      = re.compile(r"^\s*R:\s*(.+)$", re.IGNORECASE)
+RE_SPLIT  = re.compile(r"^\s*[\u2500\-_=]{10,}\s*$")  # linee con "────────", "-----", "====="
 
-def _tokenize(s: str) -> List[str]:
-    toks = _clean(s).split()
-    return [t for t in toks if t not in STOPWORDS]
+# -------------------------------
+# Utilità testuali
+# -------------------------------
 
-# ===== METRICA =====
-def _score(q_tokens: List[str], text: str) -> float:
-    """
-    Score = max(recall, jaccard)
-    - recall: quota token query trovati
-    - jaccard: intersezione/unione
-    """
-    t_tokens = _tokenize(text)
-    if not t_tokens or not q_tokens:
-        return 0.0
-    A, B = set(q_tokens), set(t_tokens)
-    inter = len(A & B)
-    union = len(A | B) or 1
-    jacc = inter / union
-    recall = inter / (len(A) or 1)
-    return max(recall, jacc)
+def _norm(text: str) -> str:
+    """Normalizza (minuscole, rimuove accenti, spazi compatti)."""
+    text = text or ""
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = text.lower().strip()
+    return text
 
-# ===== PARSER TXT =====
-def _finish_block(cur: Dict[str, Any], blocks: List[Dict[str, Any]]):
-    if not cur:
-        return
-    ans = (cur.get("answer") or "").strip()
-    if MAX_RETURN_CHARS > 0 and len(ans) > MAX_RETURN_CHARS:
-        ans = ans[:MAX_RETURN_CHARS].rstrip() + "…"
-    cur["answer"] = ans
-
-    tag = cur.get("tags", "")
-    q = cur.get("question", "")
-    ans_full = cur["answer"]
-
-    # Replica TAGS per dargli peso
-    cur["text_for_match"] = " ".join([tag, tag, q, ans_full]).strip()
-
-    # Lista tag per euristiche
-    tags_norm = [t.strip().lower() for t in tag.split(",")] if tag else []
-    cur["tags_list"] = tags_norm
-    cur["first_tag"] = tags_norm[0] if tags_norm else ""
-
-    if cur.get("question") or cur.get("answer"):
-        blocks.append(cur)
-
-def parse_txt_file(path: str) -> Tuple[List[Dict[str, Any]], int]:
-    blocks: List[Dict[str, Any]] = []
-    tags = ""
-    cur: Dict[str, Any] = {}
-    line_no = 0
-    total_lines = 0
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            for raw_line in f:
-                total_lines += 1
-                line_no += 1
-                line = raw_line.rstrip("\n")
-
-                if not line.strip():
-                    continue
-
-                if line.strip().startswith("[TAGS"):
-                    m = re.search(r"\[TAGS\s*:\s*(.*?)\]$", line.strip(), flags=re.IGNORECASE)
-                    tags = m.group(1).strip() if m else line.strip()
-                    continue
-
-                if line.lstrip().startswith("D:"):
-                    _finish_block(cur, blocks)
-                    q = line.split("D:", 1)[1].strip()
-                    cur = {"path": path, "start_line": line_no, "tags": tags,
-                           "question": q, "answer": "" }
-                    continue
-
-                if line.lstrip().startswith("R:"):
-                    r = line.split("R:", 1)[1].strip()
-                    if "answer" not in cur:
-                        cur = {"path": path, "start_line": line_no, "tags": tags,
-                               "question": "", "answer": r}
-                    else:
-                        cur["answer"] = (cur.get("answer","") + ("\n" if cur.get("answer") else "") + r)
-                    continue
-
-                if cur:
-                    cur["answer"] = (cur.get("answer","") + ("\n" if cur.get("answer") else "") + line)
-
-        _finish_block(cur, blocks)
-
-    except Exception as e:
-        print(f"[scraper_tecnaria][WARN] Errore parsing {path}: {e}")
-
-    return blocks, total_lines
-
-# ===== INDEX =====
-def build_index(folder: str = DOCS_FOLDER) -> Dict[str, Any]:
-    global _index, _last_build_info
-    _index = []
-    tot_lines = 0
-    tot_blocks = 0
-    folder_abs = os.path.abspath(folder)
-    if DEBUG:
-        print(f"[scraper_tecnaria] Inizio indicizzazione da: {folder_abs}\n")
-    files = sorted(glob.glob(os.path.join(folder_abs, "*.txt")))
-    if DEBUG:
-        print(f"[scraper_tecnaria] Trovati {len(files)} file .txt:")
-        for p in files:
-            print(f"  - {p}")
-    for p in files:
-        blocks, lines = parse_txt_file(p)
-        tot_lines += lines
-        tot_blocks += len(blocks)
-        _index.extend(blocks)
-
-    _last_build_info = {"count": len(files), "lines": tot_lines,
-                        "blocks": tot_blocks, "ts": time.time()}
-    if DEBUG:
-        print(f"[scraper_tecnaria] Indicizzati {tot_blocks} blocchi / {tot_lines} righe da {len(files)} file.")
-    return _last_build_info
-
-def reload_index() -> Dict[str, Any]:
-    return build_index(DOCS_FOLDER)
-
-def list_index() -> Dict[str, Any]:
-    return _last_build_info
-
-# ===== UTILITY =====
-def _filename_token(path: str) -> str:
-    try:
-        base = os.path.basename(path)
-        name, _ = os.path.splitext(base)
-        return _clean(name)
-    except:
-        return ""
-
-def _tags_tokens(blk: Dict[str, Any]) -> set:
-    toks = set()
-    for t in blk.get("tags_list", []):
-        toks |= set(_tokenize(t))
+def _tok(text: str):
+    """Tokenizzazione semplice; rimuove stopword."""
+    text = _norm(text)
+    # tieni lettere/numeri e slash per codici (es. 14/040)
+    text = re.sub(r"[^a-z0-9/\.]+", " ", text)
+    toks = [t for t in text.split() if t and t not in STOPWORDS]
     return toks
 
-# ===== SEARCH con filtro deterministico e intento catalogo =====
-def search_best_answer(query: str) -> Dict[str, Any]:
-    q_tokens = _tokenize(query)
-    qset = set(q_tokens)
+def _contains_hard_keyword(block_text_norm: str, q_norm: str) -> int:
+    """Boost se la domanda contiene una parola 'forte' che compare nel blocco (es. P560, CTF, HBV)."""
+    hard = []
+    for w in re.findall(r"[a-z0-9\-]{2,}", q_norm):
+        if w.isdigit():
+            continue
+        if len(w) <= 2:
+            continue
+        # parole tecniche/nomi prodotto tipici
+        if any(pref in w for pref in ("p560","ctf","cem","hbv","x-hbv","ctl","fva","fva-l","cls","clsr","diapason","t-connect","dop","eta","bassano")):
+            hard.append(w)
+    score = 0
+    for w in set(hard):
+        if w in block_text_norm:
+            score += 1
+    return score
 
-    # ---- INTENTO "CATALOGO/CODICI" ----
-    catalogo_terms = {"codici", "elenco", "catalogo", "lista", "listino"}
-    is_catalogo_query = bool(qset & catalogo_terms)
+def _extract_answer_text(raw_block: str) -> str:
+    """Estrae SOLO la risposta dal blocco:
+       - Se c'è 'R:' prende da lì in giù (fino al prossimo separatore o fine blocco)
+       - Altrimenti ritorna il blocco ripulito (senza TAGS e senza Q:)."""
+    lines = raw_block.splitlines()
+    # taglia eventuale riga [TAGS:...]
+    lines_wo_tags = []
+    for ln in lines:
+        if RE_TAGS.match(ln):
+            continue
+        lines_wo_tags.append(ln)
+    # prova a partire da R:
+    out = []
+    seen_r = False
+    for ln in lines_wo_tags:
+        mA = RE_A.match(ln)
+        if mA:
+            out.append(mA.group(1).strip())
+            seen_r = True
+            continue
+        if seen_r:
+            # interrompi se trovi un separatore "────"
+            if RE_SPLIT.match(ln):
+                break
+            out.append(ln.strip())
+    if seen_r:
+        text = "\n".join([l for l in out if l]).strip()
+        if text:
+            return text
+    # fallback: rimuovi eventuali D: e restituisci tutto il resto
+    cleaned = []
+    for ln in lines_wo_tags:
+        if RE_Q.match(ln):
+            continue
+        cleaned.append(ln.strip())
+    text = "\n".join([l for l in cleaned if l]).strip()
+    return text
 
-    intent_candidates = []
-    if is_catalogo_query:
-        for i, blk in enumerate(_index):
-            ftoken = _filename_token(blk.get("path", ""))
-            fname_tok = set(_tokenize(ftoken))
-            tags_tok  = _tags_tokens(blk)
-            first_tok = set(_tokenize(blk.get("first_tag", "")))
+# -------------------------------
+# Parser blocchi dai file .txt
+# -------------------------------
 
-            if (fname_tok & {"prodotti", "elenco", "catalogo"}) \
-               or (first_tok & catalogo_terms) \
-               or (tags_tok & catalogo_terms):
-                intent_candidates.append(i)
+def _iter_blocks_from_text(text: str):
+    """Ritorna blocchi logici separati. Un blocco è:
+       - una sezione tra separatori "─────"
+       - oppure un gruppo che contiene [TAGS:], e/o D:, R:."""
+    if not text:
+        return
+    # Spezza per grandi separatori
+    raw_chunks = re.split(RE_SPLIT, text)
+    for chunk in raw_chunks:
+        c = chunk.strip()
+        if len(c) < MIN_CHARS:
+            continue
+        yield c
 
-    # ---- PASSO 1: candidati normali ----
-    candidates = []
-    for i, blk in enumerate(_index):
-        ftoken = _filename_token(blk.get("path", ""))
-        tags_tok = _tags_tokens(blk)
-        first_tag_tok = set(_tokenize(blk.get("first_tag", "")))
+def _parse_block(chunk: str):
+    """Estrae tags, domanda/risposta (se presenti) e testo normalizzato."""
+    tags = []
+    for ln in chunk.splitlines():
+        mT = RE_TAGS.match(ln)
+        if mT:
+            # tag singola riga separati da virgole
+            tags = [t.strip().lower() for t in mT.group(1).split(",") if t.strip()]
+            break
 
-        match_on_filename = ftoken and (qset & set(_tokenize(ftoken)))
-        match_on_firsttag = bool(qset & first_tag_tok)
-        match_on_anytag   = bool(qset & tags_tok)
-        if match_on_filename or match_on_firsttag or match_on_anytag:
-            candidates.append(i)
+    # Q/A (non sono obbligatori – a volte c'è solo testo)
+    q_text = None
+    a_text = None
+    for ln in chunk.splitlines():
+        mQ = RE_Q.match(ln)
+        if mQ and not q_text:
+            q_text = mQ.group(1).strip()
+        mA = RE_A.match(ln)
+        if mA and not a_text:
+            a_text = mA.group(1).strip()
 
-    # ---- PRIORITÀ ----
-    if intent_candidates:
-        pool = intent_candidates
-    elif candidates:
-        pool = candidates
-    else:
-        pool = list(range(len(_index)))
+    # fallback: se non c'è R: prendi il blocco ripulito
+    if not a_text:
+        a_text = _extract_answer_text(chunk)
 
-    # ---- SCORING ----
-    best_idx, best_score = -1, -1.0
-    for i in pool:
-        blk = _index[i]
-        sc = _score(q_tokens, blk["text_for_match"])
-
-        # bonus
-        bonus = 0.0
-        ftoken = _filename_token(blk.get("path",""))
-        if ftoken and (qset & set(_tokenize(ftoken))):
-            bonus += 0.60
-        first_tag = blk.get("first_tag", "")
-        if first_tag:
-            first_tag_tokens = set(_tokenize(first_tag))
-            if qset & first_tag_tokens:
-                bonus += 0.40
-        if _tags_tokens(blk) & qset:
-            bonus += 0.15
-
-        sc_final = sc + bonus
-        if sc_final > best_score:
-            best_idx, best_score = i, sc_final
-
-    if best_idx < 0:
-        return {"found": False, "score": 0.0, "path": None, "line": None,
-                "question": "", "answer": ""}
-
-    blk = _index[best_idx]
-    result = {
-        "found": best_score >= SIM_THRESHOLD,
-        "score": round(best_score, 3),
-        "path": blk["path"],
-        "line": blk["start_line"],
-        "question": blk.get("question",""),
-        "answer": blk.get("answer",""),
-        "tags": blk.get("tags","")
+    norm_all = _norm(chunk)
+    norm_ans = _norm(a_text or "")
+    return {
+        "tags": tags,
+        "q": q_text,
+        "a": a_text,
+        "norm_chunk": norm_all,
+        "norm_ans": norm_ans,
+        "raw": chunk
     }
 
-    if DEBUG:
-        fname = os.path.basename(result["path"]) if result["path"] else "?"
-        print("─────────────── SEARCH DEBUG ───────────────")
-        print(f"Query:    {query}")
-        print(f"File:     {fname}")
-        print(f"Linea:    {result['line']}")
-        print(f"Score:    {result['score']} (soglia={SIM_THRESHOLD})")
-        print(f"TAGS:     {result.get('tags','')}")
-        print("--------------------------------------------")
-        if not result["found"]:
-            print(f"[scraper_tecnaria][SEARCH] Nessun blocco sopra soglia ({SIM_THRESHOLD}).")
+# -------------------------------
+# Indicizzazione
+# -------------------------------
 
-    return result
+def build_index(docs_dir: str):
+    """Scansiona docs_dir per .txt, crea lista blocchi con metadata e indice invertito leggero."""
+    if DEBUG:
+        print(f"[scraper_tecnaria] Inizio indicizzazione da: {docs_dir}\n")
+
+    data = []            # lista di dict: {path, line, tags, q, a, norm_chunk, norm_ans, raw}
+    inverted = defaultdict(list)  # token -> list of (doc_id, weight)
+    files = 0
+    lines_total = 0
+
+    # Trova TUTTI i .txt (senza limiti)
+    file_list = []
+    for root, _dirs, fnames in os.walk(docs_dir):
+        for fn in fnames:
+            if fn.lower().endswith(".txt"):
+                file_list.append(os.path.join(root, fn))
+
+    if DEBUG:
+        print("[scraper_tecnaria] Trovati %d file .txt:" % len(file_list))
+        for p in file_list:
+            print("  -", p)
+
+    for path in sorted(file_list):
+        files += 1
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            lines_total += content.count("\n") + 1
+            # Estrai blocchi
+            line_cursor = 1
+            for chunk in _iter_blocks_from_text(content):
+                parsed = _parse_block(chunk)
+                entry = {
+                    "path": path,
+                    "line": line_cursor,
+                    **parsed
+                }
+                data.append(entry)
+
+                # indicizza token della risposta + tag + eventuale domanda
+                tokens = _tok(parsed.get("a") or "") + _tok(parsed.get("q") or "")
+                for t in _tok(" ".join(parsed.get("tags", []))):
+                    tokens.append(t)
+                # pesa leggermente i tag
+                counts = Counter(tokens)
+                for tok, cnt in counts.items():
+                    inverted[tok].append((len(data)-1, cnt))
+
+                # aggiorna cursor grossolanamente
+                line_cursor += max(1, chunk.count("\n") + 1)
+
+        except Exception as e:
+            if DEBUG:
+                print(f"[scraper_tecnaria][WARN] Errore su {path}: {e}")
+
+    blocks = len(data)
+    if DEBUG:
+        print(f"[scraper_tecnaria] Indicizzati {blocks} blocchi / {lines_total} righe da {files} file.")
+
+    return {
+        "blocks": blocks,
+        "files": files,
+        "lines": lines_total,
+        "data": data,
+        "inverted": inverted
+    }
+
+# -------------------------------
+# Ricerca
+# -------------------------------
+
+def _score_block(entry, q_norm, q_tokens):
+    """Punteggio combinato: overlap token, presenza hard keywords, bonus se TAG matcha."""
+    # 1) overlap semplice su risposta normalizzata
+    ans = entry.get("norm_ans", "")
+    if not ans:
+        ans = entry.get("norm_chunk", "")
+
+    # conteggio match token
+    overlap = 0
+    for t in q_tokens:
+        if t in ans:
+            overlap += 1
+
+    # 2) hard keyword boost (P560, CTF, HBV, ecc.)
+    hard_boost = _contains_hard_keyword(ans, q_norm)
+
+    # 3) match su TAG
+    tag_boost = 0
+    tags = entry.get("tags") or []
+    if tags:
+        # se QUALSIASI token della domanda è nel tag string → boost
+        tag_text = " ".join(tags)
+        tag_norm = _norm(tag_text)
+        for t in q_tokens:
+            if t and t in tag_norm:
+                tag_boost += 1
+
+    # 4) bonus se la domanda è molto simile alla "D:" del blocco
+    qa_bonus = 0
+    if entry.get("q"):
+        q_in_block = _norm(entry["q"])
+        # mini-somiglianza: conta quanti token della domanda stanno nella q_in_block
+        inter = 0
+        for t in q_tokens:
+            if t in q_in_block:
+                inter += 1
+        qa_bonus = inter * 0.5
+
+    # combinazione pesata
+    score = (
+        overlap * 1.0 +
+        hard_boost * 1.2 +
+        tag_boost * 0.8 +
+        qa_bonus
+    )
+
+    return score
+
+def search_best_answer(index: dict, question: str):
+    """Cerca il blocco migliore e restituisce SOLO la risposta testuale."""
+    if not index or not isinstance(index, dict):
+        return ("", False, 0.0, None, None)
+
+    data = index.get("data") or []
+    if not data:
+        return ("", False, 0.0, None, None)
+
+    q_norm = _norm(question)
+    q_tokens = _tok(question)
+
+    # Shortlist tramite indice invertito (se possibile)
+    shortlist_ids = set()
+    inverted = index.get("inverted") or {}
+
+    for t in q_tokens:
+        if t in inverted:
+            for doc_id, _w in inverted[t]:
+                shortlist_ids.add(doc_id)
+
+    # fallback: se indice non aiuta, consideriamo tutti (ma TOPK)
+    candidates = []
+    if shortlist_ids:
+        pool = shortlist_ids
+    else:
+        pool = range(len(data))
+
+    # Scora i candidati
+    for doc_id in pool:
+        entry = data[doc_id]
+        s = _score_block(entry, q_norm, q_tokens)
+        if s > 0:
+            candidates.append((s, doc_id))
+
+    # ordina per score
+    candidates.sort(reverse=True)
+    candidates = candidates[:max(3, TOPK)]
+
+    if not candidates:
+        # niente trovato sopra 0
+        return ("", False, 0.0, None, None)
+
+    best_score, best_id = candidates[0]
+    entry = data[best_id]
+
+    # normalizza score (grezza): portiamo in [0..1] con una curva dolce
+    # (solo per dare un'idea nel debug/UI)
+    norm_score = min(1.0, best_score / (best_score + 8.0))
+
+    if norm_score < SIM_THRESHOLD:
+        return ("", False, float(norm_score), entry.get("path"), entry.get("line"))
+
+    # Estrai SOLO la risposta pulita
+    answer = _extract_answer_text(entry.get("raw", "")) or (entry.get("a") or "")
+    answer = answer.strip()
+
+    # Taglia spazi multipli
+    answer = re.sub(r"\n{3,}", "\n\n", answer)
+
+    if DEBUG:
+        print(f"[scraper_tecnaria][SEARCH] q={question!r} -> score={norm_score:.3f} {entry.get('path')}:{entry.get('line')}")
+
+    return (answer, True, float(norm_score), entry.get("path"), entry.get("line"))
+
+# Alias per retro-compatibilità (vedi spiegazione sopra)
+def search_answer(index, question):
+    return search_best_answer(index, question)
