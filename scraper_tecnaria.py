@@ -234,7 +234,14 @@ def search_best_answer(query: str) -> Dict[str, Any]:
         "tags": blk.get("tags","")
     }
     if DEBUG:
-        print(f"[scraper_tecnaria][SEARCH] q='{query}' -> score={result['score']} {result['path']}:{result['line']}")
+        fname = os.path.basename(result["path"]) if result["path"] else "?"
+        print("─────────────── SEARCH DEBUG ───────────────")
+        print(f"Query:    {query}")
+        print(f"File:     {fname}")
+        print(f"Linea:    {result['line']}")
+        print(f"Score:    {result['score']} (soglia={SIM_THRESHOLD})")
+        print(f"TAGS:     {result.get('tags','')}")
+        print("--------------------------------------------")
         if not result["found"]:
             print(f"[scraper_tecnaria][SEARCH] Nessun blocco sopra soglia ({SIM_THRESHOLD}).")
     return result
