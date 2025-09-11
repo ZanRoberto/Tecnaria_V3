@@ -81,3 +81,29 @@ D: Come si posano i connettori CEM-E?
 R: La posa avviene tramite preforatura del calcestruzzo, inserimento del connettore e serraggio della vite alla coppia indicata. 
 Le istruzioni di Tecnaria riportano diametro foro, profondità e modalità di fissaggio. 
 Ogni lotto è tracciato e accompagnato da DoP e schede tecniche.
+[TAGS: MINI CEM-E, connettori calcestruzzo sottili, soletta sottile, riprese di getto, 20 mm, 30 mm, 40 mm, trasferimento taglio]
+
+D: Che cos’è un connettore MINI CEM-E?
+R: I connettori MINI CEM-E Tecnaria sono pensati per collegare vecchio e nuovo getto di calcestruzzo quando la soletta disponibile è molto sottile (20–40 mm). Assicurano trasferimento del taglio e continuità strutturale anche in spessori ridotti, con componenti ottimizzati per l’ancoraggio.
+
+D: Quali sono i codici disponibili della gamma MINI CEM-E?
+R: I principali codici sono:
+- MINI CEM-E 10/020
+- MINI CEM-E 10/030
+- MINI CEM-E 10/040
+Ogni codice indica il diametro vite (Ø10 mm) e l’altezza utile per lo spessore di soletta (20/30/40 mm).
+
+D: Quando si usa il MINI CEM-E 10/020?
+R: Quando la soletta è di circa 20 mm. È indicato per interventi dove non è possibile incrementare lo spessore del getto ma serve comunque continuità tra vecchio e nuovo calcestruzzo.
+
+D: E il MINI CEM-E 10/030 in quali casi è consigliato?
+R: Per solette di circa 30 mm. Mantiene geometria e principi di ancoraggio della gamma, offrendo un maggiore margine di tenuta rispetto al 10/020.
+
+D: A cosa serve il MINI CEM-E 10/040?
+R: È adatto a solette di circa 40 mm e consente collegamenti sicuri con migliore capacità di trasferimento del taglio rispetto alle versioni più corte.
+
+D: Come avviene la posa dei MINI CEM-E?
+R: Si esegue la foratura del calcestruzzo secondo diametro e profondità indicati, si inserisce il connettore con vite Ø10 mm e si serra alla coppia prescritta. La procedura garantisce resistenze a taglio e trazione anche in spessori molto ridotti.
+
+D: Che documentazione accompagna i MINI CEM-E?
+R: La fornitura è accompagnata da schede tecniche e Dichiarazione di Prestazione (DoP). Le istruzioni di posa riportano diametri di foratura, profondità, coppie di serraggio e distanze minime.
