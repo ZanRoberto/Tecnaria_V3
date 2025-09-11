@@ -11,7 +11,7 @@
     h1 { font-size: 20px; margin: 0; }
     .bar { margin: 14px 0; display:flex; gap: 8px; flex-wrap: wrap; }
     button { padding: 8px 12px; border-radius: 8px; border:1px solid #ccc; cursor:pointer; }
-    input, textarea { width: 100%; max-width: 720px; padding: 10px; border-radius: 8px; border:1px solid #ccc; }
+    input { width: 100%; max-width: 720px; padding: 10px; border-radius: 8px; border:1px solid #ccc; }
     .answer { background:#f7f7f9; border:1px solid #e5e5ef; padding:12px; border-radius:8px; white-space:pre-wrap; }
     .muted { color:#666; font-size: 13px; }
     .debug { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color:#333; }
@@ -29,19 +29,21 @@
     <button onclick="health()">Health</button>
   </div>
 
-  <div id="info" class="muted">Pronto. Carica i .txt in <code>documenti_gTab/</code> poi premi “Ricarica indice”.</div>
+  <div id="info" class="muted">
+    👋 Benvenuto nell’assistente documentale Tecnaria.<br/>
+    Carica i file .txt in <code>documenti_gTab/</code>, premi “Ricarica indice” e inizia a fare domande.
+  </div>
 
   <div style="margin:14px 0;">
-    <input id="q" placeholder="Chiedi a Tecnaria (es: orari sede, differenza CTF/Diapason, posa P560, riprese di getto…)" />
+    <input id="q" placeholder="Chiedi a Tecnaria (es: orari sede, P560, CTF su lamiera, riprese di getto…)" />
     <div class="bar">
       <button onclick="ask()">Chiedi</button>
     </div>
   </div>
 
   <div id="welcome" class="welcome">
-    👋 Benvenuto nell’assistente documentale Tecnaria.<br/>
-    È addestrato esclusivamente sui documenti aziendali caricati in <strong>documenti_gTab/</strong> (TXT).<br/>
-    Scrivi una domanda: la prima risposta farà scomparire questo messaggio.
+    Questo messaggio scompare alla prima risposta.<br/>
+    Scrivi la tua domanda qui sopra e premi “Chiedi”.
   </div>
 
   <div id="out" class="answer" style="display:none;"></div>
@@ -54,13 +56,17 @@
     async function reloadIdx(){
       const r = await fetch('/reload', {method:'POST'});
       const j = await r.json();
-      document.getElementById('info').textContent = 'Indice ricaricato: ' + j.blocks + ' blocchi / ' + j.docs + ' file / ' + j.lines + ' righe';
+      document.getElementById('info').textContent =
+        'Indice ricaricato: ' + j.blocks + ' blocchi / ' + j.docs + ' file / ' + j.lines + ' righe';
     }
+
     async function health(){
       const r = await fetch('/health');
       const j = await r.json();
-      document.getElementById('info').textContent = 'Health: '+j.status+' | blocchi='+j.blocks+' | docs='+j.docs+' | lines='+j.lines;
+      document.getElementById('info').textContent =
+        'Health: '+j.status+' | blocchi='+j.blocks+' | docs='+j.docs+' | lines='+j.lines;
     }
+
     async function ask(){
       const q = document.getElementById('q').value;
       const r = await fetch('/ask', {
@@ -73,7 +79,6 @@
       const out = document.getElementById('out');
       out.style.display = 'block';
       out.textContent = j.answer || '(nessuna risposta)';
-      // debug a video
       document.getElementById('debug').textContent = JSON.stringify(j.debug, null, 2);
     }
   </script>
