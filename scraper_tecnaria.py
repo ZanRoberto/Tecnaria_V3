@@ -2,30 +2,29 @@
 import os, re, glob, time
 from typing import List, Dict, Any, Tuple
 
-# === Config ===
-DOCS_FOLDER = os.environ.get("DOCS_FOLDER", "documenti_gTab")
-SIM_THRESHOLD = float(os.environ.get("SIM_THRESHOLD", "0.60"))  # più morbida per domande libere
-MAX_RETURN_CHARS = int(os.environ.get("MAX_RETURN_CHARS", "1400"))
+# ===== NORMALIZZAZIONE ENV =====
+def _pick_env(*keys, default=None):
+    for k in keys:
+        v = os.environ.get(k)
+        if v:
+            return v
+    return default
+
+DOCS_FOLDER = _pick_env("DOCS_FOLDER", "DOC_DIR", "KNOWLEDGE_DIR", default="documenti_gTab")
+SIM_THRESHOLD = float(_pick_env("SIM_THRESHOLD", "SIMILARITY_THRESHOLD", default="0.50"))
+MAX_RETURN_CHARS = int(os.environ.get("MAX_RETURN_CHARS", "1600"))
 DEBUG = os.environ.get("DEBUG_SCRAPER", "1") == "1"
 
-# === Stato indice ===
-# Ogni entry è un blocco del tipo:
-# {
-#   "path": percorso_file, "start_line": int,
-#   "tags": "…", "question": "…", "answer": "…",
-#   "text_for_match": "tags + question + answer_compatta"
-# }
+# ===== STATO INDICE =====
 _index: List[Dict[str, Any]] = []
 _last_build_info: Dict[str, Any] = {"count": 0, "lines": 0, "blocks": 0, "ts": 0.0}
 
-# === Stopwords (Italiano essenziale) ===
+# ===== STOPWORDS (italiano essenziale) =====
 STOPWORDS = {
     "il","lo","la","i","gli","le","un","uno","una","di","del","della","dell","dei","degli","delle",
     "e","ed","o","con","per","su","tra","fra","in","da","al","allo","ai","agli","alla","alle",
-    "che","come","quale","quali","dove","quando","anche","mi","dei","degli","delle","dei"
+    "che","come","quale","quali","dove","quando","anche","mi"
 }
-# Nota: non blocchiamo "tecnaria": non è richiesta, ma se appare non danneggia.
-
 _token_pat = re.compile(r"[^a-z0-9àèéìòóùç\-/ ]+", flags=re.IGNORECASE)
 
 def _clean(s: str) -> str:
@@ -47,30 +46,23 @@ def _score(q_tokens: List[str], text: str) -> float:
     union = len(A | B) or 1
     return inter / union
 
+# ===== PARSER FILE TXT =====
 def _finish_block(cur: Dict[str, Any], blocks: List[Dict[str, Any]]):
     if not cur:
         return
-    # compattiamo risposta e testo per match
     ans = (cur.get("answer") or "").strip()
     if MAX_RETURN_CHARS > 0 and len(ans) > MAX_RETURN_CHARS:
         ans = ans[:MAX_RETURN_CHARS].rstrip() + "…"
     cur["answer"] = ans
+    # testo per il match: tags + domanda + tutta la risposta
     tag = cur.get("tags", "")
     q = cur.get("question", "")
-    # per il match usiamo anche un riassunto della risposta (prime 300 chars)
-    ans_compact = (cur["answer"][:300] + "…") if len(cur["answer"]) > 300 else cur["answer"]
-    cur["text_for_match"] = " ".join([tag, q, ans_compact]).strip()
+    ans_full = cur["answer"]
+    cur["text_for_match"] = " ".join([tag, q, ans_full]).strip()
     if cur.get("question") or cur.get("answer"):
         blocks.append(cur)
 
-def parse_txt_file(path: str) -> List[Dict[str, Any]]:
-    """
-    Parser robusto per i file formattati:
-      [TAGS: ...]
-      D: ...
-      R: ...
-    Supporta separatori '────' e blocchi multipli.
-    """
+def parse_txt_file(path: str) -> Tuple[List[Dict[str, Any]], int]:
     blocks: List[Dict[str, Any]] = []
     tags = ""
     cur: Dict[str, Any] = {}
@@ -87,27 +79,17 @@ def parse_txt_file(path: str) -> List[Dict[str, Any]]:
                 if not line.strip():
                     continue
 
-                # TAGS
                 if line.strip().startswith("[TAGS"):
                     m = re.search(r"\[TAGS\s*:\s*(.*?)\]$", line.strip(), flags=re.IGNORECASE)
                     tags = m.group(1).strip() if m else line.strip()
                     continue
 
-                # Separatore blocchi
-                if set(line.strip()) in [{"─"}, {"-"}, {"_"}, {"·"}]:
-                    continue
-                if line.strip().startswith("──") or line.strip().startswith("---"):
-                    continue
-
-                # Domanda
                 if line.lstrip().startswith("D:"):
-                    # chiudiamo eventuale blocco precedente
                     _finish_block(cur, blocks)
                     q = line.split("D:", 1)[1].strip()
                     cur = {"path": path, "start_line": line_no, "tags": tags, "question": q, "answer": "" }
                     continue
 
-                # Risposta
                 if line.lstrip().startswith("R:"):
                     r = line.split("R:", 1)[1].strip()
                     if "answer" not in cur:
@@ -116,20 +98,18 @@ def parse_txt_file(path: str) -> List[Dict[str, Any]]:
                         cur["answer"] = (cur.get("answer","") + ("\n" if cur.get("answer") else "") + r)
                     continue
 
-                # Riga qualunque: se esiste un blocco aperto con domanda ma senza prefisso, trattala come parte della risposta
                 if cur:
                     cur["answer"] = (cur.get("answer","") + ("\n" if cur.get("answer") else "") + line)
 
-        # chiudiamo l’ultimo blocco
         _finish_block(cur, blocks)
 
     except Exception as e:
-        print(f"[scraper_tecnaria][WARN] Impossibile leggere/parsing {path}: {e}")
+        print(f"[scraper_tecnaria][WARN] Errore parsing {path}: {e}")
 
     return blocks, total_lines
 
+# ===== BUILD INDEX =====
 def build_index(folder: str = DOCS_FOLDER) -> Dict[str, Any]:
-    """Indicizza tutti i .txt in blocchi D:/R: + TAGS."""
     global _index, _last_build_info
     _index = []
     tot_lines = 0
@@ -154,17 +134,15 @@ def build_index(folder: str = DOCS_FOLDER) -> Dict[str, Any]:
     return _last_build_info
 
 def reload_index() -> Dict[str, Any]:
-    """Ricarica l'indice a richiesta (route /reload)."""
     return build_index(DOCS_FOLDER)
 
 def list_index() -> Dict[str, Any]:
-    """Elenco file/righe/blocchi (route /ls)."""
     return _last_build_info
 
+# ===== SEARCH =====
 def search_best_answer(query: str) -> Dict[str, Any]:
-    """Restituisce la MIGLIORE RISPOSTA (non la domanda) sopra soglia."""
     q_tokens = _tokenize(query)
-    best: Tuple[int, float] = (-1, -1.0)  # (idx, score)
+    best: Tuple[int, float] = (-1, -1.0)
     for i, blk in enumerate(_index):
         sc = _score(q_tokens, blk["text_for_match"])
         if sc > best[1]:
