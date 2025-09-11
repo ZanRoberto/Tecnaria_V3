@@ -1,74 +1,64 @@
 # app.py
-from flask import Flask, request, jsonify, render_template_string
-from scraper_tecnaria import kb
+import os
+from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask_cors import CORS
+import scraper_tecnaria as st
 
-app = Flask(__name__)
+# === Flask ===
+app = Flask(__name__, static_folder="static", template_folder="templates")
+CORS(app)
 
-# --- ROUTES DIAGNOSTICA ---
+# === Reload indice all'avvio ===
+REINDEX_ON_STARTUP = os.environ.get("REINDEX_ON_STARTUP", "1") == "1"
+if REINDEX_ON_STARTUP:
+    st.build_index()
+
+# === Routes tecniche ===
 @app.get("/health")
 def health():
-    return jsonify({"ok": True, "files": len(kb.files_loaded), "entries": len(kb.entries)})
-
-@app.get("/ls")
-def ls():
+    info = st.list_index()
     return jsonify({
-        "doc_dir": str(kb.doc_dir),
-        "files_loaded": kb.files_loaded,
-        "entries": len(kb.entries)
+        "status": "ok",
+        "docs": info.get("count", 0),
+        "lines": info.get("lines", 0),
+        "blocks": info.get("blocks", 0)
     })
 
 @app.post("/reload")
 def reload_index():
-    info = kb.reload()
-    return jsonify({"reloaded": True, **info})
+    info = st.reload_index()
+    return jsonify({"status": "reloaded", **info})
 
-@app.get("/debug")
-def debug():
-    q = request.args.get("q", "orari sede")
-    top = kb.debug_candidates(q, top=5)
-    return jsonify({"q": q, "top": [{"file": f, "text": t, "score": s} for f, t, s in top]})
+@app.get("/ls")
+def ls():
+    info = st.list_index()
+    return jsonify({"status": "ok", **info})
 
-# --- API BOT ---
+# === API principale ===
 @app.post("/ask")
 def ask():
     data = request.get_json(silent=True) or {}
     q = (data.get("q") or "").strip()
     if not q:
-        return jsonify({"answer": "Scrivi una domanda."})
-    answer = kb.answer(q)
-    return jsonify({"answer": answer})
+        return jsonify({"ok": False, "answer": "Inserisci una domanda.", "debug": {}}), 400
+    res = st.search_best_answer(q)
+    if not res["found"]:
+        # Risposta sobria, senza citare "documenti locali"
+        return jsonify({"ok": False, "answer": "Non ho trovato una risposta precisa. Prova con una formulazione leggermente diversa.", "debug": res}), 200
+    # Ritorno solo la RISPOSTA
+    return jsonify({"ok": True, "answer": res["answer"], "debug": res})
 
-# --- HOME (opzionale minimal) ---
-WELCOME = (
-    "Benvenuto nel mondo dell’Intelligenza Artificiale di Tecnaria: "
-    "qui ogni tua domanda trova risposta, tra esperienza ingegneristica e innovazione digitale."
-)
-
+# === UI ===
 @app.get("/")
 def home():
-    # piccola pagina di prova; sostituiscila con il tuo template se vuoi
-    html = f"""
-    <!doctype html><html><head><meta charset="utf-8"><title>Tecnaria · Assistente</title></head>
-    <body style="font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto;">
-      <img src="{{{{ url_for('static', filename='img/logo_tecnaria.png') }}}}" alt="Logo Tecnaria" style="max-width: 180px; height: auto;">
-      <h1>Tecnaria · Assistente documentale</h1>
-      <div id="risposta" style="padding:12px;border:1px solid #ddd;border-radius:8px;min-height:80px">{WELCOME}</div>
-      <form onsubmit="sendQ(event)" style="margin-top:12px">
-        <input id="q" placeholder="Scrivi una domanda..." style="width:70%;padding:8px">
-        <button>Chiedi</button>
-      </form>
-      <script>
-        async function sendQ(ev){{
-          ev.preventDefault();
-          const q = document.getElementById('q').value;
-          const r = await fetch('/ask', {{method:'POST', headers:{{'Content-Type':'application/json'}}, body: JSON.stringify({{q}})}});
-          const j = await r.json();
-          document.getElementById('risposta').textContent = j.answer || '—';
-        }}
-      </script>
-    </body></html>
-    """
-    return render_template_string(html)
+    # index.html in templates/
+    return render_template("index.html")
+
+# opzionale: servire logo/immagini statiche
+@app.get("/static/<path:filename>")
+def static_files(filename):
+    return send_from_directory(app.static_folder, filename)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    # Per debug locale; su Render usa gunicorn
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8000")))
