@@ -2,7 +2,7 @@
 import os, re, glob, time
 from typing import List, Dict, Any, Tuple
 
-# ===== NORMALIZZAZIONE ENV =====
+# ===== ENV HELPERS =====
 def _pick_env(*keys, default=None):
     for k in keys:
         v = os.environ.get(k)
@@ -11,19 +11,19 @@ def _pick_env(*keys, default=None):
     return default
 
 DOCS_FOLDER = _pick_env("DOCS_FOLDER", "DOC_DIR", "KNOWLEDGE_DIR", default="documenti_gTab")
-SIM_THRESHOLD = float(_pick_env("SIM_THRESHOLD", "SIMILARITY_THRESHOLD", default="0.50"))
+SIM_THRESHOLD = float(_pick_env("SIM_THRESHOLD", "SIMILARITY_THRESHOLD", default="0.35"))
 MAX_RETURN_CHARS = int(os.environ.get("MAX_RETURN_CHARS", "1600"))
 DEBUG = os.environ.get("DEBUG_SCRAPER", "1") == "1"
 
-# ===== STATO INDICE =====
+# ===== STATO =====
 _index: List[Dict[str, Any]] = []
 _last_build_info: Dict[str, Any] = {"count": 0, "lines": 0, "blocks": 0, "ts": 0.0}
 
-# ===== STOPWORDS (italiano essenziale) =====
+# ===== TOKENIZZAZIONE =====
 STOPWORDS = {
     "il","lo","la","i","gli","le","un","uno","una","di","del","della","dell","dei","degli","delle",
     "e","ed","o","con","per","su","tra","fra","in","da","al","allo","ai","agli","alla","alle",
-    "che","come","quale","quali","dove","quando","anche","mi"
+    "che","come","quale","quali","dove","quando","anche","mi","parli","parlami","dimmi","cos", "cos’è", "cos'e"
 }
 _token_pat = re.compile(r"[^a-z0-9àèéìòóùç\-/ ]+", flags=re.IGNORECASE)
 
@@ -37,12 +37,12 @@ def _tokenize(s: str) -> List[str]:
     toks = _clean(s).split()
     return [t for t in toks if t not in STOPWORDS]
 
-# ===== NUOVA METRICA: robusta per domande brevi =====
+# ===== METRICA =====
 def _score(q_tokens: List[str], text: str) -> float:
     """
     Score = max(recall, jaccard)
-    - recall: quota di token della query trovati nel testo (ottimo per domande corte)
-    - jaccard: intersezione/unione (bilancia quando i testi sono comparabili)
+    - recall: quota token query trovati (robusto per domande corte)
+    - jaccard: intersezione/unione (bilancia testi lunghi)
     """
     t_tokens = _tokenize(text)
     if not t_tokens or not q_tokens:
@@ -54,7 +54,7 @@ def _score(q_tokens: List[str], text: str) -> float:
     recall = inter / (len(A) or 1)
     return max(recall, jacc)
 
-# ===== PARSER FILE TXT =====
+# ===== PARSER TXT =====
 def _finish_block(cur: Dict[str, Any], blocks: List[Dict[str, Any]]):
     if not cur:
         return
@@ -62,11 +62,19 @@ def _finish_block(cur: Dict[str, Any], blocks: List[Dict[str, Any]]):
     if MAX_RETURN_CHARS > 0 and len(ans) > MAX_RETURN_CHARS:
         ans = ans[:MAX_RETURN_CHARS].rstrip() + "…"
     cur["answer"] = ans
-    # testo per il match: tags + domanda + TUTTA la risposta
+
     tag = cur.get("tags", "")
     q = cur.get("question", "")
     ans_full = cur["answer"]
-    cur["text_for_match"] = " ".join([tag, q, ans_full]).strip()
+
+    # Replica TAGS per dargli peso
+    cur["text_for_match"] = " ".join([tag, tag, q, ans_full]).strip()
+
+    # Prepara lista tag per euristiche
+    tags_norm = [t.strip().lower() for t in tag.split(",")] if tag else []
+    cur["tags_list"] = tags_norm
+    cur["first_tag"] = tags_norm[0] if tags_norm else ""
+
     if cur.get("question") or cur.get("answer"):
         blocks.append(cur)
 
@@ -116,7 +124,7 @@ def parse_txt_file(path: str) -> Tuple[List[Dict[str, Any]], int]:
 
     return blocks, total_lines
 
-# ===== BUILD INDEX =====
+# ===== INDEX =====
 def build_index(folder: str = DOCS_FOLDER) -> Dict[str, Any]:
     global _index, _last_build_info
     _index = []
@@ -147,14 +155,70 @@ def reload_index() -> Dict[str, Any]:
 def list_index() -> Dict[str, Any]:
     return _last_build_info
 
-# ===== SEARCH =====
+# ===== UTILITY =====
+def _filename_token(path: str) -> str:
+    try:
+        base = os.path.basename(path)
+        name, _ = os.path.splitext(base)
+        return _clean(name)  # es. "p560", "hbv_chiodatrice"
+    except:
+        return ""
+
+def _tags_tokens(blk: Dict[str, Any]) -> set:
+    toks = set()
+    for t in blk.get("tags_list", []):
+        toks |= set(_tokenize(t))
+    return toks
+
+# ===== SEARCH con filtro deterministico =====
 def search_best_answer(query: str) -> Dict[str, Any]:
     q_tokens = _tokenize(query)
-    best_idx, best_score = -1, -1.0
+    qset = set(q_tokens)
+
+    # ---- PASSO 1: trova candidati forti (nome file o tag coincidono con query) ----
+    candidates = []
     for i, blk in enumerate(_index):
+        ftoken = _filename_token(blk.get("path", ""))
+        tags_tok = _tags_tokens(blk)
+        first_tag_tok = set(_tokenize(blk.get("first_tag", "")))
+
+        match_on_filename = ftoken and (qset & set(_tokenize(ftoken)))
+        match_on_firsttag = bool(qset & first_tag_tok)
+        match_on_anytag   = bool(qset & tags_tok)
+
+        if match_on_filename or match_on_firsttag or match_on_anytag:
+            candidates.append(i)
+
+    # Se ho candidati, considero SOLO quelli; altrimenti considero tutto l'indice
+    pool = candidates if candidates else list(range(len(_index)))
+
+    best_idx, best_score = -1, -1.0
+    for i in pool:
+        blk = _index[i]
         sc = _score(q_tokens, blk["text_for_match"])
-        if sc > best_score:
-            best_idx, best_score = i, sc
+
+        # --- BONUS DISAMBIGUAZIONE ---
+        bonus = 0.0
+
+        # nome file ≡ token query
+        ftoken = _filename_token(blk.get("path",""))
+        if ftoken and (qset & set(_tokenize(ftoken))):
+            bonus += 0.60
+
+        # primo TAG ≡ token query
+        first_tag = blk.get("first_tag", "")
+        if first_tag:
+            first_tag_tokens = set(_tokenize(first_tag))
+            if qset & first_tag_tokens:
+                bonus += 0.40
+
+        # qualsiasi TAG ≡ token query
+        if _tags_tokens(blk) & qset:
+            bonus += 0.15
+
+        sc_final = sc + bonus
+        if sc_final > best_score:
+            best_idx, best_score = i, sc_final
 
     if best_idx < 0:
         return {"found": False, "score": 0.0, "path": None, "line": None, "question": "", "answer": ""}
