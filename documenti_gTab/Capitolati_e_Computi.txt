@@ -1,8 +1,0 @@
-[TAGS: capitolati, voci di computo, prezziario, specifiche tecniche, gare d’appalto, documenti tender]
-Tecnaria mette a disposizione capitolati tipo per ogni connettore e sistema collaborante.
-Le voci di computo includono descrizioni tecniche, unità di misura e riferimenti normativi.
-I documenti sono allineati a NTC 2018 ed Eurocodici e richiamano le DoP dei prodotti.
-Sono previste indicazioni su posa, controlli, tolleranze e tracciabilità.
-Forniamo formati editabili per l’inserimento diretto nei computi metrici.
-Le schede riportano codici prodotto e quantità indicative per campata.
-Disponibili esempi per HBV, ALFA, FVA/FVA-L, CLS/CLSR, P560, TRALICCIO.
