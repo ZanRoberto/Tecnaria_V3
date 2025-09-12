@@ -1,30 +1,56 @@
-# scraper_tecnaria.py
-# Indicizzazione semplice di .txt in documenti_gTab/ con ricerca fuzzy + fallback brand-aware
+# scraper_tecnaria.py — robust NLU per documenti Tecnaria (.txt)
+# - Alias per domande ([ALIASES: ...])
+# - Sinonimi & espansione query
+# - Fuzzy match (difflib) + token overlap
+# - Fallback per intenti (chi siamo, contatti, catalogo, p560, ecc.)
 
-import os, re, math, json, unicodedata
+import os, re, json, unicodedata
 from pathlib import Path
 from collections import defaultdict
+from difflib import SequenceMatcher
 
-# ---- Config da ENV (tutte opzionali) ----
-SIM_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.30"))
+# ----------------- CONFIG -----------------
+SIM_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.28"))
 TOPK = int(os.environ.get("TOPK_SEMANTIC", "20"))
-MIN_CHARS_PER_CHUNK = int(os.environ.get("MIN_CHARS_PER_CHUNK", "200"))
-OVERLAP_CHARS = int(os.environ.get("OVERLAP_CHARS", "50"))
 DEBUG = os.environ.get("DEBUG", "0") == "1" or os.environ.get("DEBUG_SCRAPER", "0") == "1"
 
-# Stopwords “morbide” (non togliamo parole chiave tipo 'tecnaria', 'p560', ecc.)
 STOPWORDS = {
     "il","lo","la","i","gli","le","un","uno","una","di","del","della","dell","dei","degli","delle",
     "e","ed","o","con","per","su","tra","fra","in","da","al","allo","ai","agli","alla","alle",
-    "che","come","quale","quali","dove","quando","anche","mi","dei","dal","dai"
+    "che","come","quale","quali","dove","quando","anche","mi","dei","dal","dai","de","d'"
 }
 
-# ----------------- Utility -----------------
+# Sinonimi/lessico di espansione (tieni pure ad aggiungere voci nel tempo)
+SYNONYMS = {
+    "p560": {"p560","p 560","p-560","pistola","sparachiodi","sparachiodi spit","spit p560"},
+    "contatti": {"contatti","telefono","tel","telefonico","mail","email","e-mail","indirizzo","sede","orari","apertura","chiusura","uffici"},
+    "catalogo": {"catalogo","prodotti","connettori","codici","lista","elenco"},
+    "manuali": {"manuali","manuale","posa","istruzioni","scheda posa"},
+    "certificazioni": {"certificazioni","ce","eta","dop","marcatura","dichiarazione di prestazione"},
+    "assistenza": {"assistenza","supporto","help","cantiere","tecnico","referente","contatto tecnico"},
+    "noleggio": {"noleggio","affitto","a noleggio","rent"},
+    "ordine": {"ordine","acquisto","comprare","compra","ordina","preventivo","prezzo","costo","listino"},
+    "chi_siamo": {"chi è tecnaria","chi e tecnaria","chi siete","profilo aziendale","chi siamo","azienda tecnaria","storia","valori","mission","vision"},
+    "codici": {"codici","elenco codici","lista codici","codici connettori"},
+    "hbv": {"hbv","x-hbv","xhbv"},
+    "ctf": {"ctf","piolo","pioli"},
+    "cem": {"cem-e","cem","mini cem-e","mini cem"},
+    "ctl": {"ctl","ct-l"},
+    "fva": {"fva","fva-l"},
+}
+
+INTENT_ORDER = [
+    "chi_siamo","contatti","catalogo","codici","p560","hbv","ctf","cem","ctl","fva",
+    "manuali","certificazioni","assistenza","noleggio","ordine"
+]
+
+# ----------------- NORMALIZZAZIONE -----------------
 
 def _strip_accents(s: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
 
 def _norm(s: str) -> str:
+    if not s: return ""
     s = s.lower().strip()
     s = _strip_accents(s)
     s = re.sub(r"[^\w\s:/\-\+\.]", " ", s)
@@ -33,12 +59,29 @@ def _norm(s: str) -> str:
 
 def _tok(s: str):
     s = _norm(s)
-    toks = [t for t in s.split() if t and t not in STOPWORDS]
-    return toks
+    return [t for t in s.split() if t and t not in STOPWORDS]
+
+def _expand_tokens(tokens):
+    """Espande con sinonimi: se appare un membro di una famiglia, aggiungo gli altri."""
+    expanded = set(tokens)
+    joined = " ".join(tokens)
+    for key, variants in SYNONYMS.items():
+        if any(v.replace(" ", "") in joined.replace(" ", "") for v in variants):
+            for v in variants:
+                expanded.update(_tok(v))
+    return list(expanded)
+
+# ----------------- PARSING BLOCCHI -----------------
 
 def _split_blocks(raw: str, path: str):
-    """Divide un file in blocchi separati da una riga di soli '─' oppure 80+ '-'."""
-    # accetta anche '—' e '─' miste
+    """
+    Blocchi separati da linee di '─'/'-'/'—'.
+    Supporta:
+      [TAGS: ...]
+      [ALIASES: parafrasi1; parafrasi2, ...]
+      D: domanda
+      R: risposta
+    """
     parts = re.split(r"\n[─\-—_]{5,}\n", raw, flags=re.MULTILINE)
     out = []
     line_counter = 1
@@ -47,22 +90,27 @@ def _split_blocks(raw: str, path: str):
         if not p:
             line_counter += 1
             continue
-        # Tenta parsing Q/A + TAGS
-        tags = []
-        qtxt, atxt = None, None
 
-        # [TAGS: ...]
+        # Parse TAGS
+        tags = []
         m_tags = re.search(r"\[TAGS\s*:\s*(.*?)\]", p, flags=re.IGNORECASE|re.DOTALL)
         if m_tags:
             tags_raw = m_tags.group(1)
             tags = [t.strip() for t in re.split(r"[;,]", tags_raw) if t.strip()]
-        # D: ... / R: ...
+
+        # Parse ALIASES
+        aliases = []
+        m_alias = re.search(r"\[ALIASES\s*:\s*(.*?)\]", p, flags=re.IGNORECASE|re.DOTALL)
+        if m_alias:
+            a_raw = m_alias.group(1)
+            # separatore ; o , per praticità
+            aliases = [a.strip() for a in re.split(r"[;,]", a_raw) if a.strip()]
+
+        # Q/A
         m_q = re.search(r"^\s*D\s*:\s*(.+)$", p, flags=re.IGNORECASE|re.MULTILINE)
         m_a = re.search(r"^\s*R\s*:\s*(.+)$", p, flags=re.IGNORECASE|re.DOTALL|re.MULTILINE)
-        if m_q:
-            qtxt = m_q.group(1).strip()
-        if m_a:
-            atxt = m_a.group(1).strip()
+        qtxt = m_q.group(1).strip() if m_q else ""
+        atxt = m_a.group(1).strip() if m_a else ""
 
         out.append({
             "path": path,
@@ -71,28 +119,35 @@ def _split_blocks(raw: str, path: str):
             "q": qtxt,
             "a": atxt,
             "tags": tags,
-            "norm_q": _norm(qtxt) if qtxt else "",
-            "norm_a": _norm(atxt) if atxt else "",
-            "norm_tags": " ".join(_tok(" ".join(tags))) if tags else "",
+            "aliases": aliases,
+            "norm_q": _norm(qtxt),
+            "norm_a": _norm(atxt),
+            "norm_tags": _norm(" ".join(tags)) if tags else "",
+            "norm_aliases": [_norm(a) for a in aliases] if aliases else []
         })
-        # avanzamento grezzo
         line_counter += p.count("\n") + 1
     return out
 
 def _extract_answer_text(raw_block: str) -> str:
-    """Estrae solo la risposta 'R:' dal blocco se presente, altrimenti restituisce il testo ripulito."""
     if not raw_block:
         return ""
     m = re.search(r"^\s*R\s*:\s*(.+)$", raw_block, flags=re.IGNORECASE|re.DOTALL|re.MULTILINE)
     if m:
         return m.group(1).strip()
-    # fallback: togli linee TAGS e D:
+    # rimuove TAGS/ALIASES/D:
     raw = re.sub(r"^\s*\[TAGS.*?\]\s*\n?", "", raw_block, flags=re.IGNORECASE|re.DOTALL|re.MULTILINE)
+    raw = re.sub(r"^\s*\[ALIASES.*?\]\s*\n?", "", raw, flags=re.IGNORECASE|re.DOTALL|re.MULTILINE)
     raw = re.sub(r"^\s*D\s*:\s*.*?$", "", raw, flags=re.IGNORECASE|re.MULTILINE)
     return raw.strip()
 
+# ----------------- SCORING -----------------
+
+def _fuzzy(a: str, b: str) -> float:
+    if not a or not b: return 0.0
+    return SequenceMatcher(None, a, b).ratio()  # 0..1
+
 def _score_block(entry: dict, q_norm: str, q_tokens: list) -> float:
-    """Scoring semplice: overlap nei campi norm_q/norm_a/tags + boost su termini di prodotto/categoria."""
+    # Overlap grezzo
     text = " ".join([
         entry.get("norm_q",""),
         entry.get("norm_a",""),
@@ -100,32 +155,30 @@ def _score_block(entry: dict, q_norm: str, q_tokens: list) -> float:
         _norm(entry.get("raw",""))
     ])
     score = 0.0
-
-    # Overlap token per token
     for t in set(q_tokens):
-        if not t: 
-            continue
+        if not t: continue
         if re.search(rf"\b{re.escape(t)}\b", text):
             score += 1.0
 
-    # Bonus se matcha “tecnaria” o codici/prodotti noti
-    if "tecnaria" in q_norm or re.search(r"\b(ctf|p560|hbv|x\-hbv|cem\-e|mini\s*cem\-e|ctl|fva|fva\-l|ct\-l)\b", q_norm):
-        score += 1.2
+    # Fuzzy vs Q, aliases, risposta (prime 300 chars)
+    fuzz_q = _fuzzy(q_norm, entry.get("norm_q",""))
+    fuzz_a = _fuzzy(q_norm, (entry.get("norm_a","")[:300]))
+    fuzz_al = max([_fuzzy(q_norm, a) for a in entry.get("norm_aliases", [])] + [0.0])
+    score += 1.2*fuzz_q + 0.8*fuzz_a + 1.3*fuzz_al
 
-    # Bonus per keyword frequenti
-    if re.search(r"\b(chi\s+siamo|chi\s+e|profilo|azienda|contatti|orari|telefono|email|catalogo|prodotti|codici|connettori)\b", q_norm):
-        score += 0.6
+    # Boost prodotto/categoria
+    if re.search(r"\b(ctf|p560|hbv|xhbv|x\-hbv|cem|cem\-e|mini\s*cem|ctl|ct\-l|fva|fva\-l)\b", q_norm):
+        score += 0.8
 
-    # Piccolo damp per blocchi troppo brevi (rumore)
+    # Smorza rumori brevissimi
     if len(entry.get("raw","")) < 80:
         score *= 0.7
 
     return score
 
-# ----------------- Indicizzazione -----------------
+# ----------------- INDICIZZAZIONE -----------------
 
 def build_index(docs_dir: str) -> dict:
-    """Legge TUTTI i .txt in docs_dir e costruisce un indice leggero."""
     base = Path(docs_dir)
     if not base.exists():
         if DEBUG: print(f"[scraper_tecnaria] Directory non trovata: {docs_dir}")
@@ -138,7 +191,6 @@ def build_index(docs_dir: str) -> dict:
         try:
             raw = fp.read_text(encoding="utf-8", errors="ignore")
         except Exception:
-            # tenta latin-1
             raw = fp.read_text(encoding="latin-1", errors="ignore")
         blocks = _split_blocks(raw, str(fp))
         data.extend(blocks)
@@ -146,12 +198,18 @@ def build_index(docs_dir: str) -> dict:
         if DEBUG:
             print(f"[scraper_tecnaria] Indicizzati {len(blocks)} blocchi da {fp}")
 
-    # indice invertito super-light (per shortlist)
+    # invertito leggero
     inverted = defaultdict(list)
     for i, entry in enumerate(data):
-        bag = set(_tok(entry.get("raw","")) + _tok(entry.get("q") or "") + _tok(entry.get("a") or "") + _tok(" ".join(entry.get("tags") or [])))
+        bag = set(
+            _tok(entry.get("raw","")) +
+            _tok(entry.get("q") or "") +
+            _tok(entry.get("a") or "") +
+            _tok(" ".join(entry.get("tags") or [])) +
+            sum([_tok(a) for a in entry.get("aliases") or []], [])
+        )
         for t in bag:
-            inverted[t].append((i,1))
+            inverted[t].append((i, 1))
 
     if DEBUG:
         print(f"[scraper_tecnaria] FINITO: blocks={len(data)} files={len(files)} lines={total_lines}")
@@ -164,116 +222,111 @@ def build_index(docs_dir: str) -> dict:
         "inverted": inverted
     }
 
-# ----------------- Ricerca -----------------
+# ----------------- FALLBACK INTENTI -----------------
+
+def _detect_intents(q_norm: str):
+    intents = []
+    for intent in INTENT_ORDER:
+        keys = SYNONYMS.get(intent, set())
+        if any(k.replace(" ", "") in q_norm.replace(" ", "") for k in keys):
+            intents.append(intent)
+    # aggiungo pattern liberi
+    if re.search(r"\bcodic|elenco codic|lista codic\b", q_norm):
+        if "codici" not in intents: intents.append("codici")
+    return intents
+
+def _fallback_by_intent(index: dict, intents: list):
+    data = index.get("data") or []
+    if not data: return None
+    # Cerca un blocco con tag/alias coerenti con l’intento (in ordine)
+    for intent in intents:
+        for entry in data:
+            bucket = " ".join(entry.get("tags") or []) + " " + " ".join(entry.get("aliases") or []) + " " + (entry.get("q") or "")
+            n = _norm(bucket)
+            if intent == "chi_siamo" and re.search(r"\b(chi siamo|profilo aziendale|azienda tecnaria|bassano del grappa)\b", n):
+                ans = _extract_answer_text(entry.get("raw","")) or entry.get("a","")
+                if ans: return (ans, True, 0.34, entry.get("path"), entry.get("line"))
+            if intent == "contatti" and re.search(r"\b(contatti|telefono|email|mail|indirizzo|orari|sede)\b", n):
+                ans = _extract_answer_text(entry.get("raw","")) or entry.get("a","")
+                if ans: return (ans, True, 0.34, entry.get("path"), entry.get("line"))
+            if intent in {"catalogo","codici"} and re.search(r"\b(catalogo|prodotti|connettori|codici|elenco|lista)\b", n):
+                ans = _extract_answer_text(entry.get("raw","")) or entry.get("a","")
+                if ans: return (ans, True, 0.34, entry.get("path"), entry.get("line"))
+            if intent == "p560" and re.search(r"\b(p560|pistola|sparachiodi)\b", n):
+                ans = _extract_answer_text(entry.get("raw","")) or entry.get("a","")
+                if ans: return (ans, True, 0.34, entry.get("path"), entry.get("line"))
+            if intent == "manuali" and re.search(r"\b(manuali|posa|istruzioni)\b", n):
+                ans = _extract_answer_text(entry.get("raw","")) or entry.get("a","")
+                if ans: return (ans, True, 0.34, entry.get("path"), entry.get("line"))
+            if intent == "certificazioni" and re.search(r"\b(ce|eta|dop|certificaz)\b", n):
+                ans = _extract_answer_text(entry.get("raw","")) or entry.get("a","")
+                if ans: return (ans, True, 0.34, entry.get("path"), entry.get("line"))
+            if intent == "assistenza" and re.search(r"\b(assistenza|supporto|cantiere|tecnico)\b", n):
+                ans = _extract_answer_text(entry.get("raw","")) or entry.get("a","")
+                if ans: return (ans, True, 0.34, entry.get("path"), entry.get("line"))
+            if intent == "noleggio" and re.search(r"\b(noleggio|affitto)\b", n):
+                ans = _extract_answer_text(entry.get("raw","")) or entry.get("a","")
+                if ans: return (ans, True, 0.34, entry.get("path"), entry.get("line"))
+            if intent == "ordine" and re.search(r"\b(ordine|acquisto|prezzo|costo|preventivo|listino)\b", n):
+                ans = _extract_answer_text(entry.get("raw","")) or entry.get("a","")
+                if ans: return (ans, True, 0.34, entry.get("path"), entry.get("line"))
+    return None
+
+# ----------------- RICERCA PRINCIPALE -----------------
 
 def search_best_answer(index: dict, question: str):
-    """Cerca il blocco migliore e restituisce la risposta; se non supera la soglia, fallback brand-aware."""
     if not index or not isinstance(index, dict):
         return ("", False, 0.0, None, None)
-
     data = index.get("data") or []
     if not data:
         return ("", False, 0.0, None, None)
 
     q_norm = _norm(question)
-    q_tokens = _tok(question)
+    q_tokens = _expand_tokens(_tok(question))
 
-    # shortlist
-    shortlist_ids = set()
+    # shortlist da indice invertito
     inverted = index.get("inverted") or {}
+    shortlist = set()
     for t in q_tokens:
         if t in inverted:
-            for doc_id, _w in inverted[t]:
-                shortlist_ids.add(doc_id)
-    pool = shortlist_ids if shortlist_ids else range(len(data))
+            for doc_id, _ in inverted[t]:
+                shortlist.add(doc_id)
+    pool = shortlist if shortlist else range(len(data))
 
-    candidates = []
+    # scoring
+    scored = []
     for doc_id in pool:
         entry = data[doc_id]
         s = _score_block(entry, q_norm, q_tokens)
         if s > 0:
-            # piccolo kick per domande corte
-            s += 0.8
-            candidates.append((s, doc_id))
+            scored.append((s, doc_id))
+    scored.sort(reverse=True)
+    scored = scored[:max(5, TOPK)]
 
-    candidates.sort(reverse=True)
-    candidates = candidates[:max(3, TOPK)]
-
-    if not candidates:
-        fb = _brand_fallback(index, q_norm, q_tokens)
-        if fb:
-            return fb
+    if not scored:
+        # fallback diretto su intenti
+        intents = _detect_intents(q_norm)
+        fb = _fallback_by_intent(index, intents)
+        if fb: return fb
         return ("", False, 0.0, None, None)
 
-    best_score, best_id = candidates[0]
-    entry = data[best_id]
+    # normalizzazione soft e soglia
+    best_s, best_id = scored[0]
+    norm_score = min(1.0, best_s / (best_s + 4.0))
 
-    # normalizzazione “calda”
-    norm_score = min(1.0, best_score / (best_score + 4.0))
-
+    # se sotto soglia → prova intenti
     if norm_score < SIM_THRESHOLD:
-        fb = _brand_fallback(index, q_norm, q_tokens)
-        if fb:
-            return fb
+        intents = _detect_intents(q_norm)
+        fb = _fallback_by_intent(index, intents)
+        if fb: return fb
+        # altrimenti restituisce “non preciso”
+        entry = data[best_id]
         return ("", False, float(norm_score), entry.get("path"), entry.get("line"))
 
-    answer = _extract_answer_text(entry.get("raw","")) or (entry.get("a") or "")
+    entry = data[best_id]
+    answer = _extract_answer_text(entry.get("raw","")) or entry.get("a","")
     answer = re.sub(r"\n{3,}", "\n\n", answer.strip())
 
     if DEBUG:
         print(f"[scraper_tecnaria][SEARCH] q={question!r} -> score={norm_score:.3f} {entry.get('path')}:{entry.get('line')}")
     return (answer, True, float(norm_score), entry.get("path"), entry.get("line"))
-
-def _brand_fallback(index: dict, q_norm: str, q_tokens: list):
-    """Fallback per domande base dove vogliamo SEMPRE una risposta."""
-    data = index.get("data") or []
-    if not data:
-        return None
-
-    def contains_any(txt, words):
-        return any(w in txt for w in words)
-
-    # CHI SIAMO
-    if contains_any(q_norm, ["chi e tecnaria", "chi è tecnaria", "chi siete", "parlami di tecnaria", "profilo aziendale", "chi siamo", "azienda tecnaria"]):
-        for entry in data:
-            tags = " ".join(entry.get("tags") or [])
-            tnorm = _norm(tags + " " + (entry.get("q") or "") + " " + entry.get("raw",""))
-            if contains_any(tnorm, ["chi siamo","profilo aziendale","chi e tecnaria","tecnaria e","bassano del grappa","azienda tecnaria"]):
-                ans = _extract_answer_text(entry.get("raw","")) or (entry.get("a") or "")
-                ans = ans.strip()
-                if ans:
-                    return (ans, True, 0.35, entry.get("path"), entry.get("line"))
-
-    # CONTATTI / ORARI
-    if contains_any(q_norm, ["contatti","telefono","email","mail","orari","sede","indirizzo"]):
-        for entry in data:
-            tags = " ".join(entry.get("tags") or [])
-            tnorm = _norm(tags + " " + (entry.get("q") or "") + " " + entry.get("raw",""))
-            if contains_any(tnorm, ["contatti","orari","sede","indirizzo","telefono","email"]):
-                ans = _extract_answer_text(entry.get("raw","")) or (entry.get("a") or "")
-                ans = ans.strip()
-                if ans:
-                    return (ans, True, 0.35, entry.get("path"), entry.get("line"))
-
-    # ELENCO PRODOTTI / CODICI
-    if contains_any(q_norm, ["catalogo","prodotti","connettori","elenco codici","codici connettori","lista codici"]):
-        for entry in data:
-            tags = " ".join(entry.get("tags") or [])
-            tnorm = _norm(tags + " " + (entry.get("q") or "") + " " + entry.get("raw",""))
-            if contains_any(tnorm, ["prodotti","catalogo","elenco","codici","connettori"]):
-                ans = _extract_answer_text(entry.get("raw","")) or (entry.get("a") or "")
-                ans = ans.strip()
-                if ans:
-                    return (ans, True, 0.35, entry.get("path"), entry.get("line"))
-
-    # P560 (domande ricorrenti)
-    if contains_any(q_norm, ["p560","p 560","p-560","pistola"]):
-        for entry in data:
-            tnorm = _norm((entry.get("q") or "") + " " + " ".join(entry.get("tags") or []) + " " + entry.get("raw",""))
-            if contains_any(tnorm, ["p560","p 560","p-560","pistola","sparachiodi"]):
-                ans = _extract_answer_text(entry.get("raw","")) or (entry.get("a") or "")
-                ans = ans.strip()
-                if ans:
-                    return (ans, True, 0.35, entry.get("path"), entry.get("line"))
-
-    return None
