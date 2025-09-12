@@ -1,277 +1,308 @@
 # -*- coding: utf-8 -*-
-import os, re, glob, threading
+import os, re, unicodedata, glob, json
+from collections import defaultdict
+from rapidfuzz import fuzz, process
+from rank_bm25 import BM25Okapi
 
-# ===== Stato indice + contatori =====
-INDEX = []            # lista di blocchi (dict)
-READY = False
-LOCK = threading.Lock()
-COUNT_BLOCKS = 0
-COUNT_FILES = 0
-COUNT_LINES = 0
+# =========================
+# Config "leggera"
+# =========================
+DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")
 
-DOC_EXTS = (".txt", ".TXT")
+# soglie di matching (tuneabili anche da env)
+SIM_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))
+TOPK_SEMANTIC = int(os.environ.get("TOPK_SEMANTIC", "20"))
 
-# ===== Stopwords minime (IT) =====
+# stopwords minimali italiane (non togliamo termini tecnici)
 STOPWORDS_MIN = {
     "il","lo","la","i","gli","le","un","uno","una",
     "di","del","della","dei","degli","delle",
     "e","ed","o","con","per","su","tra","fra","in","da",
     "al","allo","ai","agli","alla","alle",
     "che","come","dove","quando","anche",
-    "mi","ti","si","ci","vi","a","da","de","dal","dall","dalla","dalle",
+    "mi","ti","si","ci","vi","a","de","dal","dall","dalla","dalle"
 }
 
-# ===== Sinonimi soft (non aggressivi) =====
+# sinonimi/espansioni basiche per le query più comuni
 SYNONYMS = {
-    # manteniamo sinonimi SOLO quando è già presente il token chiave,
-    # così non “sporchiamo” le query generiche.
-    "p560": {"p560","p-560","p 560","spit p560","pistola p560","sparachiodi p560"},
-    "tecnaria": {"tecnaria","azienda tecnaria"},
-    "contatti": {"contatto","telefono","mail","email","referenti","ufficio"},
-    "prezzi": {"costo","preventivo","listino","prezzo"},
+    "p560": ["spit p560", "pistola p560", "sparachiodi p560", "pistola a cartuccia", "sparachiodi"],
+    "ctf": ["pioli", "connettori a piolo", "piolo su piastra", "acciaio calcestruzzo"],
+    "cem-e": ["riprese di getto", "vite con piastra dentata", "connettore per calcestruzzo"],
+    "mini cem-e": ["mini cem", "mini ripresa getto", "spessori ridotti"],
+    "diapason": ["lamiera a diapason", "ali con barre", "connettore lamiera acciaio"],
+    "hbv": ["chiodatrice", "pistola chiodi", "chiodi hbv"],
+    "contatti": ["telefono", "email", "assistenza", "uffici", "orari"],
+    "chi è tecnaria": ["chi siamo", "azienda", "profilo aziendale", "mission", "storia", "valori"],
+    "codici": ["codici prodotti", "catalogo", "codici connettori", "lista prodotti", "elenco"]
 }
 
-# ===== Hint per instradare “azienda” vs “prodotto” =====
-COMPANY_HINTS = ("chisiamo","profilo","vision","mission","valori","azienda","storia")
-COMPANY_FILE_HINTS = ("chisiamo_", "chisiamo", "profiloaziendale", "visionmission",
-                      "contattiorari", "certificazioni")
-
-PRODUCT_FILE_HINTS = (
-    "ctf","hbv","cem-e","mini_cem-e","ctl","cls","clsr",
-    "fva","x-hbv","diapason","p560"
-)
-
-# ===== Entità “codice prodotto/file” → instradamento forte =====
-# Chiave = “slug” file (basenome senza estensione), Valori = varianti ammessi
-ENTITY_MAP = {
-    "p560": {"p560","p-560","p 560"},
-    "diapason": {"diapason"},
-    "ctf": {"ctf"},
-    "hbv": {"hbv"},
-    "cem-e": {"cem-e","cem e"},
-    "mini_cem-e": {"mini_cem-e","mini cem-e","mini cem e"},
-    "ctl": {"ctl"},
-    "cls": {"cls"},
-    "clsr": {"clsr"},
-    "fva": {"fva","fva-l","fva l"},
-    "x-hbv": {"x-hbv","x hbv"},
-}
-
-# =====================================
-# Normalizzazione & utilità
-# =====================================
-
+# =========================
+# Utilità testo
+# =========================
 def normalize_text(s: str) -> str:
     if not s:
         return ""
+    s = s.replace("’", "'").replace("“","\"").replace("”","\"")
+    s = unicodedata.normalize("NFKD", s)
+    s = s.encode("ascii", "ignore").decode("ascii")
     s = s.lower()
-    s = (s.replace("è","e").replace("é","e")
-           .replace("à","a").replace("ù","u")
-           .replace("ò","o").replace("ì","i"))
-    s = re.sub(r"[^a-z0-9\s\-\_/\.]", " ", s)
+    # separa punteggiatura con spazi
+    s = re.sub(r"[^\w\s]", " ", s)
+    # comprime spazi
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def tokenize(s: str):
+    s = normalize_text(s)
     tokens = [t for t in s.split() if t and t not in STOPWORDS_MIN]
+    return tokens
 
-    # aggiungo la “chiave” di sinonimo SOLO se ho effettivamente il sinonimo
-    extra = []
-    for t in tokens:
-        for key, variants in SYNONYMS.items():
-            if t in variants:
-                extra.append(key)
+def expand_query(q: str) -> str:
+    base = normalize_text(q)
+    terms = base.split()
+    expanded = set(terms)
+    # espansione per chiave sinonimo contenuta nella query
+    for k, vs in SYNONYMS.items():
+        if k in base or any(t == k for t in terms):
+            expanded.add(k)
+            for v in vs:
+                expanded.update(tokenize(v))
+    return " ".join(sorted(expanded))
 
-    return " ".join(tokens + extra).strip()
+# =========================
+# Caricamento documenti .txt
+# =========================
+# INDEX: lista di dict con:
+# { "file":..., "tags": set([...]), "q": str, "a": str, "raw": str, "tokens": [...], "title_score": int }
+INDEX = []
+BM25 = None
+DOC_TOKENS = []  # corpus tokenizzato per BM25
 
-def _base_slug(path: str) -> str:
-    b = os.path.splitext(os.path.basename(path))[0].lower()
-    return b
+QA_SPLIT_RE = re.compile(r"^\s*D\s*:\s*(.+?)\s*\n\s*R\s*:\s*(.+)$", re.DOTALL | re.IGNORECASE)
 
-def _is_company_file(path: str) -> bool:
-    b = os.path.basename(path).lower()
-    return any(h in b for h in COMPANY_FILE_HINTS)
-
-def _is_product_file(path: str) -> bool:
-    b = os.path.basename(path).lower()
-    return any(h in b for h in PRODUCT_FILE_HINTS)
-
-def _detect_intent(q_norm: str) -> dict:
-    is_company = any(h in q_norm for h in COMPANY_HINTS) or ("tecnaria" in q_norm and not any(p in q_norm for p in PRODUCT_FILE_HINTS))
-    return {"company": is_company}
-
-def _extract_entity_slug(q_norm: str) -> str | None:
+def _extract_blocks_from_text(txt: str):
     """
-    Se nella domanda c'è un riferimento esplicito a un “codice prodotto”,
-    ritorna lo slug del file corrispondente (es. 'p560' → P560.txt).
-    Regola fondamentale: per P560 richiedo la presenza del token P560.
+    Estrae blocchi Q/A formattati e anche blocchi generici separati da righe di '─' come fallback.
+    Ritorna lista di (question, answer, tags_set, raw_block).
     """
-    # match esplicito P560
-    if "p560" in q_norm:
-        return "p560"
-
-    # altri (non forziamo mai senza citazione esplicita, per evitare falsi positivi)
-    for slug, variants in ENTITY_MAP.items():
-        for v in variants:
-            if v in q_norm:
-                return slug
-    return None
-
-# =====================================
-# Lettura file & parsing
-# =====================================
-
-def _iter_txt_files(doc_dir: str):
-    for ext in DOC_EXTS:
-        for p in glob.glob(os.path.join(doc_dir, f"*{ext}")):
-            if os.path.isfile(p):
-                yield p
-
-def _count_lines(text: str) -> int:
-    return text.count("\n") + 1 if text else 0
-
-def _parse_file(path: str):
     blocks = []
-    tags = ""
-    try:
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            raw = f.read()
-    except Exception:
-        return blocks, 0
 
-    # TAGS
-    m = re.search(r"\[TAGS:\s*(.*?)\]", raw, flags=re.IGNORECASE | re.DOTALL)
-    if m:
-        tags = m.group(1).strip()
+    # 1) TAGS
+    tags = set()
+    mt = re.search(r"\[TAGS:\s*(.+?)\s*\]", txt, re.IGNORECASE)
+    if mt:
+        rawtags = mt.group(1)
+        for t in re.split(r"[,\|;]", rawtags):
+            tt = t.strip()
+            if tt:
+                tags.add(normalize_text(tt))
 
-    # Blocchi in formato:
-    #   D: ...
-    #   R: ...
-    parts = re.split(r"\n\s*D:\s*", raw, flags=re.IGNORECASE)
-    for part in parts:
-        if not part.strip():
-            continue
-        m2 = re.split(r"\n\s*R:\s*", part, maxsplit=1, flags=re.IGNORECASE)
-        if len(m2) == 2:
-            q = m2[0].strip()
-            r = m2[1].strip()
-            txt = f"{q}\n{r}"
-            blocks.append({
+    # 2) blocchi Q/A "D: ... R: ..."
+    for m in QA_SPLIT_RE.finditer(txt):
+        q = m.group(1).strip()
+        a = m.group(2).strip()
+        raw = f"D: {q}\nR: {a}"
+        blocks.append((q, a, set(tags), raw))
+
+    # 3) fallback: split su separatori lunghi (se non ci sono D:/R:)
+    if not blocks:
+        parts = re.split(r"\n\s*[─\-_=]{6,}\s*\n", txt)
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+            # prova a creare pseudo-QA: prima riga = domanda, resto = risposta
+            lines = [l for l in part.splitlines() if l.strip()]
+            if len(lines) >= 2:
+                q = lines[0].strip()
+                a = "\n".join(lines[1:]).strip()
+                blocks.append((q, a, set(tags), part))
+            else:
+                # tutto come "risposta" generica
+                blocks.append(("informazioni", part, set(tags), part))
+
+    return blocks
+
+def _score_title_hint(file_name: str, tags_set: set):
+    """
+    Boost se il file o i TAG contengono parole chiave note.
+    """
+    f = normalize_text(file_name)
+    score = 0
+    # boost tematici
+    if "p560" in f: score += 2
+    if "diapason" in f: score += 1
+    if "ctf" in f: score += 1
+    if "cem" in f: score += 1
+    if "hbv" in f: score += 1
+    if "chi siamo" in f or "profilo" in f or "vision" in f or "mission" in f: score += 2
+    if "contatti" in f or "orari" in f: score += 2
+    # boost da TAG
+    tagstr = " ".join(sorted(tags_set))
+    if "p560" in tagstr: score += 2
+    if "diapason" in tagstr: score += 1
+    if "ctf" in tagstr: score += 1
+    if "cem e" in tagstr or "cem-e" in tagstr: score += 1
+    if "contatti" in tagstr: score += 2
+    if "chi siamo" in tagstr or "azienda" in tagstr: score += 2
+    return score
+
+def build_index(doc_dir: str = DOC_DIR):
+    """
+    Scansiona tutti i .txt/.TXT, crea INDEX e costruisce BM25.
+    """
+    global INDEX, BM25, DOC_TOKENS
+
+    INDEX = []
+    DOC_TOKENS = []
+
+    doc_dir = doc_dir or DOC_DIR
+    absdir = os.path.abspath(doc_dir)
+
+    # trova .txt e .TXT
+    files = []
+    files += glob.glob(os.path.join(absdir, "*.txt"))
+    files += glob.glob(os.path.join(absdir, "*.TXT"))
+
+    print(f"[scraper_tecnaria] Inizio indicizzazione da: {absdir}\n[scraper_tecnaria] Trovati {len(files)} file .txt/.TXT:")
+    for p in files:
+        print(f"[scraper_tecnaria]   - {p}")
+
+    total_blocks = 0
+    total_lines = 0
+
+    for path in files:
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+        except Exception:
+            try:
+                with open(path, "r", encoding="latin-1", errors="ignore") as f:
+                    content = f.read()
+            except Exception as e:
+                print(f"[scraper_tecnaria] ERRORE lettura {path}: {e}")
+                continue
+
+        blocks = _extract_blocks_from_text(content)
+        file_name = os.path.basename(path)
+        for (q, a, tags_set, raw_block) in blocks:
+            qn = normalize_text(q)
+            an = normalize_text(a)
+            toks = tokenize(qn + " " + an)
+            hint = _score_title_hint(file_name, tags_set)
+            INDEX.append({
+                "file": file_name,
                 "path": path,
-                "file": os.path.basename(path),
-                "slug": _base_slug(path),
-                "question": q,
-                "answer": r,
-                "text": txt,
-                "tags": tags,
-                "norm": normalize_text(q + " " + r + " " + tags + " " + os.path.basename(path)),
+                "tags": tags_set,
+                "q": q.strip(),
+                "a": a.strip(),
+                "raw": raw_block,
+                "tokens": toks,
+                "title_score": hint
             })
-    return blocks, _count_lines(raw)
+            DOC_TOKENS.append(toks)
+            total_blocks += 1
+            total_lines += raw_block.count("\n") + 1
 
-# =====================================
-# Costruzione indice (atomica)
-# =====================================
+    # costruisci BM25
+    if DOC_TOKENS:
+        BM25 = BM25Okapi(DOC_TOKENS)
+    else:
+        BM25 = None
 
-def build_index(doc_dir: str) -> int:
-    global INDEX, READY, COUNT_BLOCKS, COUNT_FILES, COUNT_LINES
-    tmp = []
-    files = list(_iter_txt_files(doc_dir))
-    cnt_lines_total = 0
+    print(f"[scraper_tecnaria] Indicizzati {total_blocks} blocchi / {total_lines} righe da {len(files)} file.")
+    return {"blocks": total_blocks, "lines": total_lines, "files": len(files)}
 
-    for fp in files:
-        blks, ln = _parse_file(fp)
-        tmp.extend(blks)
-        cnt_lines_total += ln
+# =========================
+# Ricerca
+# =========================
+def _bm25_candidates(query: str, topk: int = 20):
+    if not BM25 or not INDEX:
+        return []
+    q_expanded = expand_query(query)
+    q_tokens = tokenize(q_expanded)
+    if not q_tokens:
+        return []
+    scores = BM25.get_scores(q_tokens)  # lista di score allineata a INDEX
+    # prendi i migliori topk
+    ranked = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)[:topk]
+    return ranked  # (idx, score)
 
-    with LOCK:
-        INDEX = tmp
-        COUNT_BLOCKS = len(tmp)
-        COUNT_FILES = len(files)
-        COUNT_LINES = cnt_lines_total
-        READY = True
+def _keyword_boost(query: str, item):
+    """
+    Boost “intelligente”: presenza di parole della query in q/a/tags/file + title_score.
+    Fuzzy per tollerare piccole differenze (accenti/plurali).
+    """
+    qn = normalize_text(query)
+    score = 0.0
 
-    print(f"[scraper_tecnaria] Indicizzati {COUNT_BLOCKS} blocchi / {COUNT_LINES} righe da {COUNT_FILES} file.")
-    return COUNT_BLOCKS
+    # match con il titolo/file/tags via fuzzy
+    target = " ".join([
+        normalize_text(item.get("q","")),
+        normalize_text(item.get("a","")),
+        normalize_text(" ".join(item.get("tags", []))),
+        normalize_text(item.get("file",""))
+    ])
 
-def is_ready() -> bool:
-    return READY and len(INDEX) > 0
+    # fuzzy token set ratio (rapido e robusto)
+    fscore = fuzz.token_set_ratio(qn, target) / 100.0  # 0..1
+    score += 0.6 * fscore
 
-def get_counters():
-    return COUNT_BLOCKS, COUNT_FILES, COUNT_LINES
+    # bonus per match diretti di termini chiave (p560, ctf, ecc.)
+    key_hits = 0
+    for kw in ["p560","ctf","cem e","cem-e","diapason","hbv","contatti","chi siamo","codici","catalogo"]:
+        if kw in qn and kw in target:
+            key_hits += 1
+    score += 0.15 * key_hits
 
-# =====================================
-# Ranking (keyword + boost) + ROUTING per entità
-# =====================================
+    # hint da titolo/file/tag
+    score += 0.25 * float(item.get("title_score", 0))
 
-def _score_keyword(qn: str, en: str) -> float:
-    qs = set(qn.split())
-    es = set(en.split())
-    if not qs or not es:
-        return 0.0
-    inter = len(qs & es)
-    return inter / max(4, len(qs))
+    return score
 
-def _rank_candidates(qn: str, entries, topk: int = 20):
-    cands = []
-    for e in entries:
-        s = _score_keyword(qn, e["norm"])
-        cands.append({"entry": e, "score": s})
-    cands.sort(key=lambda x: x["score"], reverse=True)
-    return cands[:topk]
+def search_best_answer(query: str, threshold: float = SIM_THRESHOLD, topk: int = TOPK_SEMANTIC):
+    """
+    Combina BM25 (lexicale) + fuzzy + boost su TAG/nome file.
+    Ritorna la miglior risposta.
+    """
+    if not INDEX:
+        return {"found": False, "answer": "", "from": None}
 
-def search_best_answer(question: str, threshold: float = 0.30, topk: int = 20) -> dict:
-    if not is_ready():
-        return {"found": False, "answer": "Indice non pronto. Riprova tra qualche secondo.", "from": None}
+    # 1) candidati BM25
+    ranked = _bm25_candidates(query, topk=topk)
+    # se per qualche motivo BM25 è assente, usa tutti i documenti come fallback
+    if not ranked:
+        ranked = list(enumerate([0.0]*len(INDEX)))[:topk]
 
-    qn = normalize_text(question)
-    intents = _detect_intent(qn)
-    entity = _extract_entity_slug(qn)  # <-- qui capiamo se c'è “p560”, ecc.
+    # 2) ricalcola uno score ibrido
+    scored = []
+    for idx, bm25_score in ranked:
+        item = INDEX[idx]
+        hybrid = 0.7 * (bm25_score if isinstance(bm25_score, (int, float)) else 0.0) + 0.3 * _keyword_boost(query, item)
+        scored.append((idx, hybrid))
 
-    # 1) ROUTING PER ENTITÀ (es. P560) → filtra PRIMA i blocchi del file giusto
-    entries = INDEX
-    if entity:
-        preferred = [e for e in INDEX if e.get("slug") == entity]
-        if preferred:
-            entries = preferred  # ranking solo nel file giusto
-        # se non ci sono blocchi per quel file, lascio entries = INDEX (fallback)
+    # 3) prendi il migliore
+    scored.sort(key=lambda x: x[1], reverse=True)
+    best_idx, best_score = scored[0]
 
-    # 2) Ranking keyword
-    cands = _rank_candidates(qn, entries, topk=topk)
+    item = INDEX[best_idx]
+    answer = item["a"] if item.get("a") else item.get("raw","")
+    if not answer:
+        return {"found": False, "answer": "", "from": None}
 
-    # 3) Re-ranking con boost/punizioni
-    for c in cands:
-        e = c["entry"]
-        s = c["score"]
-        base = e["slug"]
-        tags = (e.get("tags") or "").lower()
+    # threshold “elastico”: scala con distribuzione top-3 per evitare non-trovato troppo aggressivo
+    top3 = [s for _, s in scored[:3]]
+    dyn_thr = min(threshold, max(0.15, (sum(top3)/len(top3))*0.5)) if top3 else threshold
 
-        # boost fortissimo se il nome file coincide con l'entità (es. P560.txt)
-        if entity and base == entity:
-            s += 2.0
-        # boost se i TAG contengono l’entità (debole rispetto al filename)
-        if entity and entity in tags:
-            s += 0.4
+    found = best_score >= dyn_thr
 
-        # intent azienda: favorisci “chi siamo”/profilo; penalizza file di prodotto
-        if intents["company"]:
-            if _is_company_file(e["path"]) or "chi siamo" in tags or "azienda" in tags:
-                s += 0.8
-            if _is_product_file(e["path"]):
-                s -= 0.3
+    # tags sintetici
+    tags = sorted(list(item.get("tags", []))) if item.get("tags") else None
 
-        c["score"] = s
-
-    cands.sort(key=lambda x: x["score"], reverse=True)
-    best = cands[0] if cands else None
-
-    if not best or best["score"] < threshold:
-        return {
-            "found": False,
-            "answer": "Non ho trovato una risposta precisa. Prova a riformulare leggermente la domanda.",
-            "from": None
-        }
-
-    e = best["entry"]
     return {
-        "found": True,
-        "answer": e.get("answer") or e.get("text",""),
-        "from": e.get("file") or os.path.basename(e.get("path","")),
-        "score": round(best["score"], 3),
-        "tags": e.get("tags","")
+        "found": bool(found),
+        "score": float(round(best_score, 3)),
+        "from": item.get("file"),
+        "tags": tags if tags else None,
+        "answer": answer.strip()
     }
