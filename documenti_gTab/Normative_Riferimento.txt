@@ -86,3 +86,20 @@ R: Usare prodotti conformi riduce contestazioni in cantiere e garantisce approva
 ────────────────────────────
 D: Qual è il legame tra normative e formazione?
 R: I corsi Tecnaria includono spiegazioni su NTC ed Eurocodici, aiutando progettisti e imprese a lavorare in piena conformità normativa.
+[TAGS: normative, Eurocodici, linee guida, ETA, marcatura CE]
+
+D: Quali normative seguite?
+R: Eurocodici e norme applicabili ai connettori strutturali e ai sistemi collaboranti, oltre a ETA e requisiti per marcatura CE.
+────────────────────────────
+D: Fornite riferimenti normativi nei documenti?
+R: Sì, con citazioni essenziali e rimandi alle prove di laboratorio.
+────────────────────────────
+D: Adeguamento a cambi normativi?
+R: La documentazione viene aggiornata e le nuove versioni rese disponibili.
+────────────────────────────
+D: Supporto per capitolati conformi?
+R: Sì, con voci e allegati allineati alle norme vigenti.
+────────────────────────────
+D: Norme su sicurezza in posa?
+R: Richiamo alle norme su cantieri, DPI, macchine e procedure operative.
+
