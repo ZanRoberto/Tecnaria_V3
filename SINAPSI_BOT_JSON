@@ -1,37 +1,60 @@
 {
-  "knowledge": [
+  "prefix": "— Risposta arricchita da Sinapsi —",
+  "suffix": "Nota finale: attenersi sempre ai documenti ufficiali (schede tecniche, ETA/DoP, manuali di posa) e alle prescrizioni del progettista strutturale.",
+  "topics": {
+    "p560": "P560 (chiodatrice a carica propulsiva): usare DPI completi (occhiali, guanti, cuffie), verificare l’integrità del pistone e delle parti soggette a usura. Impiegare solo cariche e chiodi compatibili e certificati.",
+    "chiodatrice": "Uso chiodatrici: personale addestrato, area di sparo sgombra, mai puntare verso persone/retro del supporto; pulizia periodica per garantire costanza di rendimento.",
+    "ctf": "CTF: connettori a piolo per solai collaboranti acciaio–calcestruzzo; aumentano la rigidezza del solaio collegando profili in acciaio e soletta in cls; certificazione ETA e marcatura CE.",
+    "diapason": "Connettori Diapason: alternativa ai pioli per ottenere una distribuzione più ampia del carico nella soletta; valutare passo e disposizione secondo specifiche di posa.",
+    "cem-e": "Connettori CEM-E: indicati per collegare getti di calcestruzzo nuovi a esistenti; utili in interventi di rinforzo/adeguamento con riprese di getto.",
+    "ctl": "CTL (legno-calcestruzzo): sistema di connettori per solai collaboranti legno-cls; attenzione a essenze/umidità del legno e alle verifiche di scorrimento.",
+    "contatti": "Per contatti: specifica sempre oggetto della richiesta, cantiere/progetto, tempi richiesti e recapito. Questo velocizza l’assistenza tecnica.",
+    "certificazioni": "Documentazione: cerca sempre ETA (valutazione tecnica europea), DoP (dichiarazione di prestazione), marcatura CE, manuali di posa e relazioni di calcolo."
+  },
+  "rules": [
     {
-      "tags": ["chi siamo", "azienda", "tecnaria", "profilo"],
-      "questions": [
-        "Chi è Tecnaria?",
-        "Parlami di Tecnaria",
-        "Cos'è Tecnaria Spa?",
-        "Mi dai info sull'azienda Tecnaria?",
-        "Quali sono i valori di Tecnaria?"
-      ],
-      "answer": "Tecnaria è un’azienda italiana con sede a Bassano del Grappa (Vicenza), specializzata da oltre quarant’anni nella progettazione e produzione di connettori strutturali per solai collaboranti legno–calcestruzzo, acciaio–calcestruzzo e calcestruzzo–calcestruzzo. Offre soluzioni certificate e innovative per l’edilizia."
+      "if_any": ["contatti","telefono","tel","email","mail","orari","sede","indirizzo"],
+      "add": "Per richieste tecniche: indica tipologia di solaio (lamiera grecata/soletta piena/legno-cls), spessori e carichi previsti."
     },
     {
-      "tags": ["P560", "sparachiodi", "pistola"],
-      "questions": [
-        "Che cos'è la P560?",
-        "Mi parli della pistola P560?",
-        "Cos'è la P560 di Tecnaria?",
-        "Come funziona la P560?",
-        "Che utensile è la P560?"
-      ],
-      "answer": "La P560 è la pistola sparachiodi a cartuccia propulsiva utilizzata per fissare i connettori Tecnaria della serie CTF e Diapason. È prodotta da SPIT, pesa circa 4,1 kg, appartiene alla classe A degli utensili di fissaggio e consente di realizzare rapidamente solai collaboranti senza ricorrere alla saldatura."
+      "if_all": ["ctf","lamiera"],
+      "add": "CTF su lamiera grecata: verifica altezza d’onda e spessore della lamiera, passo dei connettori e compatibilità con l’ETA; cura la pulizia dei fori e il corretto ancoraggio nel cls."
     },
     {
-      "tags": ["contatti", "ufficio", "telefono", "email"],
-      "questions": [
-        "Come contatto Tecnaria?",
-        "Dammi i contatti di Tecnaria",
-        "Qual è l'email di Tecnaria?",
-        "Qual è il telefono di Tecnaria?",
-        "Dove si trova Tecnaria?"
-      ],
-      "answer": "Tecnaria S.p.A. ha sede a Bassano del Grappa (VI), Via delle Industrie 2. Telefono: +39 0424 502256 – Email: info@tecnaria.com."
+      "if_all": ["ctf","soletta","piena"],
+      "add": "CTF su soletta piena: controlla copriferro, passo connettori e classe del calcestruzzo; rispetta le distanze minime tra ancoraggi."
+    },
+    {
+      "if_all": ["diapason","distribuzione","carico"],
+      "add": "Diapason: usali quando serve distribuire il carico su un’area maggiore; definisci interasse e schema di posa secondo schede tecniche."
+    },
+    {
+      "if_all": ["cem-e","ripresa","getto"],
+      "add": "CEM-E per riprese di getto: prepara adeguatamente il supporto (pulizia, eventuale scarifica), usa primer/boiacca se previsto e rispetta i copriferri."
+    },
+    {
+      "if_any": ["eta","dop","marcatura","ce","certificazione","certificazioni"],
+      "add": "Ricorda: i sistemi sono coperti da ETA e marcatura CE; fai sempre riferimento alle versioni più aggiornate dei documenti ufficiali."
+    },
+    {
+      "if_any": ["posa","installazione","montaggio","manuale","istruzioni"],
+      "add": "Posa: segui le istruzioni del manuale, usa dime/attrezzi compatibili, mantieni il passo specificato e registra eventuali non conformità."
+    },
+    {
+      "if_any": ["sicurezza","dpi","cantiere","rischi"],
+      "add": "Sicurezza: predisponi area di lavoro protetta, verifica parapetti e linee vita quando operi in quota; DPI obbligatori."
+    },
+    {
+      "if_all": ["p560","chiodo"],
+      "add": "P560: scegli cariche adeguate alla durezza del supporto; dopo un certo numero di colpi esegui la pulizia e controlla l’usura di pistone e ammortizzatori."
+    },
+    {
+      "if_all": ["legno","calcestruzzo","ctl"],
+      "add": "Legno-cls (CTL): verifica umidità del legno, eventuali trattamenti, e dimensiona gli interassi per limitare lo scorrimento relativo."
+    },
+    {
+      "if_any": ["progetto","calcolo","verifica","strutturale"],
+      "add": "Coordinati con il progettista strutturale: l’impiego dei connettori deve rispettare verifiche agli SLU/SLE e la normativa vigente."
     }
   ]
 }
