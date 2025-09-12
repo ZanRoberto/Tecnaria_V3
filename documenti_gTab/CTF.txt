@@ -149,6 +149,53 @@ R: Passo irregolare, chiodi insufficientemente infissi, posa su supporti sporchi
 ────────────────────────────
 D: Come gestire un fissaggio fallito?
 R: Rimuovi il connettore, ripristina il punto (se richiesto), ripeti con parametri corretti. Annotalo nel report.
+[TAGS: CTF, connettori a piolo, acciaio-calcestruzzo, lamiera grecata, posa, passo, resistenza a taglio]
+
+D: Che cos’è il connettore CTF?
+R: È un piolo Ø12 su piastra per collegare acciaio–calcestruzzo nei solai collaboranti. Si fissa con chiodi o secondo le istruzioni Tecnaria.
+────────────────────────────
+D: Dove si usa il CTF?
+R: Su lamiere grecate o solette piene, per aumentare rigidezza e resistenza del solaio collaborante.
+────────────────────────────
+D: Come si posa su lamiera grecata?
+R: Segui lo schema fori/passi indicato, fissa la piastra nella cresta/valle prevista e controlla la presa su supporto.
+────────────────────────────
+D: Qual è il passo tipico dei CTF?
+R: Dipende da progetto e carichi. Tecnaria fornisce tabelle ed esempi; il progettista definisce il passo finale.
+────────────────────────────
+D: CTF è certificato?
+R: Sì, con documentazione tecnica e DoP disponibili. Consulta “Certificazioni_DoP.txt”.
+────────────────────────────
+D: Quali vantaggi rispetto a saldatura?
+R: Rapidità, riduzione attrezzaggi, minori interferenze di cantiere; mantiene prestazioni se posato secondo istruzioni.
+────────────────────────────
+D: Compatibilità con P560?
+R: Sì, i CTF predisposti alla chiodatura possono essere fissati con P560 e chiodi idonei.
+────────────────────────────
+D: Cosa verificare in accettazione?
+R: Conformità lotti, integrità piastre/pioli, corrispondenza ai codici di ordine e progetto.
+────────────────────────────
+D: Come gestire tolleranze di posa?
+R: Usa guide e tracciature; mantieni perpendicolarità e controlla a campione gli interassi.
+────────────────────────────
+D: Requisiti di calcestruzzo?
+R: Classe e spessore secondo progetto; la scheda CTF indica requisiti minimi e copriferro.
+────────────────────────────
+D: Come tratto zone d’appoggio su travi?
+R: Piani puliti, privi di ruggine/olio; allinea piastra e verifica il contatto pieno prima della chiodatura.
+────────────────────────────
+D: Come documento la posa?
+R: Report con passi/numero connettori, lotti, foto campione e firma responsabile.
+────────────────────────────
+D: Resistenza a taglio dei CTF?
+R: Vedi schede Tecnaria/relazioni di calcolo; dipende da lamiera, spessore, calcestruzzo e passo.
+────────────────────────────
+D: Errori comuni da evitare?
+R: Passo irregolare, chiodi insufficientemente infissi, posa su supporti sporchi o deformati.
+────────────────────────────
+D: Come gestire un fissaggio fallito?
+R: Rimuovi il connettore, ripristina il punto (se richiesto), ripeti con parametri corretti. Annotalo nel report.
+
 
 
 
