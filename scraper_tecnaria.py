@@ -1,399 +1,344 @@
 # -*- coding: utf-8 -*-
-import os, re, unicodedata, json
-from collections import defaultdict, Counter
+import os, re, json, unicodedata
 from difflib import SequenceMatcher
 
 # =========================
-# Config
+# Config base (via env)
 # =========================
 DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")
 MIN_CHARS_PER_CHUNK = int(os.environ.get("MIN_CHARS_PER_CHUNK", "120"))
-OVERLAP_CHARS = int(os.environ.get("OVERLAP_CHARS", "0"))
+OVERLAP_CHARS = int(os.environ.get("OVERLAP_CHARS", "40"))
+DEFAULT_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))
+TOPK_DEFAULT = int(os.environ.get("TOPK_SEMANTIC", "20"))
+
 DEBUG = os.environ.get("DEBUG_SCRAPER", "1") == "1"
 
-# Soglia di "trovato"
-DEFAULT_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))
-TOPK = int(os.environ.get("TOPK_SEMANTIC", "20"))
-
-# Stopwords MINIMALI (italiano) – niente parole tecniche
+# =========================
+# Stopwords minimali (IT)
+# =========================
 STOPWORDS = {
-    "e","ed","o","oppure","di","del","della","dello","dei","degli","delle",
-    "a","al","allo","ai","agli","alla","alle","da","dal","dallo","dai","dagli","dalla","dalle",
-    "in","nel","nello","nei","negli","nella","nelle","su","sul","sullo","sui","sugli","sulla","sulle",
-    "per","tra","fra","il","lo","la","i","gli","le","un","uno","una","che","come","dove","quando","quanto","quale",
-    "mi","ti","ci","vi","si","di","de","dei","degli","delle"
+    "il","lo","la","i","gli","le","un","uno","una",
+    "di","del","della","dello","dei","degli","delle",
+    "e","o","con","per","su","tra","fra","in","da","al","ai","agli","alla","alle",
+    "che","come","dove","quando","anche","de","dal","dall","dalle","agli"
 }
-
-# Sinonimi / espansioni dominio Tecnaria
-SYNONYMS = {
-    # P560 / chiodatrice
-    "p560": ["spit p560","pistola p560","pistola","sparachiodi","chiodatrice","chiodatrice hbv","utensile p560"],
-    "sparachiodi": ["pistola","p560","spit p560","chiodatrice"],
-    "chiodatrice": ["pistola","p560","spit p560","sparachiodi","chiodatrice hbv"],
-    # Famiglie connettori
-    "ctf": ["connettori ctf","piolo","pioli","acc aio calcestruzzo","acciaio calcestruzzo","lamiera grecata"],
-    "cem-e": ["ceme","ripresa di getto","connettore calcestruzzo calcestruzzo","riprese di getto"],
-    "mini": ["mini cem-e","mini ceme"],
-    "diapason": ["ctfs diapason","staffa diapason","connettore diapason"],
-    "ctl": ["connettore legno calcestruzzo","legno calcestruzzo","tasselli legno"],
-    "hbv": ["connettori hbv","x-hbv","legno calcestruzzo","viti"],
-    # Info aziendali / contatti
-    "contatti": ["telefono","email","indirizzo","sede","orari","come contattarvi","assistenza"],
-    "chi": ["chi è tecnaria","chi siete","profilo aziendale","chi siamo","storia","valori","mission","vision"],
-    "ordine": ["acquisto","come comprare","prezzi","preventivo","ordine","rivenditori"],
-    "noleggio": ["noleggiare","noleggio p560","noleggio pistola"]
-}
-
-# Frasi chiave (bigrammi/trigrammi) che aiutano il match semantico
-KEY_PHRASES = [
-    "pistola sparachiodi", "spit p560", "chiodatrice hbv",
-    "solai collaboranti", "ripresa di getto", "legno calcestruzzo",
-    "acciaio calcestruzzo", "calcestruzzo calcestruzzo",
-    "dichiarazione di prestazione", "marcatura ce", "schede tecniche",
-    "manuali di posa", "relazioni di calcolo", "orari uffici", "sede bassano del grappa"
-]
 
 # =========================
-# Normalizzazione & token
+# Sinonimi / intent router
+# =========================
+INTENT_SYNONYMS = {
+    # P560 / chiodatrice
+    "p560": ["p560","p 560","p-560","spit p560","pistola","sparachiodi","sparachiodi p560","pistola spit"],
+    "hbv_chiodatrice": ["chiodatrice hbv","chiodatrice","hbv tool"],
+    # Contatti
+    "contatti": ["contatti","telefono","email","mail","sede","orari","come contattarvi","assistenza","dove siete"],
+    # Codici / elenco prodotti
+    "codici": ["codici","catalogo","elenco prodotti","lista codici","codici connettori","catalogo tecnaria"],
+    # Chi siamo
+    "chisiamo": ["chi è tecnaria","chi è tecnaria?","chi siete","chi siamo","profilo aziendale","storia tecnaria","vision","mission"]
+}
+
+# Mappa intent -> priorità file (ordine conta)
+INTENT_TO_FILES = {
+    "p560": ["P560.txt","HBV_Chiodatrice.txt","CTF.txt","Diapason.txt"],
+    "hbv_chiodatrice": ["HBV_Chiodatrice.txt","P560.txt","CTF.txt"],
+    "contatti": ["ChiSiamo_ContattiOrari.txt"],
+    "codici": ["Prodotti_Elenco.txt","CTF.txt","CEM-E.txt","MINI_CEM-E.txt","CTL.txt","Diapason.txt","X-HBV.txt"],
+    "chisiamo": ["ChiSiamo_ProfiloAziendale.txt","ChiSiamo_VisionMission.txt","ChiSiamo_Certificazioni.txt"]
+}
+
+# =========================
+# Indice globale
+# =========================
+INDEX = []  # ogni voce: {path, file, line, text, tags(list), title}
+
+# =========================
+# Utility di testo
 # =========================
 def normalize_text(s: str) -> str:
     if not s:
         return ""
-    s = s.replace("’","'").replace("–","-").replace("—","-")
+    s = s.replace("\u200b","")
     s = unicodedata.normalize("NFKD", s)
     s = "".join(ch for ch in s if not unicodedata.combining(ch))
     s = s.lower()
-    s = re.sub(r"[^\w\s\-\.@/]", " ", s)    # lascia @ / . per email/url/codici
+    # tieni lettere, numeri e spazi
+    s = re.sub(r"[^a-z0-9àèéìòóùü\s\-\_\/\.]", " ", s)  # prima di rimuovere accenti
+    # dopo NFKD gli accenti sono separati; ripulisci residui
+    s = re.sub(r"[^a-z0-9\s\-\_\/\.]", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
 def tokenize(s: str):
     s = normalize_text(s)
-    toks = [t for t in re.split(r"[^\w@/\.]+", s) if t and t not in STOPWORDS]
+    toks = [t for t in s.split() if t and t not in STOPWORDS]
     return toks
 
-def expand_with_synonyms(tokens):
-    out = set(tokens)
-    for t in tokens:
-        base = t
-        if base in SYNONYMS:
-            for syn in SYNONYMS[base]:
-                out.update(tokenize(syn))
-    return list(out)
+def read_file_utf8(path: str) -> str:
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read()
 
-# =========================
-# Lettura & parsing file
-# =========================
-BLOCK_SPLIT_RE = re.compile(r"^\s*[\u2500\-_=]{6,}\s*$")  # linee tipo ───── o -----
-TAGS_RE = re.compile(r"^\s*\[tags\s*:\s*(.*?)\]\s*$", re.IGNORECASE)
-
-def read_txt(path):
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
-    except:
-        try:
-            with open(path, "r", encoding="latin-1") as f:
-                return f.read()
-        except:
-            return ""
-
-def split_blocks(text):
+def detect_tags_and_blocks(full_text: str):
     """
-    Spezza in blocchi su righe separatrici o Q/A.
-    Ritorna lista di blocchi (stringhe) filtrando i troppo corti.
-    """
-    if not text:
-        return []
-
-    parts = []
-    cur = []
-    lines = text.splitlines()
-    for ln in lines:
-        if BLOCK_SPLIT_RE.match(ln):
-            if cur:
-                parts.append("\n".join(cur).strip())
-                cur = []
-        else:
-            cur.append(ln)
-    if cur:
-        parts.append("\n".join(cur).strip())
-
-    # se non c'erano separatori, usa come 1 blocco
-    if not parts:
-        parts = [text.strip()]
-
-    # filtra blocchi troppo corti
-    parts = [p for p in parts if len(p) >= MIN_CHARS_PER_CHUNK]
-    return parts
-
-def extract_tags(header_or_block):
-    """
-    Cerca la riga [TAGS: ...] all'inizio del testo blocco/file.
+    Restituisce lista di blocchi. Ogni blocco: {"text":..., "tags":[...]}
+    Split per separatori '────' o '====' o righe vuote multiple.
+    Rileva TAGS nella prima riga in forma: [TAGS: a, b, c]
     """
     tags = []
-    for raw in header_or_block.splitlines()[:5]:
-        m = TAGS_RE.match(raw.strip())
-        if m:
-            inside = m.group(1)
-            tags = [t.strip() for t in re.split(r"[,\|;]", inside) if t.strip()]
-            break
-    return tags
+    # estrai riga TAGS se c'è
+    m = re.search(r"^\s*\[TAGS\s*:\s*(.*?)\]\s*$", full_text, flags=re.IGNORECASE|re.M)
+    if m:
+        raw = m.group(1).strip()
+        tags = [t.strip().lower() for t in re.split(r"[;,/]", raw) if t.strip()]
+
+    # split in blocchi
+    parts = re.split(r"(?:\n[\-\=]{5,}\n)|(?:\n\s*\n\s*\n+)", full_text)
+    blocks = []
+    for p in parts:
+        p = p.strip()
+        if len(p) < MIN_CHARS_PER_CHUNK:
+            continue
+        blocks.append({"text": p, "tags": tags[:]})
+    return blocks
+
+def file_priority_score(filename: str, question: str) -> float:
+    """
+    Boost se il filename è coerente con l'intent riconosciuto.
+    """
+    qn = normalize_text(question)
+    score = 0.0
+    for intent, keys in INTENT_SYNONYMS.items():
+        if any(k in qn for k in keys):
+            wanted = INTENT_TO_FILES.get(intent, [])
+            # boost decrescente per posizione
+            for rank, fname in enumerate(wanted):
+                if fname.lower() == filename.lower():
+                    score += 0.6 - 0.05*rank  # 0.6, 0.55, 0.5, ...
+                    break
+    return score
+
+def tag_boost(tags, question: str) -> float:
+    if not tags:
+        return 0.0
+    qn = normalize_text(question)
+    boost = 0.0
+    for t in tags:
+        tn = normalize_text(t)
+        if not tn:
+            continue
+        if tn in qn:
+            boost += 0.12
+        # sinonimi grezzi: p560 ↔ pistola/sparachiodi
+        if ("p560" in qn or "sparachiodi" in qn or "pistola" in qn) and ("p560" in tn or "pistola" in tn or "sparachiodi" in tn):
+            boost += 0.18
+    return boost
+
+def keyword_overlap_score(q: str, text: str) -> float:
+    q_toks = set(tokenize(q))
+    t_toks = set(tokenize(text))
+    if not q_toks or not t_toks:
+        return 0.0
+    inter = len(q_toks & t_toks)
+    base = inter / (len(q_toks) ** 0.75)  # favorisci match delle parole-chiave della query
+    return min(1.0, base)
+
+def fuzzy_score(q: str, text: str, maxlen: int = 400) -> float:
+    a = normalize_text(q)
+    b = normalize_text(text[:maxlen])
+    if not a or not b:
+        return 0.0
+    return SequenceMatcher(None, a, b).ratio()  # 0..1
 
 # =========================
-# Indice globale
+# Indicizzazione
 # =========================
-INDEX = []            # lista di blocchi {id, path, line, title, text, norm_text, tags, tokens, term_freq}
-INVERTED = defaultdict(list)  # term -> [id...]
-DF = Counter()        # document frequency per term
-N_DOCS = 0
-
-def add_to_index(path, blocks):
-    global INDEX, INVERTED, DF
-    filename = os.path.basename(path)
-    root_title = os.path.splitext(filename)[0]
-
-    # tags del file (prima riga)
-    file_tags = extract_tags(blocks[0]) if blocks else []
-
-    for i, raw in enumerate(blocks, start=1):
-        tags = extract_tags(raw)
-        if not tags:
-            tags = file_tags
-
-        # titolo euristico: prima riga non vuota, altrimenti nome file
-        first_non_empty = next((l.strip() for l in raw.splitlines() if l.strip()), "")
-        title = first_non_empty if first_non_empty and len(first_non_empty) <= 120 else root_title
-
-        # normalizzato e tokenizzato
-        norm = normalize_text(raw)
-        toks = tokenize(norm)
-        tf = Counter(toks)
-
-        bid = len(INDEX)
-        entry = {
-            "id": bid,
-            "path": path,
-            "line": i,
-            "title": title,
-            "text": raw.strip(),
-            "norm_text": norm,
-            "tags": [normalize_text(t) for t in tags],
-            "tokens": toks,
-            "term_freq": tf,
-            "file": filename
-        }
-        INDEX.append(entry)
-
-        # inverted & df
-        unique_terms = set(toks)
-        for t in unique_terms:
-            INVERTED[t].append(bid)
-            DF[t] += 1
-
-def build_index(doc_dir=None):
-    """
-    Scansiona DOC_DIR e costruisce INDEX, INVERTED, DF.
-    """
-    global INDEX, INVERTED, DF, N_DOCS
-    basedir = os.path.abspath(doc_dir or DOC_DIR)
+def build_index(doc_dir: str = DOC_DIR):
+    global INDEX
     INDEX = []
-    INVERTED = defaultdict(list)
-    DF = Counter()
-    N_DOCS = 0
-
+    root = os.path.abspath(doc_dir)
     if DEBUG:
-        print(f"[scraper_tecnaria] Inizio indicizzazione da: {basedir}\n")
-
-    txt_files = []
-    for root, _, files in os.walk(basedir):
-        for fn in files:
+        print(f"[scraper_tecnaria] Inizio indicizzazione da: {root}\n")
+    txts = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        for fn in filenames:
             if fn.lower().endswith(".txt"):
-                txt_files.append(os.path.join(root, fn))
-
+                txts.append(os.path.join(dirpath, fn))
     if DEBUG:
-        if txt_files:
-            print(f"[scraper_tecnaria] Trovati {len(txt_files)} file .txt:")
-            for p in txt_files:
+        if txts:
+            print(f"[scraper_tecnaria] Trovati {len(txts)} file .txt:")
+            for p in txts:
                 print(f"  - {p}")
         else:
             print("[scraper_tecnaria] Trovati 0 file .txt:")
 
-    for p in sorted(txt_files):
-        raw = read_txt(p)
-        blocks = split_blocks(raw)
-        add_to_index(p, blocks)
+    total_blocks, total_lines = 0, 0
+    for path in txts:
+        file = os.path.basename(path)
+        try:
+            raw = read_file_utf8(path)
+        except Exception as e:
+            if DEBUG:
+                print(f"[scraper_tecnaria] ERRORE lettura {path}: {e}")
+            continue
 
-    N_DOCS = len(INDEX)
-    total_lines = sum(1 for e in INDEX for _ in [e["line"]])
+        blocks = detect_tags_and_blocks(raw)
+        line_num = 1
+        for b in blocks:
+            text = b["text"]
+            lines = text.count("\n") + 1
+            INDEX.append({
+                "path": path,
+                "file": file,
+                "line": line_num,
+                "text": text,
+                "tags": b.get("tags", []),
+                "title": os.path.splitext(file)[0]
+            })
+            total_blocks += 1
+            total_lines += lines
+            line_num += lines
+
     if DEBUG:
-        print(f"[scraper_tecnaria] Indicizzati {N_DOCS} blocchi / {sum(len(read_txt(p).splitlines()) for p in txt_files)} righe da {len(txt_files)} file.")
-    return True
-
-# =========================
-# Scoring ibrido
-# =========================
-def idf(term):
-    df = DF.get(term, 0)
-    if df <= 0:
-        return 0.0
-    # idf liscio
-    return max(0.0, (1.0 + ( (len(INDEX) + 1) / (df + 0.5) )) )
-
-def phrase_hits(question_norm, text_norm):
-    score = 0.0
-    for ph in KEY_PHRASES:
-        phn = normalize_text(ph)
-        if phn in question_norm and phn in text_norm:
-            score += 1.0
-    return score
-
-def tag_boost(q_tokens, entry):
-    # boost se qualche token della domanda appare nei TAG o nel nome file/titolo
-    tags = entry.get("tags", [])
-    title = normalize_text(entry.get("title",""))
-    filebase = normalize_text(os.path.splitext(entry.get("file",""))[0])
-
-    hit = 0.0
-    for t in q_tokens:
-        if t in tags:
-            hit += 1.4
-        if t and t in title:
-            hit += 0.8
-        if t and t in filebase:
-            hit += 0.8
-    return hit
-
-def keyword_overlap_score(q_tokens, entry):
-    # somma degli idf per i termini in comune
-    tf = entry["term_freq"]
-    score = 0.0
-    for t in q_tokens:
-        if t in tf:
-            score += idf(t)
-    return score
-
-def fuzzy_score(q_norm, entry_norm):
-    # similarità carattere-carattere – blanda ma robusta
-    return SequenceMatcher(None, q_norm, entry_norm[:2000]).ratio()  # limita per velocità
-
-def hybrid_score(q, q_tokens, entry):
-    # componenti
-    kw = keyword_overlap_score(q_tokens, entry)
-    fz = fuzzy_score(q, entry["norm_text"])
-    ph = phrase_hits(q, entry["norm_text"])
-    tg = tag_boost(q_tokens, entry)
-
-    # pesi tarati
-    score = (1.35 * kw) + (0.85 * fz) + (1.10 * ph) + (1.40 * tg)
-    return score
+        print(f"[scraper_tecnaria] Indicizzati {total_blocks} blocchi / {total_lines} righe da {len(txts)} file.")
 
 # =========================
 # Ricerca
 # =========================
-def _candidates_from_inverted(q_tokens):
-    # prendi un set di candidati dai termini indicizzati
-    cand = set()
-    for t in q_tokens:
-        for bid in INVERTED.get(t, []):
-            cand.add(bid)
-    # se zero candidati (domanda generica), considera tutti (bounded by TOPK*20)
-    if not cand:
-        return range(len(INDEX))
-    return cand
+def _score_block(q: str, blk: dict) -> float:
+    kw = keyword_overlap_score(q, blk["text"])
+    fz = fuzzy_score(q, blk["text"])
+    tagb = tag_boost(blk.get("tags", []), q)
+    fileb = file_priority_score(blk.get("file",""), q)
+    # combinazione pesata; file e tag sono forti
+    score = 0.45*kw + 0.35*fz + tagb + fileb
+    return score
+
+def _intent_candidates(question: str):
+    qn = normalize_text(question)
+    preferred = []
+    for intent, keys in INTENT_SYNONYMS.items():
+        if any(k in qn for k in keys):
+            preferred.extend(INTENT_TO_FILES.get(intent, []))
+    # dedup preservando ordine
+    seen = set()
+    out = []
+    for f in preferred:
+        fl = f.lower()
+        if fl not in seen:
+            out.append(fl)
+            seen.add(fl)
+    return out  # es. ["p560.txt","hbv_chiodatrice.txt",...]
 
 def search_best_answer(question: str, threshold: float = None, topk: int = None):
     """
-    Ritorna: {answer, found, score, path, line, from, tags, question}
+    Restituisce: {
+      "answer": "...",
+      "found": bool,
+      "from": {"file":..., "path":..., "line":..., "score": ...},
+      "score": float,
+      "tags": "...",
+      "question": domanda_normalizzata
+    }
     """
-    if threshold is None:
-        threshold = DEFAULT_THRESHOLD
-    if topk is None:
-        topk = TOPK
-
-    q_raw = question or ""
-    q_norm = normalize_text(q_raw)
-    base_tokens = tokenize(q_norm)
-    q_tokens = expand_with_synonyms(base_tokens)
-
-    if DEBUG:
-        print(f"[scraper_tecnaria][SEARCH] q='{question}' (norm='{q_norm}')")
-        print(f"[scraper_tecnaria][SEARCH] tokens={base_tokens} -> expanded={q_tokens}")
-
     if not INDEX:
         return {
-            "answer": "Indice non pronto.",
+            "answer": "Indice vuoto. Carica i .txt in documenti_gTab/ e ricarica.",
             "found": False,
-            "score": 0.0,
-            "path": None,
-            "line": None,
             "from": None,
-            "tags": None,
-            "question": q_raw
+            "score": 0.0,
+            "question": "",
         }
 
-    # Candidati
-    cand = _candidates_from_inverted(q_tokens)
+    thr = DEFAULT_THRESHOLD if threshold is None else threshold
+    k = TOPK_DEFAULT if topk is None else topk
 
-    # Ranking
+    # Priorità: blocks dei file candidati (se l'intent è chiaro)
+    preferred_files = _intent_candidates(question)
+
     scored = []
-    for bid in cand:
-        entry = INDEX[bid]
-        s = hybrid_score(q_norm, q_tokens, entry)
-        scored.append((s, entry))
+    # 1) scorri due volte: prima i preferiti, poi gli altri
+    def iter_blocks():
+        if preferred_files:
+            for blk in INDEX:
+                if blk["file"].lower() in preferred_files:
+                    yield blk
+        for blk in INDEX:
+            if blk["file"].lower() not in preferred_files:
+                yield blk
+
+    for blk in iter_blocks():
+        s = _score_block(question, blk)
+        scored.append((s, blk))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-    top = scored[:max(50, topk)]  # prendi un po' più ampio, poi decidi
+    top = scored[:k]
 
     # prendi il migliore sopra soglia
-    if not top:
-        return {
-            "answer": "",
-            "found": False,
-            "score": 0.0,
-            "path": None,
-            "line": None,
-            "from": None,
-            "tags": None,
-            "question": q_raw
-        }
+    for s, blk in top:
+        if s >= thr:
+            answer = extract_best_snippet(blk["text"], question)
+            if DEBUG:
+                print(f"[scraper_tecnaria][SEARCH] q='{question}' -> score={s:.3f} {blk['path']}:{blk['line']}")
+            return {
+                "answer": answer,
+                "found": True,
+                "from": {"file": blk["file"], "path": blk["path"], "line": blk["line"], "score": round(s,3)},
+                "score": round(s,3),
+                "tags": ", ".join(blk.get("tags", [])),
+                "question": question.strip()
+            }
 
-    best_score, best = top[0]
+    # Fallback: abbassa soglia una volta
+    if thr > 0.24:
+        return search_best_answer(question, threshold=0.24, topk=k)
 
-    if DEBUG:
-        print(f"[scraper_tecnaria][SEARCH] BEST score={best_score:.3f} -> {best['path']}:{best['line']}  title='{best['title']}'")
-
-    found = best_score >= threshold
-    # risposta: se il blocco ha formato Q/A, restituisci solo la parte “R: …” altrimenti tutto il blocco
-    txt = best["text"].strip()
-    # estrai “Risposta:” o “R:” se presenti
-    m = re.search(r"(?im)^\s*(risposta|r)\s*:\s*(.+)$", txt)
-    if m:
-        answer = m.group(2).strip()
-    else:
-        # se è blocco con D:/R:, prova a prendere dalla prima “R:” in poi
-        m2 = re.search(r"(?im)^\s*r\s*:\s*(.+)$", txt)
-        answer = m2.group(1).strip() if m2 else txt
-
-    result = {
-        "answer": answer,
-        "found": bool(found),
-        "score": float(best_score),
-        "path": best["path"],
-        "line": best["line"],
-        "from": os.path.basename(best["path"]),
-        "tags": best.get("tags", []),
-        "question": q_raw
+    # Nessun risultato convincente
+    if DEBUG and top:
+        best_s, best_blk = top[0]
+        print(f"[scraper_tecnaria][SEARCH] Nessun blocco sopra soglia ({thr}). Best={best_s:.3f} {best_blk['file']}:{best_blk['line']}")
+    return {
+        "answer": "Non ho trovato una risposta precisa. Prova a riformulare leggermente la domanda.",
+        "found": False,
+        "from": None,
+        "score": 0.0,
+        "question": question.strip()
     }
-    return result
+
+def extract_best_snippet(block_text: str, question: str) -> str:
+    """
+    Se il blocco ha coppie D:/R: restituisce la/e R: più vicina/e.
+    Altrimenti ritorna il blocco intero (troncato gentilmente).
+    """
+    # Cerca segmenti Q/A
+    qa = re.split(r"\n\s*D\s*:\s*", block_text, flags=re.IGNORECASE)
+    if len(qa) > 1:
+        best = []
+        for seg in qa[1:]:
+            parts = re.split(r"\n\s*R\s*:\s*", seg, flags=re.IGNORECASE, maxsplit=1)
+            if len(parts) == 2:
+                q_txt = parts[0].strip()
+                r_txt = parts[1].strip()
+                sim = SequenceMatcher(None, normalize_text(question), normalize_text(q_txt)).ratio()
+                best.append((sim, r_txt))
+        if best:
+            best.sort(key=lambda x: x[0], reverse=True)
+            # Fonde le risposte con sim > 0.82 (molto vicine) per completezza
+            top_sim = best[0][0]
+            outs = [r for sim, r in best if sim >= max(0.82, top_sim - 0.03)]
+            return "\n".join(outs)
+
+    # Se non è un blocco QA, ritorna testo (gentile truncate)
+    txt = block_text.strip()
+    # taglia eventuali titoli inutili
+    txt = re.sub(r"^\s*\[TAGS:.*?\]\s*\n", "", txt, flags=re.IGNORECASE|re.S).strip()
+    # non troncare se non lunghissimo
+    if len(txt) <= 1400:
+        return txt
+    return txt[:1200].rstrip() + "\n…"
 
 # =========================
-# Auto-build se eseguito direttamente
+# Esecuzione diretta
 # =========================
 if __name__ == "__main__":
-    ok = build_index(DOC_DIR)
-    print(json.dumps({
-        "status": "ok" if ok else "error",
-        "docs": len(INDEX),
-        "dir": os.path.abspath(DOC_DIR)
-    }, ensure_ascii=False))
+    build_index(DOC_DIR)
+    print(f"[scraper_tecnaria] Pronto: blocchi={len(INDEX)} file indicizzati.")
