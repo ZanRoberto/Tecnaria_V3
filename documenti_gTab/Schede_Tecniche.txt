@@ -76,3 +76,20 @@ R: Sì, riportano le tolleranze principali e le note costruttive necessarie al p
 ────────────────────────────
 D: Posso ricevere una scheda tecnica prima dell’ordine?
 R: Certamente, sono disponibili anche in fase di progettazione per facilitare la scelta del sistema collaborante più adatto.
+[TAGS: schede tecniche, dati, prestazioni, resistenze, dimensioni, accessori]
+
+D: Cosa trovo nelle schede tecniche?
+R: Dati dimensionali, prestazioni a taglio, materiali, accessori e istruzioni di posa sintetiche.
+────────────────────────────
+D: Come scegliere il connettore?
+R: In base a materiali da collegare, resistenze richieste, spessori e logistica di cantiere.
+────────────────────────────
+D: Le schede includono esempi?
+R: Sì, esempi di disposizione e interassi indicativi.
+────────────────────────────
+D: Aggiornate le schede?
+R: Sì, con versioni datate e storico aggiornamenti.
+────────────────────────────
+D: Dove ottenerle?
+R: Nella documentazione Tecnaria o su richiesta al supporto.
+
