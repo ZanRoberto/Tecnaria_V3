@@ -79,3 +79,20 @@ R: Dati affidabili, documenti aggiornati e tempi certi. Il progettista lavora co
 ────────────────────────────
 D: E per l’impresa?
 R: Forniture tracciate, manuali chiari, assistenza rapida e ricambi/attrezzature disponibili: meno imprevisti, più produttività.
+[TAGS: qualità, ISO 9001, FPC, controlli, audit]
+
+D: Siete certificati qualità?
+R: Sì, con sistema di gestione qualità e controlli di produzione (FPC) che supportano la conformità dei prodotti.
+────────────────────────────
+D: Come garantite la qualità?
+R: Controlli in ingresso, in processo e sul prodotto finito, con tracciabilità lotti e documentazione.
+────────────────────────────
+D: Gestione non conformità?
+R: Procedure di segnalazione, analisi cause, azioni correttive e preventive documentate.
+────────────────────────────
+D: Audit clienti/enti?
+R: Disponibili audit e visite su richiesta, secondo procedure.
+────────────────────────────
+D: Dove vedo i certificati?
+R: Nella documentazione tecnica e su richiesta al supporto.
+
