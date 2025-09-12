@@ -68,4 +68,36 @@ Le istruzioni di posa definiscono diametri, profondità, inclinazione delle viti
 D: Che certificazioni hanno i connettori HBV?
 R: Sono certificati ETA e marcati CE, con Dichiarazione di Prestazione (DoP). 
 Ogni lotto è tracciabile e corredato da schede tecniche e relazioni di calcolo.
+[TAGS: HBV, chiodatrice, chiodi, sicurezza, DPI, regolazioni, test fissaggio, troubleshooting]
+
+D: Cos’è la chiodatrice HBV nel contesto Tecnaria?
+R: È l’attrezzatura di fissaggio a chiodo utilizzata con i sistemi Tecnaria per posare connettori su lamiere/travi senza saldatura.
+────────────────────────────
+D: Differenza tra P560 e HBV?
+R: P560 è il nome commerciale della pistola SPIT; “HBV chiodatrice” indica in generale l’attrezzatura/tecnologia di chiodatura usata con chiodi HBV.
+────────────────────────────
+D: Quali chiodi usare?
+R: Chiodi HBV certificati compatibili con il sistema Tecnaria, dimensionati per supporto e spessore.
+────────────────────────────
+D: Come regolo la chiodatrice?
+R: Imposta carica/guida in base al chiodo e fai prove su un’area campione, verificando profondità e stabilità del fissaggio.
+────────────────────────────
+D: Cosa controllo dopo il fissaggio?
+R: Penetrazione corretta, testa chiodo aderente, assenza di piegature o schiacciamenti anomali, rispetto del passo.
+────────────────────────────
+D: Quali DPI sono obbligatori?
+R: Occhiali, cuffie, guanti; in cantiere anche elmetto e calzature di sicurezza.
+────────────────────────────
+D: Rumore e vibrazioni: come gestirli?
+R: Usa cuffie certificate, posizionamento stabile e impugna correttamente la chiodatrice riducendo il contraccolpo.
+────────────────────────────
+D: Quando fare un test di trazione su chiodi?
+R: Su nuovi cicli di lavoro, supporti incerti o quando cambia cartuccia/chiodo. I test confermano la presa sul supporto reale.
+────────────────────────────
+D: Cosa fare se un chiodo non entra?
+R: Verifica potenza cartuccia, punta guida, perpendicolarità e stato del supporto. Aumenta gradualmente la potenza se consentito.
+────────────────────────────
+D: Manutenzione consigliata?
+R: Pulizia giornaliera, controllo guide e molle, sostituzione parti soggette a usura come da manuale.
+
 
