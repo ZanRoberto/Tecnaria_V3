@@ -1,204 +1,166 @@
 # -*- coding: utf-8 -*-
 import os
 import time
-import threading
+import logging
+from typing import Any, Dict, Optional
+
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 
-# === Import dal nuovo scraper ===
-# Assicurati che scraper_tecnaria.py sia quello che ti ho dato (con build_index, is_ready, search_best_answer, INDEX)
-from scraper_tecnaria import (
-    build_index,
-    is_ready,
-    search_best_answer,
-    INDEX,
-)
+# === Import dal tuo scraper (nuovo) ===
+# Devono esistere in scraper_tecnaria.py:
+#   build_index(doc_dir: str) -> dict
+#   search_best_answer(query: str, threshold: float=None, topk: int=None) -> dict
+#   is_ready() -> bool
+#   INDEX (lista/struttura dell'indice)
+from scraper_tecnaria import build_index, search_best_answer, is_ready, INDEX
 
 # =========================
-# Config da ENV
+# Config
 # =========================
 DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")
 SIM_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))
 TOPK = int(os.environ.get("TOPK_SEMANTIC", "20"))
-BOOT_INDEX_TIMEOUT = float(os.environ.get("BOOT_INDEX_TIMEOUT", "55"))  # evita 502 al primo avvio
-DEBUG = os.environ.get("DEBUG_APP", "1") == "1"
+BOOT_RETRIES = int(os.environ.get("BOOT_RETRIES", "3"))
+BOOT_WAIT_SECS = float(os.environ.get("BOOT_WAIT_SECS", "1.5"))
+SHOW_DEBUG = os.environ.get("SHOW_DEBUG", "1") == "1"
 
 # =========================
 # Flask
 # =========================
-app = Flask(__name__, template_folder="templates", static_folder="static")
+app = Flask(__name__)
 CORS(app)
 
-# =========================
-# Build indice (thread-safe)
-# =========================
-_build_lock = threading.Lock()
-_index_started = False
+# Log più verboso su Render
+logging.basicConfig(level=logging.INFO)
+log = app.logger
 
-def ensure_index_ready(blocking: bool = True, timeout: float = BOOT_INDEX_TIMEOUT) -> bool:
-    """
-    - Se l'indice è pronto -> True
-    - Se non è pronto:
-        * blocking=True: prova a costruirlo subito (con lock) e attende fino a 'timeout'
-        * blocking=False: avvia un thread in background e torna subito
-    """
-    global _index_started
+def _ensure_index_ready() -> bool:
+    """Cerca di avere l’indice pronto; se vuoto ricostruisce."""
     try:
-        if is_ready():
-            return True
+        n = len(INDEX) if INDEX is not None else 0
     except Exception:
-        pass
+        n = 0
+    if n == 0 or not is_ready():
+        log.warning("[app] INDEX vuoto o non pronto: provo build_index(%s)", DOC_DIR)
+        try:
+            build_index(DOC_DIR)
+        except Exception as e:
+            log.exception("[app] Errore in build_index: %s", e)
+    # ricontrollo
+    try:
+        n = len(INDEX) if INDEX is not None else 0
+    except Exception:
+        n = 0
+    ready = bool(n > 0 and is_ready())
+    log.info("[app] Ready=%s, docs=%d", ready, n)
+    return ready
 
-    if not _index_started:
-        # Primo tentativo di build
-        def _do_build():
-            try:
-                app.logger.warning("[app] INDEX vuoto → costruzione da %s", DOC_DIR)
-                build_index(DOC_DIR)
-                app.logger.info("[app] INDEX pronto: %s blocchi", len(INDEX.get("docs", [])))
-            except Exception as e:
-                app.logger.exception("[app] Errore in build_index: %s", e)
-
-        _index_started = True
-        if blocking:
-            with _build_lock:
-                _do_build()
-        else:
-            # avvia in background per non bloccare la richiesta corrente
-            th = threading.Thread(target=lambda: ( _build_lock.acquire(), _do_build(), _build_lock.release() ), daemon=True)
-            th.start()
-
-    if not blocking:
-        # Non blocca: ritorna lo stato attuale
-        return is_ready()
-
-    # Se blocking, attende fino a timeout
-    t0 = time.time()
-    while time.time() - t0 < timeout:
-        if is_ready():
-            return True
-        time.sleep(0.2)
-    return is_ready()
-
-# Costruisci l'indice SUBITO all'avvio (ma senza bloccare troppo)
-# Per evitare timeouts su Render al boot, usiamo blocking=True ma con timeout controllato.
-ensure_index_ready(blocking=True, timeout=BOOT_INDEX_TIMEOUT)
+# === Costruisci l'indice SUBITO all’avvio (con piccoli retry: utile su piani free) ===
+for attempt in range(BOOT_RETRIES):
+    if _ensure_index_ready():
+        break
+    time.sleep(BOOT_WAIT_SECS)
 
 # =========================
 # Routes
 # =========================
 @app.route("/", methods=["GET"])
-def home():
-    # Se non hai un template index.html, puoi restituire una mini pagina inline
+def home() -> Any:
+    # Se usi un template, altrimenti puoi restituire una pagina semplice
     try:
         return render_template("index.html")
     except Exception:
-        return """
-        <html>
-          <head><meta charset="utf-8"><title>Tecnaria · Assistente documentale</title></head>
-          <body style="font-family: sans-serif; max-width:820px; margin:2rem auto;">
-            <h1>Tecnaria · Assistente documentale</h1>
-            <form action="/ask" method="post">
-              <label for="domanda">Fai una domanda (solo contenuti locali):</label><br>
-              <input style="width:100%; padding:8px" type="text" id="domanda" name="domanda" placeholder="es. mi parli della P560?" />
-              <button style="margin-top:10px" type="submit">Chiedi</button>
-            </form>
-            <p style="margin-top:2rem; color:#666">Indice: <span id="health">verifica <a href="/health">/health</a></span></p>
-          </body>
-        </html>
-        """, 200, {"Content-Type": "text/html; charset=utf-8"}
+        return "Tecnaria · Assistente documentale", 200
 
 @app.route("/ask", methods=["POST"])
-def ask():
+def ask() -> Any:
     """
     Accetta:
-      - x-www-form-urlencoded:  key=domanda
-      - JSON: { "domanda": "..." }
+      - form: domanda=...
+      - json: {"q": "..."} o {"domanda": "..."}
+    Ritorna sempre JSON con almeno: answer, found, from, (debug se SHOW_DEBUG=1).
     """
-    q = ""
-    # Form classico
-    if request.form and "domanda" in request.form:
-        q = (request.form.get("domanda") or "").strip()
-    else:
-        # JSON
-        try:
-            data = request.get_json(silent=True) or {}
-            q = (data.get("domanda") or "").strip()
-        except Exception:
-            q = ""
-
-    if not q:
-        return jsonify({"answer": "Nessuna domanda ricevuta.", "found": False, "from": None})
-
-    # Se l'indice non è pronto, prova a ricostruire in modo non bloccante e rispondi
-    if not ensure_index_ready(blocking=False):
-        return jsonify({
-            "answer": "Indice non pronto. Riprova tra qualche secondo.",
-            "found": False,
-            "from": None
-        })
-
     try:
+        q = (request.form.get("domanda") or "").strip()
+        if not q:
+            data = request.get_json(silent=True) or {}
+            q = (data.get("q") or data.get("domanda") or "").strip()
+
+        if not q:
+            resp = {"answer": "Nessuna domanda ricevuta.", "found": False, "from": None}
+            if SHOW_DEBUG:
+                resp["debug"] = {"note": "empty_query"}
+            return jsonify(resp)
+
+        # Assicuro indice pronto (costruisce se serve)
+        if not _ensure_index_ready():
+            resp = {"answer": "Indice non pronto. Riprova tra qualche secondo.", "found": False, "from": None}
+            if SHOW_DEBUG:
+                resp["debug"] = {"note": "index_not_ready"}
+            return jsonify(resp)
+
+        # Ricerca “miglior risposta”
         result = search_best_answer(q, threshold=SIM_THRESHOLD, topk=TOPK)
 
-        # piccolo tentativo di “rescue” se non trova, abbassa soglia una volta
+        # Se non trova, prova una sola volta ad allentare soglia
         if not result.get("found") and SIM_THRESHOLD > 0.28:
             result = search_best_answer(q, threshold=0.28, topk=TOPK)
 
-        # opzionale: allega un piccolo debug lato client (disattivabile via ENV)
-        if DEBUG:
-            result["_debug"] = {
-                "docs": len(INDEX.get("docs", [])),
-                "threshold_used": SIM_THRESHOLD,
-                "topk_used": TOPK
-            }
-        return jsonify(result)
+        # Garanzia chiavi minime
+        out = {
+            "answer": result.get("answer") or "Non ho trovato una risposta precisa.",
+            "found": bool(result.get("found")),
+            "from": result.get("from"),
+        }
+        # Propaga info utili
+        if "score" in result:
+            out["score"] = result["score"]
+        if "tags" in result:
+            out["tags"] = result["tags"]
+        if SHOW_DEBUG:
+            out["debug"] = result.get("debug", {})
+
+        return jsonify(out)
+
     except Exception as e:
-        app.logger.exception("[app] Errore in /ask: %s", e)
-        return jsonify({
-            "answer": "Errore interno durante la ricerca.",
-            "found": False,
-            "from": None
-        }), 500
+        log.exception("[/ask] Errore interno: %s", e)
+        out = {"answer": "Errore interno durante la ricerca.", "found": False, "from": None}
+        if SHOW_DEBUG:
+            out["debug"] = {"error": f"{type(e).__name__}: {e}"}
+        return jsonify(out), 200  # mai 500
 
 @app.route("/reload", methods=["POST"])
-def reload():
-    """
-    Forza la ricostruzione dell'indice.
-    """
+def reload_index() -> Any:
     try:
-        with _build_lock:
-            build_index(DOC_DIR)
-        docs = len(INDEX.get("docs", [])) if INDEX else 0
-        return jsonify({"status": "ok", "docs": docs})
+        build_index(DOC_DIR)
+        n = len(INDEX) if INDEX is not None else 0
+        out = {"status": "ok", "docs": n, "ready": is_ready()}
+        if SHOW_DEBUG:
+            out["debug"] = {"doc_dir": os.path.abspath(DOC_DIR)}
+        return jsonify(out)
     except Exception as e:
-        app.logger.exception("[app] Errore /reload: %s", e)
-        return jsonify({"status": "error", "error": str(e)}), 500
+        log.exception("[/reload] Errore: %s", e)
+        out = {"status": "error", "error": str(e)}
+        return jsonify(out), 200  # mai 500
 
 @app.route("/health", methods=["GET"])
-def health():
-    """
-    Stato dell’applicazione e indice.
-    """
+def health() -> Any:
     try:
-        docs = len(INDEX.get("docs", [])) if INDEX else 0
+        n = len(INDEX) if INDEX is not None else 0
     except Exception:
-        docs = 0
-
-    resp = {
-        "status": "ok" if is_ready() else "building" if _index_started else "empty",
-        "docs": docs,
+        n = 0
+    out = {
+        "status": "ok" if (n > 0 and is_ready()) else "empty",
+        "docs": n,
         "threshold": SIM_THRESHOLD,
         "topk": TOPK,
         "doc_dir": os.path.abspath(DOC_DIR),
-        "pid": os.getpid(),
+        "ready": is_ready(),
     }
-    return jsonify(resp)
+    return jsonify(out), 200
 
-# =========================
-# Avvio locale
-# =========================
+# === Avvio locale ===
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    # In locale puoi tenere debug=True; su Render gunicorn gestisce i worker.
+    port = int(os.environ.get("PORT", "5000"))
     app.run(host="0.0.0.0", port=port, debug=True)
