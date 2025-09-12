@@ -1,14 +1,14 @@
-# app.py — Tecnaria · Assistente documentale
+# app.py — Tecnaria · Assistente documentale (boot sincrono, zero timeout)
 import os
 import threading
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 
 # ---- Import dal tuo scraper ----
-# Devono esistere queste due funzioni in scraper_tecnaria.py:
-#   build_index(docs_dir) -> dict con chiavi: blocks, files, lines, data (o quello che usi tu)
-#   search_answer(index, question) -> (answer, found, score, path, line)
-from scraper_tecnaria import build_index, search_answer
+# Richiede nel file scraper_tecnaria.py:
+#   build_index(docs_dir) -> dict con chiavi: blocks, files, lines, data
+#   search_best_answer(index, question) -> (answer, found, score, path, line)
+from scraper_tecnaria import build_index, search_best_answer
 
 app = Flask(__name__)
 CORS(app)
@@ -20,7 +20,7 @@ INDEX_ERR = None
 INDEX_LOCK = threading.Lock()
 
 def _docs_dir() -> str:
-    # Tieni compatibilità con tutte le variabili che hai usato
+    # Compatibile con tutte le env che hai usato
     return (
         os.environ.get("DOC_DIR")
         or os.environ.get("DOCS_FOLDER")
@@ -28,20 +28,14 @@ def _docs_dir() -> str:
         or "documenti_gTab"
     )
 
-def _ensure_index() -> None:
-    """Costruisce l'indice se non pronto. Thread-safe."""
+def _build_index_sync():
+    """Costruisce sincrono (bloccante). Se fallisce, salva l’errore."""
     global INDEX, INDEX_READY, INDEX_ERR
-    if INDEX_READY and INDEX is not None:
-        return
     with INDEX_LOCK:
-        # doppio check in caso di corse
-        if INDEX_READY and INDEX is not None:
-            return
         try:
             docs_dir = _docs_dir()
-            print(f"[app] Indicizzazione on-demand da: {docs_dir}")
+            print(f"[app] Indicizzazione SINCRONA da: {docs_dir}")
             idx = build_index(docs_dir)
-            # ci aspettiamo che build_index ritorni un dict con almeno .get('blocks','files','lines')
             INDEX = idx
             INDEX_READY = True
             INDEX_ERR = None
@@ -52,14 +46,22 @@ def _ensure_index() -> None:
             INDEX_ERR = str(e)
             print(f"[app][ERRORE] Indicizzazione fallita: {e}")
 
-def _ensure_index_async():
-    """Avvia indicizzazione in background (per REINDEX_ON_STARTUP=1)."""
-    t = threading.Thread(target=_ensure_index, daemon=True)
-    t.start()
+def _ensure_index_ready():
+    """Se non pronto, ricostruisci sincrono (usato da /ask come rete di salvataggio)."""
+    global INDEX, INDEX_READY
+    if INDEX_READY and INDEX is not None:
+        return
+    _build_index_sync()
 
-# ---- Avvio indicizzazione all'avvio se richiesto ----
-if os.environ.get("REINDEX_ON_STARTUP", "0") == "1":
-    _ensure_index_async()
+# ---- Indicizzazione all’avvio (sincrona) se richiesto ----
+if os.environ.get("REINDEX_ON_STARTUP", "1") == "1":
+    # SINCRONA: il servizio parte solo a indice pronto
+    _build_index_sync()
+else:
+    # Fallback: lasciare comunque un indice costruito prima della prima domanda
+    INDEX_READY = False
+    INDEX = None
+    INDEX_ERR = None
 
 @app.get("/")
 def home():
@@ -67,70 +69,56 @@ def home():
 
 @app.get("/health")
 def health():
-    # Non blocca mai; utile a Render per capire se il processo è vivo
     info = {
         "status": "ok",
         "ready": INDEX_READY,
         "error": INDEX_ERR,
+        "docs_dir": _docs_dir(),
     }
     if INDEX and isinstance(INDEX, dict):
         info.update({
             "blocks": INDEX.get("blocks", 0),
             "files": INDEX.get("files", 0),
             "lines": INDEX.get("lines", 0),
-            "docs_dir": _docs_dir(),
         })
     return jsonify(info), 200
 
-@app.post("/reload")  # opzionale: se vuoi un endpoint manuale (anche se UI nuova non lo mostra)
+@app.post("/reload")
 def reload_index():
+    """Ricarica indice manualmente (se vuoi tenerlo nascosto in UI va bene lo stesso)."""
     global INDEX, INDEX_READY, INDEX_ERR
-    try:
-        # forza ricostruzione
-        with INDEX_LOCK:
-            INDEX = None
-            INDEX_READY = False
-            INDEX_ERR = None
-        _ensure_index()  # sincrona
-        return jsonify({
-            "ok": True,
-            "blocks": INDEX.get("blocks", 0) if INDEX else 0,
-            "files": INDEX.get("files", 0) if INDEX else 0,
-            "lines": INDEX.get("lines", 0) if INDEX else 0,
-        }), 200
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+    _build_index_sync()
+    return jsonify({
+        "ok": INDEX_READY,
+        "blocks": INDEX.get("blocks", 0) if INDEX else 0,
+        "files": INDEX.get("files", 0) if INDEX else 0,
+        "lines": INDEX.get("lines", 0) if INDEX else 0,
+        "error": INDEX_ERR
+    }), 200 if INDEX_READY else 500
 
 @app.post("/ask")
 def ask():
-    # 1) leggi domanda
     data = request.get_json(silent=True) or {}
     q = (data.get("question") or "").strip()
     if not q:
-        return jsonify({"answer": "", "found": False, "score": 0}), 200
+        return jsonify({"answer":"", "found":False, "score":0}), 200
 
-    # 2) assicurati che l'indice esista (on-demand)
+    # Garanzia: se per qualunque motivo non è pronto, ricostruisci ora (sincrono)
+    _ensure_index_ready()
     if not INDEX_READY or INDEX is None:
-        _ensure_index()
-        if not INDEX_READY or INDEX is None:
-            # se comunque fallisce, rispondi chiaro ma non bloccare la UI
-            msg = "Indice non disponibile. Carica i file .txt in documenti_gTab/ e riprova."
-            if INDEX_ERR:
-                msg += f" (Dettaglio: {INDEX_ERR})"
-            return jsonify({"answer": msg, "found": False, "score": 0}), 200
+        msg = "Indice non disponibile. Carica i .txt in documenti_gTab/ e premi Ricarica indice."
+        if INDEX_ERR: msg += f" (Dettaglio: {INDEX_ERR})"
+        return jsonify({"answer": msg, "found": False, "score": 0}), 200
 
-    # 3) cerca risposta
     try:
-        answer, found, score, path, line = search_answer(INDEX, q)
+        answer, found, score, path, line = search_best_answer(INDEX, q)
     except Exception as e:
-        # Qualsiasi eccezione lato ricerca non deve bloccare la chat
-        print(f"[app][ERRORE] search_answer: {e}")
+        print(f"[app][ERRORE] search_best_answer: {e}")
         return jsonify({
-            "answer": "Errore in ricerca. Riprova tra poco o ricarica l'indice.",
+            "answer": "Errore in ricerca. Riprova o ricarica l'indice.",
             "found": False, "score": 0
         }), 200
 
-    # 4) ritorna JSON pulito all'UI
     return jsonify({
         "answer": answer or "",
         "found": bool(found),
@@ -140,6 +128,6 @@ def ask():
     }), 200
 
 if __name__ == "__main__":
-    # Avvio sviluppo locale
+    # Per sviluppo locale
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
