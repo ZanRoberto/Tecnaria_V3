@@ -90,3 +90,20 @@ R: Disporre di dati pronti, certificati e aggiornati, riducendo tempi di calcolo
 ────────────────────────────
 D: E per l’impresa?  
 R: Avere schemi di posa chiari, quantità definite e documenti ufficiali che semplificano la fase esecutiva e il controllo in cantiere.
+[TAGS: relazioni di calcolo, esempi disposizione, interassi, verifiche, software]
+
+D: Fornite relazioni di calcolo?
+R: Sì, con esempi di disposizione, verifiche e ipotesi adottate. Possono essere adattate al progetto specifico.
+────────────────────────────
+D: Cosa includono gli esempi?
+R: Interassi indicativi, schemi su lamiera/trave, verifiche a taglio e note di posa.
+────────────────────────────
+D: Supportate software di calcolo?
+R: Sì, con strumenti e dati tecnici per integrare i connettori nei modelli di calcolo strutturale.
+────────────────────────────
+D: Chi approva le disposizioni finali?
+R: Il progettista strutturale, con riferimento alla normativa vigente.
+────────────────────────────
+D: Posso richiedere un check progetto?
+R: Sì, il supporto tecnico Tecnaria può aiutare con indicazioni e verifiche preliminari.
+
