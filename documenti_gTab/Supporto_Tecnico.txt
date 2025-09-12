@@ -72,3 +72,20 @@ R: Sì, per progetti complessi assegniamo un tecnico di riferimento che segue tu
 ────────────────────────────
 D: Qual è il principale beneficio del supporto tecnico?
 R: Avere un partner affidabile che fornisce soluzioni certificate e pronte all’uso, riducendo tempi e incertezze di progetto e cantiere.
+[TAGS: supporto tecnico, consulenza, assistenza cantiere, pre-posa, post-posa]
+
+D: Che tipo di supporto offrite?
+R: Consulenza tecnica su scelta connettori, disposizioni, posa e documentazione. Possibile affiancamento in cantiere.
+────────────────────────────
+D: Come vi contatto per un progetto?
+R: Tramite i contatti aziendali (telefono/email) o form dedicati; allega elaborati per una risposta mirata.
+────────────────────────────
+D: Fate sopralluoghi?
+R: Su richiesta e in base alla complessità della commessa. Valutiamo insieme tempi e disponibilità.
+────────────────────────────
+D: Tempi di risposta?
+R: Rapidi; le urgenze di cantiere vengono prioritarizzate.
+────────────────────────────
+D: Potete formare la squadra di posa?
+R: Sì, con sessioni mirate su strumenti, DPI, passi e controlli.
+
