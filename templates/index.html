@@ -1,4 +1,3 @@
-<!-- templates/index.html -->
 <!doctype html>
 <html lang="it">
 <head>
@@ -7,221 +6,147 @@
   <title>Tecnaria · Assistente documentale</title>
   <style>
     :root{
-      --bg:#0b1a2b;         /* blu notte */
-      --card:#12253b;       /* blu più chiaro */
-      --accent:#1f6feb;     /* blu acceso */
-      --accent-2:#2ea043;   /* verde ok */
-      --text:#e6eef8;       /* testo principale */
-      --muted:#9fb4cc;      /* testo secondario */
-      --danger:#ff6565;
-      --border:#1b3554;
-      --shadow:0 10px 30px rgba(0,0,0,.25);
-      --radius:16px;
+      --bg:#0b1b2b; --card:#0f2640; --muted:#7fa5c9; --text:#eaf2fb; --accent:#4da3ff; --accent-2:#9ed0ff;
     }
     *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; background:linear-gradient(180deg,#081423 0%, #0b1a2b 50%, #0b1a2b 100%);
-      color:var(--text); font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
-      display:flex; align-items:center; justify-content:center; padding:24px;
-    }
-    .container{
-      width:100%; max-width:900px; background:var(--card); border:1px solid var(--border);
-      border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;
-    }
-    header{
-      display:flex; align-items:center; gap:14px; padding:18px 20px; border-bottom:1px solid var(--border);
-      background:linear-gradient(180deg, rgba(255,255,255,.02), transparent);
-    }
-    header img{width:36px; height:36px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(0,0,0,.25))}
-    header h1{margin:0; font-size:18px; font-weight:600; letter-spacing:.2px}
-    header .status{margin-left:auto; font-size:13px; color:var(--muted)}
-    main{padding:20px}
-    .welcome{
-      background:#0e2238; border:1px dashed var(--border); color:var(--muted);
-      padding:16px; border-radius:12px; margin-bottom:16px;
-    }
-    .welcome b{color:var(--text)}
-    form{
-      background:#0d2035; border:1px solid var(--border); border-radius:12px; padding:12px;
-      display:flex; gap:10px; align-items:flex-end; position:sticky; top:12px; z-index:2;
-    }
-    textarea{
-      width:100%; min-height:74px; max-height:220px; resize:vertical;
-      background:#08192a; color:var(--text); border:1px solid #0e2642; outline:none;
-      border-radius:10px; padding:12px 12px; font:15px/1.4 ui-sans-serif,system-ui;
-    }
-    button{
-      appearance:none; border:none; border-radius:10px; padding:12px 18px; font-weight:600; cursor:pointer;
-      background:var(--accent); color:white; transition:transform .04s ease, opacity .2s ease;
-      box-shadow:0 4px 14px rgba(31,111,235,.4);
-    }
-    button:hover{transform:translateY(-1px)}
-    button:disabled{opacity:.6; cursor:not-allowed; transform:none}
-    .answer{
-      margin-top:16px; background:#0e2238; border:1px solid var(--border); border-radius:12px; padding:16px;
-      white-space:pre-wrap; word-wrap:break-word;
-    }
-    .muted{color:var(--muted)}
-    .row{display:flex; gap:10px; align-items:center; margin-top:8px}
-    .loader{
-      display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.25);
-      border-top-color:#fff; border-radius:50%; animation:spin .9s linear infinite; vertical-align:middle; margin-left:8px;
-    }
-    @keyframes spin{to{transform:rotate(360deg)}}
-    details{
-      margin-top:12px; background:#0b1e32; border:1px solid var(--border); border-radius:10px; padding:10px 12px;
-    }
-    code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-    .ok{color:var(--accent-2)} .err{color:var(--danger)}
-    footer{padding:14px 20px; border-top:1px solid var(--border); color:var(--muted); font-size:13px; display:flex; gap:8px; justify-content:space-between}
-    .link{color:#8ab4ff; text-decoration:none}
-    .link:hover{text-decoration:underline}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;
+         background:linear-gradient(160deg,#081523 0%, #0b1b2b 40%, #0a1f35 100%); color:var(--text)}
+    .wrap{max-width:900px;margin:40px auto;padding:24px}
+    .brand{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+    .brand h1{font-size:18px;margin:0;font-weight:600;letter-spacing:.2px}
+    .card{background:var(--card);border:1px solid rgba(255,255,255,.07);border-radius:14px;box-shadow:0 6px 30px rgba(0,0,0,.25)}
+    .head{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center}
+    .status{font-size:12px;color:var(--muted)}
+    .content{padding:18px 20px}
+    .inputrow{display:flex;gap:10px}
+    .inputrow input{flex:1;padding:14px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.12);
+      background:#0b2138;color:var(--text);outline:none}
+    .inputrow button{padding:14px 18px;border-radius:10px;border:0;background:var(--accent);color:#00162a;font-weight:700;cursor:pointer}
+    .inputrow button:disabled{opacity:.6;cursor:not-allowed}
+    .hint{margin-top:10px;color:var(--muted);font-size:12px}
+    .answer{white-space:pre-wrap;line-height:1.45}
+    .debug{margin-top:10px;font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size:12px;background:#061423;border:1px solid rgba(255,255,255,.09);border-radius:10px;padding:12px;color:#a6c3e5}
+    .badge{background:rgba(77,163,255,.18);color:var(--accent-2);padding:4px 8px;border-radius:999px;font-size:12px}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer}
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <img src="/static/logo.png" alt="Tecnaria" onerror="this.style.display='none'">
-      <h1>Tecnaria · Assistente documentale</h1>
-      <div class="status" id="status">pronto</div>
-    </header>
+  <div class="wrap">
+    <div class="brand">
+      <div class="badge">Tecnaria · Assistente documentale</div>
+      <div id="healthDot" class="status">verifica indice…</div>
+    </div>
 
-    <main>
-      <div class="welcome" id="welcome">
-        <b>Benvenuto!</b> Fai domande in linguaggio naturale: l’assistente risponde
-        <b>solo</b> usando i file <code>.txt</code> presenti in <code>documenti_gTab/</code>.
-        Esempi: “mi dai i contatti?”, “posa CTF su lamiera”, “mi parli della P560?”.
+    <div class="card">
+      <div class="head">
+        <div>Fai una domanda sui prodotti o sulla documentazione</div>
+        <div>
+          <button id="btnReload" class="btn" title="Ricarica indice" style="display:none">Ricarica indice</button>
+        </div>
       </div>
+      <div class="content">
+        <form id="askForm" class="inputrow">
+          <!-- NOME CAMPO GIUSTO: 'domanda' -->
+          <input id="domanda" name="domanda" type="text" placeholder="Es: mi parli della P560? / mi dai i contatti? / codici connettori" autocomplete="off" />
+          <button id="btnAsk" type="submit">Chiedi</button>
+        </form>
+        <div class="hint">Suggerimenti: “mi parli della P560?”, “contatti Tecnaria”, “codici connettori”, “chi è Tecnaria?”.</div>
 
-      <form id="askForm">
-        <textarea id="question" placeholder="Scrivi qui la tua domanda… (invio per inviare)"></textarea>
-        <button id="askBtn" type="submit">Chiedi</button>
-      </form>
-
-      <div id="result" class="answer" style="display:none"></div>
-
-      <details id="debugBox" style="display:none">
-        <summary>Dettagli debug</summary>
-        <div id="debugContent" class="muted" style="margin-top:8px"></div>
-      </details>
-    </main>
-
-    <footer>
-      <span>Solo contenuti locali · <span id="readyDot" class="ok">●</span> <span id="readyTxt">indice pronto</span></span>
-      <a class="link" href="#" id="toggleDebug">Mostra debug</a>
-    </footer>
+        <div id="out" class="answer" style="margin-top:16px"></div>
+        <div id="dbg" class="debug" style="display:none"></div>
+      </div>
+    </div>
   </div>
 
   <script>
-    // --- Utility ---
-    const $ = s => document.querySelector(s);
-    const statusEl = $('#status');
-    const resultEl = $('#result');
-    const debugBox = $('#debugBox');
-    const debugContent = $('#debugContent');
-    const readyDot = $('#readyDot');
-    const readyTxt = $('#readyTxt');
-    const welcome = $('#welcome');
+    const elQ   = document.getElementById('domanda');
+    const elOut = document.getElementById('out');
+    const elDbg = document.getElementById('dbg');
+    const elDot = document.getElementById('healthDot');
+    const elReload = document.getElementById('btnReload');
+    const btnAsk = document.getElementById('btnAsk');
+    let indexReady = false;
 
-    // Debug toggle (non invasivo)
-    let debugOn = false;
-    $('#toggleDebug').addEventListener('click', (e)=>{
-      e.preventDefault();
-      debugOn = !debugOn;
-      debugBox.style.display = debugOn ? 'block' : 'none';
-      e.target.textContent = debugOn ? 'Nascondi debug' : 'Mostra debug';
-    });
-
-    // Health ping iniziale
-    (async function checkHealth(){
+    async function health(init=false){
       try{
-        const r = await fetch('/health', {cache:'no-store'});
-        const js = await r.json();
-        if(js.ready){
-          readyDot.className = 'ok';
-          readyTxt.textContent = 'indice pronto';
-        }else{
-          readyDot.className = 'err';
-          readyTxt.textContent = 'indice non pronto';
+        const r = await fetch('/health');
+        const j = await r.json();
+        indexReady = (j.docs && j.docs > 0);
+        elDot.textContent = indexReady ? `indice pronto · ${j.docs} blocchi` : 'indice non pronto';
+        elReload.style.display = indexReady ? 'inline-block' : 'inline-block';
+        if(!indexReady && init){
+          // prova un auto-reload una volta
+          await reloadIndex();
+          // ri-verifica
+          const r2 = await fetch('/health');
+          const j2 = await r2.json();
+          indexReady = (j2.docs && j2.docs > 0);
+          elDot.textContent = indexReady ? `indice pronto · ${j2.docs} blocchi` : 'indice non pronto';
         }
-      }catch(_){}
-    })();
-
-    // Invio con Enter (senza Shift)
-    $('#question').addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter' && !e.shiftKey){
-        e.preventDefault();
-        $('#askForm').dispatchEvent(new Event('submit'));
+      }catch(e){
+        elDot.textContent = 'errore health';
       }
-    });
+    }
 
-    // --- Submit ---
-    $('#askForm').addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const btn = $('#askBtn');
-      const q = ($('#question').value || '').trim();
-      if(!q) return;
-
-      // UI start
-      welcome.style.display = 'none';
-      resultEl.style.display = 'block';
-      resultEl.textContent = 'Sto cercando la risposta…';
-      btn.disabled = true;
-      const oldBtn = btn.textContent;
-      btn.textContent = 'In corso…';
-      statusEl.innerHTML = 'elaborazione <span class="loader"></span>';
-
-      // Timeout di rete robusto
-      const ctrl = new AbortController();
-      const t = setTimeout(()=>ctrl.abort(), 25000); // 25s
-
+    async function reloadIndex(){
       try{
-        const r = await fetch('/ask', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({question:q}),
-          signal: ctrl.signal
-        });
-
-        let js = null;
-        try{ js = await r.json(); } catch(_){ js = null; }
-
-        if(!r.ok || !js){
-          throw new Error('Risposta non valida dal server.');
-        }
-
-        // Mostra risposta
-        const ans = (js.answer || '').trim();
-        if(ans){
-          resultEl.textContent = ans + '\n\n────────────────────────────';
-        }else{
-          resultEl.innerHTML = 'Non ho trovato una risposta precisa. Prova a riformulare leggermente la domanda.';
-        }
-
-        // Debug (se abilitato)
-        if(debugOn){
-          debugBox.style.display = 'block';
-          debugContent.innerHTML = `
-            <div>score: <code>${(js.score ?? 0).toFixed(3)}</code></div>
-            <div>file: <code>${(js.path || 'n/d')}</code></div>
-            <div>riga: <code>${js.line || 'n/d'}</code></div>
-            <div>found: <code>${js.found}</code></div>
-          `;
-        }
-
-      }catch(err){
-        const aborted = err?.name === 'AbortError';
-        resultEl.innerHTML = aborted
-          ? '⏱️ Timeout. Riprova tra qualche secondo.'
-          : ('❌ Errore: ' + (err.message || 'imprevisto'));
+        elReload.disabled = true;
+        const r = await fetch('/reload', {method:'POST'});
+        const j = await r.json();
+        elOut.textContent = `Indice ricaricato: ${j.docs ?? '0'} documenti.`;
+      }catch(e){
+        elOut.textContent = 'Errore nella ricarica indice.';
       }finally{
-        clearTimeout(t);
-        btn.disabled = false;
-        btn.textContent = oldBtn;
-        statusEl.textContent = 'pronto';
+        elReload.disabled = false;
+      }
+    }
+
+    elReload.addEventListener('click', async (ev)=>{
+      ev.preventDefault();
+      await reloadIndex();
+      await health(false);
+    });
+
+    document.getElementById('askForm').addEventListener('submit', async (ev)=>{
+      ev.preventDefault();
+      const q = elQ.value.trim();
+      if(!q){
+        elOut.textContent = 'Scrivi una domanda…';
+        return;
+      }
+      btnAsk.disabled = true;
+      elOut.textContent = '⏳ Sto cercando…';
+      elDbg.style.display = 'none';
+
+      try{
+        // INVIA FORM-DATA con CAMPO 'domanda'
+        const fd = new FormData();
+        fd.append('domanda', q);
+        const r = await fetch('/ask', {method:'POST', body: fd});
+        const j = await r.json();
+
+        // risposta
+        elOut.textContent = j.answer || '(nessuna risposta)';
+        // debug (se disponibile)
+        const dbg = {
+          found: j.found, score: j.score, from: j.from, tags: j.tags, question: j.question
+        };
+        elDbg.textContent = JSON.stringify(dbg, null, 2);
+        elDbg.style.display = 'block';
+      }catch(e){
+        elOut.textContent = 'Errore di rete o server.';
+      }finally{
+        btnAsk.disabled = false;
       }
     });
+
+    // all'avvio: controlla health e – se vuoto – prova un reload
+    health(true);
+
+    // placeholder utile
+    elQ.value = '';
+    elQ.focus();
   </script>
 </body>
 </html>
