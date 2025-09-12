@@ -115,3 +115,20 @@ R: Tecnaria è una realtà industriale italiana specializzata nei connettori str
 
 D: Chi siete?
 R: Siamo Tecnaria, un’azienda con stabilimento a Bassano del Grappa che sviluppa e produce connettori per solai collaboranti. Affianchiamo i clienti con assistenza tecnica, capitolati e servizi di cantiere.
+[TAGS: chi siamo, Tecnaria, azienda, profilo, storia, mission, valori, Bassano del Grappa, connettori, edilizia]
+
+D: Chi è Tecnaria?
+R: Azienda italiana con sede a Bassano del Grappa, specializzata da oltre quarant’anni in connettori e sistemi per solai collaboranti legno–calcestruzzo, acciaio–calcestruzzo e calcestruzzo–calcestruzzo.
+────────────────────────────
+D: Qual è la mission di Tecnaria?
+R: Fornire soluzioni affidabili e certificate che semplifichino progettazione e posa, migliorando prestazioni e sicurezza dei solai collaboranti.
+────────────────────────────
+D: Quali sono i valori chiave?
+R: Qualità, innovazione, supporto tecnico e sicurezza in cantiere.
+────────────────────────────
+D: Dove avviene la produzione?
+R: In Italia, con controlli qualità certificati e tracciabilità dei lotti.
+────────────────────────────
+D: Tecnaria opera all’estero?
+R: Sì, con rete di partner e documentazione multilingue.
+
