@@ -59,3 +59,20 @@ R: Certamente, sono disponibili anche in fase di progettazione per aiutare i tec
 ────────────────────────────
 D: Tecnaria aggiorna le certificazioni?
 R: Sì, ogni modifica normativa, nuova prova o revisione di prodotto porta a un aggiornamento della DoP/ETA. I clienti ricevono sempre documenti aggiornati.
+[TAGS: DoP, ETA, marcatura CE, certificazioni, dichiarazione prestazione, prove]
+
+D: Cos’è la DoP?
+R: Dichiarazione di Prestazione che accompagna il prodotto con marcatura CE, indicandone le caratteristiche essenziali.
+────────────────────────────
+D: I connettori Tecnaria sono marcati CE?
+R: Sì, con DoP associata e, quando applicabile, ETA o altri riferimenti normativi.
+────────────────────────────
+D: Dove trovo le DoP?
+R: Nella documentazione tecnica Tecnaria o su richiesta a supporto tecnico/commerciale.
+────────────────────────────
+D: Che prove sostengono la DoP?
+R: Prove di laboratorio accreditate e controlli di produzione (FPC) secondo le norme applicabili.
+────────────────────────────
+D: Devo conservare la DoP in cantiere?
+R: Sì, insieme a lotti e report di posa per audit e collaudi.
+
