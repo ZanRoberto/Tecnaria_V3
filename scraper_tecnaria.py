@@ -33,7 +33,7 @@ INDEX: Dict[str, Any] = {
 # Costanti/stopwords
 # =======================
 STOPWORDS = {
-    "tecnaria","spa","s.p.a.","il","lo","la","i","gli","le","un","uno","una",
+    "spa","s.p.a.","il","lo","la","i","gli","le","un","uno","una",
     "di","del","della","dell","dei","degli","delle","e","ed","o","con","per",
     "su","tra","fra","in","da","al","allo","ai","agli","alla","alle","che",
     "dove","quando","anche","come","quale","quali","quanta","quanto","quanti",
