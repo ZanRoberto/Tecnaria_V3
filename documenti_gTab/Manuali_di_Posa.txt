@@ -81,3 +81,20 @@ R: Sì, per P560 e chiodatrice HBV ci sono sezioni dedicate alla pulizia, ai ric
 ────────────────────────────
 D: Dove posso trovare i manuali?
 R: Sul sito ufficiale Tecnaria, nella documentazione tecnica. Oppure richiedendoli direttamente all’ufficio tecnico.
+[TAGS: manuale posa, istruzioni posa, DPI, controlli di cantiere, passi, interassi, collaudi]
+
+D: Cosa include il manuale di posa Tecnaria?
+R: Istruzioni passo-passo, DPI, strumenti, controlli, tolleranze e casi pratici per ciascun sistema di connettori.
+────────────────────────────
+D: Come gestire pre-posa?
+R: Verifica disegni, disponibilità materiali, lotti, attrezzature e condizioni del supporto.
+────────────────────────────
+D: Controlli durante la posa?
+R: Passi/interassi, profondità chiodi o coppie viti, pulizia superfici, allineamenti, foto e report.
+────────────────────────────
+D: Post-posa?
+R: Verbale con quantità, lotti, non conformità e foto campione. Archivia nella tracciabilità di cantiere.
+────────────────────────────
+D: Sicurezza?
+R: DPI obbligatori, interdizione area di tiro, verifica quotidiana attrezzi e manuale sempre in cantiere.
+
