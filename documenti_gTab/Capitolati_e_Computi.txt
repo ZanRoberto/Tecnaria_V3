@@ -80,3 +80,20 @@ R: Sì, l’ufficio tecnico supporta i progettisti nell’adattare i documenti s
 ────────────────────────────
 D: Qual è il principale beneficio per progettista e impresa?
 R: Avere documenti chiari, già pronti, normativamente corretti e di facile utilizzo, che riducono tempi e rischi.
+[TAGS: capitolati, computi metrici, voci di capitolato, prezzi, prezzari]
+
+D: Avete voci di capitolato tipo?
+R: Sì, forniamo voci per i principali sistemi Tecnaria, personalizzabili per la commessa.
+────────────────────────────
+D: Come stimare i costi?
+R: Tramite computo metrico basato su numero connettori, accessori e tempi di posa. Il commerciale può fornire quotazioni.
+────────────────────────────
+D: Disponibili riferimenti a prezzari?
+R: Possiamo indicare riferimenti o benchmark; i valori finali dipendono da mercato e condizioni di cantiere.
+────────────────────────────
+D: Che documenti allegare al capitolato?
+R: Schede tecniche, DoP, manuali di posa e, se utile, esempi di calcolo/posa.
+────────────────────────────
+D: Come trattare varianti in corso d’opera?
+R: Aggiorna voci/costi in base a modifiche progettuali e nuove quantità approvate.
+
