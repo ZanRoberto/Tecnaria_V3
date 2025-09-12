@@ -33,11 +33,10 @@ INDEX: Dict[str, Any] = {
 # Costanti/stopwords
 # =======================
 STOPWORDS = {
-    "spa","s.p.a.","il","lo","la","i","gli","le","un","uno","una",
-    "di","del","della","dell","dei","degli","delle","e","ed","o","con","per",
-    "su","tra","fra","in","da","al","allo","ai","agli","alla","alle","che",
-    "dove","quando","anche","come","quale","quali","quanta","quanto","quanti",
-    "mi","ti","ci","vi","si","non","piu","meno","dei"
+    "il", "lo", "la", "i", "gli", "le",
+    "un", "una", "uno",
+    "di", "a", "da", "in", "con", "su", "per", "tra", "fra",
+    "che", "e", "ed", "o"
 }
 SEP_LINE = "────────────────────────────"
 
