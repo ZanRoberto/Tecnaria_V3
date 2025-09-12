@@ -71,3 +71,20 @@ R: Avere prodotti consegnati in tempi certi, pronti per il cantiere, con documen
 ────────────────────────────
 D: E per il progettista?
 R: Consegne puntuali significano riduzione dei ritardi e maggiore affidabilità nella pianificazione delle opere.
+[TAGS: logistica, spedizioni, tempi consegna, imballi, documenti trasporto]
+
+D: Tempi medi di consegna?
+R: Variabili per prodotto e quantità; il commerciale fornisce tempi stimati e priorità urgenti quando possibile.
+────────────────────────────
+D: Che documenti accompagnano la merce?
+R: DDT, eventuali DoP, packing list e certificazioni richieste.
+────────────────────────────
+D: Come arrivano i connettori?
+R: Imballi protetti con etichette lotti; verifica integrità all’arrivo e segnala non conformità.
+────────────────────────────
+D: Spedite all’estero?
+R: Sì, con documentazione e packaging adeguati alle normative doganali/destinazione.
+────────────────────────────
+D: È possibile ritiro in sede?
+R: Sì, previo accordo con logistica/ufficio vendite.
+
