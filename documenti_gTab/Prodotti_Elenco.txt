@@ -50,4 +50,21 @@ CLSR       (varianti/ricette per cls rinforzato)
 013997  → Pistone P560 (ricambio)
 014136  → Anello ammortizzatore Ø22 mm
 SBR14   → Chiodi ad alta resistenza per CTF
+[TAGS: codici connettori tecnaria, elenco prodotti, catalogo, lista codici]
+
+D: Posso avere l’elenco dei prodotti Tecnaria?
+R: Sì, sono disponibili famiglie CTF, Diapason, CEM-E, MINI CEM-E, CLS, CLSR, CTL, FVA, FVA-L e relativi accessori. Per i codici dettagliati vedi questa stessa sezione o richiedi il listino aggiornato.
+────────────────────────────
+D: Come leggere i codici?
+R: Il prefisso identifica la famiglia (es. CTF, CEM-E), seguito da dimensione/serie. Le tabelle associati indicano compatibilità e prestazioni.
+────────────────────────────
+D: Posso ricevere i codici in Excel?
+R: Sì, il commerciale può fornire un estratto aggiornato per commessa/fornitura.
+────────────────────────────
+D: I codici cambiano?
+R: Raramente; eventuali revisioni sono comunicate e tracciate nel listino.
+────────────────────────────
+D: Dove verificare disponibilità?
+R: Con il commerciale/logistica, indicando quantità e tempi desiderati.
+
 
