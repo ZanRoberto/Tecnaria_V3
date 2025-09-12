@@ -1,67 +1,34 @@
 # -*- coding: utf-8 -*-
-"""
-scraper_tecnaria.py
-- Indicizza tutti i .txt / .TXT in documenti_gTab (o cartella da ENV DOC_DIR)
-- Estrae blocchi Q/A stile:
-    [TAGS: tag1, tag2]
-    D: domanda...
-    R: risposta...
-  ma funziona anche su testo libero (usa il paragrafo come blocco).
-- Retrieval ibrido: BM25 (rank_bm25) + fuzzy (rapidfuzz) + TAG/file boost + (opzionale) embeddings
-- Selettore "Sinapsi": semaforo GREEN/YELLOW/RED + gating con EDGE/margine
-- API pubbliche:
-    - build_index(doc_dir)       → costruisce l'indice
-    - is_ready()                 → bool (ci sono documenti?)
-    - search_best_answer(q, ...) → dict(answer, found, score, from, tags)
-    - INDEX                      → stato globale
-"""
+import os
+import re
+import json
+import math
+import unicodedata
+from typing import List, Dict, Any, Tuple
 
-from __future__ import annotations
-import os, re, unicodedata, math, json
-from typing import List, Dict, Any, Optional, Tuple
-from collections import defaultdict
-
-# --- Dipendenze obbligatorie (leggere) ---
-from rapidfuzz import fuzz, process
-from rank_bm25 import BM25Okapi
-
-# --- Embedding opzionali (auto-disattivati se mancano) ---
-_HAS_EMB = False
-_EMB_MODEL = None
+# Dipendenze “leggere” presenti nel requirements.txt
 try:
-    from sentence_transformers import SentenceTransformer, util as st_util
-    _HAS_EMB = True
+    import numpy as np
 except Exception:
-    _HAS_EMB = False
-    SentenceTransformer = None
-    st_util = None
+    np = None
+
+try:
+    from rank_bm25 import BM25Okapi
+except Exception:
+    BM25Okapi = None
+
+try:
+    from rapidfuzz import fuzz
+except Exception:
+    fuzz = None
 
 # =========================
-# Config da ENV (tunable)
+# Config / costanti
 # =========================
 DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")
+SINAPSI_JSON = os.environ.get("SINAPSI_BOT_JSON", "SINAPSI_BOT_JSON")
 
-# Pesi componenti (0..1)
-W_BM25   = float(os.environ.get("W_BM25",   "0.55"))
-W_FUZZY  = float(os.environ.get("W_FUZZY",  "0.20"))
-W_TAG    = float(os.environ.get("W_TAG",    "0.15"))
-W_EMB    = float(os.environ.get("W_EMB",    "0.30"))
-
-# Soglie Sinapsi
-SINAPSI_GREEN  = float(os.environ.get("SINAPSI_GREEN",  "0.60"))  # punteggio assoluto per GREEN
-SINAPSI_YELLOW = float(os.environ.get("SINAPSI_YELLOW", "0.40"))  # per YELLOW
-EDGE_MIN       = float(os.environ.get("EDGE_MIN",       "0.08"))  # margine top1-top2
-
-# Fallback soglia / topK richiesti dall'app
-DEFAULT_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))
-DEFAULT_TOPK      = int(os.environ.get("TOPK_SEMANTIC", "20"))
-
-# Debug esteso
-DEBUG = os.environ.get("DEBUG_SCRAPER", "1") == "1"
-
-# =========================
-# Stopwords + normalizzazione
-# =========================
+# Stopwords italiane **minimali** (non togliamo termini tecnici)
 STOPWORDS_MIN = {
     "il","lo","la","i","gli","le","un","uno","una",
     "di","del","della","dei","degli","delle",
@@ -69,446 +36,431 @@ STOPWORDS_MIN = {
     "al","allo","ai","agli","alla","alle",
     "che","come","dove","quando","anche",
     "mi","ti","si","ci","vi","a","da","de","dal","dall","dalla","dalle",
-    "un'", "l'", "d'", "all'", "nell'", "sull'", "dell'",
+    "un'", "l'", "d'", "all'", "agl'", "nell'", "sull'", "dell'"
 }
+
+# Sinonimi/alias essenziali (espansi in query+tags+filename)
+ALIASES = {
+    "p560": {"p560", "spit p560", "pistola p560", "sparachiodi p560", "sparachiodi", "pistola spit"},
+    "hbv": {"hbv", "chiodatrice", "pistola hbv"},
+    "ctf": {"ctf", "piolo", "pioli", "connettori ctf"},
+    "cem-e": {"cem-e", "cem e", "ripresa di getto", "riprese di getto", "dowel", "barriera connettori"},
+    "diapason": {"diapason", "connettore diapason"},
+}
+
+# Pesi del ranking ibrido
+W_BM25 = 1.0
+W_KEYWORD = 0.9
+W_FUZZY_Q = 0.8
+W_TAG = 0.6
+W_FILENAME = 0.5
+
+# Soglia di sicurezza (fallback in app.py la può abbassare a 0.28)
+DEFAULT_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))
+DEFAULT_TOPK = int(os.environ.get("TOPK_SEMANTIC", "20"))
+
+# =========================
+# Stato globale
+# =========================
+INDEX: List[Dict[str, Any]] = []        # lista di blocchi indicizzati
+_BM25 = None                             # modello BM25Okapi
+_CORPUS_TOKENS: List[List[str]] = []     # corpus tokenizzato
+_READY = False                           # indice pronto?
+
+# =========================
+# Utility
+# =========================
+def strip_accents(s: str) -> str:
+    # rimuove accenti/diacritici (è → e, ecc.)
+    s = unicodedata.normalize("NFKD", s)
+    return "".join(ch for ch in s if not unicodedata.combining(ch))
 
 def normalize_text(s: str) -> str:
-    # minuscole
+    s = s or ""
+    s = strip_accents(s)
     s = s.lower()
-    # rimuovi accenti
-    s = ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
-    # apostrofi tipici
-    s = s.replace("’", "'")
-    # separa non-alfanumerico
-    s = re.sub(r"[^a-z0-9]+", " ", s)
-    # stopwords minime
+    # separa punteggiatura comune
+    s = re.sub(r"[\.,;:!?\(\)\[\]\{\}/\\\-\+\*#\"']", " ", s)
+    # spazi multipli
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def tokenize(s: str) -> List[str]:
+    s = normalize_text(s)
     toks = [t for t in s.split() if t and t not in STOPWORDS_MIN]
-    return " ".join(toks)
+    return toks
 
-# =========================
-# Sinonimi/alias semplici
-# =========================
-SYNONYMS = {
-    "p560": ["p 560", "p-560", "pistola spit", "sparachiodi p560", "spit p560"],
-    "contatti": ["telefono", "mail", "email", "indirizzo", "contattare", "assistenza"],
-    "chi siamo": ["chi e tecnaria", "chi è tecnaria", "azienda", "profilo aziendale", "mission", "vision", "storia"],
-    "hbv": ["chiodatrice", "pistola", "hbv chiodatrice"],
-    "disegni": ["manuali", "manuale posa", "relazioni di calcolo", "schede tecniche"],
-    "ctf": ["connettore ctf", "piolo su piastra", "acciaio calcestruzzo"],
-    "cem-e": ["cem e", "ripresa di getto", "calcestruzzo calcestruzzo"],
-    "mini cem-e": ["mini cem e", "spessori 20 40"],
-    "diapason": ["connettore diapason"],
-}
+def _expand_aliases(tokens: List[str]) -> List[str]:
+    """ Aggiunge sinonimi/alias se compaiono termini 'chiave'. """
+    out = set(tokens)
+    joined = " ".join(tokens)
+    for key, alset in ALIASES.items():
+        for alias in alset:
+            alias_norm = normalize_text(alias)
+            # match su parola intera (grezzo ma efficace)
+            if alias_norm in joined:
+                out.update(alset)
+    return list(out)
 
-def expand_with_synonyms(q: str) -> List[str]:
-    nq = normalize_text(q)
-    out = [q, nq]
-    for k, vals in SYNONYMS.items():
-        if k in nq or any(v in nq for v in vals):
-            out.extend([k] + vals)
-    # rimuovi duplicati preservando ordine
-    seen=set(); dedup=[]
-    for s in out:
-        if s not in seen:
-            seen.add(s); dedup.append(s)
-    return dedup
+def _score_keyword_overlap(q_toks: List[str], doc_toks: List[str]) -> float:
+    if not q_toks or not doc_toks:
+        return 0.0
+    qs = set(q_toks)
+    ds = set(doc_toks)
+    inter = len(qs & ds)
+    # Jaccard leggermente smorzato
+    denom = len(qs | ds) or 1
+    return inter / denom
 
-# =========================
-# Prior di famiglia (bias file)
-# =========================
-PRIORS = {
-    "p560":                {"files": ["P560.txt", "HBV_Chiodatrice.txt"], "boost": 0.18},
-    "contatti":            {"files": ["ChiSiamo_ContattiOrari.txt"],      "boost": 0.20},
-    "chi siamo":           {"files": ["ChiSiamo_ProfiloAziendale.txt","ChiSiamo_VisionMission.txt"], "boost": 0.16},
-    "ctf":                 {"files": ["CTF.txt"], "boost": 0.14},
-    "cem-e":               {"files": ["CEM-E.txt","MINI_CEM-E.txt"], "boost": 0.14},
-    "mini cem-e":          {"files": ["MINI_CEM-E.txt"], "boost": 0.18},
-    "diapason":            {"files": ["Diapason.txt"], "boost": 0.14},
-    "qualita":             {"files": ["Qualita_ISO9001.txt"], "boost": 0.12},
-    "spedizioni":          {"files": ["Logistica_Spedizioni.txt"], "boost": 0.12},
-    "manuale posa":        {"files": ["Manuali_di_Posa.txt"], "boost": 0.12},
-    "schede tecniche":     {"files": ["Schede_Tecniche.txt"], "boost": 0.12},
-    "relazioni di calcolo":{"files": ["Relazioni_di_Calcolo.txt"], "boost": 0.12},
-}
+def _safe_fuzzy(a: str, b: str) -> float:
+    if not fuzz or not a or not b:
+        return 0.0
+    # rapidfuzz ratio 0..100 → 0..1
+    try:
+        return fuzz.token_set_ratio(a, b) / 100.0
+    except Exception:
+        return 0.0
 
-def prior_boost(q_norm: str, filename: str) -> float:
-    b = 0.0
-    for key, conf in PRIORS.items():
-        if key in q_norm:
-            if any(filename.endswith(f) for f in conf["files"]):
-                b = max(b, conf["boost"])
-    return b
-
-# =========================
-# Parsing file TXT → blocchi
-# =========================
-QA_TAGS_RE = re.compile(r"^\s*\[tags\s*:\s*(.*?)\]\s*$", re.IGNORECASE)
-Q_RE = re.compile(r"^\s*d\s*:\s*(.*)$", re.IGNORECASE)
-A_RE = re.compile(r"^\s*r\s*:\s*(.*)$", re.IGNORECASE)
-
-def parse_txt_to_blocks(path: str) -> List[Dict[str, Any]]:
-    blocks: List[Dict[str, Any]] = []
+def _read_text_file(path: str) -> str:
     try:
         with open(path, "r", encoding="utf-8") as f:
-            raw = f.read()
-    except Exception:
-        # tenta latin-1 in emergenza
+            return f.read()
+    except UnicodeDecodeError:
         with open(path, "r", encoding="latin-1", errors="ignore") as f:
-            raw = f.read()
+            return f.read()
+    except Exception:
+        return ""
 
-    # spezza per sezioni vuote o separatori
-    parts = re.split(r"(?:\n-{3,}\n|\n={3,}\n|\n\s*\n)", raw)
+def _iter_txt_paths(root: str) -> List[str]:
+    res = []
+    for dirpath, _, filenames in os.walk(root):
+        for fn in filenames:
+            if fn.lower().endswith(".txt"):
+                res.append(os.path.join(dirpath, fn))
+    return sorted(res)
 
-    current_tags = []
-    for part in parts:
-        lines = [ln.strip() for ln in part.strip().splitlines() if ln.strip()]
+# =========================
+# Parser blocchi TXT
+# =========================
+_BLOCK_SPLIT = re.compile(r"\n{2,}", re.MULTILINE)
 
-        if not lines:
+def _parse_file(path: str) -> List[Dict[str, Any]]:
+    """
+    Parser tollerante:
+      - [TAGS: a, b, c] (opzionale)
+      - D: Domanda (opzionale)
+      - R: Risposta (obbligatoria per blocchi QA)
+      - altrimenti blocco “plain” (tutto risposta)
+    Ritorna lista di blocchi: {text, q, a, tags, filename, ntext, qn, an, taglist}
+    """
+    txt = _read_text_file(path)
+    if not txt.strip():
+        return []
+
+    filename = os.path.basename(path)
+    base = os.path.splitext(filename)[0]
+    base_norm = normalize_text(base)
+
+    chunks = _BLOCK_SPLIT.split(txt.strip())
+    out = []
+    for raw in chunks:
+        raw = raw.strip()
+        if not raw:
             continue
 
-        tags_local = []
-        q_text = None
-        a_text = None
-        # prima passata: se ha struttura TAG/Q/R
-        for ln in lines:
-            mtag = QA_TAGS_RE.match(ln)
-            if mtag:
-                tags_local = [t.strip() for t in mtag.group(1).split(",") if t.strip()]
-                continue
-            mq = Q_RE.match(ln)
-            if mq:
-                q_text = mq.group(1).strip()
-                continue
-            ma = A_RE.match(ln)
-            if ma:
-                a_text = ma.group(1).strip()
-                continue
-
-        if q_text or a_text:
-            blocks.append({
-                "question": q_text or "",
-                "answer": a_text or "",
-                "raw": part.strip(),
-                "tags": tags_local,
-            })
+        tags = []
+        # Estrai TAGS
+        m_tags = re.search(r"^\s*\[TAGS?\s*:\s*(.*?)\]\s*$", raw, flags=re.IGNORECASE | re.MULTILINE)
+        if m_tags:
+            tag_str = m_tags.group(1)
+            tags = [normalize_text(t).strip() for t in re.split(r"[;,/]", tag_str) if t.strip()]
+            # togli riga TAGS dal blocco
+            raw_wo_tags = re.sub(r"^\s*\[TAGS?.*?\]\s*$", "", raw, flags=re.IGNORECASE | re.MULTILINE).strip()
         else:
-            # testo libero → crea blocco con raw; domanda vuota; risposta = paragrafo
-            blocks.append({
-                "question": "",
-                "answer": "",
-                "raw": part.strip(),
-                "tags": [],
-            })
-    # fallback: se nessun blocco trovato, crea unico blocco con tutto
-    if not blocks and raw.strip():
-        blocks = [{
-            "question": "",
-            "answer": "",
-            "raw": raw.strip(),
-            "tags": [],
-        }]
-    return blocks
+            raw_wo_tags = raw
+
+        # Estrai D: e R:
+        q, a = "", ""
+        m_q = re.search(r"^\s*D\s*:\s*(.+)$", raw_wo_tags, flags=re.IGNORECASE | re.MULTILINE)
+        m_r = re.search(r"^\s*R\s*:\s*([\s\S]+)$", raw_wo_tags, flags=re.IGNORECASE)
+        if m_q:
+            q = m_q.group(1).strip()
+        if m_r:
+            a = m_r.group(1).strip()
+
+        # Se non c'è R:, trattiamo l'intero blocco come “testo risposta”
+        if not a:
+            a = raw_wo_tags
+
+        # Normalizzati
+        ntext = normalize_text(raw_wo_tags)
+        qn = normalize_text(q)
+        an = normalize_text(a)
+        taglist = [t for t in tags if t]
+
+        out.append({
+            "text": raw_wo_tags,
+            "q": q,
+            "a": a,
+            "tags": taglist,
+            "filename": filename,
+            "file_base": base,
+            "file_base_norm": base_norm,
+            "ntext": ntext,
+            "qn": qn,
+            "an": an,
+        })
+    return out
 
 # =========================
-# INDEX globale
+# SINAPSI loader (opzionale)
 # =========================
-INDEX: Dict[str, Any] = {
-    "docs": [],     # lista di blocchi con metadata
-    "bm25": None,   # BM25Okapi
-    "emb": None,    # embedding matrix opzionale
-    "model": None,  # modello SentenceTransformer
-}
+def _load_sinapsi_json() -> List[Dict[str, Any]]:
+    """
+    Se esiste SINAPSI_BOT_JSON in root (o path in env), carica QA addizionali.
+    Formati accettati:
+      - lista di { "q": "...", "a": "...", "tags": [...], "source": "..." }
+      - dizionario { domanda: risposta }
+    """
+    paths = [SINAPSI_JSON, os.path.join(os.getcwd(), SINAPSI_JSON)]
+    for p in paths:
+        if os.path.isfile(p):
+            try:
+                raw = _read_text_file(p)
+                data = json.loads(raw)
+                blocks = []
+                if isinstance(data, dict):
+                    for k, v in data.items():
+                        q = str(k).strip()
+                        a = str(v).strip()
+                        blocks.append({
+                            "text": f"D: {q}\nR: {a}",
+                            "q": q,
+                            "a": a,
+                            "tags": [],
+                            "filename": os.path.basename(p),
+                            "file_base": os.path.basename(p),
+                            "file_base_norm": normalize_text(os.path.basename(p)),
+                            "ntext": normalize_text(a),
+                            "qn": normalize_text(q),
+                            "an": normalize_text(a),
+                        })
+                elif isinstance(data, list):
+                    for it in data:
+                        q = normalize_text(it.get("q","")).strip()
+                        a = it.get("a","").strip()
+                        tags = [normalize_text(t) for t in it.get("tags", []) if t]
+                        src = it.get("source") or os.path.basename(p)
+                        blocks.append({
+                            "text": f"D: {it.get('q','')}\nR: {a}",
+                            "q": it.get("q",""),
+                            "a": a,
+                            "tags": tags,
+                            "filename": src,
+                            "file_base": src,
+                            "file_base_norm": normalize_text(src),
+                            "ntext": normalize_text(a),
+                            "qn": q,
+                            "an": normalize_text(a),
+                        })
+                print(f"[sinapsi] Caricati {len(blocks)} QA da {p}")
+                return blocks
+            except Exception as e:
+                print(f"[sinapsi] Errore nel parsing di {p}: {e}")
+                return []
+    return []
 
-def _scan_files(doc_dir: str) -> List[str]:
-    found = []
-    doc_dir_abs = os.path.abspath(doc_dir)
-    for root, _, files in os.walk(doc_dir_abs):
-        for fn in files:
-            if fn.lower().endswith(".txt"):
-                found.append(os.path.join(root, fn))
-    found.sort()
-    if DEBUG:
-        print(f"[scraper_tecnaria] Inizio indicizzazione da: {doc_dir_abs}\n[scraper_tecnaria] Trovati {len(found)} file .txt:")
-        for p in found:
-            print(f"[scraper_tecnaria]   - {p}")
-    return found
+# =========================
+# Build index
+# =========================
+def build_index(doc_dir: str = DOC_DIR) -> None:
+    """
+    Scansiona tutti i .txt/.TXT, crea i blocchi e prepara BM25.
+    """
+    global INDEX, _BM25, _CORPUS_TOKENS, _READY
 
-def _prepare_bm25_corpus(docs: List[Dict[str, Any]]) -> Tuple[BM25Okapi, List[List[str]]]:
-    tokenized_corpus = []
-    for d in docs:
-        txt = " ".join(filter(None, [
-            d.get("question",""),
-            d.get("answer",""),
-            d.get("raw",""),
-            " ".join(d.get("tags",[]))
-        ]))
-        tokenized_corpus.append(normalize_text(txt).split())
-    bm25 = BM25Okapi(tokenized_corpus)
-    return bm25, tokenized_corpus
+    INDEX = []
+    _CORPUS_TOKENS = []
+    _BM25 = None
+    _READY = False
 
-def _maybe_load_embeddings(docs: List[Dict[str, Any]]) -> Tuple[Optional[Any], Optional[Any]]:
-    if not _HAS_EMB:
-        if DEBUG: print("[scraper_tecnaria][EMB] sentence-transformers non disponibile: uso solo keyword/fuzzy.")
-        return None, None
-    try:
-        model_name = os.environ.get("EMBED_MODEL", "all-MiniLM-L6-v2")
-        model = SentenceTransformer(model_name)
-        texts = []
-        for d in docs:
-            txt = " ".join(filter(None, [d.get("question",""), d.get("answer",""), d.get("raw","")]))
-            texts.append(txt[:1000])  # limite soft
-        emb = model.encode(texts, convert_to_tensor=True, normalize_embeddings=True)
-        if DEBUG: print("[scraper_tecnaria][EMB] Caricati embeddings per", len(docs), "blocchi.")
-        return model, emb
-    except Exception as e:
-        if DEBUG: print("[scraper_tecnaria][EMB][WARN]", repr(e), "→ disattivo embeddings.")
-        return None, None
+    abs_dir = os.path.abspath(doc_dir)
+    print(f"[scraper_tecnaria] Inizio indicizzazione da: {abs_dir}\n")
 
-def build_index(doc_dir: Optional[str]=None) -> None:
-    """Costruisce l'indice globale."""
-    global INDEX
-    doc_dir = doc_dir or DOC_DIR
-    files = _scan_files(doc_dir)
+    paths = _iter_txt_paths(abs_dir)
+    print(f"[scraper_tecnaria] Trovati {len(paths)} file .txt:")
+    for p in paths:
+        print(f"[scraper_tecnaria]   - {p}")
 
-    docs: List[Dict[str, Any]] = []
-    total_blocks, total_lines = 0, 0
+    total_blocks = 0
+    for p in paths:
+        blocks = _parse_file(p)
+        if not blocks:
+            continue
+        INDEX.extend(blocks)
+        total_blocks += len(blocks)
 
-    for path in files:
-        blocks = parse_txt_to_blocks(path)
-        for b in blocks:
-            total_blocks += 1
-            text_for_count = " ".join([b.get("question",""), b.get("answer",""), b.get("raw","")]).strip()
-            line_count = text_for_count.count("\n") + 1 if text_for_count else 0
-            total_lines += line_count
+    # Aggiungi SINAPSI (se presente)
+    sin_blocks = _load_sinapsi_json()
+    if sin_blocks:
+        INDEX.extend(sin_blocks)
+        total_blocks += len(sin_blocks)
 
-            docs.append({
-                "file": os.path.basename(path),
-                "file_path": path,
-                "question": b.get("question",""),
-                "answer": b.get("answer",""),
-                "raw": b.get("raw",""),
-                "tags": b.get("tags",[]),
-                # campi normalizzati di supporto
-                "_q_norm": normalize_text(b.get("question","")),
-                "_a_norm": normalize_text(b.get("answer","")),
-                "_raw_norm": normalize_text(b.get("raw","")),
-                "_tags_norm": [normalize_text(t) for t in b.get("tags",[])],
-            })
+    # Prepara corpus tokens (per BM25 e keyword overlap)
+    for b in INDEX:
+        toks = tokenize(b["text"])
+        # arricchisci con tag e nome file
+        toks += tokenize(" ".join(b.get("tags", [])))
+        toks += tokenize(b.get("file_base", ""))
+        toks = _expand_aliases(toks)
+        _CORPUS_TOKENS.append(toks)
 
-    if DEBUG:
-        print(f"[scraper_tecnaria] Indicizzati {total_blocks} blocchi / {total_lines} righe da {len(files)} file.")
+    # BM25 opzionale (se la libreria è presente e ci sono documenti)
+    if BM25Okapi and _CORPUS_TOKENS:
+        try:
+            _BM25 = BM25Okapi(_CORPUS_TOKENS)
+        except Exception as e:
+            print(f"[scraper_tecnaria] BM25 init fallita: {e}")
+            _BM25 = None
 
-    bm25, _ = _prepare_bm25_corpus(docs)
-    model, emb = _maybe_load_embeddings(docs)
-
-    INDEX["docs"] = docs
-    INDEX["bm25"] = bm25
-    INDEX["model"] = model
-    INDEX["emb"] = emb
+    print(f"[scraper_tecnaria] Indicizzati {total_blocks} blocchi da {len(paths)} file.")
+    _READY = total_blocks > 0
 
 def is_ready() -> bool:
-    try:
-        return bool(INDEX and INDEX.get("docs") and len(INDEX["docs"])>0 and INDEX.get("bm25") is not None)
-    except Exception:
-        return False
+    return bool(_READY and INDEX)
 
 # =========================
-# Scoring componenti
+# Ricerca ibrida
 # =========================
-def _score_bm25(query: str) -> List[float]:
-    bm25: BM25Okapi = INDEX["bm25"]
-    toks = normalize_text(query).split()
-    if not toks:
-        return [0.0]*len(INDEX["docs"])
-    scores = bm25.get_scores(toks)
-    # normalizza 0..1
-    if not scores.any():
-        return [0.0]*len(scores)
-    mx = float(scores.max())
-    return [float(s)/mx if mx>0 else 0.0 for s in scores]
+def _hybrid_score(q: str, topk: int = DEFAULT_TOPK) -> List[Tuple[float, int]]:
+    """
+    Restituisce lista [(score, idx_blocco)] ordinata (desc).
+    Punteggio ibrido: BM25 + keyword overlap + fuzzy(Q) + boost TAG/nome file.
+    """
+    if not INDEX:
+        return []
 
-def _score_fuzzy(query: str) -> List[float]:
-    qn = normalize_text(query)
-    out = []
-    for d in INDEX["docs"]:
-        cand = " ".join(filter(None, [d["_q_norm"], d["_a_norm"], " ".join(d["_tags_norm"])]))
-        # ratio parziale per domande corte; token_sort_ratio per ordine libero
-        r1 = fuzz.partial_ratio(qn, cand)
-        r2 = fuzz.token_sort_ratio(qn, cand)
-        out.append(max(r1, r2)/100.0)
-    return out
+    q_norm = normalize_text(q)
+    q_tokens = _expand_aliases(tokenize(q_norm))
 
-def _score_tags_and_file(query: str) -> List[float]:
-    qn = normalize_text(query)
-    out = []
-    for d in INDEX["docs"]:
-        boost = 0.0
-        # match su tags
-        if d["_tags_norm"]:
-            tag_hit = max((fuzz.partial_ratio(qn, t)/100.0) for t in d["_tags_norm"])
-            boost = max(boost, 0.6*tag_hit)
-        # match su filename “p560” → P560.txt
-        fname = normalize_text(d["file"].replace(".txt",""))
-        fn_hit = fuzz.partial_ratio(qn, fname)/100.0
-        boost = max(boost, 0.7*fn_hit)
-        # prior di famiglia
-        boost += prior_boost(qn, d["file"])
-        # clamp
-        out.append(min(boost, 1.0))
-    return out
+    # BM25
+    bm25_scores = [0.0] * len(INDEX)
+    if _BM25 is not None and q_tokens:
+        try:
+            raw = _BM25.get_scores(q_tokens)
+            # normalizzazione z-score suave
+            arr = np.array(raw, dtype=float) if np is not None else raw
+            if np is not None and len(arr) > 1:
+                mu = arr.mean()
+                sd = arr.std() or 1.0
+                arr = (arr - mu) / sd
+                arr = 1 / (1 + np.exp(-arr))  # squash logistica 0..1
+                bm25_scores = arr.tolist()
+            else:
+                # scaletta grezza
+                m = max(raw) if raw else 1.0
+                bm25_scores = [r / (m or 1.0) for r in raw]
+        except Exception as e:
+            print(f"[search] BM25 error: {e}")
 
-def _score_embeddings(query: str) -> Optional[List[float]]:
-    if INDEX.get("model") is None or INDEX.get("emb") is None:
-        return None
-    try:
-        q_emb = INDEX["model"].encode([query], convert_to_tensor=True, normalize_embeddings=True)
-        sims = st_util.cos_sim(q_emb, INDEX["emb"]).cpu().numpy()[0]  # [-1..1]
-        # porta 0..1
-        sims = (sims + 1.0) / 2.0
-        mx = float(sims.max()) if sims.size else 1.0
-        return [float(s)/mx if mx>0 else 0.0 for s in sims]
-    except Exception as e:
-        if DEBUG: print("[scraper_tecnaria][EMB][ERR]", repr(e))
-        return None
+    # Keyword overlap + fuzzy + boost tag/file
+    results: List[Tuple[float, int]] = []
+    for i, b in enumerate(INDEX):
+        doc_toks = _CORPUS_TOKENS[i] if i < len(_CORPUS_TOKENS) else tokenize(b["text"])
 
-# =========================
-# Selettore SINAPSI
-# =========================
-def _sinapsi_select(q: str, topk: int = DEFAULT_TOPK) -> Dict[str, Any]:
-    N = len(INDEX["docs"])
-    if N == 0:
-        return {"found": False, "reason": "no_docs"}
+        s_bm = bm25_scores[i] if i < len(bm25_scores) else 0.0
+        s_kw = _score_keyword_overlap(q_tokens, doc_toks)
 
-    # componi punteggi
-    s_bm25 = _score_bm25(q)             # 0..1
-    s_fuz  = _score_fuzzy(q)            # 0..1
-    s_tag  = _score_tags_and_file(q)    # 0..1
-    s_emb  = _score_embeddings(q) or [0.0]*N
+        # fuzzy solo sulla domanda dichiarata del blocco, se c'è
+        s_fz = 0.0
+        if b.get("q"):
+            s_fz = _safe_fuzzy(q_norm, b["qn"])
 
-    scores = []
-    for i in range(N):
-        total = W_BM25*s_bm25[i] + W_FUZZY*s_fuz[i] + W_TAG*s_tag[i] + W_EMB*s_emb[i]
-        scores.append((total, i))
+        # boost da TAG/nome file
+        tag_hit = 0.0
+        if b.get("tags"):
+            # se almeno un tag compare nei token della query, boost
+            bt = set(b["tags"])
+            if bt & set(q_tokens):
+                tag_hit = 1.0
 
-    scores.sort(reverse=True, key=lambda x: x[0])
+        file_hit = 0.0
+        fb = b.get("file_base_norm", "")
+        if fb and any(tok in fb.split() for tok in q_tokens):
+            file_hit = 1.0
 
-    # calcolo EDGE (margine top1-top2)
-    top1 = scores[0]
-    top2 = scores[1] if len(scores) > 1 else (0.0, -1)
-    edge = top1[0] - top2[0]
+        score = (
+            W_BM25 * s_bm +
+            W_KEYWORD * s_kw +
+            W_FUZZY_Q * s_fz +
+            W_TAG * tag_hit +
+            W_FILENAME * file_hit
+        )
 
-    # semaforo + gating
-    label = "RED"
-    if top1[0] >= SINAPSI_GREEN and edge >= EDGE_MIN:
-        label = "GREEN"
-    elif top1[0] >= SINAPSI_YELLOW:
-        label = "YELLOW"
+        results.append((score, i))
 
-    if DEBUG:
-        best = INDEX["docs"][top1[1]]
-        print(f"[sinapsi] {label} · score={top1[0]:.3f} edge={edge:.3f} · chosen={best['file']}")
+    results.sort(key=lambda x: x[0], reverse=True)
+    return results[:max(5, topk)]
 
-    # se proprio scarso: proponi alternative (senza rispondere perentoriamente)
-    candidates = scores[:max(3, min(topk, 10))]
+def _best_block(q: str, threshold: float, topk: int) -> Dict[str, Any]:
+    ranked = _hybrid_score(q, topk=topk)
+    if not ranked:
+        return {"found": False}
+
+    best_score, idx = ranked[0]
+    blk = INDEX[idx]
+
+    # Heuristic: se il blocco ha D:/R: e la domanda è vagamente simile → mostra solo la R pulita
+    answer_text = blk.get("a") or blk.get("text", "")
+
     return {
-        "label": label,
-        "edge": edge,
-        "scores": scores,
-        "candidates": candidates,
+        "found": bool(best_score >= threshold),
+        "score": float(round(best_score, 3)),
+        "from": blk.get("filename"),
+        "tags": blk.get("tags") or [],
+        "answer": answer_text.strip(),
+        "debug": {
+            "top": [
+                {
+                    "score": float(round(s, 3)),
+                    "file": INDEX[i].get("filename"),
+                    "q": INDEX[i].get("q"),
+                    "tags": INDEX[i].get("tags"),
+                } for (s, i) in ranked[:5]
+            ]
+        }
     }
 
-def _extract_answer(block: Dict[str, Any]) -> str:
-    # preferisci una R:, altrimenti question+raw compattati
-    ans = (block.get("answer") or "").strip()
-    if ans:
-        return ans
-    # se non esiste R:, usa il paragrafo "raw" (prime 1200 battute)
-    raw = (block.get("raw") or "").strip()
-    if raw:
-        return raw[:1200]
-    # fallback: domanda (se c'è)
-    q = (block.get("question") or "").strip()
-    return q or "(nessun testo disponibile)"
-
-# =========================
-# Ricerca pubblica
-# =========================
-def search_best_answer(query: str,
-                       threshold: float = DEFAULT_THRESHOLD,
-                       topk: int = DEFAULT_TOPK) -> Dict[str, Any]:
+def search_best_answer(query: str, threshold: float = DEFAULT_THRESHOLD, topk: int = DEFAULT_TOPK) -> Dict[str, Any]:
     """
-    Ritorna: {answer, found, score, from, tags}
-    - Usa Sinapsi per selezionare top1; se GREEN → risponde
-    - Se YELLOW → risponde se top1 >= threshold o edge sufficiente
-    - Se RED → not found (ma restituisce suggerimenti in 'debug' interno se DEBUG=True)
+    API usata da app.py
     """
     if not is_ready():
-        return {"answer": "Indice non pronto. Riprova tra qualche secondo.", "found": False, "from": None}
+        build_index(DOC_DIR)
 
-    # Espansione con sinonimi (aiuta BM25/fuzzy)
-    q_variants = expand_with_synonyms(query)
-    best_overall = None
+    # Prima passata
+    res = _best_block(query, threshold, topk)
+    if res.get("found"):
+        return res
 
-    # Valuta la migliore variante (massimizza top1 score)
-    for qv in q_variants:
-        sin = _sinapsi_select(qv, topk=topk)
-        top1_score, top1_idx = sin["scores"][0]
-        if best_overall is None or top1_score > best_overall["top1_score"]:
-            best_overall = {"q": qv, "sin": sin, "top1_score": top1_score, "top1_idx": top1_idx}
+    # Piccolo fallback: riprova abbassando soglia se top1 è molto “tematico”
+    if res.get("debug") and res["debug"]["top"]:
+        # Se il top ha un filename/tag con match esplicito, consenti soglia più bassa
+        top0 = res["debug"]["top"][0]
+        if top0 and top0.get("score", 0) > 0.20:
+            return _best_block(query, threshold=0.25, topk=topk)
 
-    sin = best_overall["sin"]
-    top1_score, top1_idx = sin["scores"][0]
-    chosen = INDEX["docs"][top1_idx]
-    label = sin["label"]
-    edge = sin["edge"]
+    # Niente da fare
+    return {
+        "found": False,
+        "score": float(res.get("debug", {}).get("top", [{}])[0].get("score", 0.0)) if res else 0.0,
+        "from": None,
+        "tags": [],
+        "answer": "Non ho trovato una risposta precisa nei documenti locali.",
+        "debug": res.get("debug") if res else {},
+    }
 
-    # log sorgente
-    if DEBUG:
-        print(f"[scraper_tecnaria][SEARCH] q='{query}' → top1={chosen['file']} score={top1_score:.3f} label={label} edge={edge:.3f}")
-
-    # regole di risposta
-    if label == "GREEN":
-        return {
-            "answer": _extract_answer(chosen),
-            "found": True,
-            "score": round(float(top1_score), 3),
-            "from": chosen["file"],
-            "tags": chosen.get("tags", []),
-        }
-    elif label == "YELLOW":
-        # Se comunque sopra threshold o buon margine, rispondi
-        if top1_score >= threshold or edge >= EDGE_MIN:
-            return {
-                "answer": _extract_answer(chosen),
-                "found": True,
-                "score": round(float(top1_score), 3),
-                "from": chosen["file"],
-                "tags": chosen.get("tags", []),
-            }
-        # altrimenti proponi (qui teniamo “not found” per interfaccia semplice)
-        return {
-            "answer": "Non ho trovato una risposta precisa. Prova a riformulare leggermente la domanda.",
-            "found": False,
-            "from": None
-        }
-    else:
-        # RED → niente risposta
-        return {
-            "answer": "Non ho trovato una risposta precisa. Prova a riformulare leggermente la domanda.",
-            "found": False,
-            "from": None
-        }
-
-# =========================
-# Esecuzione diretta (debug)
-# =========================
+# Se importato, non esegue nulla. Se eseguito direttamente, costruisce l’indice.
 if __name__ == "__main__":
-    print("[scraper_tecnaria] Avvio test locale…")
     build_index(DOC_DIR)
-    print("[scraper_tecnaria] READY:", is_ready(), "docs:", len(INDEX.get("docs", [])))
-    # probe
-    for q in ["mi parli della P560?", "contatti tecnaria", "chi è Tecnaria?", "codici connettori"]:
-        res = search_best_answer(q)
-        print("Q:", q)
-        print(json.dumps(res, ensure_ascii=False, indent=2))
-        print("─"*60)
+    print(json.dumps({"ready": is_ready(), "docs": len(INDEX)}, ensure_ascii=False))
