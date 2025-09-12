@@ -1,171 +1,225 @@
+<!-- templates/index.html -->
 <!doctype html>
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="x-ua-compatible" content="ie=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Tecnaria · Assistente documentale</title>
-  <link rel="icon" href="/static/logo.png" />
   <style>
     :root{
-      --bg:#0b1220; --card:#0f1a2e; --muted:#7fa0d1; --text:#eaf2ff;
-      --brand:#2b8cff; --brand-2:#1e6ed6; --ring:#82b6ff; --ok:#36c48e;
-      --shadow: 0 10px 30px rgba(0,0,0,.35); --radius: 18px;
+      --bg:#0b1a2b;         /* blu notte */
+      --card:#12253b;       /* blu più chiaro */
+      --accent:#1f6feb;     /* blu acceso */
+      --accent-2:#2ea043;   /* verde ok */
+      --text:#e6eef8;       /* testo principale */
+      --muted:#9fb4cc;      /* testo secondario */
+      --danger:#ff6565;
+      --border:#1b3554;
+      --shadow:0 10px 30px rgba(0,0,0,.25);
+      --radius:16px;
     }
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; }
+    *{box-sizing:border-box}
+    html,body{height:100%}
     body{
-      margin:0; background: radial-gradient(1200px 800px at 10% -10%, #16233c 0%, transparent 60%), var(--bg);
-      color:var(--text); font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+      margin:0; background:linear-gradient(180deg,#081423 0%, #0b1a2b 50%, #0b1a2b 100%);
+      color:var(--text); font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+      display:flex; align-items:center; justify-content:center; padding:24px;
     }
-    .shell{ max-width: 980px; margin: 36px auto; padding: 0 16px; }
-    .header{ display:flex; align-items:center; gap:14px; margin-bottom:18px; }
-    .logo{ width:44px; height:44px; border-radius:12px; background:#0a1528 url('/static/logo.png') center/contain no-repeat;
-      box-shadow:var(--shadow); border:1px solid rgba(255,255,255,.06); }
-    .titles h1{ margin:0; font-size:20px; letter-spacing:.2px; }
-    .titles small{ display:block; margin-top:2px; color:var(--muted); }
-
-    .card{ background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
-      border:1px solid rgba(255,255,255,.08); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
-
-    .welcome{ padding:22px 22px 8px 22px; border-bottom:1px solid rgba(255,255,255,.06);
-      display:flex; align-items:center; gap:12px; }
-    .welcome .dot{ width:10px; height:10px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 4px rgba(54,196,142,.15); }
-    .welcome p{ margin:0; color:var(--muted); }
-
-    .messages{ padding:18px; max-height:58vh; overflow:auto; scroll-behavior:smooth; }
-    .msg{ display:grid; grid-template-columns: 28px 1fr; gap:12px; padding:14px; margin:10px 0; border-radius:14px; }
-    .msg.user{ background: rgba(255,255,255,.04); }
-    .msg.bot{ background: rgba(27,57,102,.35); border:1px solid rgba(130,182,255,.15);}
-    .avatar{ width:28px; height:28px; border-radius:9px; background:#123; display:grid; place-items:center;
-      font-size:12px; color:#a7c8ff; border:1px solid rgba(255,255,255,.05); }
-    .content{ white-space:pre-wrap; }
-
-    .composer{ padding:14px; border-top:1px solid rgba(255,255,255,.06); background:rgba(0,0,0,.1);
-      position:sticky; bottom:0; display:flex; gap:10px; backdrop-filter: blur(6px); }
-    .input{ position:relative; flex:1; }
-    .input input{
-      width:100%; background:#0b1426; color:var(--text); border:1px solid rgba(255,255,255,.08);
-      border-radius:14px; padding:14px; outline:none; font-size:16px;
-      transition:border .15s ease, box-shadow .15s ease;
+    .container{
+      width:100%; max-width:900px; background:var(--card); border:1px solid var(--border);
+      border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;
     }
-    .input input:focus{ border-color: var(--ring); box-shadow: 0 0 0 4px rgba(130,182,255,.15); }
-    .icon-btn{
-      min-width:44px; height:44px; border-radius:12px; border:1px solid rgba(255,255,255,.1);
-      background: linear-gradient(180deg, var(--brand), var(--brand-2)); color:var(--text);
-      cursor:pointer; display:grid; place-items:center; padding:0 18px;
+    header{
+      display:flex; align-items:center; gap:14px; padding:18px 20px; border-bottom:1px solid var(--border);
+      background:linear-gradient(180deg, rgba(255,255,255,.02), transparent);
     }
-    .helper{ color:var(--muted); font-size:13px; padding: 0 18px 14px 18px; }
-    .hidden{ display:none !important; }
-    .sr{ position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    header img{width:36px; height:36px; object-fit:contain; filter:drop-shadow(0 2px 6px rgba(0,0,0,.25))}
+    header h1{margin:0; font-size:18px; font-weight:600; letter-spacing:.2px}
+    header .status{margin-left:auto; font-size:13px; color:var(--muted)}
+    main{padding:20px}
+    .welcome{
+      background:#0e2238; border:1px dashed var(--border); color:var(--muted);
+      padding:16px; border-radius:12px; margin-bottom:16px;
+    }
+    .welcome b{color:var(--text)}
+    form{
+      background:#0d2035; border:1px solid var(--border); border-radius:12px; padding:12px;
+      display:flex; gap:10px; align-items:flex-end; position:sticky; top:12px; z-index:2;
+    }
+    textarea{
+      width:100%; min-height:74px; max-height:220px; resize:vertical;
+      background:#08192a; color:var(--text); border:1px solid #0e2642; outline:none;
+      border-radius:10px; padding:12px 12px; font:15px/1.4 ui-sans-serif,system-ui;
+    }
+    button{
+      appearance:none; border:none; border-radius:10px; padding:12px 18px; font-weight:600; cursor:pointer;
+      background:var(--accent); color:white; transition:transform .04s ease, opacity .2s ease;
+      box-shadow:0 4px 14px rgba(31,111,235,.4);
+    }
+    button:hover{transform:translateY(-1px)}
+    button:disabled{opacity:.6; cursor:not-allowed; transform:none}
+    .answer{
+      margin-top:16px; background:#0e2238; border:1px solid var(--border); border-radius:12px; padding:16px;
+      white-space:pre-wrap; word-wrap:break-word;
+    }
+    .muted{color:var(--muted)}
+    .row{display:flex; gap:10px; align-items:center; margin-top:8px}
+    .loader{
+      display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.25);
+      border-top-color:#fff; border-radius:50%; animation:spin .9s linear infinite; vertical-align:middle; margin-left:8px;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    details{
+      margin-top:12px; background:#0b1e32; border:1px solid var(--border); border-radius:10px; padding:10px 12px;
+    }
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    .ok{color:var(--accent-2)} .err{color:var(--danger)}
+    footer{padding:14px 20px; border-top:1px solid var(--border); color:var(--muted); font-size:13px; display:flex; gap:8px; justify-content:space-between}
+    .link{color:#8ab4ff; text-decoration:none}
+    .link:hover{text-decoration:underline}
   </style>
 </head>
 <body>
-  <div class="shell">
-    <header class="header" aria-label="Intestazione">
-      <div class="logo" aria-hidden="true"></div>
-      <div class="titles">
-        <h1>Tecnaria · Assistente documentale</h1>
-        <small>Fai una domanda sui prodotti o sulla documentazione (solo contenuti locali).</small>
-      </div>
+  <div class="container">
+    <header>
+      <img src="/static/logo.png" alt="Tecnaria" onerror="this.style.display='none'">
+      <h1>Tecnaria · Assistente documentale</h1>
+      <div class="status" id="status">pronto</div>
     </header>
 
-    <main class="card" aria-live="polite" aria-busy="false">
-      <div class="welcome">
-        <div class="dot" aria-hidden="true"></div>
-        <p id="welcome-text">👋 Benvenuto. Inizia a scrivere: rispondo usando esclusivamente i file .txt caricati.</p>
+    <main>
+      <div class="welcome" id="welcome">
+        <b>Benvenuto!</b> Fai domande in linguaggio naturale: l’assistente risponde
+        <b>solo</b> usando i file <code>.txt</code> presenti in <code>documenti_gTab/</code>.
+        Esempi: “mi dai i contatti?”, “posa CTF su lamiera”, “mi parli della P560?”.
       </div>
 
-      <section id="messages" class="messages" tabindex="0" aria-label="Conversazione">
-        <div class="msg bot">
-          <div class="avatar">AI</div>
-          <div class="content">
-Benvenuto nell’assistente documentale di Tecnaria.
-Esempi rapidi: “mi dai i contatti”, “P560 come si usa”, “differenza CTF125 vs CTF090”, “codici connettori Tecnaria”.
-          </div>
-        </div>
-      </section>
-
-      <!-- Form SENZA refresh pagina -->
-      <form class="composer" id="ask-form" autocomplete="off">
-        <label class="sr" for="q">Domanda</label>
-        <div class="input">
-          <input id="q" name="q" type="text" placeholder="Scrivi qui la tua domanda…" />
-        </div>
-        <button id="send" class="icon-btn" type="submit" title="Invia" aria-label="Invia domanda">Chiedi</button>
+      <form id="askForm">
+        <textarea id="question" placeholder="Scrivi qui la tua domanda… (invio per inviare)"></textarea>
+        <button id="askBtn" type="submit">Chiedi</button>
       </form>
 
-      <div class="helper">
-        Suggerimenti: prova <code>mi dai i codici dei connettori</code>, <code>chi contatto per un ordine</code>, <code>manuali di posa HBV</code>.
-      </div>
+      <div id="result" class="answer" style="display:none"></div>
+
+      <details id="debugBox" style="display:none">
+        <summary>Dettagli debug</summary>
+        <div id="debugContent" class="muted" style="margin-top:8px"></div>
+      </details>
     </main>
+
+    <footer>
+      <span>Solo contenuti locali · <span id="readyDot" class="ok">●</span> <span id="readyTxt">indice pronto</span></span>
+      <a class="link" href="#" id="toggleDebug">Mostra debug</a>
+    </footer>
   </div>
 
   <script>
-    // Endpoint back-end
-    const ASK_ENDPOINT = "/ask";
+    // --- Utility ---
+    const $ = s => document.querySelector(s);
+    const statusEl = $('#status');
+    const resultEl = $('#result');
+    const debugBox = $('#debugBox');
+    const debugContent = $('#debugContent');
+    const readyDot = $('#readyDot');
+    const readyTxt = $('#readyTxt');
+    const welcome = $('#welcome');
 
-    // Riferimenti UI
-    const $form = document.getElementById('ask-form');
-    const $input = document.getElementById('q');
-    const $send  = document.getElementById('send');
-    const $messages = document.getElementById('messages');
-    const $welcome = document.getElementById('welcome-text');
-
-    function el(tag, cls){ const n=document.createElement(tag); if(cls) n.className=cls; return n; }
-    function addMsg(role, text){
-      const row = el('div', `msg ${role}`);
-      const avatar = el('div','avatar'); avatar.textContent = role==='user' ? 'TU' : 'AI';
-      const content = el('div','content'); content.textContent = text;
-      row.appendChild(avatar); row.appendChild(content);
-      $messages.appendChild(row);
-      $messages.scrollTop = $messages.scrollHeight;
-      if($welcome) $welcome.parentElement.parentElement.classList.add('hidden');
-    }
-    function setBusy(b){ document.querySelector('main').setAttribute('aria-busy', b ? 'true' : 'false'); }
-
-    async function ask(q){
-      if(!q || !q.trim()) return;
-      addMsg('user', q.trim());
-      setBusy(true);
-      $send.disabled = true;
-
-      try{
-        const res = await fetch(ASK_ENDPOINT, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ question: q.trim() })
-        });
-        if(!res.ok){
-          addMsg('bot', '⚠️ Errore di rete. Riprova tra poco.');
-          return;
-        }
-        const data = await res.json();
-        const text = (data && data.answer) ? data.answer : "Non ho trovato una risposta precisa nei documenti locali.";
-        addMsg('bot', text);
-      }catch(_e){
-        addMsg('bot', '⚠️ Errore temporaneo. Controlla la connessione o riprova.');
-      }finally{
-        setBusy(false);
-        $send.disabled = false;
-      }
-    }
-
-    // Blocca refresh e invia
-    $form.addEventListener('submit', (e) => {
+    // Debug toggle (non invasivo)
+    let debugOn = false;
+    $('#toggleDebug').addEventListener('click', (e)=>{
       e.preventDefault();
-      e.stopPropagation();
-      const q = $input.value;
-      if(q && q.trim()){
-        ask(q.trim());
-        $input.value = '';
+      debugOn = !debugOn;
+      debugBox.style.display = debugOn ? 'block' : 'none';
+      e.target.textContent = debugOn ? 'Nascondi debug' : 'Mostra debug';
+    });
+
+    // Health ping iniziale
+    (async function checkHealth(){
+      try{
+        const r = await fetch('/health', {cache:'no-store'});
+        const js = await r.json();
+        if(js.ready){
+          readyDot.className = 'ok';
+          readyTxt.textContent = 'indice pronto';
+        }else{
+          readyDot.className = 'err';
+          readyTxt.textContent = 'indice non pronto';
+        }
+      }catch(_){}
+    })();
+
+    // Invio con Enter (senza Shift)
+    $('#question').addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        $('#askForm').dispatchEvent(new Event('submit'));
       }
     });
 
-    // Enter nell'input (opzionale, già gestito dal form)
-    $input.addEventListener('keydown', (e) => {
-      if(e.key === 'Enter'){
-        // e.preventDefault(); // non necessario perché gestito dal form
+    // --- Submit ---
+    $('#askForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const btn = $('#askBtn');
+      const q = ($('#question').value || '').trim();
+      if(!q) return;
+
+      // UI start
+      welcome.style.display = 'none';
+      resultEl.style.display = 'block';
+      resultEl.textContent = 'Sto cercando la risposta…';
+      btn.disabled = true;
+      const oldBtn = btn.textContent;
+      btn.textContent = 'In corso…';
+      statusEl.innerHTML = 'elaborazione <span class="loader"></span>';
+
+      // Timeout di rete robusto
+      const ctrl = new AbortController();
+      const t = setTimeout(()=>ctrl.abort(), 25000); // 25s
+
+      try{
+        const r = await fetch('/ask', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({question:q}),
+          signal: ctrl.signal
+        });
+
+        let js = null;
+        try{ js = await r.json(); } catch(_){ js = null; }
+
+        if(!r.ok || !js){
+          throw new Error('Risposta non valida dal server.');
+        }
+
+        // Mostra risposta
+        const ans = (js.answer || '').trim();
+        if(ans){
+          resultEl.textContent = ans + '\n\n────────────────────────────';
+        }else{
+          resultEl.innerHTML = 'Non ho trovato una risposta precisa. Prova a riformulare leggermente la domanda.';
+        }
+
+        // Debug (se abilitato)
+        if(debugOn){
+          debugBox.style.display = 'block';
+          debugContent.innerHTML = `
+            <div>score: <code>${(js.score ?? 0).toFixed(3)}</code></div>
+            <div>file: <code>${(js.path || 'n/d')}</code></div>
+            <div>riga: <code>${js.line || 'n/d'}</code></div>
+            <div>found: <code>${js.found}</code></div>
+          `;
+        }
+
+      }catch(err){
+        const aborted = err?.name === 'AbortError';
+        resultEl.innerHTML = aborted
+          ? '⏱️ Timeout. Riprova tra qualche secondo.'
+          : ('❌ Errore: ' + (err.message || 'imprevisto'));
+      }finally{
+        clearTimeout(t);
+        btn.disabled = false;
+        btn.textContent = oldBtn;
+        statusEl.textContent = 'pronto';
       }
     });
   </script>
