@@ -1,0 +1,37 @@
+{
+  "knowledge": [
+    {
+      "tags": ["chi siamo", "azienda", "tecnaria", "profilo"],
+      "questions": [
+        "Chi è Tecnaria?",
+        "Parlami di Tecnaria",
+        "Cos'è Tecnaria Spa?",
+        "Mi dai info sull'azienda Tecnaria?",
+        "Quali sono i valori di Tecnaria?"
+      ],
+      "answer": "Tecnaria è un’azienda italiana con sede a Bassano del Grappa (Vicenza), specializzata da oltre quarant’anni nella progettazione e produzione di connettori strutturali per solai collaboranti legno–calcestruzzo, acciaio–calcestruzzo e calcestruzzo–calcestruzzo. Offre soluzioni certificate e innovative per l’edilizia."
+    },
+    {
+      "tags": ["P560", "sparachiodi", "pistola"],
+      "questions": [
+        "Che cos'è la P560?",
+        "Mi parli della pistola P560?",
+        "Cos'è la P560 di Tecnaria?",
+        "Come funziona la P560?",
+        "Che utensile è la P560?"
+      ],
+      "answer": "La P560 è la pistola sparachiodi a cartuccia propulsiva utilizzata per fissare i connettori Tecnaria della serie CTF e Diapason. È prodotta da SPIT, pesa circa 4,1 kg, appartiene alla classe A degli utensili di fissaggio e consente di realizzare rapidamente solai collaboranti senza ricorrere alla saldatura."
+    },
+    {
+      "tags": ["contatti", "ufficio", "telefono", "email"],
+      "questions": [
+        "Come contatto Tecnaria?",
+        "Dammi i contatti di Tecnaria",
+        "Qual è l'email di Tecnaria?",
+        "Qual è il telefono di Tecnaria?",
+        "Dove si trova Tecnaria?"
+      ],
+      "answer": "Tecnaria S.p.A. ha sede a Bassano del Grappa (VI), Via delle Industrie 2. Telefono: +39 0424 502256 – Email: info@tecnaria.com."
+    }
+  ]
+}
