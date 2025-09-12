@@ -1,340 +1,431 @@
 # -*- coding: utf-8 -*-
-import os
-import re
-import json
-import threading
-import time
-import unicodedata
-from typing import List, Dict, Any, Tuple
+import os, re, json, math, unicodedata, glob
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import List, Dict, Any, Optional, Tuple
 
-# dipendenze leggere (già nel tuo requirements)
-from rapidfuzz import fuzz, process as rf_process
+# opzionali ma leggeri
+import numpy as np
+from rapidfuzz import fuzz, process
 from rank_bm25 import BM25Okapi
 
-# ========= Config di base =========
-SCRAPER_DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")
+# =========================
+# Config da ENV
+# =========================
+DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")
 MIN_CHARS_PER_CHUNK = int(os.environ.get("MIN_CHARS_PER_CHUNK", "200"))
 OVERLAP_CHARS = int(os.environ.get("OVERLAP_CHARS", "50"))
+TOPK_SEMANTIC = int(os.environ.get("TOPK_SEMANTIC", "20"))
+SIMILARITY_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))
 
-# ========= Stato globale =========
-INDEX: List[Dict[str, Any]] = []     # ogni entry: {file, tags:set, question, answer, text, kind, tokens}
+# Sinapsi
+SINAPSI_ENABLE = os.environ.get("SINAPSI_ENABLE", "1") == "1"
+SINAPSI_PATH = os.environ.get("SINAPSI_BOT_JSON", "sinapsi_bot.json")
+
+# =========================
+# Stato globale
+# =========================
+INDEX: List[Dict[str, Any]] = []
 BM25 = None
-_READY = False
-_LOCK = threading.Lock()
+CORPUS_TOKENS: List[List[str]] = []
+SINAPSI_BRAIN: Dict[str, Any] = {}
 
-# ========= stopwords minime IT (non aggressive) =========
+# =========================
+# Utils
+# =========================
 STOPWORDS_MIN = {
     "il","lo","la","i","gli","le","un","uno","una",
     "di","del","della","dei","degli","delle",
     "e","ed","o","con","per","su","tra","fra","in","da",
     "al","allo","ai","agli","alla","alle",
     "che","come","dove","quando","anche",
-    "mi","ti","si","ci","vi","a","da","de","dal","dall","dalla","dalle",
+    "mi","ti","si","ci","vi","a","de","dal","dall","dalla","dalle",
+    "un’","l’","d’"
 }
 
-# ========= sinonimi/alias soft per domande frequenti =========
-SYNONYMS = {
-    "p560": ["p 560", "spit p560", "pistola spit", "sparachiodi", "chiodatrice"],
-    "chiodatrice": ["sparachiodi", "pistola", "p560"],
-    "pistola": ["chiodatrice", "sparachiodi", "p560"],
-    "contatti": ["recapiti", "telefono", "mail", "email", "indirizzo"],
-    "codici": ["codice", "articoli", "catalogo", "listino", "sku"],
-    "connettori": ["connettore", "pioli", "viti", "dispositivi"],
-    "posa": ["installazione", "montaggio", "messa in opera"],
-}
-
-QA_Q_PAT = re.compile(r"^\s*(?:D|Domanda)\s*:\s*(.+)$", re.IGNORECASE)
-QA_A_PAT = re.compile(r"^\s*(?:R|Risposta)\s*:\s*(.+)$", re.IGNORECASE)
-TAGS_PAT = re.compile(r"^\s*\[TAGS?\s*:\s*(.+?)\]\s*$", re.IGNORECASE)
-
-# ========= util =========
-def strip_accents(s: str) -> str:
-    return "".join(c for c in unicodedata.normalize("NFD", s)
-                   if unicodedata.category(c) != "Mn")
+SYNONYMS = [
+    ("p560", "pistola"),
+    ("sparachiodi", "pistola"),
+    ("hbv", "chiodatrice"),
+    ("connettore", "connettori"),
+    ("eta", "certificazione"),
+    ("dop", "dichiarazione prestazione"),
+]
 
 def normalize_text(s: str) -> str:
-    s = s or ""
-    s = strip_accents(s.lower())
-    s = re.sub(r"[^\w\s]", " ", s)  # rimuove punteggiatura
+    s = s.lower()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = s.replace("'", " ").replace("’", " ")
+    s = re.sub(r"[^a-z0-9àèéìòóù]+", " ", s, flags=re.I)
     s = re.sub(r"\s+", " ", s).strip()
-    return s
+    # sinonimi semplici
+    for a, b in SYNONYMS:
+        s = s.replace(a, b)
+    # rimuovi stopwords troppo comuni
+    tokens = [t for t in s.split() if t not in STOPWORDS_MIN]
+    return " ".join(tokens)
 
-def tokenize(s: str) -> List[str]:
-    toks = normalize_text(s).split()
-    return [t for t in toks if t not in STOPWORDS_MIN]
+def tokenize_for_bm25(s: str) -> List[str]:
+    # per BM25 manteniamo tokenizzazione semplice (dopo normalize_text)
+    return normalize_text(s).split()
 
-def expand_query(q: str) -> str:
-    base = normalize_text(q)
-    toks = base.split()
-    extra = []
-    for t in toks:
-        if t in SYNONYMS:
-            extra.extend(SYNONYMS[t])
-    if extra:
-        base += " " + " ".join(normalize_text(e) for e in extra)
-    return base
-
-def _clean_answer_text(s: str) -> str:
-    """Pulisce l’output finale: rimuove etichette D:/R:/[TAGS], spazi doppi, ecc."""
-    lines = []
-    for raw in s.splitlines():
-        if TAGS_PAT.match(raw):
-            continue
-        if raw.strip().startswith("D:") or raw.strip().lower().startswith("domanda:"):
-            continue
-        line = re.sub(r"^\s*(?:R|Risposta)\s*:\s*", "", raw, flags=re.IGNORECASE)
-        lines.append(line)
-    out = "\n".join(lines)
-    out = re.sub(r"\n{3,}", "\n\n", out).strip()
-    return out
-
-# ========= parsing documenti =========
-def _read_txt_files(doc_dir: str) -> List[str]:
-    files = []
-    for root, _, fns in os.walk(doc_dir):
-        for fn in fns:
-            if fn.lower().endswith(".txt"):
-                files.append(os.path.join(root, fn))
-    files.sort()
-    return files
-
-def _parse_file(path: str) -> List[Dict[str, Any]]:
-    """
-    Riconosce blocchi Q/A (D:/R:) e anche paragrafi liberi.
-    Restituisce entries normalizzate pronte per l’indicizzazione.
-    """
+def safe_read(path: str) -> str:
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            raw = f.read()
+            return f.read()
     except Exception:
+        # tenta latin1 in casi sporadici
+        try:
+            with open(path, "r", encoding="latin-1", errors="ignore") as f:
+                return f.read()
+        except Exception:
+            return ""
+
+def split_into_blocks(text: str) -> List[str]:
+    # separa per righe vuote multiple; mantiene blocchi >= MIN_CHARS_PER_CHUNK
+    raw_blocks = re.split(r"\n\s*\n", text)
+    blocks = []
+    for b in raw_blocks:
+        bb = b.strip()
+        if len(bb) >= MIN_CHARS_PER_CHUNK:
+            blocks.append(bb)
+    # se non abbiamo blocchi lunghi, prendi tutto il testo
+    if not blocks and text.strip():
+        blocks = [text.strip()]
+    return blocks
+
+def parse_tags(line: str) -> List[str]:
+    # es. [TAGS: a, b, c]
+    m = re.match(r"\s*\[tags\s*:\s*(.*?)\]\s*$", line, flags=re.I)
+    if not m:
         return []
+    raw = m.group(1)
+    tags = [t.strip() for t in raw.split(",") if t.strip()]
+    return tags
 
-    file_name = os.path.basename(path)
-    tags_global: List[str] = []
-    entries: List[Dict[str, Any]] = []
-
-    # tags globali (prima occorrenza)
-    for line in raw.splitlines():
-        m = TAGS_PAT.match(line)
-        if m:
-            tags_global = [t.strip().lower() for t in m.group(1).split(",") if t.strip()]
-            break
-
-    # prova a parsare come Q/A
-    lines = raw.splitlines()
-    i = 0
-    qa_found = False
-    while i < len(lines):
-        q_match = QA_Q_PAT.match(lines[i])
-        if q_match:
-            qa_found = True
-            q_txt = q_match.group(1).strip()
-            i += 1
-            # accumula risposta fino alla prossima D:/fine
-            a_buf = []
-            while i < len(lines):
-                if QA_Q_PAT.match(lines[i]):
-                    break
-                a_buf.append(lines[i])
-                i += 1
-            a_txt = "\n".join(a_buf).strip()
-            # estrai solo la parte della risposta (togli eventuali prefissi "R:")
-            a_txt = _clean_answer_text(a_txt)
-            entries.append({
-                "file": file_name,
-                "tags": set(tags_global),
-                "question": q_txt,
-                "answer": a_txt,
-                "text": f"{q_txt}\n{a_txt}",
-                "kind": "qa",
-            })
+def extract_qa(block: str) -> List[Tuple[str,str]]:
+    """
+    Estrae coppie (D: domanda, R: risposta) dal blocco.
+    Restituisce lista di tuple. Se non ci sono, lista vuota.
+    """
+    lines = [l.strip() for l in block.splitlines() if l.strip()]
+    out = []
+    cur_q = None
+    cur_a_lines = []
+    for ln in lines:
+        if re.match(r"^d\s*:\s*", ln, flags=re.I):
+            # salva QA precedente
+            if cur_q and cur_a_lines:
+                out.append((cur_q, "\n".join(cur_a_lines).strip()))
+                cur_a_lines = []
+            cur_q = re.sub(r"^d\s*:\s*", "", ln, flags=re.I).strip()
+        elif re.match(r"^r\s*:\s*", ln, flags=re.I):
+            content = re.sub(r"^r\s*:\s*", "", ln, flags=re.I).strip()
+            if cur_q is None:
+                # caso strano: risposta senza domanda
+                cur_q = ""
+            cur_a_lines = [content]
         else:
-            i += 1
+            # corpo risposta (se iniziata)
+            if cur_a_lines is not None and len(cur_a_lines) > 0:
+                cur_a_lines.append(ln)
+    # ultimo
+    if cur_q and cur_a_lines:
+        out.append((cur_q, "\n".join(cur_a_lines).strip()))
+    return out
 
-    if qa_found:
-        return entries
-
-    # altrimenti spezza in paragrafi “liberi”
-    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
-    for p in paragraphs:
-        entries.append({
-            "file": file_name,
-            "tags": set(tags_global),
-            "question": "",
-            "answer": p,          # qui answer = paragrafo
-            "text": p,
-            "kind": "text",
-        })
-    return entries
-
-def _build_bm25_from_entries(entries: List[Dict[str, Any]]):
-    docs_tokens = []
-    for e in entries:
-        docs_tokens.append(tokenize(e["text"]))
-    if not docs_tokens:
+def best_qa_for_query(q: str, qa_list: List[Tuple[str,str]]) -> Optional[str]:
+    if not qa_list:
         return None
-    return BM25Okapi(docs_tokens)
+    nq = normalize_text(q)
+    # scegli la R la cui D è più vicina al q
+    best = None
+    best_score = -1
+    for dq, dr in qa_list:
+        s = fuzz.token_set_ratio(nq, normalize_text(dq)) / 100.0
+        if s > best_score:
+            best_score = s
+            best = dr
+    return best
 
-# ========= API pubblico =========
-def build_index(doc_dir: str = None) -> None:
-    global INDEX, BM25, _READY
-    with _LOCK:
-        _READY = False
-    doc_dir = doc_dir or SCRAPER_DOC_DIR
-    files = _read_txt_files(doc_dir)
+def clean_answer_text(text: str) -> str:
+    """
+    Rimuove eventuali righe 'D:'/'R:' e linee troppo tecniche visibili all'utente.
+    """
+    # elimina prefissi 'D: ...' e 'R: ...' se presenti
+    lines = []
+    for ln in text.splitlines():
+        if re.match(r"^\s*d\s*:", ln, flags=re.I):
+            continue
+        ln = re.sub(r"^\s*r\s*:\s*", "", ln, flags=re.I)
+        lines.append(ln)
+    out = "\n".join(lines).strip()
+    # clamp lunghezza e rifiniture minime
+    out = re.sub(r"\s{3,}", "  ", out)
+    return out
+
+# =========================
+# Indicizzazione
+# =========================
+@dataclass
+class DocBlock:
+    file: str
+    text: str
+    norm: str
+    tags: List[str]
+    qa: List[Tuple[str,str]]
+
+def scan_txt_files(doc_dir: str) -> List[str]:
+    patterns = [
+        os.path.join(doc_dir, "*.txt"),
+        os.path.join(doc_dir, "*.TXT"),
+    ]
+    paths = []
+    for p in patterns:
+        paths.extend(glob.glob(p))
+    paths = sorted(set(paths))
+    return paths
+
+def build_index(doc_dir: str) -> None:
+    """
+    Costruisce INDEX e BM25.
+    """
+    global INDEX, BM25, CORPUS_TOKENS, SINAPSI_BRAIN
+
     print(f"[scraper_tecnaria] Inizio indicizzazione da: {os.path.abspath(doc_dir)}\n")
+    files = scan_txt_files(doc_dir)
     print(f"[scraper_tecnaria] Trovati {len(files)} file .txt:")
     for p in files:
         print(f"[scraper_tecnaria]   - {p}")
 
-    all_entries: List[Dict[str, Any]] = []
-    for p in files:
-        all_entries.extend(_parse_file(p))
+    new_index: List[Dict[str, Any]] = []
+    corpus_tokens = []
 
-    # indicizzazione BM25
-    bm25 = _build_bm25_from_entries(all_entries)
+    for path in files:
+        raw = safe_read(path)
+        if not raw.strip():
+            continue
 
-    with _LOCK:
-        INDEX = all_entries
-        BM25 = bm25
-        _READY = True
+        blocks = split_into_blocks(raw)
+        for b in blocks:
+            # tags?
+            first_line = b.splitlines()[0].strip() if b.splitlines() else ""
+            tags = parse_tags(first_line)
+
+            qa_list = extract_qa(b)
+            norm = normalize_text(b + " " + " ".join(tags) + " " + os.path.basename(path))
+            tokens = tokenize_for_bm25(b + " " + " ".join(tags) + " " + os.path.basename(path))
+
+            item = {
+                "file": os.path.basename(path),
+                "path": path,
+                "text": b.strip(),
+                "norm": norm,
+                "tags": tags,
+                "qa": qa_list
+            }
+            new_index.append(item)
+            corpus_tokens.append(tokens)
+
+    # costruisci BM25
+    if corpus_tokens:
+        BM25 = BM25Okapi(corpus_tokens)
+        CORPUS_TOKENS = corpus_tokens
+    else:
+        BM25 = None
+        CORPUS_TOKENS = []
+
+    INDEX = new_index
+
+    # carica Sinapsi (best-effort)
+    if SINAPSI_ENABLE:
+        try:
+            if os.path.exists(SINAPSI_PATH):
+                with open(SINAPSI_PATH, "r", encoding="utf-8") as f:
+                    SINAPSI_BRAIN = json.load(f)
+            else:
+                SINAPSI_BRAIN = {}
+        except Exception:
+            SINAPSI_BRAIN = {}
 
     print(f"[scraper_tecnaria] Indicizzati {len(INDEX)} blocchi da {len(files)} file.")
+    if SINAPSI_ENABLE:
+        print(f"[scraper_tecnaria] Sinapsi: {'ON' if SINAPSI_BRAIN else 'ON (vuoto)'}  file={SINAPSI_PATH}")
 
 def is_ready() -> bool:
-    with _LOCK:
-        return bool(_READY and INDEX and BM25 is not None)
+    try:
+        return bool(INDEX) and (BM25 is not None or len(INDEX) > 0)
+    except Exception:
+        return False
 
-def ensure_ready_blocking(timeout_sec: int = 0) -> None:
-    """
-    Se l’indice non è pronto, avvia la build in un thread.
-    Se timeout_sec > 0, attende al massimo quel tempo.
-    """
-    if is_ready():
-        return
-    def _runner():
-        try:
-            build_index(SCRAPER_DOC_DIR)
-        except Exception as e:
-            print(f"[scraper_tecnaria] ERRORE build_index: {e}", flush=True)
+# =========================
+# Scoring / Ricerca
+# =========================
+def keyword_overlap(a: str, b: str) -> float:
+    ta = set(a.split())
+    tb = set(b.split())
+    if not ta or not tb:
+        return 0.0
+    inter = len(ta & tb)
+    denom = min(len(ta), len(tb))
+    return inter / max(1.0, float(denom))
 
-    t = threading.Thread(target=_runner, daemon=True)
-    t.start()
-    if timeout_sec and timeout_sec > 0:
-        t.join(timeout=timeout_sec)
+def name_tag_boost(item: Dict[str,Any], nq: str) -> float:
+    boost = 0.0
+    # boost nome file
+    fname = normalize_text(item["file"])
+    if any(tok in fname for tok in nq.split()):
+        boost += 0.1
+    # boost TAG
+    for t in item.get("tags") or []:
+        nt = normalize_text(t)
+        if any(tok in nt for tok in nq.split()):
+            boost += 0.15
+    return boost
 
-# ========= Ricerca =========
-def _score_entry(q_norm: str, entry: Dict[str, Any]) -> Tuple[float, Dict[str, float]]:
-    """
-    Calcola uno score combinato:
-      - match con domanda (se kind=qa) via RapidFuzz
-      - match BM25 sul testo completo
-      - boost su tag/nome file
-    Restituisce (score, breakdown)
-    """
-    # RapidFuzz sulla domanda (se presente)
-    rf_q = 0.0
-    if entry["kind"] == "qa" and entry["question"]:
-        rf_q = fuzz.token_set_ratio(q_norm, normalize_text(entry["question"])) / 100.0
-
+def score_item(query: str, item: Dict[str,Any]) -> float:
+    nq = normalize_text(query)
     # BM25
     bm = 0.0
-    if BM25 is not None and INDEX:
-        # calcola una volta a livello query
-        pass  # normalizzato nella funzione principale
+    if BM25 is not None:
+        bm = BM25.get_scores([nq.split()])[INDEX.index(item)][0] if hasattr(BM25, "get_scores") else 0.0
+        # La libreria standard usa get_scores(query_tokens) -> array. Qui adattiamo:
+        try:
+            q_tokens = nq.split()
+            bm = BM25.get_scores(q_tokens)[INDEX.index(item)]
+        except Exception:
+            bm = 0.0
+    # overlap keyword
+    kw = keyword_overlap(nq, item["norm"])
+    # fuzzy
+    fz = fuzz.token_set_ratio(nq, item["norm"]) / 100.0
+    # boost
+    bs = name_tag_boost(item, nq)
+    # composizione (tune semplice)
+    score = 0.60*bm + 0.25*kw + 0.15*fz + bs
+    return score
 
-    # Boost su tag/nome file
-    boost = 0.0
-    q_tokens = set(q_norm.split())
-    if entry.get("tags"):
-        if any(t in q_tokens for t in entry["tags"]):
-            boost += 0.10
-    file_low = entry["file"].lower()
-    for t in q_tokens:
-        if len(t) >= 3 and t in file_low:
-            boost += 0.10
-            break
+def pick_answer_text(query: str, item: Dict[str,Any]) -> str:
+    # Se nel blocco ci sono QA, prendi la migliore R per la D più vicina alla query
+    qa = item.get("qa") or []
+    if qa:
+        best_r = best_qa_for_query(query, qa)
+        if best_r:
+            return clean_answer_text(best_r)
+    # fallback: restituisci il blocco “ripulito”
+    return clean_answer_text(item["text"])
 
-    # combinazione (BM25 viene normalizzato esternamente)
-    # qui ritorniamo rf_q e boost; bm verrà inserito dopo
-    return (rf_q + boost, {"rf": rf_q, "boost": boost})
-
-def _best_qa_answer_for_entry(q_norm: str, entry: Dict[str, Any]) -> str:
+# =========================
+# Sinapsi Hook (arricchimento)
+# =========================
+def sinapsi_enrich(answer: str, meta: Dict[str,Any], query: str) -> str:
     """
-    Per una entry QA abbiamo già un’unica coppia D/R.
-    Torniamo SOLO la risposta ripulita.
-    """
-    return _clean_answer_text(entry["answer"])
-
-def search_best_answer(query: str, threshold: float = 0.35, topk: int = 20) -> Dict[str, Any]:
-    """
-    Ritorna SOLO la risposta (senza “D:”).
-    Se non trova sopra soglia, ritorna found=False ma con un piccolo suggerimento.
-    """
-    if not is_ready():
-        return {"answer": "Indice non pronto. Riprova tra pochi secondi.", "found": False, "from": None}
-
-    q_expanded = expand_query(query)
-    q_norm = normalize_text(q_expanded)
-
-    # BM25 ranking preliminare su TUTTI i documenti (testo completo)
-    # prendiamo topN un po’ alto per avere materiale su cui rifinire con RapidFuzz
-    tokens_q = tokenize(q_norm)
-    scores = BM25.get_scores(tokens_q) if BM25 is not None else []
-    # seleziona top candidati
-    idx_scores = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)[:max(topk, 50)]
-    max_bm = idx_scores[0][1] if idx_scores else 0.0
-    min_bm = idx_scores[-1][1] if idx_scores else 0.0
-    denom = (max_bm - min_bm) if (max_bm - min_bm) > 1e-9 else 1.0
-
-    candidates: List[Tuple[float, int, Dict[str, Any], Dict[str, float]]] = []
-    for idx, bm_val in idx_scores:
-        entry = INDEX[idx]
-        partial, parts = _score_entry(q_norm, entry)
-        bm_norm = (bm_val - min_bm) / denom
-        # combinazione finale: privilegia matching domanda (se QA) ma tiene BM25 e boost
-        final = 0.60 * partial + 0.40 * bm_norm
-        parts["bm25"] = bm_norm
-        candidates.append((final, idx, entry, parts))
-
-    # ordina per punteggio decrescente
-    candidates.sort(key=lambda x: x[0], reverse=True)
-
-    # prendi il migliore sopra soglia
-    if candidates and candidates[0][0] >= threshold:
-        best_score, _, best_entry, parts = candidates[0]
-        if best_entry["kind"] == "qa":
-            ans = _best_qa_answer_for_entry(q_norm, best_entry)
-        else:
-            # blocco generico: pulizia leggera (togli eventuali etichette)
-            ans = _clean_answer_text(best_entry["answer"])
-        return {
-            "answer": ans,
-            "found": True,
-            "score": round(float(best_score), 3),
-            "from": best_entry["file"],
-            "tags": sorted(list(best_entry.get("tags", []))) or None,
+    Arricchisce la risposta con regole semplici prese dal JSON.
+    Schema supportato (flessibile):
+      {
+        "rules": [
+          {"if_any": ["p560","pistola"], "add": "Usare cartucce certificate..."},
+          {"if_all": ["ctf","lamiera"], "add": "Verifica passo su lamiera grecata..."}
+        ],
+        "prefix": "…",  # opzionale
+        "suffix": "…",  # opzionale
+        "topics": {
+           "p560": "Descrizione sintetica P560…",
+           "ctf": "Campo d’impiego CTF…"
         }
+      }
+    """
+    if not SINAPSI_ENABLE or not SINAPSI_BRAIN:
+        return answer
 
-    # fallback: niente sopra soglia -> prova a restituire il miglior paragrafo “pulito”
-    if candidates:
-        _, _, best_entry, _ = candidates[0]
-        ans = _clean_answer_text(best_entry["answer"])
-        return {
-            "answer": ans,
-            "found": False,
-            "from": best_entry["file"],
-        }
+    nq = set(normalize_text(query).split())
+    enriched = []
+
+    # prefix
+    px = SINAPSI_BRAIN.get("prefix")
+    if px:
+        enriched.append(px.strip())
+
+    # topics: se una chiave è contenuta nei token della query
+    topics = SINAPSI_BRAIN.get("topics", {})
+    for k, v in topics.items():
+        nk = normalize_text(k)
+        if nk in nq:
+            enriched.append(str(v).strip())
+
+    # rules
+    for r in SINAPSI_BRAIN.get("rules", []):
+        if_any = [normalize_text(x) for x in r.get("if_any", [])]
+        if_all = [normalize_text(x) for x in r.get("if_all", [])]
+        ok_any = (not if_any) or any(t in nq for t in if_any)
+        ok_all = all(t in nq for t in if_all) if if_all else True
+        if ok_any and ok_all:
+            add = str(r.get("add","")).strip()
+            if add:
+                enriched.append(add)
+
+    base = answer.strip()
+    # evita duplicati stupidi
+    enriched_text = "\n".join([t for t in enriched if t]) if enriched else ""
+    if enriched_text:
+        # semplice fusione: arricchimento + base
+        final = f"{base}\n\n{enriched_text}".strip()
+    else:
+        final = base
+
+    # suffix
+    sx = SINAPSI_BRAIN.get("suffix")
+    if sx:
+        final = f"{final}\n\n{sx.strip()}"
+
+    return final.strip()
+
+# =========================
+# API di ricerca
+# =========================
+def search_best_answer(query: str,
+                       threshold: float = SIMILARITY_THRESHOLD,
+                       topk: int = TOPK_SEMANTIC) -> Dict[str, Any]:
+    if not INDEX:
+        return {"answer":"Indice non pronto.", "found": False, "from": None}
+
+    # ranking
+    scored = []
+    for it in INDEX:
+        s = score_item(query, it)
+        scored.append((s, it))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = scored[:max(1, topk)]
+
+    if not top:
+        return {"answer":"Non ho trovato risposte nei documenti locali.", "found": False, "from": None}
+
+    best_score, best_item = top[0]
+    # normalizza score in [0,1] grezzo (non perfetto, ma utile per gate)
+    norm_score = min(1.0, max(0.0, best_score))
+
+    if norm_score < threshold:
+        # fallback: prova a cercare domanda più simile tra tutte le D: note del blocco top
+        answer = pick_answer_text(query, best_item)
+        if not answer:
+            return {"answer":"Non ho trovato una risposta precisa.", "found": False, "from": None}
+    else:
+        answer = pick_answer_text(query, best_item)
+
+    # hook Sinapsi (arricchimento)
+    try:
+        answer = sinapsi_enrich(answer, {"from": best_item.get("file"), "tags": best_item.get("tags")}, query)
+    except Exception:
+        pass
+
+    # postprocess finale (titolo, clamp, ecc. – per ora minimal)
+    answer = answer.strip()
 
     return {
-        "answer": "Non ho trovato una risposta precisa nei documenti locali.",
-        "found": False,
-        "from": None,
+        "answer": answer,
+        "found": True,
+        "score": round(float(norm_score), 3),
+        "from": best_item.get("file"),
+        "tags": best_item.get("tags") or []
     }
-
-
-# ====== bootstrap automatico all’import ======
-try:
-    ensure_ready_blocking(timeout_sec=0)  # NON bloccare; l’app può già rispondere “indice non pronto”
-except Exception as e:
-    print(f"[scraper_tecnaria] Bootstrap non riuscito: {e}", flush=True)
