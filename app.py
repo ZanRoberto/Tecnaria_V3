@@ -1,120 +1,157 @@
-# app.py  — versione “free plan ready”
 # -*- coding: utf-8 -*-
 import os
-import time
+import logging
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 
-# === Import dal tuo scraper (DEVE esistere) ===
-# build_index(doc_dir) -> costruisce/ricostruisce l’indice
-# search_best_answer(q, threshold, topk) -> dict {answer, found, score, from, ...}
-# INDEX -> lista/dict con i documenti indicizzati (per capire se è pronto)
-from scraper_tecnaria import build_index, search_best_answer, INDEX
+# --- IMPORT UNICO del modulo scraper ---
+# (così leggiamo sempre l'INDEX aggiornato dal modulo)
+import scraper_tecnaria as ST
 
-# === Config ===
-DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")           # cartella con i .txt
+# =========================
+# Configurazione di base
+# =========================
+DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")
 SIM_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))
 TOPK = int(os.environ.get("TOPK_SEMANTIC", "20"))
-BOOT_RETRIES = int(os.environ.get("BOOT_RETRIES", "8"))          # tentativi avvio
-BOOT_SLEEP = float(os.environ.get("BOOT_SLEEP", "1.0"))          # sec tra tentativi
 
-app = Flask(__name__)
+# =========================
+# Flask app
+# =========================
+app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)
 
-def _index_size() -> int:
-    """Ritorna il numero di elementi indicizzati oppure 0 se INDEX non è pronto."""
-    try:
-        return len(INDEX) if INDEX is not None else 0
-    except Exception:
-        return 0
+# Log un po' più verboso in debug
+if os.environ.get("DEBUG", "0") == "1":
+    app.logger.setLevel(logging.DEBUG)
+else:
+    app.logger.setLevel(logging.INFO)
+
 
 def _ensure_index_ready() -> bool:
     """
-    Se l’indice è vuoto, prova a costruirlo.
-    Ritorna True se pronto (>=1 doc), False se no.
+    Se l'indice è vuoto o mancante, prova a ricostruirlo una volta.
+    Ritorna True se ci sono documenti, False altrimenti.
     """
-    if _index_size() > 0:
-        return True
-    app.logger.warning("[app] INDEX vuoto: costruisco da %s", os.path.abspath(DOC_DIR))
     try:
-        build_index(DOC_DIR)
-    except Exception as e:
-        app.logger.exception("[app] Errore build_index: %s", e)
-    return _index_size() > 0
+        docs = len(ST.INDEX)
+    except Exception:
+        docs = 0
 
-# === COSTRUZIONE BLOCCANTE ALL’AVVIO (piano free: niente /health) ===
-def _boot_blocking_build():
-    for i in range(BOOT_RETRIES):
-        if _ensure_index_ready():
-            app.logger.info("[app] Indice pronto (%d file).", _index_size())
-            return
-        time.sleep(BOOT_SLEEP)
-    # Anche se fallisce, l’app resta su: le route riproveranno
-    app.logger.error("[app] Indice NON pronto dopo il boot, riproverò on-demand.")
+    if docs == 0:
+        app.logger.warning("[app] INDEX vuoto: costruisco da %s", os.path.abspath(DOC_DIR))
+        try:
+            built = ST.build_index(DOC_DIR)
+            app.logger.info("[app] build_index completato: %s blocchi indicizzati", built)
+        except Exception as e:
+            app.logger.exception("[app] Errore build_index: %s", e)
 
-_boot_blocking_build()
+    try:
+        docs = len(ST.INDEX)
+    except Exception:
+        docs = 0
 
-# === ROUTES ===
+    return docs > 0
+
+
+# =========================
+# Build indice all'avvio
+# =========================
+try:
+    _ensure_index_ready()
+except Exception as e:
+    # Non blocco l'avvio del server: /health mostrerà 'empty'
+    app.logger.exception("[app] Errore iniziale nell'ensure_index_ready: %s", e)
+
+
+# =========================
+# Routes
+# =========================
 @app.route("/", methods=["GET"])
 def home():
-    """
-    Mostra la pagina solo quando l’indice è pronto.
-    Se non fosse pronto (caso raro), tenta una ricostruzione rapida.
-    """
-    if not _ensure_index_ready():
-        # un ultimo tentativo immediato
-        for _ in range(3):
-            time.sleep(0.5)
-            if _ensure_index_ready():
-                break
-    return render_template("index.html")  # la tua UI attuale
+    # Usa templates/index.html se presente; altrimenti rispondi JSON minimale
+    try:
+        return render_template("index.html")
+    except Exception:
+        return jsonify({
+            "service": "Tecnaria · Assistente documentale",
+            "message": "Servizio attivo. Usa POST /ask per fare domande.",
+            "docs": len(ST.INDEX) if hasattr(ST, "INDEX") else 0
+        })
+
 
 @app.route("/ask", methods=["POST"])
 def ask():
+    """
+    body x-www-form-urlencoded:
+      - domanda: testo domanda
+    ritorna: {answer, found, from, score, ...}
+    """
     q = (request.form.get("domanda") or "").strip()
     if not q:
         return jsonify({"answer": "Nessuna domanda ricevuta.", "found": False, "from": None})
 
-    # Assicurati che l’indice sia pronto (anche se si fosse “svuotato”)
+    # Assicurati indice pronto
     if not _ensure_index_ready():
-        # piccolo backoff e ultimo tentativo
-        time.sleep(0.6)
-        if not _ensure_index_ready():
-            return jsonify({
-                "answer": "Indice non pronto. Riprova tra un istante.",
-                "found": False,
-                "from": None
-            })
+        return jsonify({
+            "answer": "Indice non pronto. Riprova tra qualche secondo.",
+            "found": False,
+            "from": None
+        })
 
     # Ricerca
     try:
-        result = search_best_answer(q, threshold=SIM_THRESHOLD, topk=TOPK)
-        # fail-safe: abbassa un filo la soglia se non ha trovato nulla
+        result = ST.search_best_answer(q, threshold=SIM_THRESHOLD, topk=TOPK)
+        # Fallback: ritenta con soglia più bassa una sola volta
         if not result.get("found") and SIM_THRESHOLD > 0.28:
-            result = search_best_answer(q, threshold=0.28, topk=TOPK)
+            app.logger.debug("[app] Nessun match sopra %.2f, ritento con 0.28", SIM_THRESHOLD)
+            result = ST.search_best_answer(q, threshold=0.28, topk=TOPK)
         return jsonify(result)
     except Exception as e:
         app.logger.exception("[app] Errore in search_best_answer: %s", e)
-        return jsonify({"answer": "Errore interno.", "found": False, "from": None}), 500
+        return jsonify({
+            "answer": "Errore interno durante la ricerca.",
+            "found": False,
+            "from": None
+        }), 500
+
 
 @app.route("/reload", methods=["POST"])
 def reload():
-    """Ricarica manualmente l’indice (utile durante i test)."""
-    ok = _ensure_index_ready()
-    return jsonify({"status": "ok" if ok else "error", "docs": _index_size()})
+    """
+    Ricostruisce l'indice manualmente.
+    """
+    try:
+        built = ST.build_index(DOC_DIR)
+        return jsonify({"status": "ok", "docs": built})
+    except Exception as e:
+        app.logger.exception("[app] Errore /reload: %s", e)
+        return jsonify({"status": "error", "error": str(e)}), 500
+
 
 @app.route("/health", methods=["GET"])
 def health():
-    """Comodo anche sul piano free per vedere a colpo d’occhio lo stato."""
-    docs = _index_size()
+    """
+    Health-check parlante per Render.
+    """
+    try:
+        docs = len(ST.INDEX)
+    except Exception:
+        docs = 0
+
+    status = "ok" if docs > 0 else "empty"
     return jsonify({
-        "status": "ok" if docs > 0 else "empty",
+        "status": status,
         "docs": docs,
         "threshold": SIM_THRESHOLD,
         "topk": TOPK,
         "doc_dir": os.path.abspath(DOC_DIR)
     })
 
+
+# =========================
+# Avvio locale
+# =========================
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    port = int(os.environ.get("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=(os.environ.get("DEBUG", "0") == "1"))
