@@ -80,3 +80,20 @@ R: Sì, su richiesta inviamo report di controlli e certificazioni associati a un
 ────────────────────────────
 D: Qual è il vantaggio principale della tracciabilità dei lotti?
 R: Avere sempre la certezza che i prodotti usati siano conformi, certificati e controllati, con la possibilità di risalire a ogni fase del processo produttivo.
+[TAGS: tracciabilità, lotti, cartucce, chiodi, registri posa, foto cantiere]
+
+D: Perché la tracciabilità è importante?
+R: Per garantire rintracciabilità di materiali/pose, utile in collaudo, audit e manutenzioni.
+────────────────────────────
+D: Cosa registro?
+R: Lotti connettori, chiodi/cartucce, date, aree di posa, coppie misurate e foto campione.
+────────────────────────────
+D: Come archiviare?
+R: Schede digitali o cartacee, collegate a DDT/DoP e alla relazione di fine lavori.
+────────────────────────────
+D: Chi è responsabile?
+R: Il capocantiere/responsabile qualità dell’impresa con validazione del DL quando richiesto.
+────────────────────────────
+D: Quanto tempo conservare?
+R: In base alle prassi aziendali e requisiti di commessa; tipicamente per tutta la vita utile dell’opera.
+
