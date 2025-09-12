@@ -35,3 +35,65 @@ La posa avviene senza saldatura, garantendo resistenze certificate a taglio e tr
 D: Quali sono le raccomandazioni d’uso?
 R: Seguire i manuali Tecnaria e SPIT, verificare sempre la corretta posizione del connettore con l’apposito guidapunte, 
 sostituire regolarmente gli accessori soggetti a usura (pistone e anello ammortizzatore) e utilizzare esclusivamente cartucce e chiodi certificati.
+[TAGS: P560, pistola, sparachiodi, posa CTF, posa Diapason, fissaggio connettori, accessori P560, manutenzione P560, cartucce, noleggio pistola]
+
+D: Che cos’è la P560?
+R: La P560 è la pistola sparachiodi a cartuccia propulsiva (SPIT) usata per fissare i connettori Tecnaria (CTF/Diapason) in alternativa alla saldatura. Pesa circa 4,1 kg ed è classificata come utensile di fissaggio di classe A.
+────────────────────────────
+D: In quali casi conviene usare la P560?
+R: Quando vuoi ridurre tempi di posa sui solai collaboranti acciaio–calcestruzzo, evitando saldature in cantiere. È ideale su lamiere grecate e travi, con cicli ripetitivi di fissaggio.
+────────────────────────────
+D: La P560 sostituisce la saldatura?
+R: Sì, per il fissaggio dei connettori Tecnaria progettati per chiodatura. Rispetta le istruzioni di posa e le specifiche del connettore.
+────────────────────────────
+D: Che cartucce usa la P560?
+R: Cartucce propulsive dedicate (SPIT) con potenze differenziate. Scegli la carica in base a supporto, spessore acciaio e chiodo raccomandato.
+────────────────────────────
+D: Che chiodi si usano con P560?
+R: Chiodi certificati per il sistema Tecnaria (es. chiodi HBV o chiodi specifici per CTF/Diapason). Vedi manuale di posa e scheda del connettore.
+────────────────────────────
+D: Serve formazione per usare la P560?
+R: È fortemente raccomandata. Tecnaria fornisce istruzioni operative e corsi; l’operatore deve usare DPI e seguire le procedure di sicurezza.
+────────────────────────────
+D: Quali DPI sono obbligatori con P560?
+R: Occhiali protettivi, cuffie antirumore, guanti antiurto. In alcune situazioni anche calzature di sicurezza, elmetto e protezioni aggiuntive.
+────────────────────────────
+D: Posso regolare la potenza di sparo?
+R: Sì, scegliendo la cartuccia adeguata e verificando la profondità di infissione del chiodo conforme alla scheda tecnica.
+────────────────────────────
+D: Come verifico un fissaggio eseguito con P560?
+R: Controlla la profondità/assestamento del chiodo, assenza di deformazioni anomale, presa sul supporto e corrispondenza al passo previsto in disegno.
+────────────────────────────
+D: Qual è il passo di chiodatura tipico?
+R: Dipende dal connettore e dal progetto. Le schede Tecnaria e gli esempi di posa riportano interassi e disposizioni consigliate.
+────────────────────────────
+D: Su quali spessori d’acciaio lavora bene?
+R: In generale su lamiere e profili tipici dei solai collaboranti. Verifica sempre i limiti di spessore/qualità acciaio in scheda e manuale.
+────────────────────────────
+D: P560 funziona su acciaio zincato?
+R: Sì, è comune su lamiere grecate zincate. Pulizia dei punti di impatto e scelta chiodi/cartucce corrette sono fondamentali.
+────────────────────────────
+D: È possibile noleggiare la P560?
+R: Sì, contatta Tecnaria o la rete di partner per disponibilità, condizioni e training.
+────────────────────────────
+D: Manutenzione ordinaria della P560?
+R: Pulizia periodica, ispezione ugelli/guida chiodi, verifica meccanismi di sicurezza. Segui le indicazioni SPIT e i richiami nel manuale Tecnaria.
+────────────────────────────
+D: Quali segnali indicano potenza insufficiente?
+R: Chiodo non completamente infisso, fissaggio lasco o rimbalzo. Aumenta la carica (entro i limiti) e verifica lo stato dell’utensile.
+────────────────────────────
+D: Posso usare la P560 in ambienti freddi?
+R: Sì, ma le performance delle cartucce variano con la temperatura. Conserva i consumabili come da istruzioni.
+────────────────────────────
+D: Quali sono i rischi principali?
+R: Proiezione di frammenti, rumore, rinculo. Mitigali con DPI, posizione stabile, attrezzo perpendicolare e area sgombra.
+────────────────────────────
+D: È compatibile con tutti i connettori?
+R: Con i connettori Tecnaria predisposti per chiodatura (CTF, Diapason). Per altri sistemi verifica la scheda.
+────────────────────────────
+D: Come scelgo chiodo e cartuccia?
+R: In base a supporto, spessore e resistenza richiesta. Le tabelle Tecnaria/fornitore indicano gli abbinamenti consigliati.
+────────────────────────────
+D: Cosa conservare per la tracciabilità?
+R: Lotti cartucce e chiodi, data e area fissaggio, controlli eseguiti. Questo facilita audit e conformità di cantiere.
+
