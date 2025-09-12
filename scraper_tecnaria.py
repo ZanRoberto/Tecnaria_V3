@@ -1,382 +1,460 @@
-# -*- coding: utf-8 -*-
-"""
-scraper_tecnaria.py
-Indicizza i .txt in documenti_gTab/ e cerca la miglior risposta
-in base a TAGS, Domanda/Risposta e blocchi separati.
+# scraper_tecnaria.py
+# Ricerca ibrida per documenti Tecnaria (.txt) dentro documenti_gTab/
+# - Normalizzazione IT + sinonimi (interni + opzionali da synonyms.json)
+# - Retrieval ibrido: semantico (se disponibile) + keyword (BM25-lite)
+# - Boost per TAG e nome file
+# - API: build_index(), rebuild_index(), search_best_answer(q)
 
-Env utili:
-  DOC_DIR / DOCS_FOLDER / KNOWLEDGE_DIR  -> cartella dei .txt (default: ./documenti_gTab)
-  DEBUG=1 oppure DEBUG_SCRAPER=1         -> log estesi
-  REINDEX_ON_STARTUP=1                   -> ricostruisce l'indice all'avvio
-  SIMILARITY_THRESHOLD=0.25..0.60        -> soglia di accettazione (default 0.30)
-"""
+import os, re, json, math, unicodedata, glob, time
+from collections import defaultdict, Counter
 
-import os
-import re
-import glob
-import json
-from typing import List, Dict, Any, Optional, Tuple
-from difflib import SequenceMatcher
-
-# -----------------------------------------------------------------------------
-# Config & Debug
-# -----------------------------------------------------------------------------
-DEBUG = os.environ.get("DEBUG", "0") == "1" or os.environ.get("DEBUG_SCRAPER", "0") == "1"
-DOC_DIR = (
-    os.environ.get("DOC_DIR")
-    or os.environ.get("DOCS_FOLDER")
-    or os.environ.get("KNOWLEDGE_DIR")
-    or "./documenti_gTab"
-)
-REINDEX_ON_STARTUP = os.environ.get("REINDEX_ON_STARTUP", "1") == "1"
-
-# Soglia: 0.30 è un buon compromesso. Puoi alzare a 0.40 se vuoi essere più “selettivo”.
-try:
-    SIMILARITY_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.30"))
-except Exception:
-    SIMILARITY_THRESHOLD = 0.30
-
+# =======================
+# Config / Env
+# =======================
+DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab").strip()
+SIM_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))  # soglia base
 TOPK = int(os.environ.get("TOPK_SEMANTIC", "20"))
+DEBUG = os.environ.get("DEBUG", "0") == "1"
+DEBUG_SCRAPER = os.environ.get("DEBUG_SCRAPER", "0") == "1"
 
-# -----------------------------------------------------------------------------
-# Stopwords minimale + normalizzazione
-# -----------------------------------------------------------------------------
+# Boost
+BOOST_TAG = float(os.environ.get("BOOST_TAG", "0.25"))
+BOOST_FILENAME = float(os.environ.get("BOOST_FILENAME", "0.15"))
+BOOST_EXACT_CODE = float(os.environ.get("BOOST_EXACT_CODE", "0.20"))  # e.g. "P560" nel testo
+
+# Embeddings (opzionali)
+EMBED_MODEL_NAME = os.environ.get("EMBED_MODEL", "all-MiniLM-L6-v2")
+
+# Stato globale in memoria (semplice)
+INDEX = {
+    "blocks": [],         # list of dict: {id, file, text, tags, norm, tokens, ln_len}
+    "by_file": defaultdict(list),  # file -> [block_ids]
+    "inv": defaultdict(set),       # token -> set(block_id)
+    "idf": {},             # token -> idf
+    "emb": None,           # np matrix (opzionale)
+    "emb_model": None,     # modello (opzionale)
+    "token_counts": {},    # block_id -> Counter(token)
+    "N": 0,                # numero blocchi
+    "files_indexed": 0,
+    "lines_total": 0
+}
+
+# =======================
+# Stopwords & Sinonimi
+# =======================
 STOPWORDS = {
-    "il", "lo", "la", "i", "gli", "le",
-    "un", "una", "uno",
-    "di", "a", "da", "in", "con", "su", "per", "tra", "fra",
-    "che", "e", "ed", "o"
+    "a","ad","al","allo","ai","agli","alla","alle",
+    "anche","come","con","da","dal","dallo","dai","dagli","dalla","dalle",
+    "di","del","dello","dei","degli","della","delle",
+    "e","ed","ma","o","oppure",
+    "il","lo","la","i","gli","le","un","uno","una","mi","ti","si","ci","vi",
+    "che","chi","cui","quale","quali","dove","quando","quanto","quanti","quanta",
+    "per","su","tra","fra","in",
 }
 
-def normalize_text(text: str) -> str:
-    """Minuscole, normalizza accenti/quote, rimuove punteggiatura, toglie stopwords."""
-    text = text.lower()
-
-    # Normalizza accenti e apostrofi comuni (evita mismatch tra 'è' ed 'e’')
-    replacements = {
-        "à": "a", "è": "e", "é": "e", "ì": "i", "ò": "o", "ó": "o", "ù": "u",
-        "’": "'", "‘": "'", "“": '"', "”": '"'
-    }
-    for k, v in replacements.items():
-        text = text.replace(k, v)
-
-    # Tieni solo lettere/numeri/spazi
-    text = re.sub(r"[^a-z0-9\s\-_/\.]", " ", text)
-
-    # Token + rimozione stopwords
-    words = [w for w in text.split() if w not in STOPWORDS]
-    return " ".join(words)
-
-# -----------------------------------------------------------------------------
-# Riconoscimento famiglie/prodotti per boost file
-# -----------------------------------------------------------------------------
-FAMILY_HINTS: Dict[str, List[str]] = {
-    "p560":        ["p560", "p 560", "p-560", "pistola", "sparachiodi", "spit"],
-    "ctf":         ["ctf", "piolo", "pioli", "piastra", "acciaio calcestruzzo", "lamiera grecata"],
-    "cem-e":       ["cem-e", "ceme", "cem e", "riprese di getto", "piastra dentata"],
-    "mini_cem-e":  ["mini cem-e", "minicem", "mini-cem-e", "spessori sottili", "soletta 20", "soletta 30", "soletta 40"],
-    "hbv":         ["hbv", "connettori hbv", "hbv bulloni", "bulloni legno calcestruzzo"],
-    "x-hbv":       ["x-hbv", "x hbv", "connessione legno calcestruzzo diagonale"],
-    "ctl":         ["ctl", "ct-l", "ct l", "connettori legno calcestruzzo", "tirafondo", "omega"],
-    "fva":         ["fva", "fva-l", "fva l", "lamiera grecata fva"],
+# sinonimi base (puoi ampliare liberamente)
+BUILTIN_SYNONYMS = {
+    "p560": ["p560", "spit p560", "pistola p560", "sparachiodi", "pistola spit"],
+    "hbv": ["hbv","x-hbv","xhbv"],
+    "connettore": ["connettore","piolo","stud","connettori"],
+    "diapason": ["diapason","ctfs","ctfd","connettore diapason"],
+    "cem-e": ["cem-e","ceme","ct cem-e"],
+    "mini": ["mini","mini cem-e"],
+    "ctf": ["ctf","piolo", "stud"],
+    "ctl": ["ctl","legno-calcestruzzo","omega ctl","ct-l","ct l"],
+    "contatti": ["contatti","telefono","mail","email","sede","indirizzo","orari"],
 }
 
-FAMILY_FILE_MAP: Dict[str, List[str]] = {
-    "p560":       ["p560.txt", "hbv_chiodatrice.txt"],
-    "ctf":        ["ctf.txt", "diapason.txt", "p560.txt"],
-    "cem-e":      ["cem-e.txt"],
-    "mini_cem-e": ["mini_cem-e.txt", "cem-e.txt"],
-    "hbv":        ["hbv.txt", "x-hbv.txt", "manuali_di_posa.txt"],
-    "x-hbv":      ["x-hbv.txt", "hbv.txt"],
-    "ctl":        ["ctl.txt", "manuali_di_posa.txt"],
-    "fva":        ["fva.txt", "fva-l.txt", "schede_tecniche.txt"],
-}
+def load_external_synonyms(path="synonyms.json"):
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return {k.lower(): [w.lower() for w in v] for k, v in data.items()}
+    except Exception as e:
+        if DEBUG_SCRAPER:
+            print(f"[scraper_tecnaria][WARN] synonyms.json error: {e}")
+    return {}
 
-# -----------------------------------------------------------------------------
-# Parsing files in blocchi, TAGS, Q/R
-# -----------------------------------------------------------------------------
-DELIM_RE = re.compile(r"^[\s\-–—_=]{6,}$")  # linee con molti trattini/linee
-TAGS_RE  = re.compile(r"^\s*\[TAGS\s*:\s*(.*?)\]\s*$", re.IGNORECASE)
+SYNONYMS = BUILTIN_SYNONYMS.copy()
+SYNONYMS.update(load_external_synonyms())
 
-def _split_blocks(txt: str) -> List[str]:
-    """Divide un file in blocchi sugli separatori ('────', linee, ecc.)."""
-    lines = txt.splitlines()
+# =======================
+# Normalizzazione
+# =======================
+def strip_accents(s: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+def normalize_text(s: str) -> str:
+    s = s.lower()
+    s = strip_accents(s)
+    # mantieni lettere/numeri e sigle tipo p560, ct-f ecc.
+    s = re.sub(r"[^a-z0-9áéíóúàèìòùç/\-\s]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def tokenize(s: str):
+    s = normalize_text(s)
+    toks = [t for t in s.split() if t not in STOPWORDS]
+    return toks
+
+def expand_synonyms(toks):
+    # per ogni token, aggiungi sinonimi "canonici"
+    expanded = set(toks)
+    txt = " ".join(toks)
+    for key, syns in SYNONYMS.items():
+        for s in syns:
+            if s in txt:
+                expanded.add(key)
+                for s2 in syns:
+                    expanded.add(s2)
+    return list(expanded)
+
+# =======================
+# Parser TXT (blocchi + TAGS)
+# =======================
+TAG_LINE = re.compile(r"^\s*\[TAGS\s*:\s*(.*?)\]\s*$", re.IGNORECASE)
+
+def read_txt_file(path):
     blocks = []
-    cur = []
-    for ln in lines:
-        if DELIM_RE.match(ln.strip()):
-            if cur:
-                blocks.append("\n".join(cur).strip())
-                cur = []
-        else:
-            cur.append(ln)
-    if cur:
-        blocks.append("\n".join(cur).strip())
-    # Se non ci sono separatori, ritorna l'intero testo come 1 blocco
-    if not blocks and txt.strip():
-        blocks = [txt.strip()]
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        content = f.read()
+
+    # separatori blocchi: linee di soli simboli "─" o "=", oppure righe vuote multiple
+    raw_blocks = re.split(r"\n\s*[─=\-]{5,}\s*\n", content)
+    if len(raw_blocks) == 1:
+        # fallback: split per doppie righe vuote
+        raw_blocks = re.split(r"\n\s*\n", content)
+
+    # estrai TAGS in testa a ciascun blocco se presenti
+    for raw in raw_blocks:
+        raw = raw.strip()
+        if not raw:
+            continue
+
+        tags = []
+        lines = raw.splitlines()
+        if lines:
+            m = TAG_LINE.match(lines[0])
+            if m:
+                tag_str = m.group(1)
+                tags = [t.strip().lower() for t in tag_str.split(",") if t.strip()]
+
+        blocks.append({"text": raw, "tags": tags})
     return blocks
 
-def _parse_block(block: str) -> Dict[str, Any]:
-    """Estrae TAGS, domanda/risposta (se presenti), e testo normalizzato per scoring."""
-    tags: List[str] = []
-    lines = [l for l in block.splitlines() if l.strip()]
-    # estrai TAGS dalla prima riga utile
-    if lines:
-        m = TAGS_RE.match(lines[0])
-        if m:
-            raw = m.group(1)
-            tags = [t.strip() for t in raw.split(",") if t.strip()]
+# =======================
+# Build Index (keyword + opzionale embeddings)
+# =======================
+def try_load_embeddings():
+    try:
+        from sentence_transformers import SentenceTransformer
+        import numpy as np
+        model = SentenceTransformer(EMBED_MODEL_NAME)
+        return model, np
+    except Exception as e:
+        if DEBUG_SCRAPER:
+            print(f"[scraper_tecnaria][INFO] Embedding model NOT available ({e}). Using keyword-only.")
+        return None, None
 
-    # estrai D: / R:
-    q_text = None
-    a_text = None
-    # cerca pattern "D: ..." e "R: ..."
-    d_re = re.compile(r"^\s*d\s*:\s*(.+)$", re.IGNORECASE)
-    r_re = re.compile(r"^\s*r\s*:\s*(.+)$", re.IGNORECASE)
+def build_index():
+    global INDEX
+    t0 = time.time()
 
-    for i, ln in enumerate(lines):
-        md = d_re.match(ln)
-        if md:
-            q_text = md.group(1).strip()
-            # la risposta può essere nelle righe successive fino a un'eventuale nuova domanda
-            # cerchiamo "R:" dopo
-            for j in range(i + 1, len(lines)):
-                mr = r_re.match(lines[j])
-                if mr:
-                    # prendi tutto da R: fino al prossimo D: o fine
-                    a_lines = [mr.group(1).strip()]
-                    for k in range(j + 1, len(lines)):
-                        if d_re.match(lines[k]):
-                            break
-                        a_lines.append(lines[k])
-                    a_text = "\n".join(a_lines).strip()
-                    break
-            break
+    blocks = []
+    by_file = defaultdict(list)
+    inv = defaultdict(set)
+    token_counts = {}
+    lines_total = 0
 
-    # Se non c'è D:/R:, usa il blocco intero come "contenuto"
-    text_for_index = a_text or q_text or block
-    norm_block = normalize_text(text_for_index)
+    # raccogli tutti i .txt
+    txt_files = []
+    for root, _, files in os.walk(DOC_DIR):
+        for fn in files:
+            if fn.lower().endswith(".txt"):
+                txt_files.append(os.path.join(root, fn))
 
-    return {
-        "tags": tags,
-        "q": q_text,
-        "a": a_text,
-        "raw": block,
-        "norm": norm_block
-    }
-
-# -----------------------------------------------------------------------------
-# Indicizzazione
-# -----------------------------------------------------------------------------
-INDEX: List[Dict[str, Any]] = []
-INDEX_META: Dict[str, Any] = {"files": 0, "blocks": 0, "lines": 0}
-
-def build_index(doc_dir: Optional[str] = None) -> Dict[str, Any]:
-    """Legge tutti i .txt e popola INDEX e INDEX_META."""
-    global INDEX, INDEX_META
-    base = doc_dir or DOC_DIR
-    path = os.path.abspath(base)
-
-    if DEBUG:
-        print(f"[scraper_tecnaria] Inizio indicizzazione da: {path}\n")
-
-    files = sorted(glob.glob(os.path.join(path, "*.txt")))
-    if DEBUG:
-        if files:
-            print(f"[scraper_tecnaria] Trovati {len(files)} file .txt:")
-            for f in files:
-                print(f"  - {f}")
+    if DEBUG_SCRAPER:
+        print(f"[scraper_tecnaria] Inizio indicizzazione da: {os.path.abspath(DOC_DIR)}\n")
+        if txt_files:
+            print(f"[scraper_tecnaria] Trovati {len(txt_files)} file .txt:")
+            for p in txt_files:
+                print(f"  - {p}")
         else:
             print("[scraper_tecnaria] Trovati 0 file .txt:")
 
-    INDEX = []
-    tot_lines = 0
-
-    for fpath in files:
+    bid = 0
+    for path in sorted(txt_files):
         try:
-            with open(fpath, "r", encoding="utf-8", errors="ignore") as fh:
-                txt = fh.read()
+            file_blocks = read_txt_file(path)
         except Exception as e:
-            if DEBUG:
-                print(f"[scraper_tecnaria][WARN] Impossibile leggere {fpath}: {e}")
+            if DEBUG_SCRAPER:
+                print(f"[scraper_tecnaria][WARN] Impossibile leggere {path}: {e}")
             continue
 
-        blocks = _split_blocks(txt)
-        for b in blocks:
-            rec = _parse_block(b)
-            rec["file"] = fpath
-            rec["file_name"] = os.path.basename(fpath)
-            INDEX.append(rec)
-            tot_lines += len(b.splitlines())
+        for b in file_blocks:
+            text = b["text"]
+            tags = b.get("tags", [])
+            norm = normalize_text(text)
+            toks = [t for t in norm.split() if t not in STOPWORDS]
+            toks = expand_synonyms(toks)
+            if not toks:
+                continue
 
-    INDEX_META = {"files": len(files), "blocks": len(INDEX), "lines": tot_lines}
+            block = {
+                "id": bid,
+                "file": path,
+                "file_base": os.path.basename(path).lower(),
+                "text": text.strip(),
+                "tags": tags,
+                "norm": norm,
+                "tokens": toks,
+                "ln_len": math.log(1 + len(toks)),
+            }
+            blocks.append(block)
+            by_file[path].append(bid)
+            token_counts[bid] = Counter(toks)
+            for t in set(toks):
+                inv[t].add(bid)
 
-    if DEBUG:
-        print(f"[scraper_tecnaria] Indicizzati {INDEX_META['blocks']} blocchi / {INDEX_META['lines']} righe da {INDEX_META['files']} file.")
+            # stima righe per debug
+            lines_total += text.count("\n") + 1
+            bid += 1
 
-    return {"status": "ok", **INDEX_META}
+    N = len(blocks)
+    # IDF semplice
+    idf = {}
+    for t, postings in inv.items():
+        df = len(postings)
+        idf[t] = math.log((N + 1) / (df + 1)) + 1.0
 
-# -----------------------------------------------------------------------------
-# Scoring
-# -----------------------------------------------------------------------------
-def _token_overlap_score(q_norm: str, t_norm: str) -> float:
-    qset = set(q_norm.split())
-    tset = set(t_norm.split())
-    if not qset or not tset:
-        return 0.0
-    inter = len(qset & tset)
-    return inter / max(1, len(qset))
+    INDEX["blocks"] = blocks
+    INDEX["by_file"] = by_file
+    INDEX["inv"] = inv
+    INDEX["idf"] = idf
+    INDEX["token_counts"] = token_counts
+    INDEX["N"] = N
+    INDEX["files_indexed"] = len(txt_files)
+    INDEX["lines_total"] = lines_total
 
-def _fuzzy(s1: str, s2: str) -> float:
-    return SequenceMatcher(None, s1, s2).ratio()
+    # Embeddings (se disponibili)
+    model, np = try_load_embeddings()
+    if model and N > 0:
+        try:
+            corpus = [b["text"] for b in blocks]
+            emb = model.encode(corpus, normalize_embeddings=True, show_progress_bar=False)
+            INDEX["emb"] = emb
+            INDEX["emb_model"] = model
+            if DEBUG_SCRAPER:
+                print(f"[scraper_tecnaria] Embeddings pronti: shape={emb.shape}")
+        except Exception as e:
+            if DEBUG_SCRAPER:
+                print(f"[scraper_tecnaria][WARN] Embedding encode fallita: {e}")
+            INDEX["emb"] = None
+            INDEX["emb_model"] = None
+    else:
+        INDEX["emb"] = None
+        INDEX["emb_model"] = None
 
-def _any_hint_in_text(q_norm: str, hints: List[str]) -> bool:
-    q = " " + q_norm + " "
-    for h in hints:
-        h_norm = normalize_text(h)
-        if " " + h_norm + " " in q:
-            return True
-    return False
+    if DEBUG_SCRAPER:
+        print(f"[scraper_tecnaria] Indicizzati {len(blocks)} blocchi / {lines_total} righe da {len(txt_files)} file.")
+        print(f"[scraper_tecnaria] Tempo build: {time.time()-t0:.2f}s")
 
-def _family_boost(question: str, file_name: str) -> float:
-    """Se la domanda contiene indizi di famiglia/prodotto, boosta i file giusti."""
-    qn = normalize_text(question)
-    fname = file_name.lower()
-    for fam, hints in FAMILY_HINTS.items():
-        if _any_hint_in_text(qn, hints):
-            expected_files = FAMILY_FILE_MAP.get(fam, [])
-            for ef in expected_files:
-                if ef.lower() == fname:
-                    return 0.15  # boost moderato
-    return 0.0
-
-def _tags_boost(q_norm: str, tags: List[str]) -> float:
-    if not tags:
-        return 0.0
-    tnorm = normalize_text(" ".join(tags))
-    # overlap su TAGS
-    ov = _token_overlap_score(q_norm, tnorm)
-    return min(0.20, ov * 0.40)  # fino a +0.20 max
-
-def _question_hint_boost(q_user: str, rec_q: Optional[str]) -> float:
-    """Se il blocco ha una 'D:' simile alla domanda, aggiungi un piccolo boost."""
-    if not rec_q:
-        return 0.0
-    qn = normalize_text(q_user)
-    rn = normalize_text(rec_q)
-    fz = _fuzzy(qn, rn)
-    if fz >= 0.70:
-        return 0.10
-    if fz >= 0.55:
-        return 0.05
-    return 0.0
-
-def _score_record(question: str, rec: Dict[str, Any]) -> float:
-    qn = normalize_text(question)
-    score = 0.0
-
-    # 1) Overlap keyword tra domanda e contenuto del blocco
-    score += 0.60 * _token_overlap_score(qn, rec["norm"])
-
-    # 2) Fuzzy tra domanda e blocco
-    score += 0.25 * _fuzzy(qn, rec["norm"])
-
-    # 3) Boost TAGS (+0..0.20)
-    score += _tags_boost(qn, rec.get("tags", []))
-
-    # 4) Boost se la domanda assomiglia alla D: del blocco (+0..0.10)
-    score += _question_hint_boost(question, rec.get("q"))
-
-    # 5) Boost per file di famiglia/prodotto atteso (+0..0.15)
-    score += _family_boost(question, rec.get("file_name", ""))
-
-    return score
-
-# -----------------------------------------------------------------------------
-# Ricerca principale
-# -----------------------------------------------------------------------------
-def search_best_answer(question: str, topk: int = 1, threshold: Optional[float] = None) -> Dict[str, Any]:
-    """Restituisce il miglior match (o i topk) sopra la soglia."""
-    if not INDEX:
-        if DEBUG:
-            print("[scraper_tecnaria][SEARCH] Indice vuoto. Esegui build_index().")
-        return {
-            "found": False,
-            "answer": "",
-            "score": 0.0,
-            "path": None,
-            "line": None,
-            "question": "",
-            "tags": "",
-            "debug_top": []
-        }
-
-    th = SIMILARITY_THRESHOLD if threshold is None else threshold
-    scored: List[Tuple[float, Dict[str, Any]]] = []
-    for rec in INDEX:
-        s = _score_record(question, rec)
-        scored.append((s, rec))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-    top = scored[: max(1, topk)]
-
-    debug_top = []
-    for sc, rc in top[:5]:
-        debug_top.append({
-            "score": round(sc, 3),
-            "file": rc.get("file_name"),
-            "tags": rc.get("tags"),
-            "has_Q": bool(rc.get("q")),
-            "has_A": bool(rc.get("a"))
-        })
-
-    best_score, best = top[0]
-    if DEBUG:
-        print(f"[scraper_tecnaria][SEARCH] q='{question}' -> best={round(best_score,3)} {best.get('file_name')}")
-
-    if best_score < th:
-        return {
-            "found": False,
-            "answer": "",
-            "score": float(best_score),
-            "path": best.get("file"),
-            "line": None,
-            "question": best.get("q"),
-            "tags": ", ".join(best.get("tags", [])),
-            "debug_top": debug_top
-        }
-
-    # preferisci la risposta 'R:' se presente; altrimenti l'intero blocco
-    answer = best.get("a") or best.get("raw") or ""
-    return {
-        "found": True,
-        "answer": answer.strip(),
-        "score": float(best_score),
-        "path": best.get("file"),
-        "line": None,
-        "question": best.get("q"),
-        "tags": ", ".join(best.get("tags", [])),
-        "debug_top": debug_top
-    }
-
-# -----------------------------------------------------------------------------
-# Helper per status/health
-# -----------------------------------------------------------------------------
-def get_index_status() -> Dict[str, Any]:
     return {
         "status": "ok",
-        "files": INDEX_META.get("files", 0),
-        "blocks": INDEX_META.get("blocks", 0),
-        "lines": INDEX_META.get("lines", 0),
+        "blocks": N,
+        "docs": INDEX["files_indexed"],
+        "lines": lines_total,
+        "ts": time.time()
     }
 
-# -----------------------------------------------------------------------------
-# Auto-build all'avvio (se richiesto)
-# -----------------------------------------------------------------------------
-if REINDEX_ON_STARTUP:
+def rebuild_index():
+    return build_index()
+
+# =======================
+# Scoring
+# =======================
+def score_keyword(query_tokens, block_id):
+    """
+    BM25-lite molto semplice: somma(tf * idf) normalizzata per lunghezza.
+    """
+    tc = INDEX["token_counts"].get(block_id, {})
+    if not tc:
+        return 0.0
+    s = 0.0
+    for t in set(query_tokens):
+        if t in tc:
+            tf = tc[t]
+            idf = INDEX["idf"].get(t, 1.0)
+            s += (tf * idf)
+    ln = INDEX["blocks"][block_id]["ln_len"] or 1.0
+    return s / ln
+
+def score_semantic(query_text):
+    # ritorna lista [(block_id, score)]
+    model = INDEX.get("emb_model")
+    emb = INDEX.get("emb")
+    if not model or emb is None:
+        return []
+
     try:
-        build_index(DOC_DIR)
+        import numpy as np
+        q_emb = model.encode([query_text], normalize_embeddings=True, show_progress_bar=False)[0]
+        sims = (emb @ q_emb)  # cosine sim grazie a normalize_embeddings=True
+        # prendi TopK indici
+        top_idx = sims.argsort()[-TOPK:][::-1]
+        return [(int(i), float(sims[i])) for i in top_idx]
     except Exception as e:
-        if DEBUG:
-            print(f"[scraper_tecnaria][ERROR] build_index fallita all'avvio: {e}")
+        if DEBUG_SCRAPER:
+            print(f"[scraper_tecnaria][WARN] score_semantic errore: {e}")
+        return []
+
+def apply_boosts(base_score, q_tokens, block):
+    score = base_score
+    # Boost se il nome file contiene un token chiave (es. p560)
+    for t in q_tokens:
+        if t and t in block["file_base"]:
+            score += BOOST_FILENAME
+            break
+    # Boost se i TAG del blocco contengono token della query
+    tags_txt = " ".join(block.get("tags", [])).lower()
+    for t in q_tokens:
+        if t and t in tags_txt:
+            score += BOOST_TAG
+            break
+    # Boost se la query contiene "codice esatto" presente nel testo raw
+    raw = block["text"].lower()
+    for t in q_tokens:
+        if t and re.search(rf"\b{re.escape(t)}\b", raw):
+            score += BOOST_EXACT_CODE * 0.25  # piccolo premio diffuso
+    return score
+
+# =======================
+# Ricerca Principale
+# =======================
+def search_best_answer(question: str):
+    """
+    Ritorna dict:
+    {
+      "answer": str,
+      "found": bool,
+      "score": float,
+      "file": "path",
+      "block_id": int,
+      "tags": [..],
+      "question_norm": str
+    }
+    """
+    if not question or not INDEX["blocks"]:
+        return {
+            "answer": "",
+            "found": False,
+            "score": 0.0,
+            "file": None,
+            "block_id": None,
+            "tags": [],
+            "question_norm": ""
+        }
+
+    q_norm = normalize_text(question)
+    q_toks = expand_synonyms([t for t in q_norm.split() if t not in STOPWORDS])
+    if DEBUG_SCRAPER:
+        print(f"[scraper_tecnaria][SEARCH] q='{question}' norm='{q_norm}' toks={q_toks}")
+
+    # 1) SEMANTIC (se disponibile)
+    sem_hits = score_semantic(question)  # [(block_id, sem_score)]
+
+    # 2) KEYWORD
+    kw_candidates = set()
+    for t in q_toks:
+        for bid in INDEX["inv"].get(t, []):
+            kw_candidates.add(bid)
+    # se niente trovato via inv, apri a tutti (fallback)
+    if not kw_candidates:
+        kw_candidates = set(range(INDEX["N"]))
+
+    kw_scored = []
+    for bid in kw_candidates:
+        kw_scored.append((bid, score_keyword(q_toks, bid)))
+
+    # 3) Merge & Boost
+    base_scores = defaultdict(float)
+    # semantici
+    for bid, s in sem_hits:
+        base_scores[bid] = max(base_scores[bid], s)
+    # keywords
+    for bid, s in kw_scored:
+        base_scores[bid] = max(base_scores[bid], s)
+
+    # applica boost per tag/file
+    final_scores = []
+    for bid, bscore in base_scores.items():
+        blk = INDEX["blocks"][bid]
+        fscore = apply_boosts(bscore, q_toks, blk)
+        final_scores.append((bid, fscore))
+
+    # ordina per score desc
+    final_scores.sort(key=lambda x: x[1], reverse=True)
+    if not final_scores:
+        return {
+            "answer": "",
+            "found": False,
+            "score": 0.0,
+            "file": None,
+            "block_id": None,
+            "tags": [],
+            "question_norm": q_norm
+        }
+
+    best_id, best_score = final_scores[0]
+    best_blk = INDEX["blocks"][best_id]
+
+    # Soglia decisione (elastica: se matcha filename/tag “forte”, accetta anche sotto base threshold)
+    accept = (best_score >= SIM_THRESHOLD) or any(
+        t in best_blk["file_base"] for t in q_toks
+    ) or any(t in " ".join(best_blk.get("tags", [])).lower() for t in q_toks)
+
+    if DEBUG_SCRAPER:
+        print(f"[scraper_tecnaria][RESULT] best_score={best_score:.3f} | file={best_blk['file']} | id={best_id} | accept={accept}")
+
+    if not accept:
+        return {
+            "answer": "",
+            "found": False,
+            "score": float(best_score),
+            "file": best_blk["file"],
+            "block_id": int(best_id),
+            "tags": best_blk.get("tags", []),
+            "question_norm": q_norm
+        }
+
+    # Pulisci eventuale riga TAGS in testa al blocco
+    ans = best_blk["text"]
+    ans = re.sub(r"^\s*\[TAGS\s*:\s*.*?\]\s*\n", "", ans, flags=re.IGNORECASE)
+
+    return {
+        "answer": ans.strip(),
+        "found": True,
+        "score": float(best_score),
+        "file": best_blk["file"],
+        "block_id": int(best_id),
+        "tags": best_blk.get("tags", []),
+        "question_norm": q_norm
+    }
+
+# =======================
+# Auto-build all'avvio (opzionale)
+# =======================
+if __name__ == "__main__":
+    # Avvio manuale per debug locale
+    res = build_index()
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+    while True:
+        try:
+            q = input("\nQ> ").strip()
+            if not q:
+                continue
+            r = search_best_answer(q)
+            print(json.dumps(r, ensure_ascii=False, indent=2))
+        except KeyboardInterrupt:
+            break
