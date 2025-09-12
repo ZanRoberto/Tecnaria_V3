@@ -1,18 +1,28 @@
 # -*- coding: utf-8 -*-
-import os, re, json, math
-from collections import defaultdict
-from typing import List, Dict, Any
+import os
+import re
+import json
+import threading
+import time
+import unicodedata
+from typing import List, Dict, Any, Tuple
 
-# ===== Config di base =====
-DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")
-SIMILARITY_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))
-TOPK_SEMANTIC = int(os.environ.get("TOPK_SEMANTIC", "20"))
+# dipendenze leggere (già nel tuo requirements)
+from rapidfuzz import fuzz, process as rf_process
+from rank_bm25 import BM25Okapi
 
-# ===== Stato globale indice =====
-INDEX: List[Dict[str, Any]] = []
-BUILDING = False
+# ========= Config di base =========
+SCRAPER_DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")
+MIN_CHARS_PER_CHUNK = int(os.environ.get("MIN_CHARS_PER_CHUNK", "200"))
+OVERLAP_CHARS = int(os.environ.get("OVERLAP_CHARS", "50"))
 
-# ===== Stopwords minime (italiano) =====
+# ========= Stato globale =========
+INDEX: List[Dict[str, Any]] = []     # ogni entry: {file, tags:set, question, answer, text, kind, tokens}
+BM25 = None
+_READY = False
+_LOCK = threading.Lock()
+
+# ========= stopwords minime IT (non aggressive) =========
 STOPWORDS_MIN = {
     "il","lo","la","i","gli","le","un","uno","una",
     "di","del","della","dei","degli","delle",
@@ -22,191 +32,309 @@ STOPWORDS_MIN = {
     "mi","ti","si","ci","vi","a","da","de","dal","dall","dalla","dalle",
 }
 
-# ===== Sinonimi semplici per match (aggiungine pure) =====
+# ========= sinonimi/alias soft per domande frequenti =========
 SYNONYMS = {
-    "p560": {"p560", "p 560", "p-560", "pistola", "sparachiodi", "spit"},
-    "contatti": {"contatti", "telefono", "telefono tecnaria", "mail", "email", "assistenza"},
-    "connettori": {"connettori", "pioli", "dispositivi", "elementi", "connettore"},
-    "schede tecniche": {"scheda tecnica", "schede tecniche", "catalogo", "brochure"},
-    "dop": {"dop", "dichiarazione di prestazione", "dichiarazioni di prestazione"},
-    "eta": {"eta", "valutazione tecnica europea", "european technical assessment"},
-    "hbv": {"hbv", "chiodatrice", "pistola hbv"},
-    "diapason": {"diapason"},
-    "ctf": {"ctf"},
-    "cem-e": {"cem-e", "ceme", "cem e"},
-    "mini cem-e": {"mini cem-e", "mini ceme", "mini cem e"},
+    "p560": ["p 560", "spit p560", "pistola spit", "sparachiodi", "chiodatrice"],
+    "chiodatrice": ["sparachiodi", "pistola", "p560"],
+    "pistola": ["chiodatrice", "sparachiodi", "p560"],
+    "contatti": ["recapiti", "telefono", "mail", "email", "indirizzo"],
+    "codici": ["codice", "articoli", "catalogo", "listino", "sku"],
+    "connettori": ["connettore", "pioli", "viti", "dispositivi"],
+    "posa": ["installazione", "montaggio", "messa in opera"],
 }
 
+QA_Q_PAT = re.compile(r"^\s*(?:D|Domanda)\s*:\s*(.+)$", re.IGNORECASE)
+QA_A_PAT = re.compile(r"^\s*(?:R|Risposta)\s*:\s*(.+)$", re.IGNORECASE)
+TAGS_PAT = re.compile(r"^\s*\[TAGS?\s*:\s*(.+?)\]\s*$", re.IGNORECASE)
+
+# ========= util =========
+def strip_accents(s: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", s)
+                   if unicodedata.category(c) != "Mn")
+
 def normalize_text(s: str) -> str:
-    s = s.lower()
-    s = s.replace("à","a").replace("è","e").replace("é","e").replace("ì","i").replace("ò","o").replace("ù","u")
-    s = re.sub(r"\s+", " ", s)
-    s = s.strip()
+    s = s or ""
+    s = strip_accents(s.lower())
+    s = re.sub(r"[^\w\s]", " ", s)  # rimuove punteggiatura
+    s = re.sub(r"\s+", " ", s).strip()
     return s
 
 def tokenize(s: str) -> List[str]:
-    s = normalize_text(s)
-    tokens = re.findall(r"[a-z0-9\-]+", s)
-    return [t for t in tokens if t not in STOPWORDS_MIN]
+    toks = normalize_text(s).split()
+    return [t for t in toks if t not in STOPWORDS_MIN]
 
-def expand_synonyms(query: str) -> str:
-    qn = normalize_text(query)
-    bag = set(tokenize(qn))
-    for base, group in SYNONYMS.items():
-        if bag & group:
-            bag |= group
-    return " ".join(sorted(bag))
+def expand_query(q: str) -> str:
+    base = normalize_text(q)
+    toks = base.split()
+    extra = []
+    for t in toks:
+        if t in SYNONYMS:
+            extra.extend(SYNONYMS[t])
+    if extra:
+        base += " " + " ".join(normalize_text(e) for e in extra)
+    return base
 
-def find_txt_files(doc_dir: str) -> List[str]:
-    paths = []
-    for root, _, files in os.walk(doc_dir):
-        for f in files:
-            if f.lower().endswith(".txt"):
-                paths.append(os.path.join(root, f))
-    return sorted(paths)
+def _clean_answer_text(s: str) -> str:
+    """Pulisce l’output finale: rimuove etichette D:/R:/[TAGS], spazi doppi, ecc."""
+    lines = []
+    for raw in s.splitlines():
+        if TAGS_PAT.match(raw):
+            continue
+        if raw.strip().startswith("D:") or raw.strip().lower().startswith("domanda:"):
+            continue
+        line = re.sub(r"^\s*(?:R|Risposta)\s*:\s*", "", raw, flags=re.IGNORECASE)
+        lines.append(line)
+    out = "\n".join(lines)
+    out = re.sub(r"\n{3,}", "\n\n", out).strip()
+    return out
 
-def split_blocks(text: str) -> List[str]:
-    # blocchi separati da linee di trattini o righe vuote multiple
-    parts = re.split(r"\n[-=]{5,}\n|\n{2,}", text.strip(), flags=re.MULTILINE)
-    return [p.strip() for p in parts if p.strip()]
+# ========= parsing documenti =========
+def _read_txt_files(doc_dir: str) -> List[str]:
+    files = []
+    for root, _, fns in os.walk(doc_dir):
+        for fn in fns:
+            if fn.lower().endswith(".txt"):
+                files.append(os.path.join(root, fn))
+    files.sort()
+    return files
 
-def parse_tags(block: str) -> List[str]:
-    m = re.search(r"^\s*\[TAGS:\s*(.*?)\]\s*$", block, flags=re.IGNORECASE|re.MULTILINE)
-    if not m:
-        return []
-    raw = m.group(1)
-    tags = [normalize_text(x).strip() for x in re.split(r"[;,]", raw) if x.strip()]
-    return tags
-
-def score_keyword(query: str, text: str, tags: List[str], filename: str) -> float:
-    q = normalize_text(query)
-    qexp = expand_synonyms(q)
-
-    # match keyword + sinonimi
-    toks_q = set(tokenize(qexp))
-    toks_t = set(tokenize(text))
-    inter = toks_q & toks_t
-    score_kw = len(inter)
-
-    # boost per TAG
-    tag_set = set(tags)
-    if tag_set & toks_q:
-        score_kw += 3.0
-
-    # boost per nome file molto rilevante (es. p560.txt)
-    basename = os.path.basename(filename).lower()
-    for tok in toks_q:
-        if tok and tok in basename:
-            score_kw += 2.0
-
-    return score_kw
-
-def search_best_answer(query: str, threshold: float = SIMILARITY_THRESHOLD, topk: int = TOPK_SEMANTIC) -> Dict[str, Any]:
+def _parse_file(path: str) -> List[Dict[str, Any]]:
     """
-    Solo keyword/BM25-like (senza dipendenze pesanti), con boost TAG/file.
-    Restituisce il miglior blocco.
+    Riconosce blocchi Q/A (D:/R:) e anche paragrafi liberi.
+    Restituisce entries normalizzate pronte per l’indicizzazione.
     """
-    if not INDEX:
-        return {"answer": "Indice vuoto.", "found": False, "from": None}
-
-    best = None
-    for doc in INDEX:
-        score = score_keyword(query, doc["text"], doc["tags"], doc["path"])
-        if best is None or score > best["score"]:
-            best = {"score": score, "doc": doc}
-
-    if not best or best["score"] <= 0:
-        return {
-            "answer": "Non ho trovato una risposta precisa. Prova a riformulare leggermente la domanda.",
-            "found": False,
-            "from": None
-        }
-
-    d = best["doc"]
-    # post-process: se il blocco contiene righe D:/R:, scegli R: più pertinente
-    ans = extract_best_qa_answer(d["text"], query) or d["text"]
-
-    return {
-        "answer": ans.strip(),
-        "found": True,
-        "score": round(best["score"], 3),
-        "from": os.path.basename(d["path"]),
-        "tags": d["tags"] or []
-    }
-
-def extract_best_qa_answer(block_text: str, query: str) -> str:
-    """
-    Se nel blocco ci sono più Q/A, prova a scegliere la R: col titolo D: più vicino alla query.
-    Formati attesi:
-      D: ... \n R: ...
-    """
-    qn = normalize_text(query)
-    pairs = []
-    # cattura segmenti D:/R:
-    pattern = re.compile(r"(D:\s*(?P<d>.+?)\s*\n+R:\s*(?P<r>.+?))(?=\n{2,}|$)", re.IGNORECASE|re.DOTALL)
-    for m in pattern.finditer(block_text):
-        d = m.group("d").strip()
-        r = m.group("r").strip()
-        pairs.append((d, r))
-
-    if not pairs:
-        return None
-
-    # punteggio semplice: overlap token tra query e D:
-    best = None
-    qtok = set(tokenize(qn))
-    for d, r in pairs:
-        dtok = set(tokenize(d))
-        inter = len(qtok & dtok)
-        # bonus se il titolo D: inizia con stessa parola chiave (p560, ctf, ecc.)
-        bonus = 1 if any(t in dtok for t in qtok) else 0
-        s = inter + bonus
-        if best is None or s > best[0]:
-            best = (s, r)
-
-    return best[1] if best and best[0] > 0 else None
-
-def build_index(doc_dir: str = DOC_DIR) -> None:
-    """
-    Costruzione SINCRONA. Nessun thread. Popola INDEX una volta sola.
-    """
-    global INDEX, BUILDING
-    if BUILDING:
-        return
-    BUILDING = True
     try:
-        docs: List[Dict[str, Any]] = []
-        paths = find_txt_files(doc_dir)
-        for p in paths:
-            try:
-                with open(p, "r", encoding="utf-8", errors="ignore") as f:
-                    raw = f.read()
-                blocks = split_blocks(raw)
-                for b in blocks:
-                    if not b or len(b) < 10:
-                        continue
-                    tags = parse_tags(b)
-                    docs.append({
-                        "path": p,
-                        "text": b,
-                        "tags": tags,
-                    })
-            except Exception:
-                # se un file è malformato, proseguiamo
-                continue
-        INDEX = docs
-        print(f"[scraper_tecnaria] Indicizzati {len(INDEX)} blocchi da {len(paths)} file.")
-    finally:
-        BUILDING = False
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            raw = f.read()
+    except Exception:
+        return []
+
+    file_name = os.path.basename(path)
+    tags_global: List[str] = []
+    entries: List[Dict[str, Any]] = []
+
+    # tags globali (prima occorrenza)
+    for line in raw.splitlines():
+        m = TAGS_PAT.match(line)
+        if m:
+            tags_global = [t.strip().lower() for t in m.group(1).split(",") if t.strip()]
+            break
+
+    # prova a parsare come Q/A
+    lines = raw.splitlines()
+    i = 0
+    qa_found = False
+    while i < len(lines):
+        q_match = QA_Q_PAT.match(lines[i])
+        if q_match:
+            qa_found = True
+            q_txt = q_match.group(1).strip()
+            i += 1
+            # accumula risposta fino alla prossima D:/fine
+            a_buf = []
+            while i < len(lines):
+                if QA_Q_PAT.match(lines[i]):
+                    break
+                a_buf.append(lines[i])
+                i += 1
+            a_txt = "\n".join(a_buf).strip()
+            # estrai solo la parte della risposta (togli eventuali prefissi "R:")
+            a_txt = _clean_answer_text(a_txt)
+            entries.append({
+                "file": file_name,
+                "tags": set(tags_global),
+                "question": q_txt,
+                "answer": a_txt,
+                "text": f"{q_txt}\n{a_txt}",
+                "kind": "qa",
+            })
+        else:
+            i += 1
+
+    if qa_found:
+        return entries
+
+    # altrimenti spezza in paragrafi “liberi”
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", raw) if p.strip()]
+    for p in paragraphs:
+        entries.append({
+            "file": file_name,
+            "tags": set(tags_global),
+            "question": "",
+            "answer": p,          # qui answer = paragrafo
+            "text": p,
+            "kind": "text",
+        })
+    return entries
+
+def _build_bm25_from_entries(entries: List[Dict[str, Any]]):
+    docs_tokens = []
+    for e in entries:
+        docs_tokens.append(tokenize(e["text"]))
+    if not docs_tokens:
+        return None
+    return BM25Okapi(docs_tokens)
+
+# ========= API pubblico =========
+def build_index(doc_dir: str = None) -> None:
+    global INDEX, BM25, _READY
+    with _LOCK:
+        _READY = False
+    doc_dir = doc_dir or SCRAPER_DOC_DIR
+    files = _read_txt_files(doc_dir)
+    print(f"[scraper_tecnaria] Inizio indicizzazione da: {os.path.abspath(doc_dir)}\n")
+    print(f"[scraper_tecnaria] Trovati {len(files)} file .txt:")
+    for p in files:
+        print(f"[scraper_tecnaria]   - {p}")
+
+    all_entries: List[Dict[str, Any]] = []
+    for p in files:
+        all_entries.extend(_parse_file(p))
+
+    # indicizzazione BM25
+    bm25 = _build_bm25_from_entries(all_entries)
+
+    with _LOCK:
+        INDEX = all_entries
+        BM25 = bm25
+        _READY = True
+
+    print(f"[scraper_tecnaria] Indicizzati {len(INDEX)} blocchi da {len(files)} file.")
 
 def is_ready() -> bool:
-    return isinstance(INDEX, list) and len(INDEX) > 0
+    with _LOCK:
+        return bool(_READY and INDEX and BM25 is not None)
 
-def docs_count() -> int:
-    return len(INDEX)
+def ensure_ready_blocking(timeout_sec: int = 0) -> None:
+    """
+    Se l’indice non è pronto, avvia la build in un thread.
+    Se timeout_sec > 0, attende al massimo quel tempo.
+    """
+    if is_ready():
+        return
+    def _runner():
+        try:
+            build_index(SCRAPER_DOC_DIR)
+        except Exception as e:
+            print(f"[scraper_tecnaria] ERRORE build_index: {e}", flush=True)
 
-# build eager all'import
+    t = threading.Thread(target=_runner, daemon=True)
+    t.start()
+    if timeout_sec and timeout_sec > 0:
+        t.join(timeout=timeout_sec)
+
+# ========= Ricerca =========
+def _score_entry(q_norm: str, entry: Dict[str, Any]) -> Tuple[float, Dict[str, float]]:
+    """
+    Calcola uno score combinato:
+      - match con domanda (se kind=qa) via RapidFuzz
+      - match BM25 sul testo completo
+      - boost su tag/nome file
+    Restituisce (score, breakdown)
+    """
+    # RapidFuzz sulla domanda (se presente)
+    rf_q = 0.0
+    if entry["kind"] == "qa" and entry["question"]:
+        rf_q = fuzz.token_set_ratio(q_norm, normalize_text(entry["question"])) / 100.0
+
+    # BM25
+    bm = 0.0
+    if BM25 is not None and INDEX:
+        # calcola una volta a livello query
+        pass  # normalizzato nella funzione principale
+
+    # Boost su tag/nome file
+    boost = 0.0
+    q_tokens = set(q_norm.split())
+    if entry.get("tags"):
+        if any(t in q_tokens for t in entry["tags"]):
+            boost += 0.10
+    file_low = entry["file"].lower()
+    for t in q_tokens:
+        if len(t) >= 3 and t in file_low:
+            boost += 0.10
+            break
+
+    # combinazione (BM25 viene normalizzato esternamente)
+    # qui ritorniamo rf_q e boost; bm verrà inserito dopo
+    return (rf_q + boost, {"rf": rf_q, "boost": boost})
+
+def _best_qa_answer_for_entry(q_norm: str, entry: Dict[str, Any]) -> str:
+    """
+    Per una entry QA abbiamo già un’unica coppia D/R.
+    Torniamo SOLO la risposta ripulita.
+    """
+    return _clean_answer_text(entry["answer"])
+
+def search_best_answer(query: str, threshold: float = 0.35, topk: int = 20) -> Dict[str, Any]:
+    """
+    Ritorna SOLO la risposta (senza “D:”).
+    Se non trova sopra soglia, ritorna found=False ma con un piccolo suggerimento.
+    """
+    if not is_ready():
+        return {"answer": "Indice non pronto. Riprova tra pochi secondi.", "found": False, "from": None}
+
+    q_expanded = expand_query(query)
+    q_norm = normalize_text(q_expanded)
+
+    # BM25 ranking preliminare su TUTTI i documenti (testo completo)
+    # prendiamo topN un po’ alto per avere materiale su cui rifinire con RapidFuzz
+    tokens_q = tokenize(q_norm)
+    scores = BM25.get_scores(tokens_q) if BM25 is not None else []
+    # seleziona top candidati
+    idx_scores = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)[:max(topk, 50)]
+    max_bm = idx_scores[0][1] if idx_scores else 0.0
+    min_bm = idx_scores[-1][1] if idx_scores else 0.0
+    denom = (max_bm - min_bm) if (max_bm - min_bm) > 1e-9 else 1.0
+
+    candidates: List[Tuple[float, int, Dict[str, Any], Dict[str, float]]] = []
+    for idx, bm_val in idx_scores:
+        entry = INDEX[idx]
+        partial, parts = _score_entry(q_norm, entry)
+        bm_norm = (bm_val - min_bm) / denom
+        # combinazione finale: privilegia matching domanda (se QA) ma tiene BM25 e boost
+        final = 0.60 * partial + 0.40 * bm_norm
+        parts["bm25"] = bm_norm
+        candidates.append((final, idx, entry, parts))
+
+    # ordina per punteggio decrescente
+    candidates.sort(key=lambda x: x[0], reverse=True)
+
+    # prendi il migliore sopra soglia
+    if candidates and candidates[0][0] >= threshold:
+        best_score, _, best_entry, parts = candidates[0]
+        if best_entry["kind"] == "qa":
+            ans = _best_qa_answer_for_entry(q_norm, best_entry)
+        else:
+            # blocco generico: pulizia leggera (togli eventuali etichette)
+            ans = _clean_answer_text(best_entry["answer"])
+        return {
+            "answer": ans,
+            "found": True,
+            "score": round(float(best_score), 3),
+            "from": best_entry["file"],
+            "tags": sorted(list(best_entry.get("tags", []))) or None,
+        }
+
+    # fallback: niente sopra soglia -> prova a restituire il miglior paragrafo “pulito”
+    if candidates:
+        _, _, best_entry, _ = candidates[0]
+        ans = _clean_answer_text(best_entry["answer"])
+        return {
+            "answer": ans,
+            "found": False,
+            "from": best_entry["file"],
+        }
+
+    return {
+        "answer": "Non ho trovato una risposta precisa nei documenti locali.",
+        "found": False,
+        "from": None,
+    }
+
+
+# ====== bootstrap automatico all’import ======
 try:
-    build_index(DOC_DIR)
+    ensure_ready_blocking(timeout_sec=0)  # NON bloccare; l’app può già rispondere “indice non pronto”
 except Exception as e:
-    print(f"[scraper_tecnaria] build_index all'import fallita: {e}")
+    print(f"[scraper_tecnaria] Bootstrap non riuscito: {e}", flush=True)
