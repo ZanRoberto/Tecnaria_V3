@@ -1,57 +1,62 @@
-# scraper_tecnaria.py
 # -*- coding: utf-8 -*-
 import os
 import re
-import math
+import glob
 import json
+import math
+import logging
 import unicodedata
-from collections import Counter, defaultdict
+from threading import Lock
+
+# ============ LOG ============
+LOG = logging.getLogger("scraper_tecnaria")
+if os.environ.get("DEBUG_SCRAPER", "0") == "1":
+    LOG.setLevel(logging.DEBUG)
+else:
+    LOG.setLevel(logging.INFO)
 
 # ============ CONFIG ============
-DEFAULT_EMBED_MODEL = os.environ.get("EMBED_MODEL", "all-MiniLM-L6-v2")
-MIN_CHARS_PER_BLOCK = int(os.environ.get("MIN_CHARS_PER_BLOCK", "60"))  # ignora pezzi minuscoli
-VERBOSE = os.environ.get("DEBUG_SCRAPER", "1") == "1"
+DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")
+EMBED_MODEL_NAME = os.environ.get("EMBED_MODEL", "all-MiniLM-L6-v2")
 
-# Soglie di boost
-BOOST_TAG = 0.12
-BOOST_FILENAME = 0.08
+# Soglie di default (lato app puoi sovrascriverle via env)
+DEFAULT_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))
+DEFAULT_TOPK = int(os.environ.get("TOPK_SEMANTIC", "20"))
 
-# Stopwords minimali IT (non aggressive)
+# Stopwords minimali IT (non aggressivo: lasciamo termini tecnici)
 STOPWORDS_MIN = {
     "il","lo","la","i","gli","le","un","uno","una",
     "di","del","della","dei","degli","delle",
     "e","ed","o","con","per","su","tra","fra","in","da",
     "al","allo","ai","agli","alla","alle",
     "che","come","dove","quando","anche",
-    "mi","ti","si","ci","vi","a","da","de","dal","dall","dalla","dalle",
+    "mi","ti","si","ci","vi","a","de","dal","dall","dalla","dalle",
+    "dei","degli","all","dell","nel","nella","nelle","negli","nei"
 }
 
-# Sinonimi utili (chiave = lemma normalizzato)
+# Sinonimi/alias semplici per aumentare recall
 SYNONYMS = {
-    "p560": {"p560","p 560","p-560","pistola","sparachiodi","sparachiodi p560","spit p560","spit","pistola spit"},
-    "contatti": {"contatti","telefono","tel","email","mail","e-mail","sede","ufficio","orari","orario","assistenza","supporto"},
-    "chiodatrice": {"chiodatrice","hbv","pistola","sparachiodi"},
-    "ctf": {"ctf","pioli","connettori acciaio calcestruzzo","piolo","piolo ctf"},
-    "cem e": {"cem-e","cem e","riprese di getto","ripresa di getto","vite con piastra","piastra dentata"},
-    "mini cem e": {"mini cem-e","mini cem e"},
-    "diapason": {"diapason","staffa","lamiera","staffe"},
-    "cls": {"cls","soletta calcestruzzo","calcestruzzo"},
-    "clsr": {"clsr","rinforzo","cappa sottile","soletta sottile"},
-    "fva": {"fva","fva-l","fva l","viti autoperforanti"},
-    "documentazione": {"dop","eta","schede tecniche","manuali di posa","relazioni di calcolo","certificazioni","qualita","iso 9001"},
-    "chi siamo": {"chi siamo","chi e tecnaria","tecnaria chi","profilo aziendale","storia","mission","vision","valori"},
+    r"\bp560\b": ["p-560", "spit p560", "pistola p560", "sparachiodi", "sparachiodi p560"],
+    r"\bctf\b": ["connettore ctf", "piolo ctf", "pioli ctf"],
+    r"\bcem[- ]e\b": ["cem e", "connettore cem-e", "ripresa di getto", "riprese di getto"],
+    r"\bmini[- ]cem[- ]e\b": ["mini cem e", "mini-cem-e"],
+    r"\bctl\b": ["connettori ctl", "legno calcestruzzo", "legno-calcestruzzo"],
+    r"\bhbv\b": ["chiodatrice hbv", "sistema hbv"],
+    r"\bdiapason\b": ["connettore diapason"],
+    r"\bcls\b": ["soletta cls"],
+    r"\bclsr\b": ["soletta clsr"],
+    r"\bfva\b": ["fva tecnaria"],
+    r"\bfva[- ]l\b": ["fva l", "fva-l tecnaria"],
+    r"\bct[- ]l\b": ["ct l", "ct-l tecnaria"],
+    r"\bx[- ]hbv\b": ["x hbv", "x-hbv tecnaria"],
 }
 
-# ====== Stato globale indice ======
-INDEX = []          # lista di blocchi {text, q, a, tags, path, line, title, norm_text, tok, emb}
-EMB_MODEL = None    # modello sentence-transformers, se disponibile
+# ============ STATO GLOBALE ============
+INDEX = []           # lista di blocchi indicizzati
+_EMBEDDER = None     # modello sentence-transformers o None
+_INDEX_LOCK = Lock() # evita race in build_index
 
-
-# ============ Utility ============
-
-def log(msg, *args):
-    if VERBOSE:
-        print(f"[scraper_tecnaria] {msg}", *args, flush=True)
+# ============ UTILITY ============
 
 def strip_accents(s: str) -> str:
     return "".join(
@@ -64,324 +69,317 @@ def normalize_text(s: str) -> str:
         return ""
     s = s.lower()
     s = strip_accents(s)
-    # spazi per separare / _ -
-    s = s.replace("/", " ").replace("_", " ").replace("-", " ")
-    # rimuovi tutto ciò che non è lettera/digit/spazio
-    s = re.sub(r"[^a-z0-9\s]", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+    s = re.sub(r"[^\w\s]", " ", s)    # rimuove punteggiatura
+    tokens = [t for t in s.split() if t and t not in STOPWORDS_MIN]
+    return " ".join(tokens)
 
-def tokenize(s: str):
-    return [t for t in normalize_text(s).split() if t and t not in STOPWORDS_MIN]
+def expand_with_synonyms(q_norm: str) -> str:
+    text = q_norm
+    for pat, alts in SYNONYMS.items():
+        if re.search(pat, text):
+            text += " " + " ".join(alts)
+    return text
 
-def expand_with_synonyms(tokens):
-    extra = set()
-    joined = " ".join(tokens)
-    # match per chiavi con spazio (es. "cem e", "chi siamo")
-    for key, syns in SYNONYMS.items():
-        key_norm = normalize_text(key)
-        if key_norm in joined or any(s in joined for s in (normalize_text(x) for x in syns)):
-            for s in syns:
-                extra.update(tokenize(s))
-    return list(set(tokens) | extra)
+def cosine_sim(u, v):
+    # u, v: liste/tuple di float
+    if not u or not v or len(u) != len(v):
+        return 0.0
+    num = sum(a*b for a, b in zip(u, v))
+    den = math.sqrt(sum(a*a for a in u)) * math.sqrt(sum(b*b for b in v))
+    if den == 0:
+        return 0.0
+    return num / den
 
-
-# ============ Embeddings opzionali ============
-
-def _load_embedder():
-    global EMB_MODEL
-    if EMB_MODEL is not None:
-        return EMB_MODEL
+def safe_read_text(path: str) -> str:
     try:
-        from sentence_transformers import SentenceTransformer
-        log(f"[EMB] Carico modello: {DEFAULT_EMBED_MODEL}")
-        EMB_MODEL = SentenceTransformer(DEFAULT_EMBED_MODEL)
-        return EMB_MODEL
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            return f.read()
     except Exception as e:
-        log(f"[EMB] Modello non disponibile, userò solo keyword. Dettaglio: {e}")
-        EMB_MODEL = None
-        return None
+        LOG.warning("[read] Impossibile leggere %s: %s", path, e)
+        return ""
 
-def embed(texts):
-    model = _load_embedder()
-    if model is None:
-        return None
-    try:
-        return model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
-    except Exception as e:
-        log(f"[EMB] Errore durante encode, disattivo embedding. {e}")
-        return None
+def parse_blocks_from_text(text: str):
+    """
+    Ritorna una lista di blocchi (dict).
+    Regole:
+      - TAGS opzionali in testa: [TAGS: a,b,c]
+      - separator '────────────────────────────' divide blocchi
+      - pattern Domanda/Risposta (D: ...  / R: ...) mantenuto nel blocco
+    """
+    tags = []
+    lines = text.strip().splitlines()
+    # Leggi TAGS dalla prima riga se presente
+    if lines and lines[0].strip().lower().startswith("[tags:"):
+        tag_line = lines[0]
+        m = re.search(r"\[tags:(.*?)\]", tag_line, flags=re.I)
+        if m:
+            tags = [t.strip() for t in m.group(1).split(",") if t.strip()]
+        # rimuovi la riga TAGS per il resto del parsing
+        text = "\n".join(lines[1:])
 
+    # split per separatore grafico
+    parts = re.split(r"\n?[\u2500\-─]{10,,}\n?", text)  # linea lunga di trattini/box
+    # Se split non ha separato nulla, usa il testo intero come unico blocco
+    if len(parts) <= 1:
+        parts = [text]
 
-# ============ Parsing file .txt ============
-
-TAG_RE = re.compile(r"^\s*\[?\s*TAGS?\s*:\s*(.+?)\s*\]?\s*$", re.I)
-Q_RE = re.compile(r"^\s*(D:|Domanda:)\s*(.*)$", re.I)
-A_RE = re.compile(r"^\s*(R:|Risposta:)\s*(.*)$", re.I)
-SEP_RE = re.compile(r"^[-=─]{6,}\s*$")
-
-def parse_txt_file(path):
-    """Parsa un .txt in blocchi Q/A con TAG. Ritorna lista di blocchi."""
     blocks = []
-    try:
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            lines = f.readlines()
-    except Exception as e:
-        log(f"[parse] Errore lettura {path}: {e}")
-        return blocks
-
-    cur_tags = []
-    cur_q = None
-    cur_a = []
-    file_title = os.path.splitext(os.path.basename(path))[0]
-
-    def push_block(line_no_end):
-        # Salva blocco corrente se ha contenuto
-        nonlocal cur_q, cur_a, cur_tags
-        a_text = "\n".join(cur_a).strip()
-        if (cur_q and len(a_text) >= MIN_CHARS_PER_BLOCK) or (cur_q and a_text):
-            text = f"{cur_q}\n{a_text}"
-            block = {
-                "path": path,
-                "title": file_title,
-                "tags": cur_tags[:],
-                "q": cur_q.strip(),
-                "a": a_text,
-                "text": text,
-                "line": line_no_end,
-            }
-            blocks.append(block)
-        cur_q = None
-        cur_a = []
-
-    for i, raw in enumerate(lines, start=1):
-        line = raw.rstrip("\n")
-
-        # TAGS
-        mtag = TAG_RE.match(line)
-        if mtag:
-            tags_csv = mtag.group(1)
-            # split su virgola/;  gestisci spazi
-            cur_tags = [t.strip() for t in re.split(r"[;,]", tags_csv) if t.strip()]
+    for p in parts:
+        content = p.strip()
+        if not content:
             continue
-
-        # separatori: chiudono blocco in corso
-        if SEP_RE.match(line):
-            if cur_q is not None:
-                push_block(i)
-            continue
-
-        # domanda
-        mq = Q_RE.match(line)
-        if mq:
-            # se c'era un blocco aperto, chiudilo
-            if cur_q is not None:
-                push_block(i)
-            cur_q = mq.group(2).strip() or "Domanda"
-            continue
-
-        # risposta
-        ma = A_RE.match(line)
-        if ma:
-            # inizia risposta su nuova riga (il resto della riga dopo "R:" lo metto subito)
-            rest = ma.group(2)
-            cur_a.append(rest.strip())
-            continue
-
-        # corpo risposta (se siamo dentro una risposta)
-        if cur_q is not None:
-            cur_a.append(line)
-
-    # chiusura finale
-    if cur_q is not None:
-        push_block(len(lines))
-
-    # fallback: se non ci sono blocchi D/R, crea blocco unico con il contenuto utile
-    if not blocks:
-        text = "".join(lines).strip()
-        if len(text) >= MIN_CHARS_PER_BLOCK:
-            blocks.append({
-                "path": path,
-                "title": file_title,
-                "tags": cur_tags[:],
-                "q": file_title,
-                "a": text,
-                "text": text,
-                "line": 1,
-            })
-
-    # arricchisci con campi normalizzati
-    for b in blocks:
-        # norm_text include: tags, titolo file, domanda, risposta
-        norm = " ".join([
-            " ".join(b.get("tags") or []),
-            b.get("title",""),
-            b.get("q",""),
-            b.get("a",""),
-        ])
-        b["norm_text"] = normalize_text(norm)
-        b["tok"] = tokenize(norm)
-
+        blocks.append({
+            "text": content,
+            "tags": tags[:]  # copia
+        })
     return blocks
 
+def try_load_embedder():
+    global _EMBEDDER
+    if _EMBEDDER is not None:
+        return _EMBEDDER
+    try:
+        from sentence_transformers import SentenceTransformer
+        _EMBEDDER = SentenceTransformer(EMBED_MODEL_NAME)
+        LOG.info("[embed] Modello caricato: %s", EMBED_MODEL_NAME)
+    except Exception as e:
+        _EMBEDDER = None
+        LOG.warning("[embed] Impossibile usare embedding (%s). Uso solo keyword.", e)
+    return _EMBEDDER
 
-def find_txt_files(root_dir):
-    """Scansiona ricorsivamente root_dir e ritorna tutti i file .txt (case-insensitive)."""
-    txts = []
-    for base, _, files in os.walk(root_dir):
-        for name in files:
-            if name.lower().endswith(".txt"):
-                txts.append(os.path.join(base, name))
-    txts.sort()
-    return txts
+def embed_texts(texts):
+    mdl = try_load_embedder()
+    if mdl is None:
+        return None
+    try:
+        # ritorna lista di liste (float)
+        embs = mdl.encode(texts, show_progress_bar=False, normalize_embeddings=True)
+        return [list(vec) for vec in embs]
+    except Exception as e:
+        LOG.warning("[embed] encode fallita: %s. Disabilito embedding.", e)
+        return None
 
+# ============ BUILD INDEX ============
 
-# ============ Indicizzazione ============
-
-def build_index(doc_dir="documenti_gTab"):
-    """Costruisce INDEX globale (sovrascrive)."""
+def build_index(doc_dir: str = None) -> int:
+    """Scansiona DOC_DIR e costruisce INDEX in-place. Ritorna numero blocchi indicizzati."""
     global INDEX
+    with _INDEX_LOCK:
+        base = os.path.abspath(doc_dir or DOC_DIR)
+        if not os.path.isdir(base):
+            LOG.warning("[index] Cartella non trovata: %s", base)
+            INDEX = []
+            return 0
 
-    abs_dir = os.path.abspath(doc_dir)
-    log(f"Inizio indicizzazione da: {abs_dir}\n")
-    files = find_txt_files(doc_dir)
-    if not files:
-        log("Trovati 0 file .txt:")
-        INDEX = []
-        log("Indicizzati 0 blocchi / 0 righe da 0 file.")
-        return
+        # Trova .txt / .TXT
+        paths = sorted(
+            list(glob.glob(os.path.join(base, "*.txt"))) +
+            list(glob.glob(os.path.join(base, "*.TXT")))
+        )
 
-    log(f"Trovati {len(files)} file .txt:")
-    for p in files:
-        log(f"  - {p}")
+        LOG.info("[scraper_tecnaria] Inizio indicizzazione da: %s", base)
+        LOG.info("[scraper_tecnaria] Trovati %d file .txt:", len(paths))
+        for p in paths:
+            LOG.info("[scraper_tecnaria]   - %s", p)
 
-    all_blocks = []
-    total_lines = 0
-    for p in files:
-        bks = parse_txt_file(p)
-        all_blocks.extend(bks)
-        # conta linee solo per statistica
-        try:
-            with open(p, "r", encoding="utf-8", errors="ignore") as f:
-                total_lines += sum(1 for _ in f)
-        except Exception:
-            pass
+        new_index = []
+        for path in paths:
+            raw = safe_read_text(path)
+            if not raw:
+                continue
+            blocks = parse_blocks_from_text(raw)
+            filename = os.path.basename(path)
+            fname_norm = normalize_text(os.path.splitext(filename)[0])
 
-    # Embedding (opzionale)
-    embs = None
-    if all_blocks:
-        embs = embed([b["norm_text"] for b in all_blocks])
-        if embs is not None:
-            for b, e in zip(all_blocks, embs):
-                b["emb"] = e
+            # Prepara embedding (se disponibili) per testo dei blocchi
+            block_texts = [b["text"] for b in blocks]
+            # Normalizzati per matching keyword
+            blocks_norm = [normalize_text(t) for t in block_texts]
+            # Embedding (opzionale)
+            block_embs = embed_texts(block_texts)
 
-    INDEX = all_blocks
-    log(f"Indicizzati {len(INDEX)} blocchi / {total_lines} righe da {len(files)} file.")
+            for i, b in enumerate(blocks):
+                rec = {
+                    "path": path,
+                    "file": filename,
+                    "line": i + 1,
+                    "text": b["text"],
+                    "norm": blocks_norm[i],
+                    "tags": b.get("tags", []),
+                    "tags_norm": normalize_text(" ".join(b.get("tags", []))) if b.get("tags") else "",
+                    "file_norm": fname_norm,
+                    "emb": block_embs[i] if block_embs is not None else None,
+                }
+                new_index.append(rec)
 
+        INDEX[:] = new_index  # in-place per chi importa il modulo
+        LOG.info("[scraper_tecnaria] Indicizzati %d blocchi da %d file.", len(INDEX), len(paths))
+        return len(INDEX)
 
-# ============ Scoring & ricerca ============
+# ============ SEARCH ============
 
-def cosine(u, v):
-    # vettori già normalizzati dal modello -> dot product
-    return float((u @ v)) if u is not None and v is not None else 0.0
-
-def keyword_overlap_score(q_tokens, doc_tokens):
-    if not q_tokens or not doc_tokens:
-        return 0.0
-    qset = set(q_tokens)
-    dset = set(doc_tokens)
-    inter = len(qset & dset)
-    # Jaccard “soft”
-    denom = (len(qset) + len(dset) - inter)
-    if denom == 0:
-        return 0.0
-    return inter / denom
-
-def boost_by_tags_filename(q_norm, block):
-    boost = 0.0
-    # match rudimentale se una parola della query è dentro i tag
-    tags_norm = normalize_text(" ".join(block.get("tags") or []))
-    if any(t in tags_norm for t in q_norm.split()):
-        boost += BOOST_TAG
-    # match su titolo/nome file
-    title_norm = normalize_text(block.get("title",""))
-    if any(t in title_norm for t in q_norm.split()):
-        boost += BOOST_FILENAME
-    return boost
-
-def search_best_answer(question: str, threshold: float = 0.35, topk: int = 20):
+def keyword_score(q_norm: str, rec) -> float:
     """
-    Ritorna dict:
-      {
-        "answer": "...",
-        "found": bool,
-        "score": float,
-        "from": {"path":..., "line":..., "title":..., "tags":[...]},
-        "question": "... (domanda originale o stimata)",
-      }
+    Semplice overlap-based scoring con boost su TAG e file name.
+    """
+    if not q_norm:
+        return 0.0
+    q_tokens = set(q_norm.split())
+    score = 0.0
+
+    # Overlap nel testo normalizzato
+    text_tokens = set(rec["norm"].split())
+    overlap = q_tokens & text_tokens
+    score += 0.5 * (len(overlap) / (len(q_tokens) + 1e-6))  # normalizzato
+
+    # Boost su TAG
+    if rec["tags_norm"]:
+        tag_tokens = set(rec["tags_norm"].split())
+        if q_tokens & tag_tokens:
+            score += 0.25
+
+    # Boost su nome file (es. "p560" nella domanda + file P560.txt)
+    file_tokens = set(rec["file_norm"].split())
+    if q_tokens & file_tokens:
+        score += 0.25
+
+    # Boost specifico se la domanda contiene key di famiglia
+    q = " " + q_norm + " "
+    specials = [
+        (" p560 ", 0.25),
+        (" ctf ", 0.20),
+        (" diapason ", 0.20),
+        (" cem e ", 0.20),
+        (" mini cem e ", 0.20),
+        (" ctl ", 0.20),
+        (" hbv ", 0.20),
+        (" cls ", 0.15),
+        (" clsr ", 0.15),
+        (" fva ", 0.15),
+        (" fva l ", 0.15),
+        (" ct l ", 0.15),
+        (" x hbv ", 0.15),
+        (" x hbv ", 0.15),
+    ]
+    for needle, add in specials:
+        if needle in q and needle.strip() in rec["file_norm"]:
+            score += add
+
+    return min(score, 1.0)
+
+def semantic_score(q_text: str, rec) -> float:
+    """
+    Cosine similarity tra embedding, se disponibili.
+    """
+    if _EMBEDDER is None or rec.get("emb") is None:
+        return 0.0
+    # embed query on the fly (cached model)
+    embs = embed_texts([q_text])
+    if not embs:
+        return 0.0
+    return max(0.0, min(1.0, float(cosine_sim(embs[0], rec["emb"]))))
+
+def combine_scores(kw: float, sem: float) -> float:
+    """
+    Fusione semplice: se ho embedding, 0.6*sem + 0.4*kw, altrimenti solo kw.
+    """
+    if _EMBEDDER is None:
+        return kw
+    return 0.6 * sem + 0.4 * kw
+
+def _extract_answer_text(rec_text: str) -> str:
+    """
+    Se il blocco è in formato Q/A con D:/R:, ritorna solo la parte di risposta,
+    altrimenti ritorna l'intero blocco.
+    """
+    # Cerca pattern "R:" (prima risposta), eventualmente dopo una "D:"
+    # Se non presente, restituisci intero
+    m = re.search(r"(^|\n)\s*R:\s*(.*)", rec_text, flags=re.I | re.S)
+    if m:
+        # Prendi fino alla prossima D: o fino alla fine
+        ans = m.group(2).strip()
+        # taglia su una nuova "D:" successiva se c'è
+        cut = re.split(r"\n\s*D:\s*", ans, maxsplit=1, flags=re.I)
+        return cut[0].strip()
+    return rec_text.strip()
+
+def _first_block_of_file(fname_key: str):
+    """Ritorna il primo record dell'indice appartenente al file la cui base contiene fname_key (normalizzato)."""
+    key = normalize_text(fname_key)
+    for rec in INDEX:
+        if key in rec["file_norm"]:
+            return rec
+    return None
+
+def search_best_answer(question: str, threshold: float = None, topk: int = None):
+    """
+    Ricerca ibrida: keyword + (opz.) embedding + boost TAG/file.
+    Ritorna sempre un dict con chiavi: answer, found, score, path, line, from.
     """
     if not INDEX:
-        return {"answer":"Indice vuoto.", "found": False, "from": None}
+        return {"answer": "Indice vuoto. Caricare i .txt e ricostruire l’indice.", "found": False, "from": None}
+
+    thr = DEFAULT_THRESHOLD if threshold is None else float(threshold)
+    k = DEFAULT_TOPK if topk is None else int(topk)
 
     q_norm = normalize_text(question)
-    q_tok = tokenize(question)
-    q_tok = expand_with_synonyms(q_tok)
-
-    # Embedding della query (se disponibile)
-    q_emb = None
-    if any("emb" in b for b in INDEX):
-        # se almeno un blocco ha 'emb' assumo che l'embedding sia attivo
-        e = embed([ " ".join(q_tok) or q_norm ])
-        q_emb = e[0] if e is not None else None
+    q_expanded = expand_with_synonyms(q_norm)
 
     scored = []
-    for b in INDEX:
-        kw = keyword_overlap_score(q_tok, b.get("tok", []))
-        em = cosine(q_emb, b.get("emb")) if q_emb is not None and "emb" in b else 0.0
-
-        # fusione: se embedding c'è -> 0.65*emb + 0.35*kw, altrimenti solo kw
-        base = 0.65*em + 0.35*kw if q_emb is not None else kw
-
-        # boost su TAG e nome file
-        base += boost_by_tags_filename(q_norm, b)
-
-        scored.append((base, b))
+    for rec in INDEX:
+        kw = keyword_score(q_expanded, rec)
+        sem = semantic_score(question, rec)  # usa testo originale domanda
+        score = combine_scores(kw, sem)
+        scored.append((score, rec))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-    top = scored[:max(1, topk)]
+    top = scored[:max(3, k)]
 
-    if not top:
-        return {"answer":"", "found": False, "from": None}
+    # trova il migliore sopra soglia
+    best = next(((s, r) for (s, r) in top if s >= thr), None)
 
-    best_score, best = top[0]
-    log(f"[SEARCH] q='{question}' -> score={best_score:.3f} {best.get('path')}:{best.get('line')}")
+    # fallback1: se niente sopra soglia ma c'è un match forte per filename es. "p560"
+    if best is None:
+        for key in ["p560", "ctf", "cem e", "mini cem e", "ctl", "hbv", "diapason", "cls", "clsr", "fva", "fva l", "ct l", "x hbv"]:
+            if f" {key} " in (" " + q_expanded + " "):
+                cand = _first_block_of_file(key)
+                if cand:
+                    best = (0.29, cand)  # poco sotto soglia base, ma sufficiente a rispondere
+                    break
 
-    if best_score >= threshold:
-        ans = best.get("a") or best.get("text") or ""
-        meta = {
-            "path": best.get("path"),
-            "line": best.get("line"),
-            "title": best.get("title"),
-            "tags": best.get("tags"),
-        }
+    if best is None:
+        # ultimo fallback: dai il best assoluto anche se sotto soglia (ma segna found=False)
+        s, r = scored[0]
         return {
-            "answer": ans.strip(),
-            "found": True,
-            "score": float(best_score),
-            "from": meta,
-            "question": best.get("q") or "",
+            "answer": "Non ho trovato una risposta precisa. Prova a riformulare leggermente la domanda.",
+            "found": False,
+            "score": round(float(s), 3),
+            "path": r["path"],
+            "line": r["line"],
+            "from": os.path.basename(r["path"]),
         }
 
-    # non sopra soglia -> prova a restituire comunque un “hint” minimale
+    s, r = best
+    answer_txt = _extract_answer_text(r["text"])
     return {
-        "answer": "",
-        "found": False,
-        "score": float(best_score),
-        "from": {
-            "path": best.get("path"),
-            "line": best.get("line"),
-            "title": best.get("title"),
-            "tags": best.get("tags"),
-        },
-        "question": "",
+        "answer": answer_txt,
+        "found": True if s >= thr else False,  # se sotto soglia, segnala comunque found=False
+        "score": round(float(s), 3),
+        "path": r["path"],
+        "line": r["line"],
+        "from": os.path.basename(r["path"]),
+        "tags": r["tags"]
     }
+
+# ============ AUTORUN (opzionale) ============
+if __name__ == "__main__":
+    # Test locale rapido
+    cnt = build_index(DOC_DIR)
+    print(json.dumps({
+        "built_blocks": cnt,
+        "doc_dir": os.path.abspath(DOC_DIR)
+    }, ensure_ascii=False, indent=2))
+
+    # Prova domanda
+    q = "mi parli della p560?"
+    print(json.dumps(search_best_answer(q), ensure_ascii=False, indent=2))
