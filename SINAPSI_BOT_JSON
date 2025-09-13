@@ -129,9 +129,20 @@
     {
       "if_any": ["sismica","eta","certificazione","dop","ce"],
       "add": "Documentazione: utilizzare versioni e lotti certificati (ETA/CE/DoP) aggiornati; riportare nel progetto i valori caratteristici pertinenti."
+{
+  "topics": {
+    "distributori": "Rete distributori/rivenditori Tecnaria in vari Paesi UE; supporto diretto dove non presente un partner locale.",
+    "europa": "Spedizioni UE con documentazione ETA/CE/DoP e tracciabilità lotti."
+  },
+  "rules": [
+    {
+      "if_any": ["distributore","distributori","rivenditore","rivenditori","dove comprare","acquistare","acquisto","europa","ue","eu","dealer","reseller"],
+      "add": "Indicaci Paese e città: ti indirizziamo al distributore più vicino oppure gestiamo direttamente preventivo e spedizione UE."
     }
   ]
 }
+
+
 
 
 
