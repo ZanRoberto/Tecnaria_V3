@@ -47,5 +47,44 @@
 
     { "if_any": ["contatti","telefono","mail","email","assistenza","supporto","tecnico","commerciale","uffici","sede","orari"],
       "add": "Posso passarti subito i contatti tecnici/commerciali o inoltrare la tua richiesta. Preferisci email o telefonata? Indicami anche il prodotto e la città." }
+{
+  "prefix": "",
+  "suffix": "Sono a disposizione per inviarti schede tecniche, DoP/ETA, manuali di posa e contatti ufficiali Tecnaria. Dimmi prodotto e città/Paese.",
+  "topics": {
+    "tecnaria": "Riferimento: Tecnaria S.p.A., Bassano del Grappa (VI) – Italia.",
+    "ctl": "CTL: connettori Tecnaria per solai collaboranti legno–calcestruzzo (Base Ø8, Maxi Ø10, Omega; ETA/CE/DoP).",
+    "ctf": "CTF: connettori/pioli Tecnaria per acciaio–calcestruzzo, su lamiera grecata e soletta piena (ETA/CE/DoP).",
+    "diapason": "Diapason: connettori Tecnaria con ripartizione del carico più ampia.",
+    "cem": "CEM-E / MINI CEM-E: sistemi Tecnaria per collegare getti in calcestruzzo nuovo ↔ esistente.",
+    "p560": "P560 (SPIT): utensile usato per i fissaggi dei connettori; non è un prodotto Tecnaria."
+  },
+  "rules": [
+    { "if_any": ["tecnaria","chi siete","azienda","società","brand","marchio","sede","bassano"], "add": "Sono l’assistente documentale di Tecnaria S.p.A., **Bassano del Grappa (VI)** – Italia. Eventuali riferimenti a ‘Tecnaria’ di altri contesti **non** riguardano questa azienda." },
+
+    { "if_any": ["non tecnaria","altra tecnaria","omonimo","stesso nome"], "add": "Preciso che mi riferisco esclusivamente a **Tecnaria S.p.A., Bassano del Grappa (VI)**. Se intendi un’altra realtà omonima, non rientra in questo servizio." },
+
+    { "if_any": ["p560","spit","sparachiodi","chiodatrice"], "add": "Nota: **SPIT P560** è un’**attrezzatura** d’uso in cantiere, non un prodotto Tecnaria. I contenuti Tecnaria riguardano solo i connettori e la relativa documentazione." },
+
+    { "if_any": ["hbv","sistemi terzi","altri marchi","altro brand"], "add": "Per policy, questo assistente tratta **solo** prodotti e documentazione **Tecnaria**. Per sistemi di terzi, posso al massimo indicare requisiti generali di posa, senza marchi." },
+
+    { "if_any": ["mi parli","parlami","cos è","che cos è","panoramica","informazioni","overview"], "add": "Preferisci **panoramica sintetica** o vuoi andare su **differenze**, **posa**, **sismica**, **documenti** o **acquisto**?" },
+
+    { "if_any": ["differenza","vs","confronto","scelta","meglio","quale scegliere"], "if_all": ["ctl"], "add": "CTL: Base (Ø8) per spessori ridotti/standard; Maxi (Ø10) per maggiore capacità; Omega per ancoraggi ad alte prestazioni. Scelta in funzione di spessore soletta, numero viti e verifiche di progetto." },
+
+    { "if_any": ["posa","montaggio","installazione","attrezzi","come si posa","istruzioni"], "if_all": ["ctl","ctf","diapason","cem","cem-e"], "add": "Posa: attenersi ai manuali Tecnaria (passi, distanze minime, preparazione supporto). Se vuoi ti invio il manuale e le DoP/ETA del prodotto citato." },
+
+    { "if_any": ["lamiera","grecata","soletta piena","profili acciaio","travi acciaio"], "if_all": ["ctf"], "add": "CTF su lamiera grecata: verificare passo/profilo/spessore lamiera; su soletta piena valgono le regole di ancoraggio in cls massivo. Ho le schede Tecnaria con i passi." },
+
+    { "if_any": ["nuovo","esistente","ripresa","getti"], "if_all": ["cem","cem-e","mini"], "add": "CEM-E/MINI: preparazione accurata del supporto e prescrizioni da schede/ETA **Tecnaria**. Vuoi le istruzioni ufficiali?" },
+
+    { "if_any": ["sismica","zona sismica","ntc","ec8","eurocodice","cicliche"], "add": "Idoneità in zona sismica: fare riferimento a **ETA** e normative (NTC/EC8) nella documentazione **Tecnaria**." },
+
+    { "if_any": ["documenti","documentazione","eta","ce","dop","manuale","relazione","calcolo","scheda","schede","tracciabilità"], "add": "Disponibili: **ETA, CE, DoP, manuali di posa, relazioni di calcolo, tracciabilità lotti**. Dimmi il prodotto e te li invio." },
+
+    { "if_any": ["distributore","rivenditore","dealer","reseller","dove comprare","acquistare","preventivo","prezzi","europa","ue","eu"], "add": "Rete **ufficiale** Tecnaria in vari Paesi UE; dove assente, spediamo direttamente. Indicami prodotto + Paese/città e ti indirizzo al canale **Tecnaria** corretto." }
   ]
 }
+
+  ]
+}
+
