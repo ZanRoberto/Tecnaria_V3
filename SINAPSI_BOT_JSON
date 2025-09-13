@@ -79,5 +79,38 @@
       "if_any": ["assistenza","contatti","telefono","email","mail","supporto"],
       "add": "Assistenza/contatti: Ufficio Tecnico e Commerciale Tecnaria sono disponibili per supporto su scelta prodotto, calcolo e documentazione."
     }
+{
+  "topics": {
+    "p560": "SPIT P560: chiodatrice a carica propulsiva per fissaggi rapidi su acciaio; tipico uso con connettori CTF.",
+    "ctf": "Connettori CTF: pioli per solai collaboranti acciaio–calcestruzzo; ETA/CE; lamiera grecata o soletta piena."
+  },
+  "rules": [
+    {
+      "if_any": ["p560","spit","chiodatrice","sparachiodi"],
+      "add": "- Uso tipico: posa connettori CTF su lamiera/profili.\n- Vantaggi: rapidità, caricatore; nessuna alimentazione.\n- Precauzioni: DPI, addestramento; pulizia periodica."
+    },
+    {
+      "if_all": ["ctf","lamiera"],
+      "add": "Checklist posa su lamiera: verifica passo/spessore; controlla infissione; definisci passo e schema da relazione di calcolo."
+{
+  "topics": {
+    "p560": "SPIT P560: chiodatrice a carica propulsiva per fissaggi rapidi su acciaio; tipico uso con connettori CTF.",
+    "ctf": "Connettori CTF: pioli per solai collaboranti acciaio–calcestruzzo; ETA/CE; lamiera grecata o soletta piena."
+  },
+  "rules": [
+    {
+      "if_any": ["p560","spit","chiodatrice","sparachiodi"],
+      "add": "- Uso tipico: posa connettori CTF su lamiera/profili.\n- Vantaggi: rapidità, caricatore; nessuna alimentazione.\n- Precauzioni: DPI, addestramento; pulizia periodica."
+    },
+    {
+      "if_all": ["ctf","lamiera"],
+      "add": "Checklist posa su lamiera: verifica passo/spessore; controlla infissione; definisci passo e schema da relazione di calcolo."
+    }
   ]
 }
+
+    }
+  ]
+}
+
+
