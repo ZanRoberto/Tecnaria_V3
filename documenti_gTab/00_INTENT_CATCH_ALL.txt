@@ -1,1 +1,57 @@
+mkdir -p documenti_gTab
+cat > documenti_gTab/00_INTENT_CATCH_ALL.txt << 'EOF'
+[TAGS: panoramica, mi parli di, che cos è, a cosa serve, differenze, vs, confronto, come si posa, posa, montaggio, certificazioni, dop, eta, ce, documentazione, zona sismica, sismica, dove comprare, distributori, europa, ue, eu, preventivo, prezzi, quotazione, CTL, CTF, Diapason, CEM-E, MINI CEM-E, P560, FVA, HBV, lamiera grecata, soletta piena, legno-calcestruzzo, acciaio-calcestruzzo, calcestruzzo-calcestruzzo]
+
+────────────────────────────────
+D: Mi fai una panoramica veloce sui prodotti Tecnaria (CTL, CTF, Diapason, CEM-E/MINI, P560)?
+R: 
+- CTL: connettori per solai collaboranti legno–calcestruzzo (versioni Base Ø8, Maxi Ø10, Omega; altezze 20–200 mm). 
+- CTF: connettori/pioli per solai collaboranti acciaio–calcestruzzo, su lamiera grecata o soletta piena. 
+- Diapason: connettore con distribuzione del carico più ampia dei pioli tradizionali. 
+- CEM-E/MINI: collegano getti di calcestruzzo nuovi a esistenti. 
+- P560: chiodatrice SPIT a carica propulsiva per fissaggi rapidi (es. applicazioni con CTF). 
+Tutti con documentazione ETA/CE/DoP.
+
+────────────────────────────────
+D: Mi parli dei CTL?
+R: I CTL collegano legno e nuova soletta in calcestruzzo, aumentando rigidezza e resistenza. Versioni: Base (Ø8) per spessori ridotti, Maxi (Ø10) per maggior capacità, Omega per ancoraggi ad alte prestazioni. Manuali di posa con passi/distanze minime; ETA/CE/DoP disponibili.
+
+D: Differenza tra CTLB e CTLM?
+R: CTLB ha viti Ø8 (richieste standard); CTLM viti Ø10 (capacità maggiore/solai gravosi). Scelta in base a spessore soletta, numero viti e verifiche di progetto.
+
+D: Come si posano i CTL?
+R: Con avvitatore standard e viti certificate; rispettare inclinazioni, passi e distanze minime; verificare profondità nel legno e copriferro in soletta. Vedi manuale Tecnaria.
+
+D: I CTL sono idonei in zona sismica?
+R: Sì, le ETA riportano prove e limiti; attenersi alle normative e alle verifiche di progetto.
+
+────────────────────────────────
+D: Mi parli dei CTF?
+R: I CTF collegano profili/travi in acciaio a solette in calcestruzzo; applicabili su lamiera grecata e su soletta piena. Aumentano la rigidezza del solaio; documentazione ETA/CE/DoP.
+
+D: CTF su lamiera grecata o su soletta piena: cosa cambia?
+R: Su lamiera: verifica passo/profilo/spessore e compatibilità di fissaggio; su soletta piena valgono le regole di ancoraggio in calcestruzzo massivo. I dettagli sono nei manuali e nelle schede.
+
+D: C’è un’alternativa ai pioli CTF?
+R: Sì: Diapason, che offre una distribuzione del carico più ampia quando richiesto.
+
+────────────────────────────────
+D: Mi parli di Diapason?
+R: Connettore con ampia superficie di ripartizione; utile quando servono minori tensioni di contatto o su supporti delicati. Vedi valori caratteristici e casi d’uso nelle schede/ETA.
+
+────────────────────────────────
+D: Mi parli di CEM-E / MINI CEM-E?
+R: Connettori per collegare getti di calcestruzzo nuovi a esistenti (riprese/giunti, rinforzi). Fondamentale la preparazione del supporto e il rispetto delle prescrizioni di posa.
+
+────────────────────────────────
+D: Mi parli della P560?
+R: SPIT P560 è una chiodatrice a cartuccia propulsiva per fissaggi rapidi (es. posa su lamiera). Vantaggi: velocità e autonomia; precauzioni: DPI, controlli di sicurezza, manutenzione (pistone/anello), uso di chiodi/cartucce certificati.
+
+────────────────────────────────
+D: Dove posso acquistare i prodotti Tecnaria in Europa?
+R: È attiva una rete di distributori/rivenditori in vari Paesi UE; dove non presente, spediamo direttamente. Indicaci Paese/città e prodotto (es. CTL/CTF/Diapason/CEM-E/P560) per contattare il partner locale o ricevere un preventivo con tempi di consegna. Forniture con ETA/CE/DoP e tracciabilità lotti.
+
+D: Che documentazione potete fornire?
+R: Schede tecniche, DoP, ETA, manuali di posa, relazioni di calcolo ed esempi applicativi. Inviamo i documenti aggiornati su richiesta.
+EOF
 
