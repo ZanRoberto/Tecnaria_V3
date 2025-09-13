@@ -1,51 +1,83 @@
 {
-  "prefix": "🧩 Nota Tecnaria (arricchimento Sinapsi):",
-  "suffix": "Per verifiche di progetto e casi fuori standard, contatta l’Ufficio Tecnico Tecnaria.",
+  "prefix": "🔎 Sintesi Tecnaria (Sinapsi):",
+  "suffix": "Nota: le verifiche di progetto sono responsabilità del progettista. Per casi particolari o dubbi, contatta l’Ufficio Tecnico Tecnaria.",
   "topics": {
-    "p560": "SPIT P560: chiodatrice a carica propulsiva usata per fissaggi rapidi su acciaio.\nTipico impiego: posa dei connettori CTF su lamiere grecate/profili.\nNon richiede aria/energia elettrica; richiede DPI e personale formato.",
-    "ctf": "Connettori CTF: pioli per solai collaboranti acciaio–calcestruzzo; ETA e marcatura CE.\nApplicabili su lamiera grecata o soletta piena; aumentano rigidezza e resistenza a taglio.",
-    "diapason": "Connettori Diapason: distribuzione del carico più ampia rispetto ai pioli; utili su supporti sottili.",
-    "cem-e": "Connettori CEM‑E: collegano getti di calcestruzzo nuovi/esistenti (riprese di getto), anche in interventi di rinforzo."
+    "p560": "SPIT P560: chiodatrice a carica propulsiva per fissaggi rapidi su acciaio. Uso tipico: posa dei connettori CTF su lamiera grecata o profili. Richiede DPI e personale formato.",
+    "spit": "Linea SPIT per fissaggi: P560 è la chiodatrice più usata per i connettori CTF su acciaio/lamiera.",
+    "chiodatrice": "Chiodatrici a carica propulsiva: veloci, non richiedono energia/aria; seguire rigorosamente le procedure di sicurezza.",
+    "ctf": "Connettori CTF (pioli) per solai collaboranti acciaio–calcestruzzo. Certificazioni ETA, marcatura CE. Idonei su lamiera grecata o soletta piena.",
+    "diapason": "Connettori Diapason: ripartizione del carico più ampia rispetto ai pioli; utili su supporti sottili o quando serve ridurre tensioni locali.",
+    "cem-e": "Connettori CEM-E per collegare getti di calcestruzzo nuovi a esistenti (riprese di getto). Utili in ampliamenti e rinforzi.",
+    "ctl": "Sistemi legno–calcestruzzo (es. CLT/lamellare) con connettori specifici; valutare spessori tavolato/CLT, passo connettori e schema.",
+    "cls": "Sistemi calcestruzzo–calcestruzzo: valutare resina/ancoraggi e connettori adatti per riprese, aderenza e trasferimento sforzi.",
+    "clsr": "Riprese e rinforzi su calcestruzzo armato: attenzione a copriferro, qualità del supporto, e profondità di ancoraggio.",
+    "hbv": "Sistema tipo HBV (legno–calcestruzzo): connettori a taglio con piastre/lamelle; controllare specie legnosa e resistenza caratteristica.",
+    "eta": "ETA: Valutazione Tecnica Europea. I prodotti Tecnaria hanno marcatura CE con DoP disponibile.",
+    "dop": "Dichiarazione di Prestazione (DoP): riporta le prestazioni essenziali e la conformità CE.",
+    "posa": "Posa: seguire manuali Tecnaria; controlli iniziali, passo connettori, profondità/infissione e qualità del supporto.",
+    "lamiera": "Lamiera grecata: verificare passo/altezza greche, spessore, compatibilità con connettori e modalità di getto.",
+    "soletta": "Soletta piena: verifica del copriferro, della rugosità e dell’ancoraggio del connettore.",
+    "sicurezza": "Sicurezza: DPI, addestramento, rispetto procedure; aree di tiro libere dietro il supporto.",
+    "calcolo": "Calcolo: usare relazioni di calcolo e schede tecniche; dimensionare passo e numero connettori in funzione degli sforzi.",
+    "certificazioni": "Certificazioni: ETA e marcatura CE; DoP disponibili nelle schede tecniche.",
+    "manutenzione": "Manutenzione attrezzature: pulizia periodica, sostituzione parti usurate (es. pistone/anello ammortizzatore su chiodatrici)."
   },
   "rules": [
     {
-      "if_any": [
-        "p560",
-        "spit",
-        "chiodatrice",
-        "sparachiodi",
-        "p-560"
-      ],
-      "add": "- Uso tipico: fissaggio connettori CTF su lamiera grecata o profili in acciaio.\n- Plus: rapidità di posa, caricatore; nessuna alimentazione elettrica/aria.\n- Precauzioni: DPI (occhi/udito/mani), addestramento; non puntare verso persone; pulizia periodica."
+      "if_any": ["p560","spit","chiodatrice","sparachiodi","p-560"],
+      "add": "- Uso tipico: fissaggio connettori CTF su lamiera grecata/profili in acciaio.\n- Vantaggi: rapidità, caricatore; nessuna alimentazione elettrica/aria.\n- Precauzioni: DPI (occhi/udito/mani), addestramento; non puntare verso persone; pulizia e controllo usura."
     },
     {
-      "if_all": [
-        "ctf",
-        "lamiera"
-      ],
-      "add": "Checklist posa su lamiera grecata:\n• Verifica spessore/passo lamiera e compatibilità con connettori.\n• Controllo impronte e infissione corretta; evitare ‘blow-through’.\n• Dettagliare schema di fissaggio in relazione di calcolo."
+      "if_all": ["p560","rumorosita"],
+      "add": "Rumorosità: prevedere protezione udito; attenersi ai limiti di cantiere e alle indicazioni del manuale macchina."
     },
     {
-      "if_any": [
-        "diapason"
-      ],
-      "add": "Quando preferirli: necessità di ripartizione carico su area maggiore o supporti sottili.\nValuta con il progettista i passi e la rigidezza richiesta."
+      "if_all": ["p560","manutenzione"],
+      "add": "Manutenzione P560: pulizia periodica; sostituire parti usurate (pistone, anello ammortizzatore) secondo manuale e segni di usura."
     },
     {
-      "if_any": [
-        "cem",
-        "cem-e",
-        "riprese"
-      ],
-      "add": "Collegamento nuovo–esistente:\n• Preparazione substrato (pulizia, rugosità idonea).\n• Schema di connettori e ancoraggi in funzione degli sforzi di progetto."
+      "if_all": ["ctf","lamiera"],
+      "add": "Checklist posa su lamiera grecata:\n• Verifica passo/altezze greche e spessore lamiera.\n• Controlla infissione del connettore (impronte regolari, niente 'blow-through').\n• Definisci passo e schema in relazione di calcolo."
     },
     {
-      "if_any": [
-        "eta",
-        "dop",
-        "ce"
-      ],
-      "add": "Certificazioni: prodotti con ETA e marcatura CE; Dichiarazioni di Prestazione (DoP) disponibili."
+      "if_all": ["ctf","soletta"],
+      "add": "Su soletta piena:\n• Verifica copriferro e rugosità del supporto.\n• Definisci profondità d'ancoraggio e passo connettori da relazione di calcolo."
+    },
+    {
+      "if_any": ["ctf","pioli","connettori"],
+      "add": "Ricorda: i connettori aumentano rigidezza e capacità a taglio del solaio collaborante; le quantità dipendono dagli sforzi di progetto."
+    },
+    {
+      "if_any": ["diapason"],
+      "add": "Preferisci Diapason quando serve una ripartizione del carico più ampia o su supporti sottili; valuta passo e schema con il progettista."
+    },
+    {
+      "if_any": ["cem","cem-e","riprese","ripresa","riprese di getto"],
+      "add": "Collegamento nuovo–esistente:\n• Preparazione del substrato (pulizia, rugosità idonea).\n• Schema connettori e ancoraggi dimensionati sul trasferimento sforzi.\n• Verifica compatibilità con armature esistenti."
+    },
+    {
+      "if_any": ["ctl","clt","legno","xlam","x-lam"],
+      "add": "Legno–calcestruzzo: definisci spessori, resistenza caratteristica, e schema/passaggi dei connettori; attenzione a fessurazioni e umidità del legno."
+    },
+    {
+      "if_any": ["calcolo","dimensionamento","portata","resistenza"],
+      "add": "Calcolo: usa le Relazioni di Calcolo e le Schede Tecniche per ricavare passo/numero connettori. Verifica combinazioni di carico e limiti di deformabilità."
+    },
+    {
+      "if_any": ["eta","dop","ce","certificazioni"],
+      "add": "Certificazioni: prodotti con ETA e marcatura CE; DoP disponibili. In caso di gara/computo, allega le schede tecniche aggiornate."
+    },
+    {
+      "if_any": ["posa","installazione","montaggio"],
+      "add": "Posa pratica:\n1) Verifica supporto e attrezzatura.\n2) Esegui prove preliminari.\n3) Posa secondo passo/schema di progetto.\n4) Controllo qualità e registrazione."
+    },
+    {
+      "if_any": ["prezzo","costo","listino"],
+      "add": "Prezzi: variano per quantità/fornitura/cantiere. Contatta commerciale Tecnaria per un preventivo aggiornato."
+    },
+    {
+      "if_any": ["assistenza","contatti","telefono","email","mail","supporto"],
+      "add": "Assistenza/contatti: Ufficio Tecnico e Commerciale Tecnaria sono disponibili per supporto su scelta prodotto, calcolo e documentazione."
     }
   ]
 }
