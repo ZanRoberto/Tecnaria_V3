@@ -1,41 +1,51 @@
 {
-  "prefix": "— Risposta arricchita da Sinapsi —",
-  "suffix": "Nota finale: attenersi sempre ai documenti ufficiali e alle prescrizioni del progettista.",
+  "prefix": "🧩 Nota Tecnaria (arricchimento Sinapsi):",
+  "suffix": "Per verifiche di progetto e casi fuori standard, contatta l’Ufficio Tecnico Tecnaria.",
   "topics": {
-    "p560": "P560 (chiodatrice a carica propulsiva): DPI completi; usare cariche/chiodi compatibili; pulizia periodica.",
-    "ctf": "CTF: connettori a piolo per solai acciaio–calcestruzzo; ETA + marcatura CE.",
-    "diapason": "Diapason: distribuzione più ampia del carico; definire interassi secondo schede.",
-    "cem-e": "CEM-E: collegano getti nuovi a esistenti; attenzione alla preparazione del supporto.",
-    "ctl": "CTL legno–cls: verificare umidità legno e interassi per limitare scorrimenti."
+    "p560": "SPIT P560: chiodatrice a carica propulsiva usata per fissaggi rapidi su acciaio.\nTipico impiego: posa dei connettori CTF su lamiere grecate/profili.\nNon richiede aria/energia elettrica; richiede DPI e personale formato.",
+    "ctf": "Connettori CTF: pioli per solai collaboranti acciaio–calcestruzzo; ETA e marcatura CE.\nApplicabili su lamiera grecata o soletta piena; aumentano rigidezza e resistenza a taglio.",
+    "diapason": "Connettori Diapason: distribuzione del carico più ampia rispetto ai pioli; utili su supporti sottili.",
+    "cem-e": "Connettori CEM‑E: collegano getti di calcestruzzo nuovi/esistenti (riprese di getto), anche in interventi di rinforzo."
   },
   "rules": [
     {
-      "if_any": ["contatti","telefono","tel","email","mail","orari","sede","indirizzo"],
-      "add": "Per assistenza: indica tipo di solaio (lamiera/soletta/legno-cls), spessori e carichi."
+      "if_any": [
+        "p560",
+        "spit",
+        "chiodatrice",
+        "sparachiodi",
+        "p-560"
+      ],
+      "add": "- Uso tipico: fissaggio connettori CTF su lamiera grecata o profili in acciaio.\n- Plus: rapidità di posa, caricatore; nessuna alimentazione elettrica/aria.\n- Precauzioni: DPI (occhi/udito/mani), addestramento; non puntare verso persone; pulizia periodica."
     },
     {
-      "if_all": ["ctf","lamiera"],
-      "add": "CTF su lamiera grecata: verifica altezza d’onda, spessore lamiera, passo connettori, compatibilità ETA."
+      "if_all": [
+        "ctf",
+        "lamiera"
+      ],
+      "add": "Checklist posa su lamiera grecata:\n• Verifica spessore/passo lamiera e compatibilità con connettori.\n• Controllo impronte e infissione corretta; evitare ‘blow-through’.\n• Dettagliare schema di fissaggio in relazione di calcolo."
     },
     {
-      "if_all": ["ctf","soletta","piena"],
-      "add": "CTF su soletta piena: controlla copriferro, interassi e classe del cls; rispetta distanze minime."
+      "if_any": [
+        "diapason"
+      ],
+      "add": "Quando preferirli: necessità di ripartizione carico su area maggiore o supporti sottili.\nValuta con il progettista i passi e la rigidezza richiesta."
     },
     {
-      "if_all": ["cem-e","ripresa","getto"],
-      "add": "CEM-E: prepara il supporto (pulizia/scarifica), primer/boiacca se previsto, rispetto dei copriferri."
+      "if_any": [
+        "cem",
+        "cem-e",
+        "riprese"
+      ],
+      "add": "Collegamento nuovo–esistente:\n• Preparazione substrato (pulizia, rugosità idonea).\n• Schema di connettori e ancoraggi in funzione degli sforzi di progetto."
     },
     {
-      "if_any": ["eta","dop","ce","certificazione","certificazioni"],
-      "add": "Usa sempre le versioni aggiornate di ETA/DoP e schede tecniche."
-    },
-    {
-      "if_any": ["posa","installazione","montaggio","manuale","istruzioni"],
-      "add": "Posa: segui manuale; usa dime/attrezzi compatibili; mantieni il passo dichiarato."
-    },
-    {
-      "if_all": ["p560","chiodo"],
-      "add": "P560: scegli cariche adeguate al supporto; controlla usura pistone/ammortizzatori dopo N colpi."
+      "if_any": [
+        "eta",
+        "dop",
+        "ce"
+      ],
+      "add": "Certificazioni: prodotti con ETA e marcatura CE; Dichiarazioni di Prestazione (DoP) disponibili."
     }
   ]
 }
