@@ -333,4 +333,177 @@ def build_index(doc_dir: Optional[str] = None) -> int:
         if DEBUG:
             r = len((_SINAPSI.get("rules") or [])) if _SINAPSI else 0
             t = len((_SINAPSI.get("topics") or {})) if _SINAPSI else 0
-            print(f"[SCRAPER] Sinapsi
+            print(f"[SCRAPER] Sinapsi {'ON' if _SINAPSI else 'OFF'} (rules={r}, topics={t}) file={sin_path}")
+
+    if DEBUG:
+        print(f"[SCRAPER] Chunk indicizzati: {total_chunks}")
+    return total_chunks
+
+def reload_index() -> None:
+    build_index(DOC_DIR)
+
+def is_ready() -> bool:
+    return bool(_CHUNKS)
+
+# =================== Search ===================
+def _qvec_multi(q_norm: str) -> Tuple[List[Tuple[Dict[str,float],List[str]]], List[str]]:
+    toks_base = _tokenize(q_norm)
+    toks_exp = _expand_query_tokens(toks_base)
+    q_variants = [" ".join(toks_exp) if toks_exp else q_norm]
+    vecs = [(_qvec(v), _tokenize(v)) for v in q_variants]
+    return vecs, toks_exp
+
+def _search_top(q: str, top_k: int) -> List[Tuple[float, DocChunk]]:
+    if not _CHUNKS:
+        build_index(DOC_DIR)
+    q_norm = _normalize_query(q or "")
+    vecs, q_tokens = _qvec_multi(q_norm)
+    scored: List[Tuple[float, DocChunk]] = []
+    for ch in _CHUNKS:
+        best = 0.0
+        for vec, toks in vecs:
+            base = _cosine(vec, ch.tfidf or {})
+            boost = _tag_boost(toks, ch.tags or [])
+            nboost = _name_boost(q_tokens, ch.doc)
+            s = base + boost + nboost
+            if "p560" in q_tokens and "p560" in ch.doc.lower():
+                s += 0.20
+            if s > best: best = s
+        if best > 0: scored.append((best, ch))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored[:max(1, top_k or TOP_K)]
+
+def _pick_best_qa_from_file(filename: str, query: str) -> Tuple[Optional[str], Optional[str]]:
+    df = _FILES.get(filename)
+    if not df or not df.qa_pairs:
+        return None, None
+    qset = set(_tokenize(query))
+    best_s, best_pair = -1.0, None
+    for dq, dr in df.qa_pairs:
+        dset = set(_tokenize(dq))
+        inter = len(qset & dset)
+        denom = max(1, min(len(qset), len(dset)))
+        s = inter / denom
+        if s > best_s:
+            best_s = s
+            best_pair = (dq.strip(), dr.strip())
+    if not best_pair:
+        return None, None
+    dq, dr = best_pair
+    # pulizia risposta
+    dr = "\n".join(R_RE.sub("", ln).strip() for ln in dr.splitlines())
+    dr = "\n".join(ln for ln in dr.splitlines() if not TAGS_RE.match(ln) and not D_RE.match(ln))
+    return dq.strip(), dr.strip()
+
+def _safe_load_json(path: str) -> dict:
+    try:
+        if not os.path.exists(path):
+            if DEBUG: print(f"[SCRAPER] Sinapsi file non trovato: {path}")
+            return {}
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            return json.load(f)
+    except Exception as e:
+        if DEBUG: print(f"[WARN] Sinapsi JSON invalido ({path}): {e}")
+        return {}
+
+def _sinapsi_enrich(answer: str, query: str, meta: Dict[str, any]) -> str:
+    if not (SINAPSI_ENABLE and _SINAPSI): return answer
+    def _tok(s: str) -> set: return set(_tokenize(s or ""))
+    nq = _tok(query)
+    extra: List[str] = []
+    px = _SINAPSI.get("prefix")
+    if px: extra.append(str(px).strip())
+    for k, v in (_SINAPSI.get("topics") or {}).items():
+        if _tok(str(k)) & nq:
+            extra.append(str(v).strip())
+    for r in (_SINAPSI.get("rules") or []):
+        any_ = _tok(" ".join(r.get("if_any", [])))
+        all_ = _tok(" ".join(r.get("if_all", [])))
+        ok_any = (not any_) or bool(any_ & nq)
+        ok_all = (not all_) or all(t in nq for t in all_)
+        if ok_any and ok_all:
+            add = str(r.get("add","")).strip()
+            if add: extra.append(add)
+    enrichment = "\n".join([t for t in extra if t])
+    final = (answer.strip() + ("\n\n" + enrichment if enrichment else "")).strip()
+    sx = _SINAPSI.get("suffix")
+    if sx: final = f"{final}\n\n{str(sx).strip()}".strip()
+    return final
+
+def search_best_answer(query: str,
+                       threshold: Optional[float] = None,
+                       topk: Optional[int] = None) -> Dict[str, any]:
+    thr = SIMILARITY_THRESHOLD if threshold is None else float(threshold)
+    k = TOP_K if topk is None else int(topk)
+
+    try:
+        ranked = _search_top(query or "", k)
+        if not ranked:
+            if DEBUG: print(f"[SCRAPER] Nessun candidato per: {query}")
+            return {"answer":"", "found": False, "from": None}
+
+        score, top_chunk = ranked[0]
+        if score < max(0.0, thr):
+            return {"answer":"", "found": False, "from": None}
+
+        # 1) Prova QA a LIVELLO FILE (seleziona UNA domanda e la sua risposta)
+        sel_q, sel_r = _pick_best_qa_from_file(top_chunk.doc, query)
+        if sel_r:
+            body = sel_r
+            # opzionale: mostra UNA volta la domanda abbinata
+            header = f"Domanda: {sel_q}" if (sel_q and SHOW_MATCHED_QUESTION) else ""
+            ans = (header + ("\n" if header else "") + body).strip()
+        else:
+            # 2) fallback: usa il testo del chunk pulito
+            ans = _strip_QA_from_text(top_chunk.text)
+
+        # Arricchimento Sinapsi
+        ans = _sinapsi_enrich(ans, query, {
+            "file": top_chunk.doc,
+            "section": top_chunk.section,
+            "tags": top_chunk.tags
+        })
+
+        # Pulizia finale extra
+        lines = []
+        for ln in ans.splitlines():
+            if TAGS_RE.match(ln): continue
+            if D_RE.match(ln): continue
+            ln = R_RE.sub("", ln).strip()
+            lines.append(ln)
+        ans = "\n".join(lines).strip()
+
+        # Taglio elegante
+        if MAX_ANSWER_CHARS and len(ans) > MAX_ANSWER_CHARS:
+            cut = ans[:MAX_ANSWER_CHARS]
+            m = re.search(r"(?s)^(.+?[\.!\?])(\s|$)", cut)
+            ans = (m.group(1) if m else cut).rstrip() + " …"
+
+        return {
+            "answer": ans.strip(),
+            "found": True,
+            "score": round(float(score), 3),
+            "from": top_chunk.doc,
+            "tags": top_chunk.tags or []
+        }
+    except Exception as e:
+        if DEBUG: print(f"[ERROR] search_best_answer fatal: {e}")
+        return {"answer":"", "found": False, "from": None}
+
+if __name__ == "__main__":
+    print(f"[INFO] DOC_DIR={os.path.abspath(DOC_DIR)} thr={SIMILARITY_THRESHOLD} topk={TOP_K} debug={DEBUG} ver={__SCRAPER_VERSION__}")
+    t0 = time.time()
+    n = build_index(DOC_DIR)
+    print(f"[INFO] Indice pronto: {n} chunk in {time.time()-t0:.2f}s")
+    try:
+        while True:
+            q = input("Domanda> ").strip()
+            if not q: 
+                continue
+            res = search_best_answer(q)
+            print("\n--- RISPOSTA ---")
+            print(res.get("answer") or "[vuota]")
+            print(f"\n[from={res.get('from')} score={res.get('score')} tags={res.get('tags')}]")
+            print()
+    except (EOFError, KeyboardInterrupt):
+        print("\nBye.")
