@@ -1,60 +1,41 @@
 {
   "prefix": "— Risposta arricchita da Sinapsi —",
-  "suffix": "Nota finale: attenersi sempre ai documenti ufficiali (schede tecniche, ETA/DoP, manuali di posa) e alle prescrizioni del progettista strutturale.",
+  "suffix": "Nota finale: attenersi sempre ai documenti ufficiali e alle prescrizioni del progettista.",
   "topics": {
-    "p560": "P560 (chiodatrice a carica propulsiva): usare DPI completi (occhiali, guanti, cuffie), verificare l’integrità del pistone e delle parti soggette a usura. Impiegare solo cariche e chiodi compatibili e certificati.",
-    "chiodatrice": "Uso chiodatrici: personale addestrato, area di sparo sgombra, mai puntare verso persone/retro del supporto; pulizia periodica per garantire costanza di rendimento.",
-    "ctf": "CTF: connettori a piolo per solai collaboranti acciaio–calcestruzzo; aumentano la rigidezza del solaio collegando profili in acciaio e soletta in cls; certificazione ETA e marcatura CE.",
-    "diapason": "Connettori Diapason: alternativa ai pioli per ottenere una distribuzione più ampia del carico nella soletta; valutare passo e disposizione secondo specifiche di posa.",
-    "cem-e": "Connettori CEM-E: indicati per collegare getti di calcestruzzo nuovi a esistenti; utili in interventi di rinforzo/adeguamento con riprese di getto.",
-    "ctl": "CTL (legno-calcestruzzo): sistema di connettori per solai collaboranti legno-cls; attenzione a essenze/umidità del legno e alle verifiche di scorrimento.",
-    "contatti": "Per contatti: specifica sempre oggetto della richiesta, cantiere/progetto, tempi richiesti e recapito. Questo velocizza l’assistenza tecnica.",
-    "certificazioni": "Documentazione: cerca sempre ETA (valutazione tecnica europea), DoP (dichiarazione di prestazione), marcatura CE, manuali di posa e relazioni di calcolo."
+    "p560": "P560 (chiodatrice a carica propulsiva): DPI completi; usare cariche/chiodi compatibili; pulizia periodica.",
+    "ctf": "CTF: connettori a piolo per solai acciaio–calcestruzzo; ETA + marcatura CE.",
+    "diapason": "Diapason: distribuzione più ampia del carico; definire interassi secondo schede.",
+    "cem-e": "CEM-E: collegano getti nuovi a esistenti; attenzione alla preparazione del supporto.",
+    "ctl": "CTL legno–cls: verificare umidità legno e interassi per limitare scorrimenti."
   },
   "rules": [
     {
       "if_any": ["contatti","telefono","tel","email","mail","orari","sede","indirizzo"],
-      "add": "Per richieste tecniche: indica tipologia di solaio (lamiera grecata/soletta piena/legno-cls), spessori e carichi previsti."
+      "add": "Per assistenza: indica tipo di solaio (lamiera/soletta/legno-cls), spessori e carichi."
     },
     {
       "if_all": ["ctf","lamiera"],
-      "add": "CTF su lamiera grecata: verifica altezza d’onda e spessore della lamiera, passo dei connettori e compatibilità con l’ETA; cura la pulizia dei fori e il corretto ancoraggio nel cls."
+      "add": "CTF su lamiera grecata: verifica altezza d’onda, spessore lamiera, passo connettori, compatibilità ETA."
     },
     {
       "if_all": ["ctf","soletta","piena"],
-      "add": "CTF su soletta piena: controlla copriferro, passo connettori e classe del calcestruzzo; rispetta le distanze minime tra ancoraggi."
-    },
-    {
-      "if_all": ["diapason","distribuzione","carico"],
-      "add": "Diapason: usali quando serve distribuire il carico su un’area maggiore; definisci interasse e schema di posa secondo schede tecniche."
+      "add": "CTF su soletta piena: controlla copriferro, interassi e classe del cls; rispetta distanze minime."
     },
     {
       "if_all": ["cem-e","ripresa","getto"],
-      "add": "CEM-E per riprese di getto: prepara adeguatamente il supporto (pulizia, eventuale scarifica), usa primer/boiacca se previsto e rispetta i copriferri."
+      "add": "CEM-E: prepara il supporto (pulizia/scarifica), primer/boiacca se previsto, rispetto dei copriferri."
     },
     {
-      "if_any": ["eta","dop","marcatura","ce","certificazione","certificazioni"],
-      "add": "Ricorda: i sistemi sono coperti da ETA e marcatura CE; fai sempre riferimento alle versioni più aggiornate dei documenti ufficiali."
+      "if_any": ["eta","dop","ce","certificazione","certificazioni"],
+      "add": "Usa sempre le versioni aggiornate di ETA/DoP e schede tecniche."
     },
     {
       "if_any": ["posa","installazione","montaggio","manuale","istruzioni"],
-      "add": "Posa: segui le istruzioni del manuale, usa dime/attrezzi compatibili, mantieni il passo specificato e registra eventuali non conformità."
-    },
-    {
-      "if_any": ["sicurezza","dpi","cantiere","rischi"],
-      "add": "Sicurezza: predisponi area di lavoro protetta, verifica parapetti e linee vita quando operi in quota; DPI obbligatori."
+      "add": "Posa: segui manuale; usa dime/attrezzi compatibili; mantieni il passo dichiarato."
     },
     {
       "if_all": ["p560","chiodo"],
-      "add": "P560: scegli cariche adeguate alla durezza del supporto; dopo un certo numero di colpi esegui la pulizia e controlla l’usura di pistone e ammortizzatori."
-    },
-    {
-      "if_all": ["legno","calcestruzzo","ctl"],
-      "add": "Legno-cls (CTL): verifica umidità del legno, eventuali trattamenti, e dimensiona gli interassi per limitare lo scorrimento relativo."
-    },
-    {
-      "if_any": ["progetto","calcolo","verifica","strutturale"],
-      "add": "Coordinati con il progettista strutturale: l’impiego dei connettori deve rispettare verifiche agli SLU/SLE e la normativa vigente."
+      "add": "P560: scegli cariche adeguate al supporto; controlla usura pistone/ammortizzatori dopo N colpi."
     }
   ]
 }
