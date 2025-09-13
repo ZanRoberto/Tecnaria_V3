@@ -1,149 +1,134 @@
 # -*- coding: utf-8 -*-
-import os, sys, json, glob
-from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS
+import os
+import time
+from flask import Flask, request, jsonify, render_template
+from scraper_tecnaria import build_index, is_ready, search_best_answer
 
-# === Import dallo scraper ===
-# DEVONO esistere: build_index(dir), search_best_answer(q, threshold, topk),
-# is_ready() e INDEX nello scraper_tecnaria.py
-from scraper_tecnaria import (
-    build_index,
-    search_best_answer,
-    is_ready,
-    INDEX,
-)
+app = Flask(__name__, template_folder="templates", static_folder="static")
 
-# === Config ===
-DOC_DIR = os.environ.get("DOC_DIR", "documenti_gTab")
-SIM_THRESHOLD = float(os.environ.get("SIMILARITY_THRESHOLD", "0.35"))
-TOPK = int(os.environ.get("TOPK_SEMANTIC", "20"))
+# ======================
+# ENV & Stato auto-index
+# ======================
+DOC_DIR = os.getenv("DOC_DIR", "documenti_gTab")
+SINAPSI_PATH = os.getenv("SINAPSI_BOT_JSON", "SINAPSI_BOT.JSON")
 
-# === Flask ===
-app = Flask(__name__)
-CORS(app)
+AUTO_REINDEX_WATCH = os.getenv("AUTO_REINDEX_WATCH", "1") == "1"    # guarda i .txt
+WATCH_SINAPSI      = os.getenv("WATCH_SINAPSI", "1") == "1"         # guarda SINAPSI_BOT_JSON
+AUTO_REINDEX_TTL   = int(os.getenv("AUTO_REINDEX_TTL", "0"))        # secondi; 0 = controlla sempre
+SHOW_MATCHED_QUESTION = os.getenv("SHOW_MATCHED_QUESTION", "0") == "1"
 
-def _list_txt(dirpath):
+_last_index_built_at = 0.0
+_last_docs_mtime = 0.0
+_last_sinapsi_mtime = 0.0
+
+def _tree_mtime(path: str) -> float:
+    most = 0.0
+    if not os.path.exists(path):
+        return 0.0
+    for root, _, files in os.walk(path):
+        for fn in files:
+            if fn.lower().endswith(".txt"):
+                try:
+                    m = os.path.getmtime(os.path.join(root, fn))
+                    if m > most:
+                        most = m
+                except Exception:
+                    pass
+    return most
+
+def _file_mtime(path: str) -> float:
     try:
-        return sorted(glob.glob(os.path.join(dirpath, "*.txt"))) + \
-               sorted(glob.glob(os.path.join(dirpath, "*.TXT")))
+        return os.path.getmtime(path)
     except Exception:
-        return []
+        return 0.0
 
-def _force_build_index():
-    """
-    Costruzione SINCRONA all’avvio (niente 'indice non pronto').
-    Se fallisce, stampa un log diagnostico con elenco file visti.
-    """
-    app.logger.warning("[startup] Build indice sincrona da: %s", os.path.abspath(DOC_DIR))
-    files = _list_txt(DOC_DIR)
-    app.logger.warning("[startup] Trovati %d file .txt/.TXT", len(files))
-    if not files:
-        app.logger.error("[startup] NESSUN file .txt trovato in %s", os.path.abspath(DOC_DIR))
-    for f in files[:50]:
-        app.logger.warning("[startup]  - %s", f)
+def ensure_index_fresh(force: bool = False):
+    """Ricostruisce l'indice quando serve (startup, reload, txt/sinapsi cambiati, TTL)."""
+    global _last_index_built_at, _last_docs_mtime, _last_sinapsi_mtime
 
-    try:
-        build_index(DOC_DIR)   # <-- BLOCCANTE
-    except Exception as e:
-        app.logger.exception("[startup] ERRORE build_index: %s", e)
+    now = time.time()
+    needs = force or not is_ready()
 
-    try:
-        docs = len(INDEX) if INDEX is not None else 0
-    except Exception:
-        docs = 0
+    # TTL
+    if AUTO_REINDEX_TTL > 0 and (now - _last_index_built_at) > AUTO_REINDEX_TTL:
+        needs = True
 
-    app.logger.warning("[startup] Indice pronto: %s | docs=%d", is_ready(), docs)
-    return docs > 0
+    # Watch .txt
+    if AUTO_REINDEX_WATCH:
+        docs_m = _tree_mtime(DOC_DIR)
+        if docs_m > _last_docs_mtime:
+            needs = True
 
-# === COSTRUISCI L’INDICE PRIMA DI ESPORRE LE ROUTE ===
-_force_build_index()
+    # Watch Sinapsi JSON
+    if WATCH_SINAPSI:
+        sin_m = _file_mtime(SINAPSI_PATH)
+        if sin_m > _last_sinapsi_mtime:
+            needs = True
 
-# === Routes ===
+    if needs:
+        n = build_index(DOC_DIR)
+        _last_index_built_at = now
+        _last_docs_mtime = _tree_mtime(DOC_DIR)
+        _last_sinapsi_mtime = _file_mtime(SINAPSI_PATH)
+        app.logger.warning(f"[autoindex] rebuilt index: docs_count={n} dir={DOC_DIR} sinapsi={SINAPSI_PATH}")
+        return {"rebuilt": True, "docs": n}
+
+    return {"rebuilt": False}
+
+# ==============
+# Startup sicuro
+# ==============
+try:
+    app.logger.warning(f"[startup] Building index from: {DOC_DIR}")
+    ensure_index_fresh(force=True)
+    app.logger.warning(f"[startup] ready={is_ready()}")
+except Exception as e:
+    app.logger.exception("[startup] index build failed")
+
+# =======
+# Routes
+# =======
 @app.route("/", methods=["GET"])
 def home():
-    return render_template("index.html")
-
-@app.route("/ask", methods=["POST"])
-def ask():
-    q = (request.form.get("domanda") or "").strip()
-    if not q:
-        return jsonify({"answer": "Nessuna domanda ricevuta.", "found": False, "from": None})
-
-    # Se per qualunque motivo l’indice non fosse pronto, RICOSTRUISCI subito e rispondi
-    if not is_ready():
-        app.logger.warning("[ask] Indice non pronto: ricostruisco SINCRONO")
-        ok = _force_build_index()
-        if not ok:
-            return jsonify({
-                "answer": "Indice non pronto. Controlla i file .txt in documenti_gTab.",
-                "found": False,
-                "from": None
-            })
-
+    # Se hai templates/index.html lo usa; altrimenti risponde semplice.
     try:
-        result = search_best_answer(q, threshold=SIM_THRESHOLD, topk=TOPK)
-        # (opzionale) post-processing: togli eventuali “D:/R:” se nel testo sorgente
-        ans = (result.get("answer") or "")
-        if ans.startswith("D:") or ans.startswith("R:"):
-            # rimuovi etichette riga-iniziali per presentazione più pulita
-            cleaned = []
-            for line in ans.splitlines():
-                if line.startswith("D: ") or line.startswith("R: "):
-                    cleaned.append(line[3:])
-                else:
-                    cleaned.append(line)
-            result["answer"] = "\n".join(cleaned)
-
-        return jsonify(result)
-    except Exception as e:
-        app.logger.exception("[ask] Errore in search_best_answer: %s", e)
-        return jsonify({
-            "answer": "Errore interno durante la ricerca.",
-            "found": False,
-            "from": None
-        }), 500
-
-@app.route("/reload", methods=["POST"])
-def reload():
-    app.logger.warning("[reload] Ricostruzione SINCRONA richiesta")
-    ok = _force_build_index()
-    docs = len(INDEX) if INDEX is not None else 0
-    if ok:
-        return jsonify({"status": "ok", "docs": docs})
-    else:
-        return jsonify({"status": "error", "docs": docs}), 500
+        return render_template("index.html")
+    except Exception:
+        return "Tecnaria · Assistente documentale", 200
 
 @app.route("/health", methods=["GET"])
 def health():
+    return jsonify({"ok": True, "ready": is_ready(), "doc_dir": DOC_DIR, "sinapsi": SINAPSI_PATH}), 200
+
+@app.route("/reload", methods=["POST"])
+def reload_index():
     try:
-        docs = len(INDEX) if INDEX is not None else 0
+        out = ensure_index_fresh(force=True)
+        return jsonify({"ok": True, **out}), 200
+    except Exception as e:
+        app.logger.exception("[reload] failed")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/ask", methods=["POST"])
+def ask():
+    data = request.get_json(silent=True) or {}
+    q = (data.get("q") or "").strip()
+    if not q:
+        return jsonify({"found": False, "answer": "", "error": "empty question"}), 400
+
+    try:
+        ensure_index_fresh(force=False)
     except Exception:
-        docs = 0
-    return jsonify({
-        "status": "ok" if docs > 0 else "empty",
-        "docs": docs,
-        "threshold": SIM_THRESHOLD,
-        "topk": TOPK,
-        "doc_dir": os.path.abspath(DOC_DIR),
-        "ready": is_ready(),
-    })
+        app.logger.exception("[ask] ensure_index_fresh error")
 
-# DIAGNOSTICA EXTRA: elenca i file che l’app vede davvero
-@app.route("/diag", methods=["GET"])
-def diag():
-    files = _list_txt(DOC_DIR)
-    payload = {
-        "cwd": os.getcwd(),
-        "doc_dir": os.path.abspath(DOC_DIR),
-        "exists_doc_dir": os.path.isdir(DOC_DIR),
-        "txt_count": len(files),
-        "first_files": files[:50],
-        "ready": is_ready(),
-        "env": {k: os.environ.get(k) for k in ["DOC_DIR", "SIMILARITY_THRESHOLD", "TOPK_SEMANTIC", "SINAPSI_JSON"]}
-    }
-    return jsonify(payload)
+    res = search_best_answer(q)
 
-# === Avvio locale ===
+    if not SHOW_MATCHED_QUESTION:
+        res.pop("matched_question", None)
+
+    return jsonify(res), 200
+
+# ---- main (utile per esecuzione locale) ----
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("DEBUG", "0") == "1")
