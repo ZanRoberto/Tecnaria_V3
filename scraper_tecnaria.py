@@ -326,7 +326,94 @@ def _sinapsi_enrich(answer: str, query: str, meta: Dict[str, any]) -> str:
     nq = _tok(query)
     extra: List[str] = []
     px = _SINAPSI.get("prefix")
-    if px: extra.append(str(px).strip())
+    if px: 
+        extra.append(str(px).strip())
     for k, v in (_SINAPSI.get("topics") or {}).items():
-        if _tok(str(k)) & nq:
-            extra.append(str(v).s
+        nk = _tok(str(k))
+        if nk and (nk & nq):
+            extra.append(str(v).strip())
+    for r in (_SINAPSI.get("rules") or []):
+        any_ = _tok(" ".join(r.get("if_any", [])))
+        all_ = _tok(" ".join(r.get("if_all", [])))
+        ok_any = (not any_) or bool(any_ & nq)
+        ok_all = (not all_) or all(t in nq for t in all_)
+        if ok_any and ok_all:
+            add = str(r.get("add","")).strip()
+            if add:
+                extra.append(add)
+    enrichment = "\n".join([t for t in extra if t])
+    final = (answer.strip() + ("\n\n" + enrichment if enrichment else "")).strip()
+    sx = _SINAPSI.get("suffix")
+    if sx:
+        final = f"{final}\n\n{str(sx).strip()}".strip()
+    return final
+
+def search_best_answer(query: str,
+                       threshold: Optional[float] = None,
+                       topk: Optional[int] = None) -> Dict[str, any]:
+    thr = SIMILARITY_THRESHOLD if threshold is None else float(threshold)
+    k = TOP_K if topk is None else int(topk)
+    try:
+        scored = _search_raw(query or "", k)
+        if not scored:
+            if DEBUG: print(f"[SCRAPER] Nessun candidato per: {query}")
+            return {"answer": "", "found": False, "from": None}
+        best_score, best_chunk = scored[0]
+        if best_score < max(0.0, thr):
+            if best_score < max(0.15, thr * 0.7):
+                return {"answer": "", "found": False, "from": None}
+        answer = (best_chunk.text or "").strip()
+        if not answer:
+            return {"answer": "", "found": False, "from": None}
+        if MAX_ANSWER_CHARS and len(answer) > MAX_ANSWER_CHARS:
+            cut = answer[:MAX_ANSWER_CHARS]
+            m = re.search(r"(?s)^(.+?[\.!\?])(\s|$)", cut)
+            answer = (m.group(1) if m else cut).rstrip() + " …"
+        try:
+            answer = _sinapsi_enrich(answer, query, {
+                "file": best_chunk.doc,
+                "section": best_chunk.section,
+                "tags": best_chunk.tags
+            })
+        except Exception as e:
+            if DEBUG: print(f"[WARN] enrich error: {e}")
+        return {
+            "answer": answer,
+            "found": True,
+            "score": round(float(best_score), 3),
+            "from": best_chunk.doc,
+            "tags": best_chunk.tags or []
+        }
+    except Exception as e:
+        if DEBUG: print(f"[ERROR] search_best_answer fatal: {e}")
+        return {"answer": "", "found": False, "from": None}
+
+def risposta_document_first(domanda: str) -> str:
+    try:
+        domanda = (domanda or "").strip()
+        if not domanda:
+            return ""
+        out = search_best_answer(domanda)
+        ans = (out.get("answer") or "").strip()
+        return ans if ans else "Non ho trovato riferimenti nei documenti locali."
+    except Exception as e:
+        if DEBUG: print(f"[ERROR] risposta_document_first: {e}")
+        return "Non ho trovato riferimenti nei documenti locali."
+
+if __name__ == "__main__":
+    print(f"[INFO] DOC_DIR={_abspath(DOC_DIR)} thr={SIMILARITY_THRESHOLD} topk={TOP_K} debug={DEBUG}")
+    t0 = time.time()
+    n = build_index(DOC_DIR)
+    print(f"[INFO] Indice pronto: {n} chunk in {time.time()-t0:.2f}s")
+    try:
+        while True:
+            q = input("Domanda> ").strip()
+            if not q:
+                continue
+            res = search_best_answer(q)
+            print("\n--- RISPOSTA ---")
+            print(res.get("answer") or "[vuota]")
+            print(f"\n[from={res.get('from')} score={res.get('score')} tags={res.get('tags')}]")
+            print()
+    except (EOFError, KeyboardInterrupt):
+        print("\nBye.")
