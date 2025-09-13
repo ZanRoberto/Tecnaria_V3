@@ -79,3 +79,53 @@ Tecnaria fornisce manuali con istruzioni, distanze minime e schede DoP.
 D: Che certificazioni hanno i connettori CTL?
 R: Tutti i connettori CTL sono certificati ETA e marcati CE. 
 Ogni lotto è tracciabile e corredato da Dichiarazione di Prestazione (DoP).
+[TAGS: ctl, connettori ctl, connettore legno-calcestruzzo, legno calcestruzzo, solaio collaborante legno, ctla, ctlb, ctlm, omega, differenza, confronto, vs, posa ctl, viti, ce, dop, eta, legno lamellare, clt, legno massiccio, sismica, corrosione]
+
+D: Che cosa sono i connettori CTL?
+R: I CTL sono connettori Tecnaria per solai collaboranti legno–calcestruzzo. Collegano travi/pannelli in legno con la soletta in calcestruzzo, aumentando rigidezza e resistenza. Sono disponibili in versioni Base (CTLB), Maxi (CTLM) e Omega, per diverse esigenze prestazionali.
+
+D: Mi parli dei connettori CTL?
+R: I CTL creano collaborazione legno–calcestruzzo in nuove costruzioni e consolidamenti. Offrono posa rapida con viti certificate e documentazione completa (ETA, CE, DoP), con ampia gamma di altezze per adeguarsi agli spessori di soletta.
+
+D: In quali strutture si utilizzano i CTL?
+R: In solai con travi in legno massiccio, lamellare e pannelli CLT, sia per nuovi solai sia per rinforzo di esistenti.
+
+D: Come si posano i CTL?
+R: Con avvitatori standard e viti certificate. Il manuale Tecnaria specifica inclinazioni, passi e distanze minime; rispettare profondità nel legno e copriferro nella soletta.
+
+D: Qual è la differenza tra CTL Base e CTL Maxi?
+R: CTL Base (viti Ø8 mm) è indicato per spessori ridotti e carichi standard; CTL Maxi (viti Ø10 mm) offre maggiore capacità per travi più grandi o richieste superiori. La scelta dipende da spessori, numero di viti e verifiche di progetto; fare riferimento alla scheda tecnica aggiornata.
+
+D: CTLB vs CTLM? Quale scelgo?
+R: Usa CTLB per casi standard con sezioni e richieste contenute; preferisci CTLM quando servono prestazioni più alte. La decisione si basa su spessori, resistenze del legno e capacità di taglio richiesta.
+
+D: Esistono più varianti di altezza?
+R: Sì, gamma 20–200 mm per adattarsi agli spessori di soletta e alle prestazioni richieste.
+
+D: Che cos’è un connettore CTL Omega?
+R: CTL Omega (piastra a “Ω” con vite tirafondo Ø10) è adatto a legno lamellare o massiccio quando servono alte prestazioni di ancoraggio; codici tipici: 40V-10/100, 40/120, 40/140.
+
+D: Quali sono i codici della serie CTL Base?
+R: CTLB020 … CTLB200 (altezze 20–200 mm). Piastra 50×50×4 mm; viti Ø8 mm.
+
+D: Quali sono i codici della serie CTL Maxi?
+R: CTLM020 … CTLM200 (altezze 20–200 mm). Viti Ø10 mm; maggiore capacità portante rispetto alla serie Base.
+
+D: Che certificazioni hanno i CTL?
+R: Tutti i modelli CTL sono marcati CE con DoP e valutazioni ETA che riportano valori caratteristici di resistenza e rigidezza. Ogni lotto è tracciabile.
+
+D: I CTL sono adatti anche in zona sismica?
+R: Sì. Le valutazioni ETA includono prove cicliche/idoneità anche per interventi in zona sismica, nel rispetto dei limiti indicati.
+
+D: I CTL sono zincati?
+R: Sì, le piastre sono zincate per protezione in ambienti ordinari. Valutare protezioni aggiuntive in contesti aggressivi.
+
+D: Che documentazione accompagna i CTL?
+R: Schede tecniche, DoP, ETA, manuali di posa e relazioni di calcolo con esempi applicativi.
+
+D: Qual è il vantaggio per il progettista?
+R: Sistema certificato con dati sperimentali pronti, che velocizza il progetto e assicura conformità normativa.
+
+D: Qual è il vantaggio per l’impresa?
+R: Posa semplice con avvitatori standard, ampia disponibilità a magazzino e supporto tecnico in cantiere.
+
