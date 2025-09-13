@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 scraper_tecnaria.py — versione stabile (TF-IDF + cosine) con hook Sinapsi opzionale.
+Compatibilità: espone anche `INDEX` (alias pubblico) per app.py legacy.
 
-ENV consigliato (.env):
+ENV consigliato:
 DOC_DIR=documenti_gTab
 SIMILARITY_THRESHOLD=0.30
 MIN_CHARS_PER_CHUNK=250
@@ -11,14 +12,7 @@ TOP_K=5
 MAX_ANSWER_CHARS=1200
 DEBUG=1
 SINAPSI_ENABLE=1
-SINAPSI_BOT_JSON=sinapsi_bot.json
-
-API esposte:
-- build_index(doc_dir: str|None) -> int
-- reload_index() -> None
-- is_ready() -> bool
-- search_best_answer(q: str, threshold: float|None=None, topk: int|None=None) -> dict
-- risposta_document_first(q: str) -> str
+SINAPSI_BOT_JSON=SINAPSI_BOT.JSON   # oppure sinapsi_bot.json, coerente col nome file
 """
 
 from __future__ import annotations
@@ -90,9 +84,20 @@ class DocChunk:
     tags: List[str]
     tfidf: Dict[str, float]
 
+# Indice interno
 _INDEX: List[DocChunk] = []
 _IDF: Dict[str, float] = {}
 _SINAPSI: Dict[str, any] = {}
+
+# Alias pubblico per compatibilità con app.py legacy
+INDEX: List[Dict[str, any]] = []  # verrà popolato da _update_public_index()
+
+def _update_public_index() -> None:
+    """Ricostruisce l'alias pubblico `INDEX` dal nuovo indice interno."""
+    global INDEX
+    INDEX = [{"file": ch.doc, "section": ch.section, "text": ch.text, "tags": ch.tags} for ch in _INDEX]
+    if DEBUG:
+        print(f"[SCRAPER] Compat: INDEX len={len(INDEX)} (public alias)")
 
 def _extract_tags_and_body(text: str) -> Tuple[List[str], str]:
     lines = text.splitlines()
@@ -244,6 +249,9 @@ def build_index(doc_dir: Optional[str] = None) -> int:
         if DEBUG: print(f"[WARN] build tfidf error: {e}")
         for ch in _INDEX: ch.tfidf = {}
 
+    # Aggiorna alias pubblico per compatibilità
+    _update_public_index()
+
     if SINAPSI_ENABLE:
         _SINAPSI = _safe_load_json(_abspath(SINAPSI_PATH))
 
@@ -258,7 +266,8 @@ def reload_index() -> None:
     build_index(DOC_DIR)
 
 def is_ready() -> bool:
-    return bool(_INDEX)
+    # compat: alcuni app.py usano bool(INDEX)
+    return bool(_INDEX) or bool(INDEX)
 
 def _strip_QA(text: str) -> str:
     lines = []
