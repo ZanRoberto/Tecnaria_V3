@@ -106,11 +106,33 @@
       "if_all": ["ctf","lamiera"],
       "add": "Checklist posa su lamiera: verifica passo/spessore; controlla infissione; definisci passo e schema da relazione di calcolo."
     }
-  ]
-}
-
+{
+  "topics": {
+    "ctl": "Sintesi CTL: connettori per solai legno–calcestruzzo; versioni CTLB/CTLM/Omega; posa con viti certificate; scelta in base a spessori e capacità; riferimento a schede tecniche/ETA.",
+    "ctlb": "CTLB: versione Base (viti Ø8) per casi standard e spessori ridotti.",
+    "ctlm": "CTLM: versione Maxi (viti Ø10) per capacità superiore e travi più grandi.",
+    "omega": "CTL Omega: piastra a Ω con vite tirafondo; ancoraggi ad alte prestazioni su legno lamellare/massiccio."
+  },
+  "rules": [
+    {
+      "if_any": ["ctl","ctlb","ctlm","omega","connettore","legno","legno-calcestruzzo"],
+      "add": "Nota: rispettare passo, distanze minime e profondità di avvitatura; controllare l’umidità del legno e i dettagli costruttivi secondo manuale Tecnaria."
+    },
+    {
+      "if_any": ["differenza","confronto","vs","scelgo","ctlb","ctlm"],
+      "add": "Scelta CTLB vs CTLM: basarsi su spessori del tavolato/pannello, numero di viti installabili e capacità richiesta dal progetto; verificare sempre con scheda tecnica e relazioni di calcolo."
+    },
+    {
+      "if_any": ["posa","installazione","montaggio","viti","coppia","distanze"],
+      "add": "Posa: usare avvitatori idonei; rispettare coppia di serraggio, inclinazioni e distanze dai bordi; controllo qualità a campione in cantiere."
+    },
+    {
+      "if_any": ["sismica","eta","certificazione","dop","ce"],
+      "add": "Documentazione: utilizzare versioni e lotti certificati (ETA/CE/DoP) aggiornati; riportare nel progetto i valori caratteristici pertinenti."
     }
   ]
 }
+
+
 
 
