@@ -1,18 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-scraper_tecnaria.py — versione stabile (TF-IDF + cosine) con hook Sinapsi opzionale.
-Compatibilità: espone anche `INDEX` (alias pubblico) per app.py legacy.
+scraper_tecnaria.py — stabile (TF-IDF + cosine) con hook Sinapsi opzionale.
+✅ Configurazione letta dalle variabili d'ambiente del sistema (Render → Environment).
+   Nessun file .env richiesto e nessuna configurazione scritta nel codice.
 
-ENV consigliato:
-DOC_DIR=documenti_gTab
-SIMILARITY_THRESHOLD=0.30
-MIN_CHARS_PER_CHUNK=250
-OVERLAP_CHARS=60
-TOP_K=5
-MAX_ANSWER_CHARS=1200
-DEBUG=1
-SINAPSI_ENABLE=1
-SINAPSI_BOT_JSON=SINAPSI_BOT.JSON   # oppure sinapsi_bot.json, coerente col nome file
+Chiavi supportate (case‑sensitive su Linux/Render):
+  - DOC_DIR
+  - SIMILARITY_THRESHOLD
+  - MIN_CHARS_PER_CHUNK
+  - OVERLAP_CHARS
+  - TOP_K
+  - MAX_ANSWER_CHARS
+  - DEBUG
+  - SINAPSI_ENABLE
+  - SINAPSI_BOT_JSON
+
+API esposte (compatibili con app.py legacy):
+  - build_index(doc_dir: str|None) -> int
+  - reload_index() -> None
+  - is_ready() -> bool
+  - search_best_answer(q: str, threshold: float|None=None, topk: int|None=None) -> dict
+  - risposta_document_first(q: str) -> str
+  - INDEX  (alias pubblico)
 """
 
 from __future__ import annotations
@@ -22,7 +31,7 @@ from typing import List, Dict, Tuple, Optional
 from collections import Counter, defaultdict
 
 # =========================
-# Config
+# Config (da ENV – nessun .env richiesto)
 # =========================
 DOC_DIR = os.getenv("DOC_DIR", "documenti_gTab")
 SIMILARITY_THRESHOLD = float(os.getenv("SIMILARITY_THRESHOLD", "0.30"))
@@ -33,7 +42,8 @@ MAX_ANSWER_CHARS = int(os.getenv("MAX_ANSWER_CHARS", "1200"))
 DEBUG = os.getenv("DEBUG", "0") == "1"
 
 SINAPSI_ENABLE = os.getenv("SINAPSI_ENABLE", "1") == "1"
-SINAPSI_PATH = os.getenv("SINAPSI_BOT_JSON", "sinapsi_bot.json")
+# Default allineato al tuo Render: file in UPPERCASE nella root del progetto
+SINAPSI_PATH = os.getenv("SINAPSI_BOT_JSON", "SINAPSI_BOT.JSON")
 
 STOPWORDS = {
     "tecnaria","spa","s.p.a.",
@@ -90,7 +100,7 @@ _IDF: Dict[str, float] = {}
 _SINAPSI: Dict[str, any] = {}
 
 # Alias pubblico per compatibilità con app.py legacy
-INDEX: List[Dict[str, any]] = []  # verrà popolato da _update_public_index()
+INDEX: List[Dict[str, any]] = []  # popolato da _update_public_index()
 
 def _update_public_index() -> None:
     """Ricostruisce l'alias pubblico `INDEX` dal nuovo indice interno."""
@@ -258,7 +268,7 @@ def build_index(doc_dir: Optional[str] = None) -> int:
     if DEBUG:
         r = len((_SINAPSI.get("rules") or [])) if _SINAPSI else 0
         t = len((_SINAPSI.get("topics") or {})) if _SINAPSI else 0
-        print(f"[SCRAPER] Sinapsi {'ON' if _SINAPSI else 'OFF'} (rules={r}, topics={t})")
+        print(f"[SCRAPER] Sinapsi {'ON' if _SINAPSI else 'OFF'} (rules={r}, topics={t}) file={_abspath(SINAPSI_PATH)}")
         print(f"[SCRAPER] Chunk indicizzati: {tot_chunks}")
     return tot_chunks
 
@@ -335,7 +345,7 @@ def _sinapsi_enrich(answer: str, query: str, meta: Dict[str, any]) -> str:
     nq = _tok(query)
     extra: List[str] = []
     px = _SINAPSI.get("prefix")
-    if px: 
+    if px:
         extra.append(str(px).strip())
     for k, v in (_SINAPSI.get("topics") or {}).items():
         nk = _tok(str(k))
