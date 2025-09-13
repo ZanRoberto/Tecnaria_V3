@@ -1,9 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-scraper_tecnaria.py — TF-IDF + cosine con Sinapsi (opzionale) — build: TEC-SINAPSI-2025-09-13-INDEX-FIX
-Configurazione letta solo da ENV di sistema (Render → Environment). Nessun file .env.
+scraper_tecnaria.py — TEC-SINAPSI-2025-09-13-FULL
+Motore di ricerca locale (TF-IDF + cosine) con arricchimento opzionale Sinapsi.
 
-API: build_index, reload_index, is_ready, search_best_answer, risposta_document_first, INDEX (alias pubblico)
+✅ Nessun .env: legge SOLO variabili d’ambiente di sistema (Render -> Environment).
+✅ Export pubblico `INDEX` (compatibile con app.py legacy).
+✅ Auto-build dell’indice alla prima ricerca se vuoto.
+✅ Pulizia Q/A: rimuove sempre "D:"/"R:" e le domande nude (righe che terminano con "?") se è presente una "R:" nel blocco.
+✅ Estrazione Q→A: se trova "Domanda?\nR: ..." ritorna SOLO la risposta migliore rispetto alla query.
+✅ Boost intelligenti: TAG e nome file (es. P560.txt) + sinonimi di query (p560, spit, chiodatrice, sparachiodi).
+✅ Sinapsi: se SINAPSI_ENABLE=1 e SINAPSI_BOT_JSON esiste, arricchisce la risposta; altrimenti non influisce.
+
+API esposte:
+  - build_index(doc_dir: str|None) -> int
+  - reload_index() -> None
+  - is_ready() -> bool
+  - search_best_answer(q: str, threshold: float|None=None, topk: int|None=None) -> dict
+  - risposta_document_first(q: str) -> str
+  - INDEX (alias pubblico compat)
 """
 
 from __future__ import annotations
@@ -12,7 +26,7 @@ from dataclasses import dataclass
 from typing import List, Dict, Tuple, Optional
 from collections import Counter, defaultdict
 
-__SCRAPER_VERSION__ = "TEC-SINAPSI-2025-09-13-INDEX-FIX"
+__SCRAPER_VERSION__ = "TEC-SINAPSI-2025-09-13-FULL"
 
 # =========================
 # Config (da ENV – nessun .env richiesto)
@@ -27,6 +41,9 @@ DEBUG = os.getenv("DEBUG", "0") == "1"
 SINAPSI_ENABLE = os.getenv("SINAPSI_ENABLE", "1") == "1"
 SINAPSI_PATH = os.getenv("SINAPSI_BOT_JSON", "SINAPSI_BOT.JSON")  # case-sensitive
 
+# =========================
+# Stopwords / normalizzazione
+# =========================
 STOPWORDS = {
     "tecnaria","spa","s.p.a.",
     "il","lo","la","i","gli","le","un","uno","una","di","del","della","dell","dei","degli","delle",
@@ -34,27 +51,20 @@ STOPWORDS = {
     "che","come","qual","quale","quali","dove","quando","quindi","anche","mi","ti","si","ci","vi"
 }
 
-INTENT_MAP = {
-    "contatti": ["contatti","telefono","tel","email","mail","orari","sede","indirizzo","assistenza"],
-    "telefono": ["telefono","tel","contatti"],
-    "email": ["email","mail","contatti"],
-    "orari": ["orari","apertura","chiusura","contatti"],
-    "sede": ["sede","indirizzo","contatti"],
-    "certificazioni": ["certificazioni","eta","dop","ce","marcatura"],
-}
-
-WS = re.compile(r"\s+", flags=re.UNICODE)
-_TAGS_RE = re.compile(r"^\s*\[TAGS\s*:\s*(.*?)\]\s*$", re.IGNORECASE)
-_D_RE = re.compile(r"^\s*(D|DOMANDA)\s*:\s*(.*)$", re.IGNORECASE)
-_R_RE = re.compile(r"^\s*(R|RISPOSTA)\s*:\s*(.*)$", re.IGNORECASE)
+WS = re.compile(r"\\s+", flags=re.UNICODE)
+_TAGS_RE = re.compile(r"^\\s*\\[TAGS\\s*:\\s*(.*?)\\]\\s*$", re.IGNORECASE)
+_D_RE = re.compile(r"^\\s*(D|DOMANDA)\\s*:\\s*(.*)$", re.IGNORECASE)
+_R_RE = re.compile(r"^\\s*(R|RISPOSTA)\\s*:\\s*(.*)$", re.IGNORECASE)
+# domanda "nuda": riga con 3-120 caratteri che termina con ? (pallino/bullet opzionale)
+_Q_NAKED_RE = re.compile(r"^\\s*(?:[-•*]\\s*)?.{3,120}\\?\\s*$")
 
 def _strip_accents(s: str) -> str:
     return "".join(ch for ch in unicodedata.normalize("NFKD", s) if not unicodedata.combining(ch))
 
 def _clean(s: str) -> str:
-    s = s.replace("\r", "\n")
+    s = s.replace("\\r", "\\n")
     s = WS.sub(" ", s)
-    s = re.sub(r"\n{3,}", "\n\n", s)
+    s = re.sub(r"\\n{3,}", "\\n\\n", s)
     return s.strip()
 
 def _tokenize(s: str) -> List[str]:
@@ -66,8 +76,11 @@ def _tokenize(s: str) -> List[str]:
 
 def _normalize_query(q: str) -> str:
     toks = _tokenize(q)
-    return " ".join(toks) if toks else q.strip().lower()
+    return " ".join(toks) if toks else (q or "").strip().lower()
 
+# =========================
+# Dati indice
+# =========================
 @dataclass
 class DocChunk:
     doc: str
@@ -76,27 +89,28 @@ class DocChunk:
     tags: List[str]
     tfidf: Dict[str, float]
 
-# ===== Indice interno + alias pubblico (compat) =====
 _INDEX: List[DocChunk] = []
 _IDF: Dict[str, float] = {}
 _SINAPSI: Dict[str, any] = {}
 
-# Alias pubblico per compatibilità con app.py legacy (IMPORTANTE per il tuo app.py)
-INDEX: List[Dict[str, any]] = []  # popolato da _update_public_index()
+# Alias pubblico (compat con app.py legacy)
+INDEX: List[Dict[str, any]] = []
 
 def _log_import_banner():
     if DEBUG:
-        print(f"[SCRAPER] Loaded {__SCRAPER_VERSION__} | exports INDEX={ 'INDEX' in globals() }")
+        print(f"[SCRAPER] Loaded {__SCRAPER_VERSION__} | exports INDEX=True")
 
 _log_import_banner()
 
 def _update_public_index() -> None:
-    """Ricostruisce l'alias pubblico `INDEX` dal nuovo indice interno."""
     global INDEX
     INDEX = [{"file": ch.doc, "section": ch.section, "text": ch.text, "tags": ch.tags} for ch in _INDEX]
     if DEBUG:
         print(f"[SCRAPER] Compat: INDEX len={len(INDEX)}")
 
+# =========================
+# Parsing file / sezioni
+# =========================
 def _extract_tags_and_body(text: str) -> Tuple[List[str], str]:
     lines = text.splitlines()
     tags: List[str] = []
@@ -105,13 +119,13 @@ def _extract_tags_and_body(text: str) -> Tuple[List[str], str]:
         if m:
             raw = m.group(1)
             tags = [t.strip().lower() for t in re.split(r"[;,]", raw) if t.strip()]
-        body = "\n".join(lines[1:]).strip()
+        body = "\\n".join(lines[1:]).strip()
         return tags, body
     return [], text.strip()
 
 def _split_by_sections(text: str) -> List[Tuple[str,str]]:
     text = _clean(text)
-    parts = re.split(r"^=+\s*(.*?)\s*=+\s*$", text, flags=re.MULTILINE)
+    parts = re.split(r"^=+\\s*(.*?)\\s*=+\\s*$", text, flags=re.MULTILINE)
     out: List[Tuple[str,str]] = []
     if len(parts) > 1 and len(parts) % 2 == 1:
         pre = parts[0].strip()
@@ -143,6 +157,9 @@ def _sliding_chunks(text: str, min_len: int, overlap: int) -> List[str]:
         start = max(0, end - overlap)
     return res
 
+# =========================
+# TF-IDF
+# =========================
 def _build_tfidf(chunks: List[DocChunk]) -> None:
     global _IDF
     df = defaultdict(int)
@@ -169,6 +186,7 @@ def _build_tfidf(chunks: List[DocChunk]) -> None:
 def _cosine(qv: Dict[str,float], dv: Dict[str,float]) -> float:
     if not qv or not dv:
         return 0.0
+    # iteriamo sul vettore più corto
     if len(qv) > len(dv):
         qv, dv = dv, qv
     s = 0.0
@@ -192,6 +210,122 @@ def _qvec(q: str) -> Dict[str, float]:
     norm = math.sqrt(norm) if norm > 0 else 1.0
     return {t: w / norm for t, w in vec.items()}
 
+# =========================
+# QA extraction / cleanup
+# =========================
+def _extract_qa_pairs(text: str) -> List[Tuple[str,str]]:
+    """Estrae coppie (Q,A). Supporta sia 'D:'/'R:' sia 'domanda?\\nR:'."""
+    lines = [ln.rstrip() for ln in text.splitlines()]
+    pairs: List[Tuple[str,str]] = []
+    cur_q: Optional[str] = None
+    cur_a: List[str] = []
+    in_answer = False
+
+    def _flush():
+        nonlocal cur_q, cur_a, in_answer
+        if cur_q and cur_a:
+            a = "\\n".join(cur_a).strip()
+            if a:
+                pairs.append((cur_q.strip(), a))
+        cur_q, cur_a, in_answer = None, [], False
+
+    for i, ln in enumerate(lines):
+        m_d = _D_RE.match(ln)
+        m_r = _R_RE.match(ln)
+        if m_d:
+            _flush()
+            cur_q = m_d.group(2).strip() or ""
+            in_answer = False
+            continue
+        if m_r:
+            in_answer = True
+            rest = m_r.group(2).strip()
+            if rest:
+                cur_a.append(rest)
+            continue
+        if _Q_NAKED_RE.match(ln):
+            nxt = lines[i+1].strip() if i+1 < len(lines) else ""
+            if _R_RE.match(nxt):
+                _flush()
+                cur_q = ln.strip(" ?")
+                in_answer = False
+                continue
+        if in_answer:
+            cur_a.append(ln)
+
+    _flush()
+    return pairs
+
+def _strip_QA(text: str) -> str:
+    """Rimuove domande e prefissi 'R:' dal testo."""
+    lines = text.splitlines()
+    has_r = any(_R_RE.match(ln) for ln in lines)
+    out = []
+    for ln in lines:
+        if _D_RE.match(ln):
+            continue  # elimina "D:"
+        if has_r and _Q_NAKED_RE.match(ln):
+            continue  # elimina domanda nuda se c'è una risposta nel blocco
+        ln2 = _R_RE.sub("", ln).strip()  # rimuove "R:" lasciando il contenuto
+        if ln2:
+            out.append(ln2)
+    return "\\n".join(out).strip()
+
+def _best_qa_answer_for_query(query: str, text: str) -> Optional[str]:
+    pairs = _extract_qa_pairs(text)
+    if not pairs:
+        return None
+    qnorm = set(_tokenize(query))
+    best_s = -1.0
+    best_a = None
+    for q, a in pairs:
+        qn = set(_tokenize(q))
+        inter = len(qnorm & qn)
+        denom = max(1, min(len(qnorm), len(qn)))
+        s = inter / denom
+        if s > best_s:
+            best_s = s
+            best_a = a
+    return best_a
+
+# =========================
+# Query expansion / boost
+# =========================
+_QUERY_SYNONYMS = {
+    "p560": {"spit", "pistola", "chiodatrice", "sparachiodi", "p-560"},
+    "ctf": {"piolo", "pioli", "connettore", "connettori", "collaborante"},
+    "diapason": {"connettore", "connettori"},
+    "cem": {"cem-e", "mini", "collegamento", "riprese", "getto"},
+}
+
+def _expand_query_tokens(toks: List[str]) -> List[str]:
+    out = set(toks)
+    for t in list(toks):
+        syns = _QUERY_SYNONYMS.get(t)
+        if syns:
+            out |= syns
+    return list(out)
+
+def _tag_boost(q_tokens: List[str], tags: List[str]) -> float:
+    if not tags or not q_tokens:
+        return 0.0
+    tset = set(tags)
+    hits = sum(1 for t in q_tokens if t in tset)
+    return min(0.40, 0.08 * hits)
+
+def _name_boost(q_tokens: List[str], filename: str) -> float:
+    """Boost forte se il nome file matcha il focus della query (es. P560)."""
+    base = os.path.splitext((filename or "").lower())[0]
+    if not base or not q_tokens:
+        return 0.0
+    if "p560" in q_tokens and "p560" in base:
+        return 0.50
+    hits = sum(1 for t in q_tokens if t and t in base)
+    return min(0.30, 0.10 * hits)
+
+# =========================
+# I/O util
+# =========================
 def _abspath(base: str) -> str:
     here = os.path.dirname(os.path.abspath(__file__))
     return os.path.abspath(os.path.join(here, base))
@@ -207,10 +341,13 @@ def _safe_load_json(path: str) -> dict:
         if DEBUG: print(f"[WARN] Sinapsi JSON invalido ({path}): {e}")
         return {}
 
+# =========================
+# Build / Ready
+# =========================
 def build_index(doc_dir: Optional[str] = None) -> int:
     """Costruisce (o ricostruisce) l'indice. Non solleva eccezioni."""
-    global _INDEX, _SINAPSI, _IDF
-    _INDEX, _SINAPSI, _IDF = [], {}, {}
+    global _INDEX, _SINAPSI, _IDF, INDEX
+    _INDEX, _SINAPSI, _IDF, INDEX = [], {}, {}, []
 
     base = _abspath(doc_dir or DOC_DIR)
     try:
@@ -247,7 +384,6 @@ def build_index(doc_dir: Optional[str] = None) -> int:
         if DEBUG: print(f"[WARN] build tfidf error: {e}")
         for ch in _INDEX: ch.tfidf = {}
 
-    # Aggiorna alias pubblico per compatibilità
     _update_public_index()
 
     if SINAPSI_ENABLE:
@@ -267,30 +403,12 @@ def is_ready() -> bool:
     # compat: alcuni app.py usano bool(INDEX)
     return bool(_INDEX) or bool(INDEX)
 
-def _strip_QA(text: str) -> str:
-    lines = []
-    for ln in text.splitlines():
-        if _D_RE.match(ln):  # nasconde le "Domanda:"
-            continue
-        ln2 = _R_RE.sub("", ln).strip()  # rimuove "Risposta:"
-        if ln2:
-            lines.append(ln2)
-    out = "\n".join(lines).strip()
-    return out or text.strip()
-
+# =========================
+# Search
+# =========================
 def _intent_expand(q: str) -> List[str]:
-    ql = q.lower()
-    for key, arr in INTENT_MAP.items():
-        if key in ql:
-            return list(dict.fromkeys(arr + [ql]))
-    return [ql]
-
-def _tag_boost(q_tokens: List[str], tags: List[str]) -> float:
-    if not tags or not q_tokens:
-        return 0.0
-    tset = set(tags)
-    hits = sum(1 for t in q_tokens if t in tset)
-    return min(0.40, 0.08 * hits)
+    # Manteniamo una sola variante per semplicità (si può estendere se serve)
+    return [q.lower()]
 
 def _search_raw(q: str, top_k: int) -> List[Tuple[float, DocChunk]]:
     if not _INDEX:
@@ -302,6 +420,10 @@ def _search_raw(q: str, top_k: int) -> List[Tuple[float, DocChunk]]:
     try:
         q_norm = _normalize_query(q or "")
         variants = _intent_expand(q_norm)
+
+        # token per boost/tag/name con sinonimi
+        q_tokens = _expand_query_tokens(_tokenize(q_norm))
+
         q_vecs = [(_qvec(v), _tokenize(v)) for v in variants]
     except Exception as e:
         if DEBUG: print(f"[WARN] normalize/query vec error: {e}")
@@ -314,7 +436,11 @@ def _search_raw(q: str, top_k: int) -> List[Tuple[float, DocChunk]]:
             for vec, toks in q_vecs:
                 base = _cosine(vec, ch.tfidf or {})
                 boost = _tag_boost(toks, ch.tags or [])
-                s = base + boost
+                nboost = _name_boost(q_tokens, ch.doc)
+                s = base + boost + nboost
+                # prior extra per P560 quando il file è P560.txt
+                if "p560" in q_tokens and "p560" in (ch.doc.lower()):
+                    s += 0.20
                 if s > best:
                     best = s
             if best > 0:
@@ -366,26 +492,37 @@ def search_best_answer(query: str,
             if DEBUG: print(f"[SCRAPER] Nessun candidato per: {query}")
             return {"answer": "", "found": False, "from": None}
         best_score, best_chunk = scored[0]
+
+        # Gate morbido
         if best_score < max(0.0, thr):
             if best_score < max(0.15, thr * 0.7):
                 return {"answer": "", "found": False, "from": None}
-        answer = (best_chunk.text or "").strip()
-        if not answer:
+
+        # Solo risposta
+        ans = _best_qa_answer_for_query(query, best_chunk.text)
+        if not ans:
+            ans = _strip_QA(best_chunk.text)
+
+        if not ans:
             return {"answer": "", "found": False, "from": None}
-        if MAX_ANSWER_CHARS and len(answer) > MAX_ANSWER_CHARS:
-            cut = answer[:MAX_ANSWER_CHARS]
-            m = re.search(r"(?s)^(.+?[\.!\?])(\s|$)", cut)
-            answer = (m.group(1) if m else cut).rstrip() + " …"
+
+        # taglio elegante
+        if MAX_ANSWER_CHARS and len(ans) > MAX_ANSWER_CHARS:
+            cut = ans[:MAX_ANSWER_CHARS]
+            m = re.search(r"(?s)^(.+?[\\.!\\?])(\\s|$)", cut)
+            ans = (m.group(1) if m else cut).rstrip() + " …"
+
         try:
-            answer = _sinapsi_enrich(answer, query, {
+            ans = _sinapsi_enrich(ans, query, {
                 "file": best_chunk.doc,
                 "section": best_chunk.section,
                 "tags": best_chunk.tags
             })
         except Exception as e:
             if DEBUG: print(f"[WARN] enrich error: {e}")
+
         return {
-            "answer": answer,
+            "answer": ans.strip(),
             "found": True,
             "score": round(float(best_score), 3),
             "from": best_chunk.doc,
@@ -408,7 +545,7 @@ def risposta_document_first(domanda: str) -> str:
         return "Non ho trovato riferimenti nei documenti locali."
 
 if __name__ == "__main__":
-    print(f"[INFO] DOC_DIR={_abspath(DOC_DIR)} thr={SIMILARITY_THRESHOLD} topk={TOP_K} debug={DEBUG} ver={__SCRAPER_VERSION__}")
+    print(f"[INFO] DOC_DIR={os.path.abspath(DOC_DIR)} thr={SIMILARITY_THRESHOLD} topk={TOP_K} debug={DEBUG} ver={__SCRAPER_VERSION__}")
     t0 = time.time()
     n = build_index(DOC_DIR)
     print(f"[INFO] Indice pronto: {n} chunk in {time.time()-t0:.2f}s")
@@ -418,9 +555,9 @@ if __name__ == "__main__":
             if not q:
                 continue
             res = search_best_answer(q)
-            print("\n--- RISPOSTA ---")
+            print("\\n--- RISPOSTA ---")
             print(res.get("answer") or "[vuota]")
-            print(f"\n[from={res.get('from')} score={res.get('score')} tags={res.get('tags')}]")
+            print(f"\\n[from={res.get('from')} score={res.get('score')} tags={res.get('tags')}]")
             print()
     except (EOFError, KeyboardInterrupt):
-        print("\nBye.")
+        print("\\nBye.")
