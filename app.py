@@ -1,6 +1,6 @@
 # app.py
 # -*- coding: utf-8 -*-
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, redirect, url_for
 import os, json, requests
 
 app = Flask(__name__)
@@ -12,13 +12,14 @@ SYSTEM_BRAND_GUARD = (
     "Non inventare codici inesistenti. Rispondi sempre in italiano."
 )
 
-# ---------- Health check ----------
+# ---------- HOME: reindirizza al pannello ----------
 @app.get("/")
-def health():
-    return "ok"
+def root_redirect():
+    # invece di mostrare "ok", manda SEMPRE al pannello
+    return redirect(url_for('panel'), code=302)
 
 # ---------- LLM adapter ----------
-def _llm_chat(messages, model=None, temperature=0.0, timeout=60):
+def _llm_chat(messages, model=None, temperature=0.2, timeout=60):
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     model = (model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")).strip()
@@ -31,10 +32,9 @@ def _llm_chat(messages, model=None, temperature=0.0, timeout=60):
         timeout=timeout
     )
     r.raise_for_status()
-    j = r.json()
-    return j["choices"][0]["message"]["content"]
+    return r.json()["choices"][0]["message"]["content"]
 
-# ---------- 1) Chat libera ----------
+# ---------- 1) Chat libera (risposta “stile ChatGPT”) ----------
 @app.post("/ask_chatgpt")
 def ask_chatgpt_puro():
     payload = request.get_json(silent=True) or {}
@@ -50,11 +50,10 @@ def ask_chatgpt_puro():
                         "Sei un esperto tecnico-commerciale di connettori da costruzione "
                         "della Tecnaria S.p.A. di Bassano del Grappa. "
                         "Rispondi sempre in italiano, con chiarezza e completezza. "
-                        "Fornisci risposte ordinate, anche usando elenchi puntati o paragrafi brevi "
-                        "quando serve. "
-                        "Mantieni un tono professionale ma comprensibile anche a un cliente non tecnico. "
-                        "Concentrati solo su prodotti Tecnaria (CTF, CTL, Diapason, CEM-E). "
-                        "Se la domanda è generica, contesta ma rispondi comunque in modo utile. "
+                        "Usa paragrafi brevi e, quando utile, elenchi puntati. "
+                        "Mantieni un tono professionale ma comprensibile a un cliente non tecnico. "
+                        "Concentrati su prodotti Tecnaria (CTF, CTL, Diapason, CEM-E). "
+                        "Se la domanda è generica, chiarisci ma fornisci comunque indicazioni utili."
                     )
                 },
                 {"role": "user", "content": domanda}
@@ -65,7 +64,7 @@ def ask_chatgpt_puro():
     except Exception as e:
         return jsonify({"status": "ERROR", "detail": str(e)}), 500
 
-# ---------- 2) Requisiti ----------
+# ---------- 2) Estrazione requisiti ----------
 PROMPT_ESTRAZIONE = """Sei un estrattore di requisiti per domande sui connettori Tecnaria.
 Dato il testo utente, estrai in JSON questi campi:
 
@@ -117,7 +116,7 @@ def requisiti_connettore():
     except Exception as e:
         return jsonify({"status": "ERROR", "detail": str(e)}), 500
 
-# ---------- 3) Calcolo ----------
+# ---------- 3) Calcolo finale ----------
 PROMPT_CALCOLO = """Sei un configuratore Tecnaria.
 Parametri:
 - prodotto: {prodotto}
@@ -163,30 +162,49 @@ def altezza_connettore():
         return jsonify(result), 200
     return jsonify({"status": "ERROR", "detail": step}), 500
 
-# ---------- 4) Interfaccia HTML ----------
+# ---------- 4) Interfaccia HTML (pannello) ----------
 @app.get("/panel")
 def panel():
+    # Nessuna f-string qui: le { } del JS restano testuali
     html = """<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="utf-8" />
   <title>Tecnaria Bot</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:900px;margin:32px auto;padding:0 16px}
+    textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px}
+    button{padding:10px 16px;border:0;border-radius:10px;cursor:pointer;background:#111;color:#fff}
+    .card{border:1px solid #e5e5e5;border-radius:12px;padding:16px;margin:16px 0;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+    .out{white-space:pre-wrap;border:1px solid #ddd;border-radius:8px;padding:10px;background:#fafafa}
+    label{display:block;margin:8px 0 4px}
+    input{width:100%;padding:8px;border:1px solid #ccc;border-radius:8px}
+  </style>
 </head>
 <body>
   <h1>✅ Tecnaria Bot</h1>
-  <p>Fai la tua domanda. Vedrai la risposta ChatGPT, poi (se servono) i campi da compilare e infine la risposta completa.</p>
+  <p>Scrivi la domanda. Vedrai subito la risposta “stile ChatGPT”. Se servono dati (copriferro, spessore, supporto), compaiono i campi. Poi calcoli la risposta finale.</p>
 
-  <textarea id="q1" rows="2" cols="60" placeholder="Es: Che altezza per connettore CTF su base cemento?"></textarea><br>
-  <button onclick="ask()">Invia</button>
+  <div class="card">
+    <h3>1) Domanda</h3>
+    <textarea id="q1" rows="2" placeholder="Es: Che altezza per connettore CTF su base cemento?"></textarea><br><br>
+    <button onclick="ask()">Invia</button>
+  </div>
 
-  <h3>Risposta ChatGPT</h3>
-  <div id="out1" style="white-space:pre-wrap; border:1px solid #ccc; padding:8px;"></div>
+  <div class="card">
+    <h3>Risposta ChatGPT</h3>
+    <div id="out1" class="out"></div>
+  </div>
 
-  <h3>Dati aggiuntivi</h3>
-  <div id="followup"></div>
+  <div class="card">
+    <h3>Dati aggiuntivi richiesti</h3>
+    <div id="followup"></div>
+  </div>
 
-  <h3>Risposta finale</h3>
-  <div id="out2" style="white-space:pre-wrap; border:1px solid #ccc; padding:8px;"></div>
+  <div class="card">
+    <h3>Risposta finale</h3>
+    <div id="out2" class="out"></div>
+  </div>
 
 <script>
 const base = window.location.origin;
@@ -199,42 +217,46 @@ async function postJSON(url, body){
 async function ask(){
   const domanda=document.getElementById('q1').value.trim();
   if(!domanda){alert("Scrivi una domanda"); return;}
-  
-  // Risposta grezza
+
+  // 1) Risposta “stile ChatGPT”
   const raw=await postJSON(base+'/ask_chatgpt',{domanda});
   document.getElementById('out1').textContent = raw.answer || JSON.stringify(raw);
 
-  // Analisi requisiti
+  // 2) Analisi requisiti → se mancano campi, genero input
   const req=await postJSON(base+'/requisiti_connettore',{domanda});
+  const f = document.getElementById('followup');
   if(req.status==="MISSING"){
     let html="";
-    req.needed_fields.forEach(f=>{
-      html+=f+": <input id='f_"+f+"' /><br>";
+    (req.needed_fields||[]).forEach(fld=>{
+      html+= "<label>"+fld+"</label><input id='f_"+fld+"' />";
     });
-    html+="<button onclick='calc()'>Calcola</button>";
-    document.getElementById('followup').innerHTML=html;
+    html+= "<br><button onclick='calc()'>Calcola</button>";
+    f.innerHTML = html;
   }else if(req.status==="READY"){
-    document.getElementById('followup').innerHTML="<button onclick='calc()'>Calcola subito</button>";
+    f.innerHTML = "<button onclick='calc()'>Calcola subito</button>";
   }else{
-    document.getElementById('followup').innerHTML="Errore analisi requisiti";
+    f.innerHTML = "<div class='out'>Errore analisi requisiti</div>";
   }
 }
 
 async function calc(){
   const domanda=document.getElementById('q1').value.trim();
-  const final=await postJSON(base+'/altezza_connettore',{domanda});
-  document.getElementById('out2').textContent = final.testo_cliente || JSON.stringify(final);
+  const res=await postJSON(base+'/altezza_connettore',{domanda});
+  // Mostra la frase già pronta, se presente
+  document.getElementById('out2').textContent = res.testo_cliente || JSON.stringify(res, null, 2);
 }
 </script>
 </body>
 </html>"""
     return Response(html, mimetype="text/html")
 
-# ---------- 5) Debug ----------
+# ---------- 5) Debug rotte ----------
 @app.get("/routes")
 def routes():
     rules = [str(r) for r in app.url_map.iter_rules()]
     return jsonify({"routes": rules})
 
+# ---------- Avvio locale ----------
 if __name__ == "__main__":
+    # In locale puoi andare su http://127.0.0.1:5000/ e verrai reindirizzato a /panel
     app.run(host="0.0.0.0", port=5000, debug=True)
