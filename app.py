@@ -5,11 +5,10 @@ import os, json, requests
 
 app = Flask(__name__)
 
-# ---------- Brand guard ----------
+# ---------- Brand guard (soft) ----------
 SYSTEM_BRAND_GUARD = (
     "Focalizzati sui prodotti Tecnaria S.p.A. di Bassano del Grappa "
     "(CTF, CTL, Diapason, CEM-E). "
-    "Se l'utente cita altri marchi, rispondi in modo neutro e generale senza promuoverli. "
     "Non inventare codici inesistenti. Rispondi sempre in italiano."
 )
 
@@ -45,10 +44,22 @@ def ask_chatgpt_puro():
     try:
         content = _llm_chat(
             messages=[
-                {"role": "system", "content": SYSTEM_BRAND_GUARD},
+                {
+                    "role": "system",
+                    "content": (
+                        "Sei un esperto tecnico-commerciale di connettori da costruzione "
+                        "della Tecnaria S.p.A. di Bassano del Grappa. "
+                        "Rispondi sempre in italiano, con chiarezza e completezza. "
+                        "Fornisci risposte ordinate, anche usando elenchi puntati o paragrafi brevi "
+                        "quando serve. "
+                        "Mantieni un tono professionale ma comprensibile anche a un cliente non tecnico. "
+                        "Concentrati solo su prodotti Tecnaria (CTF, CTL, Diapason, CEM-E). "
+                        "Se la domanda è generica, contesta ma rispondi comunque in modo utile. "
+                    )
+                },
                 {"role": "user", "content": domanda}
             ],
-            temperature=0.0
+            temperature=0.2
         )
         return jsonify({"status": "OK", "answer": content}), 200
     except Exception as e:
@@ -211,11 +222,7 @@ async function ask(){
 
 async function calc(){
   const domanda=document.getElementById('q1').value.trim();
-  const extra={};
-  document.querySelectorAll('#followup input').forEach(el=>{
-    extra[el.id.replace('f_','')]=el.value;
-  });
-  const final=await postJSON(base+'/altezza_connettore',{domanda:domanda});
+  const final=await postJSON(base+'/altezza_connettore',{domanda});
   document.getElementById('out2').textContent = final.testo_cliente || JSON.stringify(final);
 }
 </script>
