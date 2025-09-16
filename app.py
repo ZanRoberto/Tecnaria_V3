@@ -5,13 +5,12 @@ import os, json, requests
 
 app = Flask(__name__)
 
-# ---------- Brand guard (soft) ----------
+# ---------- Brand guard ----------
 SYSTEM_BRAND_GUARD = (
     "Focalizzati sui prodotti Tecnaria S.p.A. di Bassano del Grappa "
     "(CTF, CTL, Diapason, CEM-E). "
-    "Se l'utente cita altri marchi, rispondi in modo neutro e generale senza promuoverli, "
-    "e quando possibile riferisci l'equivalenza o la terminologia Tecnaria. "
-    "Non inventare codici inesistenti. Rispondi in italiano."
+    "Se l'utente cita altri marchi, rispondi in modo neutro e generale senza promuoverli. "
+    "Non inventare codici inesistenti. Rispondi sempre in italiano."
 )
 
 # ---------- Health check ----------
@@ -41,16 +40,15 @@ def _llm_chat(messages, model=None, temperature=0.0, timeout=60):
 def ask_chatgpt_puro():
     payload = request.get_json(silent=True) or {}
     domanda = (payload.get("domanda") or "").strip()
-    model = (payload.get("model") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")).strip()
     if not domanda:
         return jsonify({"status": "ERROR", "detail": "Campo 'domanda' mancante"}), 400
     try:
         content = _llm_chat(
             messages=[
-                {"role": "system", "content": SYSTEM_BRAND_GUARD + " Rispondi in modo conciso, accurato e utile."},
+                {"role": "system", "content": SYSTEM_BRAND_GUARD},
                 {"role": "user", "content": domanda}
             ],
-            model=model, temperature=0.0
+            temperature=0.0
         )
         return jsonify({"status": "OK", "answer": content}), 200
     except Exception as e:
@@ -60,13 +58,12 @@ def ask_chatgpt_puro():
 PROMPT_ESTRAZIONE = """Sei un estrattore di requisiti per domande sui connettori Tecnaria.
 Dato il testo utente, estrai in JSON questi campi:
 
-- intento
 - prodotto (CTF | CTL | Diapason | CEM-E | altro)
 - spessore_soletta_mm
 - copriferro_mm
 - supporto (lamiera_grecata | soletta_piena)
 
-Se mancano campi CRITICI (spessore_soletta_mm, copriferro_mm, supporto), restituisci:
+Se mancano campi critici (spessore_soletta_mm, copriferro_mm, supporto), restituisci:
 {
  "status": "MISSING",
  "found": {...},
@@ -77,12 +74,9 @@ Se mancano campi CRITICI (spessore_soletta_mm, copriferro_mm, supporto), restitu
 Se tutti i campi sono presenti:
 {
  "status": "READY",
- "found": {...},
- "checklist_ok": [...],
- "prossimi_passi": "Ora si può procedere al calcolo tecnico."
+ "found": {...}
 }
-
-Testo utente: <<<{DOMANDA_UTENTE}>>>"""
+"""
 
 def _safe_json_loads(raw: str):
     try:
@@ -108,26 +102,12 @@ def requisiti_connettore():
         return jsonify({"status": "ERROR", "detail": "Campo 'domanda' mancante"}), 400
     try:
         step = _estrai_requisiti(domanda)
-        if step.get("status") == "MISSING":
-            return jsonify({
-                "status": "ASK_CLIENT",
-                "question": step.get("followup_question", "Serve un dato aggiuntivo."),
-                "found_partial": step.get("found", {}),
-                "missing": step.get("needed_fields", [])
-            }), 200
-        if step.get("status") == "READY":
-            return jsonify({
-                "status": "READY",
-                "found": step.get("found", {}),
-                "checklist_ok": step.get("checklist_ok", []),
-                "prossimi_passi": step.get("prossimi_passi", "Ora si può procedere al calcolo tecnico.")
-            }), 200
-        return jsonify({"status": "ERROR", "detail": step}), 500
+        return jsonify(step), 200
     except Exception as e:
         return jsonify({"status": "ERROR", "detail": str(e)}), 500
 
 # ---------- 3) Calcolo ----------
-PROMPT_CALCOLO = """Sei un configuratore Tecnaria. 
+PROMPT_CALCOLO = """Sei un configuratore Tecnaria.
 Parametri:
 - prodotto: {prodotto}
 - spessore_soletta_mm: {spessore}
@@ -166,18 +146,13 @@ def altezza_connettore():
         return jsonify({"status": "ERROR", "detail": "Campo 'domanda' mancante"}), 400
     step = _estrai_requisiti(domanda)
     if step.get("status") == "MISSING":
-        return jsonify({
-            "status": "ASK_CLIENT",
-            "question": step.get("followup_question", "Serve un dato aggiuntivo."),
-            "found_partial": step.get("found", {}),
-            "missing": step.get("needed_fields", [])
-        }), 200
+        return jsonify(step), 200
     if step.get("status") == "READY":
         result = _calcola(step["found"])
-        return jsonify({"status": "OK", "params": step["found"], "result": result}), 200
+        return jsonify(result), 200
     return jsonify({"status": "ERROR", "detail": step}), 500
 
-# ---------- 4) Pannello HTML ----------
+# ---------- 4) Interfaccia HTML ----------
 @app.get("/panel")
 def panel():
     html = """<!DOCTYPE html>
@@ -187,57 +162,68 @@ def panel():
   <title>Tecnaria Bot</title>
 </head>
 <body>
-  <h1>✅ Tecnaria — Demo due giri</h1>
-  <p>Scrivi la tua domanda, poi compila i campi richiesti se servono.</p>
+  <h1>✅ Tecnaria Bot</h1>
+  <p>Fai la tua domanda. Vedrai la risposta ChatGPT, poi (se servono) i campi da compilare e infine la risposta completa.</p>
+
   <textarea id="q1" rows="2" cols="60" placeholder="Es: Che altezza per connettore CTF su base cemento?"></textarea><br>
-  <button onclick="ask()">Invia domanda</button>
-  <pre id="out1"></pre>
+  <button onclick="ask()">Invia</button>
+
+  <h3>Risposta ChatGPT</h3>
+  <div id="out1" style="white-space:pre-wrap; border:1px solid #ccc; padding:8px;"></div>
+
+  <h3>Dati aggiuntivi</h3>
   <div id="followup"></div>
-  <pre id="out2"></pre>
 
-  <script>
-    const base = window.location.origin;
+  <h3>Risposta finale</h3>
+  <div id="out2" style="white-space:pre-wrap; border:1px solid #ccc; padding:8px;"></div>
 
-    async function postJSON(url, body){
-      const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
-      const t = await r.text(); try{return JSON.parse(t)}catch(e){return {raw:t}}
-    }
+<script>
+const base = window.location.origin;
 
-    async function ask(){
-      const domanda=document.getElementById('q1').value.trim();
-      const raw=await postJSON(base+'/ask_chatgpt',{domanda});
-      document.getElementById('out1').textContent="Risposta ChatGPT:\\n"+JSON.stringify(raw,null,2);
+async function postJSON(url, body){
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{})});
+  const t = await r.text(); try{return JSON.parse(t)}catch(e){return {raw:t}}
+}
 
-      const req=await postJSON(base+'/requisiti_connettore',{domanda});
-      if(req.status==="ASK_CLIENT"){
-        let html="<p><b>Servono altri dati:</b></p>";
-        req.missing.forEach(f=>{
-          html+=f+": <input id='f_"+f+"' /><br>";
-        });
-        html+="<button onclick='calc()'>Calcola</button>";
-        document.getElementById('followup').innerHTML=html;
-      }else if(req.status==="READY"){
-        document.getElementById('followup').innerHTML="<button onclick='calc()'>Calcola subito</button>";
-      }else{
-        document.getElementById('followup').innerHTML="<p>Errore requisiti</p>";
-      }
-    }
+async function ask(){
+  const domanda=document.getElementById('q1').value.trim();
+  if(!domanda){alert("Scrivi una domanda"); return;}
+  
+  // Risposta grezza
+  const raw=await postJSON(base+'/ask_chatgpt',{domanda});
+  document.getElementById('out1').textContent = raw.answer || JSON.stringify(raw);
 
-    async function calc(){
-      const domanda=document.getElementById('q1').value.trim();
-      const extra={};
-      document.querySelectorAll('#followup input').forEach(el=>{
-        extra[el.id.replace('f_','')]=el.value;
-      });
-      const final=await postJSON(base+'/altezza_connettore',{domanda:domanda+", "+JSON.stringify(extra)});
-      document.getElementById('out2').textContent="Risposta completa:\\n"+JSON.stringify(final,null,2);
-    }
-  </script>
+  // Analisi requisiti
+  const req=await postJSON(base+'/requisiti_connettore',{domanda});
+  if(req.status==="MISSING"){
+    let html="";
+    req.needed_fields.forEach(f=>{
+      html+=f+": <input id='f_"+f+"' /><br>";
+    });
+    html+="<button onclick='calc()'>Calcola</button>";
+    document.getElementById('followup').innerHTML=html;
+  }else if(req.status==="READY"){
+    document.getElementById('followup').innerHTML="<button onclick='calc()'>Calcola subito</button>";
+  }else{
+    document.getElementById('followup').innerHTML="Errore analisi requisiti";
+  }
+}
+
+async function calc(){
+  const domanda=document.getElementById('q1').value.trim();
+  const extra={};
+  document.querySelectorAll('#followup input').forEach(el=>{
+    extra[el.id.replace('f_','')]=el.value;
+  });
+  const final=await postJSON(base+'/altezza_connettore',{domanda:domanda});
+  document.getElementById('out2').textContent = final.testo_cliente || JSON.stringify(final);
+}
+</script>
 </body>
 </html>"""
-    return Response(html,mimetype="text/html")
+    return Response(html, mimetype="text/html")
 
-# ---------- 5) Debug rotte ----------
+# ---------- 5) Debug ----------
 @app.get("/routes")
 def routes():
     rules = [str(r) for r in app.url_map.iter_rules()]
