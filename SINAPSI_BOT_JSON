@@ -1,90 +1,19 @@
-{
-  "prefix": "",
-  "suffix": "Posso inviarti subito: schede tecniche, DoP/ETA, manuali di posa, esempi di calcolo e contatto distributore UE. Dimmi prodotto (CTL, CTF, Diapason, CEM-E/MINI, P560) e Paese/città.",
-  "topics": {
-    "ctl": "CTL: connettori legno–calcestruzzo. Versioni Base (Ø8), Maxi (Ø10), e Omega; altezze tipiche 20–200 mm; marcatura CE/ETA/DoP.",
-    "ctf": "CTF: connettori/pioli per solai collaboranti acciaio–calcestruzzo; su lamiera grecata o soletta piena; ETA/CE/DoP.",
-    "diapason": "Diapason: connettori per una ripartizione del carico più ampia rispetto ai pioli tradizionali.",
-    "cem": "CEM-E / MINI CEM-E: collegano getti di calcestruzzo nuovo con esistente (ripresa di getto).",
-    "p560": "P560 (SPIT): chiodatrice a cartuccia propulsiva per fissaggi rapidi di connettori; richiede DPI e manutenzione periodica."
-  },
-  "rules": [
-    { "if_any": ["che domande posso farti","cosa posso chiedere","aiuto","help","?"],
-      "add": "Puoi chiedere: panoramica prodotti; differenze (es. CTLB vs CTLM); posa (attrezzi, passi/distanze); uso su lamiera/soletta; sismica; documenti (DoP/ETA/manuali/relazioni); prezzi/preventivi; distributori UE. Vuoi partire da uno di questi?" },
+import json
+from openai import OpenAI
 
-    { "if_any": ["mi parli","parlami","cos è","che cos è","panoramica","informazioni","overview"],
-      "add": "Preferisci una panoramica sintetica o vuoi andare subito su differenze, posa, sismica, documenti o acquisto UE?" },
+# Inizializza il client con la tua API key
+client = OpenAI(api_key="LA_TUA_API_KEY")
 
-    { "if_any": ["legno vecchio","legno esistente","travi vecchie","trave esistente","solaio legno esistente","consolidare legno","recupero solai legno"],
-      "add": "Sì: i connettori Tecnaria (es. CTL; alternative possibili a catalogo) si usano anche su legno esistente per creare un solaio collaborante legno–calcestruzzo. Prima verifica: stato del legno (umidità/fessurazioni), interasse/luci, spessore disponibile per la soletta. Se mi dai luce, interasse, essenza/qualità presunta e spessore soletta, ti indico la documentazione corretta." },
+# Legge il file JSON già pronto (es. sinapsi_bot.json)
+with open("sinapsi_bot.json", "r", encoding="utf-8") as f:
+    payload = json.load(f)
 
-    { "if_any": ["differenza","vs","confronto","scelta","meglio","quale scegliere"], "if_all": ["ctl"],
-      "add": "CTL: Base (Ø8) per spessori ridotti/standard, Maxi (Ø10) per maggiore capacità, Omega per ancoraggi ad alte prestazioni. La scelta dipende da spessore soletta, numero viti e verifiche di progetto. Posso inviarti tabelle e note di dimensionamento." },
+# Esegue la chiamata API con i dati del file
+response = client.chat.completions.create(
+    model=payload["model"],
+    messages=payload["messages"],
+    temperature=payload.get("temperature", 0)
+)
 
-    { "if_any": ["posa","montaggio","installazione","attrezzi","come si posa","come si monta","istruzioni"], "if_all": ["ctl"],
-      "add": "Posa CTL: avvitatore + viti certificate; rispettare inclinazioni, passi e distanze minime; controllare profondità nel legno e copriferro in soletta. Vuoi il manuale di posa?" },
-
-    { "if_any": ["lamiera","grecata","soletta piena","profili acciaio","travi acciaio","lamiera grecata"], "if_all": ["ctf"],
-      "add": "CTF su lamiera grecata: verifica passo/profilo/spessore e compatibilità di fissaggio; su soletta piena valgono le regole di ancoraggio in calcestruzzo massivo. Posso mandarti schede e indicazioni di passo." },
-
-    { "if_any": ["diapason","ripartizione","distribuzione carico","superficie di contatto","supporti delicati"],
-      "add": "Diapason: ripartizione del carico più ampia rispetto ai pioli; utile dove servono tensioni di contatto inferiori o supporti più delicati. Vuoi una comparativa con i CTF?" },
-
-    { "if_any": ["nuovo","esistente","ripresa","riprese","gettata","aderenza","scabbia","giunto"], "if_all": ["cem","cem-e","mini"],
-      "add": "CEM-E/MINI: preparazione accurata del supporto (pulizia/aderenza) e posa secondo schede e valutazioni ETA. Vuoi le istruzioni e i riferimenti?" },
-
-    { "if_any": ["sicurezza","dpi","rumore","manutenzione","pistone","anello","cartucce","chiodi","manutenzioni"], "if_all": ["p560"],
-      "add": "P560: usa DPI, non puntare mai verso persone, esegui i controlli preliminari; manutenzione regolare (pistone/anello) e consumabili certificati. Vuoi la checklist di manutenzione?" },
-
-    { "if_any": ["documenti","documentazione","eta","et a","ce","dop","dichiarazione","manuale","relazione","calcolo","scheda","schede","tracciabilità","lotti"],
-      "add": "Disponibili: ETA, marcatura CE, DoP, manuali di posa, relazioni di calcolo ed esempi, tracciabilità lotti. Te li inoltro subito se mi indichi il prodotto." },
-
-    { "if_any": ["sismica","zona sismica","ntc","ec8","eurocodice","antisismico","cicliche"],
-      "add": "Uso in zona sismica: riferirsi a ETA e normative NTC/EC8, con verifica di duttilità/ciclicità e dettagli di ancoraggio. Vuoi le note progettuali o esempi?" },
-
-    { "if_any": ["distributore","distributori","rivenditore","rivenditori","dealer","reseller","dove comprare","acquistare","prezzi","preventivo","quotazione","europa","ue","eu","dove trovo"],
-      "add": "Sì: rete di distributori in vari Paesi UE; dove assente, spediamo direttamente. Dimmi Paese/città e il prodotto (es. CTL/CTF/Diapason/CEM-E/P560) e ti indirizzo al partner locale o preparo un’offerta." },
-
-    { "if_any": ["contatti","telefono","mail","email","assistenza","supporto","tecnico","commerciale","uffici","sede","orari"],
-      "add": "Posso passarti subito i contatti tecnici/commerciali o inoltrare la tua richiesta. Preferisci email o telefonata? Indicami anche il prodotto e la città." }
-{
-  "prefix": "",
-  "suffix": "Sono a disposizione per inviarti schede tecniche, DoP/ETA, manuali di posa e contatti ufficiali Tecnaria. Dimmi prodotto e città/Paese.",
-  "topics": {
-    "tecnaria": "Riferimento: Tecnaria S.p.A., Bassano del Grappa (VI) – Italia.",
-    "ctl": "CTL: connettori Tecnaria per solai collaboranti legno–calcestruzzo (Base Ø8, Maxi Ø10, Omega; ETA/CE/DoP).",
-    "ctf": "CTF: connettori/pioli Tecnaria per acciaio–calcestruzzo, su lamiera grecata e soletta piena (ETA/CE/DoP).",
-    "diapason": "Diapason: connettori Tecnaria con ripartizione del carico più ampia.",
-    "cem": "CEM-E / MINI CEM-E: sistemi Tecnaria per collegare getti in calcestruzzo nuovo ↔ esistente.",
-    "p560": "P560 (SPIT): utensile usato per i fissaggi dei connettori; non è un prodotto Tecnaria."
-  },
-  "rules": [
-    { "if_any": ["tecnaria","chi siete","azienda","società","brand","marchio","sede","bassano"], "add": "Sono l’assistente documentale di Tecnaria S.p.A., **Bassano del Grappa (VI)** – Italia. Eventuali riferimenti a ‘Tecnaria’ di altri contesti **non** riguardano questa azienda." },
-
-    { "if_any": ["non tecnaria","altra tecnaria","omonimo","stesso nome"], "add": "Preciso che mi riferisco esclusivamente a **Tecnaria S.p.A., Bassano del Grappa (VI)**. Se intendi un’altra realtà omonima, non rientra in questo servizio." },
-
-    { "if_any": ["p560","spit","sparachiodi","chiodatrice"], "add": "Nota: **SPIT P560** è un’**attrezzatura** d’uso in cantiere, non un prodotto Tecnaria. I contenuti Tecnaria riguardano solo i connettori e la relativa documentazione." },
-
-    { "if_any": ["hbv","sistemi terzi","altri marchi","altro brand"], "add": "Per policy, questo assistente tratta **solo** prodotti e documentazione **Tecnaria**. Per sistemi di terzi, posso al massimo indicare requisiti generali di posa, senza marchi." },
-
-    { "if_any": ["mi parli","parlami","cos è","che cos è","panoramica","informazioni","overview"], "add": "Preferisci **panoramica sintetica** o vuoi andare su **differenze**, **posa**, **sismica**, **documenti** o **acquisto**?" },
-
-    { "if_any": ["differenza","vs","confronto","scelta","meglio","quale scegliere"], "if_all": ["ctl"], "add": "CTL: Base (Ø8) per spessori ridotti/standard; Maxi (Ø10) per maggiore capacità; Omega per ancoraggi ad alte prestazioni. Scelta in funzione di spessore soletta, numero viti e verifiche di progetto." },
-
-    { "if_any": ["posa","montaggio","installazione","attrezzi","come si posa","istruzioni"], "if_all": ["ctl","ctf","diapason","cem","cem-e"], "add": "Posa: attenersi ai manuali Tecnaria (passi, distanze minime, preparazione supporto). Se vuoi ti invio il manuale e le DoP/ETA del prodotto citato." },
-
-    { "if_any": ["lamiera","grecata","soletta piena","profili acciaio","travi acciaio"], "if_all": ["ctf"], "add": "CTF su lamiera grecata: verificare passo/profilo/spessore lamiera; su soletta piena valgono le regole di ancoraggio in cls massivo. Ho le schede Tecnaria con i passi." },
-
-    { "if_any": ["nuovo","esistente","ripresa","getti"], "if_all": ["cem","cem-e","mini"], "add": "CEM-E/MINI: preparazione accurata del supporto e prescrizioni da schede/ETA **Tecnaria**. Vuoi le istruzioni ufficiali?" },
-
-    { "if_any": ["sismica","zona sismica","ntc","ec8","eurocodice","cicliche"], "add": "Idoneità in zona sismica: fare riferimento a **ETA** e normative (NTC/EC8) nella documentazione **Tecnaria**." },
-
-    { "if_any": ["documenti","documentazione","eta","ce","dop","manuale","relazione","calcolo","scheda","schede","tracciabilità"], "add": "Disponibili: **ETA, CE, DoP, manuali di posa, relazioni di calcolo, tracciabilità lotti**. Dimmi il prodotto e te li invio." },
-
-    { "if_any": ["distributore","rivenditore","dealer","reseller","dove comprare","acquistare","preventivo","prezzi","europa","ue","eu"], "add": "Rete **ufficiale** Tecnaria in vari Paesi UE; dove assente, spediamo direttamente. Indicami prodotto + Paese/città e ti indirizzo al canale **Tecnaria** corretto." }
-  ]
-}
-
-  ]
-}
-
+# Stampa la risposta ottenuta
+print(response.choices[0].message["content"])
