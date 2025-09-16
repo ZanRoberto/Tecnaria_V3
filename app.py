@@ -1,60 +1,58 @@
-import json
-from typing import Dict, Any
+# app.py
+from flask import Flask, request, jsonify, render_template
+from configuratore_connettori import pipeline_connettore, get_defaults
 
-# ---- Adattare a tua funzione LLM esistente ----
-def ask_chatgpt(prompt: str) -> str:
-    # TODO: sostituisci con la tua chiamata OpenAI/compatibile
-    raise NotImplementedError
+# Istanza Flask visibile a Gunicorn
+app = Flask(__name__)
 
-CRITICAL_FIELDS = ["spessore_soletta_mm", "copriferro_mm", "supporto"]
+# Health check
+@app.get("/")
+def health():
+    return "ok"
 
-def estrai_parametri(domanda: str) -> Dict[str, Any]:
-    prompt_estrazione = f"""[QUI IL PROMPT 1 SOPRA]""".replace("{{DOMANDA_UTENTE}}", domanda)
-    raw = ask_chatgpt(prompt_estrazione)
-    try:
-        data = json.loads(raw)
-    except:
-        data = {"status": "ERROR", "raw": raw}
-    return data
 
-def calcola_soluzione(found: Dict[str, Any]) -> Dict[str, Any]:
-    p = f"""[QUI IL PROMPT 2 SOPRA]"""
-    p = (p.replace("{{prodotto}}", str(found.get("prodotto","")))
-           .replace("{{spessore}}", str(found.get("spessore_soletta_mm","")))
-           .replace("{{copriferro}}", str(found.get("copriferro_mm","")))
-           .replace("{{supporto}}", str(found.get("supporto","")))
-           .replace("{{classe_fuoco}}", str(found.get("classe_fuoco",""))))
-    raw = ask_chatgpt(p)
-    try:
-        return json.loads(raw)
-    except:
-        return {"status": "ERROR", "raw": raw}
+# ====== Endpoint JSON per il tuo bot ======
+@app.route("/ordina_connettore", methods=["POST"])
+def ordina_connettore():
+    """
+    Body JSON atteso:
+    {
+      "domanda": "Ordina connettore CTF su lamiera grecata; soletta 60 mm; copriferro 25",
+      "defaults": {
+         "supporto": "lamiera_grecata",
+         "copriferro_mm": 25
+      }
+    }
+    """
+    payload = request.get_json(silent=True) or {}
+    domanda = (payload.get("domanda") or "").strip()
+    defaults = payload.get("defaults") or get_defaults()
 
-def pipeline_connettore(domanda_utente: str, defaults: Dict[str, Any] = None) -> Dict[str, Any]:
-    defaults = defaults or {}
-    step1 = estrai_parametri(domanda_utente)
-    if step1.get("status") == "READY":
-        return calcola_soluzione(step1["found"])
+    if not domanda:
+        return jsonify({"status": "ERROR", "detail": "Campo 'domanda' mancante"}), 400
 
-    if step1.get("status") == "MISSING":
-        found = step1.get("found", {})
-        needed = step1.get("needed_fields", [])
+    data = pipeline_connettore(domanda, defaults=defaults)
+    return jsonify(data), 200
 
-        # 1) Prova a riempire dai default/DB
-        for k in needed[:]:
-            if k in defaults and defaults[k] is not None:
-                found[k] = defaults[k]
-                needed.remove(k)
 
-        # 2) Se ancora mancano campi critici → restituisci la follow-up question da mostrare al cliente
-        if any(f in CRITICAL_FIELDS for f in needed):
-            return {
-                "status": "ASK_CLIENT",
-                "question": step1.get("followup_question"),
-                "found_partial": found
-            }
+# ====== Endpoint form HTML semplice (per test manuali) ======
+@app.route("/test", methods=["GET", "POST"])
+def test_form():
+    risposta = ""
+    if request.method == "POST":
+        domanda = (request.form.get("domanda") or "").strip()
+        if domanda:
+            data = pipeline_connettore(domanda)
+            if data.get("status") == "ASK_CLIENT":
+                risposta = f"⚠️ Mi serve un dato: {data.get('question')}"
+            elif data.get("status") == "OK":
+                result = data.get("result", {})
+                risposta = result.get("mostra_al_cliente") or str(result)
+            else:
+                risposta = "Errore nel configuratore."
+    return render_template("index.html", risposta=risposta)
 
-        # 3) Altrimenti calcola
-        return calcola_soluzione(found)
 
-    return {"status": "ERROR", "detail": step1}
+if __name__ == "__main__":
+    # Per debug locale (es. python app.py)
+    app.run(host="0.0.0.0", port=5000, debug=True)
