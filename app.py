@@ -181,30 +181,30 @@ def altezza_connettore():
         return jsonify({"status":"OK","params": step["found"], "result": result}), 200
     return jsonify({"status":"ERROR","detail":step}), 500
 
-# ---------- Pannello HTML interattivo ----------
+# ---------- Pannello HTML interattivo (NO f-string!) ----------
 @app.get("/panel")
 def panel():
-    html = f"""<!DOCTYPE html>
+    html = """<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="utf-8">
   <title>Tecnaria Bot Panel</title>
   <style>
-    body{{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:960px;margin:32px auto;padding:0 16px}}
-    h1{{margin:0 0 16px}} h2{{margin:24px 0 8px}}
-    section{{border:1px solid #e5e5e5;border-radius:12px;padding:16px;margin:16px 0;box-shadow:0 1px 2px rgba(0,0,0,.03)}}
-    label{{display:block;margin:8px 0 4px}}
-    textarea,input{{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px}}
-    button{{padding:10px 16px;border:0;border-radius:10px;cursor:pointer}}
-    button.primary{{background:#111;color:#fff}}
-    pre{{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:12px;white-space:pre-wrap}}
-    small{{color:#666}}
-    code.k{{background:#f2f2f2;padding:2px 6px;border-radius:6px}}
+    body{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:960px;margin:32px auto;padding:0 16px}
+    h1{margin:0 0 16px} h2{margin:24px 0 8px}
+    section{border:1px solid #e5e5e5;border-radius:12px;padding:16px;margin:16px 0;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+    label{display:block;margin:8px 0 4px}
+    textarea,input{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px}
+    button{padding:10px 16px;border:0;border-radius:10px;cursor:pointer}
+    button.primary{background:#111;color:#fff}
+    pre{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:12px;white-space:pre-wrap}
+    small{color:#666}
+    code.k{background:#f2f2f2;padding:2px 6px;border-radius:6px}
   </style>
 </head>
 <body>
   <h1>✅ Tecnaria Bot — Pannello Test</h1>
-  <p><small>Base URL: <code class="k">{request.host_url.rstrip('/')}</code></small></p>
+  <p><small>Base URL: <code class="k" id="base-url"></code></small></p>
 
   <section>
     <h2>1) Domanda libera (SOLO prodotti Tecnaria)</h2>
@@ -238,6 +238,7 @@ def panel():
 
   <script>
     const base = window.location.origin;
+    document.getElementById('base-url').textContent = base;
 
     async function postJSON(url, body){
       const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {})});
@@ -268,7 +269,7 @@ def panel():
 </html>"""
     return Response(html, mimetype="text/html")
 
-# ---------- Endpoint di debug: elenco rotte ----------
+# ---------- Endpoint di debug ----------
 @app.get("/routes")
 def routes():
     rules = [str(r) for r in app.url_map.iter_rules()]
