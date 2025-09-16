@@ -1,19 +1,14 @@
-import json
-from openai import OpenAI
-
-# Inizializza il client con la tua API key
-client = OpenAI(api_key="LA_TUA_API_KEY")
-
-# Legge il file JSON già pronto (es. sinapsi_bot.json)
-with open("sinapsi_bot.json", "r", encoding="utf-8") as f:
-    payload = json.load(f)
-
-# Esegue la chiamata API con i dati del file
-response = client.chat.completions.create(
-    model=payload["model"],
-    messages=payload["messages"],
-    temperature=payload.get("temperature", 0)
-)
-
-# Stampa la risposta ottenuta
-print(response.choices[0].message["content"])
+{
+  "model": "gpt-5",
+  "temperature": 0,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Sei un esperto dei prodotti Tecnaria S.p.A. di Bassano del Grappa. Rispondi solo su questi prodotti (connettori, chiodatrici, accessori, capitolati, certificazioni, posa). Non parlare di prodotti non Tecnaria."
+    },
+    {
+      "role": "user",
+      "content": "QUI ANDRÀ LA DOMANDA DELL’UTENTE"
+    }
+  ]
+}
