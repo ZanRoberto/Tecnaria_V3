@@ -19,7 +19,7 @@ SYSTEM_BRAND_GUARD = (
 def health():
     return "ok"
 
-# ---------- LLM adapter ----------
+# ---------- LLM adapter (OpenAI/compat) ----------
 def _llm_chat(messages, model=None, temperature=0.0, timeout=60):
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
@@ -35,7 +35,7 @@ def _llm_chat(messages, model=None, temperature=0.0, timeout=60):
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
 
-# ---------- Endpoint 1: ChatGPT puro (SOLO Tecnaria) ----------
+# ---------- Endpoint 1: Chat libera (SOLO Tecnaria) ----------
 @app.post("/ask_chatgpt")
 def ask_chatgpt_puro():
     payload = request.get_json(silent=True) or {}
@@ -130,7 +130,7 @@ def requisiti_connettore():
     except Exception as e:
         return jsonify({"status":"ERROR","detail":str(e)}), 500
 
-# ---------- Endpoint 3: calcolo finale ----------
+# ---------- Endpoint 3: calcolo altezza/codice ----------
 PROMPT_CALCOLO = """Sei un configuratore Tecnaria. Dati i parametri, scegli l’altezza corretta del connettore e il codice.
 Parametri:
 - prodotto: {prodotto}
@@ -239,40 +239,42 @@ def panel():
   <script>
     const base = window.location.origin;
 
-    async function postJSON(url, body){{
-      const r = await fetch(url, {{
-        method:'POST',
-        headers:{{'Content-Type':'application/json'}},
-        body: JSON.stringify(body || {{}})
-      }});
+    async function postJSON(url, body){
+      const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {})});
       let txt = await r.text();
-      try {{ txt = JSON.stringify(JSON.parse(txt), null, 2); }} catch(e) {{}}
+      try { txt = JSON.stringify(JSON.parse(txt), null, 2); } catch(e) {}
       return txt;
-    }}
+    }
 
-    async function ask(){{
+    async function ask(){
       const domanda = document.getElementById('ask_q').value.trim();
       const out = document.getElementById('ask_out'); out.textContent = '...';
-      out.textContent = await postJSON(base + '/ask_chatgpt', {{domanda}});
-    }}
+      out.textContent = await postJSON(base + '/ask_chatgpt', {domanda});
+    }
 
-    async function req(){{
+    async function req(){
       const domanda = document.getElementById('req_q').value.trim();
       const out = document.getElementById('req_out'); out.textContent = '...';
-      out.textContent = await postJSON(base + '/requisiti_connettore', {{domanda}});
-    }}
+      out.textContent = await postJSON(base + '/requisiti_connettore', {domanda});
+    }
 
-    async function calc(){{
+    async function calc(){
       const domanda = document.getElementById('calc_q').value.trim();
       const out = document.getElementById('calc_out'); out.textContent = '...';
-      out.textContent = await postJSON(base + '/altezza_connettore', {{domanda}});
-    }}
+      out.textContent = await postJSON(base + '/altezza_connettore', {domanda});
+    }
   </script>
 </body>
 </html>"""
     return Response(html, mimetype="text/html")
 
-# ---------- Debug: stampa rotte ----------
+# ---------- Endpoint di debug: elenco rotte ----------
+@app.get("/routes")
+def routes():
+    rules = [str(r) for r in app.url_map.iter_rules()]
+    return jsonify({"routes": rules})
+
+# ---------- Debug console ----------
 print("ROUTES:", app.url_map)
 
 # ---------- Avvio locale ----------
