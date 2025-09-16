@@ -19,7 +19,7 @@ SYSTEM_BRAND_GUARD = (
 def health():
     return "ok"
 
-# ---------- LLM adapter (OpenAI/compat) ----------
+# ---------- LLM adapter ----------
 def _llm_chat(messages, model=None, temperature=0.0, timeout=60):
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
@@ -35,7 +35,7 @@ def _llm_chat(messages, model=None, temperature=0.0, timeout=60):
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
 
-# ---------- Endpoint 1: pass-through “stile ChatGPT” (SOLO TECNARIA) ----------
+# ---------- Endpoint 1: ChatGPT puro (SOLO Tecnaria) ----------
 @app.post("/ask_chatgpt")
 def ask_chatgpt_puro():
     payload = request.get_json(silent=True) or {}
@@ -55,7 +55,7 @@ def ask_chatgpt_puro():
     except Exception as e:
         return jsonify({"status":"ERROR","detail":str(e)}), 500
 
-# ---------- Slot-filling: requisiti per “altezza connettore” ----------
+# ---------- Endpoint 2: requisiti per altezza connettore ----------
 CRITICAL_FIELDS = {"spessore_soletta_mm", "copriferro_mm", "supporto"}
 
 PROMPT_ESTRAZIONE = """Sei un estrattore di requisiti per domande sui connettori Tecnaria (Bassano del Grappa).
@@ -69,25 +69,23 @@ Dato il testo utente, estrai in JSON questi campi:
 - classe_fuoco (REI60/REI90) [opzionale]
 - note (string) [opzionale]
 
-Se mancano campi CRITICI per l'intento 'scegliere_altezza_connettore' (spessore_soletta_mm, copriferro_mm, supporto), NON proporre soluzioni.
-Restituisci ESCLUSIVAMENTE:
+Se mancano campi CRITICI (spessore_soletta_mm, copriferro_mm, supporto), NON proporre soluzioni.
+Restituisci:
 
-Caso A - Mancano campi critici:
+Caso A - Mancano campi:
 {
  "status": "MISSING",
- "intento": "scegliere_altezza_connettore",
- "found": {...trovati...},
+ "found": {...},
  "needed_fields": ["copriferro_mm", ...],
  "followup_question": "Formula UNA sola domanda chiara per ottenere i valori mancanti."
 }
 
-Caso B - Campi sufficienti (non calcolare nulla):
+Caso B - Tutti i campi presenti:
 {
  "status": "READY",
- "intento": "scegliere_altezza_connettore",
  "found": {...},
  "checklist_ok": ["spessore_soletta_mm fornito", "copriferro_mm fornito", "supporto fornito"],
- "prossimi_passi": "Ora si può procedere al calcolo tecnico (NON eseguirlo qui)."
+ "prossimi_passi": "Ora si può procedere al calcolo tecnico."
 }
 
 Testo utente: <<<{DOMANDA_UTENTE}>>>"""
@@ -117,7 +115,6 @@ def requisiti_connettore():
         if step.get("status") == "MISSING":
             return jsonify({
                 "status":"ASK_CLIENT",
-                "intento": step.get("intento","scegliere_altezza_connettore"),
                 "question": step.get("followup_question","Serve un dato aggiuntivo."),
                 "found_partial": step.get("found", {}),
                 "missing": step.get("needed_fields", [])
@@ -125,7 +122,6 @@ def requisiti_connettore():
         if step.get("status") == "READY":
             return jsonify({
                 "status":"READY",
-                "intento": step.get("intento","scegliere_altezza_connettore"),
                 "found": step.get("found", {}),
                 "checklist_ok": step.get("checklist_ok", []),
                 "prossimi_passi": step.get("prossimi_passi","Ora si può procedere al calcolo tecnico.")
@@ -134,7 +130,7 @@ def requisiti_connettore():
     except Exception as e:
         return jsonify({"status":"ERROR","detail":str(e)}), 500
 
-# ---------- Endpoint 3 (opzionale): calcolo immediato quando i dati ci sono ----------
+# ---------- Endpoint 3: calcolo finale ----------
 PROMPT_CALCOLO = """Sei un configuratore Tecnaria. Dati i parametri, scegli l’altezza corretta del connettore e il codice.
 Parametri:
 - prodotto: {prodotto}
@@ -172,7 +168,6 @@ def altezza_connettore():
     domanda = (payload.get("domanda") or "").strip()
     if not domanda:
         return jsonify({"status":"ERROR","detail":"Campo 'domanda' mancante"}), 400
-    # Estraggo parametri prima
     step = _estrai_requisiti(domanda)
     if step.get("status") == "MISSING":
         return jsonify({
@@ -186,80 +181,25 @@ def altezza_connettore():
         return jsonify({"status":"OK","params": step["found"], "result": result}), 200
     return jsonify({"status":"ERROR","detail":step}), 500
 
-# ---------- Pagina HTML di test (browser) ----------
+# ---------- Pagina HTML di test ----------
 @app.get("/panel")
 def panel():
     html = """<!DOCTYPE html>
-<html lang="it"><head><meta charset="utf-8"><title>Tecnaria Bot Panel</title>
-<style>
-body{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 16px}
-h1{margin:0 0 16px} h2{margin:32px 0 8px}
-section{border:1px solid #ddd;border-radius:12px;padding:16px;margin:16px 0}
-label{display:block;margin:8px 0 4px} input,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px}
-button{padding:10px 16px;border:0;border-radius:10px;cursor:pointer}
-button.primary{background:#111;color:#fff}
-pre{background:#f7f7f7;border:1px solid #eee;border-radius:8px;padding:12px;white-space:pre-wrap}
-small{color:#666}
-</style>
-</head><body>
+<html lang="it"><head><meta charset="utf-8"><title>Tecnaria Bot Panel</title></head>
+<body style="font-family:Arial, sans-serif; max-width:800px; margin:40px auto;">
 <h1>✅ Tecnaria Bot — Pannello Test</h1>
-<p><small>Base URL rilevato: <code id="base"></code></small></p>
-
-<section>
-  <h2>1) Domanda libera (SOLO prodotti Tecnaria)</h2>
-  <label>Domanda</label>
-  <textarea id="ask_q" rows="2" placeholder="Es: Qual è la differenza tra CTF e Diapason?"></textarea>
-  <br><button class="primary" onclick="ask()">Invia</button>
-  <pre id="ask_out"></pre>
-</section>
-
-<section>
-  <h2>2) Requisiti per altezza connettore (slot-filling, nessun calcolo)</h2>
-  <label>Domanda</label>
-  <textarea id="req_q" rows="2" placeholder="Es: Quale altezza per CTF su lamiera con soletta 60 mm?"></textarea>
-  <br><button class="primary" onclick="req()">Invia</button>
-  <pre id="req_out"></pre>
-</section>
-
-<section>
-  <h2>3) Calcolo altezza (quando i dati sono completi)</h2>
-  <label>Domanda completa</label>
-  <textarea id="calc_q" rows="2" placeholder="Es: CTF su lamiera, soletta 60 mm, copriferro 25 mm."></textarea>
-  <br><button class="primary" onclick="calc()">Calcola</button>
-  <pre id="calc_out"></pre>
-</section>
-
-<script>
-const base = window.location.origin; document.getElementById('base').textContent = base;
-
-async function postJSON(url, body){
-  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-  const j = await r.json().catch(()=>({error:'JSON parse error'}));
-  return {status:r.status, body:j};
-}
-
-async function ask(){
-  const domanda = document.getElementById('ask_q').value.trim();
-  const out = document.getElementById('ask_out'); out.textContent = '...';
-  const res = await postJSON(base + '/ask_chatgpt', {domanda});
-  out.textContent = JSON.stringify(res.body, null, 2);
-}
-async function req(){
-  const domanda = document.getElementById('req_q').value.trim();
-  const out = document.getElementById('req_out'); out.textContent = '...';
-  const res = await postJSON(base + '/requisiti_connettore', {domanda});
-  out.textContent = JSON.stringify(res.body, null, 2);
-}
-async function calc(){
-  const domanda = document.getElementById('calc_q').value.trim();
-  const out = document.getElementById('calc_out'); out.textContent = '...';
-  const res = await postJSON(base + '/altezza_connettore', {domanda});
-  out.textContent = JSON.stringify(res.body, null, 2);
-}
-</script>
-</body></html>"""
+<p>Base URL: <code>{base}</code></p>
+<ul>
+<li><b>/ask_chatgpt</b> → domande libere (solo prodotti Tecnaria)</li>
+<li><b>/requisiti_connettore</b> → raccoglie dati, chiede copriferro se manca</li>
+<li><b>/altezza_connettore</b> → calcolo finale quando i dati ci sono</li>
+</ul>
+<p>Provali con curl o Postman.</p>
+</body></html>""".format(base=request.host_url.rstrip("/"))
     return Response(html, mimetype="text/html")
 
-# ---------- Main (locale) ----------
+# ---------- Debug: stampa rotte ----------
+print("ROUTES:", app.url_map)
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
