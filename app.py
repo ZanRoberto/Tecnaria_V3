@@ -181,25 +181,100 @@ def altezza_connettore():
         return jsonify({"status":"OK","params": step["found"], "result": result}), 200
     return jsonify({"status":"ERROR","detail":step}), 500
 
-# ---------- Pagina HTML di test ----------
+# ---------- Pannello HTML interattivo ----------
 @app.get("/panel")
 def panel():
-    html = """<!DOCTYPE html>
-<html lang="it"><head><meta charset="utf-8"><title>Tecnaria Bot Panel</title></head>
-<body style="font-family:Arial, sans-serif; max-width:800px; margin:40px auto;">
-<h1>✅ Tecnaria Bot — Pannello Test</h1>
-<p>Base URL: <code>{base}</code></p>
-<ul>
-<li><b>/ask_chatgpt</b> → domande libere (solo prodotti Tecnaria)</li>
-<li><b>/requisiti_connettore</b> → raccoglie dati, chiede copriferro se manca</li>
-<li><b>/altezza_connettore</b> → calcolo finale quando i dati ci sono</li>
-</ul>
-<p>Provali con curl o Postman.</p>
-</body></html>""".format(base=request.host_url.rstrip("/"))
+    html = f"""<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Tecnaria Bot Panel</title>
+  <style>
+    body{{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:960px;margin:32px auto;padding:0 16px}}
+    h1{{margin:0 0 16px}} h2{{margin:24px 0 8px}}
+    section{{border:1px solid #e5e5e5;border-radius:12px;padding:16px;margin:16px 0;box-shadow:0 1px 2px rgba(0,0,0,.03)}}
+    label{{display:block;margin:8px 0 4px}}
+    textarea,input{{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px}}
+    button{{padding:10px 16px;border:0;border-radius:10px;cursor:pointer}}
+    button.primary{{background:#111;color:#fff}}
+    pre{{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:12px;white-space:pre-wrap}}
+    small{{color:#666}}
+    code.k{{background:#f2f2f2;padding:2px 6px;border-radius:6px}}
+  </style>
+</head>
+<body>
+  <h1>✅ Tecnaria Bot — Pannello Test</h1>
+  <p><small>Base URL: <code class="k">{request.host_url.rstrip('/')}</code></small></p>
+
+  <section>
+    <h2>1) Domanda libera (SOLO prodotti Tecnaria)</h2>
+    <label>Domanda</label>
+    <textarea id="ask_q" rows="2" placeholder="Es: Qual è la differenza tra CTF e Diapason?"></textarea>
+    <div style="margin-top:8px">
+      <button class="primary" onclick="ask()">Invia</button>
+    </div>
+    <pre id="ask_out"></pre>
+  </section>
+
+  <section>
+    <h2>2) Requisiti per altezza connettore (slot-filling)</h2>
+    <label>Domanda</label>
+    <textarea id="req_q" rows="2" placeholder="Es: Quale altezza per CTF su lamiera con soletta 60 mm?"></textarea>
+    <div style="margin-top:8px">
+      <button class="primary" onclick="req()">Invia</button>
+    </div>
+    <pre id="req_out"></pre>
+  </section>
+
+  <section>
+    <h2>3) Calcolo altezza (quando i dati sono completi)</h2>
+    <label>Domanda completa</label>
+    <textarea id="calc_q" rows="2" placeholder="Es: CTF su lamiera, soletta 60 mm, copriferro 25 mm."></textarea>
+    <div style="margin-top:8px">
+      <button class="primary" onclick="calc()">Calcola</button>
+    </div>
+    <pre id="calc_out"></pre>
+  </section>
+
+  <script>
+    const base = window.location.origin;
+
+    async function postJSON(url, body){{
+      const r = await fetch(url, {{
+        method:'POST',
+        headers:{{'Content-Type':'application/json'}},
+        body: JSON.stringify(body || {{}})
+      }});
+      let txt = await r.text();
+      try {{ txt = JSON.stringify(JSON.parse(txt), null, 2); }} catch(e) {{}}
+      return txt;
+    }}
+
+    async function ask(){{
+      const domanda = document.getElementById('ask_q').value.trim();
+      const out = document.getElementById('ask_out'); out.textContent = '...';
+      out.textContent = await postJSON(base + '/ask_chatgpt', {{domanda}});
+    }}
+
+    async function req(){{
+      const domanda = document.getElementById('req_q').value.trim();
+      const out = document.getElementById('req_out'); out.textContent = '...';
+      out.textContent = await postJSON(base + '/requisiti_connettore', {{domanda}});
+    }}
+
+    async function calc(){{
+      const domanda = document.getElementById('calc_q').value.trim();
+      const out = document.getElementById('calc_out'); out.textContent = '...';
+      out.textContent = await postJSON(base + '/altezza_connettore', {{domanda}});
+    }}
+  </script>
+</body>
+</html>"""
     return Response(html, mimetype="text/html")
 
 # ---------- Debug: stampa rotte ----------
 print("ROUTES:", app.url_map)
 
+# ---------- Avvio locale ----------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
