@@ -2,7 +2,7 @@ import os, re, glob, logging
 from flask import Flask, request, jsonify, Response, redirect
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
-from rapidfuzz import fuzz  # fuzzy match note locali
+from rapidfuzz import fuzz
 
 # =============== Logging & Flask ===============
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -23,7 +23,7 @@ def _parse_float(val, default=0.0):
     except Exception:
         return default
 
-# 0 => non passare temperature (molti modelli vogliono default=1)
+# 0.0 => non passiamo 'temperature' (alcuni modelli vogliono il default implicito)
 TEMPERATURE = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)
 
 # =============== OpenAI client (nuovo/legacy) ===============
@@ -31,11 +31,11 @@ NEW_SDK = True
 openai = None
 client = None
 try:
-    from openai import OpenAI  # >=1.x (Responses API)
+    from openai import OpenAI  # >=1.x
     client = OpenAI(api_key=OPENAI_API_KEY)
     logging.info("OpenAI SDK: NEW (>=1.x) — Responses API")
 except Exception:
-    import openai as _openai  # <=0.28.x (Chat Completions)
+    import openai as _openai  # <=0.28.x
     openai = _openai
     NEW_SDK = False
     if OPENAI_API_KEY:
@@ -56,16 +56,15 @@ TECNARIA_CONTACT = {
 def deterministic_contacts_answer(q: str) -> str | None:
     """
     Risponde SOLO se la domanda riguarda contatti/indirizzo/telefono/email/PEC/sede.
-    Regex con confini di parola per evitare falsi positivi (es. 'CFT').
     """
     ql = (q or "").lower()
-    patterns = [
+    pats = [
         r"\bcontatti?\b", r"\bcontatto\b", r"\bindirizz[io]\b", r"\bdove\s+si\s+trova\b",
         r"\bsede\b", r"\btelefono\b|\btel\.\b", r"\bcellulare\b|\bmobile\b",
         r"\bemail\b|\bmail\b", r"\bpec\b", r"\bfax\b",
         r"\bpartita\s*iva\b|\bp\.?\s*iva\b", r"\bcodice\s*fiscale\b"
     ]
-    if any(re.search(p, ql) for p in patterns):
+    if any(re.search(p, ql) for p in pats):
         c = TECNARIA_CONTACT
         return (
             f"**{c['ragione_sociale']} — Contatti ufficiali**\n"
@@ -143,28 +142,28 @@ def detect_lang(text: str) -> str:
     return "en" if en > it else "it"
 
 def translate_text(note_text: str, target_lang: str) -> str:
-    """
-    Traduci la nota (solo verso EN per ora). Mantieni titoli/markdown.
-    """
+    """Traduci la nota (solo verso EN per ora)."""
     if target_lang != "en":
         return note_text
     sys = "You are a professional technical translator. Translate into natural, precise ENGLISH. Keep headings and bullet lists. Do not add commentary."
     user = f"Translate this technical note into English. Keep structure:\n\n{note_text}"
     try:
         if NEW_SDK:
-            resp = client.responses.create(
-                model=OPENAI_MODEL,
-                input=[{"role":"system","content":sys},{"role":"user","content":user}],
-                top_p=1, max_output_tokens=800
-            )
+            params = {
+                "model": OPENAI_MODEL,
+                "input": [{"role":"system","content":sys},{"role":"user","content":user}],
+                "top_p": 1, "max_output_tokens": 800
+            }
+            if TEMPERATURE and TEMPERATURE > 0: params["temperature"] = TEMPERATURE
+            resp = client.responses.create(**params)  # type: ignore
             out = getattr(resp, "output_text", None)
             return out.strip() if out else note_text
         else:
-            resp = openai.ChatCompletion.create(
-                model=OPENAI_MODEL,
-                messages=[{"role":"system","content":sys},{"role":"user","content":user}],
-                top_p=1, max_tokens=800
-            )
+            kwargs = dict(model=OPENAI_MODEL,
+                          messages=[{"role":"system","content":sys},{"role":"user","content":user}],
+                          top_p=1, max_tokens=800)
+            if TEMPERATURE and TEMPERATURE > 0: kwargs["temperature"] = TEMPERATURE
+            resp = openai.ChatCompletion.create(**kwargs)  # type: ignore
             return (resp["choices"][0]["message"]["content"] or "").strip()
     except Exception:
         return note_text
@@ -239,7 +238,6 @@ def best_local_note(question: str, topic: str):
     """
     paths = load_note_files(topic)
     q = (question or "").lower()
-
     # 1) file locali
     if paths:
         best_score, best_text, best_src = -1, None, None
@@ -257,30 +255,23 @@ def best_local_note(question: str, topic: str):
                 best_score, best_text, best_src = score, txt, f"{NOTE_DIR}/{topic}/{os.path.basename(p)}"
         if best_text:
             return best_text, best_src
-
     # 2) embedded
     notes = EMBEDDED_NOTES.get(topic, [])
     if notes:
         return notes[0].strip(), f"embedded:{topic}"
-
     # 3) nulla
     return None, None
 
 def attach_local_note(answer: str, question: str) -> str:
-    """
-    Aggancia SEMPRE una nota se esiste almeno una fonte (file locale o embedded).
-    Se la domanda è in inglese, traduce automaticamente la nota in inglese.
-    """
+    """Aggancia SEMPRE una nota se esiste almeno una fonte (file locale o embedded)."""
     topic = guess_topic(question)
     if not topic:
         return answer
     note, src = best_local_note(question, topic)
     if not note:
         return answer
-
     lang = detect_lang(question)
     shown_note = translate_text(note, "en" if lang == "en" else "it")
-
     lines = shown_note.splitlines()
     if lines and len(lines[0]) <= 100:
         title = lines[0].strip()
@@ -292,14 +283,12 @@ def attach_local_note(answer: str, question: str) -> str:
     else:
         block = f"---\n📎 Technical note (local)\n{shown_note}" if lang == "en" \
                 else f"---\n📎 Nota tecnica (locale)\n{shown_note}"
-
     if src:
         if src.startswith("embedded:"):
             block += f"\n_(source: {src})_" if lang=="en" else f"\n_(fonte: {src})_"
         else:
             rel = os.path.relpath(src, start=NOTE_DIR)
             block += f"\n_(source: {rel})_" if lang=="en" else f"\n_(fonte: {rel})_"
-
     return (answer or "").rstrip() + "\n\n" + block
 
 # =============== DETERMINISTICO: CODICI CTF ===============
@@ -339,7 +328,6 @@ def _deterministic_from_note(soletta_mm: int, copriferro_mm: int) -> str | None:
     paths = load_note_files("CTF")
     if not paths: return None
     s_str, c_str = str(soletta_mm), str(copriferro_mm)
-
     # entrambi i numeri
     for p in paths:
         try:
@@ -499,7 +487,7 @@ def deterministic_other_families_answer(q: str) -> str | None:
                 "- Refer to Tecnaria technical note and installation manual.")
     if "omega" in ql:
         return ("**Omega — Collegamenti su lamiere sottili**\n"
-                "- Idonei a profili sottili; attenzione a schiacciamenti locali.\n"
+                "- Idonei a profili sottili; attenzione a schiacciamento locale.\n"
                 "- Coppia di serraggio e rondelle adeguate.\n"
                 "- Vedi nota tecnica dedicata.") if detect_lang(q)!="en" else (
                 "**Omega — Connections on thin sheets**\n"
@@ -579,6 +567,30 @@ def call_model(question: str, style: str) -> str:
         if not out: out = ask_legacy_sdk(SYSTEM_TEXT, question, toks, TEMPERATURE)
         return out
 
+# ==== NEW: arricchimento deterministici per stili B/C ====
+def enrich_if_needed(base_text: str, question: str, style: str) -> str:
+    """
+    Se lo stile è B o C, usa l'LLM per espandere il testo deterministico
+    mantenendo il contenuto tecnico. Se fallisce, torna il base_text.
+    """
+    style_hint = STYLE_HINTS.get(style, "")
+    lang = detect_lang(question)
+    if style == "A":
+        return base_text
+
+    if lang == "en":
+        user = (f"Expand this answer to style {style}.\n\n"
+                f"Original question: {question}\n\n"
+                f"Answer to expand:\n{base_text}\n\n{style_hint}")
+    else:
+        user = (f"Espandi questa risposta in stile {style}.\n\n"
+                f"Domanda originale: {question}\n\n"
+                f"Risposta da espandere:\n{base_text}\n\n{style_hint}")
+    try:
+        return call_model(user, style) or base_text
+    except Exception:
+        return base_text
+
 # =============== Routes ===============
 @app.get("/")
 def root_redirect(): return redirect("/ui", code=302)
@@ -619,25 +631,31 @@ def ask():
     if c_ans:
         return jsonify({"answer": c_ans, "style_used":"D", "source":"deterministic_contacts"}), 200
 
-    # Guardrail non-Tecnaria (se la domanda non contiene alcun topic Tecnaria noto)
+    # Guardrail non-Tecnaria
     if banned(q):
         return jsonify({"answer":"Non posso rispondere: non è un prodotto Tecnaria ufficiale.", "source":"guardrail"}), 200
 
-    # 2) Codici CTF (deterministico) + nota
+    # 2) Codici CTF (deterministico) + nota (+ enrich B/C)
     cod_ans = deterministic_ctf_codes_answer(q)
     if cod_ans:
+        if style in ("B","C"):
+            cod_ans = enrich_if_needed(cod_ans, q, style)
         cod_ans = attach_local_note(cod_ans, q)
         return jsonify({"answer": cod_ans, "style_used":"D", "source":"deterministic_ctf_codes"}), 200
 
-    # 2b) CTL — codici (deterministico) + nota
+    # 2b) CTL — codici (deterministico) + nota (+ enrich B/C)
     ctl_codes = deterministic_ctl_codes_answer(q)
     if ctl_codes:
+        if style in ("B","C"):
+            ctl_codes = enrich_if_needed(ctl_codes, q, style)
         ctl_codes = attach_local_note(ctl_codes, q)
         return jsonify({"answer": ctl_codes, "style_used":"D", "source":"deterministic_ctl_codes"}), 200
 
     # 3) Altezza CTF
     det_ans, matched = deterministic_ctf_height_answer(q)
     if det_ans and matched:
+        if style in ("B","C"):
+            det_ans = enrich_if_needed(det_ans, q, style)
         det_ans = attach_local_note(det_ans, q)
         return jsonify({"answer": det_ans, "style_used":"D", "source":"deterministic_ctf_height"}), 200
     elif det_ans and not matched:
@@ -653,6 +671,8 @@ def ask():
     # 3b) Altezza CTL
     ctl_ans, ctl_match = deterministic_ctl_height_answer(q)
     if ctl_ans and ctl_match:
+        if style in ("B","C"):
+            ctl_ans = enrich_if_needed(ctl_ans, q, style)
         ctl_ans = attach_local_note(ctl_ans, q)
         return jsonify({"answer": ctl_ans, "style_used":"D", "source":"deterministic_ctl_height"}), 200
     elif ctl_ans and not ctl_match:
@@ -665,21 +685,27 @@ def ask():
             ctl_ans = attach_local_note(ctl_ans, q)
             return jsonify({"answer": ctl_ans, "style_used":"D", "source":"deterministic_ctl_height_fallback"}), 200
 
-    # 4) Varianti CEM-E (descrittivo deterministico) + nota
+    # 4) Varianti CEM-E (descrittivo deterministico) + nota (+ enrich B/C)
     cemv = deterministic_cem_e_variants_answer(q)
     if cemv:
+        if style in ("B","C"):
+            cemv = enrich_if_needed(cemv, q, style)
         cemv = attach_local_note(cemv, q)
         return jsonify({"answer": cemv, "style_used":"D", "source":"deterministic_cem_e_variants"}), 200
 
-    # 5) Diapason/Omega/GTS (descrittivi) + nota
+    # 5) Diapason/Omega/GTS (descrittivi) + nota (+ enrich B/C)
     other = deterministic_other_families_answer(q)
     if other:
+        if style in ("B","C"):
+            other = enrich_if_needed(other, q, style)
         other = attach_local_note(other, q)
         return jsonify({"answer": other, "style_used":"D", "source":"deterministic_other_families"}), 200
 
-    # 6) SPIT P560 (deterministico) + nota
+    # 6) SPIT P560 (deterministico) + nota (+ enrich B/C)
     p560 = deterministic_p560_answer(q)
     if p560:
+        if style in ("B","C"):
+            p560 = enrich_if_needed(p560, q, style)
         p560 = attach_local_note(p560, q)
         return jsonify({"answer": p560, "style_used":"D", "source":"deterministic_p560"}), 200
 
