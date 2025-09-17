@@ -31,11 +31,11 @@ NEW_SDK = True
 openai = None
 client = None
 try:
-    from openai import OpenAI  # >=1.x
+    from openai import OpenAI  # >=1.x (Responses API)
     client = OpenAI(api_key=OPENAI_API_KEY)
     logging.info("OpenAI SDK: NEW (>=1.x) — Responses API")
 except Exception:
-    import openai as _openai  # <=0.28.x
+    import openai as _openai  # <=0.28.x (Chat Completions)
     openai = _openai
     NEW_SDK = False
     if OPENAI_API_KEY:
@@ -86,21 +86,23 @@ SYSTEM_TEXT = (
     "Rispondi in modo completo, strutturato e operativo: titolo breve + punti tecnici, con esempi pratici e indicazioni di posa. "
     "Includi, se utile, avvertenze e tolleranze. Non inventare dati: se servono parametri di progetto, spiega cosa chiedere al cliente. "
     "Resta nel perimetro Tecnaria (connettori CTF/CTL, CEM-E, MINI CEM-E, V-CEM-E, CTCEM, Diapason, Omega, GTS; Spit P560; "
-    "certificazioni, manuali di posa, capitolati, computi). Se la domanda non è su prodotti Tecnaria, di' che non puoi."
+    "certificazioni, manuali di posa, capitolati, computi). Se la domanda non è su prodotti Tecnaria, di' che non puoi. "
+    "Rispondi nella stessa lingua dell’utente (Italiano o Inglese)."
 )
 
 TOPIC_KEYS = {
     "CTF": ["ctf","cft","acciaio-calcestruzzo","lamiera","grecata"],
-    "CTL": ["ctl","legno-calcestruzzo","legno","solaio in legno"],
-    "CEM-E": ["cem-e","ripresa di getto","nuovo su esistente","cucitura"],
-    "MINI CEM-E": ["mini cem-e","mini cem"],
-    "V-CEM-E": ["v-cem-e","vcem","v cem"],
+    "CTL": ["ctl","legno-calcestruzzo","legno","solaio in legno","timber","wood-concrete"],
+    "CEM-E": ["cem-e","ripresa di getto","nuovo su esistente","cucitura","joint","construction joint"],
+    "MINI CEM-E": ["mini cem-e","mini cem","mini"],
+    "V-CEM-E": ["v-cem-e","vcem","v cem","verticale"],
     "CTCEM": ["ctcem","ct cem"],
-    "DIAPASON": ["diapason"],
-    "OMEGA": ["omega"],
-    "GTS": ["manicotto gts","gts"],
-    "P560": ["p560","spit p560","chiodatrice"],
+    "DIAPASON": ["diapason","connettore diapason"],
+    "OMEGA": ["omega","connettore omega"],
+    "GTS": ["manicotto gts","gts","giunto trave-colonna","sleeve"],
+    "P560": ["p560","spit p560","chiodatrice","nailer","powder-actuated"]
 }
+
 def banned(text: str) -> bool:
     q = (text or "").lower()
     for keys in TOPIC_KEYS.values():
@@ -120,22 +122,106 @@ def normalize_style(val):
     v = str(val).strip().upper()
     return "A" if v in ("A","SHORT") else "C" if v in ("C","DETAILED","LONG") else "B"
 
+# =============== Rilevamento lingua + Traduzione note ===============
+EN_WORDS = set("""
+the and for with from into between against without above below during before after within beyond
+what which who where when how why can could should would may might will shall do does did is are was were be been being
+use height heights slab deck concrete steel wood beam joist rebar cover shear connector technical note example
+""".split())
+IT_WORDS = set("""
+il lo la i gli le un una per con da tra fra senza sopra sotto durante prima dopo entro oltre
+che quale chi dove quando come perché posso potrei dovrei ma forse sarà fare fa è sono era erano essere stato
+altezza altezze soletta calcestruzzo acciaio legno trave solaio copriferro connettore nota tecnica esempio
+""".split())
+
+def detect_lang(text: str) -> str:
+    t = (text or "").lower()
+    en = sum(1 for w in re.findall(r"[a-z]+", t) if w in EN_WORDS)
+    it = sum(1 for w in re.findall(r"[a-zàèéìòóù]+", t) if w in IT_WORDS)
+    if re.search(r"[àèéìòóù]", t): it += 2
+    if "ctf" in t or "copriferro" in t or "soletta" in t: it += 1
+    return "en" if en > it else "it"
+
+def translate_text(note_text: str, target_lang: str) -> str:
+    """
+    Traduci la nota (solo verso EN per ora). Mantieni titoli/markdown.
+    """
+    if target_lang != "en":
+        return note_text
+    sys = "You are a professional technical translator. Translate into natural, precise ENGLISH. Keep headings and bullet lists. Do not add commentary."
+    user = f"Translate this technical note into English. Keep structure:\n\n{note_text}"
+    try:
+        if NEW_SDK:
+            resp = client.responses.create(
+                model=OPENAI_MODEL,
+                input=[{"role":"system","content":sys},{"role":"user","content":user}],
+                top_p=1, max_output_tokens=800
+            )
+            out = getattr(resp, "output_text", None)
+            return out.strip() if out else note_text
+        else:
+            resp = openai.ChatCompletion.create(
+                model=OPENAI_MODEL,
+                messages=[{"role":"system","content":sys},{"role":"user","content":user}],
+                top_p=1, max_tokens=800
+            )
+            return (resp["choices"][0]["message"]["content"] or "").strip()
+    except Exception:
+        return note_text
+
 # =============== NOTE TECNICHE: fallback embedded ===============
 EMBEDDED_NOTES = {
     "CTF": [
         """Nota tecnica CTF – Altezza, soletta e copriferro
-Per scegliere l’altezza del connettore CTF si considera:
-- Spessore della soletta in calcestruzzo
-- Copriferro minimo richiesto dalle normative
-- Tipo di lamiera grecata (se presente)
-
+- Considerare: spessore soletta, copriferro minimo, tipo di lamiera grecata (se presente).
 Esempio:
 - Soletta 60 mm → connettore CTF090
 - Soletta 80 mm con copriferro 25 mm → connettore CTF105"""
     ],
-    # In futuro: aggiungi CTL, CEM-E, ecc.
+    "CTL": [
+        """Nota tecnica CTL – Legno-calcestruzzo
+- Verificare classe del legno (umidità, difetti, resistenza).
+- Preforo secondo manuale, attenzione a fessurazioni.
+- Copriferro minimo nel getto collaborante (≥ 25 mm salvo prescrizioni).
+- Passo e densità connettori in funzione del calcolo a taglio.
+Esempio: tavolato 50 mm + getto 60–80 mm → connettore CTL medio, passo 15–20 cm."""
+    ],
+    "CEM-E": [
+        """Nota tecnica CEM-E – Ripresa di getto
+- Pulizia, scabrosità e saturazione del cls esistente.
+- Primer/boiacca adesiva se previsto da specifica.
+- Connettori a ponte per trasferimento taglio lungo giunto.
+- Copriferro e ricoprimento ancoraggi secondo normativa."""
+    ],
+    "DIAPASON": [
+        """Nota tecnica DIAPASON – Rinforzo su lamiere grecate
+- Studiare passo e orientamento lamiera.
+- Verificare interferenze con armature e impianti.
+- Predisporre guida di posa per allineamento connettori.
+- Tolleranze: verticalità ±2 mm, passo ±5 mm su 1 m."""
+    ],
+    "OMEGA": [
+        """Nota tecnica OMEGA – Collegamenti su profili sottili
+- Idoneo per lamiere sottili; attenzione a schiacciamento locale.
+- Verificare coppia serraggio e rondelle adeguate.
+- Protezione anticorrosiva se in ambienti aggressivi."""
+    ],
+    "GTS": [
+        """Nota tecnica GTS – Manicotto filettato
+- Controllare lunghezza d’innesto e filettatura compatibile.
+- Pulizia filetti e coppia di serraggio con dinamometrica.
+- Certificazioni per uso strutturale secondo specifica."""
+    ],
+    "P560": [
+        """Nota tecnica SPIT P560 – Chiodatrice a sparo
+- Usare DPI e seguire il manuale di sicurezza.
+- Selezione chiodo e carica in funzione del supporto (acciaio/lamiere).
+- Prova preliminare di tenuta e profondità di infissione.
+- Manutenzione: pulizia camera e guide, controllo otturatore."""
+    ],
 }
 
+# =============== Utility note ===============
 def guess_topic(question: str) -> str | None:
     q = (question or "").lower()
     for topic, keys in TOPIC_KEYS.items():
@@ -148,16 +234,13 @@ def load_note_files(topic: str):
 
 def best_local_note(question: str, topic: str):
     """
-    Ritorna (testo_nota, fonte_str).
-    Ordine:
-      1) match fuzzy sui .txt locali
-      2) fallback EMBEDDED_NOTES[topic][0]
-      3) None
+    Ritorna (testo_nota, fonte_str)
+    1) match fuzzy su .txt locali  2) fallback embedded  3) None
     """
     paths = load_note_files(topic)
     q = (question or "").lower()
 
-    # 1) prova file locali
+    # 1) file locali
     if paths:
         best_score, best_text, best_src = -1, None, None
         for p in paths:
@@ -168,16 +251,17 @@ def best_local_note(question: str, topic: str):
                 continue
             blob = (os.path.basename(p) + "\n" + txt).lower()
             score = fuzz.token_set_ratio(q, blob)
-            for k in ("altezza", "altezze", "soletta", "copriferro", "ctf"):
+            for k in ("altezza","altezze","soletta","copriferro","ctf","ctl","cem-e","diapason","omega","gts","p560"):
                 if k in blob or k in q: score += 5
             if score > best_score:
                 best_score, best_text, best_src = score, txt, f"{NOTE_DIR}/{topic}/{os.path.basename(p)}"
         if best_text:
             return best_text, best_src
 
-    # 2) fallback embedded
-    if topic in EMBEDDED_NOTES and EMBEDDED_NOTES[topic]:
-        return EMBEDDED_NOTES[topic][0].strip(), f"embedded:{topic}"
+    # 2) embedded
+    notes = EMBEDDED_NOTES.get(topic, [])
+    if notes:
+        return notes[0].strip(), f"embedded:{topic}"
 
     # 3) nulla
     return None, None
@@ -185,6 +269,7 @@ def best_local_note(question: str, topic: str):
 def attach_local_note(answer: str, question: str) -> str:
     """
     Aggancia SEMPRE una nota se esiste almeno una fonte (file locale o embedded).
+    Se la domanda è in inglese, traduce automaticamente la nota in inglese.
     """
     topic = guess_topic(question)
     if not topic:
@@ -193,20 +278,27 @@ def attach_local_note(answer: str, question: str) -> str:
     if not note:
         return answer
 
-    lines = note.splitlines()
+    lang = detect_lang(question)
+    shown_note = translate_text(note, "en" if lang == "en" else "it")
+
+    lines = shown_note.splitlines()
     if lines and len(lines[0]) <= 100:
         title = lines[0].strip()
         body  = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
-        block = f"---\n📎 Nota tecnica (locale) — {title}\n{body}" if body else f"---\n📎 Nota tecnica (locale)\n{title}"
+        if lang == "en":
+            block = f"---\n📎 Technical note (local) — {title}\n{body}" if body else f"---\n📎 Technical note (local)\n{title}"
+        else:
+            block = f"---\n📎 Nota tecnica (locale) — {title}\n{body}" if body else f"---\n📎 Nota tecnica (locale)\n{title}"
     else:
-        block = f"---\n📎 Nota tecnica (locale)\n{note}"
+        block = f"---\n📎 Technical note (local)\n{shown_note}" if lang == "en" \
+                else f"---\n📎 Nota tecnica (locale)\n{shown_note}"
 
     if src:
         if src.startswith("embedded:"):
-            block += f"\n_(fonte: {src})_"
+            block += f"\n_(source: {src})_" if lang=="en" else f"\n_(fonte: {src})_"
         else:
             rel = os.path.relpath(src, start=NOTE_DIR)
-            block += f"\n_(fonte: {rel})_"
+            block += f"\n_(source: {rel})_" if lang=="en" else f"\n_(fonte: {rel})_"
 
     return (answer or "").rstrip() + "\n\n" + block
 
@@ -218,12 +310,16 @@ CTF_CODES = [
 ]
 def deterministic_ctf_codes_answer(q: str) -> str | None:
     ql = (q or "").lower()
-    if not (("ctf" in ql or "cft" in ql) and any(k in ql for k in ["codici","codice","lista","listino","catalogo"])):
+    if not (("ctf" in ql or "cft" in ql) and any(k in ql for k in ["codici","codice","lista","listino","catalogo","codes","list"])):
         return None
-    lines = ["**Serie CTF — Altezze gambo (mm)**"]
-    for code,h in CTF_CODES:
-        lines.append(f"- {code} — {h} mm")
-    lines.append("\nPer l’impiego corretto verificare spessore soletta/coprif. e manuale di posa Tecnaria.")
+    if detect_lang(q) == "en":
+        lines = ["**CTF Series — Shank heights (mm)**"]
+        for code,h in CTF_CODES: lines.append(f"- {code} — {h} mm")
+        lines.append("\nFor proper use, check slab thickness/cover and the Tecnaria installation manual.")
+    else:
+        lines = ["**Serie CTF — Altezze gambo (mm)**"]
+        for code,h in CTF_CODES: lines.append(f"- {code} — {h} mm")
+        lines.append("\nPer l’impiego corretto verificare spessore soletta/coprif. e manuale di posa Tecnaria.")
     return "\n".join(lines)
 
 # =============== DETERMINISTICO: ALTEZZA CTF da TXT ===============
@@ -240,17 +336,12 @@ def _find_ctf_code_in_line(line: str) -> str | None:
     return "CTF"+m.group(1).zfill(3) if m else None
 
 def _deterministic_from_note(soletta_mm: int, copriferro_mm: int) -> str | None:
-    """
-    Cerca in TUTTI i .txt dentro documenti_gTab/CTF una riga che contenga
-    sia la soletta che il copriferro e un codice CTF***.
-    Se non trova match esatto, prova match parziali.
-    """
-    folder_paths = load_note_files("CTF")
-    if not folder_paths: return None
+    paths = load_note_files("CTF")
+    if not paths: return None
     s_str, c_str = str(soletta_mm), str(copriferro_mm)
 
     # entrambi i numeri
-    for p in folder_paths:
+    for p in paths:
         try:
             with open(p,"r",encoding="utf-8") as f:
                 for ln in f:
@@ -258,9 +349,10 @@ def _deterministic_from_note(soletta_mm: int, copriferro_mm: int) -> str | None:
                     if s_str in ln and c_str in ln:
                         code = _find_ctf_code_in_line(ln)
                         if code: return code
-        except Exception: continue
+        except Exception:
+            continue
     # solo soletta
-    for p in folder_paths:
+    for p in paths:
         try:
             with open(p,"r",encoding="utf-8") as f:
                 for ln in f:
@@ -268,9 +360,10 @@ def _deterministic_from_note(soletta_mm: int, copriferro_mm: int) -> str | None:
                     if s_str in ln:
                         code = _find_ctf_code_in_line(ln)
                         if code: return code
-        except Exception: continue
+        except Exception:
+            continue
     # solo copriferro
-    for p in folder_paths:
+    for p in paths:
         try:
             with open(p,"r",encoding="utf-8") as f:
                 for ln in f:
@@ -278,7 +371,8 @@ def _deterministic_from_note(soletta_mm: int, copriferro_mm: int) -> str | None:
                     if c_str in ln:
                         code = _find_ctf_code_in_line(ln)
                         if code: return code
-        except Exception: continue
+        except Exception:
+            continue
     return None
 
 def deterministic_ctf_height_answer(question: str):
@@ -288,24 +382,161 @@ def deterministic_ctf_height_answer(question: str):
       - matched_bool=False -> NON trovato -> farà LLM + nota a valle
     """
     q = (question or "").lower()
-    if not (("ctf" in q or "cft" in q) and ("altezza" in q or "altezze" in q)):
+    if not (("ctf" in q or "cft" in q) and ("altezza" in q or "altezze" in q or "height" in q or "heights" in q)):
         return None, False
-    so = _extract_mm(q, r"soletta")
-    co = _extract_mm(q, r"copriferro|copri\s*ferro|copri\-?ferro")
+    so = _extract_mm(q, r"soletta|slab|deck|thickness")
+    co = _extract_mm(q, r"copriferro|cover|rebar\s*cover|concrete\s*cover")
     if not so:
         return None, False
     soletta = so[0]; copri = co[0] if co else 25
     code = _deterministic_from_note(soletta, copri)
     if not code:
-        base = (f"**Dati ricevuti**: soletta **{soletta} mm**, copriferro **{copri} mm**.")
-        return base, False
-    text = (
-        f"**Altezza consigliata CTF: {code}**\n"
-        f"- Dati ricevuti: soletta **{soletta} mm**, copriferro **{copri} mm**.\n"
-        f"- Abbinamento ricavato da note interne CTF (*.txt).\n"
-        f"Se vuoi verifico anche passo, densità e interferenze impianti."
-    )
+        base_it = f"**Dati ricevuti**: soletta **{soletta} mm**, copriferro **{copri} mm**."
+        base_en = f"**Input received**: slab **{soletta} mm**, rebar cover **{copri} mm**."
+        return (base_en if detect_lang(question)=="en" else base_it), False
+    if detect_lang(question) == "en":
+        text = (
+            f"**Recommended CTF height: {code}**\n"
+            f"- Inputs: slab **{soletta} mm**, rebar cover **{copri} mm**.\n"
+            f"- Mapping retrieved from internal CTF notes (*.txt).\n"
+            f"If you want, I can also check spacing, density and MEP interferences."
+        )
+    else:
+        text = (
+            f"**Altezza consigliata CTF: {code}**\n"
+            f"- Dati ricevuti: soletta **{soletta} mm**, copriferro **{copri} mm**.\n"
+            f"- Abbinamento ricavato da note interne CTF (*.txt).\n"
+            f"Se vuoi verifico anche passo, densità e interferenze impianti."
+        )
     return text, True
+
+# =============== DETERMINISTICI CTL & altre famiglie ===============
+CTL_CODES = [
+    # Esempio indicativo: sostituisci con lista ufficiale quando disponibile
+    ("CTL060", 60), ("CTL080", 80), ("CTL100", 100), ("CTL120", 120)
+]
+def deterministic_ctl_codes_answer(q: str) -> str | None:
+    ql = (q or "").lower()
+    if not (("ctl" in ql) and any(k in ql for k in ["codici","codice","lista","listino","catalogo","codes","list"])):
+        return None
+    if detect_lang(q) == "en":
+        lines = ["**CTL Series — Shank heights (mm)**"]
+        for code,h in CTL_CODES: lines.append(f"- {code} — {h} mm")
+        lines.append("\nFor proper use, check timber class, slab thickness/cover and Tecnaria installation manual.")
+    else:
+        lines = ["**Serie CTL — Altezze gambo (mm)**"]
+        for code,h in CTL_CODES: lines.append(f"- {code} — {h} mm")
+        lines.append("\nPer l’impiego corretto verificare classe del legno, spessore soletta/coprif. e manuale di posa Tecnaria.")
+    return "\n".join(lines)
+
+def deterministic_ctl_height_answer(question: str):
+    q = (question or "").lower()
+    if not ("ctl" in q and ("altezza" in q or "altezze" in q or "height" in q or "heights" in q)):
+        return None, False
+    so = _extract_mm(q, r"soletta|slab|deck|thickness")
+    if not so: return None, False
+    soletta = so[0]
+    paths = load_note_files("CTL")
+    if paths:
+        s_str = str(soletta)
+        for p in paths:
+            try:
+                with open(p,"r",encoding="utf-8") as f:
+                    for ln in f:
+                        ln = ln.strip()
+                        if s_str in ln:
+                            m = re.search(r"\bCTL\s*0?(\d{2,3})\b", ln, re.IGNORECASE)
+                            if m:
+                                code = "CTL"+m.group(1).zfill(3)
+                                if detect_lang(question) == "en":
+                                    text = (f"**Recommended CTL height: {code}**\n"
+                                            f"- Input: slab **{soletta} mm**.\n"
+                                            f"- Mapping retrieved from internal CTL notes (*.txt).")
+                                else:
+                                    text = (f"**Altezza consigliata CTL: {code}**\n"
+                                            f"- Dato ricevuto: soletta **{soletta} mm**.\n"
+                                            f"- Abbinamento da note interne CTL (*.txt).")
+                                return text, True
+            except Exception:
+                continue
+    base = f"**Dati ricevuti**: soletta **{soletta} mm**." if detect_lang(question)=="it" else f"**Input received**: slab **{soletta} mm**."
+    return base, False
+
+def deterministic_cem_e_variants_answer(q: str) -> str | None:
+    ql = (q or "").lower()
+    trigger = any(k in ql for k in ["cem-e","mini cem-e","v-cem-e","ctcem"])
+    ask_codes = any(k in ql for k in ["codici","codice","varianti","versioni","models","variants","types"])
+    if not (trigger and ask_codes): return None
+    if detect_lang(q) == "en":
+        return (
+            "**CEM-E family — Variants**\n"
+            "- **CEM-E**: shear connectors for construction joints (new-to-existing concrete).\n"
+            "- **MINI CEM-E**: compact version for reduced thicknesses and tight spaces.\n"
+            "- **V-CEM-E**: vertical connectors for vertical joints/couplings.\n"
+            "- **CTCEM**: specific configuration for particular structural constraints.\n"
+            "\nUse case depends on joint geometry, thickness, cover and required shear transfer."
+        )
+    else:
+        return (
+            "**Famiglia CEM-E — Varianti**\n"
+            "- **CEM-E**: connettori a taglio per riprese di getto (nuovo su esistente).\n"
+            "- **MINI CEM-E**: versione compatta per spessori ridotti e spazi contenuti.\n"
+            "- **V-CEM-E**: connettori verticali per giunti verticali/accoppiamenti.\n"
+            "- **CTCEM**: configurazione specifica per vincoli particolari.\n"
+            "\nLa scelta dipende da geometria del giunto, spessori, copriferro e taglio da trasferire."
+        )
+
+def deterministic_other_families_answer(q: str) -> str | None:
+    ql = (q or "").lower()
+    if "diapason" in ql:
+        return ("**Diapason — Connettori per lamiera grecata**\n"
+                "- Ottimizzati per solai collaboranti con lamiere grecate.\n"
+                "- Verificare passo lamiera, interferenze e tolleranze di posa.\n"
+                "- Consultare nota tecnica e manuale di posa Tecnaria.") if detect_lang(q)!="en" else (
+                "**Diapason — Connectors for trapezoidal deck**\n"
+                "- Optimized for composite slabs with trapezoidal steel deck.\n"
+                "- Check deck pitch, clashes and installation tolerances.\n"
+                "- Refer to Tecnaria technical note and installation manual.")
+    if "omega" in ql:
+        return ("**Omega — Collegamenti su lamiere sottili**\n"
+                "- Idonei a profili sottili; attenzione a schiacciamenti locali.\n"
+                "- Coppia di serraggio e rondelle adeguate.\n"
+                "- Vedi nota tecnica dedicata.") if detect_lang(q)!="en" else (
+                "**Omega — Connections on thin sheets**\n"
+                "- Suitable for thin profiles; watch local crushing.\n"
+                "- Proper torque and washers.\n"
+                "- See dedicated technical note.")
+    if "gts" in ql:
+        return ("**GTS — Manicotti filettati**\n"
+                "- Verifica lunghezza d’innesto e compatibilità filetti.\n"
+                "- Pulizia e coppia con dinamometrica.\n"
+                "- Certificazioni per uso strutturale.") if detect_lang(q)!="en" else (
+                "**GTS — Threaded sleeves**\n"
+                "- Check engagement length and thread compatibility.\n"
+                "- Clean threads and torque with torque wrench.\n"
+                "- Structural-use certifications.")
+    return None
+
+def deterministic_p560_answer(q: str) -> str | None:
+    ql = (q or "").lower()
+    if not any(k in ql for k in ["p560","spit p560","chiodatrice","nailer","powder-actuated"]):
+        return None
+    if detect_lang(q) == "en":
+        return (
+            "**SPIT P560 — Powder-actuated tool**\n"
+            "- **Safety**: PPE, training, follow the manual strictly.\n"
+            "- **Fasteners/charges**: select by base material (steel, deck thickness).\n"
+            "- **Test**: preliminary pull-out / penetration checks.\n"
+            "- **Maintenance**: clean chamber and guides; check piston/stopper."
+        )
+    else:
+        return (
+            "**SPIT P560 — Chiodatrice a sparo**\n"
+            "- **Sicurezza**: DPI, formazione, rispetto del manuale d’uso.\n"
+            "- **Chiodi/cariche**: selezione in funzione del supporto (acciaio, spessore lamiera).\n"
+            "- **Prova**: verifica preliminare di tenuta/profondità.\n"
+            "- **Manutenzione**: pulizia camera e guide; controllo otturatore."
+        )
 
 # =============== OpenAI helpers ===============
 def ask_new_sdk(system_text: str, user_text: str, style_tokens: int, temperature: float) -> str:
@@ -383,12 +614,12 @@ def ask():
     style = normalize_style(data.get("style"))
     if not q: return jsonify({"error":"Missing 'question'."}), 400
 
-    # 1) Contatti (deterministico, no note)
+    # 1) Contatti (deterministico, no nota)
     c_ans = deterministic_contacts_answer(q)
     if c_ans:
         return jsonify({"answer": c_ans, "style_used":"D", "source":"deterministic_contacts"}), 200
 
-    # Guardrail non-Tecnaria
+    # Guardrail non-Tecnaria (se la domanda non contiene alcun topic Tecnaria noto)
     if banned(q):
         return jsonify({"answer":"Non posso rispondere: non è un prodotto Tecnaria ufficiale.", "source":"guardrail"}), 200
 
@@ -398,25 +629,61 @@ def ask():
         cod_ans = attach_local_note(cod_ans, q)
         return jsonify({"answer": cod_ans, "style_used":"D", "source":"deterministic_ctf_codes"}), 200
 
+    # 2b) CTL — codici (deterministico) + nota
+    ctl_codes = deterministic_ctl_codes_answer(q)
+    if ctl_codes:
+        ctl_codes = attach_local_note(ctl_codes, q)
+        return jsonify({"answer": ctl_codes, "style_used":"D", "source":"deterministic_ctl_codes"}), 200
+
     # 3) Altezza CTF
     det_ans, matched = deterministic_ctf_height_answer(q)
     if det_ans and matched:
-        # match certo: deterministico + nota
         det_ans = attach_local_note(det_ans, q)
         return jsonify({"answer": det_ans, "style_used":"D", "source":"deterministic_ctf_height"}), 200
     elif det_ans and not matched:
-        # niente match nel TXT: prima LLM ricca, poi SEMPRE nota
         try:
             llm = call_model(q, style)
-            if not llm: llm = det_ans  # fallback estremo
+            if not llm: llm = det_ans
             llm = attach_local_note(llm, q)
             return jsonify({"answer": llm, "style_used": style, "source":"llm_fallback_with_note"}), 200
         except Exception:
-            # se LLM fallisce, mostra almeno i dati + nota
             det_ans = attach_local_note(det_ans, q)
             return jsonify({"answer": det_ans, "style_used":"D", "source":"deterministic_ctf_height_fallback"}), 200
 
-    # 4) LLM (ultimo step) + nota
+    # 3b) Altezza CTL
+    ctl_ans, ctl_match = deterministic_ctl_height_answer(q)
+    if ctl_ans and ctl_match:
+        ctl_ans = attach_local_note(ctl_ans, q)
+        return jsonify({"answer": ctl_ans, "style_used":"D", "source":"deterministic_ctl_height"}), 200
+    elif ctl_ans and not ctl_match:
+        try:
+            llm = call_model(q, style)
+            if not llm: llm = ctl_ans
+            llm = attach_local_note(llm, q)
+            return jsonify({"answer": llm, "style_used": style, "source":"llm_fallback_with_note_ctl"}), 200
+        except Exception:
+            ctl_ans = attach_local_note(ctl_ans, q)
+            return jsonify({"answer": ctl_ans, "style_used":"D", "source":"deterministic_ctl_height_fallback"}), 200
+
+    # 4) Varianti CEM-E (descrittivo deterministico) + nota
+    cemv = deterministic_cem_e_variants_answer(q)
+    if cemv:
+        cemv = attach_local_note(cemv, q)
+        return jsonify({"answer": cemv, "style_used":"D", "source":"deterministic_cem_e_variants"}), 200
+
+    # 5) Diapason/Omega/GTS (descrittivi) + nota
+    other = deterministic_other_families_answer(q)
+    if other:
+        other = attach_local_note(other, q)
+        return jsonify({"answer": other, "style_used":"D", "source":"deterministic_other_families"}), 200
+
+    # 6) SPIT P560 (deterministico) + nota
+    p560 = deterministic_p560_answer(q)
+    if p560:
+        p560 = attach_local_note(p560, q)
+        return jsonify({"answer": p560, "style_used":"D", "source":"deterministic_p560"}), 200
+
+    # 7) LLM generale + nota
     try:
         ans = call_model(q, style)
         if not ans: ans = "Non ho ricevuto testo dal modello in questa richiesta."
@@ -434,9 +701,12 @@ HTML_UI = """<!doctype html>
 <title>Tecnaria QA Bot</title>
 <style>
 :root{--bg:#0f172a;--card:#111827;--ink:#e5e7eb;--muted:#9ca3af;--accent:#22d3ee}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,Segoe UI,Roboto,Arial}
-.wrap{max-width:900px;margin:40px auto;padding:0 16px}.card{background:var(--card);border:1px solid #1f2937;border-radius:16px;padding:20px}
-h1{margin:0 0 8px;font-size:22px}.sub{color:var(--muted);font-size:14px;margin-bottom:16px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,Segoe UI,Roboto,Arial}
+.wrap{max-width:900px;margin:40px auto;padding:0 16px}
+.card{background:var(--card);border:1px solid #1f2937;border-radius:16px;padding:20px}
+h1{margin:0 0 8px;font-size:22px}
+.sub{color:var(--muted);font-size:14px;margin-bottom:16px}
 textarea{width:100%;min-height:110px;border-radius:12px;border:1px solid #374151;background:#0b1220;color:var(--ink);padding:12px}
 .btn{background:var(--accent);color:#041014;border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer;margin-top:10px}
 .out{white-space:pre-wrap;background:#0b1220;border:1px solid #1f2937;border-radius:12px;padding:14px;margin-top:16px}
@@ -445,11 +715,11 @@ label{display:inline-block;margin:8px 12px 0 0}
 <body><div class="wrap"><div class="card">
 <h1>Tecnaria QA Bot</h1>
 <div class="sub">Domande libere su Tecnaria. Se esiste una nota locale, la vedi in fondo.</div>
-<textarea id="question" placeholder="Es.: Dammi i codici CTF — Oppure: altezza CTF con soletta 80 e copriferro 25"></textarea>
+<textarea id="question" placeholder="Es.: Dammi i codici CTF — Oppure: altezza CTF con soletta 80 e copriferro 25. Ask in English to get the answer + note in English."></textarea>
 <div>
 <label><input type="radio" name="style" value="A"> A — Breve</label>
-<label><input type="radio" name="style" value="B"> B — Standard</label>
-<label><input type="radio" name="style" value="C" checked> C — Dettagliata</label>
+<label><input type="radio" name="style" value="B" checked> B — Standard</label>
+<label><input type="radio" name="style" value="C"> C — Dettagliata</label>
 </div>
 <button class="btn" onclick="ask()">Chiedi</button>
 <div id="output" class="out" style="display:none"></div>
@@ -482,6 +752,7 @@ def ui(): return Response(HTML_UI, mimetype="text/html")
 # =============== Error handling ===============
 @app.errorhandler(HTTPException)
 def _http(e: HTTPException): return jsonify({"error": e.description, "code": e.code}), e.code
+
 @app.errorhandler(Exception)
 def _any(e: Exception):
     logging.exception("Errore imprevisto"); return jsonify({"error": str(e)}), 500
