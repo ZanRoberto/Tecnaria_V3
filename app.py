@@ -1,4 +1,4 @@
-import os, re, glob, logging, json, math
+import os, re, glob, logging
 from flask import Flask, request, jsonify, Response, redirect
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
@@ -254,25 +254,31 @@ def _deterministic_from_note(soletta_mm: int, copriferro_mm: int) -> str | None:
         except Exception: continue
     return None
 
-def deterministic_ctf_height_answer(question: str) -> str | None:
+def deterministic_ctf_height_answer(question: str):
+    """
+    Ritorna (answer_text, matched_bool):
+      - matched_bool=True  -> trovato codice nel TXT (risposta certa)
+      - matched_bool=False -> NON trovato -> farà LLM + nota a valle
+    """
     q = (question or "").lower()
     if not (("ctf" in q or "cft" in q) and ("altezza" in q or "altezze" in q)):
-        return None
+        return None, False
     so = _extract_mm(q, r"soletta")
     co = _extract_mm(q, r"copriferro|copri\s*ferro|copri\-?ferro")
-    if not so: return None
+    if not so:
+        return None, False
     soletta = so[0]; copri = co[0] if co else 25
     code = _deterministic_from_note(soletta, copri)
-    if not code:  # fallback: non lascia mai vuoto
-        base = (f"**Dati ricevuti**: soletta **{soletta} mm**, copriferro **{copri} mm**.\n"
-                f"Non ho trovato un abbinamento certo nel file locale; ti allego comunque la nota tecnica.")
-        return base
-    return (
+    if not code:
+        base = (f"**Dati ricevuti**: soletta **{soletta} mm**, copriferro **{copri} mm**.")
+        return base, False
+    text = (
         f"**Altezza consigliata CTF: {code}**\n"
         f"- Dati ricevuti: soletta **{soletta} mm**, copriferro **{copri} mm**.\n"
         f"- Abbinamento ricavato da note interne CTF (*.txt).\n"
         f"Se vuoi verifico anche passo, densità e interferenze impianti."
     )
+    return text, True
 
 # =============== OpenAI helpers ===============
 def ask_new_sdk(system_text: str, user_text: str, style_tokens: int, temperature: float) -> str:
@@ -365,11 +371,23 @@ def ask():
         cod_ans = attach_local_note(cod_ans, q)
         return jsonify({"answer": cod_ans, "style_used":"D", "source":"deterministic_ctf_codes"}), 200
 
-    # 3) Altezza CTF (deterministico da TXT; se non trova match, esce comunque + nota)
-    det_ans = deterministic_ctf_height_answer(q)
-    if det_ans:
+    # 3) Altezza CTF
+    det_ans, matched = deterministic_ctf_height_answer(q)
+    if det_ans and matched:
+        # match certo: presento il deterministico + nota
         det_ans = attach_local_note(det_ans, q)
         return jsonify({"answer": det_ans, "style_used":"D", "source":"deterministic_ctf_height"}), 200
+    elif det_ans and not matched:
+        # niente match nel TXT: prima LLM ricca, poi SEMPRE nota
+        try:
+            llm = call_model(q, style)
+            if not llm: llm = det_ans  # fallback estremo
+            llm = attach_local_note(llm, q)
+            return jsonify({"answer": llm, "style_used": style, "source":"llm_fallback_with_note"}), 200
+        except Exception:
+            # se LLM fallisce, almeno mostra i dati ricevuti + nota
+            det_ans = attach_local_note(det_ans, q)
+            return jsonify({"answer": det_ans, "style_used":"D", "source":"deterministic_ctf_height_fallback"}), 200
 
     # 4) LLM (ultimo step)
     try:
