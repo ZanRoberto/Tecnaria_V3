@@ -1,20 +1,16 @@
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 from openai import OpenAI
-import os
-import re
+import os, re
 
 # --------------------
 # Config di servizio
 # --------------------
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5")
 
-# TEMPERATURE:
-# - Metti "default" (o lascia vuoto) per usare il default del modello (consigliato per gpt-5)
-# - Oppure un numero (es. "0.2") per modelli che lo supportano
 _env_temp = os.getenv("TEMPERATURE", "").strip().lower()
 if _env_temp in ("", "default", "none", "null"):
-    TEMPERATURE = None  # => non passeremo il parametro a OpenAI
+    TEMPERATURE = None  # non passiamo il parametro al modello
 else:
     try:
         TEMPERATURE = float(_env_temp)
@@ -96,11 +92,7 @@ def fuse_answer(llm_text: str, hint: dict):
 # Helpers OpenAI
 # --------------------
 def call_openai(messages):
-    # Montiamo la chiamata senza temperature se None (evita 400 su modelli che non la supportano)
-    kwargs = {
-        "model": MODEL,
-        "messages": messages,
-    }
+    kwargs = {"model": MODEL, "messages": messages}
     if TEMPERATURE is not None:
         kwargs["temperature"] = TEMPERATURE
     return client.chat.completions.create(**kwargs)
@@ -130,7 +122,8 @@ def ask():
         # Chiamata OpenAI (protetta)
         try:
             chat = call_openai([SYSTEM_MESSAGE, {"role": "user", "content": question}])
-            llm_text = chat.choices[0].message["content"]
+            # 👇 FIX: proprietà, non dizionario
+            llm_text = chat.choices[0].message.content
         except Exception as e:
             return jsonify({"error": "OpenAI call failed", "details": str(e)}), 502
 
@@ -153,7 +146,6 @@ def ask():
     except Exception as e:
         return jsonify({"error": "Server error", "details": str(e)}), 500
 
-# Error handlers globali (sempre JSON)
 @app.errorhandler(404)
 def not_found(_):
     return jsonify({"error": "Not found"}), 404
