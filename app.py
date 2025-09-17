@@ -11,9 +11,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 app = Flask(__name__)
 CORS(app, resources={r"/ask": {"origins": "*"}})
 
-# ===== ENV Config =====
-OPENAI_API_KEY   = os.environ.get("OPENAI_API_KEY")
-OPENAI_MODEL     = os.environ.get("OPENAI_MODEL", "gpt-5")
+# ===== ENV =====
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+OPENAI_MODEL   = os.environ.get("OPENAI_MODEL", "gpt-5")
 
 def _parse_float(val, default=0.0):
     try:
@@ -26,15 +26,15 @@ def _parse_float(val, default=0.0):
     except Exception:
         return default
 
-TEMPERATURE      = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)  # per gpt-5 lasciamo 0 = non passare
-NOTE_DIR         = os.environ.get("NOTE_DIR", "documenti_gTab")  # cartella note tecniche
+TEMPERATURE = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)  # 0 => non passare il parametro ai modelli che non lo supportano
+NOTE_DIR    = os.environ.get("NOTE_DIR", "documenti_gTab")
 
 # ===== OpenAI client =====
 if not OPENAI_API_KEY:
     logging.warning("OPENAI_API_KEY non impostata. /ask restituirà errore.")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# ===== Guard-rail: termini NON Tecnaria =====
+# ===== Guard-rail =====
 BANNED = [r"\bHBV\b", r"\bFVA\b", r"\bAvantravetto\b", r"\bT[\- ]?Connect\b", r"\bAlfa\b"]
 
 SYSTEM_MSG = {
@@ -50,7 +50,7 @@ SYSTEM_MSG = {
     )
 }
 
-# ===== Stili A/B/C =====
+# ===== Stili =====
 STYLE_HINTS = {
     "A": "Formato: 2–3 bullet essenziali, niente chiusura.",
     "B": "Formato: Titolo (<=80c) + 3–4 bullet tecnici + riga finale 'Se ti serve altro su Tecnaria, chiedi pure.'",
@@ -91,12 +91,11 @@ def guess_topic(question: str) -> str | None:
 
 def load_note_files(topic: str):
     folder = os.path.join(NOTE_DIR, topic)
-    paths = sorted(glob.glob(os.path.join(folder, "*.txt")))
-    return paths
+    return sorted(glob.glob(os.path.join(folder, "*.txt")))
 
 def best_local_note(question: str, topic: str) -> str | None:
     paths = load_note_files(topic)
-    if not paths:
+    if not paths: 
         return None
     ql = (question or "").lower()
     best_score, best_text = 0, None
@@ -170,7 +169,6 @@ def ask():
         return jsonify({"answer":"Non posso rispondere: non è un prodotto Tecnaria ufficiale.", "source":"guardrail"}), 200
 
     try:
-        # Costruisco i parametri in modo da NON passare temperature=0 ai modelli che non lo supportano
         params = {
             "model": OPENAI_MODEL,
             "messages": [
@@ -180,12 +178,13 @@ def ask():
             "top_p": 1,
             "max_completion_tokens": STYLE_TOKENS.get(style, 280)
         }
-        # Passa temperature SOLO se > 0 (alcuni modelli accettano solo default)
+        # Passa temperature SOLO se > 0 (alcuni modelli supportano solo default=1)
         if TEMPERATURE and TEMPERATURE > 0:
             params["temperature"] = TEMPERATURE
 
         resp = client.chat.completions.create(**params)
-        ans = (resp.choices[0].message["content"] or "").strip()
+        # >>> con openai>=1.59.0 message è un oggetto, non un dict
+        ans = (resp.choices[0].message.content or "").strip()
         if banned(ans):
             ans = "Non posso rispondere: non è un prodotto Tecnaria ufficiale."
         ans = attach_local_note(ans, q)
