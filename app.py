@@ -69,7 +69,6 @@ def banned(text: str) -> bool:
     return any(re.search(p, text, re.IGNORECASE) for p in BANNED)
 
 # ===== NOTE TECNICHE LOCALI =====
-# documenti_gTab/<TOPIC>/*.txt
 TOPIC_KEYS = {
     "CTF": ["ctf","acciaio-calcestruzzo","lamiera","grecata"],
     "CTL": ["ctl","legno-calcestruzzo","legno","solaio in legno"],
@@ -77,7 +76,7 @@ TOPIC_KEYS = {
     "MINI CEM-E": ["mini cem-e","mini cem"],
     "V-CEM-E": ["v-cem-e","vcem","v cem"],
     "CTCEM": ["ctcem","ct cem"],
-    "DIAPASON": ["diapason","ripartizione carichi","piastra"],
+    "DIAPASON": ["diapason"],
     "OMEGA": ["omega"],
     "GTS": ["manicotto gts","gts"],
     "P560": ["p560","spit p560","chiodatrice"]
@@ -137,12 +136,10 @@ def attach_local_note(answer: str, question: str) -> str:
 
 # ===== ROUTES =====
 
-# Home → redirect alla UI
 @app.get("/")
 def root_redirect():
     return redirect("/ui", code=302)
 
-# Diagnostica
 @app.get("/status")
 def status():
     return jsonify({
@@ -155,7 +152,6 @@ def status():
         "temperature": TEMPERATURE
     }), 200
 
-# API principale
 @app.post("/ask")
 def ask():
     if not OPENAI_API_KEY:
@@ -180,12 +176,13 @@ def ask():
                 SYSTEM_MSG,
                 {"role":"user","content": f"Domanda utente: {q}\n\n{STYLE_HINTS.get(style,'')}"}
             ],
-            temperature=TEMPERATURE, top_p=1, max_tokens=STYLE_TOKENS.get(style, 280)
+            temperature=TEMPERATURE,
+            top_p=1,
+            max_completion_tokens=STYLE_TOKENS.get(style, 280)  # ✅ fix
         )
         ans = (resp.choices[0].message["content"] or "").strip()
         if banned(ans):
             ans = "Non posso rispondere: non è un prodotto Tecnaria ufficiale."
-        # Aggancia Nota tecnica locale (se trovata)
         ans = attach_local_note(ans, q)
         return jsonify({"answer": ans, "style_used": style, "source":"llm"}), 200
 
@@ -193,7 +190,7 @@ def ask():
         logging.exception("Errore OpenAI")
         return jsonify({"error": f"OpenAI error: {str(e)}"}), 500
 
-# UI incorporata
+# ===== UI =====
 HTML_UI = """<!doctype html>
 <html lang="it">
 <head>
@@ -235,49 +232,4 @@ HTML_UI = """<!doctype html>
       const style = document.querySelector('input[name="style"]:checked').value;
       const out = document.getElementById('output');
       const err = document.getElementById('err');
-      out.style.display='none'; err.style.display='none';
-      try{
-        const r = await fetch('/ask', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({question:q, style})
-        });
-        const j = await r.json();
-        if(!r.ok || j.error){
-          err.textContent = j.error || ('HTTP '+r.status);
-          err.style.display = 'block';
-        }else{
-          out.textContent = j.answer || '(nessuna risposta)';
-          out.style.display = 'block';
-        }
-      }catch(e){
-        err.textContent = 'Errore di rete: ' + e.message;
-        err.style.display = 'block';
-      }
-      try{
-        const s = await fetch('/status', {cache:'no-store'});
-        const sj = await s.json();
-        document.getElementById('meta').textContent =
-          `Model: ${sj.model} • Temp: ${sj.temperature} • Note dir: ${sj.note_dir} (exists: ${sj.note_dir_exists})`;
-      }catch(e){ /* ignore */ }
-    }
-  </script>
-</body>
-</html>"""
-
-@app.get("/ui")
-def ui():
-    return Response(HTML_UI, mimetype="text/html")
-
-# ===== Error handling =====
-@app.errorhandler(HTTPException)
-def _http(e: HTTPException):
-    return jsonify({"error": e.description, "code": e.code}), e.code
-
-@app.errorhandler(Exception)
-def _any(e: Exception):
-    logging.exception("Errore imprevisto")
-    return jsonify({"error": str(e)}), 500
-
-# ===== Local run =====
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+      out
