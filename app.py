@@ -26,7 +26,7 @@ def _parse_float(val, default=0.0):
     except Exception:
         return default
 
-TEMPERATURE      = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)
+TEMPERATURE      = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)  # per gpt-5 lasciamo 0 = non passare
 NOTE_DIR         = os.environ.get("NOTE_DIR", "documenti_gTab")  # cartella note tecniche
 
 # ===== OpenAI client =====
@@ -34,7 +34,7 @@ if not OPENAI_API_KEY:
     logging.warning("OPENAI_API_KEY non impostata. /ask restituirà errore.")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# ===== Guard-rail: termini non Tecnaria =====
+# ===== Guard-rail: termini NON Tecnaria =====
 BANNED = [r"\bHBV\b", r"\bFVA\b", r"\bAvantravetto\b", r"\bT[\- ]?Connect\b", r"\bAlfa\b"]
 
 SYSTEM_MSG = {
@@ -96,7 +96,7 @@ def load_note_files(topic: str):
 
 def best_local_note(question: str, topic: str) -> str | None:
     paths = load_note_files(topic)
-    if not paths: 
+    if not paths:
         return None
     ql = (question or "").lower()
     best_score, best_text = 0, None
@@ -170,16 +170,21 @@ def ask():
         return jsonify({"answer":"Non posso rispondere: non è un prodotto Tecnaria ufficiale.", "source":"guardrail"}), 200
 
     try:
-        resp = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[
+        # Costruisco i parametri in modo da NON passare temperature=0 ai modelli che non lo supportano
+        params = {
+            "model": OPENAI_MODEL,
+            "messages": [
                 SYSTEM_MSG,
                 {"role":"user","content": f"Domanda utente: {q}\n\n{STYLE_HINTS.get(style,'')}"}
             ],
-            temperature=TEMPERATURE,
-            top_p=1,
-            max_completion_tokens=STYLE_TOKENS.get(style, 280)  # ✅ fix
-        )
+            "top_p": 1,
+            "max_completion_tokens": STYLE_TOKENS.get(style, 280)
+        }
+        # Passa temperature SOLO se > 0 (alcuni modelli accettano solo default)
+        if TEMPERATURE and TEMPERATURE > 0:
+            params["temperature"] = TEMPERATURE
+
+        resp = client.chat.completions.create(**params)
         ans = (resp.choices[0].message["content"] or "").strip()
         if banned(ans):
             ans = "Non posso rispondere: non è un prodotto Tecnaria ufficiale."
