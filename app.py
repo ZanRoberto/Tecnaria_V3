@@ -55,21 +55,26 @@ except Exception:
     logging.info("OpenAI SDK: LEGACY (<=0.28.x) — uso Chat Completions")
 
 # ===================================
-# Guard-rail prodotti non Tecnaria
+# Guard-rail + perimetro prodotti
 # ===================================
 BANNED = [r"\bHBV\b", r"\bFVA\b", r"\bAvantravetto\b", r"\bT[\- ]?Connect\b", r"\bAlfa\b"]
 
 SYSTEM_TEXT = (
     "Sei un esperto dei prodotti Tecnaria S.p.A. di Bassano del Grappa. "
-    "Rispondi SOLO su prodotti ufficiali Tecnaria: connettori CTF/CTL, CEM-E, MINI CEM-E, V-CEM-E, CTCEM, "
-    "Diapason, Omega, Manicotto GTS; chiodatrice Spit P560 e accessori; certificazioni (ETA/DoP/CE); "
-    "manuali di posa, capitolati, computi metrici, assistenza, posa in opera. "
-    "Se la domanda esce da questo perimetro o cita prodotti non Tecnaria, rispondi: "
-    "'Non posso rispondere: non è un prodotto Tecnaria ufficiale.' "
-    "Stile: sintetico, preciso, puntato. Italiano."
+    "Rispondi in modo completo, strutturato e operativo: titolo breve + punti tecnici, "
+    "con esempi pratici e indicazioni di posa. Includi, se utile, avvertenze e tolleranze. "
+    "Non inventare dati: se servono parametri di progetto, spiega cosa chiedere al cliente. "
+    "Resta nel perimetro Tecnaria (connettori CTF/CTL, CEM-E, MINI CEM-E, V-CEM-E, CTCEM, Diapason, Omega, GTS; "
+    "Spit P560; certificazioni, manuali di posa, capitolati, computi). "
+    "Se la domanda non è su prodotti Tecnaria, rispondi che non puoi. Italiano, tono tecnico ma chiaro."
 )
 
 def banned(text: str) -> bool:
+    """Prima whitelist (prodotti Tecnaria), poi ban di termini non Tecnaria."""
+    q = (text or "").lower()
+    for keys in TOPIC_KEYS.values():
+        if any(k in q for k in keys):
+            return False
     return any(re.search(p, text, re.IGNORECASE) for p in BANNED)
 
 # ===================================
@@ -80,7 +85,7 @@ STYLE_HINTS = {
     "B": "Formato: Titolo (<=80c) + 3–4 bullet tecnici + riga finale 'Se ti serve altro su Tecnaria, chiedi pure.'",
     "C": "Formato: Titolo (<=100c) + 5–8 punti tecnici + breve suggerimento operativo."
 }
-STYLE_TOKENS = {"A": 180, "B": 280, "C": 380}
+STYLE_TOKENS = {"A": 250, "B": 450, "C": 700}
 
 def normalize_style(val):
     if not val: return "B"
@@ -198,14 +203,13 @@ def ask_legacy_sdk(system_text: str, user_text: str, style_tokens: int, temperat
         top_p=1,
         max_tokens=style_tokens
     )
-    # coi modelli legacy si può passare temperature=0; coi nuovi via legacy può dare errore → se succede, togli
     if temperature and temperature > 0:
         kwargs["temperature"] = temperature
     resp = openai.ChatCompletion.create(**kwargs)  # type: ignore
     return (resp["choices"][0]["message"]["content"] or "").strip()
 
 def call_model(question: str, style: str) -> str:
-    style_tokens = STYLE_TOKENS.get(style, 280)
+    style_tokens = STYLE_TOKENS.get(style, 450)
     user_prompt = f"Domanda utente: {question}\n\n{STYLE_HINTS.get(style,'')}"
     if NEW_SDK:
         text = ask_new_sdk(SYSTEM_TEXT, user_prompt, style_tokens, TEMPERATURE)
@@ -298,8 +302,8 @@ HTML_UI = """<!doctype html>
       <textarea id="question" placeholder="Es. Mi spieghi il connettore CTF?"></textarea>
       <div>
         <label><input type="radio" name="style" value="A"> A — Breve</label>
-        <label><input type="radio" name="style" value="B" checked> B — Standard</label>
-        <label><input type="radio" name="style" value="C"> C — Dettagliata</label>
+        <label><input type="radio" name="style" value="B"> B — Standard</label>
+        <label><input type="radio" name="style" value="C" checked> C — Dettagliata</label>
       </div>
       <button class="btn" onclick="ask()">Chiedi</button>
       <div id="output" class="out" style="display:none"></div>
