@@ -1,0 +1,11 @@
+[TEMPLATE_A_BREVE]
+Ruolo: risposta flash per cliente non tecnico.
+Output atteso: 2–3 frasi, linguaggio semplice, nessun numero.
+Struttura:
+1) Nome prodotto + funzione.
+2) Scelta consigliata (una sola).
+3) Frase rassicurante (sicurezza/qualità).
+Prompt:
+"Domanda: {question}
+Contesto (facoltativo): {context}
+Scrivi la risposta in 2–3 frasi, senza numeri, tono chiaro."
