@@ -2,18 +2,24 @@ import os, re, glob, logging
 from flask import Flask, request, jsonify, Response, redirect
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
-from openai import OpenAI
 
-# ===== Logging =====
+# ===================================
+# Logging
+# ===================================
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# ===== App & CORS =====
+# ===================================
+# Flask app
+# ===================================
 app = Flask(__name__)
 CORS(app, resources={r"/ask": {"origins": "*"}})
 
-# ===== ENV =====
+# ===================================
+# ENV
+# ===================================
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-OPENAI_MODEL   = os.environ.get("OPENAI_MODEL", "gpt-5")
+OPENAI_MODEL   = os.environ.get("OPENAI_MODEL", "gpt-4o")  # consigliato per stabilità
+NOTE_DIR       = os.environ.get("NOTE_DIR", "documenti_gTab")
 
 def _parse_float(val, default=0.0):
     try:
@@ -24,32 +30,51 @@ def _parse_float(val, default=0.0):
     except Exception:
         return default
 
-# 0 => non passare temperature (alcuni modelli vogliono solo default=1)
+# 0 => NON passare temperature (molti modelli “nuovi” vogliono default=1)
 TEMPERATURE = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)
-NOTE_DIR    = os.environ.get("NOTE_DIR", "documenti_gTab")
 
-# ===== OpenAI client =====
-if not OPENAI_API_KEY:
-    logging.warning("OPENAI_API_KEY non impostata. /ask restituirà errore.")
-client = OpenAI(api_key=OPENAI_API_KEY)
+# ===================================
+# OpenAI client (compat nuovo/vecchio SDK)
+# ===================================
+NEW_SDK = True
+openai = None
+client = None
+try:
+    from openai import OpenAI  # SDK >= 1.x
+    if not OPENAI_API_KEY:
+        logging.warning("OPENAI_API_KEY non impostata. /ask restituirà errore.")
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    logging.info("OpenAI SDK: NUOVO (>=1.x) — uso Responses API")
+except Exception:
+    import openai as _openai  # SDK <= 0.28.x
+    openai = _openai
+    NEW_SDK = False
+    if not OPENAI_API_KEY:
+        logging.warning("OPENAI_API_KEY non impostata. /ask restituirà errore.")
+    openai.api_key = OPENAI_API_KEY
+    logging.info("OpenAI SDK: LEGACY (<=0.28.x) — uso Chat Completions")
 
-# ===== Guard-rail =====
+# ===================================
+# Guard-rail prodotti non Tecnaria
+# ===================================
 BANNED = [r"\bHBV\b", r"\bFVA\b", r"\bAvantravetto\b", r"\bT[\- ]?Connect\b", r"\bAlfa\b"]
 
-SYSTEM_MSG = {
-    "role": "system",
-    "content": (
-        "Sei un esperto dei prodotti Tecnaria S.p.A. di Bassano del Grappa. "
-        "Rispondi SOLO su prodotti ufficiali Tecnaria: connettori CTF/CTL, CEM-E, MINI CEM-E, V-CEM-E, CTCEM, "
-        "Diapason, Omega, Manicotto GTS; chiodatrice Spit P560 e accessori; certificazioni (ETA/DoP/CE); "
-        "manuali di posa, capitolati, computi metrici, assistenza, posa in opera. "
-        "Se la domanda esce da questo perimetro o cita prodotti non Tecnaria, rispondi: "
-        "'Non posso rispondere: non è un prodotto Tecnaria ufficiale.' "
-        "Stile: sintetico, preciso, puntato. Italiano."
-    )
-}
+SYSTEM_TEXT = (
+    "Sei un esperto dei prodotti Tecnaria S.p.A. di Bassano del Grappa. "
+    "Rispondi SOLO su prodotti ufficiali Tecnaria: connettori CTF/CTL, CEM-E, MINI CEM-E, V-CEM-E, CTCEM, "
+    "Diapason, Omega, Manicotto GTS; chiodatrice Spit P560 e accessori; certificazioni (ETA/DoP/CE); "
+    "manuali di posa, capitolati, computi metrici, assistenza, posa in opera. "
+    "Se la domanda esce da questo perimetro o cita prodotti non Tecnaria, rispondi: "
+    "'Non posso rispondere: non è un prodotto Tecnaria ufficiale.' "
+    "Stile: sintetico, preciso, puntato. Italiano."
+)
 
-# ===== Stili =====
+def banned(text: str) -> bool:
+    return any(re.search(p, text, re.IGNORECASE) for p in BANNED)
+
+# ===================================
+# Stili A/B/C
+# ===================================
 STYLE_HINTS = {
     "A": "Formato: 2–3 bullet essenziali, niente chiusura.",
     "B": "Formato: Titolo (<=80c) + 3–4 bullet tecnici + riga finale 'Se ti serve altro su Tecnaria, chiedi pure.'",
@@ -64,10 +89,9 @@ def normalize_style(val):
     if v in ("C","DETAILED","LONG"): return "C"
     return "B"
 
-def banned(text: str) -> bool:
-    return any(re.search(p, text, re.IGNORECASE) for p in BANNED)
-
-# ===== NOTE TECNICHE LOCALI =====
+# ===================================
+# NOTE TECNICHE LOCALI (documenti_gTab/<TOPIC>/*.txt)
+# ===================================
 TOPIC_KEYS = {
     "CTF": ["ctf","cft","acciaio-calcestruzzo","lamiera","grecata"],
     "CTL": ["ctl","legno-calcestruzzo","legno","solaio in legno"],
@@ -132,8 +156,73 @@ def attach_local_note(answer: str, question: str) -> str:
         block = f"---\n📎 Nota tecnica (locale)\n{note}"
     return (answer or "").rstrip() + "\n\n" + block
 
-# ===== ROUTES =====
+# ===================================
+# Helpers chiamate OpenAI (nuovo/legacy)
+# ===================================
+def ask_new_sdk(system_text: str, user_text: str, style_tokens: int, temperature: float) -> str:
+    """Responses API (SDK >= 1.x)."""
+    from openai import OpenAI  # type: ignore
+    params = {
+        "model": OPENAI_MODEL,
+        "input": [
+            {"role": "system", "content": system_text},
+            {"role": "user",   "content": user_text}
+        ],
+        "top_p": 1,
+        "max_output_tokens": style_tokens
+    }
+    if temperature and temperature > 0:
+        params["temperature"] = temperature
+    resp = client.responses.create(**params)  # type: ignore
+    logging.info(f"RAW RESPONSES: {resp}")
+    text = getattr(resp, "output_text", None)
+    if text:
+        return text.strip()
+    # Fallback: ricomponi dai pezzi
+    out = getattr(resp, "output", None) or []
+    parts = []
+    for item in out:
+        if getattr(item, "type", "") == "message":
+            for c in getattr(item, "content", []) or []:
+                if getattr(c, "type", "") == "output_text":
+                    t = getattr(c, "text", "") or ""
+                    if t: parts.append(t)
+    return "".join(parts).strip()
 
+def ask_legacy_sdk(system_text: str, user_text: str, style_tokens: int, temperature: float) -> str:
+    """Chat Completions (SDK <= 0.28.x)."""
+    kwargs = dict(
+        model=OPENAI_MODEL,
+        messages=[{"role":"system","content": system_text},
+                  {"role":"user","content": user_text}],
+        top_p=1,
+        max_tokens=style_tokens
+    )
+    # coi modelli legacy si può passare temperature=0; coi nuovi via legacy può dare errore → se succede, togli
+    if temperature and temperature > 0:
+        kwargs["temperature"] = temperature
+    resp = openai.ChatCompletion.create(**kwargs)  # type: ignore
+    return (resp["choices"][0]["message"]["content"] or "").strip()
+
+def call_model(question: str, style: str) -> str:
+    style_tokens = STYLE_TOKENS.get(style, 280)
+    user_prompt = f"Domanda utente: {question}\n\n{STYLE_HINTS.get(style,'')}"
+    if NEW_SDK:
+        text = ask_new_sdk(SYSTEM_TEXT, user_prompt, style_tokens, TEMPERATURE)
+        if not text:
+            logging.info("Prima risposta vuota. Retry senza hint stile (NEW_SDK).")
+            text = ask_new_sdk(SYSTEM_TEXT, question, style_tokens, TEMPERATURE)
+        return text
+    else:
+        text = ask_legacy_sdk(SYSTEM_TEXT, user_prompt, style_tokens, TEMPERATURE)
+        if not text:
+            logging.info("Prima risposta vuota. Retry senza hint stile (LEGACY).")
+            text = ask_legacy_sdk(SYSTEM_TEXT, question, style_tokens, TEMPERATURE)
+        return text
+
+# ===================================
+# Routes
+# ===================================
 @app.get("/")
 def root_redirect():
     return redirect("/ui", code=302)
@@ -147,42 +236,9 @@ def status():
         "note_dir": NOTE_DIR,
         "endpoints": {"ask": "POST /ask {question: str, style?: 'A'|'B'|'C'}", "ui": "GET /ui"},
         "model": OPENAI_MODEL,
-        "temperature": TEMPERATURE
+        "temperature": TEMPERATURE,
+        "sdk": "new" if NEW_SDK else "legacy"
     }), 200
-
-def _responses_call(system_msg, user_msg, style):
-    """Chiama il Responses API e ritorna sempre testo (output_text)."""
-    params = {
-        "model": OPENAI_MODEL,
-        "input": [
-            {"role": "system", "content": system_msg},
-            {"role": "user",   "content": user_msg}
-        ],
-        "top_p": 1,
-        "max_output_tokens": STYLE_TOKENS.get(style, 280)
-    }
-    if TEMPERATURE and TEMPERATURE > 0:
-        params["temperature"] = TEMPERATURE
-
-    resp = client.responses.create(**params)
-    logging.info(f"RAW RESPONSES: {resp}")
-
-    # Via preferita
-    text = getattr(resp, "output_text", None)
-    if text:
-        return text.strip()
-
-    # Fallback robusto: ricompone dai pezzi
-    parts = []
-    out = getattr(resp, "output", None) or []
-    for item in out:
-        if getattr(item, "type", "") == "message":
-            for c in getattr(item, "content", []) or []:
-                if getattr(c, "type", "") == "output_text":
-                    t = getattr(c, "text", "") or ""
-                    if t:
-                        parts.append(t)
-    return "".join(parts).strip()
 
 @app.post("/ask")
 def ask():
@@ -202,29 +258,20 @@ def ask():
         return jsonify({"answer":"Non posso rispondere: non è un prodotto Tecnaria ufficiale.", "source":"guardrail"}), 200
 
     try:
-        # 1) Prompt con stile
-        user_prompt = f"Domanda utente: {q}\n\n{STYLE_HINTS.get(style,'')}"
-        ans = _responses_call(SYSTEM_MSG["content"], user_prompt, style)
-
-        # 2) Retry semplice se vuota la prima
-        if not ans:
-            logging.info("Prima risposta vuota. Retry senza hint stile.")
-            ans = _responses_call(SYSTEM_MSG["content"], q, style)
-
+        ans = call_model(q, style)
         if not ans:
             ans = "Non ho ricevuto testo dal modello in questa richiesta."
-
         if banned(ans):
             ans = "Non posso rispondere: non è un prodotto Tecnaria ufficiale."
-
         ans = attach_local_note(ans, q)
-        return jsonify({"answer": ans, "style_used": style, "source":"responses_api"}), 200
-
+        return jsonify({"answer": ans, "style_used": style, "source": "openai_new" if NEW_SDK else "openai_legacy"}), 200
     except Exception as e:
         logging.exception("Errore OpenAI")
         return jsonify({"error": f"OpenAI error: {str(e)}"}), 500
 
-# ===== UI =====
+# ===================================
+# UI embedded
+# ===================================
 HTML_UI = """<!doctype html>
 <html lang="it">
 <head>
@@ -288,7 +335,7 @@ HTML_UI = """<!doctype html>
         const s = await fetch('/status', {cache:'no-store'});
         const sj = await s.json();
         document.getElementById('meta').textContent =
-          `Model: ${sj.model} • Temp: ${sj.temperature} • Note dir: ${sj.note_dir} (exists: ${sj.note_dir_exists})`;
+          `Model: ${sj.model} • Temp: ${sj.temperature} • SDK: ${sj.sdk} • Note dir: ${sj.note_dir} (exists: ${sj.note_dir_exists})`;
       }catch(e){ /* ignore */ }
     }
   </script>
@@ -299,7 +346,9 @@ HTML_UI = """<!doctype html>
 def ui():
     return Response(HTML_UI, mimetype="text/html")
 
-# ===== Error handling =====
+# ===================================
+# Error handling
+# ===================================
 @app.errorhandler(HTTPException)
 def _http(e: HTTPException):
     return jsonify({"error": e.description, "code": e.code}), e.code
@@ -309,6 +358,8 @@ def _any(e: Exception):
     logging.exception("Errore imprevisto")
     return jsonify({"error": str(e)}), 500
 
-# ===== Local run =====
+# ===================================
+# Local run
+# ===================================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
