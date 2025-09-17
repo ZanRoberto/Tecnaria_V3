@@ -1,4 +1,4 @@
-import os, re, logging, glob
+import os, re, glob, logging
 from flask import Flask, request, jsonify, Response, redirect
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
@@ -15,7 +15,6 @@ CORS(app, resources={r"/ask": {"origins": "*"}})
 OPENAI_API_KEY   = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL     = os.environ.get("OPENAI_MODEL", "gpt-5")
 
-# NB: tieni OPENAI_TEMPERATURE=0 su Render. Se vuoi robustezza extra, metti uno 0.0 di default.
 def _parse_float(val, default=0.0):
     try:
         if val is None:
@@ -28,7 +27,6 @@ def _parse_float(val, default=0.0):
         return default
 
 TEMPERATURE      = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)
-USE_LLM          = os.environ.get("USE_LLM", "1") == "1"
 NOTE_DIR         = os.environ.get("NOTE_DIR", "documenti_gTab")  # cartella note tecniche
 
 # ===== OpenAI client =====
@@ -71,22 +69,23 @@ def banned(text: str) -> bool:
     return any(re.search(p, text, re.IGNORECASE) for p in BANNED)
 
 # ===== NOTE TECNICHE LOCALI =====
-KEYMAP = {
-    "CTF": ["ctf","acciaio-calcestruzzo","lamiera"],
-    "CTL": ["ctl","legno-calcestruzzo","legno"],
-    "CEM-E": ["cem-e","ripresa di getto","ripresa","vecchio-nuovo"],
+# documenti_gTab/<TOPIC>/*.txt
+TOPIC_KEYS = {
+    "CTF": ["ctf","acciaio-calcestruzzo","lamiera","grecata"],
+    "CTL": ["ctl","legno-calcestruzzo","legno","solaio in legno"],
+    "CEM-E": ["cem-e","ripresa di getto","nuovo su esistente","cucitura"],
     "MINI CEM-E": ["mini cem-e","mini cem"],
     "V-CEM-E": ["v-cem-e","vcem","v cem"],
     "CTCEM": ["ctcem","ct cem"],
-    "DIAPASON": ["diapason"],
+    "DIAPASON": ["diapason","ripartizione carichi","piastra"],
     "OMEGA": ["omega"],
     "GTS": ["manicotto gts","gts"],
-    "P560": ["p560","spit p560","chiodatrice"],
+    "P560": ["p560","spit p560","chiodatrice"]
 }
 
 def guess_topic(question: str) -> str | None:
-    q = question.lower()
-    for topic, keys in KEYMAP.items():
+    q = (question or "").lower()
+    for topic, keys in TOPIC_KEYS.items():
         if any(k in q for k in keys):
             return topic
     return None
@@ -98,8 +97,9 @@ def load_note_files(topic: str):
 
 def best_local_note(question: str, topic: str) -> str | None:
     paths = load_note_files(topic)
-    if not paths: return None
-    q = question.lower()
+    if not paths: 
+        return None
+    ql = (question or "").lower()
     best_score, best_text = 0, None
     for p in paths:
         try:
@@ -108,14 +108,12 @@ def best_local_note(question: str, topic: str) -> str | None:
         except Exception:
             continue
         base = os.path.basename(p).lower()
-        tokens = [w for w in re.split(r"[^a-z0-9àèéìòóù]+", q) if w]
-        score = 0
-        for t in tokens:
-            if len(t) <= 2: continue
-            score += base.count(t) + txt.lower().count(t)
+        tokens = [w for w in re.split(r"[^a-z0-9àèéìòóù]+", ql) if len(w) > 2]
+        score = sum(base.count(w) + txt.lower().count(w) for w in tokens)
         if score > best_score:
             best_score, best_text = score, txt.strip()
-    if not best_text: return None
+    if not best_text:
+        return None
     MAX_CHARS = 1200
     if len(best_text) > MAX_CHARS:
         best_text = best_text[:MAX_CHARS].rstrip() + " …"
@@ -123,9 +121,11 @@ def best_local_note(question: str, topic: str) -> str | None:
 
 def attach_local_note(answer: str, question: str) -> str:
     topic = guess_topic(question)
-    if not topic: return answer
+    if not topic:
+        return answer
     note = best_local_note(question, topic)
-    if not note: return answer
+    if not note:
+        return answer
     lines = note.splitlines()
     if lines and len(lines[0]) <= 100:
         title = lines[0].strip()
@@ -133,14 +133,16 @@ def attach_local_note(answer: str, question: str) -> str:
         block = f"---\n📎 Nota tecnica (locale) — {title}\n{body}" if body else f"---\n📎 Nota tecnica (locale)\n{title}"
     else:
         block = f"---\n📎 Nota tecnica (locale)\n{note}"
-    return f"{answer}\n\n{block}"
+    return (answer or "").rstrip() + "\n\n" + block
 
-# ===== HOME: redirect a /ui =====
+# ===== ROUTES =====
+
+# Home → redirect alla UI
 @app.get("/")
 def root_redirect():
     return redirect("/ui", code=302)
 
-# ===== STATUS: diagnostica JSON (era su "/", ora su "/status") =====
+# Diagnostica
 @app.get("/status")
 def status():
     return jsonify({
@@ -150,11 +152,10 @@ def status():
         "note_dir": NOTE_DIR,
         "endpoints": {"ask": "POST /ask {question: str, style?: 'A'|'B'|'C'}", "ui": "GET /ui"},
         "model": OPENAI_MODEL,
-        "temperature": TEMPERATURE,
-        "use_llm": USE_LLM
+        "temperature": TEMPERATURE
     }), 200
 
-# ===== API: /ask =====
+# API principale
 @app.post("/ask")
 def ask():
     if not OPENAI_API_KEY:
@@ -184,6 +185,7 @@ def ask():
         ans = (resp.choices[0].message["content"] or "").strip()
         if banned(ans):
             ans = "Non posso rispondere: non è un prodotto Tecnaria ufficiale."
+        # Aggancia Nota tecnica locale (se trovata)
         ans = attach_local_note(ans, q)
         return jsonify({"answer": ans, "style_used": style, "source":"llm"}), 200
 
@@ -191,7 +193,7 @@ def ask():
         logging.exception("Errore OpenAI")
         return jsonify({"error": f"OpenAI error: {str(e)}"}), 500
 
-# ===== UI: interfaccia HTML =====
+# UI incorporata
 HTML_UI = """<!doctype html>
 <html lang="it">
 <head>
@@ -205,7 +207,7 @@ HTML_UI = """<!doctype html>
     .card{background:var(--card);border:1px solid #1f2937;border-radius:16px;padding:20px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
     h1{margin:0 0 8px;font-size:22px} .sub{color:var(--muted);font-size:14px;margin-bottom:16px}
     textarea{width:100%;min-height:110px;border-radius:12px;border:1px solid #374151;background:#0b1220;color:var(--ink);padding:12px}
-    .btn{background:var(--accent);color:#041014;border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
+    .btn{background:var(--accent);color:#041014;border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer;margin-top:10px}
     .out{white-space:pre-wrap;background:#0b1220;border:1px solid #1f2937;border-radius:12px;padding:14px;margin-top:16px}
     label{display:inline-block;margin:8px 12px 0 0}
   </style>
@@ -214,7 +216,7 @@ HTML_UI = """<!doctype html>
   <div class="wrap">
     <div class="card">
       <h1>Tecnaria QA Bot</h1>
-      <div class="sub">Domande libere su Tecnaria. Scegli formato A/B/C. Se esiste una nota locale, sarà allegata in fondo.</div>
+      <div class="sub">Domande libere su Tecnaria. Scegli A/B/C. Se esiste una nota locale, la vedi in fondo.</div>
       <textarea id="question" placeholder="Es. Mi spieghi il connettore CTF?"></textarea>
       <div>
         <label><input type="radio" name="style" value="A"> A — Breve</label>
@@ -248,11 +250,9 @@ HTML_UI = """<!doctype html>
           out.style.display = 'block';
         }
       }catch(e){
-        const errBox = document.getElementById('err');
-        errBox.textContent = 'Errore di rete: ' + e.message;
-        errBox.style.display = 'block';
+        err.textContent = 'Errore di rete: ' + e.message;
+        err.style.display = 'block';
       }
-      // ping meta
       try{
         const s = await fetch('/status', {cache:'no-store'});
         const sj = await s.json();
@@ -268,7 +268,7 @@ HTML_UI = """<!doctype html>
 def ui():
     return Response(HTML_UI, mimetype="text/html")
 
-# ===== Errori sempre JSON =====
+# ===== Error handling =====
 @app.errorhandler(HTTPException)
 def _http(e: HTTPException):
     return jsonify({"error": e.description, "code": e.code}), e.code
