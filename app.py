@@ -232,4 +232,49 @@ HTML_UI = """<!doctype html>
       const style = document.querySelector('input[name="style"]:checked').value;
       const out = document.getElementById('output');
       const err = document.getElementById('err');
-      out
+      out.style.display='none'; err.style.display='none';
+      try{
+        const r = await fetch('/ask', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({question:q, style})
+        });
+        const j = await r.json();
+        if(!r.ok || j.error){
+          err.textContent = j.error || ('HTTP '+r.status);
+          err.style.display = 'block';
+        }else{
+          out.textContent = j.answer || '(nessuna risposta)';
+          out.style.display = 'block';
+        }
+      }catch(e){
+        err.textContent = 'Errore di rete: ' + e.message;
+        err.style.display = 'block';
+      }
+      try{
+        const s = await fetch('/status', {cache:'no-store'});
+        const sj = await s.json();
+        document.getElementById('meta').textContent =
+          `Model: ${sj.model} • Temp: ${sj.temperature} • Note dir: ${sj.note_dir} (exists: ${sj.note_dir_exists})`;
+      }catch(e){ /* ignore */ }
+    }
+  </script>
+</body>
+</html>"""
+
+@app.get("/ui")
+def ui():
+    return Response(HTML_UI, mimetype="text/html")
+
+# ===== Error handling =====
+@app.errorhandler(HTTPException)
+def _http(e: HTTPException):
+    return jsonify({"error": e.description, "code": e.code}), e.code
+
+@app.errorhandler(Exception)
+def _any(e: Exception):
+    logging.exception("Errore imprevisto")
+    return jsonify({"error": str(e)}), 500
+
+# ===== Local run =====
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
