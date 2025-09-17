@@ -2,6 +2,7 @@ import os, re, glob, logging
 from flask import Flask, request, jsonify, Response, redirect
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
+from rapidfuzz import fuzz  # fuzzy match per le note
 
 # ===================================
 # Logging
@@ -18,7 +19,7 @@ CORS(app, resources={r"/ask": {"origins": "*"}})
 # ENV
 # ===================================
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-OPENAI_MODEL   = os.environ.get("OPENAI_MODEL", "gpt-4o")  # consigliato per stabilità
+OPENAI_MODEL   = os.environ.get("OPENAI_MODEL", "gpt-4o")  # consigliato
 NOTE_DIR       = os.environ.get("NOTE_DIR", "documenti_gTab")
 
 def _parse_float(val, default=0.0):
@@ -69,6 +70,20 @@ SYSTEM_TEXT = (
     "Se la domanda non è su prodotti Tecnaria, rispondi che non puoi. Italiano, tono tecnico ma chiaro."
 )
 
+# whitelist prodotti Tecnaria (typo inclusi)
+TOPIC_KEYS = {
+    "CTF": ["ctf","cft","acciaio-calcestruzzo","lamiera","grecata"],
+    "CTL": ["ctl","legno-calcestruzzo","legno","solaio in legno"],
+    "CEM-E": ["cem-e","ripresa di getto","nuovo su esistente","cucitura"],
+    "MINI CEM-E": ["mini cem-e","mini cem"],
+    "V-CEM-E": ["v-cem-e","vcem","v cem"],
+    "CTCEM": ["ctcem","ct cem"],
+    "DIAPASON": ["diapason"],
+    "OMEGA": ["omega"],
+    "GTS": ["manicotto gts","gts"],
+    "P560": ["p560","spit p560","chiodatrice"]
+}
+
 def banned(text: str) -> bool:
     """Prima whitelist (prodotti Tecnaria), poi ban di termini non Tecnaria."""
     q = (text or "").lower()
@@ -95,21 +110,8 @@ def normalize_style(val):
     return "B"
 
 # ===================================
-# NOTE TECNICHE LOCALI (documenti_gTab/<TOPIC>/*.txt)
+# NOTE TECNICHE LOCALI (documenti_gTab/<TOPIC>/*.txt) — con fuzzy match
 # ===================================
-TOPIC_KEYS = {
-    "CTF": ["ctf","cft","acciaio-calcestruzzo","lamiera","grecata"],
-    "CTL": ["ctl","legno-calcestruzzo","legno","solaio in legno"],
-    "CEM-E": ["cem-e","ripresa di getto","nuovo su esistente","cucitura"],
-    "MINI CEM-E": ["mini cem-e","mini cem"],
-    "V-CEM-E": ["v-cem-e","vcem","v cem"],
-    "CTCEM": ["ctcem","ct cem"],
-    "DIAPASON": ["diapason"],
-    "OMEGA": ["omega"],
-    "GTS": ["manicotto gts","gts"],
-    "P560": ["p560","spit p560","chiodatrice"]
-}
-
 def guess_topic(question: str) -> str | None:
     q = (question or "").lower()
     for topic, keys in TOPIC_KEYS.items():
@@ -121,37 +123,58 @@ def load_note_files(topic: str):
     folder = os.path.join(NOTE_DIR, topic)
     return sorted(glob.glob(os.path.join(folder, "*.txt")))
 
-def best_local_note(question: str, topic: str) -> str | None:
+KEYBOOST = {"altezza": 12, "altezze": 10, "soletta": 8, "copriferro": 8, "ctf": 10, "diapason": 6}
+
+def _keywords_score(text: str, q: str) -> int:
+    t = text.lower()
+    score = 0
+    for k, w in KEYBOOST.items():
+        if k in t or k in q:
+            score += w
+    return score
+
+def best_local_note(question: str, topic: str):
+    """
+    Restituisce (testo_nota, path_file) usando fuzzy-match.
+    - Confronta domanda vs (nome file + testo) con token_set_ratio
+    - Aggiunge boost se compaiono parole chiave (altezza/altezze/soletta/copriferro/ctf)
+    - Se non trova nulla, prende comunque il primo file del topic (fallback gentile)
+    """
     paths = load_note_files(topic)
     if not paths:
-        return None
-    ql = (question or "").lower()
-    best_score, best_text = 0, None
+        return None, None
+
+    q = (question or "").lower()
+    best = (0, None, None)  # (score, text, path)
+
     for p in paths:
         try:
             with open(p, "r", encoding="utf-8") as f:
                 txt = f.read()
         except Exception:
             continue
-        base = os.path.basename(p).lower()
-        tokens = [w for w in re.split(r"[^a-z0-9àèéìòóù]+", ql) if len(w) > 2]
-        score = sum(base.count(w) + txt.lower().count(w) for w in tokens)
-        if score > best_score:
-            best_score, best_text = score, txt.strip()
-    if not best_text:
-        return None
-    MAX_CHARS = 1200
-    if len(best_text) > MAX_CHARS:
-        best_text = best_text[:MAX_CHARS].rstrip() + " …"
-    return best_text
+        blob = (os.path.basename(p) + "\n" + txt).lower()
+        s = fuzz.token_set_ratio(q, blob) + _keywords_score(blob, q)
+        if s > best[0]:
+            best = (s, txt.strip(), p)
+
+    if best[1] is None and paths:
+        try:
+            with open(paths[0], "r", encoding="utf-8") as f:
+                return f.read().strip(), paths[0]
+        except Exception:
+            return None, None
+
+    return best[1], best[2]
 
 def attach_local_note(answer: str, question: str) -> str:
     topic = guess_topic(question)
     if not topic:
         return answer
-    note = best_local_note(question, topic)
+    note, src = best_local_note(question, topic)
     if not note:
         return answer
+
     lines = note.splitlines()
     if lines and len(lines[0]) <= 100:
         title = lines[0].strip()
@@ -159,6 +182,10 @@ def attach_local_note(answer: str, question: str) -> str:
         block = f"---\n📎 Nota tecnica (locale) — {title}\n{body}" if body else f"---\n📎 Nota tecnica (locale)\n{title}"
     else:
         block = f"---\n📎 Nota tecnica (locale)\n{note}"
+
+    if src:
+        rel = os.path.relpath(src, start=NOTE_DIR)
+        block += f"\n_(fonte: {rel})_"
     return (answer or "").rstrip() + "\n\n" + block
 
 # ===================================
@@ -238,11 +265,20 @@ def status():
         "service": "Tecnaria QA",
         "note_dir_exists": os.path.isdir(NOTE_DIR),
         "note_dir": NOTE_DIR,
-        "endpoints": {"ask": "POST /ask {question: str, style?: 'A'|'B'|'C'}", "ui": "GET /ui"},
+        "endpoints": {"ask": "POST /ask {question: str, style?: 'A'|'B'|'C'}", "ui": "GET /ui", "debug_notes": "GET /debug/notes"},
         "model": OPENAI_MODEL,
         "temperature": TEMPERATURE,
         "sdk": "new" if NEW_SDK else "legacy"
     }), 200
+
+@app.get("/debug/notes")
+def debug_notes():
+    out = {"NOTE_DIR": NOTE_DIR, "exists": os.path.isdir(NOTE_DIR), "topics": {}}
+    for topic in TOPIC_KEYS.keys():
+        folder = os.path.join(NOTE_DIR, topic)
+        files = sorted(glob.glob(os.path.join(folder, "*.txt")))
+        out["topics"][topic] = {"folder": folder, "exists": os.path.isdir(folder), "files": files}
+    return jsonify(out), 200
 
 @app.post("/ask")
 def ask():
