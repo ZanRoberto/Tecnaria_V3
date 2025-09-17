@@ -120,7 +120,22 @@ def normalize_style(val):
     v = str(val).strip().upper()
     return "A" if v in ("A","SHORT") else "C" if v in ("C","DETAILED","LONG") else "B"
 
-# =============== NOTE TECNICHE LOCALI ===============
+# =============== NOTE TECNICHE: fallback embedded ===============
+EMBEDDED_NOTES = {
+    "CTF": [
+        """Nota tecnica CTF – Altezza, soletta e copriferro
+Per scegliere l’altezza del connettore CTF si considera:
+- Spessore della soletta in calcestruzzo
+- Copriferro minimo richiesto dalle normative
+- Tipo di lamiera grecata (se presente)
+
+Esempio:
+- Soletta 60 mm → connettore CTF090
+- Soletta 80 mm con copriferro 25 mm → connettore CTF105"""
+    ],
+    # In futuro: aggiungi CTL, CEM-E, ecc.
+}
+
 def guess_topic(question: str) -> str | None:
     q = (question or "").lower()
     for topic, keys in TOPIC_KEYS.items():
@@ -131,56 +146,68 @@ def load_note_files(topic: str):
     folder = os.path.join(NOTE_DIR, topic)
     return sorted(glob.glob(os.path.join(folder, "*.txt")))
 
-KEYBOOST = {"altezza":12, "altezze":10, "soletta":8, "copriferro":8, "ctf":10, "diapason":6}
-def _keywords_score(text: str, q: str) -> int:
-    t = text.lower(); s = 0
-    for k,w in KEYBOOST.items():
-        if k in t or k in q: s += w
-    return s
-
 def best_local_note(question: str, topic: str):
     """
-    Ritorna (testo_nota, path_file) con fuzzy match + boost keyword.
-    Fallback: primo file del topic.
+    Ritorna (testo_nota, fonte_str).
+    Ordine:
+      1) match fuzzy sui .txt locali
+      2) fallback EMBEDDED_NOTES[topic][0]
+      3) None
     """
     paths = load_note_files(topic)
-    if not paths: return None, None
     q = (question or "").lower()
-    best = (0, None, None)
-    for p in paths:
-        try:
-            with open(p, "r", encoding="utf-8") as f: txt = f.read()
-        except Exception:
-            continue
-        blob = (os.path.basename(p) + "\n" + txt).lower()
-        s = fuzz.token_set_ratio(q, blob) + _keywords_score(blob, q)
-        if s > best[0]: best = (s, txt.strip(), p)
-    if best[1] is None:
-        try:
-            with open(paths[0], "r", encoding="utf-8") as f:
-                return f.read().strip(), paths[0]
-        except Exception:
-            return None, None
-    return best[1], best[2]
+
+    # 1) prova file locali
+    if paths:
+        best_score, best_text, best_src = -1, None, None
+        for p in paths:
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    txt = f.read().strip()
+            except Exception:
+                continue
+            blob = (os.path.basename(p) + "\n" + txt).lower()
+            score = fuzz.token_set_ratio(q, blob)
+            for k in ("altezza", "altezze", "soletta", "copriferro", "ctf"):
+                if k in blob or k in q: score += 5
+            if score > best_score:
+                best_score, best_text, best_src = score, txt, f"{NOTE_DIR}/{topic}/{os.path.basename(p)}"
+        if best_text:
+            return best_text, best_src
+
+    # 2) fallback embedded
+    if topic in EMBEDDED_NOTES and EMBEDDED_NOTES[topic]:
+        return EMBEDDED_NOTES[topic][0].strip(), f"embedded:{topic}"
+
+    # 3) nulla
+    return None, None
 
 def attach_local_note(answer: str, question: str) -> str:
     """
-    Aggancia SEMPRE una nota se esiste almeno un file del topic riconosciuto.
+    Aggancia SEMPRE una nota se esiste almeno una fonte (file locale o embedded).
     """
     topic = guess_topic(question)
-    if not topic: return answer
+    if not topic:
+        return answer
     note, src = best_local_note(question, topic)
-    if not note: return answer
+    if not note:
+        return answer
+
     lines = note.splitlines()
     if lines and len(lines[0]) <= 100:
         title = lines[0].strip()
-        body  = "\n".join(lines[1:]).strip() if len(lines)>1 else ""
+        body  = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
         block = f"---\n📎 Nota tecnica (locale) — {title}\n{body}" if body else f"---\n📎 Nota tecnica (locale)\n{title}"
     else:
         block = f"---\n📎 Nota tecnica (locale)\n{note}"
+
     if src:
-        rel = os.path.relpath(src, start=NOTE_DIR)
-        block += f"\n_(fonte: {rel})_"
+        if src.startswith("embedded:"):
+            block += f"\n_(fonte: {src})_"
+        else:
+            rel = os.path.relpath(src, start=NOTE_DIR)
+            block += f"\n_(fonte: {rel})_"
+
     return (answer or "").rstrip() + "\n\n" + block
 
 # =============== DETERMINISTICO: CODICI CTF ===============
@@ -331,7 +358,7 @@ def status():
         "status":"ok", "service":"Tecnaria QA",
         "note_dir_exists": os.path.isdir(NOTE_DIR),
         "note_dir": NOTE_DIR,
-        "endpoints": {"ask":"POST /ask {question, style? 'A'|'B'|'C'}", "ui":"GET /ui", "debug_notes":"GET /debug/notes"},
+        "endpoints": {"ask":"POST /ask {question, style? 'A'|'B'|'C'}", "ui":"GET /ui", "debug/notes":"GET /debug/notes"},
         "model": OPENAI_MODEL, "temperature": TEMPERATURE,
         "sdk": "new" if NEW_SDK else "legacy"
     }), 200
@@ -365,7 +392,7 @@ def ask():
     if banned(q):
         return jsonify({"answer":"Non posso rispondere: non è un prodotto Tecnaria ufficiale.", "source":"guardrail"}), 200
 
-    # 2) Codici CTF (deterministico)
+    # 2) Codici CTF (deterministico) + nota
     cod_ans = deterministic_ctf_codes_answer(q)
     if cod_ans:
         cod_ans = attach_local_note(cod_ans, q)
@@ -374,7 +401,7 @@ def ask():
     # 3) Altezza CTF
     det_ans, matched = deterministic_ctf_height_answer(q)
     if det_ans and matched:
-        # match certo: presento il deterministico + nota
+        # match certo: deterministico + nota
         det_ans = attach_local_note(det_ans, q)
         return jsonify({"answer": det_ans, "style_used":"D", "source":"deterministic_ctf_height"}), 200
     elif det_ans and not matched:
@@ -385,11 +412,11 @@ def ask():
             llm = attach_local_note(llm, q)
             return jsonify({"answer": llm, "style_used": style, "source":"llm_fallback_with_note"}), 200
         except Exception:
-            # se LLM fallisce, almeno mostra i dati ricevuti + nota
+            # se LLM fallisce, mostra almeno i dati + nota
             det_ans = attach_local_note(det_ans, q)
             return jsonify({"answer": det_ans, "style_used":"D", "source":"deterministic_ctf_height_fallback"}), 200
 
-    # 4) LLM (ultimo step)
+    # 4) LLM (ultimo step) + nota
     try:
         ans = call_model(q, style)
         if not ans: ans = "Non ho ricevuto testo dal modello in questa richiesta."
