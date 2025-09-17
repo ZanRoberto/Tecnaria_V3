@@ -17,16 +17,14 @@ OPENAI_MODEL   = os.environ.get("OPENAI_MODEL", "gpt-5")
 
 def _parse_float(val, default=0.0):
     try:
-        if val is None:
-            return default
+        if val is None: return default
         v = str(val).strip().lower()
-        if v in ("", "none", "null", "nil"):
-            return default
+        if v in ("", "none", "null", "nil"): return default
         return float(v)
     except Exception:
         return default
 
-# 0 => non passare temperature (alcuni modelli vogliono il default=1)
+# 0 => non passare temperature (alcuni modelli vogliono solo default=1)
 TEMPERATURE = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)
 NOTE_DIR    = os.environ.get("NOTE_DIR", "documenti_gTab")
 
@@ -71,7 +69,6 @@ def banned(text: str) -> bool:
 
 # ===== NOTE TECNICHE LOCALI =====
 TOPIC_KEYS = {
-    # Aggiunte "cft" per catturare il refuso
     "CTF": ["ctf","cft","acciaio-calcestruzzo","lamiera","grecata"],
     "CTL": ["ctl","legno-calcestruzzo","legno","solaio in legno"],
     "CEM-E": ["cem-e","ripresa di getto","nuovo su esistente","cucitura"],
@@ -153,22 +150,39 @@ def status():
         "temperature": TEMPERATURE
     }), 200
 
-def _call_openai(messages, style):
+def _responses_call(system_msg, user_msg, style):
+    """Chiama il Responses API e ritorna sempre testo (output_text)."""
     params = {
         "model": OPENAI_MODEL,
-        "messages": messages,
+        "input": [
+            {"role": "system", "content": system_msg},
+            {"role": "user",   "content": user_msg}
+        ],
         "top_p": 1,
-        "max_completion_tokens": STYLE_TOKENS.get(style, 280)
+        "max_output_tokens": STYLE_TOKENS.get(style, 280)
     }
-    # Passa temperature SOLO se > 0 (alcuni modelli supportano solo default=1)
     if TEMPERATURE and TEMPERATURE > 0:
         params["temperature"] = TEMPERATURE
-    resp = client.chat.completions.create(**params)
-    logging.info(f"RAW RESPONSE: {resp}")
-    # Con openai>=1.59.0: message è oggetto, non dict
-    msg = resp.choices[0].message
-    text = (getattr(msg, "content", None) or getattr(msg, "refusal", None) or "").strip()
-    return text
+
+    resp = client.responses.create(**params)
+    logging.info(f"RAW RESPONSES: {resp}")
+
+    # Via preferita
+    text = getattr(resp, "output_text", None)
+    if text:
+        return text.strip()
+
+    # Fallback robusto: ricompone dai pezzi
+    parts = []
+    out = getattr(resp, "output", None) or []
+    for item in out:
+        if getattr(item, "type", "") == "message":
+            for c in getattr(item, "content", []) or []:
+                if getattr(c, "type", "") == "output_text":
+                    t = getattr(c, "text", "") or ""
+                    if t:
+                        parts.append(t)
+    return "".join(parts).strip()
 
 @app.post("/ask")
 def ask():
@@ -188,29 +202,23 @@ def ask():
         return jsonify({"answer":"Non posso rispondere: non è un prodotto Tecnaria ufficiale.", "source":"guardrail"}), 200
 
     try:
-        # Prima chiamata con stile
-        messages = [
-            SYSTEM_MSG,
-            {"role":"user","content": f"Domanda utente: {q}\n\n{STYLE_HINTS.get(style,'')}"}
-        ]
-        ans = _call_openai(messages, style)
+        # 1) Prompt con stile
+        user_prompt = f"Domanda utente: {q}\n\n{STYLE_HINTS.get(style,'')}"
+        ans = _responses_call(SYSTEM_MSG["content"], user_prompt, style)
 
-        # Retry automatico se vuoto (senza hint stile)
+        # 2) Retry semplice se vuota la prima
         if not ans:
-            logging.info("Prima risposta vuota. Retry con prompt semplificato.")
-            messages = [
-                SYSTEM_MSG,
-                {"role":"user","content": f"{q}"}
-            ]
-            ans = _call_openai(messages, style)
+            logging.info("Prima risposta vuota. Retry senza hint stile.")
+            ans = _responses_call(SYSTEM_MSG["content"], q, style)
 
         if not ans:
             ans = "Non ho ricevuto testo dal modello in questa richiesta."
 
         if banned(ans):
             ans = "Non posso rispondere: non è un prodotto Tecnaria ufficiale."
+
         ans = attach_local_note(ans, q)
-        return jsonify({"answer": ans, "style_used": style, "source":"llm"}), 200
+        return jsonify({"answer": ans, "style_used": style, "source":"responses_api"}), 200
 
     except Exception as e:
         logging.exception("Errore OpenAI")
