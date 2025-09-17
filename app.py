@@ -1,20 +1,15 @@
-# app.py
 import os, re, glob, logging, json, math
 from flask import Flask, request, jsonify, Response, redirect
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 from rapidfuzz import fuzz  # fuzzy match note locali
 
-# =======================
-# Logging & Flask
-# =======================
+# =============== Logging & Flask ===============
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 app = Flask(__name__)
 CORS(app, resources={r"/ask": {"origins": "*"}})
 
-# =======================
-# ENV
-# =======================
+# =============== ENV ===============
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL   = os.environ.get("OPENAI_MODEL", "gpt-4o")
 NOTE_DIR       = os.environ.get("NOTE_DIR", "documenti_gTab")
@@ -28,12 +23,10 @@ def _parse_float(val, default=0.0):
     except Exception:
         return default
 
-# 0 => non inviare temperature (molti modelli usano default=1)
+# 0 => non passare temperature (molti modelli vogliono default=1)
 TEMPERATURE = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)
 
-# =======================
-# OpenAI client (nuovo/legacy)
-# =======================
+# =============== OpenAI client (nuovo/legacy) ===============
 NEW_SDK = True
 openai = None
 client = None
@@ -49,9 +42,7 @@ except Exception:
         openai.api_key = OPENAI_API_KEY
     logging.info("OpenAI SDK: LEGACY (<=0.28.x) — Chat Completions")
 
-# =======================
-# Dati aziendali CERTI
-# =======================
+# =============== Dati aziendali CERTI (no web) ===============
 TECNARIA_CONTACT = {
     "ragione_sociale": "TECNARIA S.p.A.",
     "indirizzo": "Viale Pecori Giraldi, 55 – 36061 Bassano del Grappa (VI)",
@@ -64,7 +55,7 @@ TECNARIA_CONTACT = {
 
 def deterministic_contacts_answer(q: str) -> str | None:
     """
-    Trigger su richieste esplicite di contatti/indirizzo/telefono/email/PEC/sede.
+    Risponde SOLO se la domanda riguarda contatti/indirizzo/telefono/email/PEC/sede.
     Regex con confini di parola per evitare falsi positivi (es. 'CFT').
     """
     ql = (q or "").lower()
@@ -87,9 +78,7 @@ def deterministic_contacts_answer(q: str) -> str | None:
         )
     return None
 
-# =======================
-# Guard-rail e prodotti
-# =======================
+# =============== Guard-rail & perimetro ===============
 BANNED = [r"\bHBV\b", r"\bFVA\b", r"\bAvantravetto\b", r"\bT[\- ]?Connect\b", r"\bAlfa\b"]
 
 SYSTEM_TEXT = (
@@ -119,23 +108,19 @@ def banned(text: str) -> bool:
             return False
     return any(re.search(p, text, re.IGNORECASE) for p in BANNED)
 
-# =======================
-# Stili A/B/C
-# =======================
+# =============== Stili A/B/C ===============
 STYLE_HINTS = {
     "A": "Formato: 2–3 bullet essenziali.",
     "B": "Formato: Titolo + 3–4 bullet tecnici + chiusura breve.",
     "C": "Formato: Titolo + 5–8 punti tecnici + suggerimento operativo.",
 }
 STYLE_TOKENS = {"A": 250, "B": 450, "C": 700}
-def normalize_style(val): 
+def normalize_style(val):
     if not val: return "B"
     v = str(val).strip().upper()
     return "A" if v in ("A","SHORT") else "C" if v in ("C","DETAILED","LONG") else "B"
 
-# =======================
-# NOTE TECNICHE LOCALI
-# =======================
+# =============== NOTE TECNICHE LOCALI ===============
 def guess_topic(question: str) -> str | None:
     q = (question or "").lower()
     for topic, keys in TOPIC_KEYS.items():
@@ -154,6 +139,10 @@ def _keywords_score(text: str, q: str) -> int:
     return s
 
 def best_local_note(question: str, topic: str):
+    """
+    Ritorna (testo_nota, path_file) con fuzzy match + boost keyword.
+    Fallback: primo file del topic.
+    """
     paths = load_note_files(topic)
     if not paths: return None, None
     q = (question or "").lower()
@@ -175,6 +164,9 @@ def best_local_note(question: str, topic: str):
     return best[1], best[2]
 
 def attach_local_note(answer: str, question: str) -> str:
+    """
+    Aggancia SEMPRE una nota se esiste almeno un file del topic riconosciuto.
+    """
     topic = guess_topic(question)
     if not topic: return answer
     note, src = best_local_note(question, topic)
@@ -191,9 +183,7 @@ def attach_local_note(answer: str, question: str) -> str:
         block += f"\n_(fonte: {rel})_"
     return (answer or "").rstrip() + "\n\n" + block
 
-# =======================
-# DETERMINISTICO: CODICI CTF
-# =======================
+# =============== DETERMINISTICO: CODICI CTF ===============
 CTF_CODES = [
     ("CTF020", 20), ("CTF025", 25), ("CTF030", 30), ("CTF040", 40),
     ("CTF060", 60), ("CTF070", 70), ("CTF080", 80), ("CTF090", 90),
@@ -206,12 +196,10 @@ def deterministic_ctf_codes_answer(q: str) -> str | None:
     lines = ["**Serie CTF — Altezze gambo (mm)**"]
     for code,h in CTF_CODES:
         lines.append(f"- {code} — {h} mm")
-    lines.append("\nPer l’impiego corretto verificare spessore soletta/copriferro e manuale di posa Tecnaria.")
+    lines.append("\nPer l’impiego corretto verificare spessore soletta/coprif. e manuale di posa Tecnaria.")
     return "\n".join(lines)
 
-# =======================
-# DETERMINISTICO: ALTEZZA CTF da TXT
-# =======================
+# =============== DETERMINISTICO: ALTEZZA CTF da TXT ===============
 def _extract_mm(text: str, key: str) -> list[int]:
     t = text.lower(); out = []
     patt = rf"{key}\s*[:=]?\s*(\d{{2,3}})\s*(?:mm|m\s*m)?"
@@ -225,12 +213,17 @@ def _find_ctf_code_in_line(line: str) -> str | None:
     return "CTF"+m.group(1).zfill(3) if m else None
 
 def _deterministic_from_note(soletta_mm: int, copriferro_mm: int) -> str | None:
-    paths = load_note_files("CTF")
-    if not paths: return None
+    """
+    Cerca in TUTTI i .txt dentro documenti_gTab/CTF una riga che contenga
+    sia la soletta che il copriferro e un codice CTF***.
+    Se non trova match esatto, prova match parziali.
+    """
+    folder_paths = load_note_files("CTF")
+    if not folder_paths: return None
     s_str, c_str = str(soletta_mm), str(copriferro_mm)
 
     # entrambi i numeri
-    for p in paths:
+    for p in folder_paths:
         try:
             with open(p,"r",encoding="utf-8") as f:
                 for ln in f:
@@ -240,7 +233,7 @@ def _deterministic_from_note(soletta_mm: int, copriferro_mm: int) -> str | None:
                         if code: return code
         except Exception: continue
     # solo soletta
-    for p in paths:
+    for p in folder_paths:
         try:
             with open(p,"r",encoding="utf-8") as f:
                 for ln in f:
@@ -250,7 +243,7 @@ def _deterministic_from_note(soletta_mm: int, copriferro_mm: int) -> str | None:
                         if code: return code
         except Exception: continue
     # solo copriferro
-    for p in paths:
+    for p in folder_paths:
         try:
             with open(p,"r",encoding="utf-8") as f:
                 for ln in f:
@@ -270,7 +263,10 @@ def deterministic_ctf_height_answer(question: str) -> str | None:
     if not so: return None
     soletta = so[0]; copri = co[0] if co else 25
     code = _deterministic_from_note(soletta, copri)
-    if not code: return None
+    if not code:  # fallback: non lascia mai vuoto
+        base = (f"**Dati ricevuti**: soletta **{soletta} mm**, copriferro **{copri} mm**.\n"
+                f"Non ho trovato un abbinamento certo nel file locale; ti allego comunque la nota tecnica.")
+        return base
     return (
         f"**Altezza consigliata CTF: {code}**\n"
         f"- Dati ricevuti: soletta **{soletta} mm**, copriferro **{copri} mm**.\n"
@@ -278,15 +274,12 @@ def deterministic_ctf_height_answer(question: str) -> str | None:
         f"Se vuoi verifico anche passo, densità e interferenze impianti."
     )
 
-# =======================
-# OpenAI helpers
-# =======================
+# =============== OpenAI helpers ===============
 def ask_new_sdk(system_text: str, user_text: str, style_tokens: int, temperature: float) -> str:
     params = {
         "model": OPENAI_MODEL,
         "input": [{"role":"system","content":system_text},{"role":"user","content":user_text}],
-        "top_p": 1,
-        "max_output_tokens": style_tokens
+        "top_p": 1, "max_output_tokens": style_tokens
     }
     if temperature and temperature > 0: params["temperature"] = temperature
     resp = client.responses.create(**params)  # type: ignore
@@ -322,9 +315,7 @@ def call_model(question: str, style: str) -> str:
         if not out: out = ask_legacy_sdk(SYSTEM_TEXT, question, toks, TEMPERATURE)
         return out
 
-# =======================
-# Routes
-# =======================
+# =============== Routes ===============
 @app.get("/")
 def root_redirect(): return redirect("/ui", code=302)
 
@@ -374,13 +365,13 @@ def ask():
         cod_ans = attach_local_note(cod_ans, q)
         return jsonify({"answer": cod_ans, "style_used":"D", "source":"deterministic_ctf_codes"}), 200
 
-    # 3) Altezza CTF (deterministico da TXT)
+    # 3) Altezza CTF (deterministico da TXT; se non trova match, esce comunque + nota)
     det_ans = deterministic_ctf_height_answer(q)
     if det_ans:
         det_ans = attach_local_note(det_ans, q)
         return jsonify({"answer": det_ans, "style_used":"D", "source":"deterministic_ctf_height"}), 200
 
-    # 4) LLM
+    # 4) LLM (ultimo step)
     try:
         ans = call_model(q, style)
         if not ans: ans = "Non ho ricevuto testo dal modello in questa richiesta."
@@ -391,9 +382,7 @@ def ask():
         logging.exception("Errore OpenAI")
         return jsonify({"error": f"OpenAI error: {str(e)}"}), 500
 
-# =======================
-# UI
-# =======================
+# =============== UI ===============
 HTML_UI = """<!doctype html>
 <html lang="it"><head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -410,8 +399,8 @@ label{display:inline-block;margin:8px 12px 0 0}
 </style></head>
 <body><div class="wrap"><div class="card">
 <h1>Tecnaria QA Bot</h1>
-<div class="sub">Domande libere su Tecnaria. Scegli A/B/C. Se esiste una nota locale, la vedi in fondo.</div>
-<textarea id="question" placeholder="Es. Dammi i codici CTF; oppure: altezza CTF con soletta 80 e copriferro 25"></textarea>
+<div class="sub">Domande libere su Tecnaria. Se esiste una nota locale, la vedi in fondo.</div>
+<textarea id="question" placeholder="Es.: Dammi i codici CTF — Oppure: altezza CTF con soletta 80 e copriferro 25"></textarea>
 <div>
 <label><input type="radio" name="style" value="A"> A — Breve</label>
 <label><input type="radio" name="style" value="B"> B — Standard</label>
@@ -445,17 +434,13 @@ async function ask(){
 @app.get("/ui")
 def ui(): return Response(HTML_UI, mimetype="text/html")
 
-# =======================
-# Error handling
-# =======================
+# =============== Error handling ===============
 @app.errorhandler(HTTPException)
 def _http(e: HTTPException): return jsonify({"error": e.description, "code": e.code}), e.code
 @app.errorhandler(Exception)
 def _any(e: Exception):
     logging.exception("Errore imprevisto"); return jsonify({"error": str(e)}), 500
 
-# =======================
-# Local run
-# =======================
+# =============== Local run ===============
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
