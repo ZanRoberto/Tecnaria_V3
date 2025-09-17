@@ -1,24 +1,42 @@
 import os, re, logging, glob
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response, redirect
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 from openai import OpenAI
 
+# ===== Logging =====
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
+# ===== App & CORS =====
 app = Flask(__name__)
 CORS(app, resources={r"/ask": {"origins": "*"}})
 
-# === Config ENV ===
+# ===== ENV Config =====
 OPENAI_API_KEY   = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL     = os.environ.get("OPENAI_MODEL", "gpt-5")
-TEMPERATURE      = float(os.environ.get("OPENAI_TEMPERATURE", "0"))
-USE_LLM          = os.environ.get("USE_LLM", "1") == "1"
-NOTE_DIR         = os.environ.get("NOTE_DIR", "documenti_gTab")  # <--- tua cartella locale
 
+# NB: tieni OPENAI_TEMPERATURE=0 su Render. Se vuoi robustezza extra, metti uno 0.0 di default.
+def _parse_float(val, default=0.0):
+    try:
+        if val is None:
+            return default
+        v = str(val).strip().lower()
+        if v in ("", "none", "null", "nil"):
+            return default
+        return float(v)
+    except Exception:
+        return default
+
+TEMPERATURE      = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)
+USE_LLM          = os.environ.get("USE_LLM", "1") == "1"
+NOTE_DIR         = os.environ.get("NOTE_DIR", "documenti_gTab")  # cartella note tecniche
+
+# ===== OpenAI client =====
+if not OPENAI_API_KEY:
+    logging.warning("OPENAI_API_KEY non impostata. /ask restituirà errore.")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Termini da escludere (non Tecnaria)
+# ===== Guard-rail: termini non Tecnaria =====
 BANNED = [r"\bHBV\b", r"\bFVA\b", r"\bAvantravetto\b", r"\bT[\- ]?Connect\b", r"\bAlfa\b"]
 
 SYSTEM_MSG = {
@@ -34,13 +52,13 @@ SYSTEM_MSG = {
     )
 }
 
-# Stili A/B/C (puoi tenere B di default nel tuo frontend)
+# ===== Stili A/B/C =====
 STYLE_HINTS = {
     "A": "Formato: 2–3 bullet essenziali, niente chiusura.",
     "B": "Formato: Titolo (<=80c) + 3–4 bullet tecnici + riga finale 'Se ti serve altro su Tecnaria, chiedi pure.'",
-    "C": "Formato: Titolo (<=100c) + 5–8 bullet tecnici + breve suggerimento operativo."
+    "C": "Formato: Titolo (<=100c) + 5–8 punti tecnici + breve suggerimento operativo."
 }
-STYLE_TOKENS = {"A":180, "B":280, "C":380}
+STYLE_TOKENS = {"A": 180, "B": 280, "C": 380}
 
 def normalize_style(val):
     if not val: return "B"
@@ -52,23 +70,7 @@ def normalize_style(val):
 def banned(text: str) -> bool:
     return any(re.search(p, text, re.IGNORECASE) for p in BANNED)
 
-# ========= MOTORE DETERMINISTICO (facoltativo) =========
-def answer_deterministico(q: str):
-    ql = q.lower()
-    # Esempio semplice: altezze CTF
-    if "ctf" in ql and ("altezza" in ql or "altezze" in ql or "consiglio" in ql):
-        return (
-            "Scelta indicativa altezze CTF:\n"
-            "- Lamiera grecata comune: CTF090–CTF105 (in base a profilo e spessori)\n"
-            "- Soletta piena ridotta: CTF070–CTF090\n"
-            "- Ricorda copriferro e dettagli di posa; specificando lamiera/soletta posso affinare."
-        )
-    return None
-
-# ========= NOTE TECNICHE LOCALI =========
-# Convenzione semplice:
-#  - cartelle: documenti_gTab/CTF, documenti_gTab/CTL, documenti_gTab/CEM-E, documenti_gTab/DIAPASON, documenti_gTab/P560, ...
-#  - file .txt con testo libero (prima riga = titolo facoltativo)
+# ===== NOTE TECNICHE LOCALI =====
 KEYMAP = {
     "CTF": ["ctf","acciaio-calcestruzzo","lamiera"],
     "CTL": ["ctl","legno-calcestruzzo","legno"],
@@ -84,30 +86,19 @@ KEYMAP = {
 
 def guess_topic(question: str) -> str | None:
     q = question.lower()
-    # match più "forte" su token del dizionario
     for topic, keys in KEYMAP.items():
         if any(k in q for k in keys):
             return topic
-    # fallback: se contiene "connettore" ma non è specifico
-    if "connettore" in q:
-        return None
     return None
 
 def load_note_files(topic: str):
-    # Cerca .txt nella sottocartella del topic
     folder = os.path.join(NOTE_DIR, topic)
     paths = sorted(glob.glob(os.path.join(folder, "*.txt")))
     return paths
 
 def best_local_note(question: str, topic: str) -> str | None:
-    """
-    Se esistono file .txt per il topic, sceglie il 'miglior' file per parole chiave semplici.
-    Logica leggera (no dipendenze): conteggio match nel filename e nel contenuto.
-    """
     paths = load_note_files(topic)
-    if not paths: 
-        return None
-
+    if not paths: return None
     q = question.lower()
     best_score, best_text = 0, None
     for p in paths:
@@ -117,20 +108,14 @@ def best_local_note(question: str, topic: str) -> str | None:
         except Exception:
             continue
         base = os.path.basename(p).lower()
-        # score grezzo: occorrenze di parole di domanda nel filename + nel testo
         tokens = [w for w in re.split(r"[^a-z0-9àèéìòóù]+", q) if w]
         score = 0
         for t in tokens:
-            if len(t) <= 2: 
-                continue
+            if len(t) <= 2: continue
             score += base.count(t) + txt.lower().count(t)
         if score > best_score:
             best_score, best_text = score, txt.strip()
-
-    if not best_text:
-        return None
-
-    # Limita la lunghezza della nota per non dilagare
+    if not best_text: return None
     MAX_CHARS = 1200
     if len(best_text) > MAX_CHARS:
         best_text = best_text[:MAX_CHARS].rstrip() + " …"
@@ -138,12 +123,9 @@ def best_local_note(question: str, topic: str) -> str | None:
 
 def attach_local_note(answer: str, question: str) -> str:
     topic = guess_topic(question)
-    if not topic:
-        return answer
+    if not topic: return answer
     note = best_local_note(question, topic)
-    if not note:
-        return answer
-    # Se la nota ha una prima riga titolo, la evidenziamo
+    if not note: return answer
     lines = note.splitlines()
     if lines and len(lines[0]) <= 100:
         title = lines[0].strip()
@@ -153,20 +135,26 @@ def attach_local_note(answer: str, question: str) -> str:
         block = f"---\n📎 Nota tecnica (locale)\n{note}"
     return f"{answer}\n\n{block}"
 
-# ========= API =========
+# ===== HOME: redirect a /ui =====
 @app.get("/")
-def home():
+def root_redirect():
+    return redirect("/ui", code=302)
+
+# ===== STATUS: diagnostica JSON (era su "/", ora su "/status") =====
+@app.get("/status")
+def status():
     return jsonify({
         "status": "ok",
         "service": "Tecnaria QA",
         "note_dir_exists": os.path.isdir(NOTE_DIR),
         "note_dir": NOTE_DIR,
-        "endpoints": {"ask": "POST /ask {question: str, style?: 'A'|'B'|'C'}"},
+        "endpoints": {"ask": "POST /ask {question: str, style?: 'A'|'B'|'C'}", "ui": "GET /ui"},
         "model": OPENAI_MODEL,
         "temperature": TEMPERATURE,
         "use_llm": USE_LLM
     }), 200
 
+# ===== API: /ask =====
 @app.post("/ask")
 def ask():
     if not OPENAI_API_KEY:
@@ -184,36 +172,6 @@ def ask():
     if banned(q):
         return jsonify({"answer":"Non posso rispondere: non è un prodotto Tecnaria ufficiale.", "source":"guardrail"}), 200
 
-    # 1) Prova motore deterministico
-    det = answer_deterministico(q)
-    if det is not None and not USE_LLM:
-        # Solo deterministico
-        det = attach_local_note(det, q)
-        return jsonify({"answer": det, "source":"deterministico"}), 200
-
-    if det is not None and USE_LLM is False:
-        det = attach_local_note(det, q)
-        return jsonify({"answer": det, "source":"deterministico"}), 200
-
-    # 2) Se hai risposta deterministica e vuoi comunque passare dall'LLM, puoi combinare.
-    # Qui teniamo: se c'è det → priorità a det, altrimenti LLM.
-    if det is not None and USE_LLM is False:
-        det = attach_local_note(det, q)
-        return jsonify({"answer": det, "source":"deterministico"}), 200
-
-    if det is not None and USE_LLM is True:
-        # restituisci det (snello) + eventuale nota locale
-        det = attach_local_note(det, q)
-        return jsonify({"answer": det, "source":"deterministico"}), 200
-
-    # 3) LLM (se serve)
-    if not USE_LLM:
-        # niente LLM e nessuna regola → messaggio neutro + nota locale (se c'è)
-        base = "Per questa domanda non ho una regola deterministica. Specifica meglio o chiedimi un prodotto Tecnaria."
-        base = attach_local_note(base, q)
-        return jsonify({"answer": base, "source":"deterministico"}), 200
-
-    # chiamata modello
     try:
         resp = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -226,15 +184,91 @@ def ask():
         ans = (resp.choices[0].message["content"] or "").strip()
         if banned(ans):
             ans = "Non posso rispondere: non è un prodotto Tecnaria ufficiale."
-        # Aggancia nota tecnica locale (se esiste per il topic)
         ans = attach_local_note(ans, q)
-        return jsonify({"answer": ans, "source":"llm", "style_used": style}), 200
+        return jsonify({"answer": ans, "style_used": style, "source":"llm"}), 200
 
     except Exception as e:
         logging.exception("Errore OpenAI")
         return jsonify({"error": f"OpenAI error: {str(e)}"}), 500
 
-# Errori sempre JSON
+# ===== UI: interfaccia HTML =====
+HTML_UI = """<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tecnaria QA Bot</title>
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --ink:#e5e7eb; --muted:#9ca3af; --accent:#22d3ee; }
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,Segoe UI,Roboto,Arial}
+    .wrap{max-width:900px;margin:40px auto;padding:0 16px}
+    .card{background:var(--card);border:1px solid #1f2937;border-radius:16px;padding:20px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+    h1{margin:0 0 8px;font-size:22px} .sub{color:var(--muted);font-size:14px;margin-bottom:16px}
+    textarea{width:100%;min-height:110px;border-radius:12px;border:1px solid #374151;background:#0b1220;color:var(--ink);padding:12px}
+    .btn{background:var(--accent);color:#041014;border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
+    .out{white-space:pre-wrap;background:#0b1220;border:1px solid #1f2937;border-radius:12px;padding:14px;margin-top:16px}
+    label{display:inline-block;margin:8px 12px 0 0}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Tecnaria QA Bot</h1>
+      <div class="sub">Domande libere su Tecnaria. Scegli formato A/B/C. Se esiste una nota locale, sarà allegata in fondo.</div>
+      <textarea id="question" placeholder="Es. Mi spieghi il connettore CTF?"></textarea>
+      <div>
+        <label><input type="radio" name="style" value="A"> A — Breve</label>
+        <label><input type="radio" name="style" value="B" checked> B — Standard</label>
+        <label><input type="radio" name="style" value="C"> C — Dettagliata</label>
+      </div>
+      <button class="btn" onclick="ask()">Chiedi</button>
+      <div id="output" class="out" style="display:none"></div>
+      <div id="err" class="out" style="display:none; border-color:#7f1d1d; background:#450a0a; color:#fecaca"></div>
+      <div class="sub" id="meta"></div>
+    </div>
+  </div>
+  <script>
+    async function ask(){
+      const q = document.getElementById('question').value;
+      const style = document.querySelector('input[name="style"]:checked').value;
+      const out = document.getElementById('output');
+      const err = document.getElementById('err');
+      out.style.display='none'; err.style.display='none';
+      try{
+        const r = await fetch('/ask', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({question:q, style})
+        });
+        const j = await r.json();
+        if(!r.ok || j.error){
+          err.textContent = j.error || ('HTTP '+r.status);
+          err.style.display = 'block';
+        }else{
+          out.textContent = j.answer || '(nessuna risposta)';
+          out.style.display = 'block';
+        }
+      }catch(e){
+        const errBox = document.getElementById('err');
+        errBox.textContent = 'Errore di rete: ' + e.message;
+        errBox.style.display = 'block';
+      }
+      // ping meta
+      try{
+        const s = await fetch('/status', {cache:'no-store'});
+        const sj = await s.json();
+        document.getElementById('meta').textContent =
+          `Model: ${sj.model} • Temp: ${sj.temperature} • Note dir: ${sj.note_dir} (exists: ${sj.note_dir_exists})`;
+      }catch(e){ /* ignore */ }
+    }
+  </script>
+</body>
+</html>"""
+
+@app.get("/ui")
+def ui():
+    return Response(HTML_UI, mimetype="text/html")
+
+# ===== Errori sempre JSON =====
 @app.errorhandler(HTTPException)
 def _http(e: HTTPException):
     return jsonify({"error": e.description, "code": e.code}), e.code
@@ -244,5 +278,6 @@ def _any(e: Exception):
     logging.exception("Errore imprevisto")
     return jsonify({"error": str(e)}), 500
 
+# ===== Local run =====
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
