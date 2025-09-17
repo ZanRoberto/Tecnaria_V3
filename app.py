@@ -1,4 +1,4 @@
-import os, re, glob, logging
+import os, re, glob, logging, json, math
 from flask import Flask, request, jsonify, Response, redirect
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
@@ -54,6 +54,41 @@ except Exception:
         logging.warning("OPENAI_API_KEY non impostata. /ask restituirà errore.")
     openai.api_key = OPENAI_API_KEY
     logging.info("OpenAI SDK: LEGACY (<=0.28.x) — uso Chat Completions")
+
+# ===================================
+# Dati aziendali CERTI (no web)
+# ===================================
+TECNARIA_CONTACT = {
+    "ragione_sociale": "TECNARIA S.p.A.",
+    "indirizzo": "Viale Pecori Giraldi, 55 – 36061 Bassano del Grappa (VI)",
+    "piva_cf": "01277680243",
+    "telefono": "+39 0424 502029",
+    "fax": "+39 0424 502386",
+    "email": "info@tecnaria.com",
+    "pec": "tecnaria@pec.confindustriavicenza.it"
+}
+
+def deterministic_contacts_answer(q: str) -> str | None:
+    """
+    Se la domanda riguarda contatti/indirizzo/telefono/email/PEC/sede,
+    risponde SOLO con i dati forniti (niente ricerche esterne).
+    """
+    ql = (q or "").lower()
+    keys = ["contatti", "contatto", "indirizzo", "dove si trova", "sede", "telefono", "cellulare",
+            "email", "mail", "pec", "fax", "partita iva", "piva", "codice fiscale", "cf"]
+    if any(k in ql for k in keys):
+        c = TECNARIA_CONTACT
+        block = (
+            f"**{c['ragione_sociale']} — Contatti ufficiali**\n"
+            f"- **Indirizzo**: {c['indirizzo']}\n"
+            f"- **Partita IVA / Codice Fiscale**: {c['piva_cf']}\n"
+            f"- **Telefono**: {c['telefono']}\n"
+            f"- **Fax**: {c['fax']}\n"
+            f"- **Email**: {c['email']}\n"
+            f"- **PEC**: {c['pec']}\n"
+        )
+        return block
+    return None
 
 # ===================================
 # Guard-rail + perimetro prodotti
@@ -189,21 +224,15 @@ def attach_local_note(answer: str, question: str) -> str:
     return (answer or "").rstrip() + "\n\n" + block
 
 # ===================================
-# MOTORE DETERMINISTICO — CTF altezza (dal tuo blocco)
+# MOTORE DETERMINISTICO — CTF altezza (scansione TUTTI i .txt)
 # ===================================
-import json, math  # (math non usato ora, ma lasciato per eventuali estensioni)
-
-ALT_NOTE_FILE = os.path.join(NOTE_DIR, "CTF", "altezze_ctf.txt")
-
 def _extract_mm(text: str, key: str) -> list[int]:
     t = text.lower()
     nums = []
     patt = rf"{key}\s*[:=]?\s*(\d{{2,3}})\s*(?:mm|m\s*m)?"
     for m in re.finditer(patt, t):
-        try:
-            nums.append(int(m.group(1)))
-        except:
-            pass
+        try: nums.append(int(m.group(1)))
+        except: pass
     return nums
 
 def _find_ctf_code_in_line(line: str) -> str | None:
@@ -213,35 +242,71 @@ def _find_ctf_code_in_line(line: str) -> str | None:
     return None
 
 def _deterministic_from_note(soletta_mm: int, copriferro_mm: int) -> str | None:
-    if not os.path.isfile(ALT_NOTE_FILE):
-        return None
-    try:
-        with open(ALT_NOTE_FILE, "r", encoding="utf-8") as f:
-            lines = [ln.strip() for ln in f.readlines() if ln.strip()]
-    except Exception:
+    """
+    Cerca in TUTTI i .txt dentro documenti_gTab/CTF una riga che contenga
+    sia la soletta che il copriferro e un codice CTF***.
+    Se non trova match esatto, prova match parziali.
+    """
+    paths = load_note_files("CTF")
+    if not paths:
         return None
 
     s_str = str(soletta_mm)
     c_str = str(copriferro_mm)
 
-    for ln in lines:
-        if s_str in ln and c_str in ln:
-            code = _find_ctf_code_in_line(ln)
-            if code:
-                return code
-    for ln in lines:
-        if s_str in ln:
-            code = _find_ctf_code_in_line(ln)
-            if code:
-                return code
-    for ln in lines:
-        if c_str in ln:
-            code = _find_ctf_code_in_line(ln)
-            if code:
-                return code
+    # 1) match riga con entrambi i numeri
+    for p in paths:
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                for ln in f:
+                    ln = ln.strip()
+                    if not ln:
+                        continue
+                    if s_str in ln and c_str in ln:
+                        code = _find_ctf_code_in_line(ln)
+                        if code:
+                            return code
+        except Exception:
+            continue
+
+    # 2) match riga con soletta sola
+    for p in paths:
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                for ln in f:
+                    ln = ln.strip()
+                    if not ln:
+                        continue
+                    if s_str in ln:
+                        code = _find_ctf_code_in_line(ln)
+                        if code:
+                            return code
+        except Exception:
+            continue
+
+    # 3) match riga con copriferro solo
+    for p in paths:
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                for ln in f:
+                    ln = ln.strip()
+                    if not ln:
+                        continue
+                    if c_str in ln:
+                        code = _find_ctf_code_in_line(ln)
+                        if code:
+                            return code
+        except Exception:
+            continue
+
     return None
 
 def deterministic_ctf_height_answer(question: str) -> str | None:
+    """
+    Se la domanda è del tipo:
+      - 'che altezza/altezzE per CTF con soletta 80 mm e copriferro 25 mm?'
+    restituisce una RISPOSTA CERTA basata sui .txt del topic CTF.
+    """
     q = (question or "").lower()
     if "ctf" not in q and "cft" not in q:
         return None
@@ -251,10 +316,10 @@ def deterministic_ctf_height_answer(question: str) -> str | None:
     so = _extract_mm(q, r"soletta")
     co = _extract_mm(q, r"copriferro|copri\s*ferro|copri\-?ferro")
     if not so:
-        return None
+        return None  # servono i numeri
 
     soletta = so[0]
-    copri   = co[0] if co else 25
+    copri   = co[0] if co else 25  # default prudente 25 se omesso
 
     code = _deterministic_from_note(soletta, copri)
     if not code:
@@ -263,7 +328,7 @@ def deterministic_ctf_height_answer(question: str) -> str | None:
     return (
         f"**Altezza consigliata CTF: {code}**\n"
         f"- Dati ricevuti: soletta **{soletta} mm**, copriferro **{copri} mm**.\n"
-        f"- Abbinamento ricavato da *altezze_ctf.txt* (regola interna Tecnaria).\n"
+        f"- Abbinamento ricavato da note interne CTF (*.txt).\n"
         f"Se vuoi verifico anche passo, densità e interferenze impianti."
     )
 
@@ -370,6 +435,14 @@ def ask():
 
     if not q:
         return jsonify({"error":"Missing 'question'."}), 400
+
+    # Contatti aziendali (deterministico, senza LLM)
+    c_ans = deterministic_contacts_answer(q)
+    if c_ans:
+        # per i contatti NON attacchiamo note tecniche
+        return jsonify({"answer": c_ans, "style_used": "D", "source": "deterministic_contacts"}), 200
+
+    # Guardrail
     if banned(q):
         return jsonify({"answer":"Non posso rispondere: non è un prodotto Tecnaria ufficiale.", "source":"guardrail"}), 200
 
@@ -380,6 +453,7 @@ def ask():
         return jsonify({"answer": det_ans, "style_used": "D", "source": "deterministic_ctf"}), 200
     # ————————————————————————————————————————————————
 
+    # LLM
     try:
         ans = call_model(q, style)
         if not ans:
