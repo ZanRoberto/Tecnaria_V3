@@ -26,7 +26,8 @@ def _parse_float(val, default=0.0):
     except Exception:
         return default
 
-TEMPERATURE = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)  # 0 => non passare il parametro ai modelli che non lo supportano
+# 0 => non passare temperature (alcuni modelli vogliono il default=1)
+TEMPERATURE = _parse_float(os.environ.get("OPENAI_TEMPERATURE"), 0.0)
 NOTE_DIR    = os.environ.get("NOTE_DIR", "documenti_gTab")
 
 # ===== OpenAI client =====
@@ -70,7 +71,8 @@ def banned(text: str) -> bool:
 
 # ===== NOTE TECNICHE LOCALI =====
 TOPIC_KEYS = {
-    "CTF": ["ctf","acciaio-calcestruzzo","lamiera","grecata"],
+    # Aggiunte "cft" per catturare il refuso
+    "CTF": ["ctf","cft","acciaio-calcestruzzo","lamiera","grecata"],
     "CTL": ["ctl","legno-calcestruzzo","legno","solaio in legno"],
     "CEM-E": ["cem-e","ripresa di getto","nuovo su esistente","cucitura"],
     "MINI CEM-E": ["mini cem-e","mini cem"],
@@ -95,7 +97,7 @@ def load_note_files(topic: str):
 
 def best_local_note(question: str, topic: str) -> str | None:
     paths = load_note_files(topic)
-    if not paths: 
+    if not paths:
         return None
     ql = (question or "").lower()
     best_score, best_text = 0, None
@@ -151,6 +153,23 @@ def status():
         "temperature": TEMPERATURE
     }), 200
 
+def _call_openai(messages, style):
+    params = {
+        "model": OPENAI_MODEL,
+        "messages": messages,
+        "top_p": 1,
+        "max_completion_tokens": STYLE_TOKENS.get(style, 280)
+    }
+    # Passa temperature SOLO se > 0 (alcuni modelli supportano solo default=1)
+    if TEMPERATURE and TEMPERATURE > 0:
+        params["temperature"] = TEMPERATURE
+    resp = client.chat.completions.create(**params)
+    logging.info(f"RAW RESPONSE: {resp}")
+    # Con openai>=1.59.0: message è oggetto, non dict
+    msg = resp.choices[0].message
+    text = (getattr(msg, "content", None) or getattr(msg, "refusal", None) or "").strip()
+    return text
+
 @app.post("/ask")
 def ask():
     if not OPENAI_API_KEY:
@@ -169,22 +188,25 @@ def ask():
         return jsonify({"answer":"Non posso rispondere: non è un prodotto Tecnaria ufficiale.", "source":"guardrail"}), 200
 
     try:
-        params = {
-            "model": OPENAI_MODEL,
-            "messages": [
-                SYSTEM_MSG,
-                {"role":"user","content": f"Domanda utente: {q}\n\n{STYLE_HINTS.get(style,'')}"}
-            ],
-            "top_p": 1,
-            "max_completion_tokens": STYLE_TOKENS.get(style, 280)
-        }
-        # Passa temperature SOLO se > 0 (alcuni modelli supportano solo default=1)
-        if TEMPERATURE and TEMPERATURE > 0:
-            params["temperature"] = TEMPERATURE
+        # Prima chiamata con stile
+        messages = [
+            SYSTEM_MSG,
+            {"role":"user","content": f"Domanda utente: {q}\n\n{STYLE_HINTS.get(style,'')}"}
+        ]
+        ans = _call_openai(messages, style)
 
-        resp = client.chat.completions.create(**params)
-        # >>> con openai>=1.59.0 message è un oggetto, non un dict
-        ans = (resp.choices[0].message.content or "").strip()
+        # Retry automatico se vuoto (senza hint stile)
+        if not ans:
+            logging.info("Prima risposta vuota. Retry con prompt semplificato.")
+            messages = [
+                SYSTEM_MSG,
+                {"role":"user","content": f"{q}"}
+            ]
+            ans = _call_openai(messages, style)
+
+        if not ans:
+            ans = "Non ho ricevuto testo dal modello in questa richiesta."
+
         if banned(ans):
             ans = "Non posso rispondere: non è un prodotto Tecnaria ufficiale."
         ans = attach_local_note(ans, q)
