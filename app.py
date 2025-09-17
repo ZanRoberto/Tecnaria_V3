@@ -8,11 +8,18 @@ import re
 # Config di servizio
 # --------------------
 MODEL = os.getenv("OPENAI_MODEL", "gpt-5")
-# TEMPERATURE configurabile via ENV (default 0.0 per stabilità/congruità con ChatGPT)
-try:
-    TEMPERATURE = float(os.getenv("TEMPERATURE", "0"))
-except ValueError:
-    TEMPERATURE = 0.0
+
+# TEMPERATURE:
+# - Metti "default" (o lascia vuoto) per usare il default del modello (consigliato per gpt-5)
+# - Oppure un numero (es. "0.2") per modelli che lo supportano
+_env_temp = os.getenv("TEMPERATURE", "").strip().lower()
+if _env_temp in ("", "default", "none", "null"):
+    TEMPERATURE = None  # => non passeremo il parametro a OpenAI
+else:
+    try:
+        TEMPERATURE = float(_env_temp)
+    except ValueError:
+        TEMPERATURE = None
 
 SYSTEM_MESSAGE = {
     "role": "system",
@@ -28,9 +35,8 @@ SYSTEM_MESSAGE = {
 # App & OpenAI client
 # --------------------
 app = Flask(__name__)
-CORS(app)  # abilita CORS per test da front-end esterni
-# Legge OPENAI_API_KEY dall'ambiente (non passarla nel codice!)
-client = OpenAI()
+CORS(app)
+client = OpenAI()  # legge OPENAI_API_KEY dall'ambiente
 
 # --------------------
 # Classificatore deterministico (famiglia connettore)
@@ -56,13 +62,13 @@ def classify_family(q: str):
         r"solaio in legno", r"trav(i|e)\s*in\s*legno", r"tavolato"
     ]
 
-    def any_match(keys): 
+    def any_match(keys):
         return any(re.search(p, txt) for p in keys)
 
     if any_match(k_riprese):
         return {"family": "CEM-E", "why": "Ripresa di getto / nuovo su esistente → collegamento calcestruzzo-calcestruzzo."}
     if any_match(k_ripart_legno):
-        return {"family": "Diapason", "why": "Richiesta di ripartizione carichi su legno-calcestruzzo → piastra Diapason."}
+        return {"family": "Diapason", "why": "Ripartizione carichi su legno-calcestruzzo → piastra Diapason."}
     if any_match(k_acc_cem):
         return {"family": "CTF", "why": "Acciaio-calcestruzzo / lamiera grecata → connettore a piolo CTF."}
     if any_match(k_legno_cem):
@@ -71,7 +77,6 @@ def classify_family(q: str):
     return {"family": None, "why": "Serve specificare: acciaio/lamiera, legno-calcestruzzo o ripresa di getto."}
 
 def fuse_answer(llm_text: str, hint: dict):
-    # unisce risposta LLM con “suggerimento deterministico”
     tail = "\n\n—\n"
     if hint and hint.get("family"):
         tail += (
@@ -88,6 +93,19 @@ def fuse_answer(llm_text: str, hint: dict):
     return (llm_text or "").strip() + tail
 
 # --------------------
+# Helpers OpenAI
+# --------------------
+def call_openai(messages):
+    # Montiamo la chiamata senza temperature se None (evita 400 su modelli che non la supportano)
+    kwargs = {
+        "model": MODEL,
+        "messages": messages,
+    }
+    if TEMPERATURE is not None:
+        kwargs["temperature"] = TEMPERATURE
+    return client.chat.completions.create(**kwargs)
+
+# --------------------
 # Endpoints
 # --------------------
 @app.get("/health")
@@ -95,7 +113,7 @@ def health():
     return {
         "status": "ok",
         "model": MODEL,
-        "temperature": TEMPERATURE
+        "temperature": ("default (model-managed)" if TEMPERATURE is None else TEMPERATURE)
     }
 
 @app.post("/ask")
@@ -111,11 +129,7 @@ def ask():
 
         # Chiamata OpenAI (protetta)
         try:
-            chat = client.chat.completions.create(
-                model=MODEL,
-                messages=[SYSTEM_MESSAGE, {"role": "user", "content": question}],
-                temperature=TEMPERATURE
-            )
+            chat = call_openai([SYSTEM_MESSAGE, {"role": "user", "content": question}])
             llm_text = chat.choices[0].message["content"]
         except Exception as e:
             return jsonify({"error": "OpenAI call failed", "details": str(e)}), 502
@@ -134,7 +148,7 @@ def ask():
             "raw_llm_answer": llm_text if mode == "fused" else None,
             "deterministic_hint": hint,
             "model": MODEL,
-            "temperature": TEMPERATURE
+            "temperature": ("default (model-managed)" if TEMPERATURE is None else TEMPERATURE)
         })
     except Exception as e:
         return jsonify({"error": "Server error", "details": str(e)}), 500
@@ -185,7 +199,7 @@ def home():
   <div class="wrap">
     <div class="header">
       <h1>Tecnaria QA Bot</h1>
-      <span class="pill">{MODEL} • temp {TEMPERATURE}</span>
+      <span class="pill">{MODEL} • temp {("default" if TEMPERATURE is None else TEMPERATURE)}</span>
     </div>
     <div class="card">
       <div class="row" style="margin-bottom:10px;">
