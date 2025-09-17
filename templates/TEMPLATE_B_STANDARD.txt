@@ -1,0 +1,13 @@
+[TEMPLATE_B_STANDARD]
+Ruolo: commerciale/progettuale base.
+Output atteso: 6–8 righe, nessuna formula.
+Struttura:
+1) Contesto (solaio/posa/uso).
+2) Varianti consigliate (max 2).
+3) Posa/attrezzi (es. Spit P560).
+4) Certificazioni (ETA/CE).
+5) Nota pratica su distribuzione/controlli.
+Prompt:
+"Domanda: {question}
+Contesto (facoltativo): {context}
+Scrivi una spiegazione pratica (6–8 righe), senza formule, includendo posa, certificazioni e una nota operativa."
