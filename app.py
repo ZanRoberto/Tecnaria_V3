@@ -1,5 +1,5 @@
 # app.py — Backend Flask per TecnariaBot (A/B/C) + UI statica + fallback anti-502
-# Avvio consigliato su Render/Heroku:
+# Avvio consigliato:
 #   gunicorn app:app --timeout 120 --workers=1 --threads=2 --preload -b 0.0.0.0:$PORT
 
 from __future__ import annotations
@@ -27,13 +27,14 @@ logging.basicConfig(
 log = logging.getLogger(APP_NAME)
 
 # =============================================================================
-# Template loader A/B/C (con fallback se mancano file)
+# Template loader A/B/C (+ ATTREZZI) con fallback se mancano file
 # =============================================================================
 TEMPLATES_DIR = Path("templates")
 TEMPLATE_FILES = {
     "breve": "TEMPLATE_A_BREVE.txt",
     "standard": "TEMPLATE_B_STANDARD.txt",
-    "dettagliata": "TEMPLATE_C_DETTAGLIATA.txt",
+    "dettagliata": "TEMPLATE_C_DETTAGLIATA.txt",  # tecnico per connettori/solai
+    "attrezzi": "TEMPLATE_C_ATTREZZI.txt",        # tecnico per P560 & simili
 }
 
 def _load_templates() -> Dict[str, str]:
@@ -42,7 +43,6 @@ def _load_templates() -> Dict[str, str]:
     for mode, filename in TEMPLATE_FILES.items():
         path = TEMPLATES_DIR / filename
         if not path.exists():
-            # Fallback minimale, così il servizio resta su anche senza file
             templates[mode] = (
                 f"[TEMPLATE MANCANTE: {filename}]\n"
                 "Domanda: {question}\nContesto: {context}\n"
@@ -59,15 +59,17 @@ def get_templates() -> Dict[str, str]:
         _TEMPLATES_CACHE = _load_templates()
     return _TEMPLATES_CACHE
 
-def build_prompt(mode: str, question: str, context: str | None = None) -> str:
-    templates = get_templates()
-    tpl = templates.get(mode, templates["dettagliata"])  # default: C tecnico
+def render_template(mode_key: str, question: str, context: str | None) -> str:
+    tpl = get_templates().get(mode_key, get_templates()["dettagliata"])
     return tpl.replace("{question}", question).replace("{context}", context or "")
 
+def build_prompt(mode: str, question: str, context: str | None = None) -> str:
+    # Manteniamo la compatibilità: se passa "breve/standard/dettagliata"
+    key = mode if mode in get_templates() else "dettagliata"
+    return render_template(key, question, context)
+
 # =============================================================================
-# Guardrail modalità C (tecnica)
-#   - Si applica SOLO a domande su connettori/solai (CTF/CTL/CEM-E, lamiera, soletta, ecc.)
-#   - Si BYPASSA per attrezzi/strumenti (es. P560), chiodatrici, manuali, ecc.
+# Guardrail modalità C (tecnica) + routing per ATTREZZI
 # =============================================================================
 CRITICAL_KEYS = ("passo gola", "V_L,Ed", "cls", "direzione lamiera")
 
@@ -90,19 +92,35 @@ CONNECTOR_KEYWORDS = [
     "hbv", "hi-bond", "rib", "gola", "passo gola",
 ]
 
+TOOL_KEYWORDS = [
+    "p560", "chiodatrice", "sparachiodi", "spit", "p800", "p370", "p200",
+    "cartucce", "magazzino chiodi", "pistola a polvere"
+]
+
 def is_connector_topic(text: str) -> bool:
     t = text.lower()
     return any(kw in t for kw in CONNECTOR_KEYWORDS)
 
+def is_tool_topic(text: str) -> bool:
+    t = text.lower()
+    return any(kw in t for kw in TOOL_KEYWORDS)
+
 def prepare_input(mode: str, question: str, context: str | None = None) -> str:
+    """Se 'dettagliata': decide quale template tecnico usare e se applicare guardrail."""
     if mode == "dettagliata":
         full_text = (question + " " + (context or "")).strip()
-        # Applica guardrail SOLO se l'argomento è connettori/solai
         if is_connector_topic(full_text):
             missing = missing_critical_inputs(full_text)
             if len(missing) == len(CRITICAL_KEYS):
                 return f"Per procedere servono: {', '.join(CRITICAL_KEYS)}. Indicali e riprova."
-        # Altrimenti (es. P560, strumenti, manuali) bypass e vai al modello
+            # Template tecnico per connettori/solai (C standard)
+            return render_template("dettagliata", question, context)
+        if is_tool_topic(full_text):
+            # Template tecnico per attrezzi/chiodatrici (P560 ecc.)
+            return render_template("attrezzi", question, context)
+        # Se è un tema generico ma vuoi comunque C: usa il C standard
+        return render_template("dettagliata", question, context)
+    # Per "breve" o "standard" usiamo i loro template normali
     return build_prompt(mode, question, context)
 
 # =============================================================================
@@ -111,11 +129,10 @@ def prepare_input(mode: str, question: str, context: str | None = None) -> str:
 def llm_respond(prompt: str) -> str:
     api_key = os.getenv("OPENAI_API_KEY", "")
     if not api_key:
-        # Non crashare: utile in test/PR
         return f"[NO_API_KEY] Prompt generato:\n\n{prompt}"
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=api_key)  # OK con openai>=1.x
+        client = OpenAI(api_key=api_key)
         resp = client.chat.completions.create(
             model=MODEL_NAME,
             temperature=0.2,
@@ -134,29 +151,21 @@ def llm_respond(prompt: str) -> str:
 # ROUTES
 # =============================================================================
 
-# 1) SERVE index.html (UI bella) — con fallback se manca
 @app.get("/")
 def root():
     index_path = Path("index.html")
     if index_path.exists():
         return send_from_directory(".", "index.html")
-    # Fallback HTML se manca l'index (così non va 500/502)
-    return Response(
-        "<h1>TecnariaBot</h1><p>index.html non trovato nel root del progetto.</p>",
-        mimetype="text/html",
-    )
+    return Response("<h1>TecnariaBot</h1><p>index.html non trovato nel root del progetto.</p>", mimetype="text/html")
 
-# 2) API health
 @app.get("/api/health")
 def health():
     return jsonify({"status": "ok", "app": APP_NAME, "model": MODEL_NAME})
 
-# 3) API modes (utile per UI)
 @app.get("/api/modes")
 def modes():
     return jsonify({"modes": ["breve", "standard", "dettagliata"], "default": "dettagliata"})
 
-# 4) API answer (A/B/C)
 @app.post("/api/answer")
 def answer():
     data: Dict[str, Any] = request.get_json(force=True, silent=True) or {}
@@ -168,7 +177,6 @@ def answer():
         return jsonify({"error": "Missing 'question'"}), 400
 
     prompt = prepare_input(mode, question, context)
-    # Se il guardrail ha chiesto dati, non chiamare il modello
     if prompt.startswith("Per procedere servono:"):
         return jsonify({"mode": mode, "answer": prompt})
 
@@ -177,10 +185,10 @@ def answer():
         "mode": mode,
         "model": MODEL_NAME,
         "answer": answer_text,
-        "meta": {"template_used": mode if mode in TEMPLATE_FILES else "dettagliata"},
+        "meta": {"template_used": ("attrezzi" if is_tool_topic(question + " " + context)
+                                   else ("dettagliata" if mode == "dettagliata" else mode))},
     })
 
-# 5) DEBUG: lista file static
 @app.get("/api/debug/list-static")
 def list_static():
     root = Path("static")
@@ -191,21 +199,14 @@ def list_static():
                 listing.append(str(p).replace("\\", "/"))
     return jsonify({"static_files": listing})
 
-# 6) DEBUG: lista template con stato (presente/mancante)
 @app.get("/api/debug/list-templates")
 def list_templates():
     out = []
     for mode, filename in TEMPLATE_FILES.items():
         p = TEMPLATES_DIR / filename
-        out.append({
-            "mode": mode,
-            "file": str(p),
-            "exists": p.exists(),
-            "size": (p.stat().st_size if p.exists() else 0)
-        })
+        out.append({"mode": mode, "file": str(p), "exists": p.exists(), "size": (p.stat().st_size if p.exists() else 0)})
     return jsonify({"templates": out})
 
-# Error handlers essenziali
 @app.errorhandler(404)
 def _404(e):
     return jsonify({"error": "Not found"}), 404
@@ -214,4 +215,4 @@ def _404(e):
 def _500(e):
     return jsonify({"error": "Internal server error"}), 500
 
-# (nessun if __name__ == "__main__": usi gunicorn)
+# (si avvia con gunicorn app:app)
