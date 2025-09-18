@@ -59,7 +59,7 @@
 
     <!-- AZIONI -->
     <section class="actions">
-      <button id="send" class="primary" type="button">Invia</button>
+      <button id="send" class="primary" type="button" onclick="send()">Invia</button>
       <div class="hint">Scorciatoie: <kbd>A</kbd> Breve • <kbd>B</kbd> Standard • <kbd>C</kbd> Dettagliata • <kbd>Ctrl/⌘+Invio</kbd> Invia</div>
     </section>
 
@@ -93,13 +93,10 @@
     const cards = document.querySelectorAll('.card');
     const out = document.getElementById('out');
     const statusEl = document.getElementById('status');
-    const btnSend = document.getElementById('send');
     const btnCopy = document.getElementById('copy');
     const q = document.getElementById('q');
     const c = document.getElementById('c');
     const attachmentsEl = document.getElementById('attachments');
-
-    // Default: C (dettagliata)
     let mode = 'dettagliata';
 
     function setMode(newMode){
@@ -112,63 +109,51 @@
     }
     cards.forEach(card => card.addEventListener('click', () => setMode(card.dataset.mode)));
 
-    // Estrae link sia markdown [testo](url) sia URL/percorsi nudi (http..., /static/...)
+    // Estrae link sia da markdown [testo](url) sia da URL/percorsi nudi
     function extractLinks(text){
       const links = new Set();
-
-      // markdown [label](url) — supporta /static/... e http/https
-      const md = [...text.matchAll(/\[[^\]]+\]\((https?:\/\/[^\s)]+|\/static\/[^\s)]+)\)/gi)];
-      md.forEach(m => links.add(m[1]));
-
-      // url/percorsi nudi
-      const plain = [...text.matchAll(/((?:https?:\/\/|\/static\/)[^\s<>'"()]+(?:\([^\s<>'"]+\))?)/gi)];
-      plain.forEach(m => links.add(m[1]));
-
+      for (const m of text.matchAll(/\[[^\]]+\]\((https?:\/\/[^\s)]+|\/static\/[^\s)]+)\)/gi)) {
+        links.add(m[1]);
+      }
+      for (const m of text.matchAll(/((?:https?:\/\/|\/static\/)[^\s<>'"()]+)/gi)) {
+        links.add(m[1]);
+      }
       return [...links];
     }
 
-    // Renderizza card allegati (immagini con anteprima, PDF con bottone)
+    // Render allegati
     function renderAttachments(urls){
       attachmentsEl.innerHTML = '';
       if (!urls.length) return;
-
-      urls.forEach(url => {
+      for (const url of urls){
         const u = url.toLowerCase();
-        if (u.endsWith('.png') || u.endsWith('.jpg') || u.endsWith('.jpeg') || u.endsWith('.webp')) {
-          const a = document.createElement('a');
-          a.href = url; a.target = '_blank'; a.rel = 'noopener';
-          a.className = 'attach-card';
+        const a = document.createElement('a');
+        a.href = url; a.target = '_blank'; a.rel = 'noopener';
+        a.className = 'attach-card';
+        if (u.endsWith('.png') || u.endsWith('.jpg') || u.endsWith('.jpeg') || u.endsWith('.webp')){
           a.innerHTML = `<img src="${url}" alt="allegato">`;
-          attachmentsEl.appendChild(a);
         } else if (u.endsWith('.pdf')) {
-          const a = document.createElement('a');
-          a.href = url; a.target = '_blank'; a.rel = 'noopener';
-          a.className = 'attach-card pdf';
+          a.classList.add('pdf');
           a.textContent = 'Apri PDF';
-          attachmentsEl.appendChild(a);
         } else {
-          const a = document.createElement('a');
-          a.href = url; a.target = '_blank'; a.rel = 'noopener';
-          a.className = 'attach-card link';
+          a.classList.add('link');
           a.textContent = url;
-          attachmentsEl.appendChild(a);
         }
-      });
+        attachmentsEl.appendChild(a);
+      }
     }
 
+    // Funzione invio
     async function send(){
-      const question = q.value.trim();
-      const context = c.value.trim();
       out.textContent = '';
       attachmentsEl.innerHTML = '';
       statusEl.textContent = '⏳ Sto preparando la risposta...';
-      btnSend.disabled = true;
 
       try {
         const r = await fetch('/api/answer', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({question, mode, context})
+          body: JSON.stringify({ question: q.value.trim(), mode, context: c.value.trim() })
         });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error || r.statusText);
@@ -176,26 +161,23 @@
         const answer = (j.answer || '').trim();
         out.textContent = answer;
 
-        // Estrai e mostra allegati
-        const links = extractLinks(answer);
+        const fromText = extractLinks(answer);
+        const fromApi  = Array.isArray(j.attachments) ? j.attachments : [];
+        const links = Array.from(new Set([...fromText, ...fromApi]));
+
         renderAttachments(links);
 
-        // Auto-open se c'è un solo allegato
-        const AUTO_OPEN = true;
-        if (AUTO_OPEN && links.length === 1) {
+        if (links.length === 1) {
           window.open(links[0], '_blank', 'noopener');
         }
 
         statusEl.textContent = `✅ Modalità: ${j.mode || mode}`;
       } catch (err){
         statusEl.textContent = '❌ Errore: ' + err.message;
-      } finally {
-        btnSend.disabled = false;
       }
     }
 
-    btnSend.addEventListener('click', send);
-
+    // Copia risposta
     btnCopy.addEventListener('click', () => {
       if (!out.textContent) return;
       navigator.clipboard.writeText(out.textContent);
