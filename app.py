@@ -1,4 +1,4 @@
-# app.py — Backend Flask per TecnariaBot (A/B/C) + UI statica + fallback anti-502
+# app.py — Backend Flask per TecnariaBot (A/B/C + attrezzi) + UI statica + fallback anti-502
 # Avvio consigliato:
 #   gunicorn app:app --timeout 120 --workers=1 --threads=2 --preload -b 0.0.0.0:$PORT
 
@@ -14,7 +14,7 @@ from flask_cors import CORS
 # Config
 # =============================================================================
 APP_NAME = os.getenv("APP_NAME", "TecnariaBot")
-MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-mini")   # cambia se vuoi
+MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
@@ -27,18 +27,17 @@ logging.basicConfig(
 log = logging.getLogger(APP_NAME)
 
 # =============================================================================
-# Template loader A/B/C (+ ATTREZZI) con fallback se mancano file
+# Template loader A/B/C (+ ATTREZZI)
 # =============================================================================
 TEMPLATES_DIR = Path("templates")
 TEMPLATE_FILES = {
     "breve": "TEMPLATE_A_BREVE.txt",
     "standard": "TEMPLATE_B_STANDARD.txt",
-    "dettagliata": "TEMPLATE_C_DETTAGLIATA.txt",  # tecnico per connettori/solai
+    "dettagliata": "TEMPLATE_C_DETTAGLIATA.txt",  # tecnico per connettori
     "attrezzi": "TEMPLATE_C_ATTREZZI.txt",        # tecnico per P560 & simili
 }
 
 def _load_templates() -> Dict[str, str]:
-    """Carica i template; se un file manca NON crasha: usa un mini-fallback."""
     templates: Dict[str, str] = {}
     for mode, filename in TEMPLATE_FILES.items():
         path = TEMPLATES_DIR / filename
@@ -46,7 +45,6 @@ def _load_templates() -> Dict[str, str]:
             templates[mode] = (
                 f"[TEMPLATE MANCANTE: {filename}]\n"
                 "Domanda: {question}\nContesto: {context}\n"
-                "(Aggiungi i template reali in /templates per ottenere lo stile definitivo.)"
             )
         else:
             templates[mode] = path.read_text(encoding="utf-8")
@@ -63,13 +61,8 @@ def render_template(mode_key: str, question: str, context: str | None) -> str:
     tpl = get_templates().get(mode_key, get_templates()["dettagliata"])
     return tpl.replace("{question}", question).replace("{context}", context or "")
 
-def build_prompt(mode: str, question: str, context: str | None = None) -> str:
-    # Manteniamo la compatibilità: se passa "breve/standard/dettagliata"
-    key = mode if mode in get_templates() else "dettagliata"
-    return render_template(key, question, context)
-
 # =============================================================================
-# Guardrail modalità C (tecnica) + routing per ATTREZZI
+# Guardrail modalità C (tecnica) + routing per attrezzi
 # =============================================================================
 CRITICAL_KEYS = ("passo gola", "V_L,Ed", "cls", "direzione lamiera")
 
@@ -93,35 +86,39 @@ CONNECTOR_KEYWORDS = [
 ]
 
 TOOL_KEYWORDS = [
-    "p560", "chiodatrice", "sparachiodi", "spit", "p800", "p370", "p200",
+    "p560", "p800", "p370", "p200",
+    "chiodatrice", "sparachiodi", "spit",
     "cartucce", "magazzino chiodi", "pistola a polvere"
 ]
 
 def is_connector_topic(text: str) -> bool:
-    t = text.lower()
-    return any(kw in t for kw in CONNECTOR_KEYWORDS)
+    return any(kw in text.lower() for kw in CONNECTOR_KEYWORDS)
 
 def is_tool_topic(text: str) -> bool:
-    t = text.lower()
-    return any(kw in t for kw in TOOL_KEYWORDS)
+    return any(kw in text.lower() for kw in TOOL_KEYWORDS)
 
 def prepare_input(mode: str, question: str, context: str | None = None) -> str:
-    """Se 'dettagliata': decide quale template tecnico usare e se applicare guardrail."""
+    """Decide quale template usare e se chiedere i parametri."""
     if mode == "dettagliata":
-        full_text = (question + " " + (context or "")).strip()
-        if is_connector_topic(full_text):
-            missing = missing_critical_inputs(full_text)
+        q_low = question.lower()
+        all_low = (question + " " + (context or "")).lower()
+
+        # PRIORITÀ 1: se la DOMANDA riguarda un attrezzo → sempre template attrezzi
+        if is_tool_topic(q_low):
+            return render_template("attrezzi", question, context)
+
+        # PRIORITÀ 2: se riguarda connettori/solai → attiva guardrail
+        if is_connector_topic(all_low):
+            missing = missing_critical_inputs(all_low)
             if len(missing) == len(CRITICAL_KEYS):
                 return f"Per procedere servono: {', '.join(CRITICAL_KEYS)}. Indicali e riprova."
-            # Template tecnico per connettori/solai (C standard)
             return render_template("dettagliata", question, context)
-        if is_tool_topic(full_text):
-            # Template tecnico per attrezzi/chiodatrici (P560 ecc.)
-            return render_template("attrezzi", question, context)
-        # Se è un tema generico ma vuoi comunque C: usa il C standard
+
+        # fallback tecnico standard
         return render_template("dettagliata", question, context)
-    # Per "breve" o "standard" usiamo i loro template normali
-    return build_prompt(mode, question, context)
+
+    # per breve/standard → template normali
+    return render_template(mode, question, context)
 
 # =============================================================================
 # LLM wrapper (OpenAI). Se manca OPENAI_API_KEY, ritorna il prompt (debug)
@@ -156,7 +153,7 @@ def root():
     index_path = Path("index.html")
     if index_path.exists():
         return send_from_directory(".", "index.html")
-    return Response("<h1>TecnariaBot</h1><p>index.html non trovato nel root del progetto.</p>", mimetype="text/html")
+    return Response("<h1>TecnariaBot</h1><p>index.html non trovato.</p>", mimetype="text/html")
 
 @app.get("/api/health")
 def health():
@@ -185,8 +182,10 @@ def answer():
         "mode": mode,
         "model": MODEL_NAME,
         "answer": answer_text,
-        "meta": {"template_used": ("attrezzi" if is_tool_topic(question + " " + context)
-                                   else ("dettagliata" if mode == "dettagliata" else mode))},
+        "meta": {"template_used": (
+            "attrezzi" if is_tool_topic(question.lower()) else
+            ("dettagliata" if mode == "dettagliata" else mode)
+        )}
     })
 
 @app.get("/api/debug/list-static")
@@ -214,5 +213,3 @@ def _404(e):
 @app.errorhandler(500)
 def _500(e):
     return jsonify({"error": "Internal server error"}), 500
-
-# (si avvia con gunicorn app:app)
