@@ -1,5 +1,5 @@
-# app.py — Backend Flask per TecnariaBot (A/B/C + attrezzi) + UI statica + fallback anti-502
-# Avvio consigliato:
+# app.py — TecnariaBot (A/B/C + attrezzi) con sanitizzazione contesto
+# Avvio:
 #   gunicorn app:app --timeout 120 --workers=1 --threads=2 --preload -b 0.0.0.0:$PORT
 
 from __future__ import annotations
@@ -27,28 +27,29 @@ logging.basicConfig(
 log = logging.getLogger(APP_NAME)
 
 # =============================================================================
-# Template loader A/B/C (+ ATTREZZI)
+# Template loader A/B/C (+ ATTREZZI) con fallback
 # =============================================================================
 TEMPLATES_DIR = Path("templates")
 TEMPLATE_FILES = {
     "breve": "TEMPLATE_A_BREVE.txt",
     "standard": "TEMPLATE_B_STANDARD.txt",
-    "dettagliata": "TEMPLATE_C_DETTAGLIATA.txt",  # tecnico per connettori
-    "attrezzi": "TEMPLATE_C_ATTREZZI.txt",        # tecnico per P560 & simili
+    "dettagliata": "TEMPLATE_C_DETTAGLIATA.txt",  # tecnico connettori/solai
+    "attrezzi": "TEMPLATE_C_ATTREZZI.txt",        # tecnico P560 & simili
 }
 
 def _load_templates() -> Dict[str, str]:
-    templates: Dict[str, str] = {}
+    t: Dict[str, str] = {}
     for mode, filename in TEMPLATE_FILES.items():
-        path = TEMPLATES_DIR / filename
-        if not path.exists():
-            templates[mode] = (
+        p = TEMPLATES_DIR / filename
+        if not p.exists():
+            t[mode] = (
                 f"[TEMPLATE MANCANTE: {filename}]\n"
                 "Domanda: {question}\nContesto: {context}\n"
+                "(Aggiungi i template reali in /templates per lo stile definitivo.)"
             )
         else:
-            templates[mode] = path.read_text(encoding="utf-8")
-    return templates
+            t[mode] = p.read_text(encoding="utf-8")
+    return t
 
 _TEMPLATES_CACHE: Dict[str, str] | None = None
 def get_templates() -> Dict[str, str]:
@@ -62,9 +63,39 @@ def render_template(mode_key: str, question: str, context: str | None) -> str:
     return tpl.replace("{question}", question).replace("{context}", context or "")
 
 # =============================================================================
-# Guardrail modalità C (tecnica) + routing per attrezzi
+# Keywords + Guardrail + Sanitizzazione
 # =============================================================================
 CRITICAL_KEYS = ("passo gola", "V_L,Ed", "cls", "direzione lamiera")
+
+CONNECTOR_KEYWORDS = [
+    "ctf", "ctl", "cem", "cem-e", "diapason",
+    "connettore", "connettori",
+    "lamiera", "soletta", "collaborante", "solaio", "acciaio-calcestruzzo",
+    "hbv", "hi-bond", "rib", "gola", "passo gola",
+]
+TOOL_KEYWORDS = [
+    "p560", "p800", "p370", "p200",
+    "chiodatrice", "sparachiodi", "spit",
+    "cartucce", "magazzino chiodi", "pistola a polvere"
+]
+
+# blocco off-topic grossolani
+OFFTOPIC_BLOCK = ["sparare", "uccelli", "armi", "violenza", "caccia"]
+
+# allowlist termini tecnici connettori (semplice)
+CT_ALLOWED_TOKENS = [
+    "lamiera", "h55", "h75", "soletta", "mm", "cls", "c25/30", "c30/37", "c35/45",
+    "passo", "gola", "direzione", "trasversale", "longitudinale",
+    "v_l,ed", "kn/m", "travi", "ipe", "hea", "heb", "s355", "interasse", "m"
+]
+
+def is_connector_topic(text: str) -> bool:
+    t = text.lower()
+    return any(kw in t for kw in CONNECTOR_KEYWORDS)
+
+def is_tool_topic(text: str) -> bool:
+    t = text.lower()
+    return any(kw in t for kw in TOOL_KEYWORDS)
 
 def missing_critical_inputs(text: str) -> List[str]:
     found: List[str] = []
@@ -78,47 +109,69 @@ def missing_critical_inputs(text: str) -> List[str]:
         found.append("direzione lamiera")
     return [k for k in CRITICAL_KEYS if k not in found]
 
-CONNECTOR_KEYWORDS = [
-    "ctf", "ctl", "cem", "cem-e", "diapason",
-    "connettore", "connettori",
-    "lamiera", "soletta", "collaborante", "solaio", "acciaio-calcestruzzo",
-    "hbv", "hi-bond", "rib", "gola", "passo gola",
-]
+def sanitize_context(raw: str) -> str:
+    """Rimuove off-topic grossolani e limita la lunghezza (≈300 char)."""
+    ctx = (raw or "").strip()
+    if not ctx:
+        return ctx
+    # rimozione frasi con parole bandite
+    parts = re.split(r'([.!?])', ctx)  # mantieni i separatori
+    cleaned = []
+    for i in range(0, len(parts), 2):
+        sentence = parts[i].strip()
+        punct = parts[i+1] if i+1 < len(parts) else ""
+        low = sentence.lower()
+        if any(bad in low for bad in OFFTOPIC_BLOCK):
+            continue  # salta l'intera frase
+        if sentence:
+            cleaned.append(sentence + punct)
+    ctx = " ".join(s.strip() for s in cleaned).strip()
+    # limita lunghezza
+    if len(ctx) > 300:
+        ctx = ctx[:300].rstrip() + "..."
+    return ctx
 
-TOOL_KEYWORDS = [
-    "p560", "p800", "p370", "p200",
-    "chiodatrice", "sparachiodi", "spit",
-    "cartucce", "magazzino chiodi", "pistola a polvere"
-]
+def whitelist_ctx_for_connectors(ctx: str) -> str:
+    """Trattiene solo termini utili al calcolo per i connettori."""
+    low = (ctx or "").lower()
+    tokens = re.findall(r"[a-z0-9/._+-]+", low)
+    kept: List[str] = []
+    for t in tokens:
+        if t in CT_ALLOWED_TOKENS or re.match(r"^\d+(mm|m|kn/m)$", t):
+            kept.append(t)
+    if not kept:
+        return ""
+    # ricomposizione minima leggibile
+    return " ".join(kept)
 
-def is_connector_topic(text: str) -> bool:
-    return any(kw in text.lower() for kw in CONNECTOR_KEYWORDS)
-
-def is_tool_topic(text: str) -> bool:
-    return any(kw in text.lower() for kw in TOOL_KEYWORDS)
-
+# =============================================================================
+# Routing principale: prepare_input
+# =============================================================================
 def prepare_input(mode: str, question: str, context: str | None = None) -> str:
-    """Decide quale template usare e se chiedere i parametri."""
+    """Decide template e se chiedere parametri. Priorità: attrezzi > connettori."""
     if mode == "dettagliata":
         q_low = question.lower()
-        all_low = (question + " " + (context or "")).lower()
+        clean_ctx = sanitize_context(context or "")
+        all_low = (question + " " + clean_ctx).lower()
 
-        # PRIORITÀ 1: se la DOMANDA riguarda un attrezzo → sempre template attrezzi
+        # 1) DOMANDA su attrezzi => sempre template attrezzi (ignora trigger connettori nel contesto)
         if is_tool_topic(q_low):
-            return render_template("attrezzi", question, context)
+            return render_template("attrezzi", question, clean_ctx)
 
-        # PRIORITÀ 2: se riguarda connettori/solai → attiva guardrail
+        # 2) Tema connettori/solai => guardrail + allowlist del contesto
         if is_connector_topic(all_low):
-            missing = missing_critical_inputs(all_low)
+            filtered_ctx = whitelist_ctx_for_connectors(clean_ctx)
+            all_low_filtered = (question + " " + filtered_ctx).lower()
+            missing = missing_critical_inputs(all_low_filtered)
             if len(missing) == len(CRITICAL_KEYS):
                 return f"Per procedere servono: {', '.join(CRITICAL_KEYS)}. Indicali e riprova."
-            return render_template("dettagliata", question, context)
+            return render_template("dettagliata", question, filtered_ctx)
 
-        # fallback tecnico standard
-        return render_template("dettagliata", question, context)
+        # 3) fallback tecnico standard
+        return render_template("dettagliata", question, clean_ctx)
 
-    # per breve/standard → template normali
-    return render_template(mode, question, context)
+    # breve/standard: passa contesto pulito
+    return render_template(mode, question, sanitize_context(context or ""))
 
 # =============================================================================
 # LLM wrapper (OpenAI). Se manca OPENAI_API_KEY, ritorna il prompt (debug)
@@ -147,7 +200,6 @@ def llm_respond(prompt: str) -> str:
 # =============================================================================
 # ROUTES
 # =============================================================================
-
 @app.get("/")
 def root():
     index_path = Path("index.html")
@@ -178,16 +230,14 @@ def answer():
         return jsonify({"mode": mode, "answer": prompt})
 
     answer_text = llm_respond(prompt)
-    return jsonify({
-        "mode": mode,
-        "model": MODEL_NAME,
-        "answer": answer_text,
-        "meta": {"template_used": (
-            "attrezzi" if is_tool_topic(question.lower()) else
-            ("dettagliata" if mode == "dettagliata" else mode)
-        )}
-    })
+    # meta: quale template è stato usato
+    tpl_used = (
+        "attrezzi" if is_tool_topic(question.lower()) else
+        ("dettagliata" if mode == "dettagliata" else mode)
+    )
+    return jsonify({"mode": mode, "model": MODEL_NAME, "answer": answer_text, "meta": {"template_used": tpl_used}})
 
+# Debug utili
 @app.get("/api/debug/list-static")
 def list_static():
     root = Path("static")
