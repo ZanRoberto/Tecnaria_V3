@@ -1,11 +1,12 @@
 # app.py — TecnariaBot (A/B/C + attrezzi) con sanitizzazione contesto
+# Include: tool_attachments() -> attachments in /api/answer
 # Avvio:
 #   gunicorn app:app --timeout 120 --workers=1 --threads=2 --preload -b 0.0.0.0:$PORT
 
 from __future__ import annotations
 import os, re, logging
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 
 from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
@@ -79,10 +80,8 @@ TOOL_KEYWORDS = [
     "cartucce", "magazzino chiodi", "pistola a polvere"
 ]
 
-# blocco off-topic grossolani
 OFFTOPIC_BLOCK = ["sparare", "uccelli", "armi", "violenza", "caccia"]
 
-# allowlist termini tecnici connettori (semplice)
 CT_ALLOWED_TOKENS = [
     "lamiera", "h55", "h75", "soletta", "mm", "cls", "c25/30", "c30/37", "c35/45",
     "passo", "gola", "direzione", "trasversale", "longitudinale",
@@ -114,7 +113,6 @@ def sanitize_context(raw: str) -> str:
     ctx = (raw or "").strip()
     if not ctx:
         return ctx
-    # rimozione frasi con parole bandite
     parts = re.split(r'([.!?])', ctx)  # mantieni i separatori
     cleaned = []
     for i in range(0, len(parts), 2):
@@ -122,11 +120,10 @@ def sanitize_context(raw: str) -> str:
         punct = parts[i+1] if i+1 < len(parts) else ""
         low = sentence.lower()
         if any(bad in low for bad in OFFTOPIC_BLOCK):
-            continue  # salta l'intera frase
+            continue
         if sentence:
             cleaned.append(sentence + punct)
     ctx = " ".join(s.strip() for s in cleaned).strip()
-    # limita lunghezza
     if len(ctx) > 300:
         ctx = ctx[:300].rstrip() + "..."
     return ctx
@@ -141,8 +138,31 @@ def whitelist_ctx_for_connectors(ctx: str) -> str:
             kept.append(t)
     if not kept:
         return ""
-    # ricomposizione minima leggibile
     return " ".join(kept)
+
+# =============================================================================
+# Allegati automatici (backend) in base al tema
+# =============================================================================
+def tool_attachments(text: str) -> List[str]:
+    """
+    Ritorna URL di allegati "noti" in base alla domanda/contesto,
+    ma SOLO se i file esistono davvero su disco.
+    """
+    t = text.lower()
+    candidates: List[Tuple[str, str]] = []
+
+    # Esempio: domanda su P560 -> immagine magazzino
+    if "p560" in t or ("spit" in t and "560" in t):
+        candidates.append(("static/img/p560_magazzino.jpg", "/static/img/p560_magazzino.jpg"))
+
+    # Qui puoi aggiungere altre regole:
+    # if "ctf h55" in t: candidates.append(("static/img/ctf_tabella.png", "/static/img/ctf_tabella.png"))
+
+    out: List[str] = []
+    for fs_path, url_path in candidates:
+        if Path(fs_path).exists():
+            out.append(url_path)
+    return out
 
 # =============================================================================
 # Routing principale: prepare_input
@@ -154,7 +174,7 @@ def prepare_input(mode: str, question: str, context: str | None = None) -> str:
         clean_ctx = sanitize_context(context or "")
         all_low = (question + " " + clean_ctx).lower()
 
-        # 1) DOMANDA su attrezzi => sempre template attrezzi (ignora trigger connettori nel contesto)
+        # 1) DOMANDA su attrezzi => sempre template attrezzi
         if is_tool_topic(q_low):
             return render_template("attrezzi", question, clean_ctx)
 
@@ -227,15 +247,27 @@ def answer():
 
     prompt = prepare_input(mode, question, context)
     if prompt.startswith("Per procedere servono:"):
-        return jsonify({"mode": mode, "answer": prompt})
+        # Anche in questo caso possiamo già allegare eventuali file utili
+        auto_attachments = tool_attachments(question + " " + context)
+        return jsonify({"mode": mode, "answer": prompt, "attachments": auto_attachments})
 
     answer_text = llm_respond(prompt)
-    # meta: quale template è stato usato
-    tpl_used = (
-        "attrezzi" if is_tool_topic(question.lower()) else
-        ("dettagliata" if mode == "dettagliata" else mode)
-    )
-    return jsonify({"mode": mode, "model": MODEL_NAME, "answer": answer_text, "meta": {"template_used": tpl_used}})
+
+    # Allegati dedotti dalla domanda+contesto (es. P560 -> foto magazzino)
+    auto_attachments = tool_attachments(question + " " + context)
+
+    return jsonify({
+        "mode": mode,
+        "model": MODEL_NAME,
+        "answer": answer_text,
+        "attachments": auto_attachments,   # <<--- NUOVO campo
+        "meta": {
+            "template_used": (
+                "attrezzi" if is_tool_topic(question.lower()) else
+                ("dettagliata" if mode == "dettagliata" else mode)
+            )
+        },
+    })
 
 # Debug utili
 @app.get("/api/debug/list-static")
