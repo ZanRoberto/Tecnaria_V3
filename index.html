@@ -81,12 +81,21 @@
         <span>Allegati / Note collegate</span>
       </div>
       <div id="attachments" class="attach-grid"></div>
+      <small class="hint">Gli allegati ora si aprono dentro il bot. Chiudi per tornare alla risposta.</small>
     </section>
   </main>
 
   <footer class="container footer">
     <small>© TecnariaBot • Modalità sempre allineate A/B/C</small>
   </footer>
+
+  <!-- Viewer modale per allegati -->
+  <div id="viewer" class="viewer hidden" role="dialog" aria-modal="true" aria-label="Anteprima allegato">
+    <div class="viewer-content">
+      <button class="viewer-close" onclick="closeViewer()" aria-label="Chiudi anteprima">✖ Chiudi</button>
+      <iframe id="viewerFrame" src="" frameborder="0" title="Anteprima"></iframe>
+    </div>
+  </div>
 
   <!-- SCRIPT -->
   <script>
@@ -97,6 +106,7 @@
     const q = document.getElementById('q');
     const c = document.getElementById('c');
     const attachmentsEl = document.getElementById('attachments');
+
     let mode = 'dettagliata';
 
     function setMode(newMode){
@@ -109,41 +119,59 @@
     }
     cards.forEach(card => card.addEventListener('click', () => setMode(card.dataset.mode)));
 
-    // Estrae link sia da markdown [testo](url) sia da URL/percorsi nudi
+    // Estrae link sia da markdown [testo](url) sia da URL/percorsi nudi (anche "- /static/...")
     function extractLinks(text){
       const links = new Set();
+      // markdown [label](url)
       for (const m of text.matchAll(/\[[^\]]+\]\((https?:\/\/[^\s)]+|\/static\/[^\s)]+)\)/gi)) {
         links.add(m[1]);
       }
+      // percorsi nudi http(s) o /static/...
       for (const m of text.matchAll(/((?:https?:\/\/|\/static\/)[^\s<>'"()]+)/gi)) {
         links.add(m[1]);
       }
       return [...links];
     }
 
-    // Render allegati
+    // Render allegati — apre in viewer interno (nessuna nuova scheda)
     function renderAttachments(urls){
       attachmentsEl.innerHTML = '';
       if (!urls.length) return;
+
       for (const url of urls){
         const u = url.toLowerCase();
-        const a = document.createElement('a');
-        a.href = url; a.target = '_blank'; a.rel = 'noopener';
-        a.className = 'attach-card';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'attach-card';
+        btn.onclick = () => openViewer(url);
+
         if (u.endsWith('.png') || u.endsWith('.jpg') || u.endsWith('.jpeg') || u.endsWith('.webp')){
-          a.innerHTML = `<img src="${url}" alt="allegato">`;
+          btn.innerHTML = `<img src="${url}" alt="allegato">`;
         } else if (u.endsWith('.pdf')) {
-          a.classList.add('pdf');
-          a.textContent = 'Apri PDF';
+          btn.classList.add('pdf');
+          btn.textContent = 'Apri PDF';
         } else {
-          a.classList.add('link');
-          a.textContent = url;
+          btn.classList.add('link');
+          btn.textContent = url;
         }
-        attachmentsEl.appendChild(a);
+        attachmentsEl.appendChild(btn);
       }
     }
 
-    // Funzione invio
+    function openViewer(url){
+      const frame = document.getElementById('viewerFrame');
+      const modal = document.getElementById('viewer');
+      frame.src = url;
+      modal.classList.remove('hidden');
+    }
+    function closeViewer(){
+      const frame = document.getElementById('viewerFrame');
+      const modal = document.getElementById('viewer');
+      frame.src = "";
+      modal.classList.add('hidden');
+    }
+
+    // Invio
     async function send(){
       out.textContent = '';
       attachmentsEl.innerHTML = '';
@@ -163,14 +191,9 @@
 
         const fromText = extractLinks(answer);
         const fromApi  = Array.isArray(j.attachments) ? j.attachments : [];
-        const links = Array.from(new Set([...fromText, ...fromApi]));
+        const links = Array.from(new Set([...fromText, ...fromApi])); // dedup
 
         renderAttachments(links);
-
-        if (links.length === 1) {
-          window.open(links[0], '_blank', 'noopener');
-        }
-
         statusEl.textContent = `✅ Modalità: ${j.mode || mode}`;
       } catch (err){
         statusEl.textContent = '❌ Errore: ' + err.message;
@@ -190,6 +213,7 @@
       if (e.key.toLowerCase() === 'b') setMode('standard');
       if (e.key.toLowerCase() === 'c') setMode('dettagliata');
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') send();
+      if (e.key === 'Escape') closeViewer(); // esc chiude il viewer
     });
   </script>
 </body>
