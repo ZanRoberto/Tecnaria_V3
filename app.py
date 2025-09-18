@@ -1,5 +1,5 @@
-# app.py — Backend Flask per TecnariaBot (A/B/C) + index.html statico
-# Avvio consigliato:
+# app.py — Backend Flask per TecnariaBot (A/B/C) + UI statica + fallback anti-502
+# Avvio consigliato su Render/Heroku:
 #   gunicorn app:app --timeout 120 --workers=1 --threads=2 --preload -b 0.0.0.0:$PORT
 
 from __future__ import annotations
@@ -7,14 +7,14 @@ import os, re, logging
 from pathlib import Path
 from typing import Dict, Any, List
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 
 # =============================================================================
 # Config
 # =============================================================================
 APP_NAME = os.getenv("APP_NAME", "TecnariaBot")
-MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-mini")  # cambia se vuoi
+MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-mini")   # cambia se vuoi
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
@@ -27,7 +27,7 @@ logging.basicConfig(
 log = logging.getLogger(APP_NAME)
 
 # =============================================================================
-# Template loader A/B/C
+# Template loader A/B/C (con fallback se mancano file)
 # =============================================================================
 TEMPLATES_DIR = Path("templates")
 TEMPLATE_FILES = {
@@ -37,12 +37,19 @@ TEMPLATE_FILES = {
 }
 
 def _load_templates() -> Dict[str, str]:
+    """Carica i template; se un file manca NON crasha: usa un mini-fallback."""
     templates: Dict[str, str] = {}
     for mode, filename in TEMPLATE_FILES.items():
         path = TEMPLATES_DIR / filename
         if not path.exists():
-            raise FileNotFoundError(f"Template mancante: {path}")
-        templates[mode] = path.read_text(encoding="utf-8")
+            # Fallback minimale, così il servizio resta su anche senza file
+            templates[mode] = (
+                f"[TEMPLATE MANCANTE: {filename}]\n"
+                "Domanda: {question}\nContesto: {context}\n"
+                "(Aggiungi i template reali in /templates per ottenere lo stile definitivo.)"
+            )
+        else:
+            templates[mode] = path.read_text(encoding="utf-8")
     return templates
 
 _TEMPLATES_CACHE: Dict[str, str] | None = None
@@ -76,7 +83,6 @@ def missing_critical_inputs(text: str) -> List[str]:
         found.append("direzione lamiera")
     return [k for k in CRITICAL_KEYS if k not in found]
 
-# parole che indicano "tema connettori/solai" → applico guardrail
 CONNECTOR_KEYWORDS = [
     "ctf", "ctl", "cem", "cem-e", "diapason",
     "connettore", "connettori",
@@ -105,10 +111,11 @@ def prepare_input(mode: str, question: str, context: str | None = None) -> str:
 def llm_respond(prompt: str) -> str:
     api_key = os.getenv("OPENAI_API_KEY", "")
     if not api_key:
+        # Non crashare: utile in test/PR
         return f"[NO_API_KEY] Prompt generato:\n\n{prompt}"
     try:
         from openai import OpenAI
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key)  # OK con openai>=1.x
         resp = client.chat.completions.create(
             model=MODEL_NAME,
             temperature=0.2,
@@ -127,17 +134,29 @@ def llm_respond(prompt: str) -> str:
 # ROUTES
 # =============================================================================
 
-# 1) SERVE index.html (UI bella)
+# 1) SERVE index.html (UI bella) — con fallback se manca
 @app.get("/")
 def root():
-    return send_from_directory(".", "index.html")
+    index_path = Path("index.html")
+    if index_path.exists():
+        return send_from_directory(".", "index.html")
+    # Fallback HTML se manca l'index (così non va 500/502)
+    return Response(
+        "<h1>TecnariaBot</h1><p>index.html non trovato nel root del progetto.</p>",
+        mimetype="text/html",
+    )
 
 # 2) API health
 @app.get("/api/health")
 def health():
     return jsonify({"status": "ok", "app": APP_NAME, "model": MODEL_NAME})
 
-# 3) API answer (A/B/C)
+# 3) API modes (utile per UI)
+@app.get("/api/modes")
+def modes():
+    return jsonify({"modes": ["breve", "standard", "dettagliata"], "default": "dettagliata"})
+
+# 4) API answer (A/B/C)
 @app.post("/api/answer")
 def answer():
     data: Dict[str, Any] = request.get_json(force=True, silent=True) or {}
@@ -161,7 +180,7 @@ def answer():
         "meta": {"template_used": mode if mode in TEMPLATE_FILES else "dettagliata"},
     })
 
-# 4) DEBUG: lista file static
+# 5) DEBUG: lista file static
 @app.get("/api/debug/list-static")
 def list_static():
     root = Path("static")
@@ -171,6 +190,20 @@ def list_static():
             if p.is_file():
                 listing.append(str(p).replace("\\", "/"))
     return jsonify({"static_files": listing})
+
+# 6) DEBUG: lista template con stato (presente/mancante)
+@app.get("/api/debug/list-templates")
+def list_templates():
+    out = []
+    for mode, filename in TEMPLATE_FILES.items():
+        p = TEMPLATES_DIR / filename
+        out.append({
+            "mode": mode,
+            "file": str(p),
+            "exists": p.exists(),
+            "size": (p.stat().st_size if p.exists() else 0)
+        })
+    return jsonify({"templates": out})
 
 # Error handlers essenziali
 @app.errorhandler(404)
