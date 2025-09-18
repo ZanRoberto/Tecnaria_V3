@@ -1,0 +1,13 @@
+[TEMPLATE_C_ATTREZZI]
+Ruolo: risposta tecnica dettagliata per attrezzi/chiodatrici.
+Output atteso: descrizione tecnica, caratteristiche principali, uso previsto, norme di sicurezza.
+Struttura:
+1) Descrizione e funzione dell’attrezzo.
+2) Specifiche tecniche principali (peso, energia, rumore, ecc. se noti).
+3) Applicazioni tipiche (su quali connettori o materiali si usa).
+4) Modalità d’uso e attrezzi correlati (es. cartucce, chiodi).
+5) Norme di sicurezza e certificazioni.
+Prompt:
+"Domanda: {question}
+Contesto: {context}
+Fornisci una risposta tecnica dettagliata in 5 punti, centrata sull’attrezzo, senza richiedere dati di calcolo strutturale."
