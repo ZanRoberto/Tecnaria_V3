@@ -221,7 +221,7 @@ def answer():
 
     answer_text = llm_respond(prompt)
 
-    # Allegati automatici (es. P560)
+    # Allegati automatici (es. P560) — append in fondo alla risposta
     forced_attachments = tool_attachments(question + " " + context)
     if forced_attachments:
         addon = "\n\n6) NOTE TECNICHE / ALLEGATI:\n" + "\n".join(f"- {u}" for u in forced_attachments)
@@ -243,4 +243,3 @@ def answer():
 @app.get("/api/health")
 def health():
     return jsonify({"status": "ok", "app": APP_NAME, "model": MODEL_NAME})
-
