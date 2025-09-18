@@ -1,8 +1,9 @@
-# app.py — TecnariaBot (dominio ristretto a prodotti/servizi Tecnaria)
-# - TECNARIA GUARD: rifiuta HBV/HI-BOND, X-HBV, FVA, CFT
-# - Connettori: distingue CALCOLO (parametri obbligatori) vs POSA (nessuna richiesta)
-# - Attrezzi: priorità e allegati automatici (es. P560)
-# - Append "NOTE TECNICHE / ALLEGATI" + attachments nel JSON
+# app.py — TecnariaBot (solo prodotti/servizi Tecnaria S.p.A. – Bassano del Grappa)
+# - Guard dominio Tecnaria + denylist (CFT, FVA, HBV/HI-BOND, X-HBV)
+# - Keywords ufficiali (CTF, CTL, CEM-E, Diapason, P560… + contesti)
+# - Intent: CALCOLO vs POSA vs CONFRONTO (comparativa)
+# - Allegati automatici
+# - A/B/C via templates; append NOTE TECNICHE / ALLEGATI
 
 from __future__ import annotations
 import os, re, logging
@@ -30,8 +31,8 @@ TEMPLATES_DIR = Path("templates")
 TEMPLATE_FILES = {
     "breve": "TEMPLATE_A_BREVE.txt",
     "standard": "TEMPLATE_B_STANDARD.txt",
-    "dettagliata": "TEMPLATE_C_DETTAGLIATA.txt",
-    "attrezzi": "TEMPLATE_C_ATTREZZI.txt",
+    "dettagliata": "TEMPLATE_C_DETTAGLIATA.txt",   # tecnico connettori/solai
+    "attrezzi": "TEMPLATE_C_ATTREZZI.txt",         # tecnico P560 & co.
 }
 def _load_templates() -> Dict[str, str]:
     t: Dict[str, str] = {}
@@ -51,36 +52,38 @@ def render_template(mode_key: str, question: str, context: str | None) -> str:
     tpl = get_templates().get(mode_key, get_templates()["dettagliata"])
     return tpl.replace("{question}", question).replace("{context}", context or "")
 
-# ---------------- Keywords / Intent ----------------
-CRITICAL_KEYS = ("passo gola", "V_L,Ed", "cls", "direzione lamiera")
-
-TECNARIA_KEYWORDS = [
-    "tecnaria", "ctf", "ctl", "cem", "cem-e", "diapason",
-    "p560", "p800", "p370", "p200", "spit", "chiodatrice",
-    "solaio collaborante", "acciaio-calcestruzzo", "acciaio-legno",
-    "lamiera grecata", "lamiera h55", "lamiera h75",
+# ---------------- Keywords ufficiali Tecnaria ----------------
+TECNARIA_CONNECTORS = [
+    "ctf", "connettore ctf", "piolo ctf",
+    "ctl", "connettore ctl", "legno-calcestruzzo ctl",
+    "cem-e", "cem e", "connettore cem-e",
+    "diapason", "connettore diapason",
 ]
-
-CONNECTOR_KEYWORDS = [
-    "ctf", "ctl", "cem", "cem-e", "diapason",
-    "connettore", "connettori",
-    "lamiera", "soletta", "collaborante", "solaio", "acciaio-calcestruzzo",
-    "gola", "passo gola",
+TECNARIA_CONTEXTS = [
+    "acciaio-calcestruzzo", "solaio collaborante", "lamiera grecata", "soletta piena",
+    "legno-calcestruzzo", "solaio legno", "travetto legno",
+    "calcestruzzo esistente", "ripresa di getto", "rinforzo", "ripristino",
 ]
+TECNARIA_TOOLS = [
+    "p560", "p800", "p370", "p200", "spit", "chiodatrice", "sparachiodi"
+]
+TECNARIA_KEYWORDS = (
+    ["tecnaria"] +
+    TECNARIA_CONNECTORS +
+    TECNARIA_CONTEXTS +
+    TECNARIA_TOOLS
+)
+CONNECTOR_KEYWORDS = TECNARIA_CONNECTORS + TECNARIA_CONTEXTS
 
-# NON Tecnaria → rifiuto
+# Denylist non Tecnaria (case-insensitive)
 NON_TECNARIA_TERMS = [
     "cft", "fva",
     "hbv", "hi-bond", "hibond",
     "x-hbv", "xhbv",
 ]
 
-TOOL_KEYWORDS = [
-    "p560", "p800", "p370", "p200",
-    "chiodatrice", "sparachiodi", "spit",
-    "cartucce", "magazzino chiodi", "pistola a polvere"
-]
-
+# ---------------- Intent lists ----------------
+CRITICAL_KEYS = ("passo gola", "V_L,Ed", "cls", "direzione lamiera")
 CALC_KEYWORDS = [
     "altezza", "dimension", "dimensionamento", "pr_d", "pr,d",
     "v_l,ed", "kn/m", "resistenza", "portata", "verifica", "capacit", "numero connettori",
@@ -92,6 +95,11 @@ POSE_KEYWORDS = [
     "chiodatrice", "spit", "p560", "dpi", "sicurezza", "manuale di posa", "come si posa",
     "come fissare", "fissaggio", "posizionamento"
 ]
+# Intent di confronto/comparazione
+COMPARISON_KEYWORDS = [
+    "differenza", "differenze", "confronto", "confrontare", "vs", "contro",
+    "meglio", "qual è la differenza", "che differenza c'è", "quale scegliere"
+]
 
 OFFTOPIC_BLOCK = ["sparare", "uccelli", "armi", "violenza", "caccia"]
 
@@ -101,6 +109,7 @@ CT_ALLOWED_TOKENS = [
     "v_l,ed", "kn/m", "travi", "ipe", "hea", "heb", "s355", "interasse", "m"
 ]
 
+# ---------------- Helpers: topic/intent ----------------
 def is_tecnaria_topic(text: str) -> bool:
     t = text.lower()
     return any(kw in t for kw in TECNARIA_KEYWORDS)
@@ -108,18 +117,27 @@ def has_non_tecnaria_terms(text: str) -> bool:
     t = text.lower()
     return any(kw in t for kw in NON_TECNARIA_TERMS)
 def is_non_tecnaria_only(text: str) -> bool:
-    t = text.lower()
-    return has_non_tecnaria_terms(t) and not is_tecnaria_topic(t)
+    return has_non_tecnaria_terms(text) and not is_tecnaria_topic(text)
 
 def is_connector_topic(text: str) -> bool:
     return any(kw in text.lower() for kw in CONNECTOR_KEYWORDS)
 def is_tool_topic(text: str) -> bool:
-    return any(kw in text.lower() for kw in TOOL_KEYWORDS)
+    return any(kw in text.lower() for kw in TECNARIA_TOOLS)
+
 def has_calc_intent(text: str) -> bool:
     return any(kw in text.lower() for kw in CALC_KEYWORDS)
 def has_pose_intent(text: str) -> bool:
     return any(kw in text.lower() for kw in POSE_KEYWORDS)
+def has_comparison_intent(text: str) -> bool:
+    return any(kw in text.lower() for kw in COMPARISON_KEYWORDS)
 
+def mentions_two_tecnaria_products(text: str) -> bool:
+    t = text.lower()
+    names = ["ctf", "ctl", "cem-e", "cem e", "diapason"]
+    hits = [n for n in names if n in t]
+    return len(set(hits)) >= 2
+
+# ---------------- Helpers: sanitizzazione/parametri ----------------
 def missing_critical_inputs(text: str) -> List[str]:
     found: List[str] = []
     if re.search(r"\b(gola|passo\s*gola|rib|pitch)\b", text, re.I): found.append("passo gola")
@@ -180,13 +198,13 @@ def tool_attachments(text: str) -> list[str]:
     seen = set()
     return [u for u in out if not (u in seen or seen.add(u))]
 
-# ---------------- Prompt routing ----------------
+# ---------------- Prompt routing (guard + intent) ----------------
 def prepare_input(mode: str, question: str, context: str | None = None) -> tuple[str, dict]:
     meta = {"topic":"altro","calc":False,"pose":False,"needs_params":False,"guard":None}
     q, ctx = (question or ""), sanitize_context(context or "")
     all_low = (q + " " + ctx).lower()
 
-    # Guard
+    # Guard dominio Tecnaria
     if is_non_tecnaria_only(all_low):
         msg = ("Questo assistente risponde solo su prodotti e servizi Tecnaria. "
                "Hai citato codici/marchi non Tecnaria (es. CFT, FVA, HBV/HI-BOND, X-HBV).")
@@ -194,17 +212,34 @@ def prepare_input(mode: str, question: str, context: str | None = None) -> tuple
         return msg, meta
     if not is_tecnaria_topic(all_low):
         msg = ("Questo assistente è dedicato esclusivamente a prodotti e servizi Tecnaria "
-               "(CTF/CTL/CEM/Diapason, solai collaboranti, attrezzi P560/P800, ecc.).")
+               "(CTF/CTL/CEM-E/Diapason, solai collaboranti, attrezzi P560/P800, ecc.).")
         meta["guard"] = "not_tecnaria"
         return msg, meta
 
-    # Modalità C
+    # Modalità C (dettagliata)
     if mode == "dettagliata":
+        # 1) Attrezzi (priorità)
         if is_tool_topic(q.lower()):
             meta.update(topic="attrezzi")
             return render_template("attrezzi", q, ctx), meta
+
+        # 2) Confronto tra prodotti Tecnaria -> descrittiva comparativa (mai parametri)
+        if has_comparison_intent(all_low) and mentions_two_tecnaria_products(all_low):
+            meta.update(topic="connettori", calc=False, pose=False)
+            prompt = render_template("dettagliata", q, ctx)
+            hint_cmp = (
+                "\n\n[Modalità CONFRONTO: rispondi in modo comparativo e sintetico. "
+                "Per ciascun prodotto evidenzia: AMBITO D'USO, MATERIALI, POSA/ATTREZZI, "
+                "CERTIFICAZIONI/ETA, VANTAGGI/LIMITI, ESEMPI. "
+                "NON chiedere parametri di calcolo. Concludi con GUIDA ALLA SCELTA.]"
+            )
+            return prompt + hint_cmp, meta
+
+        # 3) Connettori (calcolo vs posa)
         if is_connector_topic(all_low):
             meta.update(topic="connettori", calc=has_calc_intent(all_low), pose=has_pose_intent(all_low))
+
+            # Calcolo puro -> richiedi parametri se mancano
             if meta["calc"] and not meta["pose"]:
                 filtered_ctx = whitelist_ctx_for_connectors(ctx)
                 missing = missing_critical_inputs(q + " " + filtered_ctx)
@@ -212,10 +247,18 @@ def prepare_input(mode: str, question: str, context: str | None = None) -> tuple
                     meta["needs_params"] = True
                     return f"Per procedere servono: {', '.join(CRITICAL_KEYS)}. Indicali e riprova.", meta
                 return render_template("dettagliata", q, filtered_ctx), meta
+
+            # Posa/Consigli (o misto) -> nessun guardrail
             prompt = render_template("dettagliata", q, ctx)
-            hint = ("\n\n[Modalità POSA/CONSIGLI: fornisci istruzioni operative, riferimenti al manuale di posa Tecnaria, "
-                    "attrezzi compatibili (es. Spit P560), distanze minime, sicurezza. Non richiedere parametri di calcolo.]")
+            hint = (
+                "\n\n[Modalità POSA/CONSIGLI: fornisci istruzioni operative chiare e sequenziali, "
+                "riferimenti al manuale di posa Tecnaria, attrezzi compatibili (es. Spit P560), "
+                "distanze minime, attenzione a bordo/traversi, DPI e sicurezza. "
+                "Non richiedere parametri di calcolo.]"
+            )
             return prompt + hint, meta
+
+        # 4) Fallback tecnico (comunque dominio Tecnaria)
         return render_template("dettagliata", q, ctx), meta
 
     # Modalità A/B
@@ -243,22 +286,47 @@ def llm_respond(prompt: str) -> str:
 # ---------------- ROUTES ----------------
 @app.get("/")
 def root():
-    return send_from_directory(".", "index.html") if Path("index.html").exists() else Response("<h1>TecnariaBot</h1>",mimetype="text/html")
+    return send_from_directory(".", "index.html") if Path("index.html").exists() \
+        else Response("<h1>TecnariaBot</h1>", mimetype="text/html")
 
 @app.get("/api/health")
-def health(): return jsonify({"status":"ok","app":APP_NAME,"model":MODEL_NAME})
+def health():
+    return jsonify({"status":"ok","app":APP_NAME,"model":MODEL_NAME})
 
 @app.post("/api/answer")
 def answer():
     data: Dict[str, Any] = request.get_json(force=True, silent=True) or {}
-    q, mode, ctx = (data.get("question") or "").strip(), (data.get("mode") or "dettagliata").strip().lower(), (data.get("context") or "").strip()
-    if not q: return jsonify({"error":"Missing 'question'"}),400
+    q  = (data.get("question") or "").strip()
+    mode = (data.get("mode") or "dettagliata").strip().lower()
+    ctx = (data.get("context") or "").strip()
+    if not q:
+        return jsonify({"error":"Missing 'question'"}), 400
+
     prompt, meta = prepare_input(mode, q, ctx)
-    if meta.get("guard"): return jsonify({"mode":mode,"answer":prompt,"attachments":[],"meta":meta})
+
+    # Guard: fuori dominio
+    if meta.get("guard"):
+        return jsonify({"mode":mode,"answer":prompt,"attachments":[],"meta":meta})
+
+    # Parametri richiesti per calcolo
     if prompt.startswith("Per procedere servono:"):
-        return jsonify({"mode":mode,"answer":prompt,"attachments":tool_attachments(q+" "+ctx),"meta":meta})
+        return jsonify({
+            "mode": mode,
+            "answer": prompt,
+            "attachments": tool_attachments(q + " " + ctx),
+            "meta": meta
+        })
+
+    # LLM + allegati
     answer_text = llm_respond(prompt)
-    auto_attachments = tool_attachments(q+" "+ctx)
+    auto_attachments = tool_attachments(q + " " + ctx)
     if auto_attachments:
         answer_text += "\n\n6) NOTE TECNICHE / ALLEGATI:\n" + "\n".join(f"- {u}" for u in auto_attachments)
-    return jsonify({"mode":mode,"model":MODEL_NAME,"answer":answer_text,"attachments":auto_attachments,"meta":meta})
+
+    return jsonify({
+        "mode": mode,
+        "model": MODEL_NAME,
+        "answer": answer_text,
+        "attachments": auto_attachments,
+        "meta": meta
+    })
