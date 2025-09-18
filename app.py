@@ -57,8 +57,8 @@ CRITICAL_KEYS = ("passo gola", "V_L,Ed", "cls", "direzione lamiera")
 TECNARIA_KEYWORDS = [
     "tecnaria", "ctf", "ctl", "cem", "cem-e", "diapason",
     "p560", "p800", "p370", "p200", "spit", "chiodatrice",
-    "solaio collaborante", "acciaio-calcestruzzo", "lamiera grecata",
-    "lamiera h55", "lamiera h75",
+    "solaio collaborante", "acciaio-calcestruzzo", "acciaio-legno",
+    "lamiera grecata", "lamiera h55", "lamiera h75",
 ]
 
 CONNECTOR_KEYWORDS = [
@@ -189,8 +189,7 @@ def prepare_input(mode: str, question: str, context: str | None = None) -> tuple
     # Guard
     if is_non_tecnaria_only(all_low):
         msg = ("Questo assistente risponde solo su prodotti e servizi Tecnaria. "
-               "Hai citato codici/marchi non Tecnaria (es. CFT, FVA, HBV/HI-BOND, X-HBV). "
-               "Per favore riformula indicando un prodotto Tecnaria (CTF, CTL, CEM, DIAPASON, P560).")
+               "Hai citato codici/marchi non Tecnaria (es. CFT, FVA, HBV/HI-BOND, X-HBV).")
         meta["guard"] = "non_tecnaria_only"
         return msg, meta
     if not is_tecnaria_topic(all_low):
