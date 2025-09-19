@@ -1,220 +1,43 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
   <title>TecnariaBot</title>
-
-  <!-- Icona scheda -->
-  <link rel="icon" type="image/jpeg" href="/static/img/logo.jpg">
-  <!-- Stili -->
-  <link rel="stylesheet" href="/static/img/style.css" />
+  <link rel="stylesheet" href="/static/img/style.css">
 </head>
 <body>
-  <!-- HEADER con logo -->
-  <header class="container header-logo">
-    <img src="/static/img/logo.jpg" alt="Logo Tecnaria" class="logo" />
-    <div>
-      <h1>TecnariaBot</h1>
-      <p class="subtitle">Assistente Tecnico • Risposte A/B/C sempre coerenti</p>
+  <div class="container">
+    <h1>TecnariaBot</h1>
+    <p>Assistente Tecnico • Risposte A/B/C sempre coerenti</p>
+
+    <!-- Campo domanda -->
+    <label for="question"><b>Domanda</b></label>
+    <textarea id="question" name="question" rows="3" placeholder="Scrivi la tua domanda..."></textarea>
+
+    <!-- Scelte modalità -->
+    <div class="mode-select">
+      <button type="button" onclick="setMode('breve')">A Breve</button>
+      <button type="button" onclick="setMode('standard')">B Standard</button>
+      <button type="button" onclick="setMode('dettagliata')">C Dettagliata</button>
     </div>
-  </header>
 
-  <main class="container">
-    <!-- DOMANDA -->
-    <section class="panel">
-      <label class="label" for="q">Domanda</label>
-      <textarea id="q" rows="3" placeholder="Es. Quale altezza di connettore CTF devo usare in solaio con lamiera H55?..."></textarea>
-    </section>
-
-    <!-- SELEZIONE MODALITÀ -->
-    <section class="grid" aria-label="Seleziona la modalità di risposta">
-      <!-- Card A -->
-      <button class="card" data-mode="breve" id="cardA" aria-pressed="false" type="button">
-        <div class="badge">A</div>
-        <h3>Breve</h3>
-        <p>Cliente finale / executive. 2–3 frasi, senza numeri.</p>
-      </button>
-
-      <!-- Card B -->
-      <button class="card" data-mode="standard" id="cardB" aria-pressed="false" type="button">
-        <div class="badge">B</div>
-        <h3>Standard</h3>
-        <p>Commerciale / progettuale base. Discorsiva, senza formule.</p>
-      </button>
-
-      <!-- Card C (default) -->
-      <button class="card active" data-mode="dettagliata" id="cardC" aria-pressed="true" type="button">
-        <div class="badge">C</div>
-        <h3>Dettagliata</h3>
-        <p>Tecnici/Ingegneri. Parametri, calcoli, verifica, conclusione unica.</p>
-      </button>
-    </section>
-
-    <!-- CONTESTO -->
-    <section class="panel">
-      <label class="label" for="c">Contesto (facoltativo)</label>
-      <input id="c" type="text" placeholder="Es. lamiera H55, V_L,Ed=150 kN/m, cls C30/37, passo gola 150 mm, lamiera trasversale" />
-    </section>
-
-    <!-- AZIONI -->
-    <section class="actions">
-      <button id="send" class="primary" type="button" onclick="send()">Invia</button>
-      <div class="hint">Scorciatoie: <kbd>A</kbd> Breve • <kbd>B</kbd> Standard • <kbd>C</kbd> Dettagliata • <kbd>Ctrl/⌘+Invio</kbd> Invia</div>
-    </section>
-
-    <!-- STATO -->
-    <section id="status" class="status" aria-live="polite"></section>
-
-    <!-- RISPOSTA -->
-    <section class="panel">
-      <div class="result-header">
-        <span>Risposta</span>
-        <button id="copy" class="ghost" type="button" title="Copia risposta">Copia</button>
-      </div>
-      <pre id="out" class="result" tabindex="0"></pre>
-    </section>
-
-    <!-- ALLEGATI / NOTE TECNICHE -->
-    <section class="panel">
-      <div class="result-header">
-        <span>Allegati / Note collegate</span>
-      </div>
-      <div id="attachments" class="attach-grid"></div>
-      <small class="hint">Gli allegati ora si aprono dentro il bot. Chiudi per tornare alla risposta.</small>
-    </section>
-  </main>
-
-  <footer class="container footer">
-    <small>© TecnariaBot • Modalità sempre allineate A/B/C</small>
-  </footer>
-
-  <!-- Viewer modale per allegati -->
-  <div id="viewer" class="viewer hidden" role="dialog" aria-modal="true" aria-label="Anteprima allegato">
-    <div class="viewer-content">
-      <button class="viewer-close" onclick="closeViewer()" aria-label="Chiudi anteprima">✖ Chiudi</button>
-      <iframe id="viewerFrame" src="" frameborder="0" title="Anteprima"></iframe>
+    <!-- Wizard dinamico -->
+    <div id="wizard-dynamic" class="card" style="display:none" data-schema="">
+      <!-- I campi vengono generati in JS -->
     </div>
+
+    <!-- Campo context -->
+    <label for="context"><b>Dati tecnici richiesti (se la domanda è di calcolo)</b></label>
+    <textarea id="context" name="context" rows="3" readonly
+              placeholder="Se necessario verrà compilato dal mini-wizard…"></textarea>
+
+    <!-- Pulsante invio -->
+    <button type="button" onclick="sendQuestion()">Invia</button>
+
+    <!-- Risposta -->
+    <div id="answer-box" class="card"></div>
   </div>
 
-  <!-- SCRIPT -->
-  <script>
-    const cards = document.querySelectorAll('.card');
-    const out = document.getElementById('out');
-    const statusEl = document.getElementById('status');
-    const btnCopy = document.getElementById('copy');
-    const q = document.getElementById('q');
-    const c = document.getElementById('c');
-    const attachmentsEl = document.getElementById('attachments');
-
-    let mode = 'dettagliata';
-
-    function setMode(newMode){
-      mode = newMode;
-      cards.forEach(card => {
-        const active = card.dataset.mode === newMode;
-        card.classList.toggle('active', active);
-        card.setAttribute('aria-pressed', active ? 'true' : 'false');
-      });
-    }
-    cards.forEach(card => card.addEventListener('click', () => setMode(card.dataset.mode)));
-
-    // Estrae link sia da markdown [testo](url) sia da URL/percorsi nudi (anche "- /static/...")
-    function extractLinks(text){
-      const links = new Set();
-      // markdown [label](url)
-      for (const m of text.matchAll(/\[[^\]]+\]\((https?:\/\/[^\s)]+|\/static\/[^\s)]+)\)/gi)) {
-        links.add(m[1]);
-      }
-      // percorsi nudi http(s) o /static/...
-      for (const m of text.matchAll(/((?:https?:\/\/|\/static\/)[^\s<>'"()]+)/gi)) {
-        links.add(m[1]);
-      }
-      return [...links];
-    }
-
-    // Render allegati — apre in viewer interno (nessuna nuova scheda)
-    function renderAttachments(urls){
-      attachmentsEl.innerHTML = '';
-      if (!urls.length) return;
-
-      for (const url of urls){
-        const u = url.toLowerCase();
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'attach-card';
-        btn.onclick = () => openViewer(url);
-
-        if (u.endsWith('.png') || u.endsWith('.jpg') || u.endsWith('.jpeg') || u.endsWith('.webp')){
-          btn.innerHTML = `<img src="${url}" alt="allegato">`;
-        } else if (u.endsWith('.pdf')) {
-          btn.classList.add('pdf');
-          btn.textContent = 'Apri PDF';
-        } else {
-          btn.classList.add('link');
-          btn.textContent = url;
-        }
-        attachmentsEl.appendChild(btn);
-      }
-    }
-
-    function openViewer(url){
-      const frame = document.getElementById('viewerFrame');
-      const modal = document.getElementById('viewer');
-      frame.src = url;
-      modal.classList.remove('hidden');
-    }
-    function closeViewer(){
-      const frame = document.getElementById('viewerFrame');
-      const modal = document.getElementById('viewer');
-      frame.src = "";
-      modal.classList.add('hidden');
-    }
-
-    // Invio
-    async function send(){
-      out.textContent = '';
-      attachmentsEl.innerHTML = '';
-      statusEl.textContent = '⏳ Sto preparando la risposta...';
-
-      try {
-        const r = await fetch('/api/answer', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ question: q.value.trim(), mode, context: c.value.trim() })
-        });
-        const j = await r.json();
-        if (!r.ok) throw new Error(j.error || r.statusText);
-
-        const answer = (j.answer || '').trim();
-        out.textContent = answer;
-
-        const fromText = extractLinks(answer);
-        const fromApi  = Array.isArray(j.attachments) ? j.attachments : [];
-        const links = Array.from(new Set([...fromText, ...fromApi])); // dedup
-
-        renderAttachments(links);
-        statusEl.textContent = `✅ Modalità: ${j.mode || mode}`;
-      } catch (err){
-        statusEl.textContent = '❌ Errore: ' + err.message;
-      }
-    }
-
-    // Copia risposta
-    btnCopy.addEventListener('click', () => {
-      if (!out.textContent) return;
-      navigator.clipboard.writeText(out.textContent);
-      statusEl.textContent = '📋 Copiato negli appunti';
-    });
-
-    // Scorciatoie tastiera
-    document.addEventListener('keydown', (e) => {
-      if (e.key.toLowerCase() === 'a') setMode('breve');
-      if (e.key.toLowerCase() === 'b') setMode('standard');
-      if (e.key.toLowerCase() === 'c') setMode('dettagliata');
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') send();
-      if (e.key === 'Escape') closeViewer(); // esc chiude il viewer
-    });
-  </script>
+  <script src="/static/img/wizard.js"></script>
 </body>
 </html>
