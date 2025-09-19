@@ -1,75 +1,177 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>TecnariaBot</title>
-  <link rel="stylesheet" href="/static/img/style.css?v=2025-09-19" />
+  <link rel="stylesheet" href="/static/img/style.css" />
   <style>
-    :root{--tecnaria-orange:#f37021}
-    body{font-family:Arial,Helvetica,sans-serif;background:#1e1e1e;color:#fff;margin:0}
-    .wrap{max-width:960px;margin:24px auto;padding:20px;background:#2c2c2c;border-radius:14px}
-    header{display:flex;align-items:center;gap:14px;margin-bottom:10px}
-    header img{height:52px;width:auto;border-radius:6px}
-    h1{margin:0;color:var(--tecnaria-orange)}
-    .subtitle{margin:0 0 18px 0;color:#ccc}
-    label{display:block;margin:12px 0 6px 0;color:var(--tecnaria-orange);font-weight:700}
-    textarea,input,select{width:100%;box-sizing:border-box;background:#fff;color:#000;
-      border:1px solid var(--tecnaria-orange);border-radius:8px;padding:10px}
-    .row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}
-    .modes{display:flex;gap:10px;margin:8px 0 0 0}
-    .btn{background:var(--tecnaria-orange);color:#fff;border:none;border-radius:8px;padding:10px 14px;
-      font-weight:700;cursor:pointer}
-    .btn.secondary{background:#444}
-    .btn.active{outline:2px solid #fff}
-    .wizard{display:none;background:#3a3a3a;padding:12px;border-radius:10px;margin:12px 0}
-    .wizard .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-    .small-note{color:#bbb;font-size:12px;margin-top:6px}
-    .answer{background:#3a3a3a;padding:14px;border-radius:10px;white-space:pre-wrap;margin-top:14px}
-    @media (max-width:720px){.wizard .grid{grid-template-columns:1fr} .row{grid-template-columns:1fr}}
+    .loader{display:none;align-items:center;gap:.6rem;color:#ffa14a;font-weight:600}
+    .spinner{width:16px;height:16px;border:3px solid #ffa14a33;border-top-color:#ffa14a;border-radius:50%;animation:spin .9s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .answer{background:#1f1f1f;border:1px solid #333;border-radius:10px;padding:14px;color:#eee}
+    .attachments a{color:#ffa14a;text-decoration:underline;margin-right:12px}
+    .muted{color:#9aa0a6;font-size:.9rem}
+    .field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+    .field-grid label{font-weight:600;color:#ffa14a;font-size:.9rem}
+    .field-grid input,.field-grid select{width:100%;padding:8px;border-radius:8px;border:1px solid #444;background:#1a1a1a;color:#eee}
+    .toolbar{display:flex;gap:10px;margin:.6rem 0 1rem}
+    .pill{background:#ffa14a;color:#111;border:none;padding:.55rem .85rem;border-radius:10px;cursor:pointer;font-weight:700}
+    .pill.secondary{background:#2c2c2c;color:#eee}
+    .row{display:flex;align-items:center;gap:10px}
+    .grow{flex:1}
+    textarea{width:100%;min-height:110px;border-radius:12px;border:1px solid #444;padding:10px;background:#111;color:#eee}
+    .btn{background:#ffa14a;color:#111;border:none;padding:.6rem 1rem;border-radius:10px;cursor:pointer;font-weight:800}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .hint{color:#ffa14a;font-weight:700;margin:.4rem 0 .2rem}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <img src="/static/img/logo.jpg" alt="Logo Tecnaria" />
+  <main class="container">
+    <header class="row" style="gap:12px;align-items:center">
+      <img src="/static/img/logo.jpg" alt="Tecnaria" style="width:44px;height:44px;border-radius:8px">
       <div>
-        <h1>TecnariaBot</h1>
-        <p class="subtitle">Assistente Tecnico • Risposte A/B/C sempre coerenti</p>
+        <h1 style="margin:0;color:#ffa14a">TecnariaBot</h1>
+        <div class="muted">Assistente Tecnico • Risposte A/B/C sempre coerenti</div>
       </div>
     </header>
 
-    <!-- Domanda -->
-    <label for="question">Domanda</label>
-    <textarea id="question" rows="3" placeholder="Es.: Quale altezza di connettore CTF devo usare?"></textarea>
+    <section style="margin-top:16px">
+      <label for="question" class="hint">Domanda</label>
+      <textarea id="question" placeholder="es. Quale altezza di connettore CTF devo usare?"></textarea>
 
-    <!-- Modalità A/B/C -->
-    <div class="modes">
-      <button class="btn" id="btnA" type="button">A Breve</button>
-      <button class="btn" id="btnB" type="button">B Standard</button>
-      <button class="btn active" id="btnC" type="button">C Dettagliata</button>
-    </div>
-
-    <!-- Mini-wizard dinamico -->
-    <div id="wizard-dynamic" class="wizard" data-schema="">
-      <div class="grid" id="wizard-fields"><!-- campi generati da wizard.js --></div>
-      <div class="small-note">
-        I valori qui sopra compilano automaticamente il campo “Dati tecnici richiesti”.
+      <div class="toolbar">
+        <button class="pill" data-mode="breve">A Breve</button>
+        <button class="pill" data-mode="standard">B Standard</button>
+        <button class="pill" data-mode="dettagliata">C Dettagliata</button>
       </div>
-    </div>
 
-    <!-- Dati tecnici / context -->
-    <label for="context">Dati tecnici richiesti (se la domanda è di calcolo)</label>
-    <div class="row">
-      <textarea id="context" rows="3" readonly placeholder="Se necessario verrà compilato dal mini-wizard…"></textarea>
-      <button id="btnSend" class="btn" type="button">Invia</button>
-    </div>
+      <div id="wizard-block" style="display:none">
+        <div class="hint">Dati tecnici richiesti (se la domanda è di calcolo)</div>
+        <div id="wizard-fields" class="field-grid"></div>
+      </div>
 
-    <!-- Risposta -->
-    <div id="answer-box" class="answer"></div>
-  </div>
+      <div class="row" style="margin-top:10px">
+        <div class="grow">
+          <textarea id="context" placeholder="Se necessario verrà compilato dal mini-wizard…"></textarea>
+        </div>
+        <button id="sendBtn" class="btn">Invia</button>
+      </div>
 
-  <!-- Carica JS -->
-  <script src="/static/img/wizard.js?v=2025-09-19" defer></script>
+      <div id="loader" class="loader" style="margin-top:8px">
+        <div class="spinner"></div><span>Sto calcolando la risposta…</span>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="hint">Risposta</div>
+        <div id="answer" class="answer" style="display:none"></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="hint">Allegati</div>
+        <div id="attachments" class="answer" style="display:none"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/img/wizard.js" onerror="console.warn('wizard.js non caricato')"></script>
+  <script>
+    // fallback se wizard.js non è disponibile
+    if (typeof window.buildWizard !== "function") window.buildWizard = function(){};
+    if (typeof window.fillContextFromWizard !== "function") window.fillContextFromWizard = function(){};
+
+    let CURRENT_MODE = "dettagliata";
+    document.querySelectorAll(".pill").forEach(b=>{
+      b.addEventListener("click", ()=>{
+        CURRENT_MODE = b.dataset.mode;
+        document.querySelectorAll(".pill").forEach(x=>x.classList.add("secondary"));
+        b.classList.remove("secondary");
+        maybeShowWizard();
+      });
+    });
+
+    const questionEl = document.getElementById("question");
+    const contextEl  = document.getElementById("context");
+    const fieldsBox  = document.getElementById("wizard-fields");
+    const wizardBlock= document.getElementById("wizard-block");
+    const loader     = document.getElementById("loader");
+    const outBox     = document.getElementById("answer");
+    const attBox     = document.getElementById("attachments");
+    const sendBtn    = document.getElementById("sendBtn");
+
+    questionEl.addEventListener("input", maybeShowWizard);
+
+    function isCalcQuestion(q){
+      const t = q.toLowerCase();
+      const isCTF  = /ctf|connettore|connettori/.test(t);
+      const isCalc = /altezz|dimension|v[_\s.,-]*l|kn\/?m|portata|numero|quanti/.test(t);
+      return isCTF && isCalc;
+    }
+
+    function maybeShowWizard(){
+      const q = questionEl.value || "";
+      if (isCalcQuestion(q)){
+        wizardBlock.style.display = "block";
+        try { buildWizard(fieldsBox); } catch(e){ console.error(e); }
+        try { fillContextFromWizard(contextEl); } catch(e){ console.error(e); }
+      } else {
+        wizardBlock.style.display = "none";
+      }
+    }
+
+    document.addEventListener("input", e=>{
+      if (e.target && e.target.classList.contains("wiz")){
+        try { fillContextFromWizard(contextEl); } catch(e){ console.error(e); }
+      }
+    });
+
+    async function send(){
+      const payload = { question: questionEl.value || "", mode: CURRENT_MODE, context: contextEl.value || "" };
+      loader.style.display = "flex";
+      sendBtn.disabled = true;
+      outBox.style.display = "none"; outBox.textContent = "";
+      attBox.style.display = "none"; attBox.textContent = "";
+
+      try{
+        const res = await fetch("/api/answer", {
+          method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        // Risposta
+        const lines = [ data.answer || "(nessuna risposta)" ];
+        if (data.meta && data.meta.calc){
+          const c = data.meta.calc;
+          lines.push("", "— Dati calcolo —");
+          if (c.height_mm)       lines.push(`Altezza consigliata: ${c.height_mm} mm`);
+          if (c.n_per_m!=null)   lines.push(`n°/m: ${c.n_per_m}`);
+          if (c.cap_per_m!=null) lines.push(`capacità: ${c.cap_per_m} kN/m`);
+          if (c.demand_per_m!=null) lines.push(`domanda: ${c.demand_per_m} kN/m`);
+          if (c.utilization!=null)  lines.push(`utilization: ${(c.utilization*100).toFixed(1)} %`);
+        }
+        outBox.innerText = lines.join("\n");
+        outBox.style.display = "block";
+
+        // Allegati
+        if (data.attachments && data.attachments.length){
+          attBox.innerHTML = data.attachments.map(x=>`• <a href="${x.href}" target="_blank">${x.label}</a>`).join("  ");
+          attBox.style.display = "block";
+        }
+      }catch(err){
+        console.error(err);
+        outBox.innerText = "Errore di rete o server non raggiungibile.";
+        outBox.style.display = "block";
+      }finally{
+        loader.style.display = "none";
+        sendBtn.disabled = false;
+      }
+    }
+
+    document.getElementById("sendBtn").addEventListener("click", send);
+    document.addEventListener("keydown", e=>{ if((e.ctrlKey||e.metaKey) && e.key==="Enter") send(); });
+
+    // debug rapido
+    fetch("/health").then(r=>console.log("health:", r.status)).catch(console.error);
+  </script>
 </body>
 </html>
