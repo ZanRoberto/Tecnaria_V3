@@ -1,185 +1,258 @@
+# app.py — TecnariaBot FULL v2.3 stabile
+
+import json, os, re
+from flask import Flask, render_template, request, jsonify
+
+# Istanza Flask globale → Gunicorn deve trovare app qui
+app = Flask(__name__, static_folder="static", template_folder="templates")
+
+# =========================================
+# 0) Scope / denylist
+# =========================================
+DENYLIST = {
+    "hbv", "x-hbv", "xhbv", "fva", "hi-bond ", "hibond ", "ribdeck", "hilti shear", "p800"
+}
+
+# =========================================
+# 1) Topic / Intent detection
+# =========================================
+def detect_topic(q: str) -> str | None:
+    t = q.lower()
+    if any(k in t for k in [" p560", "p560 ", "chiodatrice", "spit p560"]): return "P560"
+    if "diapason" in t: return "DIAPASON"
+    if any(k in t for k in ["cem-e", "ceme", "cem e"]): return "CEME"
+    if any(k in t for k in ["ctl", "acciaio-legno", "acciaio legno"]): return "CTL"
+    if any(k in t for k in ["ctf", "connettore", "connettori", "lamiera", "soletta", "gola"]): return "CTF"
+    return None
+
+def detect_intent(q: str) -> str:
+    t = q.lower()
+    if any(k in t for k in ["altezz", "dimension", "v_l", "v l", "v_l,ed", "kn/m", "numero", "quanti", "portata"]):
+        return "CALC"
+    if any(k in t for k in ["posa", "installazione", "fissare", "uso in cantiere"]):
+        return "POSA"
+    if any(k in t for k in ["differenza", "vs", "confronto", "meglio"]):
+        return "CONFRONTO"
+    return "INFO"
+
+def contains_denylist(q: str) -> bool:
+    return any(d in q.lower() for d in DENYLIST)
+
+# =========================================
+# 2) Parsing context (wizard)
+# =========================================
+CTX_RE = {
+    "h_lamiera": re.compile(r"lamiera\s*h?\s*(\d+)", re.I),
+    "s_soletta": re.compile(r"soletta\s*(\d+)\s*mm", re.I),
+    "vled":      re.compile(r"v[\s_.,-]*l\s*,?ed\s*=\s*([\d.,]+)\s*kn/?m", re.I),
+    "cls":       re.compile(r"cls\s*([Cc]\d+\/\d+)", re.I),
+    "passo":     re.compile(r"passo\s*gola\s*(\d+)\s*mm", re.I),
+    "dir":       re.compile(r"lamiera\s*(longitudinale|trasversale)", re.I),
+    "s_long":    re.compile(r"passo\s+lungo\s+trave\s*(\d+)\s*mm", re.I),
+    "piena":     re.compile(r"soletta\s+piena", re.I),
+    "t_lamiera": re.compile(r"t\s*=\s*([\d.,]+)\s*mm", re.I),
+    "nr_gola":   re.compile(r"nr\s*=\s*(\d+)", re.I),
+}
+UI_LABELS = {
+    "h_lamiera":"altezza lamiera",
+    "s_soletta":"spessore soletta",
+    "vled":"V_L,Ed",
+    "cls":"cls",
+    "passo":"passo gola",
+    "dir":"direzione lamiera",
+    "s_long":"passo lungo trave",
+    "t_lamiera":"spessore lamiera t",
+    "nr_gola":"n° connettori per gola"
+}
+CRITICAL_LAMIERA = ["h_lamiera","s_soletta","vled","cls","passo","dir","s_long","t_lamiera","nr_gola"]
+CRITICAL_PIENA   = ["s_soletta","vled","cls","s_long"]
+
+def parse_ctf_context(ctx: str) -> dict:
+    out = {}
+    if not ctx: return out
+    def f(k, cast=None, repl=False):
+        m = CTX_RE[k].search(ctx)
+        if not m: return None
+        v = m.group(1)
+        if repl: v = v.replace(",", ".")
+        if cast:
+            try: return cast(v)
+            except: return None
+        return v
+    out["h_lamiera"] = f("h_lamiera", int)
+    out["s_soletta"] = f("s_soletta", int)
+    out["vled"]      = f("vled", float, repl=True)
+    cls = f("cls"); out["cls"] = cls.upper() if cls else None
+    out["passo"]     = f("passo", int)
+    dirn = f("dir"); out["dir"] = dirn.lower() if dirn else None
+    out["s_long"]    = f("s_long", int)
+    out["piena"]     = True if CTX_RE["piena"].search(ctx) else False
+    out["t_lamiera"] = f("t_lamiera", float, repl=True)
+    out["nr_gola"]   = f("nr_gola", int)
+    return {k:v for k,v in out.items() if v is not None}
+
+def missing_ctf_keys(parsed: dict) -> list[str]:
+    if parsed.get("piena"):
+        needed = CRITICAL_PIENA
+    else:
+        needed = CRITICAL_LAMIERA
+    return [k for k in needed if k not in parsed]
+
+# =========================================
+# 3) DB PRd + calcolo CTF
+# =========================================
+def load_ctf_db():
+    path = os.path.join(app.static_folder, "data", "ctf_prd.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+PRD_DB = load_ctf_db()
+
+def _kt_from_limits(t_mm: float, nr: int) -> float:
+    if nr <= 1:
+        return 1.00 if t_mm > 1.0 else 0.85
+    return 0.80 if t_mm > 1.0 else 0.70
+
+def choose_ctf_height(p: dict, safety=1.10):
+    demand = float(p["vled"])
+    s_long = float(p["s_long"])
+    n_per_m = 1000.0 / s_long if s_long > 0 else 0.0
+    cls = p.get("cls")
+    rule = PRD_DB.get("lamiera_rule", {})
+    P0 = rule.get("P0", {}).get(cls)
+    t_mm = float(p.get("t_lamiera", 0) or 0)
+    nr   = int(p.get("nr_gola", 0) or 0)
+    if P0 and t_mm > 0 and nr > 0:
+        kt = _kt_from_limits(t_mm, nr)
+        prd_one = P0 * kt
+        cap = prd_one * n_per_m
+        util = demand / cap if cap else None
+        if cap >= demand * safety:
+            return ("80", n_per_m, cap, demand, util, safety,
+                    f"P0={P0} kN, k_t={kt:.2f}, PRd={prd_one:.1f} kN/conn.")
+        else:
+            n_per_m_req = (demand * safety) / prd_one if prd_one > 0 else None
+            passo_req = 1000.0 / n_per_m_req if n_per_m_req else None
+            return ("da rivedere", n_per_m, cap, demand, util, safety,
+                    f"Capacità {cap:.1f} < {demand*safety:.1f}. Riduci passo ≤{passo_req:.0f} mm.")
+    return ("parametri mancanti", n_per_m, None, demand, None, safety,
+            "Servono spessore lamiera t e nr connettori/gola")
+
+# =========================================
+# 4) Risposte A/B/C
+# =========================================
 def p560_answer(mode: str) -> str:
     if mode == "breve":
-        return (
-            "<p><strong>SPIT P560</strong> è la chiodatrice a polvere per la posa rapida e affidabile dei connettori Tecnaria su acciaio e calcestruzzo. "
-            "Riduce i tempi in cantiere e standardizza il fissaggio attraverso la lamiera grecata. "
-            "Usare sempre i DPI e seguire il manuale operativo.</p>"
-        )
+        return "SPIT P560 è la chiodatrice a polvere per la posa rapida dei connettori Tecnaria."
     if mode == "standard":
-        return (
-            "<h3>P560 — cosa fa e quando usarla</h3>"
-            "<p>Chiodatrice a polvere per fissaggi strutturali: tipicamente per <em>posa dei connettori CTF</em> su travi in acciaio (attraverso lamiera) "
-            "e per fissaggi su calcestruzzo non fessurato. La scelta di <strong>chiodi</strong> e <strong>cariche</strong> dipende dal supporto; "
-            "eseguire sempre prove sul materiale reale. Mantenere appoggio perpendicolare, pressione piena, tiro controllato. "
-            "DPI obbligatori, manutenzione regolare (pulizia camera di scoppio).</p>"
-        )
-    # C dettagliata (scheda “narrata”, ricca)
-    return (
-        "<h3>P560 — guida d’uso tecnica</h3>"
-        "<p><strong>Scopo:</strong> fissaggio dei connettori Tecnaria su acciaio/lamiera grecata e su calcestruzzo, con qualità e ripetibilità del tiro.</p>"
-        "<h4>Selezione consumabili</h4>"
-        "<ul>"
-        "<li><strong>Chiodi:</strong> lunghezza/diametro compatibili con spessori e supporto; verifica della penetrazione effettiva su provino.</li>"
-        "<li><strong>Cariche:</strong> graduazione in funzione della durezza del supporto; salire di passo <em>solo</em> se la prova risulta sotto-tiro.</li>"
-        "</ul>"
-        "<h4>Procedura operativa</h4>"
-        "<ul>"
-        "<li>Appoggio perpendicolare sulla superficie; accertare l’assenza di luce tra lamiera e trave.</li>"
-        "<li>Pressione piena, attivazione controllata; controllo immediato del tiro e della stabilità.</li>"
-        "<li>Ripetere la prova quando si cambia carica, fornitura di chiodi o tipo di supporto.</li>"
-        "</ul>"
-        "<h4>Controlli di cantiere</h4>"
-        "<ul>"
-        "<li>Verifica visiva del gambo, rosetta e centratura in gola; campionamento di fissaggi ogni tratto omogeneo.</li>"
-        "<li>Tracciamento passi e rispetto interassi; registrazione di eventuali ritiri o colpi nulli.</li>"
-        "</ul>"
-        "<h4>Sicurezza e manutenzione</h4>"
-        "<ul>"
-        "<li>DPI (occhi/udito/mani), delimitazione dell’area di tiro, attrezzo in efficienza.</li>"
-        "<li>Pulizia periodica della camera di scoppio, cursori e otturatori; sostituzione parti usurate secondo manuale.</li>"
-        "</ul>"
-        "<h4>Integrazione col sistema</h4>"
-        "<p>Per i <strong>CTF su lamiera</strong>: garantire corrugamento corretto, centratura in gola, coerenza con i passi di progetto. "
-        "Riferimenti: manuale Tecnaria, EC4, istruzioni del produttore dell’attrezzo.</p>"
-    )
+        return "P560: chiodatrice a polvere per fissaggi strutturali; usa chiodi/cariche idonee; manutenzione e DPI obbligatori."
+    return ("P560 — guida tecnica: impiego su travi acciaio e cls, procedura operativa (appoggio, pressione, tiro controllato), "
+            "controlli di cantiere, sicurezza con DPI, manutenzione periodica, riferimenti manuale Tecnaria/EC4.")
 
 def ctf_answer_info(mode: str) -> str:
     if mode == "breve":
-        return (
-            "<p>I connettori <strong>CTF</strong> rendono collaborante il solaio acciaio-calcestruzzo, aumentando rigidezza e capacità. "
-            "Sono certificati ETA e si posano rapidamente, anche attraverso lamiera grecata.</p>"
-        )
+        return "CTF: connettori acciaio-calcestruzzo per solai collaboranti, certificati ETA."
     if mode == "standard":
-        return (
-            "<h3>CTF — cosa sono e come si usano</h3>"
-            "<p>Pioli/fissaggi per solai collaboranti acciaio-cls: trasferiscono il taglio tra trave e soletta. "
-            "La verifica di progetto si fa con <strong>PRd</strong> da tabelle/ETA o con la regola <strong>P₀×k<sub>t</sub></strong> su lamiera; "
-            "la posa avviene con chiodatrice a polvere (es. P560), rispettando passi e interassi previsti.</p>"
-        )
-    return (
-        "<h3>CTF — guida tecnica sintetica</h3>"
-        "<h4>Impiego</h4>"
-        "<p>Travi in acciaio con lamiera grecata o soletta piena; trasferimento del taglio per comportamento collaborante.</p>"
-        "<h4>Progetto e verifiche</h4>"
-        "<ul>"
-        "<li><strong>PRd per connettore</strong>: da tabelle (soletta piena) o <em>P₀×k<sub>t</sub></em> su lamiera, con dipendenza da cls, profilo, spessore <em>t</em>, nr/gola.</li>"
-        "<li><strong>Capacità per metro</strong> = PRd × n/m (n/m = 1000 / passo lungo trave).</li>"
-        "<li><strong>Criterio EC4</strong>: capacità per metro ≥ V<sub>L,Ed</sub> × margine.</li>"
-        "</ul>"
-        "<h4>Posa</h4>"
-        "<p>P560, centratura in gola, rispetto dei passi e delle distanze da estremità; DPI e controlli di cantiere.</p>"
-        "<h4>Riferimenti</h4>"
-        "<p>ETA-18/0447, EC4, manuale Tecnaria.</p>"
-    )
+        return "CTF: pioli per solai collaboranti; verifica con PRd o P0×k_t; posa con P560."
+    return ("CTF — guida tecnica: impiego su lamiera/soletta piena, verifica EC4 (capacità ≥ domanda×γ), "
+            "parametri t e nr, posa con P560, riferimenti ETA-18/0447.")
 
 def ctl_answer_info(mode: str) -> str:
-    if mode == "breve":
-        return (
-            "<p>I connettori <strong>CTL</strong> collegano legno e calcestruzzo, migliorando rigidezza e comfort del solaio. "
-            "Soluzione certificata e collaudata per sistemi collaboranti.</p>"
-        )
-    if mode == "standard":
-        return (
-            "<h3>CTL — quando e perché</h3>"
-            "<p>Per sistemi legno-cls (o acciaio-legno), con dimensionamento tramite tabelle Tecnaria e verifiche EC5/EC4. "
-            "Posa con viti dedicate e controlli di scorrimento/ancoraggio; attenzione alle deformazioni a lungo termine.</p>"
-        )
-    return (
-        "<h3>CTL — guida tecnica</h3>"
-        "<h4>Parametri di progetto</h4>"
-        "<ul>"
-        "<li>Specie e classe del legno; spessore della soletta; interassi e schema di posa.</li>"
-        "<li>Verifiche EC5/EC4, stato limite di esercizio (fessurazioni, scorrimenti) e deformabilità.</li>"
-        "</ul>"
-        "<h4>Posa e controlli</h4>"
-        "<p>Viti/staffe dedicate, tracciamento degli interassi, DPI, registrazione dei controlli di tiro/estrazione dove previsti.</p>"
-    )
+    if mode == "breve": return "CTL: connettori per sistemi legno-calcestruzzo."
+    if mode == "standard": return "CTL: usati in sistemi acciaio-legno/legno-cls; posa con viti dedicate."
+    return "CTL — scheda tecnica: specie legno, spessori, verifiche EC5/EC4, posa con staffe/viti."
 
 def ceme_answer_info(mode: str) -> str:
-    if mode == "breve":
-        return (
-            "<p><strong>CEM-E</strong> collega un getto di calcestruzzo nuovo a uno esistente, assicurando continuità strutturale. "
-            "È la scelta tipica per ampliamenti e risanamenti.</p>"
-        )
-    if mode == "standard":
-        return (
-            "<h3>CEM-E — uso tipico</h3>"
-            "<p>Connettori cls/cls posati a foro con resina o ancorante certificato. "
-            "Verifiche su resistenze del supporto e ancoraggio, secondo ETA e norme locali. Posa con foratura, pulizia foro e iniezione controllata.</p>"
-        )
-    return (
-        "<h3>CEM-E — guida tecnica</h3>"
-        "<h4>Parametri chiave</h4>"
-        "<ul>"
-        "<li>Resistenza del cls esistente e del nuovo; profondità di ancoraggio; diametro foro; tipo di resina.</li>"
-        "<li>Controlli pull-out a campione in cantiere, laddove richiesti.</li>"
-        "</ul>"
-        "<h4>Procedura di posa</h4>"
-        "<p>Foratura Ø definito, pulizia con aria/spazzola, iniezione resina, inserimento connettore, tempi di attesa, collaudo.</p>"
-    )
+    if mode == "breve": return "CEM-E: unisce cls nuovo a esistente."
+    if mode == "standard": return "CEM-E: connettori a foro+resina per collegare getti; verifiche ETA."
+    return "CEM-E — scheda tecnica: cls esistente/nuovo, foratura e resina, controlli di estrazione."
 
 def diapason_answer_info(mode: str) -> str:
-    if mode == "breve":
-        return (
-            "<p><strong>Diapason</strong> consente il rinforzo di solai esistenti con interventi poco invasivi, "
-            "migliorando rigidezza e capacità senza demolizioni estese.</p>"
-        )
-    if mode == "standard":
-        return (
-            "<h3>Diapason — campo di applicazione</h3>"
-            "<p>Connettore a lamiera sagomata per riqualifica/adeguamento; distribuzione diffusa dei carichi; "
-            "posa con chiodi/ancoranti e integrazione nel getto. Ideale in ristrutturazioni con spessori limitati.</p>"
-        )
-    return (
-        "<h3>Diapason — guida tecnica</h3>"
-        "<h4>Progetto</h4>"
-        "<ul>"
-        "<li>Geometria del connettore, spessori lamiera, barre di ripartizione (Ø8–Ø10) e passo.</li>"
-        "<li>Verifiche: trasferimento taglio, compatibilità col cls esistente, dettagli di ancoraggio.</li>"
-        "</ul>"
-        "<h4>Posa</h4>"
-        "<p>Tracciatura, fissaggio meccanico o con chiodatrice, controllo interassi; DPI e collaudo visivo/funzionale.</p>"
-    )
+    if mode == "breve": return "Diapason: rinforzo solai esistenti."
+    if mode == "standard": return "Diapason: lamiera sagomata per riqualifica; posa con chiodi/ancoranti."
+    return "Diapason — scheda tecnica: geometria, barre, verifiche taglio, posa e DPI."
 
-def tpl_ctf_calc(mode: str, p: dict, h_cap: str, note: str | None=None) -> str:
-    # tutti HTML “narrativi”
+def tpl_ctf_calc(mode: str, p: dict, h_cap: str, note: str|None=None) -> str:
     if mode == "breve":
-        return (
-            f"<p><strong>Consiglio:</strong> CTF <strong>{h_cap}</strong>, dimensionato su domanda e combinazione indicate. "
-            f"{(' '+note) if note else ''}</p>"
-        )
+        return f"Consiglio CTF {h_cap}."
     if mode == "standard":
-        return (
-            "<h3>Scelta altezza CTF</h3>"
-            f"<p><strong>Dati:</strong> lamiera H{p.get('h_lamiera','—')} ({p.get('dir','—')}), passo gola {p.get('passo','—')} mm; "
-            f"soletta {p.get('s_soletta','—')} mm; passo lungo trave {p.get('s_long','—')} mm; "
-            f"V<sub>L,Ed</sub>={p.get('vled','—')} kN/m; cls {p.get('cls','—')}.</p>"
-            f"<p><strong>Esito:</strong> CTF <strong>{h_cap}</strong>.</p>"
-            f"{('<p><em>Nota:</em> '+note+'</p>') if note else ''}"
-        )
-    # dettagliata (C) — scheda corposa
-    return (
-        "<h3>Verifica connettori CTF — esito e motivazione</h3>"
-        "<h4>Input di progetto</h4>"
-        f"<ul>"
-        f"<li>Lamiera H{p.get('h_lamiera','—')} ({p.get('dir','—')}), passo gola {p.get('passo','—')} mm; "
-        f"t={p.get('t_lamiera','—')} mm; nr={p.get('nr_gola','—')}/gola</li>"
-        f"<li>Soletta {p.get('s_soletta','—')} mm; passo lungo trave {p.get('s_long','—')} mm</li>"
-        f"<li>V<sub>L,Ed</sub>={p.get('vled','—')} kN/m; cls {p.get('cls','—')}</li>"
-        f"</ul>"
-        "<h4>Metodo di verifica</h4>"
-        "<ul>"
-        "<li>PRd da tabelle/ETA (soletta piena) oppure P₀×k<sub>t</sub> su lamiera, con dipendenza da t e nr/gola.</li>"
-        "<li>Capacità per metro = PRd × (1000 / passo lungo trave).</li>"
-        "<li>Criterio: capacità ≥ domanda × margine.</li>"
-        "</ul>"
-        f"<h4>Esito tecnico</h4><p>Altezza consigliata: <strong>{h_cap}</strong>.</p>"
-        f"{('<p><em>Nota:</em> '+note+'</p>') if note else ''}"
-        "<h4>Raccomandazioni</h4>"
-        "<ul>"
-        "<li>Controllare interassi, distanze da estremità e staffe secondo manuale Tecnaria.</li>"
-        "<li>Verificare coerenza passo in gola ↔ direzione lamiera e centratura in gola.</li>"
-        "</ul>"
-        "<h4>Riferimenti</h4>"
-        "<p>ETA-18/0447, EC4; posa tramite P560.</p>"
-    )
+        return f"Dati: H{p.get('h_lamiera','—')}, soletta {p.get('s_soletta','—')} mm, cls {p.get('cls','—')} → esito: CTF {h_cap}."
+    return (f"Input: lamiera H{p.get('h_lamiera','—')}, soletta {p.get('s_soletta','—')} mm, cls {p.get('cls','—')}, "
+            f"t={p.get('t_lamiera','—')} mm, nr={p.get('nr_gola','—')}/gola. "
+            f"Esito: CTF {h_cap}. Note: {note}")
+
+# =========================================
+# 5) Allegati
+# =========================================
+def tool_attachments(topic: str, intent: str):
+    out = []
+    if topic == "P560":
+        out.append({"label":"Foto P560","href":"/static/img/p560_magazzino.jpg"})
+    if topic == "CTF" and intent == "POSA":
+        out.append({"label":"Nota posa CTF (PDF)","href":"/static/docs/ctf_posa.pdf"})
+    return out
+
+# =========================================
+# 6) Routes
+# =========================================
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/api/answer", methods=["POST"])
+def api_answer():
+    data = request.get_json(force=True) or {}
+    question = (data.get("question") or "").strip()
+    mode = (data.get("mode") or "dettagliata").strip().lower()
+    context = (data.get("context") or "").strip()
+
+    if contains_denylist(question):
+        return jsonify({"answer":"Assistente dedicato a prodotti Tecnaria S.p.A.","meta":{"needs_params":False,"required_keys":[]}})
+
+    topic = detect_topic(question)
+    intent = detect_intent(question)
+
+    if topic is None:
+        return jsonify({"answer":"Domanda non riconosciuta. Chiedi su prodotti Tecnaria (CTF/CTL/CEM-E/Diapason/P560).",
+                        "meta":{"needs_params":False,"required_keys":[]}})
+
+    if topic == "CTF" and intent == "CALC":
+        parsed = parse_ctf_context(context)
+        miss = missing_ctf_keys(parsed)
+        if miss:
+            labels = [UI_LABELS[k] for k in miss]
+            return jsonify({"answer":"Per procedere servono: " + ", ".join(labels),
+                            "meta":{"needs_params":True,"required_keys":labels}})
+        h, npm, capm, dem, util, safety, note = choose_ctf_height(parsed)
+        ans = tpl_ctf_calc(mode, parsed, h, note)
+        return jsonify({"answer":ans,"meta":{"needs_params":False,"required_keys":[]},
+                        "attachments":tool_attachments(topic,intent)})
+
+    if topic == "CTF" and intent == "POSA":
+        return jsonify({"answer":tpl_ctf_posa(mode),"meta":{"needs_params":False,"required_keys":[]},
+                        "attachments":tool_attachments(topic,intent)})
+
+    if topic == "CTF":
+        return jsonify({"answer":ctf_answer_info(mode),"meta":{"needs_params":False,"required_keys":[]},
+                        "attachments":tool_attachments(topic,"INFO")})
+    if topic == "CTL":
+        return jsonify({"answer":ctl_answer_info(mode),"meta":{"needs_params":False,"required_keys":[]}})
+    if topic == "CEME":
+        return jsonify({"answer":ceme_answer_info(mode),"meta":{"needs_params":False,"required_keys":[]}})
+    if topic == "DIAPASON":
+        return jsonify({"answer":diapason_answer_info(mode),"meta":{"needs_params":False,"required_keys":[]}})
+    if topic == "P560":
+        return jsonify({"answer":p560_answer(mode),"meta":{"needs_params":False,"required_keys":[]},
+                        "attachments":tool_attachments(topic,"INFO")})
+
+    return jsonify({"answer":"Prodotto non gestito.","meta":{"needs_params":False,"required_keys":[]}})
+
+@app.route("/health")
+def health():
+    return "ok", 200
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000, debug=True)
