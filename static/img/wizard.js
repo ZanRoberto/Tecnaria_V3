@@ -1,12 +1,18 @@
-// Campi per CALCOLO CTF
+// Mini-wizard per CALCOLO CTF con parametri ETA (inclusi t e nr)
 const WIZ_FIELDS = [
+  // Geometria
   { id:"lamiera", label:"Altezza lamiera (mm)", type:"number", placeholder:"55", required:true },
   { id:"soletta", label:"Spessore soletta (mm)", type:"number", placeholder:"60", required:true },
+  // Azioni/cls
   { id:"VLed",   label:"V_L,Ed (kN/m)", type:"number", placeholder:"150", required:true },
   { id:"cls",    label:"Classe cls", type:"text", placeholder:"C30/37", required:true },
+  // Passi
   { id:"s_gola", label:"Passo gola (mm)", type:"number", placeholder:"150", required:true },
   { id:"dir",    label:"Direzione lamiera", type:"select", options:["longitudinale","trasversale"], required:true },
-  { id:"s_long", label:"Passo lungo trave (mm)", type:"number", placeholder:"200", required:true }
+  { id:"s_long", label:"Passo lungo trave (mm)", type:"number", placeholder:"200", required:true },
+  // Lamiera – parametri per k_t (OBBLIGATORI su lamiera)
+  { id:"t",      label:"Spessore lamiera t (mm)", type:"number", step:"0.1", placeholder:"1.0", required:true },
+  { id:"nr",     label:"N° connettori per gola (nr)", type:"number", placeholder:"1", required:true }
 ];
 
 function buildWizard(container){
@@ -15,7 +21,8 @@ function buildWizard(container){
   const groups = [
     { title:"Geometria", ids:["lamiera","soletta"] },
     { title:"Azioni e cls", ids:["VLed","cls"] },
-    { title:"Passi", ids:["s_gola","dir","s_long"] }
+    { title:"Passi", ids:["s_gola","dir","s_long"] },
+    { title:"Parametri lamiera (ETA)", ids:["t","nr"] }
   ];
   groups.forEach(g=>{
     const hdr = document.createElement("div");
@@ -36,7 +43,9 @@ function buildWizard(container){
         });
       } else {
         input = document.createElement("input");
-        input.type = f.type; input.placeholder = f.placeholder || "";
+        input.type = f.type; 
+        if (f.step) input.step = f.step;
+        input.placeholder = f.placeholder || "";
       }
       input.id = "wiz_"+f.id; input.className = "wiz";
       wrap.appendChild(lbl); wrap.appendChild(input);
@@ -57,10 +66,11 @@ function fillContextFromWizard(textarea){
   const pg  = get("s_gola");   if(pg)  parts.push("passo gola "+pg+" mm");
   const dir = get("dir");      if(dir) parts.push("lamiera "+dir);
   const sl  = get("s_long");   if(sl)  parts.push("passo lungo trave "+sl+" mm");
+  const t   = get("t");        if(t)   parts.push("t="+t+" mm");
+  const nr  = get("nr");       if(nr)  parts.push("nr="+nr);
   textarea.value = parts.join(", ");
 }
 
 // Esporta
 window.buildWizard = buildWizard;
 window.fillContextFromWizard = fillContextFromWizard;
-
