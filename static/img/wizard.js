@@ -1,19 +1,15 @@
 /* =========================================================================
-   TecnariaBot - wizard.js (completo)
-   - Gestione modalità A/B/C
-   - Mini-wizard dinamico per domande di calcolo (CTF)
-   - Compilazione automatica del campo "Dati tecnici richiesti"
-   - Validazione, salvataggio localStorage, evidenziazione required_keys
+   TecnariaBot - wizard.js (COMPLETO)
    ========================================================================= */
 
-let CURRENT_MODE = 'dettagliata';   // default C
+const WIZARD_VERSION = "2025-09-19-ctf-02";
+let CURRENT_MODE = "dettagliata";   // default = C
 const STORAGE_PREFIX = "tecnaria_wizard_";
 
 /* ===========================
    1) SCHEMI DEI CAMPI (CONFIG)
    =========================== */
 const WIZARD_SCHEMAS = {
-  // Campi per calcolo CTF (esempio base)
   CTF_CALC: [
     { id:"h_lamiera", label:"Altezza lamiera (mm)", type:"number", required:true,  placeholder:"55",  min:"30", step:"1" },
     { id:"s_soletta", label:"Spessore soletta (mm)", type:"number", required:true, placeholder:"60",  min:"40", step:"5" },
@@ -28,17 +24,23 @@ const WIZARD_SCHEMAS = {
 /* ===================================
    2) RICONOSCIMENTO INTENTO (frontend)
    =================================== */
+// -> copre plurali, sinonimi, varianti di scrittura (V_L,Ed / V L Ed / kn/m…), “quanti/quante”
 function detectWizardSchema(text) {
   const t = (text || "").toLowerCase();
 
-  // è un intento di calcolo/scelta tecnica?
-  const isCalc = /(altezza|dimension|v_l,?ed|portata|quale\s+altezza|numero\s+connettori|pr[ _.,-]?d|kn\/m)/.test(t);
-  if (!isCalc) return null;
+  // indizi di calcolo/scelta tecnica
+  const calcHints =
+    /(altezza|altezze|dimension|dimensiona|dimensionamento|v[\s_.,-]*l[\s_.,-]*,?ed|v[\s_.,-]*l|kn\/?m|portata|quanti|quante|quale\s+altezza|numero\s+connettori|pr[\s_.,-]*d)/;
 
-  // routing per prodotto/ambito
-  if (/(^|\s)ctf(\s|$)|lamiera|soletta|solaio|gola/.test(t)) return "CTF_CALC";
+  // ambito CTF/solaio/lamiera
+  const isCTF =
+    /(ctf|connettore|connettori|lamiera|soletta|solaio|gola|passo\s+gola)/;
 
-  return null; // nessun wizard specifico
+  if (isCTF.test(t) && calcHints.test(t)) return "CTF_CALC";
+
+  // se parla di CTF ma non troviamo calcHints, lasciamo decidere al backend;
+  // se il backend chiede parametri, forzeremo comunque CTF_CALC
+  return null;
 }
 
 /* =====================================================
@@ -47,7 +49,9 @@ function detectWizardSchema(text) {
 function renderWizard(schemaKey) {
   const box = document.getElementById("wizard-dynamic");
   if (!box) return;
-  box.innerHTML = "";
+  const fieldsWrap = document.getElementById("wizard-fields") || box;
+
+  fieldsWrap.innerHTML = "";
   box.dataset.schema = "";
 
   if (!schemaKey || !WIZARD_SCHEMAS[schemaKey]) {
@@ -78,27 +82,27 @@ function renderWizard(schemaKey) {
       if (f.placeholder) el.placeholder = f.placeholder;
       if (f.min) el.min = f.min;
       if (f.step) el.step = f.step;
+      el.inputMode = (f.type === "number") ? "decimal" : "text";
     }
     el.id = `w_${f.id}`;
     el.dataset.required = f.required ? "1" : "0";
     if (f.required) el.classList.add("required");
 
-    // Cambiando un campo → aggiorna il context + salva
     el.addEventListener("input", () => {
       syncWizardToContext();
       saveParams(schemaKey);
     });
 
     wrap.appendChild(el);
-    box.appendChild(wrap);
+    fieldsWrap.appendChild(wrap);
   });
 
   box.style.display = "block";
   box.dataset.schema = schemaKey;
 
-  // carica eventuali valori salvati
+  // ripristina eventuali valori salvati
   loadParams(schemaKey);
-  // aggiorna subito il context
+  // sincronizza subito il context
   syncWizardToContext();
 }
 
@@ -112,17 +116,15 @@ function buildContextFromSchema(schemaKey) {
     const v = el.value && String(el.value).trim();
     if (!v) return;
 
-    // formattazione CTF dedicata
     if (schemaKey === "CTF_CALC") {
-      if (f.id === "h_lamiera")   parts.push(`lamiera H${v}`);
+      if (f.id === "h_lamiera")      parts.push(`lamiera H${v}`);
       else if (f.id === "s_soletta") parts.push(`soletta ${v} mm`);
       else if (f.id === "vled")      parts.push(`V_L,Ed=${v} kN/m`);
       else if (f.id === "cls")       parts.push(`cls ${v}`);
       else if (f.id === "passo")     parts.push(`passo gola ${v} mm`);
       else if (f.id === "dir")       parts.push(`lamiera ${v}`);
-      else parts.push(`${f.label}: ${v}`);
+      else                           parts.push(`${f.label}: ${v}`);
     } else {
-      // fallback: etichetta=valore
       parts.push(`${f.label}: ${v}`);
     }
   });
@@ -145,13 +147,15 @@ function syncWizardToContext() {
    4) SALVATAGGIO / RIPRISTINO DATI
    =============================== */
 function saveParams(schemaKey) {
-  const fields = WIZARD_SCHEMAS[schemaKey] || [];
-  const data = {};
-  fields.forEach(f => {
-    const el = document.getElementById(`w_${f.id}`);
-    data[f.id] = el ? el.value : "";
-  });
-  localStorage.setItem(STORAGE_PREFIX + schemaKey, JSON.stringify(data));
+  try {
+    const fields = WIZARD_SCHEMAS[schemaKey] || [];
+    const data = {};
+    fields.forEach(f => {
+      const el = document.getElementById(`w_${f.id}`);
+      data[f.id] = el ? el.value : "";
+    });
+    localStorage.setItem(STORAGE_PREFIX + schemaKey, JSON.stringify(data));
+  } catch (e) {}
 }
 
 function loadParams(schemaKey) {
@@ -163,9 +167,7 @@ function loadParams(schemaKey) {
       const el = document.getElementById(`w_${id}`);
       if (el) el.value = data[id];
     });
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) {}
 }
 
 /* ======================
@@ -195,91 +197,87 @@ function validateWizard(schemaKey) {
    6) MODALITÀ A/B/C (pulsanti)
    ========================= */
 function setMode(m) {
-  CURRENT_MODE = m || 'dettagliata';
+  CURRENT_MODE = m || "dettagliata";
 
-  // feedback visivo (se esistono i bottoni con questi ID)
-  const map = { breve: 'btnA', standard: 'btnB', dettagliata: 'btnC' };
-  ['btnA','btnB','btnC'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+  const map = { breve: "btnA", standard: "btnB", dettagliata: "btnC" };
+  ["btnA","btnB","btnC"].forEach(id => document.getElementById(id)?.classList.remove("active"));
   const btnId = map[CURRENT_MODE];
-  if (btnId) document.getElementById(btnId)?.classList.add('active');
+  if (btnId) document.getElementById(btnId)?.classList.add("active");
 }
 
 /* =====================================
    7) INVIO DOMANDA → /api/answer (fetch)
    ===================================== */
 async function sendQuestion() {
-  const questionEl = document.getElementById('question');
-  const contextEl  = document.getElementById('context');
-  const answerBox  = document.getElementById('answer-box');
+  const questionEl = document.getElementById("question");
+  const contextEl  = document.getElementById("context");
+  const answerBox  = document.getElementById("answer-box");
 
   const question = questionEl ? (questionEl.value || "") : "";
   const context  = contextEl ? (contextEl.value || "") : "";
 
-  // accensione wizard anticipata (UX)
+  // rilevamento anticipato: accendi wizard se necessario
   const preSchema = detectWizardSchema(question);
   if (preSchema) renderWizard(preSchema);
 
-  // se wizard visibile ed è un calcolo -> valida i campi
+  // validazione se il wizard è visibile
   const wizBox = document.getElementById("wizard-dynamic");
   const schemaKey = wizBox && wizBox.style.display !== "none" ? (wizBox.dataset.schema || "") : "";
   if (schemaKey) {
     const ok = validateWizard(schemaKey);
-    if (!ok) return; // ferma invio
+    if (!ok) return;
   }
 
-  // invio al backend
+  // invio (no-store per evitare cache nelle risposte)
+  let data = {};
   try {
-    const res = await fetch('/api/answer', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json' },
+    const res = await fetch("/api/answer", {
+      method: "POST",
+      headers: { "Content-Type":"application/json", "X-Wizard-Version": WIZARD_VERSION },
+      cache: "no-store",
       body: JSON.stringify({ question, mode: CURRENT_MODE, context })
     });
-
-    let data = {};
     try { data = await res.json(); } catch(e) {}
-
-    // Se il backend chiede parametri → evidenzia, mostra wizard e stop
-    if (data?.meta?.needs_params) {
-      const schema = detectWizardSchema(question) || "CTF_CALC";
-      renderWizard(schema);
-
-      // Mappa chiave → id campo del wizard
-      const fieldMap = {
-        "passo gola": "passo",
-        "V_L,Ed": "vled",
-        "cls": "cls",
-        "direzione lamiera": "dir",
-        // estendibile per altri schemi
-      };
-      (data.meta.required_keys || []).forEach(k => {
-        const id = 'w_' + (fieldMap[k] || k);
-        const el = document.getElementById(id);
-        if (el) el.classList.add('required');
-      });
-
-      if (answerBox) {
-        answerBox.innerText = 'Per completare la risposta, inserisci i dati richiesti nel riquadro sopra e premi "Invia" di nuovo.';
-      }
-      return;
-    }
-
-    // Stampa risposta e, se presenti, eventuali allegati
-    if (answerBox) {
-      let html = "";
-      if (data?.answer) html += data.answer;
-      if (data?.attachments && Array.isArray(data.attachments) && data.attachments.length) {
-        html += "\n\nAllegati / Note collegate:\n";
-        data.attachments.forEach(a => {
-          const href = a.url || a.path || a.href || a;
-          if (href) html += `- ${href}\n`;
-        });
-      }
-      // mostra come testo semplice per compatibilità; se vuoi HTML, usa innerHTML
-      answerBox.textContent = html || "Nessuna risposta.";
-    }
-
   } catch (err) {
     if (answerBox) answerBox.innerText = "Errore di rete. Riprova.";
+    return;
+  }
+
+  // Se il backend segnala che servono parametri → forza il wizard e evidenzia i campi richiesti
+  if (data?.meta?.needs_params) {
+    const schema = detectWizardSchema(question) || "CTF_CALC";
+    renderWizard(schema);
+
+    const fieldMap = {
+      "passo gola": "passo",
+      "V_L,Ed": "vled",
+      "cls": "cls",
+      "direzione lamiera": "dir",
+      // estendibile per altri schemi/prodotti
+    };
+    (data.meta.required_keys || []).forEach(k => {
+      const id = "w_" + (fieldMap[k] || k);
+      document.getElementById(id)?.classList.add("required");
+    });
+
+    if (answerBox) {
+      answerBox.textContent =
+        'Per completare la risposta, inserisci i dati richiesti nel riquadro sopra e premi "Invia" di nuovo.';
+    }
+    return;
+  }
+
+  // stampa la risposta (e gli eventuali allegati)
+  if (answerBox) {
+    let out = data?.answer || "Nessuna risposta.";
+    if (data?.attachments && Array.isArray(data.attachments) && data.attachments.length) {
+      out += "\n\nAllegati / Note collegate:\n";
+      data.attachments.forEach(a => {
+        const href = a.url || a.path || a.href || a;
+        if (href) out += `- ${href}\n`;
+      });
+    }
+    answerBox.textContent = out;
   }
 }
 
@@ -287,26 +285,27 @@ async function sendQuestion() {
    8) INIZIALIZZAZIONE DOPO CARICAMENTO DOM
    ====================================== */
 document.addEventListener("DOMContentLoaded", () => {
-  // wiring pulsanti (se esistono in pagina)
-  document.getElementById('btnA')?.addEventListener('click', () => setMode('breve'));
-  document.getElementById('btnB')?.addEventListener('click', () => setMode('standard'));
-  document.getElementById('btnC')?.addEventListener('click', () => setMode('dettagliata'));
-  document.getElementById('btnSend')?.addEventListener('click', sendQuestion);
+  // wiring pulsanti (se presenti)
+  document.getElementById("btnA")?.addEventListener("click", () => setMode("breve"));
+  document.getElementById("btnB")?.addEventListener("click", () => setMode("standard"));
+  document.getElementById("btnC")?.addEventListener("click", () => setMode("dettagliata"));
+  document.getElementById("btnSend")?.addEventListener("click", sendQuestion);
 
-  // toggle automatico del wizard mentre l’utente digita la domanda
+  // toggle wizard mentre si digita la domanda
   const q = document.getElementById("question");
   if (q) {
     const toggle = () => {
       const schema = detectWizardSchema(q.value);
-      if (schema) renderWizard(schema); else {
+      if (schema) renderWizard(schema);
+      else {
         const box = document.getElementById("wizard-dynamic");
         if (box) { box.style.display = "none"; box.dataset.schema = ""; }
       }
     };
     q.addEventListener("input", toggle);
-    toggle(); // prima valutazione
+    toggle();
   }
 
-  // evidenzia default mode C
+  // evidenzia modalità di default
   setMode(CURRENT_MODE);
 });
