@@ -1,164 +1,81 @@
 :root {
-  --bg: #0d1117;
-  --fg: #e6edf3;
-  --muted: #8b949e;
-  --primary: #58a6ff;
-  --accent: #3fb950;
-  --card: #161b22;
-  --border: #30363d;
-  --radius: 16px;
-  --shadow: 0 8px 20px rgba(0,0,0,0.4);
-  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --tecnaria-orange: #f37021;
+  --light-bg: #ffffff;
+  --dark-bg: #1e1e1e;
 }
 
-/* Base */
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* Generale */
 body {
-  background: var(--bg);
-  color: var(--fg);
-  font: 16px/1.5 var(--font);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-.container { width: min(100%, 960px); margin: 0 auto; padding: 0 20px; }
-
-/* Header + footer */
-header, footer { text-align: center; padding: 24px; }
-header h1 { font-size: 32px; margin-bottom: 4px; }
-.subtitle { color: var(--muted); font-size: 15px; }
-footer { margin-top: auto; font-size: 13px; color: var(--muted); }
-
-/* Header con logo */
-.header-logo {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  justify-content: center;
-}
-.logo {
-  height: 60px;
-  width: auto;
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-}
-
-/* Pannelli e input */
-.panel {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  font-family: Arial, sans-serif;
+  background-color: var(--dark-bg);
+  color: #fff;
+  margin: 0;
   padding: 20px;
-  margin: 20px 0;
-  box-shadow: var(--shadow);
 }
-.label { font-size: 14px; margin-bottom: 8px; color: var(--muted); }
 
-textarea, input[type="text"], input[type="number"], select {
+.container {
+  max-width: 800px;
+  margin: auto;
+  background: #2c2c2c;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.4);
+}
+
+h1 {
+  color: var(--tecnaria-orange);
+}
+
+/* Label */
+label {
+  display: block;
+  margin-top: 12px;
+  color: var(--tecnaria-orange);
+  font-weight: bold;
+}
+
+/* Input, textarea, select */
+textarea, input, select {
   width: 100%;
-  background: #0d1117;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--fg);
-  padding: 12px;
-}
-textarea:focus, input:focus, select:focus {
-  border-color: var(--primary);
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(88,166,255,0.15);
+  background-color: var(--light-bg);
+  color: #000;
+  border: 1px solid var(--tecnaria-orange);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  font-size: 14px;
 }
 
-/* Griglia card modalità */
-.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-@media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+textarea[readonly] {
+  background-color: #f8f8f8;
+  color: #555;
+}
 
-.card {
-  background: var(--card);
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
+/* Bottoni */
+button {
+  background-color: var(--tecnaria-orange);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-  text-align: left;
+  font-weight: bold;
 }
-.card:hover { transform: translateY(-3px); border-color: var(--primary); }
-.card.active { border-color: var(--accent); background: #1a222e; }
-.card h3 { margin: 10px 0 6px; }
-.card p { color: var(--muted); font-size: 14px; }
-.badge {
-  display: inline-block;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: #fff; padding: 4px 8px; border-radius: 8px;
-  font-weight: 700; font-size: 13px; box-shadow: var(--shadow);
+button:hover {
+  opacity: 0.9;
 }
 
-/* Azioni */
-.actions { margin-top: 10px; display: flex; gap: 10px; align-items: center; }
-.primary {
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  border: none; color: #0d1117; font-weight: 700;
-  padding: 12px 20px; border-radius: 12px; cursor: pointer; box-shadow: var(--shadow);
-}
-.primary:disabled { opacity: 0.6; cursor: not-allowed; }
-.ghost {
-  background: transparent; border: 1px solid var(--border);
-  border-radius: 8px; padding: 6px 12px; color: var(--fg); cursor: pointer;
-}
-.hint { font-size: 13px; color: var(--muted); }
-.status { margin-top: 10px; color: var(--muted); }
-
-/* Risultato */
-.result-header {
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
-}
-.result {
-  background: #0d1117; border: 1px solid var(--border);
-  border-radius: 12px; padding: 12px; min-height: 150px; white-space: pre-wrap;
+/* Card */
+.card {
+  background: #3a3a3a;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 12px;
 }
 
-/* Allegati / Note collegate */
-.attach-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
-  gap: 12px;
-}
-@media (max-width: 800px){ .attach-grid { grid-template-columns: 1fr; } }
-
-.attach-card {
-  display: flex; align-items: center; justify-content: center;
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 12px; min-height: 100px; padding: 10px;
-  text-decoration: none; color: var(--fg); box-shadow: var(--shadow);
-  transition: transform .12s ease, border-color .12s ease;
-}
-.attach-card:hover { transform: translateY(-2px); border-color: var(--primary); }
-.attach-card img { max-width: 100%; max-height: 200px; border-radius: 8px; display: block; }
-.attach-card.pdf { font-weight: 700; }
-.attach-card.link { color: var(--muted); font-size: 14px; word-break: break-all; }
-
-/* Contesti rapidi + mini-form CTF */
-.quick-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.quick-toggle { color: var(--muted); font-size: 14px; display: flex; align-items: center; gap: 8px; }
-
-.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-.chip {
-  background: #0d1117; border: 1px solid var(--border); color: var(--fg);
-  padding: 6px 10px; border-radius: 999px; cursor: pointer; transition: border-color .12s ease, transform .12s ease;
-}
-.chip:hover { border-color: var(--primary); transform: translateY(-1px); }
-
-.ctf-form { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
-@media (max-width: 820px){ .ctf-form { grid-template-columns: 1fr; } }
-.ctf-form .row { display: flex; flex-direction: column; gap: 6px; }
-.ctf-form label { font-size: 13px; color: var(--muted); }
-.ctf-form input, .ctf-form select {
-  background: #0d1117; color: var(--fg); border: 1px solid var(--border);
-  border-radius: 10px; padding: 8px 10px;
-}
-
-/* Accessibilità focus per bottoni/card */
-button:focus-visible, .card:focus-visible, .chip:focus-visible, .ghost:focus-visible, .primary:focus-visible, a.attach-card:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-  border-radius: 12px;
+/* Campi obbligatori */
+input.required, select.required {
+  border: 2px solid var(--tecnaria-orange);
+  box-shadow: 0 0 4px var(--tecnaria-orange);
 }
