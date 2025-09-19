@@ -1,43 +1,23 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8">
-  <title>TecnariaBot</title>
-  <link rel="stylesheet" href="/static/img/style.css">
-</head>
-<body>
-  <div class="container">
-    <h1>TecnariaBot</h1>
-    <p>Assistente Tecnico • Risposte A/B/C sempre coerenti</p>
+<!-- ... -->
+<div class="mode-select">
+  <button type="button" id="btnA">A Breve</button>
+  <button type="button" id="btnB">B Standard</button>
+  <button type="button" id="btnC">C Dettagliata</button>
+</div>
 
-    <!-- Campo domanda -->
-    <label for="question"><b>Domanda</b></label>
-    <textarea id="question" name="question" rows="3" placeholder="Scrivi la tua domanda..."></textarea>
+<label for="context"><b>Dati tecnici richiesti (se la domanda è di calcolo)</b></label>
+<textarea id="context" rows="3" readonly placeholder="Se necessario verrà compilato dal mini-wizard…"></textarea>
 
-    <!-- Scelte modalità -->
-    <div class="mode-select">
-      <button type="button" onclick="setMode('breve')">A Breve</button>
-      <button type="button" onclick="setMode('standard')">B Standard</button>
-      <button type="button" onclick="setMode('dettagliata')">C Dettagliata</button>
-    </div>
+<button type="button" id="btnSend">Invia</button>
 
-    <!-- Wizard dinamico -->
-    <div id="wizard-dynamic" class="card" style="display:none" data-schema="">
-      <!-- I campi vengono generati in JS -->
-    </div>
+<div id="answer-box" class="card"></div>
 
-    <!-- Campo context -->
-    <label for="context"><b>Dati tecnici richiesti (se la domanda è di calcolo)</b></label>
-    <textarea id="context" name="context" rows="3" readonly
-              placeholder="Se necessario verrà compilato dal mini-wizard…"></textarea>
-
-    <!-- Pulsante invio -->
-    <button type="button" onclick="sendQuestion()">Invia</button>
-
-    <!-- Risposta -->
-    <div id="answer-box" class="card"></div>
-  </div>
-
-  <script src="/static/img/wizard.js"></script>
-</body>
-</html>
+<!-- carica gli script in fondo alla pagina -->
+<script src="/static/img/wizard.js"></script>
+<script>
+  // wiring pulsanti
+  document.getElementById('btnA').addEventListener('click', () => setMode('breve'));
+  document.getElementById('btnB').addEventListener('click', () => setMode('standard'));
+  document.getElementById('btnC').addEventListener('click', () => setMode('dettagliata'));
+  document.getElementById('btnSend').addEventListener('click', sendQuestion);
+</script>
