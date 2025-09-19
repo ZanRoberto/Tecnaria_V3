@@ -1,7 +1,3 @@
-# app.py — TecnariaBot backend v1.3 (senza P800)
-# Flask app con: intent/topic detection, parsing CTF, required dinamici, template A/B/C,
-# allegati tecnici, fallback informativo e "gancio" PRd per scelta altezza CTF.
-
 from flask import Flask, render_template, request, jsonify
 import re, os, json
 
@@ -10,11 +6,10 @@ app = Flask(__name__, static_folder="static", template_folder="templates")
 # ==============================
 # 0) Costanti: whitelist/denylist
 # ==============================
-TECNARIA_TOPICS = {"CTF", "CTL", "CEME", "DIAPASON", "P560"}  # P800 rimosso
+TECNARIA_TOPICS = {"CTF", "CTL", "CEME", "DIAPASON", "P560"}  # P800 escluso
 DENYLIST = {
-    # marchi/sistemi NON Tecnaria: blocco
     "hbv", "x-hbv", "xhbv", "fva", "hi-bond", "hibond", "ribdeck", "sherpa",
-    "lindapter", "hilti shear", "x-fcm", "x-hcc", "p800"  # P800 esplicitamente in denylist
+    "lindapter", "hilti shear", "x-fcm", "x-hcc", "p800"
 }
 
 # ============================
@@ -24,7 +19,6 @@ def detect_topic(q: str) -> str | None:
     t = q.lower()
     if any(k in t for k in [" p560", "p560 ", "chiodatrice", "spit p560"]):
         return "P560"
-    # P800 rimosso (non Tecnaria)
     if "diapason" in t:
         return "DIAPASON"
     if any(k in t for k in ["cem-e", "ceme", "cem e"]):
@@ -36,7 +30,6 @@ def detect_topic(q: str) -> str | None:
     return None
 
 def detect_intent(q: str) -> str:
-    """CALC: dimensionamento/scelta; POSA: istruzioni; CONFRONTO; INFO: descrizione generale."""
     t = q.lower()
     calc_hints = [
         "altezza", "altezze", "dimension", "dimensiona", "dimensionamento",
@@ -45,7 +38,6 @@ def detect_intent(q: str) -> str:
     ]
     posa_hints = ["posa", "posare", "installazione", "fissare", "utilizzo", "uso in cantiere"]
     conf_hints = ["differenza", "vs", "confronto", "meglio", "alternativa"]
-
     if any(k in t for k in calc_hints):   return "CALC"
     if any(k in t for k in posa_hints):   return "POSA"
     if any(k in t for k in conf_hints):   return "CONFRONTO"
@@ -65,7 +57,7 @@ CTX_RE = {
     "cls":       re.compile(r"cls\s*([Cc]\d+\/\d+)", re.I),
     "passo":     re.compile(r"passo\s*gola\s*(\d+)\s*mm", re.I),
     "dir":       re.compile(r"lamiera\s*(longitudinale|trasversale)", re.I),
-    "s_long":    re.compile(r"passo\s+lungo\s+trave\s*(\d+)\s*mm", re.I),  # passo lungo trave
+    "s_long":    re.compile(r"passo\s+lungo\s+trave\s*(\d+)\s*mm", re.I),
 }
 
 CRITICAL_CTF_KEYS = ["h_lamiera", "s_soletta", "vled", "cls", "passo", "dir", "s_long"]
@@ -103,22 +95,9 @@ def missing_ctf_keys(parsed: dict) -> list[str]:
     return [k for k in CRITICAL_CTF_KEYS if k not in parsed]
 
 # ===========================================
-# 3) Tabelle PRd (opzionale) + scelta altezza
+# 3) Tabelle PRd (JSON) + scelta altezza
 # ===========================================
 def load_ctf_prd():
-    """
-    Carica le PRd (kN per connettore) da /static/data/ctf_prd.json
-    Struttura attesa (esempio):
-    {
-      "H55": {
-        "longitudinale": {
-          "passo_gola_150": {
-            "C30/37": { "CTF_60": 12.3, "CTF_75": 16.1, "CTF_90": 19.8 }
-          }
-        }
-      }
-    }
-    """
     path = os.path.join(app.static_folder, "data", "ctf_prd.json")
     if os.path.exists(path):
         try:
@@ -131,28 +110,24 @@ def load_ctf_prd():
 PRD_TABLE = load_ctf_prd()
 
 def choose_ctf_height(params: dict, safety=1.10):
-    """
-    Restituisce (height_mm, n_per_m, cap_per_m, demand_per_m, utilization, safety).
-    Se mancano i dati nelle tabelle → height_mm = "da determinare".
-    """
     H = f"H{params['h_lamiera']}"
     dirn = params["dir"]
     passo_gola = f"passo_gola_{params['passo']}"
     cls = params["cls"]
-    v_required = float(params["vled"])       # kN/m (domanda)
+    v_required = float(params["vled"])       # kN/m
     s_long = float(params["s_long"])         # mm
-    n_per_m = 1000.0 / s_long                # connettori per metro
+    n_per_m = 1000.0 / s_long                # connettori/m
 
     try:
-        leaf = PRD_TABLE[H][dirn][passo_gola][cls]  # dict: {"CTF_60": PRd, ...}
+        leaf = PRD_TABLE[H][dirn][passo_gola][cls]  # {"CTF_60": PRd, ...}
     except Exception:
         return ("da determinare (manca combinazione nelle tabelle PRd)", n_per_m, None, v_required, None, safety)
 
     candidates = sorted(leaf.items(), key=lambda kv: int(kv[0].split("_")[1]))
     for name, prd_one in candidates:
-        cap_per_m = float(prd_one) * n_per_m          # kN/m (offerta)
+        cap_per_m = float(prd_one) * n_per_m
         if cap_per_m >= v_required * safety:
-            height_mm = name.replace("CTF_", "")      # "60"/"75"/"90"
+            height_mm = name.replace("CTF_", "")
             utilization = v_required / cap_per_m
             return (height_mm, n_per_m, cap_per_m, v_required, utilization, safety)
 
@@ -241,7 +216,6 @@ def api_answer():
     mode = (data.get("mode") or "dettagliata").strip().lower()
     context = (data.get("context") or "").strip()
 
-    # Blocca temi non Tecnaria
     if contains_denylist(q):
         return jsonify({
             "answer": "Questo assistente è dedicato esclusivamente a prodotti e servizi Tecnaria S.p.A.",
@@ -251,7 +225,6 @@ def api_answer():
     topic = detect_topic(q)
     intent = detect_intent(q)
 
-    # KB locale per risposte semplici (mai vuoto)
     KB = {
         "CTF": {
             "breve":   "Connettori per solai collaboranti acciaio–calcestruzzo; posa su trave attraverso lamiera.",
@@ -271,7 +244,7 @@ def api_answer():
         },
         "CEME": {
             "breve":   "Connettore per collegare cls esistente a nuovo getto.",
-            "standard":"CEM-E: collegamento cls esistente/nuovo; verifiche e posa da manuale Tecnaria.",
+            "standard":"CEM-E: collegamento cls esistente/nuovo; verifiche e posa da manuale.",
             "dettagliata":"CEM-E — Scelta/posa secondo tabelle Tecnaria; verifiche di ancoraggio e dettagli costruttivi."
         },
         "DIAPASON": {
@@ -289,14 +262,12 @@ def api_answer():
         block = KB.get(topic_key, {})
         return block.get(mode_key, block.get("standard", "Prodotto Tecnaria."))
 
-    # Fuori ambito
     if topic is None:
         return jsonify({
             "answer": "Assistente dedicato a prodotti e servizi Tecnaria S.p.A. (CTF/CTL/CEM-E/Diapason, P560).",
             "meta": {"needs_params": False, "required_keys": []}
         })
 
-    # --- CTF + CALC: parametri obbligatori (wizard) ---
     if topic == "CTF" and intent == "CALC":
         parsed = parse_ctf_context(context)
         missing = missing_ctf_keys(parsed)
@@ -316,7 +287,7 @@ def api_answer():
             "n_per_m": round(n_per_m, 3) if n_per_m else None,
             "cap_per_m": round(cap_per_m, 2) if cap_per_m else None,
             "demand_per_m": round(demand, 2) if demand is not None else None,
-            "utilization": round(utilization, 3) if utilization else None,
+            "utilization": round(utilization, 3) if isinstance(utilization,(int,float)) else None,
             "safety": safety
         }
 
@@ -326,7 +297,6 @@ def api_answer():
             "attachments": tool_attachments(topic, intent)
         })
 
-    # --- CTF + POSA ---
     if topic == "CTF" and intent == "POSA":
         return jsonify({
             "answer": tpl_ctf_posa(mode),
@@ -334,7 +304,6 @@ def api_answer():
             "attachments": tool_attachments(topic, intent)
         })
 
-    # --- Altri topic/intent → scheda informativa (mai vuoto) ---
     info = kb_answer(topic, mode)
     attachments = tool_attachments(topic, intent)
     if not info:
