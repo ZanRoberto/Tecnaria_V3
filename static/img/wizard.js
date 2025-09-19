@@ -12,16 +12,15 @@ const WIZ_FIELDS = [
 function buildWizard(container){
   if (!container) return;
   container.innerHTML = "";
-  // Ordine visivo a gruppi
   const groups = [
     { title:"Geometria", ids:["lamiera","soletta"] },
     { title:"Azioni e cls", ids:["VLed","cls"] },
     { title:"Passi", ids:["s_gola","dir","s_long"] }
   ];
   groups.forEach(g=>{
-    const h = document.createElement("div");
-    h.innerHTML = `<div class="hint" style="margin-top:.6rem;">${g.title}</div>`;
-    container.appendChild(h);
+    const hdr = document.createElement("div");
+    hdr.innerHTML = `<div class="hint" style="margin-top:.6rem">${g.title}</div>`;
+    container.appendChild(hdr);
     const grid = document.createElement("div");
     grid.className = "field-grid";
     g.ids.forEach(fid=>{
@@ -35,11 +34,11 @@ function buildWizard(container){
           const op = document.createElement("option");
           op.value=o; op.textContent=o; input.appendChild(op);
         });
-      }else{
+      } else {
         input = document.createElement("input");
         input.type = f.type; input.placeholder = f.placeholder || "";
       }
-      input.id = "wiz_"+f.id; input.className="wiz";
+      input.id = "wiz_"+f.id; input.className = "wiz";
       wrap.appendChild(lbl); wrap.appendChild(input);
       grid.appendChild(wrap);
     });
@@ -47,23 +46,20 @@ function buildWizard(container){
   });
 }
 
-// Costruisce il context dal contenuto dei campi
 function fillContextFromWizard(textarea){
   if(!textarea) return;
+  const get = id => document.getElementById("wiz_"+id)?.value;
   const parts = [];
-  const g = id => document.getElementById("wiz_"+id);
-
-  const lam = g("lamiera")?.value;     if(lam) parts.push("lamiera H"+lam);
-  const sol = g("soletta")?.value;     if(sol) parts.push("soletta "+sol+" mm");
-  const V   = g("VLed")?.value;        if(V) parts.push("V_L,Ed="+V+" kN/m");
-  const cls = g("cls")?.value;         if(cls) parts.push("cls "+cls);
-  const pg  = g("s_gola")?.value;      if(pg) parts.push("passo gola "+pg+" mm");
-  const dir = g("dir")?.value;         if(dir) parts.push("lamiera "+dir);
-  const sl  = g("s_long")?.value;      if(sl) parts.push("passo lungo trave "+sl+" mm");
-
+  const lam = get("lamiera");  if(lam) parts.push("lamiera H"+lam);
+  const sol = get("soletta");  if(sol) parts.push("soletta "+sol+" mm");
+  const V   = get("VLed");     if(V)   parts.push("V_L,Ed="+V+" kN/m");
+  const cls = get("cls");      if(cls) parts.push("cls "+cls);
+  const pg  = get("s_gola");   if(pg)  parts.push("passo gola "+pg+" mm");
+  const dir = get("dir");      if(dir) parts.push("lamiera "+dir);
+  const sl  = get("s_long");   if(sl)  parts.push("passo lungo trave "+sl+" mm");
   textarea.value = parts.join(", ");
 }
 
-// Espone per index.html
+// Esporta
 window.buildWizard = buildWizard;
 window.fillContextFromWizard = fillContextFromWizard;
