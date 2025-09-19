@@ -1,104 +1,281 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <title>TecnariaBot</title>
-  <link rel="stylesheet" href="/static/img/style.css?v=3">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TecnariaBot — Assistente Tecnico</title>
+
+  <!-- Stile in-page per facilità: se preferisci tieni style.css esterno -->
+  <link rel="stylesheet" href="/static/img/style.css?v=4">
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 0; }
-    header { background: #003366; color: white; padding: 1rem; display: flex; align-items: center; }
-    header img { height: 50px; margin-right: 1rem; }
-    h1 { margin: 0; font-size: 1.5rem; }
-    .container { max-width: 900px; margin: 2rem auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
-    label { font-weight: bold; }
-    textarea { width: 100%; height: 100px; margin-top: .5rem; padding: .5rem; font-size: 1rem; }
-    button { margin: .3rem; padding: .6rem 1.2rem; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-    .btnA { background: #0066cc; color: white; }
-    .btnB { background: #ff6600; color: white; }
-    .btnC { background: #009933; color: white; }
-    .response { margin-top: 1.5rem; padding: 1rem; border: 1px solid #ddd; border-radius: 5px; background: #fafafa; }
-    .attachments { margin-top: 1rem; }
-    .attachments a { display: block; margin: .3rem 0; color: #0066cc; text-decoration: underline; }
-    .loading { margin-top: 1rem; font-style: italic; color: #666; }
-    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem 1rem; margin-top: .5rem; }
-    .field-grid label { display: block; font-size: .9rem; margin-bottom: .2rem; }
-    .hint { font-size: .85rem; color: #555; margin-top: .5rem; }
+    /* layout */
+    :root{
+      --bg:#1f1f1f;
+      --card:#2b2b2b;
+      --muted:#bdbdbd;
+      --accent:#ff8a2b; /* arancio Tecnaria */
+      --accent-dark:#e06b00;
+      --white:#ffffff;
+      --radius:10px;
+    }
+    html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,Arial; color:var(--white)}
+    .wrap{max-width:1100px;margin:30px auto;padding:18px;border-radius:var(--radius);background:linear-gradient(180deg,#262626,#222);box-shadow:0 6px 24px rgba(0,0,0,0.6)}
+    header{display:flex;gap:14px;align-items:center}
+    header img{height:58px;border-radius:6px}
+    header h1{margin:0;font-size:26px;color:var(--accent)}
+    header p{margin:0;color:var(--muted);font-size:13px}
+    .section{margin-top:18px}
+    label{display:block;color:var(--accent);font-weight:700;margin-bottom:6px}
+    textarea,input,select{width:100%;box-sizing:border-box;background:#0f0f0f;border:1px solid #3a3a3a;color:var(--white);padding:12px;border-radius:8px;font-size:14px}
+    textarea{min-height:120px;resize:vertical}
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    .controls{margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .btn{border:0;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+    .btnA{background:#262626;color:var(--white);border:2px solid #4d4d4d}
+    .btnB{background:var(--accent);color:#fff}
+    .btnC{background:transparent;color:var(--accent);border:2px solid var(--accent)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    #wizard-box{margin-top:14px;padding:14px;background:linear-gradient(180deg,#232323,#1b1b1b);border-radius:8px;border:1px solid #2f2f2f}
+    .hint{color:var(--muted);font-size:13px;margin-top:6px}
+    .field-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .submit-row{display:flex;align-items:center;gap:14px;margin-top:12px}
+    .send{background:var(--accent);color:#fff;padding:10px 16px;border-radius:10px;border:0;font-weight:800;cursor:pointer}
+    .send:disabled{opacity:.6;cursor:not-allowed}
+    .response-area{margin-top:18px;padding:16px;border-radius:8px;background:#141414;border:1px solid #2b2b2b;min-height:80px}
+    .attachments{margin-top:10px}
+    .attachments a{color:var(--accent);text-decoration:underline;display:block;margin:6px 0}
+    /* spinner */
+    .spinner-wrap{display:flex;align-items:center;gap:10px;color:var(--muted)}
+    .spinner {
+      width:22px;height:22px;border-radius:50%;border:3px solid rgba(255,255,255,0.08);border-top-color:var(--accent);animation:spin 0.9s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    /* footer note */
+    .footer-note{margin-top:18px;color:var(--muted);font-size:13px}
+    /* responsive */
+    @media(max-width:760px){ .field-grid{grid-template-columns:1fr} header h1{font-size:20px} }
   </style>
 </head>
 <body>
-  <header>
-    <img src="/static/img/logo.jpg" alt="Logo Tecnaria">
-    <h1>TecnariaBot<br><small>Assistente Tecnico • Risposte A/B/C sempre coerenti</small></h1>
-  </header>
+  <div class="wrap">
+    <header>
+      <img src="/static/img/logo.jpg" alt="Tecnaria logo" />
+      <div>
+        <h1>TecnariaBot</h1>
+        <p>Assistente Tecnico • Risposte A/B/C sempre coerenti</p>
+      </div>
+    </header>
 
-  <div class="container">
-    <label for="question">Domanda</label>
-    <textarea id="question" placeholder="Scrivi la tua domanda..."></textarea>
+    <!-- DOMANDA -->
+    <div class="section">
+      <label for="question">Domanda</label>
+      <textarea id="question" placeholder="Esempio: Quale altezza di connettore CTF devo usare?"></textarea>
+      <div class="controls" style="margin-top:10px">
+        <button class="btn btnA" id="btnA" onclick="setMode('breve')">A Breve</button>
+        <button class="btn btnB" id="btnB" onclick="setMode('standard')">B Standard</button>
+        <button class="btn btnC" id="btnC" onclick="setMode('dettagliata')">C Dettagliata</button>
 
-    <div>
-      <button class="btnA" onclick="setMode('breve')">A Breve</button>
-      <button class="btnB" onclick="setMode('standard')">B Standard</button>
-      <button class="btnC" onclick="setMode('dettagliata')">C Dettagliata</button>
+        <!-- sempre visibile opzione per far apparire il wizard (toggle) -->
+        <label style="margin-left:auto;display:flex;gap:8px;align-items:center;color:var(--muted);font-weight:600">
+          <input type="checkbox" id="alwaysWizard" onchange="toggleAlwaysWizard(this.checked)"/> Mostra sempre il mini-wizard
+        </label>
+      </div>
     </div>
 
-    <div id="wizard-container" style="display:none; margin-top:1rem;"></div>
+    <!-- WIZARD (inserito dinamicamente) -->
+    <div id="wizard-box" style="display:none" class="section">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:800;color:var(--accent)">Dati tecnici (mini-wizard)</div>
+        <div class="hint">I valori qui sotto compilano automaticamente il campo "Dati tecnici".</div>
+      </div>
 
-    <label for="context">Dati tecnici richiesti (se la domanda è di calcolo)</label>
-    <textarea id="context" placeholder="Se necessario verrà compilato dal mini-wizard…"></textarea>
+      <div id="wizard-container" style="margin-top:12px"></div>
 
-    <button onclick="sendQuestion()">Invia</button>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+        <button class="btn" onclick="copyWizardToContext()" style="background:#202020;color:#fff;border:1px solid #333">Applica dati al contesto</button>
+        <div class="hint">Dopo aver compilato, premi <strong>Applica dati al contesto</strong> oppure invia: il sistema compilerà automaticamente il campo.</div>
+      </div>
+    </div>
 
-    <div id="loading" class="loading" style="display:none;">⌛ Elaborazione in corso...</div>
+    <!-- Context textarea -->
+    <div class="section">
+      <label for="context">Dati tecnici richiesti (se la domanda è di calcolo)</label>
+      <textarea id="context" placeholder="Se necessario verrà compilato dal mini-wizard…"></textarea>
+    </div>
 
-    <div id="response" class="response"></div>
-    <div id="attachments" class="attachments"></div>
+    <!-- Send row -->
+    <div class="submit-row">
+      <button id="sendBtn" class="send" onclick="sendQuestion()">Invia</button>
+
+      <div id="processing" style="display:none" class="spinner-wrap">
+        <div class="spinner" aria-hidden="true"></div>
+        <div style="color:var(--muted);font-weight:700">Elaborazione in corso…</div>
+      </div>
+
+      <div id="statusMsg" style="color:var(--muted);font-size:13px"></div>
+    </div>
+
+    <!-- risposta -->
+    <div class="section">
+      <div style="color:var(--accent);font-weight:800;margin-bottom:8px">Risposta</div>
+      <div id="response" class="response-area" aria-live="polite"></div>
+
+      <div class="attachments" id="attachments"></div>
+    </div>
+
+    <div class="footer-note">Per suggerimenti UI/UX dimmi cosa vuoi enfatizzare (più dati numerici, box evidenziati, ecc.).</div>
   </div>
 
+  <!-- wizard script: versione con ?v per bustare la cache -->
   <script src="/static/img/wizard.js?v=kt3"></script>
+
   <script>
+    // stato
     let currentMode = "dettagliata";
+    let isProcessing = false;
 
-    function setMode(m) {
+    // inizializza
+    document.addEventListener("DOMContentLoaded", () => {
+      setMode("dettagliata");
+      // se vuoi sempre mostrare il wizard di default commenta la riga successiva
+      // showWizard(false);
+      // se wizard.js è caricato esegui build
+      if (typeof buildWizard === "function") {
+        buildWizard(document.getElementById("wizard-container"));
+      }
+    });
+
+    function setMode(m){
       currentMode = m;
-      document.querySelectorAll("button").forEach(btn => btn.style.opacity="1");
-      if(m==="breve") document.querySelector(".btnA").style.opacity="0.7";
-      if(m==="standard") document.querySelector(".btnB").style.opacity="0.7";
-      if(m==="dettagliata") document.querySelector(".btnC").style.opacity="0.7";
+      // stilizza pulsanti
+      document.getElementById("btnA").style.opacity = (m==="breve"? "1":"0.65");
+      document.getElementById("btnB").style.opacity = (m==="standard"? "1":"0.65");
+      document.getElementById("btnC").style.opacity = (m==="dettagliata"? "1":"0.65");
     }
 
-    async function sendQuestion() {
-      const q = document.getElementById("question").value;
-      const ctx = document.getElementById("context").value;
-      document.getElementById("loading").style.display="block";
-      document.getElementById("response").innerHTML="";
-      document.getElementById("attachments").innerHTML="";
+    function toggleAlwaysWizard(v){
+      if (v) showWizard(true);
+      else showWizard(false);
+    }
 
-      const res = await fetch("/api/answer", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({question:q, mode:currentMode, context:ctx})
-      });
-      const data = await res.json();
-      document.getElementById("loading").style.display="none";
-
-      if(data.answer){
-        // Render HTML, non plain text
-        document.getElementById("response").innerHTML = data.answer;
+    function showWizard(force){
+      const wb = document.getElementById("wizard-box");
+      if (force) { wb.style.display="block"; return; }
+      // decide visibilità a seconda della domanda: se contiene parole tipo "altezza connettore" etc.
+      const q = (document.getElementById("question").value || "").toLowerCase();
+      const trigger = ["altezz", "connettore", "calcolo", "v_l", "v l", "v_l,ed", "passo", "gola"];
+      const show = trigger.some(t=>q.indexOf(t) !== -1);
+      wb.style.display = show ? "block":"none";
+      // build wizard if not already
+      if (wb.style.display === "block" && typeof buildWizard === "function"){
+        buildWizard(document.getElementById("wizard-container"));
       }
-      if(data.attachments){
-        let html = "<h4>Allegati / Note collegate</h4>";
-        data.attachments.forEach(a=>{
-          html += `<a href="${a.href}" target="_blank">${a.label}</a>`;
+    }
+
+    // copia i valori del wizard nella textarea context
+    function copyWizardToContext(){
+      const ctxTa = document.getElementById("context");
+      if (typeof fillContextFromWizard === "function") {
+        fillContextFromWizard(ctxTa);
+        // visibile al'utente
+        document.getElementById("statusMsg").textContent = "Dati inseriti nel contesto.";
+        setTimeout(()=>document.getElementById("statusMsg").textContent = "",2200);
+      } else {
+        document.getElementById("statusMsg").textContent = "Wizard non caricato.";
+      }
+    }
+
+    // chiamata al backend
+    async function sendQuestion(){
+      if (isProcessing) return;
+      const q = document.getElementById("question").value.trim();
+      const ctx = document.getElementById("context").value.trim();
+
+      if (!q) {
+        alert("Inserisci una domanda.");
+        return;
+      }
+
+      // se wizard visibile e context vuoto, prova a compilare automaticamente
+      if (document.getElementById("wizard-box").style.display === "block" && ctx.trim() === "" && typeof fillContextFromWizard === "function") {
+        fillContextFromWizard(document.getElementById("context"));
+      }
+
+      toggleProcessing(true);
+      try {
+        const res = await fetch("/api/answer", {
+          method:"POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({question:q, mode:currentMode, context: document.getElementById("context").value})
         });
-        document.getElementById("attachments").innerHTML = html;
-      }
-      // wizard se servono dati
-      if(data.meta && data.meta.needs_params){
-        const wiz = document.getElementById("wizard-container");
-        wiz.style.display="block";
-        buildWizard(wiz);
+        const data = await res.json();
+        renderAnswer(data);
+      } catch(err){
+        document.getElementById("response").innerHTML = `<div style="color:#ff7777">Errore comunicazione: ${err.message}</div>`;
+      } finally {
+        toggleProcessing(false);
       }
     }
+
+    function toggleProcessing(on){
+      isProcessing = on;
+      document.getElementById("processing").style.display = on ? "flex" : "none";
+      document.getElementById("sendBtn").disabled = on;
+      document.getElementById("btnA").disabled = on;
+      document.getElementById("btnB").disabled = on;
+      document.getElementById("btnC").disabled = on;
+      if (!on) {
+        // scroll risposta in vista
+        setTimeout(()=>document.getElementById("response").scrollIntoView({behavior:"smooth", block:"start"}),100);
+      }
+    }
+
+    function renderAnswer(data){
+      // risposta HTML (backend fornisce HTML per C)
+      const respBox = document.getElementById("response");
+      respBox.innerHTML = ""; document.getElementById("attachments").innerHTML = "";
+
+      if (!data) {
+        respBox.innerHTML = "<div style='color:#ff7b7b'>Nessuna risposta dal server.</div>";
+        return;
+      }
+
+      if (data.answer) {
+        // se il backend ha inviato HTML lo mostriamo (C), altrimenti lo escape e mostriamo testo
+        // consideriamo come HTML sicuro il contenuto dal server (attendibile)
+        respBox.innerHTML = data.answer;
+      } else {
+        respBox.innerText = "Nessuna risposta generata.";
+      }
+
+      // allegati
+      if (Array.isArray(data.attachments) && data.attachments.length){
+        let out = "<div style='color:var(--accent);font-weight:800;margin-top:8px'>Allegati / Note collegate</div>";
+        data.attachments.forEach(a=>{
+          out += `<a href="${a.href}" target="_blank" rel="noopener noreferrer">${a.label}</a>`;
+        });
+        document.getElementById("attachments").innerHTML = out;
+      }
+
+      // se server segnala che servono parametri
+      if (data.meta && data.meta.needs_params){
+        // mostra wizard + highlight campi richiesti
+        showWizard(true);
+        const missing = data.meta.required_keys || [];
+        if (missing.length) {
+          document.getElementById("statusMsg").textContent = "Occorrono parametri: " + missing.join(", ");
+          // evidenza per 3s
+          setTimeout(()=>document.getElementById("statusMsg").textContent = "",3500);
+        }
+      }
+    }
+
+    // rileva input domande per mostrare wizard dinamicamente
+    document.getElementById("question").addEventListener("input", ()=> {
+      const always = document.getElementById("alwaysWizard").checked;
+      if (!always) showWizard(false);
+    });
   </script>
 </body>
 </html>
