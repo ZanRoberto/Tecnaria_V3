@@ -4,12 +4,43 @@
   <meta charset="utf-8" />
   <title>TecnariaBot</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-
-  <!-- tuo CSS esistente -->
   <link rel="stylesheet" href="/static/img/style.css" />
-
   <style>
-    /* Modal / Lightbox */
+    /* Layout centrato */
+    body{background:#1d1d1d;color:#eaeaea;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    .wrap{max-width:1100px;margin:32px auto;padding:0 16px}
+    .hero{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+    .logo{width:72px;height:72px;object-fit:contain;border-radius:8px}
+    h1{margin:0;color:#ffa94d}
+    p{margin:.25rem 0 .5rem 0}
+    .card{background:#121212;border:1px solid #2a2a2a;border-radius:16px;padding:16px 16px 18px 16px;margin-bottom:16px}
+    label{display:block;font-weight:600;margin:.25rem 0 .25rem 0;color:#ddd}
+    textarea, input, select{width:100%;background:#0f0f0f;border:1px solid #333;color:#eee;border-radius:10px;padding:10px}
+    textarea{min-height:90px}
+    button{background:#ffa94d;color:#141414;border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+    button:hover{filter:brightness(1.05)}
+    .mode-row{display:flex;gap:10px;align-items:center;margin:10px 0}
+    .mode-btn{background:#2a2a2a;color:#eee}
+    .mode-btn.active{outline:2px solid #ffa94d}
+    #mode-indicator{margin-left:auto;color:#bbb}
+    details summary{cursor:pointer;color:#bbb;margin:6px 0 10px 0}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    @media (max-width:800px){.grid{grid-template-columns:1fr}}
+    .apply{margin-top:8px}
+    .hint{color:#9aa}
+    /* Spinner */
+    .spinner{display:none;gap:8px;align-items:center;font-size:14px;color:#bbb;margin-top:8px}
+    .spinner .dot{width:8px;height:8px;border-radius:50%;background:#ffa94d;animation:bounce 1s infinite ease-in-out}
+    .spinner .dot:nth-child(2){animation-delay:.2s}
+    .spinner .dot:nth-child(3){animation-delay:.4s}
+    @keyframes bounce{0%,80%,100%{transform:scale(0)} 40%{transform:scale(1)}}
+    /* Allegati */
+    .attachments{margin-top:14px;padding:12px;border:1px dashed #444;border-radius:12px;background:#0f0f0f}
+    .attachments h5{margin:0 0 10px 0;color:#ffa94d}
+    .attachment-link{display:inline-flex;gap:8px;align-items:center;margin:6px 10px 0 0;padding:6px 10px;border-radius:10px;background:#1b1b1b;color:#eee;text-decoration:none}
+    .attachment-link:hover{background:#242424}
+    .paperclip{font-weight:700}
+    /* Modal */
     .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:9999}
     .modal{background:#111;border-radius:16px;max-width:92vw;max-height:90vh;width:min(1200px,92vw);box-shadow:0 10px 40px rgba(0,0,0,.6);position:relative;display:flex;flex-direction:column}
     .modal-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #333}
@@ -19,25 +50,7 @@
     .modal-body{padding:0;background:#000;display:flex;align-items:center;justify-content:center}
     .modal-body iframe{width:100%;height:80vh;border:0;background:#fff}
     .modal-body img{max-width:100%;max-height:80vh;display:block}
-
-    /* Allegati */
-    .attachments{margin-top:14px;padding:12px;border:1px dashed #444;border-radius:12px;background:#0f0f0f}
-    .attachments h5{margin:0 0 10px 0;color:#ffa94d}
-    .attachment-link{display:inline-flex;gap:8px;align-items:center;margin:6px 10px 0 0;padding:6px 10px;border-radius:10px;background:#1b1b1b;color:#eee;text-decoration:none}
-    .attachment-link:hover{background:#242424}
-    .paperclip{font-weight:700}
-
-    /* Spinner (clessidra) */
-    .spinner{display:none;gap:8px;align-items:center;font-size:14px;color:#bbb;margin-top:8px}
-    .spinner .dot{width:8px;height:8px;border-radius:50%;background:#ffa94d;animation:bounce 1s infinite ease-in-out}
-    .spinner .dot:nth-child(2){animation-delay:.2s}
-    .spinner .dot:nth-child(3){animation-delay:.4s}
-    @keyframes bounce{0%,80%,100%{transform:scale(0)} 40%{transform:scale(1)}}
-
-    /* Piccole rifiniture accessibilità/contrasto */
-    .mode-row .mode-btn.active{outline:2px solid #ffa94d}
-    label{color:#ddd}
-    .hint{color:#aaa}
+    .modal-body pre{margin:0;padding:14px;max-height:80vh;overflow:auto;white-space:pre-wrap;background:#0b0b0b;color:#eaeaea;width:100%}
   </style>
 </head>
 <body>
@@ -116,7 +129,9 @@
       <textarea id="context" placeholder="lamiera H55, soletta 60 mm, V_L,Ed=150 kN/m, cls C30/37, passo gola 150 mm, lamiera longitudinale, passo lungo trave 200 mm, t=1.0 mm, nr=1"></textarea>
 
       <button id="send">Invia</button>
-      <div id="spinner" class="spinner" aria-live="polite"><span class="dot"></span><span class="dot"></span><span class="dot"></span> Elaborazione…</div>
+      <div id="spinner" class="spinner" aria-live="polite">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span> Elaborazione…
+      </div>
     </section>
 
     <section class="card">
