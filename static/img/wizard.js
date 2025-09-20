@@ -1,59 +1,53 @@
-/* wizard.js — UI + chiamata API + viewer allegati (immagini/PDF) + clessidra */
+/* wizard.js — UI + chiamata API + viewer allegati + clessidra + auto-wizard */
 
 (function(){
-  const $ = (s)=>document.querySelector(s);
+  const $  = (s)=>document.querySelector(s);
   const $$ = (s)=>document.querySelectorAll(s);
 
-  // Modal viewer
+  // ===== Modal viewer =====
   const mask = $('#modal-mask');
   const body = $('#modal-body');
-  const title = $('#modal-title');
+  const title= $('#modal-title');
   const btnClose = $('#modal-close');
 
   function openModal(label, url){
     title.textContent = label || 'Allegato';
     body.innerHTML = ''; // reset
-
     const ext = (url.split('.').pop() || '').toLowerCase();
+
     if (['jpg','jpeg','png','webp','gif','bmp'].includes(ext)) {
-      const img = new Image();
-      img.alt = label || 'allegato';
-      img.src = url;
+      const img = new Image(); img.alt = label || 'allegato'; img.src = url;
       body.appendChild(img);
     } else if (ext === 'pdf') {
       const iframe = document.createElement('iframe');
-      iframe.src = url;
-      iframe.setAttribute('title', label || 'allegato pdf');
+      iframe.src = url; iframe.setAttribute('title', label || 'allegato pdf');
       body.appendChild(iframe);
+    } else if (ext === 'txt') {
+      fetch(url).then(r=>r.text()).then(txt=>{
+        const pre = document.createElement('pre'); pre.textContent = txt;
+        body.appendChild(pre);
+      }).catch(()=> {
+        const pre = document.createElement('pre'); pre.textContent = 'Impossibile leggere il file di testo.';
+        body.appendChild(pre);
+      });
     } else {
-      // fallback: link per il download (nuova scheda)
       const a = document.createElement('a');
-      a.href = url;
-      a.textContent = 'Scarica allegato';
-      a.className = 'attachment-link';
-      a.target = '_blank';
+      a.href = url; a.textContent = 'Scarica allegato'; a.className = 'attachment-link'; a.target = '_blank';
       body.appendChild(a);
     }
-
     mask.style.display = 'flex';
     mask.setAttribute('aria-hidden','false');
   }
-
   function closeModal(){
     mask.style.display = 'none';
     mask.setAttribute('aria-hidden','true');
     body.innerHTML = '';
   }
-
   btnClose.addEventListener('click', closeModal);
-  mask.addEventListener('click', (e)=>{
-    if (e.target === mask) closeModal();
-  });
-  document.addEventListener('keydown', (e)=>{
-    if (e.key === 'Escape') closeModal();
-  });
+  mask.addEventListener('click', (e)=>{ if (e.target === mask) closeModal(); });
+  document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') closeModal(); });
 
-  // Mode buttons
+  // ===== Modalità A/B/C =====
   let mode = 'dettagliata';
   $$('.mode-btn').forEach(b=>{
     b.addEventListener('click', ()=>{
@@ -64,8 +58,8 @@
     });
   });
 
-  // Mini-wizard → compone il contesto
-  $('#apply-wizard').addEventListener('click', ()=>{
+  // ===== Mini-wizard → compone il contesto =====
+  function buildContextFromWizard() {
     const h = $('#h_lamiera').value?.trim();
     const ss = $('#s_soletta').value?.trim();
     const v = $('#vled').value?.trim();
@@ -87,21 +81,42 @@
     if (t) parts.push(`t=${t} mm`);
     if (nr) parts.push(`nr=${nr}`);
 
-    $('#context').value = parts.join(', ');
+    return parts.join(', ');
+  }
+
+  $('#apply-wizard').addEventListener('click', ()=>{
+    $('#context').value = buildContextFromWizard();
   });
 
-  // invio domanda
+  // ===== Auto-apertura wizard se la domanda lo suggerisce =====
+  const wizard = $('#wizard-details');
+  function maybeOpenWizardFromQuestion(q){
+    const s = (q || '').toLowerCase();
+    const need = /(altezza|h)\b.*\b(ctf|connettore)/.test(s) || /\bconnettore\b.*\baltezza\b/.test(s);
+    if (need && !wizard.open) {
+      wizard.open = true;
+      wizard.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+  }
+  $('#question').addEventListener('input', (e)=> maybeOpenWizardFromQuestion(e.target.value));
+  // apri anche al submit se trova le parole chiave
+  function ensureWizardWhenNeeded(){
+    maybeOpenWizardFromQuestion($('#question').value);
+  }
+
+  // ===== Invio domanda =====
   $('#send').addEventListener('click', async ()=>{
+    ensureWizardWhenNeeded();
+
     const question = $('#question').value.trim();
-    const context = $('#context').value.trim();
+    const context = $('#context').value.trim() || buildContextFromWizard();
 
     if (!question) {
       $('#answer').innerHTML = '<p>Inserisci una domanda.</p>';
       return;
     }
 
-    const sp = $('#spinner'); 
-    sp.style.display = 'inline-flex'; // spinner ON
+    const sp = $('#spinner'); sp.style.display = 'inline-flex'; // spinner ON
 
     try {
       const res = await fetch('/api/answer', {
@@ -111,33 +126,26 @@
       });
       const data = await res.json();
 
-      // risposta
       $('#answer').innerHTML = data.answer || '';
 
-      // allegati → render e apertura in modale
-      const box = $('#attachments');
-      const list = $('#attachments-list');
+      // Allegati
+      const box = $('#attachments'); const list = $('#attachments-list');
       list.innerHTML = '';
       if (data.attachments && data.attachments.length) {
         box.style.display = 'block';
         data.attachments.forEach(att=>{
           const a = document.createElement('a');
-          a.href = '#';
-          a.className = 'attachment-link';
-          a.dataset.href = att.href;
-          a.dataset.label = att.label || 'Allegato';
+          a.href = '#'; a.className = 'attachment-link';
+          a.dataset.href = att.href; a.dataset.label = att.label || 'Allegato';
           a.innerHTML = `<span class="paperclip">📎</span> ${att.label || 'Allegato'}`;
-          a.addEventListener('click',(e)=>{
-            e.preventDefault();
-            openModal(att.label, att.href);
-          });
+          a.addEventListener('click',(e)=>{ e.preventDefault(); openModal(att.label, att.href); });
           list.appendChild(a);
         });
       } else {
         box.style.display = 'none';
       }
 
-    } catch (e) {
+    } catch(e) {
       $('#answer').innerHTML = '<p>Errore di rete o server.</p>';
     } finally {
       sp.style.display = 'none'; // spinner OFF
