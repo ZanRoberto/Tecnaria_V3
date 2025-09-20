@@ -1,5 +1,6 @@
-# app.py — TecnariaBot FULL v4.2
-# Requisiti: OPENAI_API_KEY (opzionale), templates/index.html, static/img/wizard.js, static/data/ctf_prd.json
+# app.py — TecnariaBot FULL v4.3 (con Note tecniche interne)
+# Requisiti: OPENAI_API_KEY (opzionale), templates/index.html, static/img/wizard.js,
+#            static/data/ctf_prd.json, static/(data/)?tecnaria_connettori_dati.json
 
 import os, re, json, math
 from typing import Any, Dict, Optional, Tuple, List
@@ -15,6 +16,49 @@ try:
 except Exception:
     client = None
     OPENAI_MODEL = "gpt-4o-mini"
+
+# ========== Enrichment Note Tecniche (fonte interna) ==========
+# Import "soft" (se manca, il bot funziona comunque senza enrichment)
+try:
+    from knowledge_loader import enrich_response_with_internal_notes
+except Exception:
+    enrich_response_with_internal_notes = None
+
+def _resolve_internal_json_path(app_static_folder: str):
+    """
+    Rileva il JSON interno in modo robusto:
+    1) static/data/tecnaria_connettori_dati.json
+    2) static/tecnaria_connettori_dati.json
+    """
+    from pathlib import Path
+    cand = [
+        os.path.join(app_static_folder, "data", "tecnaria_connettori_dati.json"),
+        os.path.join(app_static_folder, "tecnaria_connettori_dati.json"),
+    ]
+    for p in cand:
+        if os.path.exists(p):
+            return Path(p)
+    return None
+
+def _maybe_enrich(answer: str, question: str) -> str:
+    """
+    Appende la 'Nota tecnica (fonte interna)' se:
+    - knowledge_loader è disponibile
+    - JSON interno è presente (in static/data o static/)
+    """
+    if not enrich_response_with_internal_notes:
+        return answer
+    json_path = _resolve_internal_json_path(app.static_folder)
+    try:
+        enriched = enrich_response_with_internal_notes(
+            answer=answer,
+            user_query=question,
+            product_hint=None,
+            json_path=json_path
+        )
+        return enriched or answer
+    except Exception:
+        return answer
 
 # ========== Flask ==========
 app = Flask(__name__, static_folder="static", template_folder="templates")
@@ -289,7 +333,6 @@ def render_calc_block(parsed: Dict[str, Any], result_tuple):
         )
 
     # Caso NON verificato → headline + piano d’azione
-    # Proviamo a ricostruire prd_conn stimato dalla coppia cap_m,n_per_m
     prd_conn = (cap_m / n_per_m) if (n_per_m and cap_m is not None) else 0.0
     smax = s_long_max(prd_conn, demand) if (prd_conn and demand) else math.inf
     gap = (demand - (cap_m or 0.0))
@@ -341,7 +384,6 @@ def tool_attachments(topic: str, intent: str):
         out.append({"label":"Nota posa CTF (PDF)","href":"/static/docs/ctf_posa.pdf"})
     if topic == "CTF" and intent == "INFO":
         out.append({"label":"Scheda CTF (PDF)","href":"/static/docs/ctf_scheda.pdf"})
-    # .txt mostrati inline sul frontend (modale testo)
     return out
 
 # ========== LLM (A/B/C) ==========
@@ -390,7 +432,6 @@ def product_info_llm(topic: str, intent: str, mode: str, question: str, context:
     try:
         return llm_reply(topic, intent, mode, question, context)
     except Exception:
-        # Fallback locali sobri
         if topic == "P560":
             if mode == "breve":
                 return ("P560: chiodatrice a polvere per posa connettori Tecnaria su travi/lamiera; "
@@ -429,14 +470,16 @@ def api_answer():
     context  = (data.get("context") or "").strip()
 
     if contains_denylist(question):
-        return jsonify({"answer":"Assistente dedicato a prodotti Tecnaria S.p.A.",
+        base = "Assistente dedicato a prodotti Tecnaria S.p.A."
+        return jsonify({"answer": _maybe_enrich(base, question),
                         "meta":{"needs_params":False,"required_keys":[]}})
 
     topic  = detect_topic(question)
     intent = detect_intent(question)
 
     if topic is None:
-        return jsonify({"answer":"Assistente dedicato ai prodotti Tecnaria (CTF/CTL/CEM-E/Diapason/P560).",
+        base = "Assistente dedicato ai prodotti Tecnaria (CTF/CTL/CEM-E/Diapason/P560)."
+        return jsonify({"answer": _maybe_enrich(base, question),
                         "meta":{"needs_params":False,"required_keys":[]}})
 
     # === CTF: ramo calcolo ===
@@ -445,10 +488,13 @@ def api_answer():
         miss = missing_ctf_keys(parsed)
         if miss:
             labels = [UI_LABELS[k] for k in miss]
-            return jsonify({"answer":"Per procedere servono: " + ", ".join(labels),
+            base = "Per procedere servono: " + ", ".join(labels)
+            return jsonify({"answer": _maybe_enrich(base, question),
                             "meta":{"needs_params":True,"required_keys":labels}})
         result = choose_ctf_height(parsed)
         answer = render_calc_block(parsed, result)
+        # Arricchimento con Nota tecnica (fonte interna)
+        answer = _maybe_enrich(answer, question)
         return jsonify({"answer":answer, "meta":{"needs_params":False}, "attachments":tool_attachments(topic,intent)})
 
     # === INFO / POSA / CONFRONTO → LLM ===
@@ -466,7 +512,13 @@ def api_answer():
             labels = [UI_LABELS[k] for k in miss]
             extra = f"<hr><p><em>Dati calcolo incompleti:</em> mancano {', '.join(labels)}.</p>"
 
-    return jsonify({"answer": prose + extra, "meta":{"needs_params":False}, "attachments":tool_attachments(topic,intent)})
+    final_answer = prose + extra
+    # Arricchimento con Nota tecnica (fonte interna) per tutti i rami non-CALC
+    final_answer = _maybe_enrich(final_answer, question)
+
+    return jsonify({"answer": final_answer,
+                    "meta":{"needs_params":False},
+                    "attachments":tool_attachments(topic,intent)})
 
 # Static file proxy (utile su alcuni hosting)
 @app.route("/static/<path:path>")
