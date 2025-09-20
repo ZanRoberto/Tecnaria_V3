@@ -1,4 +1,4 @@
-# app.py — TecnariaBot FULL v4.0 (A/B/C proporzionate via LLM + CTF calcolo da matrice)
+# app.py — TecnariaBot FULL v4.1 (A/B/C via LLM + CTF calcolo con fallback solid_base)
 # Requisiti: OPENAI_API_KEY, templates/index.html, static/img/wizard.js, static/data/ctf_prd.json
 
 import json, os, re
@@ -110,7 +110,7 @@ def missing_ctf_keys(parsed: Dict[str, Any]) -> List[str]:
     return [k for k in needed if k not in parsed]
 
 # =========================================
-# 3) DB PRd (matrice ricca) + fallback (P0×k_t) + calcolo CTF
+# 3) DB PRd + fallback solid_base + calcolo CTF
 # =========================================
 def load_ctf_db() -> Dict[str, Any]:
     path = os.path.join(app.static_folder, "data", "ctf_prd.json")
@@ -123,6 +123,7 @@ def load_ctf_db() -> Dict[str, Any]:
 PRD_DB = load_ctf_db()
 
 def _kt_from_limits(t_mm: float, nr: int) -> float:
+    # Limiti ETA C2 (semplificati): clamp massimo in base a t e nr
     if nr <= 1:
         return 1.00 if t_mm > 1.0 else 0.85
     return 0.80 if t_mm > 1.0 else 0.70
@@ -192,68 +193,83 @@ def find_prd_table(db: Dict[str, Any], h_lamiera: int, dir_lam: str, passo_gola:
                 continue
     return result or None
 
-def choose_ctf_from_matrix(p: Dict[str, Any], safety: float = 1.10) -> Tuple[str, float, float, float, Optional[float], float, str]:
-    prd_map = find_prd_table(PRD_DB, p["h_lamiera"], p["dir"], p["passo"], p["cls"])
-    if not prd_map:
-        return ("tabella mancante", 0.0, None, float(p["vled"]), None, safety,
-                "Tabella PRd non trovata per H{h}, {d}, passo {pg} mm, cls {c}.".format(
-                    h=p.get("h_lamiera","—"), d=p.get("dir","—"), pg=p.get("passo","—"), c=p.get("cls","—")
-                ))
+# --------- FALLBACK su solid_base (Annex C1) ----------
+def prd_from_solid_base(db: Dict[str, Any], cls: str, direzione: str, ctf_code: str) -> float:
+    """Legge PRd base (soletta piena) da solid_base. Mappa direzione:
+       - longitudinale -> 'parallel'
+       - trasversale/perpendicolare -> 'perpendicular'
+    """
+    orient = "parallel" if (direzione or "").lower().startswith("long") else "perpendicular"
+    try:
+        return float(
+            db.get("solid_base", {})
+              .get(orient, {})
+              .get(cls.upper(), {})
+              .get(ctf_code.upper(), 0.0) or 0.0
+        )
+    except Exception:
+        return 0.0
+
+def choose_ctf_from_matrix_or_fallback(p: Dict[str, Any], safety: float = 1.10) -> Tuple[str, float, float, float, Optional[float], float, str]:
+    """1) Prova matrice H/dir/passo/cls; 2) se mancante, usa solid_base (Annex C1)."""
     s_long = float(p["s_long"])
     n_per_m = 1000.0 / s_long if s_long > 0 else 0.0
     demand = float(p["vled"])
+
+    prd_map = find_prd_table(PRD_DB, p["h_lamiera"], p["dir"], p["passo"], p["cls"])
+    used_source = "tabella PRd (H/dir/passo/cls)"
+    # Se non c'è la tabella specifica → fallback a solid_base
+    if not prd_map:
+        used_source = "solid_base (Annex C1)"
+        # costruiamo una mappa PRd usando le altezze note in solid_base
+        base_cls = PRD_DB.get("solid_base", {}).get("parallel" if p["dir"].startswith("l") else "perpendicular", {}).get(p["cls"].upper(), {})
+        prd_map = {}
+        for k, v in base_cls.items():
+            if _is_height_key(k):
+                try:
+                    prd_map[k.upper().replace("-", "_")] = float(v or 0.0)
+                except:
+                    pass
+
+    if not prd_map:
+        # nemmeno solid_base disponibile
+        return ("non determinabile", n_per_m, None, demand, None, safety,
+                "Database PRd non disponibile (né matrice né solid_base). Compila static/data/ctf_prd.json.")
+
     items = sorted(prd_map.items(), key=lambda kv: _height_order_key(kv[0]))
+
+    # Se abbiamo t/nr (lamiera ⊥), applichiamo clamp kt; se dir=long (//), per ora lasciamo PRd_base (puoi estendere a kl).
+    apply_kt = (p.get("t_lamiera") is not None) and (p.get("nr_gola") is not None) and (not (p.get("piena") is True))
+    kt = _kt_from_limits(float(p.get("t_lamiera", 0) or 0), int(p.get("nr_gola", 0) or 0)) if apply_kt else 1.0
+
     best = None
-    for key, prd_one in items:
+    last_key, last_prd_one = None, 0.0
+    for key, prd_one_raw in items:
+        prd_one = prd_one_raw * (kt if apply_kt else 1.0)
         cap = prd_one * n_per_m
+        last_key, last_prd_one = key, prd_one
         if cap >= demand * safety:
             best = (key, prd_one, cap)
             break
+
     if best:
         key, prd_one, cap = best
         util = demand / cap if cap else None
-        note = f"PRd/conn={prd_one:.2f} kN; n°/m={n_per_m:.2f}."
+        note = (f"Fonte={used_source}; PRd/conn={prd_one:.2f} kN"
+                f"{' (×k_t)' if apply_kt else ''}; n°/m={n_per_m:.2f}.")
         m = re.search(r"(\d{3})", key); h_code = m.group(1) if m else key
         return (h_code, n_per_m, cap, demand, util, safety, note)
-    key, prd_one = items[-1]
-    n_req = (demand * safety) / prd_one if prd_one > 0 else None
-    passo_req = 1000.0 / n_req if n_req else None
-    msg = (f"Nessuna altezza soddisfa. Con {key} serve passo ≤{passo_req:.0f} mm "
-           f"(PRd/conn={prd_one:.2f} kN).")
-    return ("da rivedere", 1000.0/float(p["s_long"]), prd_one*(1000.0/float(p["s_long"])), demand, None, safety, msg)
 
-def choose_ctf_from_rule(p: Dict[str, Any], safety: float = 1.10) -> Tuple[str, float, float, float, Optional[float], float, str]:
-    rule = PRD_DB.get("lamiera_rule", {})
-    P0 = (rule.get("P0", {}) or {}).get(p.get("cls"))
-    t_mm = float(p.get("t_lamiera", 0) or 0)
-    nr   = int(p.get("nr_gola", 0) or 0)
-    s_long = float(p["s_long"])
-    n_per_m = 1000.0 / s_long if s_long > 0 else 0.0
-    demand = float(p["vled"])
-    if not P0 or P0 <= 0:
-        return ("non determinabile", n_per_m, None, demand, None, safety,
-                f"Manca P0 per {p.get('cls')} nel database (static/data/ctf_prd.json).")
-    if t_mm <= 0 or nr <= 0:
-        return ("parametri mancanti", n_per_m, None, demand, None, safety,
-                "Servono spessore lamiera t (mm) e nr connettori per gola (nr).")
-    kt = _kt_from_limits(t_mm, nr)
-    prd_one = P0 * kt
-    cap = prd_one * n_per_m
-    util = demand / cap if cap else None
-    if cap >= demand * safety:
-        return ("80", n_per_m, cap, demand, util, safety, f"P0={P0} kN, k_t={kt:.2f}, PRd/conn={prd_one:.2f} kN.")
+    # Nessuna altezza soddisfa → suggerisci passo richiesto con l'ultima (più alta)
+    if last_prd_one > 0:
+        n_req = (demand * safety) / last_prd_one
+        passo_req = 1000.0 / n_req
+        msg = (f"Nessuna altezza soddisfa. Con {last_key} serve passo ≤{passo_req:.0f} mm "
+               f"(Fonte={used_source}; PRd/conn={last_prd_one:.2f} kN"
+               f"{' (×k_t)' if apply_kt else ''}).")
     else:
-        n_req = (demand * safety) / prd_one if prd_one > 0 else None
-        passo_req = 1000.0 / n_req if n_req else None
-        return ("da rivedere", n_per_m, cap, demand, util, safety,
-                f"Capacità {cap:.1f} < richiesta {demand*safety:.1f}. Riduci passo ≤{passo_req:.0f} mm.")
-
-def choose_ctf_height(p: Dict[str, Any], safety: float = 1.10):
-    try:
-        return choose_ctf_from_matrix(p, safety)
-    except Exception:
-        pass
-    return choose_ctf_from_rule(p, safety)
+        msg = f"Nessuna altezza soddisfa e PRd base assente. Verifica ctf_prd.json."
+    return ("da rivedere", n_per_m, last_prd_one * n_per_m, demand, None, safety, msg)
 
 # =========================================
 # 4) LLM: risposte A/B/C proporzionate
@@ -288,17 +304,13 @@ def build_style_block(mode: str) -> str:
 
 def llm_reply(topic: str, intent: str, mode: str, question: str, context: str) -> str:
     if not client:
-        # Fallback se manca la chiave API
         return "Configurare OPENAI_API_KEY per ottenere risposte A/B/C avanzate."
     style = build_style_block(mode)
-    # vincoli scope
     guard = (
         "Se il contenuto richiesto non è relativo a Tecnaria (CTF/CTL/CEM-E/Diapason/P560), rispondi: "
         "'Assistente dedicato ai prodotti e servizi Tecnaria S.p.A.'"
     )
-    # hint per il topic
     topic_hint = f"Topic prodotto: {topic}. Intent: {intent}."
-    # context opzionale
     ctx = f"Contesto aggiuntivo: {context}" if context else "Nessun contesto aggiuntivo."
     prompt = (
         f"{topic_hint}\n{ctx}\n\n"
@@ -319,23 +331,28 @@ def llm_reply(topic: str, intent: str, mode: str, question: str, context: str) -
     )
     return resp.choices[0].message.content.strip()
 
-# Risposte prodotto “INFO/CONFRONTO/POSA” (default via LLM, con fallback locale)
 def product_info_llm(topic: str, intent: str, mode: str, question: str, context: str) -> str:
     try:
         return llm_reply(topic, intent, mode, question, context)
     except Exception:
-        # Fallback minimale locale
+        # Fallback minimale locale se l'LLM non risponde
         if topic == "P560":
-            return ("P560 — chiodatrice a polvere per posa connettori Tecnaria. "
-                    "Uso con consumabili idonei e DPI; vedere manuale Tecnaria/Spit.")
+            if mode == "breve":
+                return ("P560: chiodatrice a polvere per posa dei connettori Tecnaria; uso con DPI, "
+                        "cartucce idonee e controlli hnail 3,5–7,5 mm.")
+            if mode == "standard":
+                return ("La P560 è la chiodatrice per il fissaggio dei connettori su travi/lamiera; "
+                        "prevede scelta cartucce per spessore/qualità acciaio, prova di piega, manutenzione periodica.")
+            return ("<h3>P560</h3><h4>Impiego</h4><p>Fissaggio connettori Tecnaria su travi/lamiera.</p>"
+                    "<h4>Controlli</h4><p>hnail 3,5–7,5 mm; bending test; DPI.</p>")
         if topic == "CTF":
             if mode == "breve":
                 return ("I CTF sono connettori a taglio per solai collaboranti acciaio–calcestruzzo; "
-                        "permettono la collaborazione tra lamiera/trave e soletta in cls.")
+                        "abilitano la collaborazione tra trave/lamiera e soletta in cls.")
             if mode == "standard":
-                return ("CTF: connettori per acciaio–cls; scelta in funzione di lamiera/direzione/passi/cls; "
-                        "posa con P560; verifica secondo tabelle PRd ETA.")
-            return ("<h3>CTF — scheda</h3><p>Consulta ETA-18/0447 e manuale Tecnaria per dettagli completi.</p>")
+                return ("CTF: selezione in funzione di lamiera/direzione/passi/cls; verifica con PRd ETA e passo lungo trave; "
+                        "posa con P560; riferimenti EC4/ETA.")
+            return ("<h3>CTF — scheda</h3><p>Consulta ETA-18/0447 e manuale Tecnaria per dettaglio valori e posa.</p>")
         if topic == "CTL":
             return "CTL: connettori per sistemi legno–calcestruzzo; verifica EC5/EC4; posa con viti/staffe."
         if topic == "CEME":
@@ -345,7 +362,13 @@ def product_info_llm(topic: str, intent: str, mode: str, question: str, context:
         return "Assistente dedicato ai prodotti Tecnaria S.p.A."
 
 # =========================================
-# 5) Allegati
+# 5) CTF: scelta altezza (matrice + fallback solid_base)
+# =========================================
+def choose_ctf_height(p: Dict[str, Any], safety: float = 1.10):
+    return choose_ctf_from_matrix_or_fallback(p, safety)
+
+# =========================================
+# 6) Allegati
 # =========================================
 def tool_attachments(topic: str, intent: str):
     out = []
@@ -358,7 +381,7 @@ def tool_attachments(topic: str, intent: str):
     return out
 
 # =========================================
-# 6) Routes
+# 7) Routes
 # =========================================
 @app.route("/")
 def index():
@@ -371,8 +394,10 @@ def api_answer():
     mode = (data.get("mode") or "dettagliata").strip().lower()
     context = (data.get("context") or "").strip()
 
+    # Fuori scope?
     if contains_denylist(question):
-        return jsonify({"answer":"Assistente dedicato a prodotti Tecnaria S.p.A.","meta":{"needs_params":False,"required_keys":[]}})
+        return jsonify({"answer":"Assistente dedicato a prodotti Tecnaria S.p.A.",
+                        "meta":{"needs_params":False,"required_keys":[]}})
 
     topic = detect_topic(question)
     intent = detect_intent(question)
@@ -381,7 +406,7 @@ def api_answer():
         return jsonify({"answer":"Assistente dedicato ai prodotti Tecnaria (CTF/CTL/CEM-E/Diapason/P560).",
                         "meta":{"needs_params":False,"required_keys":[]}})
 
-    # CTF — intent di calcolo usa la matrice PRd
+    # CTF — intent di calcolo usa matrice+fallback
     if topic == "CTF" and intent == "CALC":
         parsed = parse_ctf_context(context)
         miss = missing_ctf_keys(parsed)
@@ -390,6 +415,7 @@ def api_answer():
             return jsonify({"answer":"Per procedere servono: " + ", ".join(labels),
                             "meta":{"needs_params":True,"required_keys":labels}})
         h, npm, capm, dem, util, safety, note = choose_ctf_height(parsed)
+        util_txt = f"{util*100:.1f} %" if util is not None else "—"
         ans = (
             f"<h3>CTF — Selezione altezza consigliata</h3>"
             f"<ul>"
@@ -398,12 +424,14 @@ def api_answer():
             f"<li>Passo lungo trave: {parsed.get('s_long','—')} mm → n°/m = {1000.0/float(parsed.get('s_long',1)):.2f}</li>"
             f"<li>t lamiera: {parsed.get('t_lamiera','—')} mm; nr in gola: {parsed.get('nr_gola','—')}</li>"
             f"</ul>"
-            f"<p><strong>Esito:</strong> CTF <strong>{h}</strong>. <em>{note or ''}</em></p>"
+            f"<p><strong>Esito:</strong> CTF <strong>{h}</strong>."
+            f" Capacità={capm:.1f} kN/m; Domanda={dem:.1f} kN/m; Utilization={util_txt}. "
+            f"<em>{note or ''}</em></p>"
         )
         return jsonify({"answer":ans,"meta":{"needs_params":False,"required_keys":[]},
                         "attachments":tool_attachments(topic,intent)})
 
-    # Tutto il resto (INFO/CONFRONTO/POSA) va a LLM con stile A/B/C
+    # Tutto il resto (INFO/CONFRONTO/POSA) → LLM con stile A/B/C
     answer = product_info_llm(topic, intent, mode, question, context)
     return jsonify({"answer":answer,"meta":{"needs_params":False,"required_keys":[]},
                     "attachments":tool_attachments(topic,intent)})
@@ -413,4 +441,5 @@ def health():
     return "ok", 200
 
 if __name__ == "__main__":
+    # Per run locale
     app.run(host="0.0.0.0", port=8000, debug=True)
