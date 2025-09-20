@@ -1,4 +1,4 @@
-# app.py — TecnariaBot FULL v2.3 stabile
+# app.py — TecnariaBot FULL v2.3 stabile (rev P560+POSA)
 
 import json, os, re
 from flask import Flask, render_template, request, jsonify
@@ -145,12 +145,76 @@ def choose_ctf_height(p: dict, safety=1.10):
 # 4) Risposte A/B/C
 # =========================================
 def p560_answer(mode: str) -> str:
+    """
+    Risposta a tre livelli per SPIT P560 (chiodatrice a polvere).
+    La C restituisce HTML strutturato per una lettura “da tecnico”.
+    """
     if mode == "breve":
-        return "SPIT P560 è la chiodatrice a polvere per la posa rapida dei connettori Tecnaria."
+        # 2–3 frasi, zero numeri
+        return (
+            "P560 è la chiodatrice a polvere usata per fissare i connettori Tecnaria in modo rapido e controllato. "
+            "È pensata per l’impiego su travi in acciaio e calcestruzzo, con consumabili dedicati e procedure di sicurezza precise."
+        )
+
     if mode == "standard":
-        return "P560: chiodatrice a polvere per fissaggi strutturali; usa chiodi/cariche idonee; manutenzione e DPI obbligatori."
-    return ("P560 — guida tecnica: impiego su travi acciaio e cls, procedura operativa (appoggio, pressione, tiro controllato), "
-            "controlli di cantiere, sicurezza con DPI, manutenzione periodica, riferimenti manuale Tecnaria/EC4.")
+        # discorsiva, senza formule
+        return (
+            "La P560 è una chiodatrice a polvere professionale per la posa dei connettori Tecnaria su travi in acciaio e su calcestruzzo. "
+            "Si utilizza con chiodi e cartucce idonei alla base di fissaggio e richiede messa a punto dell’utensile (pressione corretta, appoggio ortogonale, prova iniziale). "
+            "In cantiere vanno eseguiti i controlli di tenuta, distanza dai bordi e passi; obbligatori DPI e personale formato. "
+            "Pulizia e manutenzione periodica mantengono costante la qualità di fissaggio. Per i dettagli operativi attenersi al manuale Tecnaria/Spit."
+        )
+
+    # modalità "dettagliata" (tecnica) — HTML
+    return """
+    <h3>P560 — Scheda operativa per posa connettori</h3>
+
+    <h4>Campo d’impiego</h4>
+    <ul>
+      <li>Fissaggio dei connettori Tecnaria su <strong>travi in acciaio</strong> e su <strong>calcestruzzo</strong> (dove previsto), in sistemi di solaio collaborante.</li>
+      <li>Uso con <strong>consumabili dedicati</strong> (chiodi idonei al supporto e cartucce di potenza adeguata).</li>
+    </ul>
+
+    <h4>Set-up utensile e consumabili</h4>
+    <ul>
+      <li>Verificare integrità utensile, guida, puntale e protezioni.</li>
+      <li>Selezionare <em>cartuccia</em> in funzione del supporto; eseguire 2–3 tiri di prova su scarti.</li>
+      <li>Usare <em>chiodi</em> conformi alle specifiche del supporto (acciaio / cls) e del connettore.</li>
+      <li>Impostare la P560 per appoggio ortogonale e pressione costante prima del tiro.</li>
+    </ul>
+
+    <h4>Procedura di tiro</h4>
+    <ol>
+      <li>Marcatura della posizione in accordo a <strong>passi e distanze</strong> di progetto.</li>
+      <li>Appoggio in squadra, <strong>pressione completa</strong> e tiro singolo senza rotazioni.</li>
+      <li>Controllo immediato: profondità d’infissione, assenza di spanciamenti o rotture del supporto.</li>
+    </ol>
+
+    <h4>Controlli di cantiere</h4>
+    <ul>
+      <li>Distanze minime dai bordi, interassi e passi come da elaborati; rispetto delle tolleranze.</li>
+      <li>Campione di tiri su base reale; ripetere prova se si cambia lotto di cartucce o il supporto.</li>
+      <li>Registrare eventuali scarti o ripetizioni e motivazioni (es. supporto irregolare, residui, vernici).</li>
+    </ul>
+
+    <h4>Sicurezza</h4>
+    <ul>
+      <li><strong>DPI obbligatori</strong>: protezione occhi/udito/mani; delimitare l’area di lavoro.</li>
+      <li>Caricamento e stoccaggio cartucce in sicurezza; divieto di modifiche all’utensile.</li>
+    </ul>
+
+    <h4>Manutenzione</h4>
+    <ul>
+      <li>Pulizia ordinaria (puntale, guida, camera); verifica usura componenti soggetti a sostituzione.</li>
+      <li>Manutenzione periodica secondo manuale per garantire costanza di prestazione.</li>
+    </ul>
+
+    <h4>Note e riferimenti</h4>
+    <ul>
+      <li>Usare solo consumabili compatibili; non sostituiscono bullonature/ancoraggi previsti dal progetto.</li>
+      <li>Riferimenti: manuale Tecnaria/Spit, norme di sicurezza applicabili, indicazioni del PSC di cantiere.</li>
+    </ul>
+    """.strip()
 
 def ctf_answer_info(mode: str) -> str:
     if mode == "breve":
@@ -183,6 +247,30 @@ def tpl_ctf_calc(mode: str, p: dict, h_cap: str, note: str|None=None) -> str:
     return (f"Input: lamiera H{p.get('h_lamiera','—')}, soletta {p.get('s_soletta','—')} mm, cls {p.get('cls','—')}, "
             f"t={p.get('t_lamiera','—')} mm, nr={p.get('nr_gola','—')}/gola. "
             f"Esito: CTF {h_cap}. Note: {note}")
+
+def tpl_ctf_posa(mode: str) -> str:
+    """
+    Istruzioni di posa CTF (richiamate quando l’intento è 'POSA').
+    """
+    if mode == "breve":
+        return "Posa CTF su lamiera/soletta: marcatura, chiodatura con P560, controlli su passi e distanze, DPI."
+    if mode == "standard":
+        return (
+            "Posa CTF: predisporre lamiera/cls, tracciare i passi, chiodare con P560 in appoggio ortogonale, "
+            "verificare interassi, distanze dai bordi e qualità d’infissione. Usare solo consumabili idonei; "
+            "obbligatori DPI e controlli di cantiere. Riferirsi al manuale Tecnaria."
+        )
+    # dettagliata in HTML
+    return """
+    <h3>CTF — Istruzioni di posa</h3>
+    <ol>
+      <li><strong>Tracciatura</strong>: marcatura posizioni secondo i disegni (passo in gola e lungo trave).</li>
+      <li><strong>Appoggio e tiro</strong>: P560 in squadra, pressione completa, tiro singolo; verificare la chiodatura.</li>
+      <li><strong>Controlli</strong>: interassi/distanze minime, qualità infissione, eventuali riprese.</li>
+      <li><strong>Sicurezza</strong>: DPI, area delimitata, consumabili conformi.</li>
+    </ol>
+    <p>Per le verifiche di capacità usare le tabelle PR<sub>d</sub> o la regola P0×k<sub>t</sub> dove applicabile.</p>
+    """.strip()
 
 # =========================================
 # 5) Allegati
