@@ -5,12 +5,10 @@
     "units": { "PRd": "kN" },
     "notes": "Valori inseriti quando chiaramente leggibili dal testo dell'Annex C1 (design). Celle 0.0 = da verificare/integrare."
   },
-
   "solid_base": {
     "orientation": ["perpendicular", "parallel"],
     "classes": ["C20/25", "C25/30", "C30/37", "C35/45"],
     "CTF_heights": ["CTF_020","CTF_025","CTF_030","CTF_040","CTF_060","CTF_070","CTF_080","CTF_090","CTF_105","CTF_125","CTF_135"],
-
     "perpendicular": {
       "C20/25": {
         "CTF_020": 13.7,
@@ -42,22 +40,22 @@
         "CTF_020": 21.4,
         "CTF_025": 26.7,
         "CTF_030": 32.1,
-        "CTF_040": 30.9,  // valore nel testo non chiarissimo: rivedere qui
+        "CTF_040": 30.9,
         "CTF_060": 0.0,
-        "CTF_070": 37.1,  // plateau duttile
-        "CTF_080": 37.1,  // confermato
+        "CTF_070": 37.1,
+        "CTF_080": 37.1,
         "CTF_090": 37.1,
-        "CTF_105": 37.1,  // confermato
+        "CTF_105": 37.1,
         "CTF_125": 37.1,
         "CTF_135": 37.1
       },
       "C35/45": {
         "CTF_020": 0.0,
-        "CTF_025": 26.7,  // dal blocco C35/45: "33.4 26.7 Non-ductile" -> design=26.7 per 025 (da confermare)
-        "CTF_030": 32.1,  // "40.1 32.1"
+        "CTF_025": 26.7,
+        "CTF_030": 32.1,
         "CTF_040": 0.0,
         "CTF_060": 0.0,
-        "CTF_070": 37.1,  // plateau
+        "CTF_070": 37.1,
         "CTF_080": 37.1,
         "CTF_090": 37.1,
         "CTF_105": 37.1,
@@ -65,7 +63,6 @@
         "CTF_135": 37.1
       }
     },
-
     "parallel": {
       "C20/25": {
         "CTF_020": 15.6,
@@ -84,7 +81,7 @@
         "CTF_020": 19.5,
         "CTF_025": 24.4,
         "CTF_030": 29.2,
-        "CTF_040": 35.9,  // dal blocco "44,9 35,9 Ductile"
+        "CTF_040": 35.9,
         "CTF_060": 0.0,
         "CTF_070": 35.9,
         "CTF_080": 35.9,
@@ -97,7 +94,7 @@
         "CTF_020": 19.5,
         "CTF_025": 24.4,
         "CTF_030": 29.2,
-        "CTF_040": 37.1,  // plateau
+        "CTF_040": 37.1,
         "CTF_060": 0.0,
         "CTF_070": 37.1,
         "CTF_080": 37.1,
@@ -107,10 +104,10 @@
         "CTF_135": 37.1
       },
       "C35/45": {
-        "CTF_020": 20.1,  // blocco con "20,1 16,1 Non-ductile": 16.1 appare come design per un'altezza bassa (verifica)
+        "CTF_020": 20.1,
         "CTF_025": 25.1,
-        "CTF_030": 24.1,  // questo punto è ambiguo nel testo: da rivedere
-        "CTF_040": 32.1,  // coerente con altri blocchi “40,1 32,1”
+        "CTF_030": 24.1,
+        "CTF_040": 32.1,
         "CTF_060": 0.0,
         "CTF_070": 32.1,
         "CTF_080": 32.1,
@@ -121,24 +118,21 @@
       }
     }
   },
-
   "kt_rules": {
     "description": "Annex C2: PRd_lamiera,⊥ = kt × PRd_solid_base",
     "caps": [
       { "nr": 1, "t_deck_leq": 1.0, "kt_max": 0.85 },
-      { "nr": 1, "t_deck_gt":  1.0, "kt_max": 1.00 },
+      { "nr": 1, "t_deck_gt": 1.0, "kt_max": 1.0 },
       { "nr": 2, "t_deck_leq": 1.0, "kt_max": 0.70 },
-      { "nr": 2, "t_deck_gt":  1.0, "kt_max": 0.80 }
+      { "nr": 2, "t_deck_gt": 1.0, "kt_max": 0.80 }
     ]
   },
-
   "kl_rules": {
     "description": "Annex C4: PRd_lamiera,‖ = kl × PRd_solid_base",
     "formula_hint": "kl = 0.6 × (1 − h_sc/h_p) × (h_p/b0) (vincoli Annex C4/C5)"
   },
-
   "reductions": {
     "thin_flange": { "rule": "t_ala < 8 mm → PRd × (t_ala/8), min 6 mm" },
-    "old_steel":   { "rule": "PRd × 0.81 (acciai storici ≈170 MPa)" }
+    "old_steel": { "rule": "PRd × 0.81 (acciai storici ≈170 MPa)" }
   }
 }
