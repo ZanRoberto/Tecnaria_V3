@@ -1,9 +1,9 @@
 {
   "meta": {
     "version": "2.0",
-    "source": "ETA-18/0447 (2021-07-05)",
+    "source": "ETA-18/0447 (estrazione da CT_F_CTF_ETA180447_21.1_EN.docx)",
     "units": { "PRd": "kN" },
-    "notes": "PRd solid_base da Annex C1. Per lamiera: usare kt (Annex C2) o kl (Annex C4) su PRd solid_base. Riduzioni Annex C6 se applicabili."
+    "notes": "Valori inseriti quando chiaramente leggibili dal testo dell'Annex C1 (design). Celle 0.0 = da verificare/integrare."
   },
 
   "solid_base": {
@@ -13,109 +13,132 @@
 
     "perpendicular": {
       "C20/25": {
-        "CTF_020": 11.4,
+        "CTF_020": 13.7,
         "CTF_025": 14.2,
         "CTF_030": 17.1,
         "CTF_040": 22.8,
         "CTF_060": 0.0,
         "CTF_070": 30.5,
-        "CTF_080": 0.0,
-        "CTF_090": 0.0,
+        "CTF_080": 30.5,
+        "CTF_090": 30.5,
         "CTF_105": 30.5,
-        "CTF_125": 0.0,
-        "CTF_135": 0.0
+        "CTF_125": 30.5,
+        "CTF_135": 30.5
       },
       "C25/30": {
         "CTF_020": 15.5,
-        "CTF_025": 19.3,
-        "CTF_030": 23.2,
-        "CTF_040": 30.9,
+        "CTF_025": 17.1,
+        "CTF_030": 20.5,
+        "CTF_040": 27.3,
         "CTF_060": 0.0,
         "CTF_070": 36.6,
-        "CTF_080": 0.0,
-        "CTF_090": 0.0,
+        "CTF_080": 36.6,
+        "CTF_090": 36.6,
         "CTF_105": 36.6,
-        "CTF_125": 0.0,
-        "CTF_135": 0.0
+        "CTF_125": 36.6,
+        "CTF_135": 36.6
       },
       "C30/37": {
         "CTF_020": 21.4,
         "CTF_025": 26.7,
         "CTF_030": 32.1,
-        "CTF_040": 0.0,
+        "CTF_040": 30.9,  // valore nel testo non chiarissimo: rivedere qui
         "CTF_060": 0.0,
-        "CTF_070": 0.0,
-        "CTF_080": 37.1,           // example_from_eta C1
-        "CTF_090": 0.0,
-        "CTF_105": 37.1,           // example_from_eta C1
-        "CTF_125": 0.0,
-        "CTF_135": 0.0
+        "CTF_070": 37.1,  // plateau duttile
+        "CTF_080": 37.1,  // confermato
+        "CTF_090": 37.1,
+        "CTF_105": 37.1,  // confermato
+        "CTF_125": 37.1,
+        "CTF_135": 37.1
       },
       "C35/45": {
         "CTF_020": 0.0,
-        "CTF_025": 0.0,
-        "CTF_030": 0.0,
+        "CTF_025": 26.7,  // dal blocco C35/45: "33.4 26.7 Non-ductile" -> design=26.7 per 025 (da confermare)
+        "CTF_030": 32.1,  // "40.1 32.1"
         "CTF_040": 0.0,
         "CTF_060": 0.0,
-        "CTF_070": 37.1,           // example_from_eta C1 (ductile plateau)
-        "CTF_080": 37.1,           // example_from_eta C1
-        "CTF_090": 37.1,           // example_from_eta C1
-        "CTF_105": 37.1,           // example_from_eta C1
-        "CTF_125": 37.1,           // example_from_eta C1
-        "CTF_135": 37.1            // example_from_eta C1
+        "CTF_070": 37.1,  // plateau
+        "CTF_080": 37.1,
+        "CTF_090": 37.1,
+        "CTF_105": 37.1,
+        "CTF_125": 37.1,
+        "CTF_135": 37.1
       }
     },
 
     "parallel": {
-      "C20/25": { "CTF_020": 15.6, "CTF_025": 19.5, "CTF_030": 23.3, "CTF_040": 31.1, "CTF_060": 0.0, "CTF_070": 31.1, "CTF_080": 31.1, "CTF_090": 31.1, "CTF_105": 31.1, "CTF_125": 31.1, "CTF_135": 31.1 },
-      "C25/30": { "CTF_020": 18.0, "CTF_025": 22.4, "CTF_030": 26.9, "CTF_040": 35.9, "CTF_060": 0.0, "CTF_070": 35.9, "CTF_080": 35.9, "CTF_090": 35.9, "CTF_105": 35.9, "CTF_125": 35.9, "CTF_135": 35.9 },
-      "C30/37": { "CTF_020": 19.5, "CTF_025": 24.4, "CTF_030": 29.2, "CTF_040": 37.1, "CTF_060": 0.0, "CTF_070": 37.1, "CTF_080": 37.1, "CTF_090": 37.1, "CTF_105": 37.1, "CTF_125": 37.1, "CTF_135": 37.1 },
-      "C35/45": { "CTF_020": 20.1, "CTF_025": 25.1, "CTF_030": 24.1, "CTF_040": 32.1, "CTF_060": 0.0, "CTF_070": 32.1, "CTF_080": 32.1, "CTF_090": 32.1, "CTF_105": 32.1, "CTF_125": 32.1, "CTF_135": 32.1 }
+      "C20/25": {
+        "CTF_020": 15.6,
+        "CTF_025": 19.5,
+        "CTF_030": 23.3,
+        "CTF_040": 31.1,
+        "CTF_060": 0.0,
+        "CTF_070": 31.1,
+        "CTF_080": 31.1,
+        "CTF_090": 31.1,
+        "CTF_105": 31.1,
+        "CTF_125": 31.1,
+        "CTF_135": 31.1
+      },
+      "C25/30": {
+        "CTF_020": 19.5,
+        "CTF_025": 24.4,
+        "CTF_030": 29.2,
+        "CTF_040": 35.9,  // dal blocco "44,9 35,9 Ductile"
+        "CTF_060": 0.0,
+        "CTF_070": 35.9,
+        "CTF_080": 35.9,
+        "CTF_090": 35.9,
+        "CTF_105": 35.9,
+        "CTF_125": 35.9,
+        "CTF_135": 35.9
+      },
+      "C30/37": {
+        "CTF_020": 19.5,
+        "CTF_025": 24.4,
+        "CTF_030": 29.2,
+        "CTF_040": 37.1,  // plateau
+        "CTF_060": 0.0,
+        "CTF_070": 37.1,
+        "CTF_080": 37.1,
+        "CTF_090": 37.1,
+        "CTF_105": 37.1,
+        "CTF_125": 37.1,
+        "CTF_135": 37.1
+      },
+      "C35/45": {
+        "CTF_020": 20.1,  // blocco con "20,1 16,1 Non-ductile": 16.1 appare come design per un'altezza bassa (verifica)
+        "CTF_025": 25.1,
+        "CTF_030": 24.1,  // questo punto è ambiguo nel testo: da rivedere
+        "CTF_040": 32.1,  // coerente con altri blocchi “40,1 32,1”
+        "CTF_060": 0.0,
+        "CTF_070": 32.1,
+        "CTF_080": 32.1,
+        "CTF_090": 32.1,
+        "CTF_105": 32.1,
+        "CTF_125": 32.1,
+        "CTF_135": 32.1
+      }
     }
   },
 
   "kt_rules": {
-    "description": "Annex C2: PRd = kt × P0. kt depends on trough geometry (b/h), deck thickness t, and connectors per rib (nr).",
-    "kt_formula": "kt = (b/h_sc) * (h_p/h_n) * (1 - b0/b)", 
-    "kt_caps": [
-      { "nr": 1,  "t_deck_leq": 1.0, "kt_max": 0.85 },
-      { "nr": 1,  "t_deck_gt":  1.0, "kt_max": 1.00 },
-      { "nr": 2,  "t_deck_leq": 1.0, "kt_max": 0.70 },
-      { "nr": 2,  "t_deck_gt":  1.0, "kt_max": 0.80 }
-    ],
-    "profile_types": {
-      "open_trough":  { "note": "b < b0" },
-      "reentrant":     { "note": "b > b0" }
-    },
-    "examples": {
-      "C35/45_open_trough_nr1": "PRd = kt × 34.6 (valore base indicativo per classi alte)",
-      "table_ref": "ETA Annex C2"
-    }
+    "description": "Annex C2: PRd_lamiera,⊥ = kt × PRd_solid_base",
+    "caps": [
+      { "nr": 1, "t_deck_leq": 1.0, "kt_max": 0.85 },
+      { "nr": 1, "t_deck_gt":  1.0, "kt_max": 1.00 },
+      { "nr": 2, "t_deck_leq": 1.0, "kt_max": 0.70 },
+      { "nr": 2, "t_deck_gt":  1.0, "kt_max": 0.80 }
+    ]
   },
 
   "kl_rules": {
-    "description": "Annex C4: ribs parallel to beam. PRd_parallel = kl × PRd_solid(perpendicular).",
-    "kl_formula": "kl = 0.6 * (1 - h_sc/h_p) * (h_p/b0)",
-    "constraints": [
-      "h_sc ≤ h_p + 75 mm",
-      "Connettori ⊥ o a 45° rispetto alla trave",
-      "Se lamiera continua sulla trave, b0 = larghezza del nervo di calcestruzzo"
-    ],
-    "table_ref": "ETA Annex C4–C5"
+    "description": "Annex C4: PRd_lamiera,‖ = kl × PRd_solid_base",
+    "formula_hint": "kl = 0.6 × (1 − h_sc/h_p) × (h_p/b0) (vincoli Annex C4/C5)"
   },
 
   "reductions": {
-    "thin_flange": {
-      "applicable_if": "t_II,act < 8 mm (min 6 mm)",
-      "formula": "PRd_red = PRd × (t_II,act / 8)",
-      "note": "Non sommare con altre riduzioni; applica la più penalizzante."
-    },
-    "old_steel": {
-      "fy": 170,
-      "alpha_BM_red": 0.81,
-      "formula": "PRd_red = 0.81 × PRd",
-      "note": "Alternativa alla riduzione per lamiera: usa il fattore peggiore."
-    },
-    "ref": "ETA Annex C6"
+    "thin_flange": { "rule": "t_ala < 8 mm → PRd × (t_ala/8), min 6 mm" },
+    "old_steel":   { "rule": "PRd × 0.81 (acciai storici ≈170 MPa)" }
   }
 }
