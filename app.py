@@ -1,8 +1,7 @@
-# app.py — TecnariaBot FULL v4.3 (con Note tecniche interne) + Interceptor Contatti
-# Requisiti: OPENAI_API_KEY (opzionale), templates/index.html, static/img/wizard.js,
-#            static/data/ctf_prd.json, static/(data/)?tecnaria_connettori_dati.json
+# app.py — TecnariaBot FULL v4.3 (CTF + copriferro)
+# Requisiti: OPENAI_API_KEY (opzionale), templates/index.html, static/img/wizard.js, static/data/ctf_prd.json
 
-import os, re, json, math, html
+import os, re, json, math
 from typing import Any, Dict, Optional, Tuple, List
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -17,139 +16,9 @@ except Exception:
     client = None
     OPENAI_MODEL = "gpt-4o-mini"
 
-# ========== Enrichment Note Tecniche (fonte interna) ==========
-# Import "soft" (se manca, il bot funziona comunque senza enrichment)
-try:
-    from knowledge_loader import enrich_response_with_internal_notes
-except Exception:
-    enrich_response_with_internal_notes = None
-
-
-def _resolve_internal_json_path(app_static_folder: str):
-    """
-    Rileva il JSON interno in modo robusto:
-    1) static/data/tecnaria_connettori_dati.json
-    2) static/tecnaria_connettori_dati.json
-    """
-    from pathlib import Path
-    cand = [
-        os.path.join(app_static_folder, "data", "tecnaria_connettori_dati.json"),
-        os.path.join(app_static_folder, "tecnaria_connettori_dati.json"),
-    ]
-    for p in cand:
-        if os.path.exists(p):
-            return Path(p)
-    return None
-
-
-def _maybe_enrich(answer: str, question: str) -> str:
-    """
-    Appende la 'Nota tecnica (fonte interna)' se:
-    - knowledge_loader è disponibile
-    - JSON interno è presente (in static/data o static/)
-    """
-    if not enrich_response_with_internal_notes:
-        return answer
-    json_path = _resolve_internal_json_path(app.static_folder)
-    try:
-        enriched = enrich_response_with_internal_notes(
-            answer=answer,
-            user_query=question,
-            product_hint=None,
-            json_path=json_path
-        )
-        return enriched or answer
-    except Exception:
-        return answer
-
-
 # ========== Flask ==========
 app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)
-
-
-# ========== Interceptor Contatti (PRIMA DI TUTTO) ==========
-CONTACTS_HTML = (
-    "<strong>TECNARIA SPA</strong><br>"
-    "P.iva 01277680243 — SDI J6URRTW<br><br>"
-    "Viale Pecori Giraldi, 55<br>"
-    "36061 - Bassano del Grappa VI Italia<br><br>"
-    "Tel: 0424 50 20 29<br>"
-    "Email: info@tecnaria.com"
-)
-
-CONTACTS_KEYS = (
-    "contatti", "telefono", "numero", "chiamare",
-    "mail", "email", "pec", "orari", "sede", "indirizzo"
-)
-
-
-def intercept_contacts(user_q: Optional[str]) -> Optional[str]:
-    t = (user_q or '').lower()
-    return CONTACTS_HTML if any(k in t for k in CONTACTS_KEYS) else None
-
-# ========== Interceptor Documenti Interni (Drive) ==========
-# Risponde VERBATIM con il contenuto dei file interni (Google Drive sync) se la query contiene le chiavi mappate.
-DOCS_MAP = {
-    'distributori': 'acquisti_distributori_europa.txt',
-    'europa': 'acquisti_distributori_europa.txt',
-    'estero': 'acquisti_distributori_europa.txt',
-    'capitolat': 'capitolati_e_computi.txt',   # matcha capitolato/capitolati
-    'comput': 'capitolati_e_computi.txt',
-    'dop': 'certificazioni_dop.txt',
-    'dichiarazioni di prestazione': 'certificazioni_dop.txt',
-    'assistenza cantiere': 'assistenza_cantiere.txt',
-    'assistenza in cantiere': 'assistenza_cantiere.txt',
-    'vendite': 'acquisti_vendite.txt',
-    'ordini': 'acquisti_vendite.txt',
-}
-
-def _resolve_docs_dirs():
-    dirs = []
-    env_dir = os.getenv('DOCS_DIR')
-    if env_dir and os.path.isdir(env_dir):
-        dirs.append(env_dir)
-    # Posizioni comuni
-    dirs.extend([
-        os.path.join(app.static_folder, 'docs'),
-        os.path.join(app.root_path, 'static', 'docs'),
-        os.path.join(app.root_path, 'docs'),
-    ])
-    # de-duplica mantenendo l'ordine
-    seen, uniq = set(), []
-    for d in dirs:
-        d = os.path.abspath(d)
-        if d not in seen:
-            seen.add(d); uniq.append(d)
-    return uniq
-
-def _read_drive_doc(filename: str) -> Optional[str]:
-    for d in _resolve_docs_dirs():
-        path = os.path.join(d, filename)
-        if os.path.exists(path):
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    return f.read().strip()
-            except Exception:
-                pass
-    return None
-
-def _render_verbatim(text: str, title: str) -> str:
-    safe = html.escape(text)
-    return f"<h3>{title}</h3><pre style='white-space:pre-wrap'>{safe}</pre>"
-
-def intercept_internal_docs(user_q: Optional[str]) -> Optional[str]:
-    q = (user_q or '').lower()
-    for key, fname in DOCS_MAP.items():
-        if key in q:
-            content = _read_drive_doc(fname)
-            if content:
-                title = f'Documento interno: {fname}'
-                return _render_verbatim(content, title)
-            else:
-                return f"Non trovo il documento interno <strong>{fname}</strong> nelle cartelle docs. Verifica l'upload su Render."
-    return None
-
 
 # ========== Scope / denylist ==========
 DENYLIST = {
@@ -158,13 +27,10 @@ DENYLIST = {
 }
 TEC_PRODUCTS = {"CTF","CTL","CEME","DIAPASON","P560"}
 
-
 def contains_denylist(q: str) -> bool:
     return any(d in (q or "").lower() for d in DENYLIST)
 
-
 # ========== Topic / Intent ==========
-
 def detect_topic(q: str) -> Optional[str]:
     t = (q or "").lower()
     if any(k in t for k in [" p560", "p560 ", "chiodatrice", "spit p560"]): return "P560"
@@ -173,7 +39,6 @@ def detect_topic(q: str) -> Optional[str]:
     if any(k in t for k in ["ctl", "acciaio-legno", "acciaio legno", "legno"]): return "CTL"
     if any(k in t for k in ["ctf", "connettore", "connettori", "lamiera", "soletta", "gola"]): return "CTF"
     return None
-
 
 def detect_intent(q: str) -> str:
     t = (q or "").lower()
@@ -184,7 +49,6 @@ def detect_intent(q: str) -> str:
     if any(k in t for k in ["differenza", "vs", "confronto", "meglio"]):
         return "CONFRONTO"
     return "INFO"
-
 
 # ========== Parsing context (wizard) ==========
 CTX_RE = {
@@ -198,6 +62,7 @@ CTX_RE = {
     "piena":     re.compile(r"soletta\s+piena", re.I),
     "t_lamiera": re.compile(r"t\s*=\s*([\d.,]+)\s*mm", re.I),
     "nr_gola":   re.compile(r"nr\s*=\s*(\d+)", re.I),
+    "copriferro":re.compile(r"copriferro\s*([\d.,]+)\s*mm", re.I),
 }
 UI_LABELS = {
     "h_lamiera":"Altezza lamiera (mm)",
@@ -208,11 +73,11 @@ UI_LABELS = {
     "dir":"Direzione lamiera",
     "s_long":"Passo lungo trave (mm)",
     "t_lamiera":"Spessore lamiera t (mm)",
-    "nr_gola":"N° connettori per gola"
+    "nr_gola":"N° connettori per gola",
+    "copriferro":"Copriferro (mm)"
 }
 CRITICAL_LAMIERA = ["h_lamiera","s_soletta","vled","cls","passo","dir","s_long","t_lamiera","nr_gola"]
 CRITICAL_PIENA   = ["s_soletta","vled","cls","s_long"]
-
 
 def parse_ctf_context(ctx: str) -> Dict[str, Any]:
     out: Dict[str, Any] = {}
@@ -236,16 +101,15 @@ def parse_ctf_context(ctx: str) -> Dict[str, Any]:
     out["piena"]     = True if CTX_RE["piena"].search(ctx) else False
     out["t_lamiera"] = f("t_lamiera", float, repl=True)
     out["nr_gola"]   = f("nr_gola", int)
+    out["copriferro"]= f("copriferro", float, repl=True)
     return {k:v for k,v in out.items() if v is not None}
-
 
 def missing_ctf_keys(parsed: Dict[str, Any]) -> List[str]:
     needed = CRITICAL_PIENA if parsed.get("piena") else CRITICAL_LAMIERA
+    # il copriferro NON è “bloccante” per poter calcolare (se manca → k_cop=1)
     return [k for k in needed if k not in parsed]
 
-
 # ========== DB PRd + ricerca ==========
-
 def load_ctf_db() -> Dict[str, Any]:
     path = os.path.join(app.static_folder, "data", "ctf_prd.json")
     try:
@@ -254,13 +118,10 @@ def load_ctf_db() -> Dict[str, Any]:
     except Exception:
         return {}
 
-
 PRD_DB = load_ctf_db()
-
 
 def _norm(s: str) -> str:
     return (s or "").strip().lower().replace(" ", "").replace("-", "").replace("_","")
-
 
 def _dir_key(d: str) -> List[str]:
     d = _norm(d)
@@ -268,30 +129,24 @@ def _dir_key(d: str) -> List[str]:
     if d.startswith("tras") or d.startswith("perp"): return ["trasversale","perpendicolare","perp","⊥","t"]
     return [d]
 
-
 def _passo_keys(passo: int) -> List[str]:
     p = str(passo)
     return [f"passo_{p}", f"passogola_{p}", f"gola_{p}", p]
-
 
 def _h_keys(h: int) -> List[str]:
     hstr = f"h{h}"
     return [hstr, hstr.upper(), str(h), f"H{h}"]
 
-
 def _cls_keys(cls: str) -> List[str]:
     c = (cls or "").upper().replace(" ", "")
     return [c, c.replace("C","C "), c.replace("/", " / ")]
 
-
 def _is_height_key(k: str) -> bool:
     return bool(re.match(r"^ctf[_-]?\d{3}$", (k or "").lower()))
-
 
 def _height_order_key(k: str) -> int:
     m = re.search(r"(\d{3})", k or "")
     return int(m.group(1)) if m else 999
-
 
 def find_prd_table(db: Dict[str, Any], h_lamiera: int, dir_lam: str, passo_gola: int, cls: str) -> Optional[Dict[str, float]]:
     if not all([h_lamiera, dir_lam, passo_gola, cls]): return None
@@ -328,9 +183,7 @@ def find_prd_table(db: Dict[str, Any], h_lamiera: int, dir_lam: str, passo_gola:
             except: pass
     return result or None
 
-
-# ========== Fallback solid_base (Annex C1) ==========
-
+# ========== Fallback solid_base (Annex C1) + k_t + k_cop ==========
 def prd_from_solid_base(db: Dict[str, Any], cls: str, direzione: str, ctf_code: str) -> float:
     orient = "parallel" if (direzione or "").lower().startswith("long") else "perpendicular"
     try:
@@ -343,16 +196,36 @@ def prd_from_solid_base(db: Dict[str, Any], cls: str, direzione: str, ctf_code: 
     except Exception:
         return 0.0
 
-
 def _kt_from_limits(t_mm: float, nr: int) -> float:
-    # clamp semplificato (rispettoso dei limiti ETA): t ↑ e nr ↑ aiutano
+    # conservativo ma coerente (se hai regole migliori in json, usale lì)
     if nr <= 1:
         return 1.00 if t_mm > 1.0 else 0.85
     return 0.80 if t_mm > 1.0 else 0.70
 
+def _kcop_from_json_or_default(db: Dict[str, Any], copriferro_mm: Optional[float]) -> float:
+    """Cerca una regola data-driven nel json, altrimenti default:
+       >=25 mm → 1.00; 15–24 mm → 0.85; <15 mm → 0.70"""
+    if copriferro_mm is None:
+        return 1.00
+    # JSON rule
+    rules = (db.get("copriferro_rule") or {}).get("ranges") if isinstance(db.get("copriferro_rule"), dict) else None
+    if isinstance(rules, list):
+        for r in rules:
+            try:
+                lo = float(r.get("min_mm", "-inf"))
+                hi = float(r.get("max_mm", "inf"))
+                f  = float(r.get("factor", 1.0))
+                if copriferro_mm >= lo and copriferro_mm < hi:
+                    return f
+            except:
+                pass
+    # default
+    if copriferro_mm >= 25.0: return 1.00
+    if copriferro_mm >= 15.0: return 0.85
+    return 0.70
 
 def choose_ctf_from_matrix_or_fallback(p: Dict[str, Any], safety: float = 1.10) -> Tuple[str, float, float, float, Optional[float], float, str]:
-    """1) Prova PRd specifiche H/dir/passo/cls; 2) se mancano, usa solid_base (Annex C1)."""
+    """1) Prova PRd specifiche H/dir/passo/cls; 2) se mancano, usa solid_base (Annex C1); 3) applica k_t e k_cop."""
     s_long = float(p["s_long"])
     n_per_m = 1000.0 / s_long if s_long > 0 else 0.0
     demand = float(p["vled"])
@@ -361,7 +234,6 @@ def choose_ctf_from_matrix_or_fallback(p: Dict[str, Any], safety: float = 1.10) 
     used_source = "tabella PRd (H/dir/passo/cls)"
     if not prd_map:
         used_source = "solid_base (Annex C1)"
-        # costruisci mappa dalle base
         orient = "parallel" if p["dir"].startswith("l") else "perpendicular"
         base_cls = PRD_DB.get("solid_base", {}).get(orient, {}).get(p["cls"].upper(), {})
         prd_map = {}
@@ -376,13 +248,15 @@ def choose_ctf_from_matrix_or_fallback(p: Dict[str, Any], safety: float = 1.10) 
 
     items = sorted(prd_map.items(), key=lambda kv: _height_order_key(kv[0]))
 
-    apply_kt = (p.get("t_lamiera") is not None) and (p.get("nr_gola") is not None) and (not p.get("piena"))
+    apply_kt  = (p.get("t_lamiera") is not None) and (p.get("nr_gola") is not None) and (not p.get("piena"))
     kt = _kt_from_limits(float(p.get("t_lamiera", 0) or 0), int(p.get("nr_gola", 0) or 0)) if apply_kt else 1.0
+
+    kcop = _kcop_from_json_or_default(PRD_DB, p.get("copriferro"))
 
     best = None
     last_key, last_prd_one = None, 0.0
     for key, prd_one_raw in items:
-        prd_one = prd_one_raw * (kt if apply_kt else 1.0)
+        prd_one = prd_one_raw * (kt if apply_kt else 1.0) * kcop
         cap = prd_one * n_per_m
         last_key, last_prd_one = key, prd_one
         if cap >= demand * safety:
@@ -393,7 +267,9 @@ def choose_ctf_from_matrix_or_fallback(p: Dict[str, Any], safety: float = 1.10) 
         key, prd_one, cap = best
         util = demand / cap if cap else None
         note = (f"Fonte={used_source}; PRd/conn={prd_one:.2f} kN"
-                f"{' (×k_t)' if apply_kt else ''}; n°/m={n_per_m:.2f}.")
+                f"{' (×k_t)' if apply_kt else ''}"
+                f"{' (×k_cop)' if p.get('copriferro') is not None else ''}; "
+                f"n°/m={n_per_m:.2f}.")
         m = re.search(r"(\d{3})", key); h_code = m.group(1) if m else key
         return (h_code, n_per_m, cap, demand, util, safety, note)
 
@@ -403,22 +279,19 @@ def choose_ctf_from_matrix_or_fallback(p: Dict[str, Any], safety: float = 1.10) 
         passo_req = 1000.0 / n_req
         msg = (f"Nessuna altezza soddisfa. Con {last_key} serve passo ≤{passo_req:.0f} mm "
                f"(Fonte={used_source}; PRd/conn={last_prd_one:.2f} kN"
-               f"{' (×k_t)' if apply_kt else ''}).")
+               f"{' (×k_t)' if apply_kt else ''}"
+               f"{' (×k_cop)' if p.get('copriferro') is not None else ''}).")
     else:
         msg = "Nessuna altezza soddisfa e PRd base assente. Verifica ctf_prd.json."
     return ("da rivedere", n_per_m, last_prd_one * n_per_m, demand, None, safety, msg)
 
-
 def choose_ctf_height(p: Dict[str, Any], safety: float = 1.10):
     return choose_ctf_from_matrix_or_fallback(p, safety)
 
-
 # ========== BLOCCO “C perfetta” (VERIFICATO / NON VERIFICATO) ==========
-
 def s_long_max(prd_conn: float, demand_kNm: float):
     if prd_conn <= 0: return math.inf
     return (1000.0 * prd_conn) / demand_kNm  # mm
-
 
 def render_calc_block(parsed: Dict[str, Any], result_tuple):
     (best_h, n_per_m, cap_m, demand, util, safety, note) = result_tuple
@@ -429,11 +302,12 @@ def render_calc_block(parsed: Dict[str, Any], result_tuple):
         f"<li>Lamiera: H{parsed.get('h_lamiera','—')} ({parsed.get('dir','—')}) — passo in gola {parsed.get('passo','—')} mm</li>"
         f"<li>Soletta: {parsed.get('s_soletta','—')} mm; cls: {parsed.get('cls','—')}</li>"
         f"<li>Passo lungo trave: {parsed.get('s_long','—')} mm → n°/m = {1000.0/float(parsed.get('s_long',1)):.2f}</li>"
-        f"<li>t lamiera: {parsed.get('t_lamiera','—')} mm; nr in gola: {parsed.get('nr_gola','—')}</li>"
+        f"<li>t lamiera: {parsed.get('t_lamiera','—')} mm; nr in gola: {parsed.get('nr_gola','—')}"
+        f"{'; copriferro: ' + str(parsed.get('copriferro')) + ' mm' if parsed.get('copriferro') is not None else ''}"
+        f"</li>"
         "</ul>"
     )
 
-    # Caso verificato
     if best_h and best_h not in ("da rivedere","non determinabile"):
         return (
             header +
@@ -445,7 +319,7 @@ def render_calc_block(parsed: Dict[str, Any], result_tuple):
             "</div>"
         )
 
-    # Caso NON verificato → headline + piano d’azione
+    # NON verificato
     prd_conn = (cap_m / n_per_m) if (n_per_m and cap_m is not None) else 0.0
     smax = s_long_max(prd_conn, demand) if (prd_conn and demand) else math.inf
     gap = (demand - (cap_m or 0.0))
@@ -471,7 +345,9 @@ def render_calc_block(parsed: Dict[str, Any], result_tuple):
         f"Lamiera H{parsed.get('h_lamiera','—')} ({parsed.get('dir','—')}), passo in gola {parsed.get('passo','—')} mm • "
         f"Soletta {parsed.get('s_soletta','—')} mm, cls {parsed.get('cls','—')} • "
         f"s<sub>long</sub> {parsed.get('s_long','—')} mm ({n_per_m:.2f}/m) • "
-        f"t {parsed.get('t_lamiera','—')} mm • nr {parsed.get('nr_gola','—')}</p>"
+        f"t {parsed.get('t_lamiera','—')} mm • nr {parsed.get('nr_gola','—')}"
+        f"{' • copriferro ' + str(parsed.get('copriferro')) + ' mm' if parsed.get('copriferro') is not None else ''}"
+        f"</p>"
     )
 
     headline = (
@@ -488,9 +364,7 @@ def render_calc_block(parsed: Dict[str, Any], result_tuple):
 
     return header + headline + why + "<h4>Piano d’azione (priorità)</h4>" + plan + params + notes
 
-
 # ========== Allegati / Note tecniche ==========
-
 def tool_attachments(topic: str, intent: str):
     out = []
     if topic == "P560":
@@ -501,7 +375,6 @@ def tool_attachments(topic: str, intent: str):
         out.append({"label":"Scheda CTF (PDF)","href":"/static/docs/ctf_scheda.pdf"})
     return out
 
-
 # ========== LLM (A/B/C) ==========
 SYSTEM_BASE = (
     "Sei TecnariaBot, assistente tecnico di Tecnaria S.p.A. (Bassano del Grappa). "
@@ -509,7 +382,6 @@ SYSTEM_BASE = (
     "Se la domanda è fuori scope, spiega gentilmente che il bot è dedicato ai prodotti Tecnaria. "
     "Tono professionale, niente marketing vuoto, niente inventare norme o valori non forniti."
 )
-
 
 def build_style_block(mode: str) -> str:
     mode = (mode or "").lower()
@@ -523,7 +395,6 @@ def build_style_block(mode: str) -> str:
             "<h3>Cos’è</h3>, <h4>Componenti</h4>, <h4>Varianti</h4>, <h4>Prestazioni</h4>, "
             "<h4>Posa</h4>, <h4>Norme e riferimenti</h4>, <h4>Vantaggi e limiti</h4>. "
             "Niente fluff; non inventare valori; resta nello scope Tecnaria.")
-
 
 def llm_reply(topic: str, intent: str, mode: str, question: str, context: str) -> str:
     if not client:
@@ -545,7 +416,6 @@ def llm_reply(topic: str, intent: str, mode: str, question: str, context: str) -
         temperature=0.2, top_p=0.9, max_tokens=900
     )
     return resp.choices[0].message.content.strip()
-
 
 def product_info_llm(topic: str, intent: str, mode: str, question: str, context: str) -> str:
     try:
@@ -576,13 +446,10 @@ def product_info_llm(topic: str, intent: str, mode: str, question: str, context:
             return "Diapason: lamiera per riqualifica solai; posa con chiodi/ancoranti; verifiche a taglio."
         return "Assistente dedicato ai prodotti Tecnaria S.p.A."
 
-
 # ========== Routes ==========
-
 @app.route("/")
 def index():
     return render_template("index.html")
-
 
 @app.route("/api/answer", methods=["POST"])
 def api_answer():
@@ -591,29 +458,15 @@ def api_answer():
     mode     = (data.get("mode") or "dettagliata").strip().lower()
     context  = (data.get("context") or "").strip()
 
-    # 0) Interceptor contatti (risposta garantita)
-    intercept = intercept_contacts(question)
-    if intercept:
-        return jsonify({"answer": intercept, "meta": {"needs_params": False}})
-
-    # 0-bis) Interceptor Documenti Interni (Drive) — risposta VERBATIM dal file
-    doc_html = intercept_internal_docs(question)
-    if doc_html:
-        return jsonify({"answer": doc_html, "meta": {"needs_params": False}})
-
-    # 1) Denylist
     if contains_denylist(question):
-        base = "Assistente dedicato a prodotti Tecnaria S.p.A."
-        return jsonify({"answer": _maybe_enrich(base, question),
+        return jsonify({"answer":"Assistente dedicato a prodotti Tecnaria S.p.A.",
                         "meta":{"needs_params":False,"required_keys":[]}})
 
-    # 2) Topic & Intent
     topic  = detect_topic(question)
     intent = detect_intent(question)
 
     if topic is None:
-        base = "Assistente dedicato ai prodotti Tecnaria (CTF/CTL/CEM-E/Diapason/P560)."
-        return jsonify({"answer": _maybe_enrich(base, question),
+        return jsonify({"answer":"Assistente dedicato ai prodotti Tecnaria (CTF/CTL/CEM-E/Diapason/P560).",
                         "meta":{"needs_params":False,"required_keys":[]}})
 
     # === CTF: ramo calcolo ===
@@ -622,13 +475,10 @@ def api_answer():
         miss = missing_ctf_keys(parsed)
         if miss:
             labels = [UI_LABELS[k] for k in miss]
-            base = "Per procedere servono: " + ", ".join(labels)
-            return jsonify({"answer": _maybe_enrich(base, question),
+            return jsonify({"answer":"Per procedere servono: " + ", ".join(labels),
                             "meta":{"needs_params":True,"required_keys":labels}})
         result = choose_ctf_height(parsed)
         answer = render_calc_block(parsed, result)
-        # Arricchimento con Nota tecnica (fonte interna)
-        answer = _maybe_enrich(answer, question)
         return jsonify({"answer":answer, "meta":{"needs_params":False}, "attachments":tool_attachments(topic,intent)})
 
     # === INFO / POSA / CONFRONTO → LLM ===
@@ -642,30 +492,19 @@ def api_answer():
         if not miss:
             result = choose_ctf_height(parsed)
             extra = "<hr>" + render_calc_block(parsed, result)
-        elif any(k in parsed for k in ("h_lamiera","s_soletta","vled","passo","s_long","t_lamiera","nr_gola")):
+        elif any(k in parsed for k in ("h_lamiera","s_soletta","vled","passo","s_long","t_lamiera","nr_gola","copriferro")):
             labels = [UI_LABELS[k] for k in miss]
             extra = f"<hr><p><em>Dati calcolo incompleti:</em> mancano {', '.join(labels)}.</p>"
 
-    final_answer = prose + extra
-    # Arricchimento con Nota tecnica (fonte interna) per tutti i rami non-CALC
-    final_answer = _maybe_enrich(final_answer, question)
+    return jsonify({"answer": prose + extra, "meta":{"needs_params":False}, "attachments":tool_attachments(topic,intent)})
 
-    return jsonify({"answer": final_answer,
-                    "meta":{"needs_params":False},
-                    "attachments":tool_attachments(topic,intent)})
-
-
-# Static file proxy (utile su alcuni hosting)
 @app.route("/static/<path:path>")
 def static_proxy(path):
     return send_from_directory("static", path)
-
 
 @app.route("/health")
 def health():
     return "ok", 200
 
-
 if __name__ == "__main__":
-    # run locale
     app.run(host="0.0.0.0", port=8000, debug=True)
