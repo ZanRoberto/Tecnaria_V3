@@ -7,6 +7,7 @@
   <style>
     :root {
       --bg:#0e0f12; --card:#151821; --muted:#8f98ad; --text:#e9eefb; --accent:#ff7a00; --ok:#2ecc71; --warn:#e74c3c;
+      --overlay: rgba(0,0,0,.65);
     }
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(135deg,#0e0f12,#121420 60%);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto}
@@ -34,6 +35,16 @@
     .wizard{margin-top:8px;border:1px dashed #2a3247;border-radius:12px;padding:12px;background:#0f121a}
     .pill{display:inline-block;background:#1b2133;color:#cdd5ea;border-radius:999px;padding:4px 8px;font-size:12px;margin-left:6px}
     .ok{color:var(--ok)} .warn{color:var(--warn)}
+
+    /* Modal preview (immagini/PDF) */
+    .modal{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;z-index:9999}
+    .modal.open{display:flex}
+    .modal-inner{background:#0f121a;border:1px solid #27304a;border-radius:12px;max-width:90vw;max-height:90vh;position:relative;overflow:hidden}
+    .modal-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #27304a}
+    .modal-body{width:86vw;height:76vh;background:#0a0d14}
+    .modal-close{background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px}
+    .modal-body img{max-width:100%;max-height:100%;display:block;margin:auto}
+    .modal-body iframe{width:100%;height:100%;border:0}
   </style>
 </head>
 <body>
@@ -47,7 +58,7 @@
       <div class="row">
         <div>
           <label>Domanda</label>
-          <input id="q" type="text" placeholder="Es. Quale altezza CTF devo usare?">
+          <input id="q" type="text" placeholder="Es. Quale altezza CTF devo usare? Oppure: mi dai i contatti di Tecnaria?">
           <div class="chips" id="modes">
             <div class="chip active" data-mode="breve">A Breve</div>
             <div class="chip" data-mode="standard">B Standard</div>
@@ -56,55 +67,26 @@
         </div>
         <div>
           <label>Dati tecnici (mini-wizard / testo)</label>
-          <textarea id="ctx" placeholder="Si compila dal mini-wizard oppure scrivi: lamiera H55, soletta 60 mm, V_L,Ed=150 kN/m, cls C30/37, passo gola 150 mm, lamiera longitudinale, passo lungo trave 200 mm, t=1.0 mm, nr=2, copriferro 25 mm"></textarea>
+          <textarea id="ctx" placeholder="Si compila dal mini-wizard o scrivi: lamiera H55, soletta 60 mm, V_L,Ed=150 kN/m, cls C30/37, passo gola 150 mm, lamiera longitudinale, passo lungo trave 200 mm, t=1.0 mm, nr=2, copriferro 25 mm"></textarea>
           <div class="small">Suggerimento: scrivi “altezza connettore” o “CTF” per far comparire i campi del mini-wizard.</div>
         </div>
       </div>
 
       <div id="wizard" class="wizard" style="display:none">
         <div class="row3">
-          <div>
-            <label>Altezza lamiera (mm)</label>
-            <input id="h_lamiera" type="text" value="55">
-          </div>
-          <div>
-            <label>Spessore soletta (mm)</label>
-            <input id="s_soletta" type="text" value="60">
-          </div>
-          <div>
-            <label>V_L,Ed (kN/m)</label>
-            <input id="vled" type="text" value="150">
-          </div>
+          <div><label>Altezza lamiera (mm)</label><input id="h_lamiera" type="text" value="55"></div>
+          <div><label>Spessore soletta (mm)</label><input id="s_soletta" type="text" value="60"></div>
+          <div><label>V_L,Ed (kN/m)</label><input id="vled" type="text" value="150"></div>
           <div>
             <label>Classe cls</label>
-            <select id="cls">
-              <option>C20/25</option><option>C25/30</option><option selected>C30/37</option><option>C35/45</option>
-            </select>
+            <select id="cls"><option>C20/25</option><option>C25/30</option><option selected>C30/37</option><option>C35/45</option></select>
           </div>
-          <div>
-            <label>Passo gola (mm)</label>
-            <input id="passo" type="text" value="150">
-          </div>
-          <div>
-            <label>Direzione lamiera</label>
-            <select id="dir"><option>longitudinale</option><option>trasversale</option></select>
-          </div>
-          <div>
-            <label>Passo lungo trave (mm)</label>
-            <input id="s_long" type="text" value="200">
-          </div>
-          <div>
-            <label>Spessore lamiera t (mm)</label>
-            <input id="t_lamiera" type="text" value="1.0">
-          </div>
-          <div>
-            <label>N° connettori per gola (nr)</label>
-            <input id="nr_gola" type="text" value="2">
-          </div>
-          <div>
-            <label>Copriferro (mm) <span class="pill">nuovo</span></label>
-            <input id="copriferro" type="text" placeholder="es. 25">
-          </div>
+          <div><label>Passo gola (mm)</label><input id="passo" type="text" value="150"></div>
+          <div><label>Direzione lamiera</label><select id="dir"><option>longitudinale</option><option>trasversale</option></select></div>
+          <div><label>Passo lungo trave (mm)</label><input id="s_long" type="text" value="200"></div>
+          <div><label>Spessore lamiera t (mm)</label><input id="t_lamiera" type="text" value="1.0"></div>
+          <div><label>N° connettori per gola (nr)</label><input id="nr_gola" type="text" value="2"></div>
+          <div><label>Copriferro (mm) <span class="pill">nuovo</span></label><input id="copriferro" type="text" placeholder="es. 25"></div>
         </div>
         <div style="margin-top:10px">
           <button class="btn" id="apply">Applica dati al contesto</button>
@@ -122,6 +104,17 @@
     </div>
   </div>
 
+  <!-- MODALE PREVIEW allegati (immagini/PDF) -->
+  <div class="modal" id="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <div id="modalTitle">Anteprima allegato</div>
+        <button class="modal-close" id="modalClose" aria-label="Chiudi">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
   <script>
     const qEl = document.getElementById('q');
     const ctxEl = document.getElementById('ctx');
@@ -131,14 +124,14 @@
     const atc = document.getElementById('attachments');
     let mode = 'breve';
 
-    // pulsanti A/B/C
+    // A/B/C
     document.getElementById('modes').addEventListener('click', (e)=>{
       const c = e.target.closest('.chip'); if(!c) return;
       document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
       c.classList.add('active'); mode = c.dataset.mode;
     });
 
-    // mini-wizard: si apre se nella domanda compaiono parole chiave CTF/altezza
+    // Auto-wizard se domanda parla di CTF/altezza
     function autoWizard(){
       const t = (qEl.value || '').toLowerCase();
       const need = t.includes('ctf') || t.includes('altezz') || t.includes('connettore');
@@ -146,7 +139,7 @@
     }
     qEl.addEventListener('input', autoWizard); autoWizard();
 
-    // Applica → compila il contesto
+    // Applica → compila contesto
     document.getElementById('apply').addEventListener('click', ()=>{
       const vals = {
         h_lamiera: document.getElementById('h_lamiera').value.trim(),
@@ -174,7 +167,7 @@
       ctxEl.value = parts.join(', ');
     });
 
-    // invio
+    // INVIA
     document.getElementById('send').addEventListener('click', async ()=>{
       const payload = { question: qEl.value, mode, context: ctxEl.value };
       spin.style.display = 'inline-block';
@@ -184,8 +177,14 @@
         const r = await fetch('/api/answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         const j = await r.json();
         ans.innerHTML = j.answer || '—';
+
+        // allegati → link + anteprima (data-preview)
         if (j.attachments && j.attachments.length){
-          atc.innerHTML = '<strong>Allegati / Note collegate</strong><br>' + j.attachments.map(a=>`<a href="${a.href}" target="_blank" rel="noopener">${a.label}</a>`).join(' ');
+          atc.innerHTML = '<strong>Allegati / Note collegate</strong><br>' + j.attachments.map(a=>{
+            const preview = a.preview ? 'data-preview="1"' : '';
+            return `<a href="${a.href}" class="att" ${preview} data-href="${a.href}">${a.label}</a>`;
+          }).join(' ');
+          bindAttachmentPreview();
         }
       }catch(e){
         ans.textContent = 'Errore di rete.';
@@ -193,7 +192,42 @@
         spin.style.display = 'none';
       }
     });
+
+    // ===== MODAL PREVIEW (immagine / PDF) =====
+    const modal = document.getElementById('modal');
+    const modalBody = document.getElementById('modalBody');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalClose = document.getElementById('modalClose');
+
+    function openModalWith(href, label){
+      modalBody.innerHTML = '';
+      modalTitle.textContent = label || 'Anteprima allegato';
+      if(/\.(png|jpg|jpeg|gif|webp)$/i.test(href)){
+        const img = document.createElement('img'); img.src = href; img.alt = label || 'allegato';
+        modalBody.appendChild(img);
+      }else if(/\.pdf($|\?)/i.test(href)){
+        const ifr = document.createElement('iframe'); ifr.src = href; modalBody.appendChild(ifr);
+      }else{
+        // se formato non supportato in preview → apri nuova scheda
+        window.open(href, '_blank','noopener'); return;
+      }
+      modal.classList.add('open');
+    }
+    function closeModal(){ modal.classList.remove('open'); modalBody.innerHTML=''; }
+    modalClose.addEventListener('click', closeModal);
+    modal.addEventListener('click',(e)=>{ if(e.target===modal) closeModal(); });
+    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeModal(); });
+
+    function bindAttachmentPreview(){
+      document.querySelectorAll('.attachments a.att').forEach(a=>{
+        a.addEventListener('click',(e)=>{
+          if(a.dataset.preview === '1'){
+            e.preventDefault();
+            openModalWith(a.dataset.href, a.textContent.trim());
+          }
+        });
+      });
+    }
   </script>
-  <!-- Se preferisci JS esterno, lascia questo: <script src="/static/img/wizard.js"></script> -->
 </body>
 </html>
