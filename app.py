@@ -1,7 +1,10 @@
-# app.py — TecnariaBot FULL v4.3 (CTF + copriferro)
-# Requisiti: OPENAI_API_KEY (opzionale), templates/index.html, static/img/wizard.js, static/data/ctf_prd.json
+# app.py — TecnariaBot FULL v4.4
+# - Interceptor CONTATTI (risposta certa con i dati ufficiali)
+# - Interceptor DOCUMENTI INTERNI (Drive) con risposta VERBATIM dai .txt
+# - Calcolo CTF con k_t e k_cop (copriferro) + rendering completo
+# Requisiti: templates/index.html, static/data/ctf_prd.json, eventuali static/docs/*.txt
 
-import os, re, json, math
+import os, re, json, math, html
 from typing import Any, Dict, Optional, Tuple, List
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -20,6 +23,95 @@ except Exception:
 app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)
 
+# ========== Interceptor CONTATTI ==========
+CONTACTS_HTML = (
+    "<strong>TECNARIA SPA</strong><br>"
+    "P.iva 01277680243 — SDI J6URRTW<br><br>"
+    "Viale Pecori Giraldi, 55<br>"
+    "36061 - Bassano del Grappa VI Italia<br><br>"
+    "Tel: 0424 50 20 29<br>"
+    "Email: info@tecnaria.com"
+)
+
+CONTACTS_KEYS = (
+    "contatti", "telefono", "numero", "chiamare",
+    "mail", "email", "pec", "orari", "sede", "indirizzo"
+)
+
+def intercept_contacts(user_q: Optional[str]) -> Optional[str]:
+    t = (user_q or "").lower()
+    return CONTACTS_HTML if any(k in t for k in CONTACTS_KEYS) else None
+
+# ========== Interceptor DOCUMENTI INTERNI (Drive) ==========
+# Risponde VERBATIM con il contenuto dei file .txt interni.
+DOCS_MAP = {
+    # Distributori / estero
+    "distributori": "acquisti_distributori_europa.txt",
+    "europa": "acquisti_distributori_europa.txt",
+    "estero": "acquisti_distributori_europa.txt",
+    # Copertura sinonimi / refusi
+    "rivenditori": "acquisti_distributori_europa.txt",
+    "riveditori": "acquisti_distributori_europa.txt",
+    "ue": "acquisti_distributori_europa.txt",
+    # Capitolati & computi
+    "capitolat": "capitolati_e_computi.txt",   # matcha capitolato/capitolati
+    "comput": "capitolati_e_computi.txt",
+    # DoP
+    "dop": "certificazioni_dop.txt",
+    "dichiarazioni di prestazione": "certificazioni_dop.txt",
+    # Assistenza cantiere
+    "assistenza cantiere": "assistenza_cantiere.txt",
+    "assistenza in cantiere": "assistenza_cantiere.txt",
+    # Vendite / ordini
+    "vendite": "acquisti_vendite.txt",
+    "ordini": "acquisti_vendite.txt",
+}
+
+def _resolve_docs_dirs():
+    dirs = []
+    env_dir = os.getenv('DOCS_DIR')
+    if env_dir and os.path.isdir(env_dir):
+        dirs.append(env_dir)
+    dirs.extend([
+        os.path.join(app.static_folder, 'docs'),
+        os.path.join(app.root_path, 'static', 'docs'),
+        os.path.join(app.root_path, 'docs'),
+    ])
+    # de-duplica mantenendo l'ordine
+    seen, uniq = set(), []
+    for d in dirs:
+        d = os.path.abspath(d)
+        if d not in seen:
+            seen.add(d); uniq.append(d)
+    return uniq
+
+def _read_drive_doc(filename: str) -> Optional[str]:
+    for d in _resolve_docs_dirs():
+        path = os.path.join(d, filename)
+        if os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    return f.read().strip()
+            except Exception:
+                pass
+    return None
+
+def _render_verbatim(text: str, title: str) -> str:
+    safe = html.escape(text)
+    return f"<h3>{title}</h3><pre style='white-space:pre-wrap'>{safe}</pre>"
+
+def intercept_internal_docs(user_q: Optional[str]) -> Optional[str]:
+    q = (user_q or '').lower()
+    for key, fname in DOCS_MAP.items():
+        if key in q:
+            content = _read_drive_doc(fname)
+            if content:
+                title = f'Documento interno: {fname}'
+                return _render_verbatim(content, title)
+            else:
+                return f"Non trovo il documento interno <strong>{fname}</strong> nelle cartelle docs. Verifica l'upload su Render."
+    return None
+
 # ========== Scope / denylist ==========
 DENYLIST = {
     "hbv", "x-hbv", "xhbv", "hi-bond ", "hibond ", "ribdeck", "hilti shear",
@@ -31,6 +123,7 @@ def contains_denylist(q: str) -> bool:
     return any(d in (q or "").lower() for d in DENYLIST)
 
 # ========== Topic / Intent ==========
+
 def detect_topic(q: str) -> Optional[str]:
     t = (q or "").lower()
     if any(k in t for k in [" p560", "p560 ", "chiodatrice", "spit p560"]): return "P560"
@@ -106,10 +199,10 @@ def parse_ctf_context(ctx: str) -> Dict[str, Any]:
 
 def missing_ctf_keys(parsed: Dict[str, Any]) -> List[str]:
     needed = CRITICAL_PIENA if parsed.get("piena") else CRITICAL_LAMIERA
-    # il copriferro NON è “bloccante” per poter calcolare (se manca → k_cop=1)
     return [k for k in needed if k not in parsed]
 
 # ========== DB PRd + ricerca ==========
+
 def load_ctf_db() -> Dict[str, Any]:
     path = os.path.join(app.static_folder, "data", "ctf_prd.json")
     try:
@@ -119,6 +212,7 @@ def load_ctf_db() -> Dict[str, Any]:
         return {}
 
 PRD_DB = load_ctf_db()
+
 
 def _norm(s: str) -> str:
     return (s or "").strip().lower().replace(" ", "").replace("-", "").replace("_","")
@@ -184,6 +278,7 @@ def find_prd_table(db: Dict[str, Any], h_lamiera: int, dir_lam: str, passo_gola:
     return result or None
 
 # ========== Fallback solid_base (Annex C1) + k_t + k_cop ==========
+
 def prd_from_solid_base(db: Dict[str, Any], cls: str, direzione: str, ctf_code: str) -> float:
     orient = "parallel" if (direzione or "").lower().startswith("long") else "perpendicular"
     try:
@@ -289,6 +384,7 @@ def choose_ctf_height(p: Dict[str, Any], safety: float = 1.10):
     return choose_ctf_from_matrix_or_fallback(p, safety)
 
 # ========== BLOCCO “C perfetta” (VERIFICATO / NON VERIFICATO) ==========
+
 def s_long_max(prd_conn: float, demand_kNm: float):
     if prd_conn <= 0: return math.inf
     return (1000.0 * prd_conn) / demand_kNm  # mm
@@ -303,7 +399,7 @@ def render_calc_block(parsed: Dict[str, Any], result_tuple):
         f"<li>Soletta: {parsed.get('s_soletta','—')} mm; cls: {parsed.get('cls','—')}</li>"
         f"<li>Passo lungo trave: {parsed.get('s_long','—')} mm → n°/m = {1000.0/float(parsed.get('s_long',1)):.2f}</li>"
         f"<li>t lamiera: {parsed.get('t_lamiera','—')} mm; nr in gola: {parsed.get('nr_gola','—')}"
-        f"{'; copriferro: ' + str(parsed.get('copriferro')) + ' mm' if parsed.get('copriferro') is not None else ''}"
+        f"{' ; copriferro: ' + str(parsed.get('copriferro')) + ' mm' if parsed.get('copriferro') is not None else ''}"
         f"</li>"
         "</ul>"
     )
@@ -365,6 +461,7 @@ def render_calc_block(parsed: Dict[str, Any], result_tuple):
     return header + headline + why + "<h4>Piano d’azione (priorità)</h4>" + plan + params + notes
 
 # ========== Allegati / Note tecniche ==========
+
 def tool_attachments(topic: str, intent: str):
     out = []
     if topic == "P560":
@@ -447,6 +544,7 @@ def product_info_llm(topic: str, intent: str, mode: str, question: str, context:
         return "Assistente dedicato ai prodotti Tecnaria S.p.A."
 
 # ========== Routes ==========
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -458,10 +556,22 @@ def api_answer():
     mode     = (data.get("mode") or "dettagliata").strip().lower()
     context  = (data.get("context") or "").strip()
 
+    # 0) Interceptor contatti (risposta garantita)
+    intercept = intercept_contacts(question)
+    if intercept:
+        return jsonify({"answer": intercept, "meta": {"needs_params": False}})
+
+    # 0-bis) Interceptor Documenti Interni (Drive) — risposta VERBATIM dal file
+    doc_html = intercept_internal_docs(question)
+    if doc_html:
+        return jsonify({"answer": doc_html, "meta": {"needs_params": False}})
+
+    # 1) Denylist
     if contains_denylist(question):
         return jsonify({"answer":"Assistente dedicato a prodotti Tecnaria S.p.A.",
                         "meta":{"needs_params":False,"required_keys":[]}})
 
+    # 2) Topic & Intent
     topic  = detect_topic(question)
     intent = detect_intent(question)
 
@@ -498,6 +608,7 @@ def api_answer():
 
     return jsonify({"answer": prose + extra, "meta":{"needs_params":False}, "attachments":tool_attachments(topic,intent)})
 
+# Static file proxy (utile su alcuni hosting)
 @app.route("/static/<path:path>")
 def static_proxy(path):
     return send_from_directory("static", path)
