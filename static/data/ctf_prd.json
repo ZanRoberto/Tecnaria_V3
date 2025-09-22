@@ -136,3 +136,11 @@
     "old_steel": { "rule": "PRd × 0.81 (acciai storici ≈170 MPa)" }
   }
 }
+"copriferro_rule": {
+  "note": "Fattore di riduzione sulla PRd in base al copriferro effettivo sopra la testa del connettore",
+  "ranges": [
+    { "min_mm": 25, "max_mm": 1000, "factor": 1.00 },
+    { "min_mm": 15, "max_mm": 25,  "factor": 0.85 },
+    { "min_mm": 0,  "max_mm": 15,  "factor": 0.70 }
+  ]
+}
