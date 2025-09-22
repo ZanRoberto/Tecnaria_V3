@@ -1,4 +1,4 @@
-# app.py — TecnariaBot FULL v4.3 (con Note tecniche interne)
+# app.py — TecnariaBot FULL v4.3 (con Note tecniche interne) + Interceptor Contatti
 # Requisiti: OPENAI_API_KEY (opzionale), templates/index.html, static/img/wizard.js,
 #            static/data/ctf_prd.json, static/(data/)?tecnaria_connettori_dati.json
 
@@ -24,6 +24,7 @@ try:
 except Exception:
     enrich_response_with_internal_notes = None
 
+
 def _resolve_internal_json_path(app_static_folder: str):
     """
     Rileva il JSON interno in modo robusto:
@@ -39,6 +40,7 @@ def _resolve_internal_json_path(app_static_folder: str):
         if os.path.exists(p):
             return Path(p)
     return None
+
 
 def _maybe_enrich(answer: str, question: str) -> str:
     """
@@ -60,9 +62,32 @@ def _maybe_enrich(answer: str, question: str) -> str:
     except Exception:
         return answer
 
+
 # ========== Flask ==========
 app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)
+
+
+# ========== Interceptor Contatti (PRIMA DI TUTTO) ==========
+CONTACTS_HTML = (
+    "<strong>TECNARIA SPA</strong><br>"
+    "P.iva 01277680243 — SDI J6URRTW<br><br>"
+    "Viale Pecori Giraldi, 55<br>"
+    "36061 - Bassano del Grappa VI Italia<br><br>"
+    "Tel: 0424 50 20 29<br>"
+    "Email: info@tecnaria.com"
+)
+
+CONTACTS_KEYS = (
+    "contatti", "telefono", "numero", "chiamare",
+    "mail", "email", "pec", "orari", "sede", "indirizzo"
+)
+
+
+def intercept_contacts(user_q: Optional[str]) -> Optional[str]:
+    t = (user_q or "").lower()
+    return CONTACTS_HTML if any(k in t for k in CONTACTS_KEYS) else None
+
 
 # ========== Scope / denylist ==========
 DENYLIST = {
@@ -71,10 +96,13 @@ DENYLIST = {
 }
 TEC_PRODUCTS = {"CTF","CTL","CEME","DIAPASON","P560"}
 
+
 def contains_denylist(q: str) -> bool:
     return any(d in (q or "").lower() for d in DENYLIST)
 
+
 # ========== Topic / Intent ==========
+
 def detect_topic(q: str) -> Optional[str]:
     t = (q or "").lower()
     if any(k in t for k in [" p560", "p560 ", "chiodatrice", "spit p560"]): return "P560"
@@ -83,6 +111,7 @@ def detect_topic(q: str) -> Optional[str]:
     if any(k in t for k in ["ctl", "acciaio-legno", "acciaio legno", "legno"]): return "CTL"
     if any(k in t for k in ["ctf", "connettore", "connettori", "lamiera", "soletta", "gola"]): return "CTF"
     return None
+
 
 def detect_intent(q: str) -> str:
     t = (q or "").lower()
@@ -93,6 +122,7 @@ def detect_intent(q: str) -> str:
     if any(k in t for k in ["differenza", "vs", "confronto", "meglio"]):
         return "CONFRONTO"
     return "INFO"
+
 
 # ========== Parsing context (wizard) ==========
 CTX_RE = {
@@ -121,6 +151,7 @@ UI_LABELS = {
 CRITICAL_LAMIERA = ["h_lamiera","s_soletta","vled","cls","passo","dir","s_long","t_lamiera","nr_gola"]
 CRITICAL_PIENA   = ["s_soletta","vled","cls","s_long"]
 
+
 def parse_ctf_context(ctx: str) -> Dict[str, Any]:
     out: Dict[str, Any] = {}
     if not ctx: return out
@@ -145,11 +176,14 @@ def parse_ctf_context(ctx: str) -> Dict[str, Any]:
     out["nr_gola"]   = f("nr_gola", int)
     return {k:v for k,v in out.items() if v is not None}
 
+
 def missing_ctf_keys(parsed: Dict[str, Any]) -> List[str]:
     needed = CRITICAL_PIENA if parsed.get("piena") else CRITICAL_LAMIERA
     return [k for k in needed if k not in parsed]
 
+
 # ========== DB PRd + ricerca ==========
+
 def load_ctf_db() -> Dict[str, Any]:
     path = os.path.join(app.static_folder, "data", "ctf_prd.json")
     try:
@@ -158,10 +192,13 @@ def load_ctf_db() -> Dict[str, Any]:
     except Exception:
         return {}
 
+
 PRD_DB = load_ctf_db()
+
 
 def _norm(s: str) -> str:
     return (s or "").strip().lower().replace(" ", "").replace("-", "").replace("_","")
+
 
 def _dir_key(d: str) -> List[str]:
     d = _norm(d)
@@ -169,24 +206,30 @@ def _dir_key(d: str) -> List[str]:
     if d.startswith("tras") or d.startswith("perp"): return ["trasversale","perpendicolare","perp","⊥","t"]
     return [d]
 
+
 def _passo_keys(passo: int) -> List[str]:
     p = str(passo)
     return [f"passo_{p}", f"passogola_{p}", f"gola_{p}", p]
+
 
 def _h_keys(h: int) -> List[str]:
     hstr = f"h{h}"
     return [hstr, hstr.upper(), str(h), f"H{h}"]
 
+
 def _cls_keys(cls: str) -> List[str]:
     c = (cls or "").upper().replace(" ", "")
     return [c, c.replace("C","C "), c.replace("/", " / ")]
 
+
 def _is_height_key(k: str) -> bool:
     return bool(re.match(r"^ctf[_-]?\d{3}$", (k or "").lower()))
+
 
 def _height_order_key(k: str) -> int:
     m = re.search(r"(\d{3})", k or "")
     return int(m.group(1)) if m else 999
+
 
 def find_prd_table(db: Dict[str, Any], h_lamiera: int, dir_lam: str, passo_gola: int, cls: str) -> Optional[Dict[str, float]]:
     if not all([h_lamiera, dir_lam, passo_gola, cls]): return None
@@ -223,7 +266,9 @@ def find_prd_table(db: Dict[str, Any], h_lamiera: int, dir_lam: str, passo_gola:
             except: pass
     return result or None
 
+
 # ========== Fallback solid_base (Annex C1) ==========
+
 def prd_from_solid_base(db: Dict[str, Any], cls: str, direzione: str, ctf_code: str) -> float:
     orient = "parallel" if (direzione or "").lower().startswith("long") else "perpendicular"
     try:
@@ -236,11 +281,13 @@ def prd_from_solid_base(db: Dict[str, Any], cls: str, direzione: str, ctf_code: 
     except Exception:
         return 0.0
 
+
 def _kt_from_limits(t_mm: float, nr: int) -> float:
     # clamp semplificato (rispettoso dei limiti ETA): t ↑ e nr ↑ aiutano
     if nr <= 1:
         return 1.00 if t_mm > 1.0 else 0.85
     return 0.80 if t_mm > 1.0 else 0.70
+
 
 def choose_ctf_from_matrix_or_fallback(p: Dict[str, Any], safety: float = 1.10) -> Tuple[str, float, float, float, Optional[float], float, str]:
     """1) Prova PRd specifiche H/dir/passo/cls; 2) se mancano, usa solid_base (Annex C1)."""
@@ -299,13 +346,17 @@ def choose_ctf_from_matrix_or_fallback(p: Dict[str, Any], safety: float = 1.10) 
         msg = "Nessuna altezza soddisfa e PRd base assente. Verifica ctf_prd.json."
     return ("da rivedere", n_per_m, last_prd_one * n_per_m, demand, None, safety, msg)
 
+
 def choose_ctf_height(p: Dict[str, Any], safety: float = 1.10):
     return choose_ctf_from_matrix_or_fallback(p, safety)
 
+
 # ========== BLOCCO “C perfetta” (VERIFICATO / NON VERIFICATO) ==========
+
 def s_long_max(prd_conn: float, demand_kNm: float):
     if prd_conn <= 0: return math.inf
     return (1000.0 * prd_conn) / demand_kNm  # mm
+
 
 def render_calc_block(parsed: Dict[str, Any], result_tuple):
     (best_h, n_per_m, cap_m, demand, util, safety, note) = result_tuple
@@ -375,7 +426,9 @@ def render_calc_block(parsed: Dict[str, Any], result_tuple):
 
     return header + headline + why + "<h4>Piano d’azione (priorità)</h4>" + plan + params + notes
 
+
 # ========== Allegati / Note tecniche ==========
+
 def tool_attachments(topic: str, intent: str):
     out = []
     if topic == "P560":
@@ -386,6 +439,7 @@ def tool_attachments(topic: str, intent: str):
         out.append({"label":"Scheda CTF (PDF)","href":"/static/docs/ctf_scheda.pdf"})
     return out
 
+
 # ========== LLM (A/B/C) ==========
 SYSTEM_BASE = (
     "Sei TecnariaBot, assistente tecnico di Tecnaria S.p.A. (Bassano del Grappa). "
@@ -393,6 +447,7 @@ SYSTEM_BASE = (
     "Se la domanda è fuori scope, spiega gentilmente che il bot è dedicato ai prodotti Tecnaria. "
     "Tono professionale, niente marketing vuoto, niente inventare norme o valori non forniti."
 )
+
 
 def build_style_block(mode: str) -> str:
     mode = (mode or "").lower()
@@ -406,6 +461,7 @@ def build_style_block(mode: str) -> str:
             "<h3>Cos’è</h3>, <h4>Componenti</h4>, <h4>Varianti</h4>, <h4>Prestazioni</h4>, "
             "<h4>Posa</h4>, <h4>Norme e riferimenti</h4>, <h4>Vantaggi e limiti</h4>. "
             "Niente fluff; non inventare valori; resta nello scope Tecnaria.")
+
 
 def llm_reply(topic: str, intent: str, mode: str, question: str, context: str) -> str:
     if not client:
@@ -427,6 +483,7 @@ def llm_reply(topic: str, intent: str, mode: str, question: str, context: str) -
         temperature=0.2, top_p=0.9, max_tokens=900
     )
     return resp.choices[0].message.content.strip()
+
 
 def product_info_llm(topic: str, intent: str, mode: str, question: str, context: str) -> str:
     try:
@@ -457,10 +514,13 @@ def product_info_llm(topic: str, intent: str, mode: str, question: str, context:
             return "Diapason: lamiera per riqualifica solai; posa con chiodi/ancoranti; verifiche a taglio."
         return "Assistente dedicato ai prodotti Tecnaria S.p.A."
 
+
 # ========== Routes ==========
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 @app.route("/api/answer", methods=["POST"])
 def api_answer():
@@ -469,11 +529,18 @@ def api_answer():
     mode     = (data.get("mode") or "dettagliata").strip().lower()
     context  = (data.get("context") or "").strip()
 
+    # 0) Interceptor contatti (risposta garantita)
+    intercept = intercept_contacts(question)
+    if intercept:
+        return jsonify({"answer": intercept, "meta": {"needs_params": False}})
+
+    # 1) Denylist
     if contains_denylist(question):
         base = "Assistente dedicato a prodotti Tecnaria S.p.A."
         return jsonify({"answer": _maybe_enrich(base, question),
                         "meta":{"needs_params":False,"required_keys":[]}})
 
+    # 2) Topic & Intent
     topic  = detect_topic(question)
     intent = detect_intent(question)
 
@@ -520,14 +587,17 @@ def api_answer():
                     "meta":{"needs_params":False},
                     "attachments":tool_attachments(topic,intent)})
 
+
 # Static file proxy (utile su alcuni hosting)
 @app.route("/static/<path:path>")
 def static_proxy(path):
     return send_from_directory("static", path)
 
+
 @app.route("/health")
 def health():
     return "ok", 200
+
 
 if __name__ == "__main__":
     # run locale
