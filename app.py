@@ -1,621 +1,250 @@
-# app.py — TecnariaBot FULL v4.4
-# - Interceptor CONTATTI (risposta certa con i dati ufficiali)
-# - Interceptor DOCUMENTI INTERNI (Drive) con risposta VERBATIM dai .txt
-# - Calcolo CTF con k_t e k_cop (copriferro) + rendering completo
-# Requisiti: templates/index.html, static/data/ctf_prd.json, eventuali static/docs/*.txt
-
-import os, re, json, math, html
-from typing import Any, Dict, Optional, Tuple, List
-from flask import Flask, render_template, request, jsonify, send_from_directory
-from flask_cors import CORS
-
-# ========== OpenAI opzionale ==========
-try:
-    from openai import OpenAI
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-    client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
-    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-except Exception:
-    client = None
-    OPENAI_MODEL = "gpt-4o-mini"
-
-# ========== Flask ==========
-app = Flask(__name__, static_folder="static", template_folder="templates")
-CORS(app)
-
-# ========== Interceptor CONTATTI ==========
-CONTACTS_HTML = (
-    "<strong>TECNARIA SPA</strong><br>"
-    "P.iva 01277680243 — SDI J6URRTW<br><br>"
-    "Viale Pecori Giraldi, 55<br>"
-    "36061 - Bassano del Grappa VI Italia<br><br>"
-    "Tel: 0424 50 20 29<br>"
-    "Email: info@tecnaria.com"
-)
-
-CONTACTS_KEYS = (
-    "contatti", "telefono", "numero", "chiamare",
-    "mail", "email", "pec", "orari", "sede", "indirizzo"
-)
-
-def intercept_contacts(user_q: Optional[str]) -> Optional[str]:
-    t = (user_q or "").lower()
-    return CONTACTS_HTML if any(k in t for k in CONTACTS_KEYS) else None
-
-# ========== Interceptor DOCUMENTI INTERNI (Drive) ==========
-# Risponde VERBATIM con il contenuto dei file .txt interni.
-DOCS_MAP = {
-    # Distributori / estero
-    "distributori": "acquisti_distributori_europa.txt",
-    "europa": "acquisti_distributori_europa.txt",
-    "estero": "acquisti_distributori_europa.txt",
-    # Copertura sinonimi / refusi
-    "rivenditori": "acquisti_distributori_europa.txt",
-    "riveditori": "acquisti_distributori_europa.txt",
-    "ue": "acquisti_distributori_europa.txt",
-    # Capitolati & computi
-    "capitolat": "capitolati_e_computi.txt",   # matcha capitolato/capitolati
-    "comput": "capitolati_e_computi.txt",
-    # DoP
-    "dop": "certificazioni_dop.txt",
-    "dichiarazioni di prestazione": "certificazioni_dop.txt",
-    # Assistenza cantiere
-    "assistenza cantiere": "assistenza_cantiere.txt",
-    "assistenza in cantiere": "assistenza_cantiere.txt",
-    # Vendite / ordini
-    "vendite": "acquisti_vendite.txt",
-    "ordini": "acquisti_vendite.txt",
-}
-
-def _resolve_docs_dirs():
-    dirs = []
-    env_dir = os.getenv('DOCS_DIR')
-    if env_dir and os.path.isdir(env_dir):
-        dirs.append(env_dir)
-    dirs.extend([
-        os.path.join(app.static_folder, 'docs'),
-        os.path.join(app.root_path, 'static', 'docs'),
-        os.path.join(app.root_path, 'docs'),
-    ])
-    # de-duplica mantenendo l'ordine
-    seen, uniq = set(), []
-    for d in dirs:
-        d = os.path.abspath(d)
-        if d not in seen:
-            seen.add(d); uniq.append(d)
-    return uniq
-
-def _read_drive_doc(filename: str) -> Optional[str]:
-    for d in _resolve_docs_dirs():
-        path = os.path.join(d, filename)
-        if os.path.exists(path):
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    return f.read().strip()
-            except Exception:
-                pass
-    return None
-
-def _render_verbatim(text: str, title: str) -> str:
-    safe = html.escape(text)
-    return f"<h3>{title}</h3><pre style='white-space:pre-wrap'>{safe}</pre>"
-
-def intercept_internal_docs(user_q: Optional[str]) -> Optional[str]:
-    q = (user_q or '').lower()
-    for key, fname in DOCS_MAP.items():
-        if key in q:
-            content = _read_drive_doc(fname)
-            if content:
-                title = f'Documento interno: {fname}'
-                return _render_verbatim(content, title)
-            else:
-                return f"Non trovo il documento interno <strong>{fname}</strong> nelle cartelle docs. Verifica l'upload su Render."
-    return None
-
-# ========== Scope / denylist ==========
-DENYLIST = {
-    "hbv", "x-hbv", "xhbv", "hi-bond ", "hibond ", "ribdeck", "hilti shear",
-    "fva", "comflor", "metsec", "holorib", "p800"   # non Tecnaria
-}
-TEC_PRODUCTS = {"CTF","CTL","CEME","DIAPASON","P560"}
-
-def contains_denylist(q: str) -> bool:
-    return any(d in (q or "").lower() for d in DENYLIST)
-
-# ========== Topic / Intent ==========
-
-def detect_topic(q: str) -> Optional[str]:
-    t = (q or "").lower()
-    if any(k in t for k in [" p560", "p560 ", "chiodatrice", "spit p560"]): return "P560"
-    if "diapason" in t: return "DIAPASON"
-    if any(k in t for k in ["cem-e", "ceme", "cem e"]): return "CEME"
-    if any(k in t for k in ["ctl", "acciaio-legno", "acciaio legno", "legno"]): return "CTL"
-    if any(k in t for k in ["ctf", "connettore", "connettori", "lamiera", "soletta", "gola"]): return "CTF"
-    return None
-
-def detect_intent(q: str) -> str:
-    t = (q or "").lower()
-    if any(k in t for k in ["altezz", "dimension", "v_l", "v l", "v_l,ed", "kn/m", "numero", "quanti", "portata", "scegliere", "che altezza", "verifica", "calcolo"]):
-        return "CALC"
-    if any(k in t for k in ["posa", "installazione", "fissare", "uso in cantiere", "come si posa", "istruzioni"]):
-        return "POSA"
-    if any(k in t for k in ["differenza", "vs", "confronto", "meglio"]):
-        return "CONFRONTO"
-    return "INFO"
-
-# ========== Parsing context (wizard) ==========
-CTX_RE = {
-    "h_lamiera": re.compile(r"lamiera\s*h?\s*(\d+)", re.I),
-    "s_soletta": re.compile(r"soletta\s*(\d+)\s*mm", re.I),
-    "vled":      re.compile(r"v[\s_.,-]*l\s*,?ed\s*=\s*([\d.,]+)\s*kn/?m", re.I),
-    "cls":       re.compile(r"cls\s*([Cc]\d+\/\d+)", re.I),
-    "passo":     re.compile(r"passo\s*gola\s*(\d+)\s*mm", re.I),
-    "dir":       re.compile(r"lamiera\s*(longitudinale|trasversale)", re.I),
-    "s_long":    re.compile(r"passo\s+lungo\s+trave\s*(\d+)\s*mm", re.I),
-    "piena":     re.compile(r"soletta\s+piena", re.I),
-    "t_lamiera": re.compile(r"t\s*=\s*([\d.,]+)\s*mm", re.I),
-    "nr_gola":   re.compile(r"nr\s*=\s*(\d+)", re.I),
-    "copriferro":re.compile(r"copriferro\s*([\d.,]+)\s*mm", re.I),
-}
-UI_LABELS = {
-    "h_lamiera":"Altezza lamiera (mm)",
-    "s_soletta":"Spessore soletta (mm)",
-    "vled":"V_L,Ed (kN/m)",
-    "cls":"Classe cls",
-    "passo":"Passo gola (mm)",
-    "dir":"Direzione lamiera",
-    "s_long":"Passo lungo trave (mm)",
-    "t_lamiera":"Spessore lamiera t (mm)",
-    "nr_gola":"N° connettori per gola",
-    "copriferro":"Copriferro (mm)"
-}
-CRITICAL_LAMIERA = ["h_lamiera","s_soletta","vled","cls","passo","dir","s_long","t_lamiera","nr_gola"]
-CRITICAL_PIENA   = ["s_soletta","vled","cls","s_long"]
-
-def parse_ctf_context(ctx: str) -> Dict[str, Any]:
-    out: Dict[str, Any] = {}
-    if not ctx: return out
-    def f(k, cast=None, repl=False):
-        m = CTX_RE[k].search(ctx)
-        if not m: return None
-        v = m.group(1)
-        if repl: v = v.replace(",", ".")
-        if cast:
-            try: return cast(v)
-            except: return None
-        return v
-    out["h_lamiera"] = f("h_lamiera", int)
-    out["s_soletta"] = f("s_soletta", int)
-    out["vled"]      = f("vled", float, repl=True)
-    cls = f("cls"); out["cls"] = cls.upper() if cls else None
-    out["passo"]     = f("passo", int)
-    dirn = f("dir"); out["dir"] = dirn.lower() if dirn else None
-    out["s_long"]    = f("s_long", int)
-    out["piena"]     = True if CTX_RE["piena"].search(ctx) else False
-    out["t_lamiera"] = f("t_lamiera", float, repl=True)
-    out["nr_gola"]   = f("nr_gola", int)
-    out["copriferro"]= f("copriferro", float, repl=True)
-    return {k:v for k,v in out.items() if v is not None}
-
-def missing_ctf_keys(parsed: Dict[str, Any]) -> List[str]:
-    needed = CRITICAL_PIENA if parsed.get("piena") else CRITICAL_LAMIERA
-    return [k for k in needed if k not in parsed]
-
-# ========== DB PRd + ricerca ==========
-
-def load_ctf_db() -> Dict[str, Any]:
-    path = os.path.join(app.static_folder, "data", "ctf_prd.json")
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-PRD_DB = load_ctf_db()
-
-
-def _norm(s: str) -> str:
-    return (s or "").strip().lower().replace(" ", "").replace("-", "").replace("_","")
-
-def _dir_key(d: str) -> List[str]:
-    d = _norm(d)
-    if d.startswith("long"): return ["longitudinale","long","parallel","parallela","||","l"]
-    if d.startswith("tras") or d.startswith("perp"): return ["trasversale","perpendicolare","perp","⊥","t"]
-    return [d]
-
-def _passo_keys(passo: int) -> List[str]:
-    p = str(passo)
-    return [f"passo_{p}", f"passogola_{p}", f"gola_{p}", p]
-
-def _h_keys(h: int) -> List[str]:
-    hstr = f"h{h}"
-    return [hstr, hstr.upper(), str(h), f"H{h}"]
-
-def _cls_keys(cls: str) -> List[str]:
-    c = (cls or "").upper().replace(" ", "")
-    return [c, c.replace("C","C "), c.replace("/", " / ")]
-
-def _is_height_key(k: str) -> bool:
-    return bool(re.match(r"^ctf[_-]?\d{3}$", (k or "").lower()))
-
-def _height_order_key(k: str) -> int:
-    m = re.search(r"(\d{3})", k or "")
-    return int(m.group(1)) if m else 999
-
-def find_prd_table(db: Dict[str, Any], h_lamiera: int, dir_lam: str, passo_gola: int, cls: str) -> Optional[Dict[str, float]]:
-    if not all([h_lamiera, dir_lam, passo_gola, cls]): return None
-    # livello H
-    Hnode = None
-    for hk in db.keys():
-        if _norm(hk) in map(_norm, _h_keys(h_lamiera)):
-            Hnode = db[hk]; break
-    if not isinstance(Hnode, dict): return None
-    # livello direzione
-    Dnode = None
-    for dk in Hnode.keys():
-        if _norm(dk) in map(_norm, _dir_key(dir_lam)):
-            Dnode = Hnode[dk]; break
-    if not isinstance(Dnode, dict): return None
-    # livello passo (opzionale)
-    Pnode = None
-    for pk in Dnode.keys():
-        if _norm(pk) in map(_norm, _passo_keys(passo_gola)):
-            Pnode = Dnode[pk]; break
-    if Pnode is None: Pnode = Dnode
-    if not isinstance(Pnode, dict): return None
-    # livello classe
-    Cnode = None
-    for ck in Pnode.keys():
-        if _norm(ck) in map(_norm, _cls_keys(cls)):
-            Cnode = Pnode[ck]; break
-    if not isinstance(Cnode, dict): return None
-    # estrai PRd
-    result = {}
-    for k, v in Cnode.items():
-        if _is_height_key(k):
-            try: result[k.upper().replace("-", "_")] = float(v)
-            except: pass
-    return result or None
-
-# ========== Fallback solid_base (Annex C1) + k_t + k_cop ==========
-
-def prd_from_solid_base(db: Dict[str, Any], cls: str, direzione: str, ctf_code: str) -> float:
-    orient = "parallel" if (direzione or "").lower().startswith("long") else "perpendicular"
-    try:
-        return float(
-            db.get("solid_base", {})
-              .get(orient, {})
-              .get((cls or "").upper(), {})
-              .get((ctf_code or "").upper(), 0.0) or 0.0
-        )
-    except Exception:
-        return 0.0
-
-def _kt_from_limits(t_mm: float, nr: int) -> float:
-    # conservativo ma coerente (se hai regole migliori in json, usale lì)
-    if nr <= 1:
-        return 1.00 if t_mm > 1.0 else 0.85
-    return 0.80 if t_mm > 1.0 else 0.70
-
-def _kcop_from_json_or_default(db: Dict[str, Any], copriferro_mm: Optional[float]) -> float:
-    """Cerca una regola data-driven nel json, altrimenti default:
-       >=25 mm → 1.00; 15–24 mm → 0.85; <15 mm → 0.70"""
-    if copriferro_mm is None:
-        return 1.00
-    # JSON rule
-    rules = (db.get("copriferro_rule") or {}).get("ranges") if isinstance(db.get("copriferro_rule"), dict) else None
-    if isinstance(rules, list):
-        for r in rules:
-            try:
-                lo = float(r.get("min_mm", "-inf"))
-                hi = float(r.get("max_mm", "inf"))
-                f  = float(r.get("factor", 1.0))
-                if copriferro_mm >= lo and copriferro_mm < hi:
-                    return f
-            except:
-                pass
-    # default
-    if copriferro_mm >= 25.0: return 1.00
-    if copriferro_mm >= 15.0: return 0.85
-    return 0.70
-
-def choose_ctf_from_matrix_or_fallback(p: Dict[str, Any], safety: float = 1.10) -> Tuple[str, float, float, float, Optional[float], float, str]:
-    """1) Prova PRd specifiche H/dir/passo/cls; 2) se mancano, usa solid_base (Annex C1); 3) applica k_t e k_cop."""
-    s_long = float(p["s_long"])
-    n_per_m = 1000.0 / s_long if s_long > 0 else 0.0
-    demand = float(p["vled"])
-
-    prd_map = find_prd_table(PRD_DB, p["h_lamiera"], p["dir"], p["passo"], p["cls"])
-    used_source = "tabella PRd (H/dir/passo/cls)"
-    if not prd_map:
-        used_source = "solid_base (Annex C1)"
-        orient = "parallel" if p["dir"].startswith("l") else "perpendicular"
-        base_cls = PRD_DB.get("solid_base", {}).get(orient, {}).get(p["cls"].upper(), {})
-        prd_map = {}
-        for k, v in base_cls.items():
-            if _is_height_key(k):
-                try: prd_map[k.upper().replace("-", "_")] = float(v or 0.0)
-                except: pass
-
-    if not prd_map:
-        return ("non determinabile", n_per_m, None, demand, None, safety,
-                "Database PRd non disponibile (né matrice né solid_base). Popola static/data/ctf_prd.json.")
-
-    items = sorted(prd_map.items(), key=lambda kv: _height_order_key(kv[0]))
-
-    apply_kt  = (p.get("t_lamiera") is not None) and (p.get("nr_gola") is not None) and (not p.get("piena"))
-    kt = _kt_from_limits(float(p.get("t_lamiera", 0) or 0), int(p.get("nr_gola", 0) or 0)) if apply_kt else 1.0
-
-    kcop = _kcop_from_json_or_default(PRD_DB, p.get("copriferro"))
-
-    best = None
-    last_key, last_prd_one = None, 0.0
-    for key, prd_one_raw in items:
-        prd_one = prd_one_raw * (kt if apply_kt else 1.0) * kcop
-        cap = prd_one * n_per_m
-        last_key, last_prd_one = key, prd_one
-        if cap >= demand * safety:
-            best = (key, prd_one, cap)
-            break
-
-    if best:
-        key, prd_one, cap = best
-        util = demand / cap if cap else None
-        note = (f"Fonte={used_source}; PRd/conn={prd_one:.2f} kN"
-                f"{' (×k_t)' if apply_kt else ''}"
-                f"{' (×k_cop)' if p.get('copriferro') is not None else ''}; "
-                f"n°/m={n_per_m:.2f}.")
-        m = re.search(r"(\d{3})", key); h_code = m.group(1) if m else key
-        return (h_code, n_per_m, cap, demand, util, safety, note)
-
-    # Nessuna altezza soddisfa → suggerisci passo richiesto con l’ultima (più alta)
-    if last_prd_one > 0:
-        n_req = (demand * safety) / last_prd_one
-        passo_req = 1000.0 / n_req
-        msg = (f"Nessuna altezza soddisfa. Con {last_key} serve passo ≤{passo_req:.0f} mm "
-               f"(Fonte={used_source}; PRd/conn={last_prd_one:.2f} kN"
-               f"{' (×k_t)' if apply_kt else ''}"
-               f"{' (×k_cop)' if p.get('copriferro') is not None else ''}).")
-    else:
-        msg = "Nessuna altezza soddisfa e PRd base assente. Verifica ctf_prd.json."
-    return ("da rivedere", n_per_m, last_prd_one * n_per_m, demand, None, safety, msg)
-
-def choose_ctf_height(p: Dict[str, Any], safety: float = 1.10):
-    return choose_ctf_from_matrix_or_fallback(p, safety)
-
-# ========== BLOCCO “C perfetta” (VERIFICATO / NON VERIFICATO) ==========
-
-def s_long_max(prd_conn: float, demand_kNm: float):
-    if prd_conn <= 0: return math.inf
-    return (1000.0 * prd_conn) / demand_kNm  # mm
-
-def render_calc_block(parsed: Dict[str, Any], result_tuple):
-    (best_h, n_per_m, cap_m, demand, util, safety, note) = result_tuple
-
-    header = (
-        "<h3>CTF — Selezione altezza consigliata</h3>"
-        "<ul>"
-        f"<li>Lamiera: H{parsed.get('h_lamiera','—')} ({parsed.get('dir','—')}) — passo in gola {parsed.get('passo','—')} mm</li>"
-        f"<li>Soletta: {parsed.get('s_soletta','—')} mm; cls: {parsed.get('cls','—')}</li>"
-        f"<li>Passo lungo trave: {parsed.get('s_long','—')} mm → n°/m = {1000.0/float(parsed.get('s_long',1)):.2f}</li>"
-        f"<li>t lamiera: {parsed.get('t_lamiera','—')} mm; nr in gola: {parsed.get('nr_gola','—')}"
-        f"{' ; copriferro: ' + str(parsed.get('copriferro')) + ' mm' if parsed.get('copriferro') is not None else ''}"
-        f"</li>"
-        "</ul>"
-    )
-
-    if best_h and best_h not in ("da rivedere","non determinabile"):
-        return (
-            header +
-            "<div style='border-left:4px solid #2ecc71;padding-left:10px;margin:8px 0'>"
-            f"<p><strong>✅ VERIFICATO</strong> — Altezza consigliata: <strong>CTF {best_h}</strong>.<br>"
-            f"n°/m = {n_per_m:.2f}; Capacità = <strong>{cap_m:.1f} kN/m</strong>; "
-            f"Domanda = {demand:.1f} kN/m; Utilization = { (demand/cap_m)*100:.1f}%.</p>"
-            f"<p><em>{note}</em></p>"
-            "</div>"
-        )
-
-    # NON verificato
-    prd_conn = (cap_m / n_per_m) if (n_per_m and cap_m is not None) else 0.0
-    smax = s_long_max(prd_conn, demand) if (prd_conn and demand) else math.inf
-    gap = (demand - (cap_m or 0.0))
-    over = (gap / demand * 100.0) if demand else 0.0
-
-    why = ("<p><strong>Perché non verifica</strong><br>"
-           "(Capacità/m = PRd<sub>conn</sub> × n/m = PRd<sub>conn</sub> × (1000 / s<sub>long</sub>)) "
-           "→ insufficiente con s<sub>long</sub> attuale.</p>")
-
-    plan = (
-        "<ol>"
-        f"<li><strong>Riduci il passo lungo trave</strong> a ≤ <strong>{smax:.0f} mm</strong> "
-        f"(con <strong>CTF 135</strong> o il più prestante disponibile).</li>"
-        "<li>In alternativa, aumenta la <strong>resistenza per connettore</strong>: "
-        "nr/gola → 3 (se ammesso), t lamiera → 1.25 mm, cls → C35/45, orientamento più favorevole.</li>"
-        "<li>Se i vincoli non lo consentono: <strong>ridistribuire i carichi</strong> / riconsiderare lo "
-        "<strong>schema di connessione</strong>.</li>"
-        "</ol>"
-    )
-
-    params = (
-        f"<p><strong>Parametri verificati</strong><br>"
-        f"Lamiera H{parsed.get('h_lamiera','—')} ({parsed.get('dir','—')}), passo in gola {parsed.get('passo','—')} mm • "
-        f"Soletta {parsed.get('s_soletta','—')} mm, cls {parsed.get('cls','—')} • "
-        f"s<sub>long</sub> {parsed.get('s_long','—')} mm ({n_per_m:.2f}/m) • "
-        f"t {parsed.get('t_lamiera','—')} mm • nr {parsed.get('nr_gola','—')}"
-        f"{' • copriferro ' + str(parsed.get('copriferro')) + ' mm' if parsed.get('copriferro') is not None else ''}"
-        f"</p>"
-    )
-
-    headline = (
-        "<div style='border-left:4px solid #e74c3c;padding-left:10px;margin:8px 0'>"
-        "<p><strong>❌ ESITO: NON VERIFICATO</strong> — <em>Capacità inferiore alla domanda di progetto</em><br>"
-        f"<strong>Domanda</strong> {demand:.1f} kN/m • <strong>Capacità</strong> {cap_m:.1f} kN/m → "
-        f"<strong>Gap</strong> {gap:.1f} kN/m (<strong>+{over:.1f}%</strong> richiesti)</p>"
-    )
-
-    notes = (
-        f"<p><strong>Note di calcolo</strong><br>{note} • "
-        f"s<sub>long,max</sub> = {smax:.0f} mm</p></div>"
-    )
-
-    return header + headline + why + "<h4>Piano d’azione (priorità)</h4>" + plan + params + notes
-
-# ========== Allegati / Note tecniche ==========
-
-def tool_attachments(topic: str, intent: str):
-    out = []
-    if topic == "P560":
-        out.append({"label":"Foto P560","href":"/static/img/p560_magazzino.jpg"})
-    if topic == "CTF" and intent == "POSA":
-        out.append({"label":"Nota posa CTF (PDF)","href":"/static/docs/ctf_posa.pdf"})
-    if topic == "CTF" and intent == "INFO":
-        out.append({"label":"Scheda CTF (PDF)","href":"/static/docs/ctf_scheda.pdf"})
-    return out
-
-# ========== LLM (A/B/C) ==========
-SYSTEM_BASE = (
-    "Sei TecnariaBot, assistente tecnico di Tecnaria S.p.A. (Bassano del Grappa). "
-    "Rispondi in italiano, solo su prodotti/servizi Tecnaria (CTF, CTL, CEM-E, Diapason, P560). "
-    "Se la domanda è fuori scope, spiega gentilmente che il bot è dedicato ai prodotti Tecnaria. "
-    "Tono professionale, niente marketing vuoto, niente inventare norme o valori non forniti."
-)
-
-def build_style_block(mode: str) -> str:
-    mode = (mode or "").lower()
-    if mode == "breve":
-        return ("Stile=A (breve). 90–130 parole, chiaro, senza formule, senza numeri non necessari. "
-                "Chiudi con una raccomandazione pratica.")
-    if mode == "standard":
-        return ("Stile=B (standard). 180–260 parole, discorsivo tecnico, 1–2 elenchi brevi ammessi, "
-                "cita principi (ETA/EC4) senza dettagli normativi puntuali.")
-    return ("Stile=C (dettagliata). 380–600 parole. HTML strutturato con sezioni: "
-            "<h3>Cos’è</h3>, <h4>Componenti</h4>, <h4>Varianti</h4>, <h4>Prestazioni</h4>, "
-            "<h4>Posa</h4>, <h4>Norme e riferimenti</h4>, <h4>Vantaggi e limiti</h4>. "
-            "Niente fluff; non inventare valori; resta nello scope Tecnaria.")
-
-def llm_reply(topic: str, intent: str, mode: str, question: str, context: str) -> str:
-    if not client:
-        return "Configura OPENAI_API_KEY per ottenere risposte A/B/C avanzate."
-    style = build_style_block(mode)
-    guard = ("Se il contenuto richiesto non è relativo a Tecnaria "
-             "(CTF/CTL/CEM-E/Diapason/P560), rispondi: "
-             "'Assistente dedicato ai prodotti e servizi Tecnaria S.p.A.'")
-    topic_hint = f"Topic prodotto: {topic}. Intent: {intent}."
-    ctx = f"Contesto aggiuntivo: {context}" if context else "Nessun contesto aggiuntivo."
-    prompt = (f"{topic_hint}\n{ctx}\n\nObiettivo: risposta proporzionata allo Stile richiesto.\n"
-              f"{style}\n{guard}\nScrivi in italiano.")
-    messages = [
-        {"role":"system","content": SYSTEM_BASE},
-        {"role":"user","content": f"Domanda: {question}\n{prompt}"}
-    ]
-    resp = client.chat.completions.create(
-        model=OPENAI_MODEL, messages=messages,
-        temperature=0.2, top_p=0.9, max_tokens=900
-    )
-    return resp.choices[0].message.content.strip()
-
-def product_info_llm(topic: str, intent: str, mode: str, question: str, context: str) -> str:
-    try:
-        return llm_reply(topic, intent, mode, question, context)
-    except Exception:
-        if topic == "P560":
-            if mode == "breve":
-                return ("P560: chiodatrice a polvere per posa connettori Tecnaria su travi/lamiera; "
-                        "uso con DPI, scelta cartucce adeguata, controlli 3.5–7.5 mm.")
-            if mode == "standard":
-                return ("La P560 fissa i connettori su acciaio/lamiera; richiede regolazione potenza, "
-                        "bending test iniziale, e manutenzione periodica.")
-            return ("<h3>P560</h3><h4>Impiego</h4><p>Fissaggio connettori Tecnaria.</p>"
-                    "<h4>Controlli</h4><p>Quota testa-chiodo 3.5–7.5 mm; bending test; DPI.</p>")
-        if topic == "CTF":
-            if mode == "breve":
-                return ("CTF: connettori a taglio per solai collaboranti acciaio–calcestruzzo; "
-                        "dimensionamento da PRd (ETA) e verifica EC4.")
-            if mode == "standard":
-                return ("CTF: selezione in funzione di lamiera/direzione/passi/cls; verifica con PRd ETA e passo lungo trave; "
-                        "posa con P560; riferimenti EC4/ETA.")
-            return ("<h3>CTF — scheda</h3><p>Consulta ETA-18/0447 e manuale Tecnaria per valori e posa.</p>")
-        if topic == "CTL":
-            return "CTL: connettori per sistemi legno–calcestruzzo; verifica EC5/EC4; posa con viti/staffe."
-        if topic == "CEME":
-            return "CEM-E: collegamento cls esistente/nuovo con resine; foratura e pulizia conformi a ETA."
-        if topic == "DIAPASON":
-            return "Diapason: lamiera per riqualifica solai; posa con chiodi/ancoranti; verifiche a taglio."
-        return "Assistente dedicato ai prodotti Tecnaria S.p.A."
-
-# ========== Routes ==========
-
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/api/answer", methods=["POST"])
-def api_answer():
-    data = request.get_json(force=True) or {}
-    question = (data.get("question") or "").strip()
-    mode     = (data.get("mode") or "dettagliata").strip().lower()
-    context  = (data.get("context") or "").strip()
-
-    # 0) Interceptor contatti (risposta garantita)
-    intercept = intercept_contacts(question)
-    if intercept:
-        return jsonify({"answer": intercept, "meta": {"needs_params": False}})
-
-    # 0-bis) Interceptor Documenti Interni (Drive) — risposta VERBATIM dal file
-    doc_html = intercept_internal_docs(question)
-    if doc_html:
-        return jsonify({"answer": doc_html, "meta": {"needs_params": False}})
-
-    # 1) Denylist
-    if contains_denylist(question):
-        return jsonify({"answer":"Assistente dedicato a prodotti Tecnaria S.p.A.",
-                        "meta":{"needs_params":False,"required_keys":[]}})
-
-    # 2) Topic & Intent
-    topic  = detect_topic(question)
-    intent = detect_intent(question)
-
-    if topic is None:
-        return jsonify({"answer":"Assistente dedicato ai prodotti Tecnaria (CTF/CTL/CEM-E/Diapason/P560).",
-                        "meta":{"needs_params":False,"required_keys":[]}})
-
-    # === CTF: ramo calcolo ===
-    if topic == "CTF" and intent == "CALC":
-        parsed = parse_ctf_context(context)
-        miss = missing_ctf_keys(parsed)
-        if miss:
-            labels = [UI_LABELS[k] for k in miss]
-            return jsonify({"answer":"Per procedere servono: " + ", ".join(labels),
-                            "meta":{"needs_params":True,"required_keys":labels}})
-        result = choose_ctf_height(parsed)
-        answer = render_calc_block(parsed, result)
-        return jsonify({"answer":answer, "meta":{"needs_params":False}, "attachments":tool_attachments(topic,intent)})
-
-    # === INFO / POSA / CONFRONTO → LLM ===
-    prose = product_info_llm(topic, intent, mode, question, context)
-
-    # Modalità ibrida: se i dati CTF sono completi, append calcolo “C perfetta”
-    extra = ""
-    if topic == "CTF":
-        parsed = parse_ctf_context(context)
-        miss = missing_ctf_keys(parsed)
-        if not miss:
-            result = choose_ctf_height(parsed)
-            extra = "<hr>" + render_calc_block(parsed, result)
-        elif any(k in parsed for k in ("h_lamiera","s_soletta","vled","passo","s_long","t_lamiera","nr_gola","copriferro")):
-            labels = [UI_LABELS[k] for k in miss]
-            extra = f"<hr><p><em>Dati calcolo incompleti:</em> mancano {', '.join(labels)}.</p>"
-
-    return jsonify({"answer": prose + extra, "meta":{"needs_params":False}, "attachments":tool_attachments(topic,intent)})
-
-# Static file proxy (utile su alcuni hosting)
-@app.route("/static/<path:path>")
-def static_proxy(path):
-    return send_from_directory("static", path)
-
-@app.route("/health")
-def health():
-    return "ok", 200
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TecnariaBot • Assistente Tecnico</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* CSS puro (no @apply): risolve il testo invisibile nei campi input/textarea/select */
+    :root{ --bg:#0a0a0b; --card:#0f0f12; --border:#2a2a2e; --text:#e5e7eb; --muted:#9ca3af; --accent:#f59e0b; }
+    body{ background:var(--bg); color:var(--text); }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+    .btn{ padding:.5rem 1rem; border-radius:12px; font-weight:500; border:1px solid #3f3f46; background:#f59e0b; color:#111827; }
+    .btn:hover{ filter:brightness(1.05); }
+    .tab{ padding:.375rem .75rem; border-radius:10px; border:1px solid #3f3f46; color:#e5e7eb; background:#0d0d11; }
+    .tab.active{ background:rgba(245,158,11,.12); border-color:#f59e0b; color:#fbbf24; }
+    .label{ font-size:.9rem; color:#d1d5db; }
+    .input{ width:100%; background:#0f1115; color:#e5e7eb; border:1px solid #3f3f46; border-radius:10px; padding:.5rem .75rem; }
+    .input::placeholder{ color:#71717a; }
+    .input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+    .input:disabled{ background:#14161b; color:#9ca3af; opacity:1; }
+    select.input{ background:#0f1115; }
+    .section-title{ color:#e5e7eb; font-weight:600; margin-bottom:.25rem; }
+    .small-hint{ font-size:.75rem; color:#9ca3af; }
+    .badge{ display:inline-flex; align-items:center; gap:.375rem; font-size:.75rem; padding:.25rem .5rem; border-radius:8px; border:1px solid #3f3f46; color:#e5e7eb; }
+    .spin{ animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+    pre { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="max-w-5xl mx-auto p-6">
+    <!-- Header -->
+    <header class="mb-6">
+      <div class="flex items-center gap-4">
+        <div class="h-10 w-10 grid place-items-center rounded-xl bg-amber-500 text-zinc-950 font-black text-xl">T</div>
+        <div>
+          <h1 class="text-2xl font-bold">TecnariaBot</h1>
+          <p class="text-sm text-zinc-400">Assistente Tecnico • Risposte A/B/C sempre coerenti</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Card principale -->
+    <div class="card p-5">
+      <!-- Domanda + modalità -->
+      <div class="grid gap-4">
+        <label class="label">Domanda</label>
+        <textarea id="question" rows="2" class="input" placeholder="Scrivi qui la domanda… (es. Mi dai i contatti?)"></textarea>
+
+        <div class="flex flex-wrap items-center gap-3 justify-between">
+          <div class="flex items-center gap-2">
+            <button type="button" data-mode="breve" class="tab" id="tabA">A Breve</button>
+            <button type="button" data-mode="standard" class="tab" id="tabB">B Standard</button>
+            <button type="button" data-mode="dettagliata" class="tab active" id="tabC">C Dettagliata</button>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <input id="alwaysWizard" type="checkbox" class="h-4 w-4"/>
+            <label for="alwaysWizard" class="cursor-pointer">Mostra sempre il mini-wizard</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mini wizard -->
+      <details id="wizardBox" class="mt-4" open>
+        <summary class="cursor-pointer text-amber-300">I valori del mini-wizard compilano automaticamente il campo “Dati tecnici”.</summary>
+        <div class="grid md:grid-cols-2 gap-4 mt-4">
+          <div class="space-y-3">
+            <h3 class="section-title">Geometria</h3>
+            <div>
+              <label class="label">Altezza lamiera H (mm)</label>
+              <input id="hLamiera" type="number" class="input" placeholder="es. 55" />
+            </div>
+            <div>
+              <label class="label">Spessore soletta (mm)</label>
+              <input id="sSoletta" type="number" class="input" placeholder="es. 60" />
+            </div>
+            <div>
+              <label class="label">Copriferro (mm)</label>
+              <input id="copriferro" type="number" class="input" placeholder="es. 25" />
+              <p class="small-hint">Campo informativo: viene riportato nei Dati tecnici.</p>
+            </div>
+            <div>
+              <label class="label">Direzione lamiera</label>
+              <select id="dirLamiera" class="input">
+                <option value="longitudinale">longitudinale</option>
+                <option value="trasversale">trasversale</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Passo in gola (mm)</label>
+              <input id="passoGola" type="number" class="input" placeholder="es. 150" />
+            </div>
+          </div>
+          <div class="space-y-3">
+            <h3 class="section-title">Azioni e cls</h3>
+            <div>
+              <label class="label">V<sub>L,Ed</sub> (kN/m)</label>
+              <input id="vled" type="number" step="0.01" class="input" placeholder="es. 150" />
+            </div>
+            <div>
+              <label class="label">Classe cls</label>
+              <input id="cls" type="text" class="input" placeholder="es. C30/37" />
+            </div>
+            <div>
+              <label class="label">Passo lungo trave (mm)</label>
+              <input id="sLong" type="number" class="input" placeholder="es. 200" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="label">t lamiera (mm)</label>
+                <input id="tLamiera" type="number" step="0.01" class="input" placeholder="es. 1.0" />
+              </div>
+              <div>
+                <label class="label">nr in gola</label>
+                <input id="nrGola" type="number" class="input" placeholder="es. 1" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Dati tecnici (testo) -->
+      <div class="mt-4">
+        <label class="label">Dati tecnici (mini-wizard / testo)</label>
+        <textarea id="context" rows="4" class="input" placeholder="Il mini-wizard popola qui automaticamente i parametri…"></textarea>
+      </div>
+
+      <!-- Azioni -->
+      <div class="mt-4 flex items-center gap-3">
+        <button id="sendBtn" class="btn">Invia</button>
+        <span id="busy" class="hidden items-center gap-2 text-sm text-zinc-400">
+          <svg class="h-4 w-4 spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/><path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="3"/></svg>
+          Elaboro…
+        </span>
+      </div>
+    </div>
+
+    <!-- Risposta -->
+    <div class="card mt-6 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold">Risposta</h3>
+        <span id="modeBadge" class="badge">Modalità: dettagliata</span>
+      </div>
+      <div id="answer" class="prose prose-invert max-w-none"></div>
+      <div id="attachments" class="mt-4 hidden"></div>
+    </div>
+  </div>
+
+  <script>
+    // Stato
+    let mode = 'dettagliata';
+
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+    // Tabs modalità
+    function setMode(m) {
+      mode = m;
+      $('#modeBadge').textContent = `Modalità: ${m}`;
+      $$('#tabA, #tabB, #tabC').forEach(btn => btn.classList.remove('active'));
+      if (m === 'breve') $('#tabA').classList.add('active');
+      if (m === 'standard') $('#tabB').classList.add('active');
+      if (m === 'dettagliata') $('#tabC').classList.add('active');
+    }
+
+    $('#tabA').addEventListener('click', () => setMode('breve'));
+    $('#tabB').addEventListener('click', () => setMode('standard'));
+    $('#tabC').addEventListener('click', () => setMode('dettagliata'));
+
+    // Persistenza preferenza wizard
+    const alwaysWizard = $('#alwaysWizard');
+    const wizardBox = $('#wizardBox');
+    const saved = localStorage.getItem('tecnaria_alwaysWizard');
+    if (saved === '1') { alwaysWizard.checked = true; wizardBox.open = true; }
+    alwaysWizard.addEventListener('change', () => {
+      localStorage.setItem('tecnaria_alwaysWizard', alwaysWizard.checked ? '1' : '0');
+      wizardBox.open = alwaysWizard.checked;
+    });
+
+    // Mini-wizard → compila contesto
+    const fields = ['hLamiera','sSoletta','vled','cls','passoGola','dirLamiera','sLong','tLamiera','nrGola','copriferro'];
+    fields.forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('input', updateContextFromWizard);
+    });
+
+    function updateContextFromWizard() {
+      const h = $('#hLamiera').value; const s = $('#sSoletta').value; const v = $('#vled').value; const cls = $('#cls').value;
+      const p = $('#passoGola').value; const dir = $('#dirLamiera').value; const sl = $('#sLong').value;
+      const t = $('#tLamiera').value; const nr = $('#nrGola').value; const cf = $('#copriferro').value;
+      const parts = [];
+      if (h)  parts.push(`lamiera H${h}`);
+      if (s)  parts.push(`soletta ${s} mm`);
+      if (v)  parts.push(`V_L,Ed=${v} kN/m`);
+      if (cls)parts.push(`cls ${cls}`);
+      if (p)  parts.push(`passo gola ${p} mm`);
+      if (dir)parts.push(`lamiera ${dir}`);
+      if (sl) parts.push(`passo lungo trave ${sl} mm`);
+      if (t)  parts.push(`t=${t} mm`);
+      if (nr) parts.push(`nr=${nr}`);
+      if (cf) parts.push(`copriferro ${cf} mm`);
+      $('#context').value = parts.join(', ');
+    }
+
+    // Invio
+    async function send() {
+      const question = $('#question').value.trim();
+      const context  = $('#context').value.trim();
+      if (!question) { $('#question').focus(); return; }
+      $('#sendBtn').disabled = true; $('#busy').classList.remove('hidden');
+      $('#answer').innerHTML = ''; $('#attachments').classList.add('hidden');
+      try {
+        const res = await fetch('/api/answer', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question, mode, context })
+        });
+        const data = await res.json();
+        $('#answer').innerHTML = data.answer || '<em>Nessuna risposta.</em>';
+        if (data.attachments && data.attachments.length) {
+          const box = $('#attachments'); box.classList.remove('hidden');
+          box.innerHTML = '<div class="mt-3"><h4 class="section-title">Allegati</h4><ul class="list-disc ml-6"></ul></div>';
+          const ul = box.querySelector('ul');
+          data.attachments.forEach(a => {
+            const li = document.createElement('li');
+            li.innerHTML = `<a class="text-amber-300 hover:underline" href="${a.href}" target="_blank" rel="noopener">${a.label}</a>`;
+            ul.appendChild(li);
+          });
+        }
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      } catch (e) {
+        $('#answer').innerHTML = `<span class="text-red-400">Errore: ${e}</span>`;
+      } finally {
+        $('#sendBtn').disabled = false; $('#busy').classList.add('hidden');
+      }
+    }
+
+    $('#sendBtn').addEventListener('click', send);
+    document.addEventListener('keydown', (e) => { if (e.ctrlKey && e.key === 'Enter') send(); });
+
+    // Default esempio:
+    $('#question').value = 'mi dai i contatti?';
+    setMode('breve');
+    $('#hLamiera').value = 55; $('#sSoletta').value = 60; $('#vled').value = 150;
+    $('#cls').value = 'C30/37'; $('#passoGola').value = 150; $('#dirLamiera').value = 'longitudinale';
+    $('#sLong').value = 200; $('#tLamiera').value = 1.0; $('#nrGola').value = 1; $('#copriferro').value = '';
+    updateContextFromWizard();
+  </script>
+</body>
+</html>
