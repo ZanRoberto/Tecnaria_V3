@@ -2,7 +2,7 @@
 # Requisiti: OPENAI_API_KEY (opzionale), templates/index.html, static/img/wizard.js,
 #            static/data/ctf_prd.json, static/(data/)?tecnaria_connettori_dati.json
 
-import os, re, json, math
+import os, re, json, math, html
 from typing import Any, Dict, Optional, Tuple, List
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -85,8 +85,70 @@ CONTACTS_KEYS = (
 
 
 def intercept_contacts(user_q: Optional[str]) -> Optional[str]:
-    t = (user_q or "").lower()
+    t = (user_q or '').lower()
     return CONTACTS_HTML if any(k in t for k in CONTACTS_KEYS) else None
+
+# ========== Interceptor Documenti Interni (Drive) ==========
+# Risponde VERBATIM con il contenuto dei file interni (Google Drive sync) se la query contiene le chiavi mappate.
+DOCS_MAP = {
+    'distributori': 'acquisti_distributori_europa.txt',
+    'europa': 'acquisti_distributori_europa.txt',
+    'estero': 'acquisti_distributori_europa.txt',
+    'capitolat': 'capitolati_e_computi.txt',   # matcha capitolato/capitolati
+    'comput': 'capitolati_e_computi.txt',
+    'dop': 'certificazioni_dop.txt',
+    'dichiarazioni di prestazione': 'certificazioni_dop.txt',
+    'assistenza cantiere': 'assistenza_cantiere.txt',
+    'assistenza in cantiere': 'assistenza_cantiere.txt',
+    'vendite': 'acquisti_vendite.txt',
+    'ordini': 'acquisti_vendite.txt',
+}
+
+def _resolve_docs_dirs():
+    dirs = []
+    env_dir = os.getenv('DOCS_DIR')
+    if env_dir and os.path.isdir(env_dir):
+        dirs.append(env_dir)
+    # Posizioni comuni
+    dirs.extend([
+        os.path.join(app.static_folder, 'docs'),
+        os.path.join(app.root_path, 'static', 'docs'),
+        os.path.join(app.root_path, 'docs'),
+    ])
+    # de-duplica mantenendo l'ordine
+    seen, uniq = set(), []
+    for d in dirs:
+        d = os.path.abspath(d)
+        if d not in seen:
+            seen.add(d); uniq.append(d)
+    return uniq
+
+def _read_drive_doc(filename: str) -> Optional[str]:
+    for d in _resolve_docs_dirs():
+        path = os.path.join(d, filename)
+        if os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    return f.read().strip()
+            except Exception:
+                pass
+    return None
+
+def _render_verbatim(text: str, title: str) -> str:
+    safe = html.escape(text)
+    return f"<h3>{title}</h3><pre style='white-space:pre-wrap'>{safe}</pre>"
+
+def intercept_internal_docs(user_q: Optional[str]) -> Optional[str]:
+    q = (user_q or '').lower()
+    for key, fname in DOCS_MAP.items():
+        if key in q:
+            content = _read_drive_doc(fname)
+            if content:
+                title = f'Documento interno: {fname}'
+                return _render_verbatim(content, title)
+            else:
+                return f"Non trovo il documento interno <strong>{fname}</strong> nelle cartelle docs. Verifica l'upload su Render."
+    return None
 
 
 # ========== Scope / denylist ==========
@@ -533,6 +595,11 @@ def api_answer():
     intercept = intercept_contacts(question)
     if intercept:
         return jsonify({"answer": intercept, "meta": {"needs_params": False}})
+
+    # 0-bis) Interceptor Documenti Interni (Drive) — risposta VERBATIM dal file
+    doc_html = intercept_internal_docs(question)
+    if doc_html:
+        return jsonify({"answer": doc_html, "meta": {"needs_params": False}})
 
     # 1) Denylist
     if contains_denylist(question):
