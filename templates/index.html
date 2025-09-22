@@ -1,4 +1,242 @@
-<div class="form-row">
-  <label for="copriferro">Copriferro (mm)</label>
-  <input id="copriferro" type="number" min="0" step="1" placeholder="es. 25">
-</div>
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TecnariaBot • Assistente Tecnico</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .card { @apply bg-zinc-900/50 border border-zinc-800 rounded-2xl shadow-lg; }
+    .btn  { @apply px-4 py-2 rounded-xl font-medium border border-zinc-700 hover:bg-zinc-800 active:scale-[.98] transition; }
+    .tab  { @apply px-3 py-1.5 rounded-lg border border-zinc-700; }
+    .tab.active { @apply bg-amber-500/10 border-amber-500 text-amber-300; }
+    .label { @apply text-sm text-zinc-300; }
+    .input { @apply w-full bg-zinc-900/70 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500; }
+    .section-title { @apply text-zinc-300 font-semibold mb-2; }
+    .small-hint { @apply text-xs text-zinc-500; }
+    .badge { @apply inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md border border-zinc-700 text-zinc-300; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+    pre { white-space: pre-wrap; }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100">
+  <div class="max-w-5xl mx-auto p-6">
+    <!-- Header -->
+    <header class="mb-6">
+      <div class="flex items-center gap-4">
+        <div class="h-10 w-10 grid place-items-center rounded-xl bg-amber-500 text-zinc-950 font-black text-xl">T</div>
+        <div>
+          <h1 class="text-2xl font-bold">TecnariaBot</h1>
+          <p class="text-sm text-zinc-400">Assistente Tecnico • Risposte A/B/C sempre coerenti</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Card principale -->
+    <div class="card p-5">
+      <!-- Domanda + modalità -->
+      <div class="grid gap-4">
+        <label class="label">Domanda</label>
+        <textarea id="question" rows="2" class="input" placeholder="Scrivi qui la domanda… (es. Mi dai i contatti?)"></textarea>
+
+        <div class="flex flex-wrap items-center gap-3 justify-between">
+          <div class="flex items-center gap-2">
+            <button type="button" data-mode="breve" class="tab" id="tabA">A Breve</button>
+            <button type="button" data-mode="standard" class="tab" id="tabB">B Standard</button>
+            <button type="button" data-mode="dettagliata" class="tab active" id="tabC">C Dettagliata</button>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <input id="alwaysWizard" type="checkbox" class="h-4 w-4"/>
+            <label for="alwaysWizard" class="cursor-pointer">Mostra sempre il mini-wizard</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mini wizard -->
+      <details id="wizardBox" class="mt-4" open>
+        <summary class="cursor-pointer text-amber-300">I valori del mini-wizard compilano automaticamente il campo “Dati tecnici”.</summary>
+        <div class="grid md:grid-cols-2 gap-4 mt-4">
+          <div class="space-y-3">
+            <h3 class="section-title">Geometria</h3>
+            <div>
+              <label class="label">Altezza lamiera H (mm)</label>
+              <input id="hLamiera" type="number" class="input" placeholder="es. 55" />
+            </div>
+            <div>
+              <label class="label">Spessore soletta (mm)</label>
+              <input id="sSoletta" type="number" class="input" placeholder="es. 60" />
+            </div>
+            <div>
+              <label class="label">Copriferro (mm)</label>
+              <input id="copriferro" type="number" class="input" placeholder="es. 25" />
+              <p class="small-hint">Campo informativo: viene riportato nei Dati tecnici.</p>
+            </div>
+            <div>
+              <label class="label">Direzione lamiera</label>
+              <select id="dirLamiera" class="input">
+                <option value="longitudinale">longitudinale</option>
+                <option value="trasversale">trasversale</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Passo in gola (mm)</label>
+              <input id="passoGola" type="number" class="input" placeholder="es. 150" />
+            </div>
+          </div>
+          <div class="space-y-3">
+            <h3 class="section-title">Azioni e cls</h3>
+            <div>
+              <label class="label">V<sub>L,Ed</sub> (kN/m)</label>
+              <input id="vled" type="number" step="0.01" class="input" placeholder="es. 150" />
+            </div>
+            <div>
+              <label class="label">Classe cls</label>
+              <input id="cls" type="text" class="input" placeholder="es. C30/37" />
+            </div>
+            <div>
+              <label class="label">Passo lungo trave (mm)</label>
+              <input id="sLong" type="number" class="input" placeholder="es. 200" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="label">t lamiera (mm)</label>
+                <input id="tLamiera" type="number" step="0.01" class="input" placeholder="es. 1.0" />
+              </div>
+              <div>
+                <label class="label">nr in gola</label>
+                <input id="nrGola" type="number" class="input" placeholder="es. 1" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Dati tecnici (testo) -->
+      <div class="mt-4">
+        <label class="label">Dati tecnici (mini-wizard / testo)</label>
+        <textarea id="context" rows="4" class="input" placeholder="Il mini-wizard popola qui automaticamente i parametri…"></textarea>
+      </div>
+
+      <!-- Azioni -->
+      <div class="mt-4 flex items-center gap-3">
+        <button id="sendBtn" class="btn bg-amber-600/90 hover:bg-amber-600 text-black">Invia</button>
+        <span id="busy" class="hidden items-center gap-2 text-sm text-zinc-400">
+          <svg class="h-4 w-4 spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/><path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="3"/></svg>
+          Elaboro…
+        </span>
+      </div>
+    </div>
+
+    <!-- Risposta -->
+    <div class="card mt-6 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold">Risposta</h3>
+        <span id="modeBadge" class="badge">Modalità: dettagliata</span>
+      </div>
+      <div id="answer" class="prose prose-invert max-w-none"></div>
+      <div id="attachments" class="mt-4 hidden"></div>
+    </div>
+  </div>
+
+  <script>
+    // Stato
+    let mode = 'dettagliata';
+
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+    // Tabs modalità
+    function setMode(m) {
+      mode = m;
+      $('#modeBadge').textContent = `Modalità: ${m}`;
+      $$('#tabA, #tabB, #tabC').forEach(btn => btn.classList.remove('active'));
+      if (m === 'breve') $('#tabA').classList.add('active');
+      if (m === 'standard') $('#tabB').classList.add('active');
+      if (m === 'dettagliata') $('#tabC').classList.add('active');
+    }
+
+    $('#tabA').addEventListener('click', () => setMode('breve'));
+    $('#tabB').addEventListener('click', () => setMode('standard'));
+    $('#tabC').addEventListener('click', () => setMode('dettagliata'));
+
+    // Persistenza preferenza wizard
+    const alwaysWizard = $('#alwaysWizard');
+    const wizardBox = $('#wizardBox');
+    const saved = localStorage.getItem('tecnaria_alwaysWizard');
+    if (saved === '1') { alwaysWizard.checked = true; wizardBox.open = true; }
+    alwaysWizard.addEventListener('change', () => {
+      localStorage.setItem('tecnaria_alwaysWizard', alwaysWizard.checked ? '1' : '0');
+      wizardBox.open = alwaysWizard.checked;
+    });
+
+    // Mini-wizard → compila contesto
+    const fields = ['hLamiera','sSoletta','vled','cls','passoGola','dirLamiera','sLong','tLamiera','nrGola','copriferro'];
+    fields.forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('input', updateContextFromWizard);
+    });
+
+    function updateContextFromWizard() {
+      const h = $('#hLamiera').value; const s = $('#sSoletta').value; const v = $('#vled').value; const cls = $('#cls').value;
+      const p = $('#passoGola').value; const dir = $('#dirLamiera').value; const sl = $('#sLong').value;
+      const t = $('#tLamiera').value; const nr = $('#nrGola').value; const cf = $('#copriferro').value;
+      const parts = [];
+      if (h)  parts.push(`lamiera H${h}`);
+      if (s)  parts.push(`soletta ${s} mm`);
+      if (v)  parts.push(`V_L,Ed=${v} kN/m`);
+      if (cls)parts.push(`cls ${cls}`);
+      if (p)  parts.push(`passo gola ${p} mm`);
+      if (dir)parts.push(`lamiera ${dir}`);
+      if (sl) parts.push(`passo lungo trave ${sl} mm`);
+      if (t)  parts.push(`t=${t} mm`);
+      if (nr) parts.push(`nr=${nr}`);
+      if (cf) parts.push(`copriferro ${cf} mm`);
+      $('#context').value = parts.join(', ');
+    }
+
+    // Invio
+    async function send() {
+      const question = $('#question').value.trim();
+      const context  = $('#context').value.trim();
+      if (!question) { $('#question').focus(); return; }
+      $('#sendBtn').disabled = true; $('#busy').classList.remove('hidden');
+      $('#answer').innerHTML = ''; $('#attachments').classList.add('hidden');
+      try {
+        const res = await fetch('/api/answer', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question, mode, context })
+        });
+        const data = await res.json();
+        $('#answer').innerHTML = data.answer || '<em>Nessuna risposta.</em>';
+        if (data.attachments && data.attachments.length) {
+          const box = $('#attachments'); box.classList.remove('hidden');
+          box.innerHTML = '<div class="mt-3"><h4 class="section-title">Allegati</h4><ul class="list-disc ml-6"></ul></div>';
+          const ul = box.querySelector('ul');
+          data.attachments.forEach(a => {
+            const li = document.createElement('li');
+            li.innerHTML = `<a class="text-amber-300 hover:underline" href="${a.href}" target="_blank" rel="noopener">${a.label}</a>`;
+            ul.appendChild(li);
+          });
+        }
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      } catch (e) {
+        $('#answer').innerHTML = `<span class="text-red-400">Errore: ${e}</span>`;
+      } finally {
+        $('#sendBtn').disabled = false; $('#busy').classList.add('hidden');
+      }
+    }
+
+    $('#sendBtn').addEventListener('click', send);
+    document.addEventListener('keydown', (e) => { if (e.ctrlKey && e.key === 'Enter') send(); });
+
+    // Default esempio (puoi rimuoverlo):
+    $('#question').value = 'mi dai i contatti?';
+    setMode('breve');
+    $('#hLamiera').value = 55; $('#sSoletta').value = 60; $('#vled').value = 150;
+    $('#cls').value = 'C30/37'; $('#passoGola').value = 150; $('#dirLamiera').value = 'longitudinale';
+    $('#sLong').value = 200; $('#tLamiera').value = 1.0; $('#nrGola').value = 1; $('#copriferro').value = '';
+    updateContextFromWizard();
+  </script>
+</body>
+</html>
