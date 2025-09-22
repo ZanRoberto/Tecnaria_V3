@@ -1,0 +1,48 @@
+=== Cariche consigliate – Fissaggio connettori Tecnaria su travi in acciaio (SPIT P560 o equivalenti) ===
+
+Q1: Da cosa dipende la scelta della carica della chiodatrice?
+A1: Dal grado dell’acciaio (S235/S275/S355), dallo spessore/profilo (IPE/HEB), dallo stato superficiale (vernice/ruggine/zincatura), dal tipo di chiodo e dalla profondità di penetrazione richiesta. Serve sempre una prova in cantiere.
+
+Q2: Quali chiodi vanno usati?
+A2: Chiodi speciali in acciaio al carbonio cod. 057572 (R>57 HRc, zincatura meccanica 10 µm, gambo zigrinato) con rondella Ø14 mm, come da indicazioni Tecnaria.
+
+Q3: Quali cariche colore sono disponibili in modo tipico?
+A3: In genere: VERDE (bassa), GIALLO (media), ROSSO (forte), NERO (molto forte). La reale disponibilità/scala dipende dal produttore della chiodatrice e dalle cartucce.
+
+Q4: Quali sono le cariche di partenza consigliate per i casi richiesti (da confermare con prove)?
+A4: Usare queste come riferimento iniziale e confermare con test in sito:
+- IPE 160 in S275 → **partire con GIALLO (media)**; se la penetrazione non è completa, provare **ROSSO**.
+- HEB 200 in S355 → **partire con ROSSO (forte)**; se necessario passare a **NERO (molto forte)**.
+- Per confronto: IPE 140–200 in S235 → **VERDE/GIALLO** a seconda dello stato superficiale.
+
+Q5: Come verifico che la carica sia corretta?
+A5: Il chiodo deve penetrare completamente con rondella aderente alla superficie, gambo non piegato e connettore perfettamente aderente. Se non arriva a battuta → carica troppo bassa; se deforma il chiodo o lascia segni eccessivi → carica troppo alta.
+
+Q6: Qual è la procedura operativa consigliata?
+A6: 1) Pulire e marcare i punti; 2) fare 2–3 tiri di prova sullo stesso acciaio; 3) verificare penetrazione/aderenza; 4) registrare carica e impostazioni; 5) procedere con la posa definitiva mantenendo stesso assetto e DPI (occhiali, cuffie, guanti).
+
+Q7: Ci sono limiti o cautele particolari su verniciature e trattamenti?
+A7: Vernici e zincature influenzano la penetrazione: su spessori o trattamenti “duri” potrebbe servire una carica superiore. Evitare zone con ruggine sfogliata; se necessario asportare vernice localmente (secondo capitolato).
+
+Q8: Cosa faccio se i chiodi si piegano o non entrano?
+A8: Ridurre o aumentare gradualmente la carica rispettivamente. Controllare l’allineamento della chiodatrice, lo stato della punta d’appoggio e sostituire chiodi/cartucce difettosi. Se persiste, valutare posizione o attrezzatura alternativa.
+
+Q9: Posso standardizzare le cariche per tutti i cantieri?
+A9: No. Le cariche sono **sempre da validare in cantiere** con prove sullo stesso profilo/materiale. Fattori locali (spessore reale, trattamenti, temperatura) cambiano il risultato.
+
+Q10: Come documento correttamente la scelta della carica?
+A10: Annotare per ogni cantiere: profilo (es. IPE160/HEB200), grado acciaio (S275/S355), chiodo usato (057572), carica finale (colore/codice), esito prove di tiro (foto/NOTE), lotto materiali e data/operatore (tracciabilità).
+
+Q11: Quali riferimenti devo tenere in cantiere?
+A11: Scheda di posa Tecnaria del connettore utilizzato, manuale della chiodatrice (es. SPIT P560) con tabella cariche, DPI obbligatori, registro prove di cantiere.
+
+Q12: Nota di responsabilità
+A12: Le indicazioni qui riportate sono linee guida operative. La scelta finale della carica è responsabilità del direttore lavori/responsabile di cantiere, da definire con prove e secondo il progetto strutturale.
+
+---
+TABELLINA RIASSUNTIVA (punti di partenza da provare in sito)
+- IPE 160 – S275 → **GIALLO** (→ ROSSO se necessario)
+- HEB 200 – S355 → **ROSSO** (→ NERO se necessario)
+- IPE 140–200 – S235 → **VERDE/GIALLO** (in base allo stato superficiale)
+(Confermare sempre con tiri di prova.)
+
