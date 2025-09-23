@@ -1,217 +1,255 @@
-# app.py — TecnariaBot (ChatGPT puro • Tecnaria-only)
-import os
-from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS
-from openai import OpenAI
+# app.py — TecnariaBot (modalità ChatGPT “puro Tecnaria”)
+# Flask app con risposte stile ChatGPT, solo dominio Tecnaria, con alcuni casi deterministici.
+# Wizard & calcoli lasciati in REM per poterli riattivare in futuro.
 
-# ----------------------------
-# App / Config
-# ----------------------------
+import os
+import re
+from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask_cors import CORS
+
+# --- OpenAI SDK v1 ---
+from openai import OpenAI
+client = OpenAI()
+
+# -----------------------------------
+# Flask
+# -----------------------------------
 app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY non impostata nell'ambiente.")
+# -----------------------------------
+# Config da ENV
+# -----------------------------------
+OPENAI_MODEL         = os.getenv("OPENAI_MODEL", "gpt-4o")
+OPENAI_MODEL_FALLBACK= os.getenv("OPENAI_MODEL_FALLBACK", "gpt-4o-mini")
+OPENAI_TEMPERATURE   = float(os.getenv("OPENAI_TEMPERATURE", "0"))
+MAX_ANSWER_CHARS     = int(os.getenv("MAX_ANSWER_CHARS", "1500"))
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
-OPENAI_MODEL_FALLBACK = os.getenv("OPENAI_MODEL_FALLBACK", "gpt-4o-mini")
-OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0"))
-
-client = OpenAI(api_key=OPENAI_API_KEY)
-
-# ----------------------------
-# Regole “Tecnaria only”
-# ----------------------------
-# Macro-argomenti ammessi (filtra domande fuori contesto)
-TECNARIA_KEYWORDS = [
-    "tecnaria", "ctf", "ctl", "cem", "cem-e", "diapason", "p560",
-    "solaio collaborante", "solai collaboranti", "lamiera grecata",
-    "acciaio-calcestruzzo", "acciaio legno", "acciaio-legno",
-    "connettori tecnaria", "laterocemento", "posa tecnaria"
-]
-
-# Marchi / prodotti NON Tecnaria (se presenti → reindirizzo)
-DENYLIST = [
-    "hbv", "hi-bond", "hibond", "x-hbv", "xhbv",
-    "fva", "arcelormittal",
-    "hilti", "fischer", "stud welded", "perno a piolo"
-]
-
-# Codici CTF ufficiali (risposta deterministica)
-CTF_CODES = [
-    "CTF_020","CTF_025","CTF_030","CTF_040",
-    "CTF_060","CTF_070","CTF_080","CTF_090",
-    "CTF_105","CTF_125","CTF_135"
-]
-
-# Blocco contatti (deterministico)
-TECNARIA_CONTACTS = (
-    "Tecnaria S.p.A.\n"
-    "Via delle Industrie, 23 — 36061 Bassano del Grappa (VI)\n"
-    "Tel: +39 0424 567 120 • Email: info@tecnaria.com\n"
-    "Sito: www.tecnaria.com"
-)
-
-# Allegati/Note tecniche disponibili (titolo -> (url, tipo))
-ATTACHMENT_MAP = {
-    # P560
-    "Foto P560": ("/static/img/p560_magazzino.jpg", "image"),
-    "Manuale P560 (PDF)": ("/static/docs/p560_manual.pdf", "document"),
-    # CTF
-    "Scheda CTF (PDF)": ("/static/docs/ctf_scheda.pdf", "document"),
-    # Esempio: aggiungi qui altri PDF/foto/video
-    # "Istruzioni posa CTF (PDF)": ("/static/docs/istruzioni_posa_ctf.pdf", "document"),
+# -----------------------------------
+# Allegati/Note: mappa parole chiave → file statici
+# (Aggiungi liberamente qui nuove voci: immagini, PDF, ecc.)
+# -----------------------------------
+ATTACHMENTS_MAP = {
+    # Attrezzature
+    "p560": [
+        {"label": "Foto P560", "href": "/static/img/p560_magazzino.jpg", "type": "image"},
+        # Esempio PDF se lo aggiungi: {"label":"Manuale P560 (PDF)", "href":"/static/docs/p560_manual.pdf","type":"pdf"}
+    ],
+    # Connettori CTF
+    "ctf": [
+        {"label": "Istruzioni di posa CTF (PDF)", "href": "/static/docs/istruzioni_posa_ctf.pdf", "type": "pdf"},
+    ],
+    # Connettori CTL / MAXI
+    "ctl": [
+        {"label": "Scheda CTL/CTL MAXI (PDF)", "href": "/static/docs/scheda_ctl_maxi.pdf", "type": "pdf"},
+    ],
+    # CEM / VCEM (laterocemento)
+    "cem": [
+        {"label": "Istruzioni CEM/VCEM (PDF)", "href": "/static/docs/istruzioni_cem_vcem.pdf", "type":"pdf"},
+    ],
+    "diapason": [
+        {"label": "Scheda DIAPASON (PDF)", "href": "/static/docs/scheda_diapason.pdf", "type":"pdf"},
+    ],
 }
 
-def collect_attachments(question_lower: str):
-    """Raccoglie allegati coerenti con la domanda."""
-    out = []
-    if "p560" in question_lower:
-        for k in ["Foto P560", "Manuale P560 (PDF)"]:
-            if k in ATTACHMENT_MAP:
-                url, typ = ATTACHMENT_MAP[k]
-                out.append({"title": k, "url": url, "type": typ})
-    if "ctf" in question_lower or "connettori" in question_lower:
-        if "Scheda CTF (PDF)" in ATTACHMENT_MAP:
-            url, typ = ATTACHMENT_MAP["Scheda CTF (PDF)"]
-            out.append({"title": "Scheda CTF (PDF)", "url": url, "type": typ})
-    return out
+def get_attachments_for(text: str):
+    """Ritorna lista di allegati in base a keyword trovate nel testo domanda/risposta."""
+    hits = []
+    t = text.lower()
+    for key, files in ATTACHMENTS_MAP.items():
+        if key in t:
+            hits.extend(files)
+    # De-duplicate by href
+    seen = set()
+    filtered = []
+    for f in hits:
+        if f["href"] not in seen:
+            filtered.append(f)
+            seen.add(f["href"])
+    return filtered
 
-# ----------------------------
-# SYSTEM PROMPT (stile ChatGPT, ma vincolato a Tecnaria)
-# ----------------------------
-SYSTEM_PROMPT = """
-Sei “TecnariaBot”, assistente tecnico ufficiale di Tecnaria S.p.A.
-OBIETTIVO: rispondi nello stile naturale e completo di ChatGPT, ma SOLO su prodotti/servizi Tecnaria.
-
-Regole:
-- Ambito consentito: CTF/CTL/CEM/VCEM/CEM-E, Diapason, posa/istruzioni, solai collaboranti (acciaio-calcestruzzo, legno-calcestruzzo, laterocemento) e attrezzi come P560.
-- La P560 è una CHIODATRICE a polvere per posa connettori. NON è un connettore.
-- NON parlare di marchi/prodotti non Tecnaria. Se compaiono, reindirizza con tatto ai prodotti equivalenti Tecnaria.
-- NON inventare codici/modelli inesistenti.
-- Se chiedono “codici CTF”, restituisci esattamente: CTF_020, CTF_025, CTF_030, CTF_040, CTF_060, CTF_070, CTF_080, CTF_090, CTF_105, CTF_125, CTF_135.
-- Se chiedono “contatti Tecnaria”, restituisci il blocco contatti fisso.
-- Tono: tecnico, chiaro, senza frasi vuote. Usa elenchi puntati dove utile.
-- Questa versione NON fa calcoli: niente formule. Spiega, confronta, guida l’utente in modo pratico.
-
-Stile:
-- Breve = 2–3 frasi efficaci.
-- Standard = spiegazione completa ma scorrevole (5–10 frasi).
-- Dettagliata = guida molto strutturata (sezioni, punti elenco, consigli pratici), restando nell’ambito Tecnaria.
-"""
-
-# ----------------------------
-# Heuristics per risposte “fisse”
-# ----------------------------
-def is_non_tecnaria(question_lower: str) -> bool:
-    return any(bad in question_lower for bad in DENYLIST)
-
-def looks_like_ctf_codes(question_lower: str) -> bool:
-    keys = [
-        "codici ctf", "tutti i codici ctf", "serie ctf",
-        "codici dei connettori ctf", "elenco ctf", "lista ctf"
-    ]
-    return any(k in question_lower for k in keys)
-
-def looks_like_contacts(question_lower: str) -> bool:
-    keys = ["contatti", "telefono tecnaria", "email tecnaria", "sede tecnaria", "supporto", "assistenza"]
-    return any(k in question_lower for k in keys)
-
-def looks_like_p560(question_lower: str) -> bool:
-    return "p560" in question_lower
-
-def reply_ctf_codes():
+# -----------------------------------
+# System prompt (stile ChatGPT, dominio Tecnaria ONLY)
+# -----------------------------------
+def build_system_prompt():
     return (
-        "Ecco i **codici ufficiali della serie CTF Tecnaria** (altezze nominali):\n"
-        "- " + ", ".join(CTF_CODES) + ".\n"
-        "La scelta dell’altezza dipende dalla configurazione del solaio e dai requisiti di progetto."
+        "Sei un assistente tecnico di Tecnaria S.p.A. (Bassano del Grappa). "
+        "COMPITI: rispondi come ChatGPT, ma SOLO su prodotti/servizi Tecnaria: "
+        "CTF (acciaio–calcestruzzo), CTL/CTL MAXI (legno–calcestruzzo), CEM/VCEM (laterocemento), DIAPASON (rinforzi solai legno), "
+        "attrezzature P560 (chiodatrice) e accessori correlati. "
+        "ESCLUSIONI: non parlare di prodotti non Tecnaria, non citare concorrenti, non divagare. "
+        "CLASSIFICAZIONE: se la domanda riguarda legno/tavolato/assito → CTL/CTL MAXI; "
+        "acciaio-lamiera grecata/soletta piena → CTF; "
+        "laterocemento → CEM/VCEM; "
+        "rinforzo solai legno → DIAPASON; "
+        "P560 è SEMPRE una chiodatrice a polvere, mai un connettore. "
+        "STILE: chiaro, tecnico ma leggibile; struttura in punti dove utile; nessun markup HTML all'inizio della risposta; "
+        "se l’utente chiede contatti, fornisci recapiti ufficiali. "
+        "Se l’utente chiede cose non Tecnaria, rifiuta gentilmente e reindirizza al perimetro Tecnaria. "
     )
 
-def reply_contacts():
-    return f"**Contatti Tecnaria**\n{TECNARIA_CONTACTS}"
+# -----------------------------------
+# Regole deterministiche per casi critici
+# -----------------------------------
+def deterministic_answer(user_q: str) -> dict | None:
+    """
+    Riconosce pattern e restituisce una risposta pronta (uguale allo stile che vuoi),
+    altrimenti None per andare al modello.
+    """
+    q = re.sub(r"\s+", " ", user_q.strip().lower())
 
-def reply_p560():
-    return (
-        "**P560 — chiodatrice a polvere (non un connettore)**\n"
-        "- Impiego: fissaggio connettori Tecnaria (es. CTF) su travi acciaio e lamiera grecata.\n"
-        "- Uso: regolazione potenza, due chiodi per connettore, verifiche in cantiere (visiva + bending test).\n"
-        "- Sicurezza: DPI e rispetto del manuale Tecnaria.\n"
-        "Per i dettagli operativi vedi il **Manuale P560 (PDF)** negli allegati."
-    )
+    # 1) Domanda: “posso usare una chiodatrice qualsiasi per CTF?”
+    if any(k in q for k in ["normale chiodatrice", "chiodatrice qualsiasi", "qualsiasi chiodatrice"]) and "ctf" in q:
+        text = (
+            "Sì, ma NON con “una chiodatrice qualsiasi”. Per i connettori **CTF** si utilizza "
+            "esclusivamente la **SPIT P560** con kit/adattatori dedicati Tecnaria. Altre macchine non sono ammesse. "
+            "Ogni connettore si fissa con **2 chiodi** (HSBR14) e propulsori idonei.\n\n"
+            "Indicazioni essenziali:\n"
+            "• usare solo **SPIT P560** (nolo/vendita disponibili); non serve patentino specifico; seguire le istruzioni in valigetta.\n"
+            "• acciaio trave ≥ 6 mm; con lamiera grecata è ammesso 1×1,5 mm oppure 2×1,0 mm ben aderenti alla trave.\n"
+            "• posa sopra la trave (anche con lamiera presente) con due chiodi per connettore.\n\n"
+            "Per taratura potenza, verifiche e sicurezza: vedi **Istruzioni di posa CTF**."
+        )
+        return {"answer": text, "attachments": get_attachments_for("ctf p560")}
 
-# ----------------------------
-# Routes
-# ----------------------------
-@app.route("/")
+    # 2) Domanda: CTL MAXI su travi in legno + tavolato 2 cm + soletta 5 cm
+    if ("maxi" in q or "ctl maxi" in q) and ("legno" in q or "travi in legno" in q) and ("tavolato" in q and ("2 cm" in q or "2cm" in q)) and ("soletta" in q and ("5 cm" in q or "5cm" in q)):
+        text = (
+            "Usa **CTL MAXI 12/040** (altezza gambo 40 mm), fissato **sopra il tavolato** con **2 viti Ø10**:\n"
+            "• di norma **Ø10×100 mm**; se l’interposto/tavolato supera 25–30 mm, passa a **Ø10×120 mm**.\n\n"
+            "Motivi:\n"
+            "• Il MAXI è pensato proprio per posa su assito; con soletta 5 cm il 40 mm resta annegato correttamente e la testa supera la rete **a metà spessore**, come richiesto.\n"
+            "• Altezze/viti disponibili: Ø10 × 100/120/140 mm della linea **CTL MAXI**.\n\n"
+            "Note rapide:\n"
+            "• Soletta **min 5 cm** (C25/30 o leggero strutturale), rete a metà spessore.\n"
+            "• Se interferisce con staffe/armatura superiori puoi valutare **12/030**; in generale scegli l’altezza in modo che la testa sia sopra la rete ma sotto il filo superiore del getto."
+        )
+        return {"answer": text, "attachments": get_attachments_for("ctl maxi")}
+
+    # 3) Domanda: CTCEM usa resine?
+    if ("ctcem" in q or "vcem" in q or "cem" in q) and ("resine" in q or "resina" in q):
+        text = (
+            "No: **CTCEM/VCEM non usano resine**. Il fissaggio è completamente **meccanico** (“a secco”):\n"
+            "1) incisione per alloggiare la piastra dentata;\n"
+            "2) **preforo Ø11 mm** prof. ~75 mm;\n"
+            "3) pulizia della polvere;\n"
+            "4) avvitatura del piolo con avvitatore (percussione/frizione) fino a battuta.\n\n"
+            "Questi connettori sono progettati proprio come alternativa alle soluzioni con barre piegate + resina tipiche dei solai in laterocemento."
+        )
+        return {"answer": text, "attachments": get_attachments_for("cem")}
+
+    # 4) Domande contatti
+    if any(k in q for k in ["contatti", "telefono", "email", "sede", "indirizzo", "orari", "come contattarvi"]):
+        text = (
+            "**Contatti Tecnaria S.p.A.**\n"
+            "• Sede: Via G. Ferraris 32, 36061 Bassano del Grappa (VI)\n"
+            "• Tel: +39 0424 330913\n"
+            "• Email: info@tecnaria.com\n"
+            "• Sito: www.tecnaria.com\n"
+            "Assistenza tecnica: supporto su CTF / CTL / CEM-VCEM / DIAPASON e P560."
+        )
+        return {"answer": text, "attachments": []}
+
+    # 5) P560: sempre chiodatrice (se chiede “cos’è P560” o simili)
+    if "p560" in q:
+        text = (
+            "La **P560** è una **chiodatrice a polvere** (SPIT P560) utilizzata con kit Tecnaria per la posa dei connettori, "
+            "soprattutto **CTF** su travi d’acciaio/lamiera grecata. Non è un connettore. "
+            "Uso: corretta taratura propulsori, due chiodi per connettore, DPI e controlli di cantiere secondo manuale Tecnaria."
+        )
+        return {"answer": text, "attachments": get_attachments_for("p560")}
+
+    return None  # Nessuna regola: vai al modello
+
+
+# -----------------------------------
+# LLM call (fallback stile ChatGPT)
+# -----------------------------------
+def llm_answer(user_q: str) -> str:
+    system_prompt = build_system_prompt()
+
+    try:
+        resp = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            temperature=OPENAI_TEMPERATURE,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": user_q},
+            ],
+            max_tokens=1000
+        )
+        text = resp.choices[0].message.content.strip()
+        if len(text) > MAX_ANSWER_CHARS:
+            text = text[:MAX_ANSWER_CHARS] + "…"
+        return text
+    except Exception as e:
+        # Fallback su modello alternativo se disponibile
+        try:
+            resp = client.chat.completions.create(
+                model=OPENAI_MODEL_FALLBACK,
+                temperature=OPENAI_TEMPERATURE,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user",   "content": user_q},
+                ],
+                max_tokens=1000
+            )
+            text = resp.choices[0].message.content.strip()
+            if len(text) > MAX_ANSWER_CHARS:
+                text = text[:MAX_ANSWER_CHARS] + "…"
+            return text
+        except Exception as e2:
+            return "Servizio momentaneamente non disponibile. Riprova tra poco."
+
+# -----------------------------------
+# ROUTES
+# -----------------------------------
+@app.route("/", methods=["GET"])
 def index():
-    # L’HTML sta in templates/index.html
+    # L’HTML sta in templates/index.html (niente HTML qui dentro!)
     return render_template("index.html")
 
 @app.route("/api/answer", methods=["POST"])
 def api_answer():
     data = request.get_json(silent=True) or {}
-    question = (data.get("question") or "").strip()
-    q_lower = question.lower()
+    user_q = (data.get("question") or "").strip()
 
-    # Allegati coerenti col tema
-    attachments = collect_attachments(q_lower)
+    # Filtro “Tecnaria only”: se la domanda è totalmente fuori tema, rispondi educatamente.
+    scope_keywords = ["tecnaria", "ctf", "ctl", "cem", "vcem", "diapason", "p560", "chiodatrice", "solaio", "lamiera", "trave", "soletta", "connettore"]
+    if not any(k in user_q.lower() for k in scope_keywords):
+        return jsonify({
+            "answer": "Assistente dedicato ai prodotti e servizi **Tecnaria**. Indica il prodotto/tema Tecnaria (CTF/CTL/CEM/DIAPASON/P560) e ti rispondo subito.",
+            "attachments": []
+        })
 
-    # Filtro “Tecnaria only”
-    if not any(k in q_lower for k in TECNARIA_KEYWORDS) and not looks_like_contacts(q_lower):
-        answer = (
-            "Questo assistente risponde **solo** su prodotti e servizi Tecnaria "
-            "(CTF/CTL/CEM-E/Diapason, posa, P560). Riformula la domanda in ambito Tecnaria."
-        )
-        return jsonify({"answer": answer, "attachments": attachments})
+    # 1) prova regole deterministiche (per replicare esattamente lo stile richiesto)
+    det = deterministic_answer(user_q)
+    if det:
+        # Allegati: se non ci sono, prova comunque a inferirli dal testo risposta
+        atts = det.get("attachments") or get_attachments_for(det["answer"])
+        return jsonify({"answer": det["answer"], "attachments": atts})
 
-    if is_non_tecnaria(q_lower):
-        answer = (
-            "Resto focalizzato su **Tecnaria**. Se cerchi un equivalente nel catalogo Tecnaria, "
-            "dimmi pure cosa vuoi ottenere e ti indirizzo al prodotto corretto."
-        )
-        return jsonify({"answer": answer, "attachments": attachments})
+    # 2) altrimenti chiama il modello (stile ChatGPT)
+    text = llm_answer(user_q)
+    atts = get_attachments_for(user_q + " " + text)
+    return jsonify({"answer": text, "attachments": atts})
 
-    # Risposte deterministiche
-    if looks_like_ctf_codes(q_lower):
-        return jsonify({"answer": reply_ctf_codes(), "attachments": attachments})
+# ---- STATIC (per sicurezza: servire docs se non gestiti dal server web a monte) ----
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory('static', path)
 
-    if looks_like_contacts(q_lower):
-        return jsonify({"answer": reply_contacts(), "attachments": attachments})
+# -----------------------------------
+# (REMMATO) — Vecchio Wizard/Calcoli — NON usato ora, tenuto per futura riattivazione
+# -----------------------------------
+"""
+# ESEMPIO: parse_input, calcoli, ecc. (non attivi)
+def parse_ctf_inputs(ctx: str) -> dict: ...
+def compute_ctf_height(params: dict) -> dict: ...
+"""
 
-    if looks_like_p560(q_lower):
-        # P560 è una CHIODATRICE
-        return jsonify({"answer": reply_p560(), "attachments": attachments})
-
-    # ChatGPT-like, ma vincolato a Tecnaria
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": question},
-    ]
-    try:
-        resp = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            temperature=OPENAI_TEMPERATURE,
-            messages=messages,
-        )
-        answer = resp.choices[0].message.content.strip()
-        if not answer:
-            raise ValueError("Risposta vuota dal modello.")
-    except Exception:
-        # Fallback
-        try:
-            resp = client.chat.completions.create(
-                model=OPENAI_MODEL_FALLBACK,
-                temperature=OPENAI_TEMPERATURE,
-                messages=messages,
-            )
-            answer = resp.choices[0].message.content.strip()
-        except Exception as e2:
-            answer = f"Errore nel modello: {e2}"
-
-    return jsonify({"answer": answer, "attachments": attachments})
-
-
+# -----------------------------------
+# MAIN (debug locale)
+# -----------------------------------
 if __name__ == "__main__":
-    # NIENTE HTML qui dentro; solo server Python.
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "8000")), debug=False)
