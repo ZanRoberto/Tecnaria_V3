@@ -1,4 +1,4 @@
-# app.py — TecnariaBot (ChatGPT “puro” solo Tecnaria) + hardening avvio
+# app.py — TecnariaBot (ChatGPT “puro” solo Tecnaria) + hardening
 import os, re, json, traceback
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
@@ -42,23 +42,25 @@ def get_attachments_for(text: str):
     for k, files in ATTACHMENTS_MAP.items():
         if k in t:
             hits += files
-    # dedup
-    used = set(); out = []
+    used = set()
+    out = []
     for f in hits:
-        if f["href"] in used: continue
-        out.append(f); used.add(f["href"])
+        if f["href"] in used:
+            continue
+        out.append(f)
+        used.add(f["href"])
     return out
 
-# -------- System prompt --------
+# -------- System prompt (solo ASCII) --------
 def build_system_prompt():
     return (
         "Sei un assistente tecnico di Tecnaria S.p.A. (Bassano del Grappa). "
         "Rispondi come ChatGPT, ma SOLO su prodotti/servizi Tecnaria: "
-        "CTF (acciaio–calcestruzzo), CTL/CTL MAXI (legno–calcestruzzo), CEM/VCEM (laterocemento), DIAPASON (rinforzi solai legno), "
+        "CTF (acciaio-calcestruzzo), CTL/CTL MAXI (legno-calcestruzzo), CEM/VCEM (laterocemento), DIAPASON (rinforzi solai legno), "
         "attrezzature P560 (chiodatrice) e accessori correlati. "
         "Non citare concorrenti, non divagare. "
-        "Classifica mentalmente: legno/assito→CTL/CTL MAXI; acciaio/lamiera o soletta piena→CTF; laterocemento→CEM/VCEM; ”
-        "rinforzo solai legno→DIAPASON; P560 è SEMPRE chiodatrice a polvere (non un connettore). "
+        "Classifica mentalmente: legno/assito -> CTL/CTL MAXI; acciaio/lamiera o soletta piena -> CTF; laterocemento -> CEM/VCEM; "
+        "rinforzo solai legno -> DIAPASON; P560 e' SEMPRE chiodatrice a polvere (non un connettore). "
         "Stile chiaro e tecnico; nessun HTML in testa alla risposta. "
         "Se chiedono contatti, fornisci recapiti ufficiali Tecnaria."
     )
@@ -67,40 +69,41 @@ def build_system_prompt():
 def deterministic_answer(user_q: str):
     q = re.sub(r"\s+", " ", (user_q or "").strip().lower())
 
-    # Chiodatrice “qualsiasi” per CTF → P560
+    # Chiodatrice “qualsiasi” per CTF -> P560
     if ("chiodatrice" in q and "ctf" in q) and any(k in q for k in ["qualsiasi", "normale"]):
         a = (
-            "Sì, ma NON con “una chiodatrice qualsiasi”. Per i connettori **CTF** si usa "
-            "esclusivamente la **SPIT P560** con kit/adattatori Tecnaria. Altre macchine non sono ammesse. "
-            "Ogni connettore si posa con **2 chiodi** (HSBR14) e propulsori idonei.\n\n"
+            "Si, ma NON con una chiodatrice qualsiasi. Per i connettori CTF si usa "
+            "esclusivamente la SPIT P560 con kit/adattatori Tecnaria. Altre macchine non sono ammesse. "
+            "Ogni connettore si posa con 2 chiodi (HSBR14) e propulsori idonei.\n\n"
             "Indicazioni essenziali:\n"
-            "• usare solo **SPIT P560**; seguire istruzioni in valigetta.\n"
-            "• acciaio trave ≥ 6 mm; con lamiera: 1×1,5 mm oppure 2×1,0 mm ben aderenti.\n"
-            "• posa sopra la trave (anche con lamiera) con due chiodi per connettore.\n\n"
-            "Per taratura, verifiche e sicurezza: vedi **Istruzioni di posa CTF**."
+            "- usare solo SPIT P560; seguire istruzioni in valigetta;\n"
+            "- acciaio trave >= 6 mm; con lamiera: 1x1,5 mm oppure 2x1,0 mm ben aderenti;\n"
+            "- posa sopra la trave (anche con lamiera) con due chiodi per connettore.\n\n"
+            "Per taratura, verifiche e sicurezza: vedi Istruzioni di posa CTF."
         )
         return {"answer": a, "attachments": get_attachments_for("ctf p560")}
 
     # CTL MAXI su legno + tavolato 2 cm + soletta 5 cm
-    if ("maxi" in q or "ctl maxi" in q) and "legno" in q and "tavolato" in q and "2 cm" in q and "soletta" in q and "5 cm" in q:
+    if (("maxi" in q or "ctl maxi" in q) and "legno" in q and "tavolato" in q and
+        ("2 cm" in q or "2cm" in q) and "soletta" in q and ("5 cm" in q or "5cm" in q)):
         a = (
-            "Usa **CTL MAXI 12/040** (altezza gambo 40 mm), fissato **sopra il tavolato** con **2 viti Ø10**:\n"
-            "• di norma **Ø10×100 mm**; se interposto/tavolato > 25–30 mm passa a **Ø10×120 mm**.\n\n"
+            "Usa CTL MAXI 12/040 (altezza gambo 40 mm), fissato sopra il tavolato con 2 viti diametro 10:\n"
+            "- di norma 10x100 mm; se interposto/tavolato > 25-30 mm passa a 10x120 mm.\n\n"
             "Motivi:\n"
-            "• Il MAXI è pensato per posa su assito; con soletta 5 cm il 40 mm resta annegato e la testa supera la rete **a metà spessore**.\n"
-            "• Altezze/viti disponibili: Ø10 × 100/120/140 mm della linea **CTL MAXI**.\n\n"
+            "- Il MAXI e' pensato per posa su assito; con soletta 5 cm il 40 mm resta annegato e la testa supera la rete a meta' spessore.\n"
+            "- Altezze/viti disponibili: 10x100 / 10x120 / 10x140 della linea CTL MAXI.\n\n"
             "Note rapide:\n"
-            "• Soletta **min 5 cm** (C25/30 o leggero), rete a metà spessore.\n"
-            "• Se interferisce con staffe/armatura superiori valuta **12/030**."
+            "- Soletta min 5 cm (C25/30 o leggero), rete a meta' spessore;\n"
+            "- Se interferisce con staffe/armatura superiori valuta 12/030."
         )
         return {"answer": a, "attachments": get_attachments_for("ctl maxi")}
 
     # CTCEM resine?
-    if any(k in q for k in ["ctcem", "vcem", "cem"]) and "resin" in q:
+    if any(k in q for k in ["ctcem", "vcem", "cem"]) and ("resina" in q or "resine" in q):
         a = (
-            "No: **CTCEM/VCEM non usano resine**. Fissaggio **meccanico** (“a secco”):\n"
+            "No: CTCEM/VCEM non usano resine. Fissaggio meccanico (a secco):\n"
             "1) incisione per alloggiare la piastra dentata;\n"
-            "2) **preforo Ø11 mm** prof. ~75 mm;\n"
+            "2) preforo diametro 11 mm profondita' circa 75 mm;\n"
             "3) pulizia della polvere;\n"
             "4) avvitatura del piolo con avvitatore fino a battuta."
         )
@@ -109,19 +112,19 @@ def deterministic_answer(user_q: str):
     # Contatti
     if any(k in q for k in ["contatti", "telefono", "email", "sede", "indirizzo", "orari"]):
         a = (
-            "**Contatti Tecnaria S.p.A.**\n"
-            "• Sede: Via G. Ferraris 32, 36061 Bassano del Grappa (VI)\n"
-            "• Tel: +39 0424 330913\n"
-            "• Email: info@tecnaria.com\n"
-            "• Sito: www.tecnaria.com"
+            "Contatti Tecnaria S.p.A.\n"
+            "- Sede: Via G. Ferraris 32, 36061 Bassano del Grappa (VI)\n"
+            "- Tel: +39 0424 330913\n"
+            "- Email: info@tecnaria.com\n"
+            "- Sito: www.tecnaria.com"
         )
         return {"answer": a, "attachments": []}
 
     # P560: sempre chiodatrice
     if "p560" in q:
         a = (
-            "La **P560** è una **chiodatrice a polvere** (SPIT P560) per posa connettori Tecnaria, "
-            "soprattutto **CTF** su travi d’acciaio/lamiera grecata. Non è un connettore."
+            "La P560 e' una chiodatrice a polvere (SPIT P560) per la posa dei connettori Tecnaria, "
+            "soprattutto CTF su travi d'acciaio/lamiera grecata. Non e' un connettore."
         )
         return {"answer": a, "attachments": get_attachments_for("p560")}
 
@@ -142,10 +145,9 @@ def llm_answer(user_q: str) -> str:
         )
         text = (resp.choices[0].message.content or "").strip()
         if len(text) > MAX_ANSWER_CHARS:
-            text = text[:MAX_ANSWER_CHARS] + "…"
+            text = text[:MAX_ANSWER_CHARS] + "..."
         return text
     except Exception as e:
-        # log e fallback
         print("LLM primary error:", e, flush=True)
         try:
             resp = client.chat.completions.create(
@@ -159,7 +161,7 @@ def llm_answer(user_q: str) -> str:
             )
             text = (resp.choices[0].message.content or "").strip()
             if len(text) > MAX_ANSWER_CHARS:
-                text = text[:MAX_ANSWER_CHARS] + "…"
+                text = text[:MAX_ANSWER_CHARS] + "..."
             return text
         except Exception as e2:
             print("LLM fallback error:", e2, flush=True)
@@ -175,7 +177,6 @@ def index():
     try:
         return render_template("index.html")
     except Exception as e:
-        # se manca il template, non rompere l'avvio
         return f"Template non trovato: {e}", 500
 
 @app.route("/api/answer", methods=["POST"])
@@ -184,10 +185,13 @@ def api_answer():
         data = request.get_json(silent=True) or {}
         user_q = (data.get("question") or "").strip()
 
-        scope_keywords = ["tecnaria", "ctf", "ctl", "cem", "vcem", "diapason", "p560", "chiodatrice", "solaio", "lamiera", "trave", "soletta", "connettore"]
+        scope_keywords = [
+            "tecnaria", "ctf", "ctl", "cem", "vcem", "diapason",
+            "p560", "chiodatrice", "solaio", "lamiera", "trave", "soletta", "connettore"
+        ]
         if not any(k in user_q.lower() for k in scope_keywords):
             return jsonify({
-                "answer": "Assistente dedicato ai prodotti/servizi **Tecnaria**. Indica il prodotto/tema Tecnaria (CTF/CTL/CEM/DIAPASON/P560).",
+                "answer": "Assistente dedicato ai prodotti/servizi Tecnaria. Indica il prodotto/tema Tecnaria (CTF/CTL/CEM/DIAPASON/P560).",
                 "attachments": []
             })
 
@@ -199,7 +203,7 @@ def api_answer():
         text = llm_answer(user_q)
         atts = get_attachments_for(user_q + " " + text)
         return jsonify({"answer": text, "attachments": atts})
-    except Exception as e:
+    except Exception:
         print("api_answer error:", traceback.format_exc(), flush=True)
         return jsonify({"answer": "Errore interno. Riprova tra poco.", "attachments": []}), 500
 
