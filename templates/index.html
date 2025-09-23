@@ -1,233 +1,156 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
   <title>TecnariaBot • Assistente Tecnico</title>
   <style>
-    :root {
-      --bg:#0e0f12; --card:#151821; --muted:#8f98ad; --text:#e9eefb; --accent:#ff7a00; --ok:#2ecc71; --warn:#e74c3c;
-      --overlay: rgba(0,0,0,.65);
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #222;
+      color: #eee;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
     }
-    *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(135deg,#0e0f12,#121420 60%);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto}
-    .wrap{max-width:980px;margin:40px auto;padding:0 16px}
-    .card{background:var(--card);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:24px}
-    h1{display:flex;align-items:center;gap:10px;margin:0 0 12px 0;font-size:22px}
-    .muted{color:var(--muted)}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    @media (max-width:880px){.row{grid-template-columns:1fr}}
-    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
-    input[type="text"],textarea,select{width:100%;background:#0f121a;border:1px solid #22283a;color:var(--text);border-radius:10px;padding:12px 12px}
-    textarea{min-height:90px;resize:vertical}
-    .chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 6px}
-    .chip{border:1px solid #2a3247;color:var(--text);background:#0f121a;border-radius:999px;padding:6px 12px;cursor:pointer}
-    .chip.active{background:var(--accent);border-color:var(--accent);color:#1b120a;font-weight:700}
-    .btn{background:var(--accent);border:none;color:#1b120a;padding:12px 18px;border-radius:12px;font-weight:700;cursor:pointer}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .small{font-size:12px;color:var(--muted)}
-    .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-    .response{margin-top:18px;padding:16px;border:1px solid #27304a;border-radius:14px;background:#0f121a;min-height:120px}
-    .attachments{margin-top:10px}
-    .attachments a{display:inline-block;margin-right:12px;margin-top:6px;color:var(--accent);text-decoration:none}
-    .spinner{display:none;margin-left:10px;border:3px solid #2a3247;border-top:3px solid var(--accent);border-radius:50%;width:18px;height:18px;animation:spin 1s linear infinite}
-    @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
-    .wizard{margin-top:8px;border:1px dashed #2a3247;border-radius:12px;padding:12px;background:#0f121a}
-    .pill{display:inline-block;background:#1b2133;color:#cdd5ea;border-radius:999px;padding:4px 8px;font-size:12px;margin-left:6px}
-    .ok{color:var(--ok)} .warn{color:var(--warn)}
-
-    /* Modal preview (immagini/PDF) */
-    .modal{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;z-index:9999}
-    .modal.open{display:flex}
-    .modal-inner{background:#0f121a;border:1px solid #27304a;border-radius:12px;max-width:90vw;max-height:90vh;position:relative;overflow:hidden}
-    .modal-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #27304a}
-    .modal-body{width:86vw;height:76vh;background:#0a0d14}
-    .modal-close{background:transparent;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px}
-    .modal-body img{max-width:100%;max-height:100%;display:block;margin:auto}
-    .modal-body iframe{width:100%;height:100%;border:0}
+    .container {
+      max-width: 800px;
+      margin: 40px;
+      padding: 20px;
+      background: #333;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.6);
+    }
+    h1 {
+      color: #f26522;
+      margin-bottom: 10px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      resize: vertical;
+    }
+    .modes button {
+      background: #f26522;
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      margin-right: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .modes button.active {
+      background: #ff8c42;
+    }
+    #sendBtn {
+      margin-top: 10px;
+      background: #f26522;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+    }
+    .answer {
+      margin-top: 20px;
+      padding: 15px;
+      background: #444;
+      border-radius: 8px;
+      white-space: pre-wrap;
+    }
+    .attachments {
+      margin-top: 10px;
+      padding: 10px;
+      background: #555;
+      border-radius: 8px;
+    }
+    /* Clessidra */
+    .spinner {
+      display: none;
+      margin: 15px auto;
+      border: 6px solid #444;
+      border-top: 6px solid #f26522;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>
-        <img src="/static/img/logo.jpg" alt="Tecnaria" style="height:28px;border-radius:6px">
-        TecnariaBot <span class="muted">• Assistente Tecnico (A/B/C)</span>
-      </h1>
+  <div class="container">
+    <h1>TecnariaBot</h1>
+    <p>Assistente Tecnico • Risposte A/B/C sempre coerenti</p>
 
-      <div class="row">
-        <div>
-          <label>Domanda</label>
-          <input id="q" type="text" placeholder="Es. Quale altezza CTF devo usare? Oppure: mi dai i contatti di Tecnaria?">
-          <div class="chips" id="modes">
-            <div class="chip active" data-mode="breve">A Breve</div>
-            <div class="chip" data-mode="standard">B Standard</div>
-            <div class="chip" data-mode="dettagliata">C Dettagliata</div>
-          </div>
-        </div>
-        <div>
-          <label>Dati tecnici (mini-wizard / testo)</label>
-          <textarea id="ctx" placeholder="Si compila dal mini-wizard o scrivi: lamiera H55, soletta 60 mm, V_L,Ed=150 kN/m, cls C30/37, passo gola 150 mm, lamiera longitudinale, passo lungo trave 200 mm, t=1.0 mm, nr=2, copriferro 25 mm"></textarea>
-          <div class="small">Suggerimento: scrivi “altezza connettore” o “CTF” per far comparire i campi del mini-wizard.</div>
-        </div>
-      </div>
+    <textarea id="question" placeholder="Scrivi qui la tua domanda..."></textarea>
 
-      <div id="wizard" class="wizard" style="display:none">
-        <div class="row3">
-          <div><label>Altezza lamiera (mm)</label><input id="h_lamiera" type="text" value="55"></div>
-          <div><label>Spessore soletta (mm)</label><input id="s_soletta" type="text" value="60"></div>
-          <div><label>V_L,Ed (kN/m)</label><input id="vled" type="text" value="150"></div>
-          <div>
-            <label>Classe cls</label>
-            <select id="cls"><option>C20/25</option><option>C25/30</option><option selected>C30/37</option><option>C35/45</option></select>
-          </div>
-          <div><label>Passo gola (mm)</label><input id="passo" type="text" value="150"></div>
-          <div><label>Direzione lamiera</label><select id="dir"><option>longitudinale</option><option>trasversale</option></select></div>
-          <div><label>Passo lungo trave (mm)</label><input id="s_long" type="text" value="200"></div>
-          <div><label>Spessore lamiera t (mm)</label><input id="t_lamiera" type="text" value="1.0"></div>
-          <div><label>N° connettori per gola (nr)</label><input id="nr_gola" type="text" value="2"></div>
-          <div><label>Copriferro (mm) <span class="pill">nuovo</span></label><input id="copriferro" type="text" placeholder="es. 25"></div>
-        </div>
-        <div style="margin-top:10px">
-          <button class="btn" id="apply">Applica dati al contesto</button>
-          <span class="small">I valori qui sopra compilano automaticamente il campo “Dati tecnici”.</span>
-        </div>
-      </div>
-
-      <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
-        <button class="btn" id="send">Invia</button>
-        <div class="spinner" id="spin"></div>
-      </div>
-
-      <div class="response" id="answer">Risposta…</div>
-      <div class="attachments" id="attachments"></div>
+    <div class="modes">
+      <button data-mode="A">A Breve</button>
+      <button data-mode="B" class="active">B Standard</button>
+      <button data-mode="C">C Dettagliata</button>
     </div>
-  </div>
 
-  <!-- MODALE PREVIEW allegati (immagini/PDF) -->
-  <div class="modal" id="modal">
-    <div class="modal-inner">
-      <div class="modal-head">
-        <div id="modalTitle">Anteprima allegato</div>
-        <button class="modal-close" id="modalClose" aria-label="Chiudi">×</button>
-      </div>
-      <div class="modal-body" id="modalBody"></div>
-    </div>
+    <button id="sendBtn">Invia</button>
+
+    <div class="spinner" id="spinner"></div>
+
+    <div class="answer" id="answer"></div>
+    <div class="attachments" id="attachments"></div>
   </div>
 
   <script>
-    const qEl = document.getElementById('q');
-    const ctxEl = document.getElementById('ctx');
-    const wizard = document.getElementById('wizard');
-    const spin = document.getElementById('spin');
-    const ans = document.getElementById('answer');
-    const atc = document.getElementById('attachments');
-    let mode = 'breve';
+    const questionEl = document.getElementById("question");
+    const sendBtn = document.getElementById("sendBtn");
+    const answerEl = document.getElementById("answer");
+    const attachmentsEl = document.getElementById("attachments");
+    const spinner = document.getElementById("spinner");
+    let mode = "B";
 
-    // A/B/C
-    document.getElementById('modes').addEventListener('click', (e)=>{
-      const c = e.target.closest('.chip'); if(!c) return;
-      document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
-      c.classList.add('active'); mode = c.dataset.mode;
-    });
-
-    // Auto-wizard se domanda parla di CTF/altezza
-    function autoWizard(){
-      const t = (qEl.value || '').toLowerCase();
-      const need = t.includes('ctf') || t.includes('altezz') || t.includes('connettore');
-      wizard.style.display = need ? 'block' : 'none';
-    }
-    qEl.addEventListener('input', autoWizard); autoWizard();
-
-    // Applica → compila contesto
-    document.getElementById('apply').addEventListener('click', ()=>{
-      const vals = {
-        h_lamiera: document.getElementById('h_lamiera').value.trim(),
-        s_soletta: document.getElementById('s_soletta').value.trim(),
-        vled: document.getElementById('vled').value.trim(),
-        cls: document.getElementById('cls').value.trim(),
-        passo: document.getElementById('passo').value.trim(),
-        dir: document.getElementById('dir').value.trim(),
-        s_long: document.getElementById('s_long').value.trim(),
-        t_lamiera: document.getElementById('t_lamiera').value.trim(),
-        nr_gola: document.getElementById('nr_gola').value.trim(),
-        copriferro: document.getElementById('copriferro').value.trim()
-      };
-      const parts = [];
-      if(vals.h_lamiera) parts.push(`lamiera H${vals.h_lamiera}`);
-      if(vals.s_soletta) parts.push(`soletta ${vals.s_soletta} mm`);
-      if(vals.vled) parts.push(`V_L,Ed=${vals.vled} kN/m`);
-      if(vals.cls) parts.push(`cls ${vals.cls}`);
-      if(vals.passo) parts.push(`passo gola ${vals.passo} mm`);
-      if(vals.dir) parts.push(`lamiera ${vals.dir}`);
-      if(vals.s_long) parts.push(`passo lungo trave ${vals.s_long} mm`);
-      if(vals.t_lamiera) parts.push(`t=${vals.t_lamiera} mm`);
-      if(vals.nr_gola) parts.push(`nr=${vals.nr_gola}`);
-      if(vals.copriferro) parts.push(`copriferro ${vals.copriferro} mm`);
-      ctxEl.value = parts.join(', ');
-    });
-
-    // INVIA
-    document.getElementById('send').addEventListener('click', async ()=>{
-      const payload = { question: qEl.value, mode, context: ctxEl.value };
-      spin.style.display = 'inline-block';
-      ans.innerHTML = 'In elaborazione…';
-      atc.innerHTML = '';
-      try{
-        const r = await fetch('/api/answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        const j = await r.json();
-        ans.innerHTML = j.answer || '—';
-
-        // allegati → link + anteprima (data-preview)
-        if (j.attachments && j.attachments.length){
-          atc.innerHTML = '<strong>Allegati / Note collegate</strong><br>' + j.attachments.map(a=>{
-            const preview = a.preview ? 'data-preview="1"' : '';
-            return `<a href="${a.href}" class="att" ${preview} data-href="${a.href}">${a.label}</a>`;
-          }).join(' ');
-          bindAttachmentPreview();
-        }
-      }catch(e){
-        ans.textContent = 'Errore di rete.';
-      }finally{
-        spin.style.display = 'none';
-      }
-    });
-
-    // ===== MODAL PREVIEW (immagine / PDF) =====
-    const modal = document.getElementById('modal');
-    const modalBody = document.getElementById('modalBody');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalClose = document.getElementById('modalClose');
-
-    function openModalWith(href, label){
-      modalBody.innerHTML = '';
-      modalTitle.textContent = label || 'Anteprima allegato';
-      if(/\.(png|jpg|jpeg|gif|webp)$/i.test(href)){
-        const img = document.createElement('img'); img.src = href; img.alt = label || 'allegato';
-        modalBody.appendChild(img);
-      }else if(/\.pdf($|\?)/i.test(href)){
-        const ifr = document.createElement('iframe'); ifr.src = href; modalBody.appendChild(ifr);
-      }else{
-        // se formato non supportato in preview → apri nuova scheda
-        window.open(href, '_blank','noopener'); return;
-      }
-      modal.classList.add('open');
-    }
-    function closeModal(){ modal.classList.remove('open'); modalBody.innerHTML=''; }
-    modalClose.addEventListener('click', closeModal);
-    modal.addEventListener('click',(e)=>{ if(e.target===modal) closeModal(); });
-    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') closeModal(); });
-
-    function bindAttachmentPreview(){
-      document.querySelectorAll('.attachments a.att').forEach(a=>{
-        a.addEventListener('click',(e)=>{
-          if(a.dataset.preview === '1'){
-            e.preventDefault();
-            openModalWith(a.dataset.href, a.textContent.trim());
-          }
-        });
+    document.querySelectorAll(".modes button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".modes button").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        mode = btn.dataset.mode;
       });
-    }
+    });
+
+    sendBtn.addEventListener("click", async () => {
+      const q = questionEl.value.trim();
+      if (!q) return;
+
+      answerEl.textContent = "";
+      attachmentsEl.textContent = "";
+      spinner.style.display = "block";
+
+      try {
+        const response = await fetch("/api/answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: `${q} Modalità ${mode}` })
+        });
+        const data = await response.json();
+        answerEl.textContent = data.answer || "Nessuna risposta.";
+        if (data.attachments && data.attachments.length > 0) {
+          attachmentsEl.innerHTML = "<b>Allegati:</b><ul>" + 
+            data.attachments.map(a => `<li><a href="${a.url}" target="_blank">${a.title}</a></li>`).join("") + 
+            "</ul>";
+        }
+      } catch (err) {
+        answerEl.textContent = "Errore: " + err;
+      } finally {
+        spinner.style.display = "none";
+      }
+    });
   </script>
 </body>
 </html>
