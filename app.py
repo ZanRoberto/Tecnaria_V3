@@ -1,15 +1,17 @@
-# app.py — TecnariaBot (A/B/C) con:
-# - calcolo CTF (PRd, k_t, k_cop, verifica, piano d’azione)
-# - allegati/anteprime
-# - contatti aziendali (ramo CONTACTS)
-# - mini-wizard lato front già gestito da index.html
+# app.py — TecnariaBot (A/B/C)
+# - Risposte "stile ChatGPT" ma confinate ai prodotti/servizi Tecnaria S.p.A.
+# - Filtra richieste non Tecnaria (no HBV/Hi-Bond/X-HBV/FVA/…)
+# - A/B/C: breve, standard, dettagliata (con struttura titoli per C)
+# - Branch contatti aziendali
+# - Calcolo CTF opzionale se presenti i dati (usa static/data/ctf_prd.json se c'è)
+# - Allegati/anteprime gestiti dal front-end (index.html)
 
 import os, re, json, math
 from typing import Any, Dict, Optional, List
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
 
-# ============== OpenAI opzionale (fallback interno se non c'è) ==============
+# ======================= OpenAI =======================
 try:
     from openai import OpenAI
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
@@ -36,19 +38,30 @@ CONTACTS_KEYWORDS = [
     "sede","dove siete","orari","pec","ufficio","assistenza","referente","commerciale"
 ]
 
-# ======================= Scope / denylist (no prodotti terzi) =======================
-DENYLIST = {"hbv","x-hbv","xhbv","hi-bond ","hibond ","ribdeck","hilti shear","fva","comflor","metsec","holorib","p800"}
+# ======================= Scope / denylist prodotti NON Tecnaria =======================
+DENYLIST = {
+    "hbv","xhbv","x-hbv","hi-bond","hibond","ribdeck","comflor","metsec","holorib",
+    "fva","p800","hilti shear","x hbv","hi bond"
+}
 def contains_denylist(q: str) -> bool:
     return any(d in (q or "").lower() for d in DENYLIST)
 
 # ======================= Topic & Intent =======================
+TECHNARIA_KEYWORDS = [
+    # prodotti e aree coperte
+    "tecnaria","ctf","ctl","cem","cem-e","diapason","p560","chiodatrice","lamiera","soletta","connettore","connettori"
+]
+def is_technaria_domain(q: str) -> bool:
+    t = (q or "").lower()
+    return any(k in t for k in TECHNARIA_KEYWORDS) or any(k in t for k in CONTACTS_KEYWORDS)
+
 def detect_topic(q: str) -> Optional[str]:
     t = (q or "").lower()
     if any(k in t for k in CONTACTS_KEYWORDS): return "CONTACTS"
     if any(k in t for k in [" p560","p560 ","chiodatrice","spit p560"]): return "P560"
     if "diapason" in t: return "DIAPASON"
     if any(k in t for k in ["cem-e","ceme","cem e"]): return "CEME"
-    if any(k in t for k in ["ctl","acciaio-legno","acciaio legno","legno"]): return "CTL"
+    if any(k in t for k in ["ctl","acciaio-legno","acciaio legno","solaio legno","legno-calcestruzzo"]): return "CTL"
     if any(k in t for k in ["ctf","connettore","connettori","lamiera","soletta","gola","altezza connettore"]): return "CTF"
     return None
 
@@ -56,13 +69,13 @@ def detect_intent(q: str) -> str:
     t = (q or "").lower()
     if any(k in t for k in ["altezz","dimension","v_l","v l","v_l,ed","kn/m","numero","quanti","portata","scegliere","che altezza","verifica","calcolo"]):
         return "CALC"
-    if any(k in t for k in ["posa","installazione","fissare","uso in cantiere","come si posa","istruzioni"]):
+    if any(k in t for k in ["posa","installazione","fissare","uso in cantiere","come si posa","istruzioni","istruzioni di posa"]):
         return "POSA"
     if any(k in t for k in ["differenza","vs","confronto","meglio"]):
         return "CONFRONTO"
     return "INFO"
 
-# ======================= Parser contesto (mini-wizard) =======================
+# ======================= Parser contesto (mini-wizard) per CTF =======================
 CTX_RE = {
     "h_lamiera": re.compile(r"lamiera\s*h?\s*(\d+)", re.I),
     "s_soletta": re.compile(r"soletta\s*(\d+)\s*mm", re.I),
@@ -120,7 +133,7 @@ def missing_ctf_keys(parsed: Dict[str, Any]) -> List[str]:
     needed = CRITICAL_PIENA if parsed.get("piena") else CRITICAL_LAMIERA
     return [k for k in needed if k not in parsed]  # copriferro non bloccante
 
-# ======================= Database PRd (JSON) =======================
+# ======================= DB PRd (opzionale) =======================
 def load_ctf_db() -> Dict[str, Any]:
     path = os.path.join(app.static_folder, "data", "ctf_prd.json")
     try:
@@ -130,6 +143,7 @@ def load_ctf_db() -> Dict[str, Any]:
         return {}
 PRD_DB = load_ctf_db()
 
+# Utilità per trovare PRd da JSON (se presente)
 def _norm(s: str) -> str:
     return (s or "").strip().lower().replace(" ", "").replace("-", "").replace("_","")
 
@@ -188,7 +202,6 @@ def find_prd_table(db: Dict[str, Any], h_lamiera: int, dir_lam: str, passo_gola:
             except: pass
     return result or None
 
-# ======================= k_t / k_cop / scelta CTF =======================
 def _kt_from_limits(t_mm: float, nr: int) -> float:
     if nr <= 1:
         return 1.00 if t_mm > 1.0 else 0.85
@@ -264,7 +277,6 @@ def choose_ctf_from_matrix_or_fallback(p: Dict[str, Any], safety: float = 1.10):
 def choose_ctf_height(p: Dict[str, Any], safety: float = 1.10):
     return choose_ctf_from_matrix_or_fallback(p, safety)
 
-# ======================= Render calcolo (HTML) =======================
 def s_long_max(prd_conn: float, demand_kNm: float):
     if prd_conn <= 0: return math.inf
     return (1000.0 * prd_conn) / demand_kNm
@@ -320,58 +332,73 @@ def tool_attachments(topic: str, intent: str):
     out = []
     if topic == "P560":
         out.append({"label":"Foto P560","href":"/static/img/p560_magazzino.jpg","preview":True})
-        # esempio PDF: out.append({"label":"Manuale P560 (PDF)","href":"/static/docs/p560_manual.pdf","preview":True})
     if topic == "CTF" and intent == "POSA":
         out.append({"label":"Istruzioni posa CTF (PDF)","href":"/static/docs/ctf_posa.pdf","preview":True})
     if topic == "CTF" and intent == "INFO":
         out.append({"label":"Scheda tecnica CTF (PDF)","href":"/static/docs/ctf_scheda.pdf","preview":True})
     return out
 
-# ======================= LLM A/B/C (fallback coerente) =======================
-SYSTEM_BASE = ("Sei TecnariaBot, assistente tecnico di Tecnaria S.p.A. Rispondi solo su CTF, CTL, CEM-E, Diapason, P560. "
-               "Niente prodotti terzi. Niente valori inventati. Italiano.")
+# ======================= Prompt A/B/C “stile ChatGPT” ma confinato =======================
+SYSTEM_BASE = (
+    "Sei TecnariaBot, assistente di Tecnaria S.p.A. (Bassano del Grappa). "
+    "Rispondi SOLO su prodotti/servizi Tecnaria (CTF, CTL, CEM-E, Diapason, P560). "
+    "Evita brand/soluzioni non Tecnaria. Tono tecnico, chiaro, in italiano."
+)
+
 def build_style_block(mode: str) -> str:
     mode = (mode or "").lower()
     if mode == "breve":
-        return "Stile A: 90–130 parole, chiaro, senza formule."
+        return ("Stile: BREVE (A). 90-130 parole, discorsivo naturale. "
+                "Niente formule. Nessuna lista se non essenziale.")
     if mode == "standard":
-        return "Stile B: 180–260 parole, discorsivo tecnico, 1 elenco breve ammesso."
-    return ("Stile C: 380–600 parole. HTML sezioni: <h3>Cos’è</h3>, <h4>Componenti</h4>, <h4>Varianti</h4>, "
-            "<h4>Prestazioni</h4>, <h4>Posa</h4>, <h4>Norme e riferimenti</h4>, <h4>Vantaggi e limiti</h4>.")
+        return ("Stile: STANDARD (B). 180-260 parole, tono tecnico-accessibile. "
+                "Puoi usare una lista breve (max 5 punti).")
+    # dettagliata
+    return ("Stile: DETTAGLIATA (C). 380-600 parole, completa. "
+            "Struttura titoli: Cos’è; Componenti; Varianti; Prestazioni; Posa; Norme e riferimenti; Vantaggi e limiti. "
+            "Usa HTML per i titoli <h3>/<h4> e paragrafi. Non inventare dati numerici non verificati.")
 
 def llm_reply(topic: str, intent: str, mode: str, question: str, context: str) -> str:
+    # Se manca API → fallback sintetico (ma coerente)
     if not client:
-        # risposte sintetiche ma coerenti A/B/C se manca API
-        if topic == "P560":
-            if mode == "breve":
-                return "P560: chiodatrice a polvere per fissare connettori Tecnaria. DPI, controllo quota 3.5–7.5 mm, bending test a campione."
-            if mode == "standard":
-                return ("La P560 è una chiodatrice a polvere per fissaggi rapidi su travi/lamiera. "
-                        "Regolazione potenza, pressione ortogonale, controllo quota 3.5–7.5 mm tra testa chiodo e piastra, "
-                        "bending test iniziale e a campione. DPI obbligatori e manutenzione regolare.")
-            return ("<h3>P560</h3><h4>Impiego</h4><p>Fissaggio connettori su travi/lamiera; regolazione potenza; pressatura ortogonale; "
-                    "verifica quota 3.5–7.5 mm.</p><h4>Controlli</h4><p>Bending test all’avvio/campione; registro controlli; DPI.</p>"
-                    "<h4>Manutenzione</h4><p>Pulizia giornaliera, ispezione guarnizioni, kit ricambi.</p>")
-        if topic == "CTF":
-            if mode == "breve":
-                return "CTF: connettori a taglio per solai acciaio–calcestruzzo; scelta da PRd (ETA) e passo lungo trave; posa con P560."
-            if mode == "standard":
-                return ("I CTF collegano lamiera/soletta a travi acciaio. La selezione dipende da lamiera/direzione/passo/cls "
-                        "e si verifica con PRd per connettore e n°/m. Posa con P560 e controlli di cantiere.")
-            return ("<h3>CTF</h3><p>Usa ETA-18/0447 e manuale Tecnaria per PRd; verifica EC4; posa con P560; controlli quota chiodi e bending test.</p>")
-        if topic == "CTL":
-            return "CTL: sistema per solai legno–calcestruzzo; verifica EC5/EC4; posa con viti/staffe e getto collaborante."
-        if topic == "CEME":
-            return "CEM-E: collegamento cls esistente/nuovo con resina; preparazione foro, pulizia, iniezione; prove di estrazione."
-        if topic == "DIAPASON":
-            return "Diapason: soluzione per riqualifica solai; posa con chiodi/ancoranti; verifica a taglio/scorrimento."
-        return "Assistente dedicato ai prodotti Tecnaria S.p.A."
+        base = {
+            "P560": {
+                "breve":  "P560: chiodatrice a polvere per fissaggio connettori Tecnaria. DPI, controllo quota 3.5–7.5 mm, bending test.",
+                "standard":"La P560 è la chiodatrice a polvere per il fissaggio dei connettori Tecnaria su travi/lamiera. "
+                           "Regola la potenza, premi ortogonale, controlla quota 3.5–7.5 mm tra testa chiodo e piastra. "
+                           "Esegui bending test all’avvio e a campione, usa DPI e manutenzione programmata.",
+                "dettagliata":"<h3>P560</h3><h4>Impiego</h4><p>Fissaggio connettori su travi/lamiera; regolazione potenza; pressatura ortogonale; "
+                              "verifica quota 3.5–7.5 mm.</p><h4>Controlli</h4><p>Bending test iniziale/a campione; registro controlli; DPI.</p>"
+                              "<h4>Manutenzione</h4><p>Pulizia giornaliera, ispezione O-ring, kit ricambi.</p>"
+            },
+            "CTF": {
+                "breve":  "CTF: connettori a taglio per solai acciaio-calcestruzzo; selezione tramite PRd (ETA) e passo lungo trave; posa con P560.",
+                "standard":"I CTF collegano lamiera/soletta alle travi in acciaio, creando collaborazione strutturale. "
+                           "La scelta dipende da lamiera/direzione/passo/cls e si verifica con PRd per connettore e n°/m. Posa con P560 e controlli di cantiere.",
+                "dettagliata":"<h3>Cos’è</h3><p>Connettore a taglio Tecnaria per solai composti acciaio-calcestruzzo. "
+                              "Si dimensiona con ETA e verifica EC4.</p><h4>Componenti</h4><p>Piolo, piastra base, chiodi.</p>"
+                              "<h4>Varianti</h4><p>Altezze CTF020–135; impiego su lamiera o soletta piena.</p>"
+                              "<h4>Prestazioni</h4><p>PRd da tabelle, fattori k_t/k_cop se pertinenti; verifica capacità≥domanda×γ.</p>"
+                              "<h4>Posa</h4><p>Chiodatura P560; controllo quota e bending test.</p><h4>Norme e riferimenti</h4><p>ETA-18/0447, EC4.</p>"
+                              "<h4>Vantaggi e limiti</h4><p>Rapidità esecutiva, nessuna saldatura; attenzione a geometrie lamiera e posa.</p>"
+            },
+            "CTL": {"breve":"CTL: sistema per solai legno-calcestruzzo; verifica EC5/EC4; posa con viti/staffe e getto collaborante."},
+            "CEME":{"breve":"CEM-E: collegamento calcestruzzo esistente/nuovo con resina; preparazione foro, pulizia, iniezione; prove di estrazione."},
+            "DIAPASON":{"breve":"Diapason: soluzione Tecnaria per riqualifica solai; posa con chiodi/ancoranti; verifica a taglio/scorrimento."}
+        }
+        t = base.get(topic, {"breve":"Assistente dedicato ai prodotti Tecnaria S.p.A."})
+        return t.get(mode, t.get("breve"))
+    # Con API → prompt vincolato ma “stile ChatGPT”
     style = build_style_block(mode)
     messages = [
         {"role":"system","content": SYSTEM_BASE},
-        {"role":"user","content": f"Prodotto: {topic} • Intent: {intent}\nDomanda: {question}\nContesto: {context or '—'}\n{style}"},
+        {"role":"user","content": f"Prodotto: {topic} • Intent: {intent}\nDomanda: {question}\nContesto: {context or '—'}\n{style}"}
     ]
-    resp = client.chat.completions.create(model=OPENAI_MODEL, messages=messages, temperature=0.2, top_p=0.9, max_tokens=900)
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=messages,
+        temperature=0.4, top_p=0.9, max_tokens=900
+    )
     return resp.choices[0].message.content.strip()
 
 # ======================= Routes =======================
@@ -386,14 +413,20 @@ def api_answer():
     mode     = (data.get("mode") or "dettagliata").strip().lower()
     context  = (data.get("context") or "").strip()
 
+    # 0) Rifiuta prodotti terzi esplicitamente citati
     if contains_denylist(question):
-        return jsonify({"answer":"Assistente dedicato ai prodotti Tecnaria S.p.A.",
-                        "meta":{"needs_params":False,"required_keys":[]}})
+        return jsonify({"answer":"Questo assistente tratta solo prodotti e servizi Tecnaria S.p.A.",
+                        "meta":{"needs_params":False}})
+
+    # 1) Verifica dominio Tecnaria (salvo branch contatti)
+    if not is_technaria_domain(question):
+        return jsonify({"answer":"Assistente dedicato ai prodotti e servizi Tecnaria S.p.A. (CTF, CTL, CEM-E, Diapason, P560).",
+                        "meta":{"needs_params":False}})
 
     topic  = detect_topic(question)
     intent = detect_intent(question)
 
-    # --- Contatti aziendali
+    # 2) Contatti aziendali
     if topic == "CONTACTS":
         txt = (
             f"<strong>{CONTACTS['ragione_sociale']}</strong><br>"
@@ -404,11 +437,7 @@ def api_answer():
         attachments = [{"label":"Pagina contatti","href":CONTACTS["sito"]+"/contatti/","preview":False}]
         return jsonify({"answer": txt, "attachments": attachments, "meta":{"needs_params":False}})
 
-    if topic is None:
-        return jsonify({"answer":"Assistente dedicato ai prodotti Tecnaria (CTF/CTL/CEM-E/Diapason/P560).",
-                        "meta":{"needs_params":False,"required_keys":[]}})
-
-    # --- CTF calcolo (mini-wizard)
+    # 3) Calcolo CTF se l’utente sta chiedendo “altezza/verifica” E se ha dati
     if topic == "CTF" and intent == "CALC":
         parsed = parse_ctf_context(context)
         miss = missing_ctf_keys(parsed)
@@ -420,10 +449,10 @@ def api_answer():
         answer = render_calc_block(parsed, result)
         return jsonify({"answer":answer, "meta":{"needs_params":False}, "attachments":tool_attachments(topic,intent)})
 
-    # --- Altri casi → LLM A/B/C
-    prose = llm_reply(topic, intent, mode, question, context)
+    # 4) Altri casi → risposta “stile ChatGPT” ma confinata a Tecnaria
+    prose = llm_reply(topic or "INFO", intent, mode, question, context)
 
-    # se l’utente ha già dati completi, aggiungo il blocco calcolo in coda
+    # Se c’è già un contesto CTF quasi completo, prova ad aggiungere in coda il blocco calcolo
     extra = ""
     if topic == "CTF":
         parsed = parse_ctf_context(context)
