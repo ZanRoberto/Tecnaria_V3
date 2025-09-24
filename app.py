@@ -1,157 +1,145 @@
+# app.py
 import os
-from flask import Flask, request, jsonify, render_template, send_from_directory
-from flask_cors import CORS
+import re
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from openai import OpenAI
 
-# =======================
-# Config
-# =======================
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
-OPENAI_MODEL_FALLBACK = os.getenv("OPENAI_MODEL_FALLBACK", "gpt-4o-mini")
-OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", "0"))
-MAX_ANSWER_CHARS = int(os.getenv("MAX_ANSWER_CHARS", "1800"))
-
+# ------------------- Config -------------------
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
-    raise RuntimeError("Variabile d'ambiente OPENAI_API_KEY mancante")
+    raise RuntimeError("OPENAI_API_KEY non impostata nelle Environment Variables di Render.")
+
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.1-mini")
+
+# ------------------- Base dati di dominio (invarianti) -------------------
+# Questa è la "stessa base dati" condivisa che vogliamo usare ora (niente RAG da file).
+SYSTEM_KB = """
+DOMINIO TECNARIA — REGOLE BASE (CTF + P560):
+
+• Attrezzo: chiodatrice a cartuccia SPIT P560 con kit/adattatori Tecnaria per CTF.
+• Fissaggio: ogni connettore CTF richiede 2 chiodi HSBR14.
+• Trave in acciaio: spessore minimo ≥ 6 mm.
+• Lamiera grecata ammessa: 1×1,5 mm oppure 2×1,0 mm se ben aderente alla trave (senza giochi).
+• Posizione di posa: i connettori CTF si posano sopra la trave.
+• Propulsori: cartucce a disco 6,3×16 mm; livello di potenza da tarare con prove in cantiere.
+• Riferimenti: ETA-18/0447; Istruzioni di posa CTF; Manuale SPIT P560.
+• Principio di risposta:
+  - Se l’informazione è fuori da questo perimetro o mancano dati, rispondi in modo prudente e dichiaralo.
+  - Non inventare valori tabellari specifici (PRd/P0 ecc.); rimanda alle tabelle ETA-18/0447 quando richieste.
+"""
+
+SYSTEM_PROMPT = f"""Sei il BOT Tecnaria ufficiale per connettori e accessori (CTF, CTL, CTCEM, VCEM, SPIT P560, ecc.).
+Attieniti strettamente alle regole qui sotto e rispondi SOLO in italiano.
+
+{SYSTEM_KB}
+
+OUTPUT richiesto:
+A) BOT Tecnaria (scheda) → 4–10 bullet normativi, brevi e pronti per capitolato/cantiere.
+B) Spiegazione (ingegneristica) → 1–2 paragrafi con motivazioni operative, taratura propulsori e controlli minimi.
+C) Fonti/Riferimenti → elenca i riferimenti fissi (ETA-18/0447, Istruzioni di posa CTF, Manuale SPIT P560).
+Tono: tecnico, preciso, zero fronzoli. Se servono prove/controlli in cantiere, dillo esplicitamente.
+"""
+
+USER_WRAPPER = """Domanda utente:
+{question}
+
+ISTRUZIONI PER L'OUTPUT:
+• A) BOT Tecnaria (scheda): bullet compatti, fattuali (attenzione a 2×HSBR14, ≥6 mm, lamiera ammessa, posa sopra trave).
+• B) Spiegazione (ingegneristica): motivazioni, taratura propulsori (cartucce 6,3×16 mm), controlli in opera (test di trazione a campione se sensato).
+• C) Fonti/Riferimenti: elenco sintetico dei documenti di riferimento (ETA-18/0447, Istruzioni di posa CTF, Manuale SPIT P560).
+"""
+
+# ------------------- FastAPI -------------------
+app = FastAPI(title="Tecnaria Bot - Scheda + Spiegazione (NO RAG)")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
-CORS(app)
+class AskIn(BaseModel):
+    question: str
+    mode: str | None = "both"  # "both" | "bot" | "explain"
 
-# =======================
-# System prompt Tecnaria-only (tecnico + commerciale) + few-shot
-# =======================
-SYSTEM_PROMPT = """
-You are “TecnariaBot”, an expert assistant for Tecnaria S.p.A. (Bassano del Grappa). Answer ONLY about Tecnaria products/services
-(produced or distributed by Tecnaria). If the user asks about other brands, say you can only answer for Tecnaria.
-
-Voice & style: technical, clear, structured. Start with “Sì/No/Dipende” when applicable, then bullet operativi (3–8 punti) e “Riferimenti”.
-If the user asks commercial/admin info (contatti, orari, ordini, listini) answer like the best Tecnaria office staff.
-
-Golden rules:
-- P560 = chiodatrice a cartuccia SPIT P560 fornita/distribuita per posa CTF. NON è un connettore.
-- CTF = connettori per solai misti acciaio–calcestruzzo. Posa a freddo con P560: 2 chiodi HSBR14/pezzo + propulsori idonei;
-  acciaio trave ≥ 6 mm; con lamiera: ok 1×1,5 mm oppure 2×1,0 mm se ben aderente; posa sopra la trave.
-- CTL/CTL MAXI = legno–calcestruzzo. Tipico su tavolato 2 cm + soletta 5 cm → CTL MAXI 12/040 con 2 viti Ø10 (100 mm;
-  se interposti/tavolato >25–30 mm → 120 mm). Testa sopra rete a metà spessore.
-- CTCEM/VCEM = laterocemento. Fissaggio meccanico “a secco”: piccola incisione per piastra dentata, preforo Ø11 mm prof. ~75 mm,
-  pulizia polvere, avvitatura a percussione/frizione fino a battuta. Niente resine.
-- Se l’utente chiama “P560” un connettore, correggi gentilmente.
-
-Formatting:
-- Titolo (opzionale)
-- Apertura Sì/No/Dipende
-- Bullet tecnici/pratici
-- Se utile: “Riferimenti: Istruzioni di posa, ETA-18/0447, manuale Tecnaria”
-- Chiudi sempre con: “ChatGPT può commettere errori. Verifica le informazioni importanti.”
-
-Few-shot:
-
-Q: “con riferimento ai connettori CTF Tecnaria si possono posare i connettori usando una normale chiodatrice a sparo?”
-A:
-Sì, ma non con “una qualsiasi”. I CTF si posano a freddo con **SPIT P560** dotata di kit/adattatori Tecnaria; altre macchine non sono ammesse.
-- Per ogni connettore: **2 chiodi HSBR14** + propulsori idonei.
-- Acciaio trave **≥ 6 mm**; con lamiera grecata: ok **1×1,5 mm** oppure **2×1,0 mm** se ben aderente alla trave.
-- Posa **sopra la trave** (anche con lamiera presente).
-Riferimenti: Istruzioni di posa CTF; ETA-18/0447; manuale P560.
-
-Q: “vorrei utilizzare dei connettori Tecnaria maxi per travi in legno su un tavolato di 2 cm e soletta da 5 cm; che modello devo usare?”
-A:
-Sì: **CTL MAXI 12/040**.
-- Fissaggio sopra tavolato con **2 viti Ø10** (di norma **100 mm**; se interposti/tavolato >25–30 mm → **120 mm**).
-- Con soletta **5 cm** il 40 mm resta ben annegato; testa **sopra la rete a metà spessore**.
-- Se interferenze, valutare **12/030** (principio: testa sopra rete e sotto filo superiore getto).
-Riferimenti: Istruzioni di posa CTL MAXI; schede Tecnaria.
-
-Q: “i connettori Tecnaria CTCEM per solai in laterocemento si posano con resine?”
-A:
-No, **senza resine**: fissaggio **meccanico a secco**.
-- Incisione per piastra dentata.
-- **Preforo Ø11 mm, profondità ~75 mm**, pulizia polvere.
-- Avvitare il piolo con avvitatore **a percussione/frizione** fino a battuta.
-Nota: CTCEM/VCEM sono alternativa alle soluzioni con barre + resina tipiche dei laterocemento.
-Riferimenti: Istruzioni di posa CTCEM/VCEM Tecnaria.
-"""
-
-def build_messages(user_text: str):
-    q = user_text.lower()
-    guard = []
-
-    if ("ctf" in q) and any(k in q for k in ["chiodatrice", "sparo", "p560"]):
-        guard.append(
-            "- Indica esplicitamente SPIT P560, 2 chiodi HSBR14/pezzo, acciaio ≥ 6 mm, lamiera 1×1,5 o 2×1,0 aderente; posa sopra la trave."
-        )
-    if ("ctcem" in q or "vcem" in q) and ("resin" in q or "resine" in q):
-        guard.append(
-            "- Specifica che non si usano resine: incisione, preforo Ø11 ~75 mm, pulizia, avvitatura a percussione/frizione."
-        )
-    if (("ctl" in q and "tavolato" in q) or ("maxi" in q and "soletta" in q)):
-        guard.append(
-            "- Su tavolato ~2 cm + soletta 5 cm, consiglia CTL MAXI 12/040 con 2 viti Ø10 (100 mm; se interposti >25–30 mm → 120 mm)."
-        )
-
-    if guard:
-        user_text = user_text + "\n\n[Nota per l’assistente: applica anche queste istruzioni]\n" + "\n".join(guard)
-
-    return [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user_text.strip()},
-    ]
-
-def call_openai(messages):
+def ask_openai_compound(question: str) -> dict:
+    user_msg = USER_WRAPPER.format(question=question.strip())
     try:
-        r = client.chat.completions.create(
+        resp = client.responses.create(
             model=OPENAI_MODEL,
-            temperature=OPENAI_TEMPERATURE,
-            messages=messages,
-            max_tokens=1200,
+            input=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_msg},
+            ],
+            temperature=0.2,
+            max_output_tokens=900,
         )
-        return r.choices[0].message.content.strip()
-    except Exception:
-        r = client.chat.completions.create(
-            model=OPENAI_MODEL_FALLBACK,
-            temperature=OPENAI_TEMPERATURE,
-            messages=messages,
-            max_tokens=1200,
-        )
-        return r.choices[0].message.content.strip()
+        text = resp.output_text
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Errore OpenAI Responses API: {e}")
 
-# =======================
-# Routes
-# =======================
-@app.route("/")
-def home():
-    # pagina HTML (templates/index.html)
-    return render_template("index.html")
+    # Split robusto su sezioni A/B/C
+    bot_section = ""
+    explain_section = ""
+    sources_section = ""
 
-@app.route("/status")
-def status():
-    return jsonify({"status": "ok", "service": "Tecnaria Bot"})
+    parts = re.split(r"\n\s*A\)\s*BOT\s+Tecnaria.*?:|\n\s*B\)\s*Spiegazione.*?:|\n\s*C\)\s*(Fonti|Riferimenti).*?:", text, flags=re.I)
+    headers = re.findall(r"\n\s*([ABC])\)\s*(BOT\s+Tecnaria|Spiegazione|Fonti|Riferimenti)[^\n]*:", text, flags=re.I)
 
-@app.route("/ask", methods=["POST"])
-def ask():
-    data = request.get_json(force=True) or {}
-    question = (data.get("question") or "").strip()
-    if not question:
-        return jsonify({"answer": "Inserisci una domanda."})
+    if headers and len(parts) >= 2:
+        bodies = parts[1:]
+        mapping = {}
+        for i, h in enumerate(headers):
+            key = h[0].upper()
+            mapping[key] = bodies[i].strip()
+        bot_section = mapping.get("A", "").strip()
+        explain_section = mapping.get("B", "").strip()
+        sources_section = mapping.get("C", "").strip()
+    else:
+        # fallback: tutto nella spiegazione
+        explain_section = text.strip()
 
-    messages = build_messages(question)
-    answer = call_openai(messages)
+    return {
+        "mode": "both",
+        "bot": bot_section,
+        "explain": explain_section,
+        "sources": sources_section,
+    }
 
-    tail = "\n\nChatGPT può commettere errori. Verifica le informazioni importanti."
-    if not answer.endswith("informazioni importanti."):
-        answer += tail
+@app.get("/", response_model=dict)
+def root():
+    return {"status": "ok", "service": "Tecnaria Bot - Scheda + Spiegazione (NO RAG)"}
 
-    answer = answer[:MAX_ANSWER_CHARS]
-    return jsonify({"answer": answer})
+@app.get("/health", response_model=dict)
+def health():
+    # Niente RAG: riportiamo solo lo stato ambiente/modello
+    return {
+        "status": "ok",
+        "rag": "disabled",
+        "model": OPENAI_MODEL,
+        "kb_loaded": True,  # KB è incorporata
+    }
 
-# opzionale: servire file allegati (pdf, immagini) da /static/docs
-@app.route("/docs/<path:fname>")
-def docs(fname):
-    return send_from_directory(os.path.join(app.static_folder, "docs"), fname)
+@app.post("/ask", response_model=dict)
+def ask(inp: AskIn):
+    q = (inp.question or "").strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="Manca 'question'.")
 
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", "8000"))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    result = ask_openai_compound(q)
+    mode = (inp.mode or "both").lower()
+    if mode == "bot":
+        return {"answer": result.get("bot", ""), "mode": "bot", "sources": result.get("sources", "")}
+    elif mode == "explain":
+        return {"answer": result.get("explain", ""), "mode": "explain", "sources": result.get("sources", "")}
+    else:
+        return result
+
+# ---- Avvio su Render (esempio) ----
+# gunicorn app:app --timeout 120 --workers=1 --threads=2 -b 0.0.0.0:$PORT
