@@ -1,9 +1,15 @@
-# app.py — Tecnaria Bot "perfetto" (fix f-string in HTML)
-# UI su "/", endpoint /ask, fallback modelli, micro-RAG opzionale, guard-rails
+# app.py — Tecnaria Bot (senza RAG) • versione “allineata 97–98%”
+# - UI su "/"
+# - Endpoint /ask (OpenAI Responses API) con fallback modelli
+# - Determinismo (temperature=0.1)
+# - POLICY_MODE: P560_ONLY (rigida) | EQUIV_ALLOWED (porta di servizio)
+# - Guard-rails: no codici SPIT, no HS numerici, no “saldatura”, no “passi tipici”,
+#                no disclaimer "AI/posso sbagliare", no parole morbide
+# - Fraseario canonico per domande ricorrenti (es. “normale chiodatrice a sparo”)
+# - Template/heading auto quando la domanda chiede passo/posa/QA
 
 import os, time, re
-from pathlib import Path
-from typing import Optional, List, Tuple
+from typing import Optional, Tuple
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,46 +20,79 @@ from openai import OpenAI
 from openai._exceptions import APIConnectionError, APIStatusError, RateLimitError, APITimeoutError
 
 # =========================
-# Config
+# Config base
 # =========================
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY non impostata nelle Environment Variables.")
 
 PREFERRED_MODEL = (os.environ.get("MODEL_NAME") or "gpt-4.1").strip()
-MODEL_FALLBACKS = [
-    PREFERRED_MODEL,
-    "gpt-5",
-    "gpt-5-mini",
-    "gpt-4o",
-    "gpt-4.1",
-    "gpt-4.1-mini",
-]
+MODEL_FALLBACKS = []
+for m in [PREFERRED_MODEL, "gpt-4o", "gpt-4.1", "gpt-4.1-mini"]:
+    if m and m not in MODEL_FALLBACKS:
+        MODEL_FALLBACKS.append(m)
 
 DEFAULT_LANG = (os.environ.get("DEFAULT_LANG") or "it").strip().lower()
-ENABLE_LOCAL_RAG = (os.environ.get("ENABLE_LOCAL_RAG") or "1").strip().lower() in ("1","true","yes")
-DOCS_DIR = Path("./static/docs")
-MAX_CTX_NOTES_CHARS = int(os.environ.get("MAX_CTX_NOTES_CHARS", "20000"))
-MAX_OUTPUT_TOKENS    = int(os.environ.get("MAX_OUTPUT_TOKENS", "1200"))
+MAX_OUTPUT_TOKENS = int(os.environ.get("MAX_OUTPUT_TOKENS", "1200"))
 
+# Linea commerciale/tecnica: rigida P560-only o equivalente approvato
+POLICY_MODE = (os.environ.get("POLICY_MODE") or "P560_ONLY").strip().upper()
+# valori ammessi: "P560_ONLY" oppure "EQUIV_ALLOWED"
+
+def _attrezzatura_line() -> str:
+    if POLICY_MODE == "P560_ONLY":
+        return ("Per garantire prestazioni ripetibili, tracciabilità e qualità, è ammessa esclusivamente la "
+                "chiodatrice SPIT P560 con chiodi idonei secondo istruzioni Tecnaria. Alternative solo previa "
+                "approvazione tecnica scritta di Tecnaria a seguito di prova di qualifica in sito.")
+    # EQUIV_ALLOWED
+    return ("Chiodatrice strutturale idonea (es. SPIT P560) oppure sistema equivalente approvato da Tecnaria; "
+            "sempre con chiodi idonei secondo istruzioni Tecnaria e 2 chiodi per connettore; alternative previa "
+            "approvazione tecnica scritta di Tecnaria dopo prova di qualifica in sito.")
+
+# =========================
+# Prompt TECNARIA + Template
+# =========================
 PROMPT_BASE = (
-    "Sei un tecnico/commerciale esperto di TECNARIA S.p.A. (Bassano del Grappa). "
-    "Regole d'oro:\n"
-    "1) Non inventare numeri di tabelle o certificazioni; se servono valori PRd, dì di fare riferimento alle tabelle ufficiali (es. ETA-18/0447) per il caso specifico.\n"
-    "2) Per connettori CTF su lamiera con SPIT P560: indicare '2 chiodi idonei secondo istruzioni Tecnaria' (non fissare codici SPIT non ufficiali).\n"
-    "3) Per HS code: inquadra nella famiglia 73 (strutture in ferro/acciaio) e specifica di 'validare con lo spedizioniere/dogana' il codice preciso per paese/prodotto.\n"
-    "4) Passi/interassi: ricordare che dipendono dal V_Ed e dalle PRd tabellate (profilo lamiera, classe cls, direzione). Evita di prescrivere numeri fissi senza calcolo.\n"
-    "5) Una sola risposta completa, chiara, operativa. Se fai assunzioni, dichiarale.\n"
+    "SEI: tecnico/commerciale TECNARIA S.p.A. (Bassano del Grappa).\n"
+    "OBIETTIVO: risposta pronta per cliente, chiara, prudente, operativa.\n"
+    "TONO: assertivo ma verificabile; nessuna frase di auto-scarico (es. 'come AI posso sbagliare').\n"
+    "POLICY:\n"
+    "• Connettori CTF su lamiera: fissaggio = ancoraggio/chiodatura (NON saldatura). 2 chiodi idonei P560 secondo istruzioni Tecnaria.\n"
+    "• HS code: indica solo famiglia 73 (strutture in ferro/acciaio); codice numerico da validare con spedizioniere/dogana.\n"
+    "• Passo/interassi: derivano da V_Ed e PRd tabellata (profilo lamiera, cls, direzione). Vietati numeri 'tipici' senza calcolo.\n"
+    "• Evita termini vaghi: 'semplificato', 'indicativo', 'di massima', 'orientativo', 'tipicamente'.\n"
+    "• Niente link generici e niente codici chiodi/marche se non esplicitamente richiesti dalle istruzioni Tecnaria.\n"
+    "• Se mancano dati, dichiara ASSUNZIONI brevi senza fare domande al cliente.\n"
+    "• Linea attrezzatura: {linea_attrezzatura}\n"
 )
 
-PROMPT_NOTES_HEADER = (
-    "\n[NOTE TECNICHE LOCALI]\n"
-    "Le seguenti note derivano da documenti interni (.txt) presenti sul server; usale SOLO come supporto "
-    "per esempi/terminologia, senza contraddire istruzioni ufficiali/ETA. Non citare parti irrilevanti.\n"
+STRICT_TEMPLATE = (
+    "FORMATTA COSÌ (mantieni questi titoli quando si parla di posa/passo/QA):\n"
+    "1) Scenario e assunzioni (brevi)\n"
+    "2) Verifiche geometriche (copriferro, immersione testa, compatibilità lamiera)\n"
+    "3) Verifiche prestazionali (come leggere PRd: profilo, passo gola, cls, direzione; criterio ‘più bassa che verifica’ per 075/090)\n"
+    "4) Posa e fissaggio (P560 + 2 chiodi idonei; taratura su provino; allineamento in gola)\n"
+    "5) Passo connettori (criterio ΣPRd ≥ V_Ed + interassi min/max)\n"
+    "6) QA di cantiere (checklist breve)\n"
+    "7) Errori da evitare\n"
+    "8) Sintesi decisionale (max 5 bullet)\n"
 )
+
+# Fraseario canonico per domande ricorrenti
+CANONICAL = {
+  "no_chiodatrice_normale": (
+    "No: non con una 'normale' chiodatrice a sparo. "
+    "Per la posa dei connettori CTF Tecnaria è ammessa {clausola_attrezzatura}. "
+    "Ogni CTF richiede 2 chiodi idonei; utensile perpendicolare, piastra in appoggio pieno, posa al centro della gola; "
+    "prima della produzione: taratura su provino con registrazione lotti ed esiti."
+  )
+}
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+# =========================
+# FastAPI
+# =========================
 app = FastAPI(title="Tecnaria Bot", docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(
     CORSMiddleware,
@@ -64,7 +103,7 @@ app.add_middleware(
 # =========================
 # UI su "/"
 # =========================
-HOME_HTML_HEAD = """<!doctype html>
+HOME_HTML = """<!doctype html>
 <meta charset="utf-8" />
 <title>Tecnaria Bot</title>
 <style>
@@ -86,7 +125,7 @@ HOME_HTML_HEAD = """<!doctype html>
   <p class="m">Fai una domanda tecnica o commerciale e premi “Chiedi”.</p>
 
   <label style="font-weight:600">Domanda</label>
-  <textarea id="q" placeholder="Es: Solaio H55 C30/37: scelta CTF075/CTF090, passo e P560?"></textarea>
+  <textarea id="q" placeholder="Es: CTF e chiodatrice: si può usare una 'normale' a sparo?"></textarea>
 
   <div class="row">
     <select id="lang">
@@ -100,11 +139,7 @@ HOME_HTML_HEAD = """<!doctype html>
   </div>
 
   <div id="out" class="out"></div>
-  <div class="small">Endpoint: <code>/ask</code> • Modello: <code>"""
-
-HOME_HTML_TAIL = """</code> • RAG locale: <code>"""
-
-HOME_HTML_END = """</code></div>
+  <div class="small">Endpoint: <code>/ask</code> • Modello: <code>ENV MODEL_NAME / fallback</code> • Policy: <code>P560_ONLY o EQUIV_ALLOWED</code></div>
 </div>
 <script>
 async function ask(){
@@ -129,14 +164,6 @@ async function ask(){
 </script>
 """
 
-HOME_HTML = (
-    HOME_HTML_HEAD
-    + PREFERRED_MODEL
-    + HOME_HTML_TAIL
-    + ("ON" if ENABLE_LOCAL_RAG else "OFF")
-    + HOME_HTML_END
-)
-
 @app.get("/", response_class=HTMLResponse)
 def home():
     return HTMLResponse(HOME_HTML)
@@ -158,57 +185,6 @@ class AskResponse(BaseModel):
     model: Optional[str] = None
 
 # =========================
-# Micro-RAG
-# =========================
-_DOC_CACHE: List[Tuple[str, str]] = []  # (filename, text)
-
-def _load_local_docs():
-    global _DOC_CACHE
-    _DOC_CACHE = []
-    if not ENABLE_LOCAL_RAG:
-        return
-    if not DOCS_DIR.exists():
-        return
-    for path in DOCS_DIR.glob("**/*.txt"):
-        try:
-            txt = path.read_text(encoding="utf-8", errors="ignore")
-            if txt.strip():
-                _DOC_CACHE.append((str(path), txt))
-        except Exception:
-            continue
-
-def _best_notes_for(query: str, max_chars: int = MAX_CTX_NOTES_CHARS) -> str:
-    """Selezione semplice per overlap di parole-chiave."""
-    if not ENABLE_LOCAL_RAG or not _DOC_CACHE:
-        return ""
-    q_words = set(re.findall(r"[a-zA-Z0-9\-/]+", query.lower()))
-    scored = []
-    for fname, txt in _DOC_CACHE:
-        lw = txt.lower()
-        hit = sum(1 for w in q_words if w and w in lw)
-        if hit:
-            scored.append((hit, fname, txt))
-    scored.sort(reverse=True, key=lambda x: x[0])
-
-    out, used = [], 0
-    for _, fname, txt in scored:
-        if used >= max_chars:
-            break
-        chunk = txt.strip()
-        if not chunk:
-            continue
-        take = min(len(chunk), max_chars - used)
-        chunk = chunk[:take]
-        out.append(f"[{Path(fname).name}]\n{chunk}")
-        used += take
-
-    if not out:
-        return ""
-    return PROMPT_NOTES_HEADER + "\n\n".join(out)
-
-_load_local_docs()
-
-# =========================
 # OpenAI helpers
 # =========================
 def _is_model_not_found(e: APIStatusError) -> bool:
@@ -219,7 +195,11 @@ def _call_with_model(model: str, full_input):
     resp = client.responses.create(
         model=model,
         input=full_input,
-        max_output_tokens=MAX_OUTPUT_TOKENS
+        max_output_tokens=MAX_OUTPUT_TOKENS,
+        temperature=0.1,   # quasi deterministico
+        top_p=1,
+        presence_penalty=0,
+        frequency_penalty=0
     )
     if getattr(resp, "output_text", None):
         return resp.output_text.strip()
@@ -232,12 +212,15 @@ def _call_with_model(model: str, full_input):
                 chunks.append(getattr(c, "text", ""))
     return ("\n".join([c for c in chunks if c]).strip()) or str(resp)
 
-def _call_responses(prompt: str, lang: str):
-    """Tenta i modelli in fallback. Ritorna (answer, model_used)."""
-    notes = _best_notes_for(prompt)
+def _call_responses(prompt: str, lang: str) -> Tuple[str, str]:
+    """
+    Tenta i modelli in fallback. Ritorna (answer, model_used).
+    """
+    user_content = (prompt if lang == "it" else f"[Rispondi in {lang}] {prompt}")
+    system_content = PROMPT_BASE.format(linea_attrezzatura=_attrezzatura_line())
     full_input = [
-        {"role": "system", "content": PROMPT_BASE},
-        {"role": "user",   "content": (prompt if lang == "it" else f"[Rispondi in {lang}] {prompt}") + (notes or "")},
+        {"role": "system", "content": system_content + "\n" + STRICT_TEMPLATE},
+        {"role": "user",   "content": user_content},
     ]
     last_err = None
     for model in MODEL_FALLBACKS:
@@ -249,7 +232,7 @@ def _call_responses(prompt: str, lang: str):
                 return ans, model
             except APIStatusError as e:
                 if e.status_code == 400 and _is_model_not_found(e):
-                    break
+                    break  # prova prossimo modello
                 raise HTTPException(
                     status_code=502,
                     detail=f"Errore OpenAI (status {e.status_code}) con modello '{model}': {getattr(e, 'message', str(e))}"
@@ -266,25 +249,78 @@ def _call_responses(prompt: str, lang: str):
     )
 
 # =========================
+# Prefissi/struttura
+# =========================
+def _maybe_preface(answer: str, question: str) -> str:
+    ql = question.lower()
+    if ("chiodatrice" in ql and "spar" in ql and "ctf" in ql):
+        clausola = _attrezzatura_line()
+        pref = CANONICAL["no_chiodatrice_normale"].format(clausola_attrezzatura=clausola)
+        if pref not in answer:
+            return pref + "\n\n" + answer
+    return answer
+
+def _ensure_headings(ans: str, question: str) -> str:
+    ql = question.lower()
+    need = ["Scenario e assunzioni", "Verifiche geometriche", "Verifiche prestazionali",
+            "Posa e fissaggio", "Passo connettori", "QA di cantiere", "Errori da evitare", "Sintesi decisionale"]
+    trigger = any(k in ql for k in ["passo", "interasse", "posa", "fissaggio", "qa", "qualità", "controlli", "verifica"])
+    if trigger:
+        missing = [h for h in need if h.lower() not in ans.lower()]
+        if missing:
+            ans += "\n\n" + "\n".join(f"**{h}**:" for h in missing)
+    return ans
+
+# =========================
 # Post-processing (guard-rails)
 # =========================
-_SPIT_CODE_RX = re.compile(r"\b(spit\s*[-_]?\s*[a-z]*\d+|enk\d+)\b", re.I)
+_SPIT_CODE_RX = re.compile(r"\b(spit\s*[-_]?\s*[a-z]*\d+|enk\d+|hsbr\d+)\b", re.I)
 _HS_EXACT_RX  = re.compile(r"\bHS\s*code\s*[:\-]?\s*\d{4,10}\b", re.I)
 _HS_PURE_RX   = re.compile(r"\b\d{6,10}\b")
+_SALD_RX      = re.compile(r"\bsald\w+\b", re.I)   # saldatura/saldare…
+_TIPICO_RX    = re.compile(r"\b(tipic[oi]|di\s*norma|solitamente|in\sgenerale)\b", re.I)
+_PULLOUT_RX   = re.compile(r"\bpull[-\s]?out\b", re.I)
+_DISCLAIMER_RX= re.compile(r"(chatgpt|as a language model|posso sbagliare|potrei sbagliare|\bla\s*ia\b|\bai\b)", re.I)
+_BANNED_SOFT_RX = re.compile(r"\b(semplificat\w*|indicativ\w*|orientativ\w*|di\s*massima)\b", re.I)
 
 def _sanitize_answer(text: str, query: str) -> str:
     out = text
+
+    # 1) Vietati codici chiodi → dicitura ufficiale
     if _SPIT_CODE_RX.search(out):
         out = _SPIT_CODE_RX.sub("chiodi idonei P560 secondo istruzioni Tecnaria", out)
+
+    # 2) HS code: no numeri → famiglia 73 + validazione
     if ("hs" in query.lower() or "incoterm" in query.lower() or "export" in query.lower()
         or _HS_EXACT_RX.search(out) or "HS code" in out):
         out = _HS_EXACT_RX.sub(
             "HS code: famiglia 73 (strutture in ferro/acciaio) — validare con spedizioniere/dogana", out
         )
         out = _HS_PURE_RX.sub(lambda m: "XXXX", out)
-    if "passo" in out.lower() and ("V_Ed" not in out and "VEd" not in out):
-        out += ("\n\nNota: il passo/interasse finale dipende dal V_Ed di progetto e dalla PRd tabellata "
-                "(profilo lamiera, cls, direzione).")
+
+    # 3) Terminologia “saldatura” → correggi
+    if _SALD_RX.search(out):
+        out = _SALD_RX.sub("ancoraggio/chiodatura", out)
+
+    # 4) “passi tipici” → vincola a V_Ed/PRd
+    if _TIPICO_RX.search(out) and ("V_Ed" not in out and "PRd" not in out):
+        out += ("\n\nNota: il passo/interasse NON è tipico; si determina da V_Ed e PRd tabellata "
+                "(profilo lamiera, cls, direzione) rispettando gli interassi min/max.")
+
+    # 5) “pull-out” → rimanda alla taratura su provino, salvo capitolato
+    if _PULLOUT_RX.search(out) and "capitolato" not in query.lower():
+        out = _PULLOUT_RX.sub(
+            "taratura su provino a inizio turno (prove aggiuntive solo se richieste da capitolato)", out
+        )
+
+    # 6) Disclaimers stile "AI/posso sbagliare" -> rimuovi
+    if _DISCLAIMER_RX.search(out):
+        out = _DISCLAIMER_RX.sub("", out)
+
+    # 7) Parole morbide -> sostituisci
+    if _BANNED_SOFT_RX.search(out):
+        out = _BANNED_SOFT_RX.sub("operativo", out)
+
     return out.strip()
 
 # =========================
@@ -296,6 +332,10 @@ def ask(payload: AskPayload):
     if not q:
         raise HTTPException(status_code=400, detail="question mancante.")
     lang = (payload.lang or DEFAULT_LANG).strip().lower()
+
     answer, model_used = _call_responses(q, lang)
+    answer = _maybe_preface(answer, q)
+    answer = _ensure_headings(answer, q)
     answer = _sanitize_answer(answer, q)
+
     return JSONResponse({"ok": True, "answer": answer, "model": model_used})
