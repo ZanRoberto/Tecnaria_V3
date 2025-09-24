@@ -2,104 +2,250 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TecnariaBot – Assistente Tecnico</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tecnaria Bot</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:32px;background:#0f172a;color:#e5e7eb}
-    .card{max-width:900px;margin:0 auto;background:#111827;border:1px solid #1f2937;border-radius:14px;padding:24px}
-    h1{font-size:20px;margin:0 0 8px} .muted{color:#9ca3af}
-    textarea{width:100%;min-height:120px;padding:12px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb}
-    button{padding:10px 16px;border:0;border-radius:10px;background:#f97316;color:#111827;font-weight:600;cursor:pointer}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    .row{display:flex;gap:12px;align-items:center;margin-top:12px}
-    .spinner{display:none;margin-left:8px;border:3px solid #334155;border-top:3px solid #f97316;border-radius:50%;width:18px;height:18px;animation:spin 1s linear infinite}
-    @keyframes spin {100%{transform:rotate(360deg)}}
-    .answer{white-space:pre-wrap;background:#0b1220;border:1px solid #223047;border-radius:10px;padding:12px;margin-top:16px}
-    .atts a{display:inline-block;margin-right:10px;margin-top:8px;color:#93c5fd}
-    .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);align-items:center;justify-content:center}
-    .modal-inner{background:#0b1220;border:1px solid #223047;border-radius:12px;max-width:90vw;max-height:90vh;padding:10px;position:relative}
-    .modal-close{position:absolute;top:8px;right:10px;background:#ef4444;color:#fff;border:0;border-radius:8px;padding:6px 10px;cursor:pointer}
-    .modal iframe,.modal img{max-width:85vw;max-height:80vh;border:0;border-radius:6px}
+    :root {
+      --bg:#0f1115;
+      --card:#151822;
+      --text:#eaeef5;
+      --muted:#9aa4b2;
+      --accent:#ff7a00; /* arancione Tecnaria */
+      --ok:#22c55e;
+      --err:#ef4444;
+      --border:#22283a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+    }
+    .wrap {
+      max-width: 860px; margin: 40px auto; padding: 0 16px;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    h1 { margin: 0 0 10px; font-size: 22px; }
+    .muted { color: var(--muted); }
+    textarea {
+      width: 100%; min-height: 110px; resize: vertical;
+      background: #0c0f16; color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px;
+      outline: none;
+    }
+    textarea:focus { border-color: var(--accent); }
+    .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+    button {
+      background: var(--accent); color: #111; border: none;
+      padding: 10px 16px; border-radius: 12px; font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+
+    .spinner {
+      display: none; gap: 10px; align-items: center; color: var(--muted);
+      font-size: 14px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); opacity: .6;
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+    .dot:nth-child(2){ animation-delay: .2s }
+    .dot:nth-child(3){ animation-delay: .4s }
+    @keyframes pulse {
+      0%,100%{ transform: scale(.8); opacity: .5 }
+      50%{ transform: scale(1.2); opacity: 1 }
+    }
+
+    .section { margin-top: 18px; }
+    .title { font-weight: 700; margin-bottom: 6px; }
+    .answer {
+      background:#0c0f16; border:1px solid var(--border); border-radius: 10px;
+      padding: 12px; white-space: pre-wrap; word-wrap: break-word;
+    }
+
+    .attachments { display: grid; grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); gap: 10px; }
+    .thumb {
+      border:1px solid var(--border); border-radius: 10px; overflow: hidden;
+      background: #0c0f16;
+    }
+    .thumb img {
+      display: block; width: 100%; height: 100px; object-fit: cover; cursor: zoom-in;
+    }
+    .thumb a {
+      display:block; padding:10px; color: var(--accent); text-decoration: none;
+      font-weight: 600; font-size: 14px; text-align: center;
+      border-top:1px solid var(--border);
+    }
+    .thumb a:hover { text-decoration: underline; }
+
+    /* Modal viewer */
+    .modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal.open { display: flex; }
+    .modal-content {
+      position: relative; max-width: 92vw; max-height: 86vh; border-radius: 10px;
+      overflow: hidden; background: #000;
+      border: 1px solid var(--border);
+    }
+    .modal-content img { display: block; max-width: 92vw; max-height: 86vh; }
+    .modal-close {
+      position: absolute; top: 6px; right: 6px;
+      background: rgba(17,17,17,.85); color: #fff; border: 1px solid #333;
+      width: 36px; height: 36px; border-radius: 10px; font-size: 18px;
+      cursor: pointer; font-weight: 800;
+    }
+
+    footer {
+      margin: 26px 0 10px; color: var(--muted); font-size: 12px; text-align: center;
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>TecnariaBot</h1>
-    <div class="muted">Assistente tecnico (solo prodotti Tecnaria)</div>
+  <div class="wrap">
+    <div class="card">
+      <h1>Tecnaria Bot</h1>
+      <div class="muted">Fai domande su prodotti e posa Tecnaria.</div>
 
-    <label for="q" style="display:block;margin-top:16px">Domanda</label>
-    <textarea id="q" placeholder="Es: Posso usare una chiodatrice qualsiasi per CTF?"></textarea>
+      <div class="section">
+        <div class="title">Domanda</div>
+        <textarea id="q" placeholder="Scrivi qui la tua domanda…"></textarea>
+        <div class="row">
+          <button id="send">Invia</button>
+          <div class="spinner" id="spin">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            <span>Elaborazione…</span>
+          </div>
+        </div>
+      </div>
 
-    <div class="row">
-      <button id="send">Invia</button>
-      <div class="spinner" id="spin"></div>
+      <div class="section">
+        <div class="title">Risposta</div>
+        <div id="ans" class="answer">—</div>
+      </div>
+
+      <div class="section" id="att-wrap" style="display:none;">
+        <div class="title">Allegati</div>
+        <div id="atts" class="attachments"></div>
+      </div>
     </div>
 
-    <div id="answer" class="answer" style="display:none"></div>
-    <div id="atts" class="atts"></div>
+    <footer>
+      ChatGPT può commettere errori. Assicurati di verificare le informazioni importanti. Vedi Preferenze sui cookie.
+    </footer>
   </div>
 
-  <div class="modal" id="modal">
-    <div class="modal-inner">
-      <button class="modal-close" id="modalClose">✕</button>
-      <div id="modalBody"></div>
+  <!-- Modal viewer per immagini -->
+  <div class="modal" id="viewer">
+    <div class="modal-content">
+      <button class="modal-close" id="closeX" aria-label="Chiudi">×</button>
+      <img id="viewImg" alt="preview" />
     </div>
   </div>
 
-<script>
-const elQ = document.getElementById('q');
-const elSend = document.getElementById('send');
-const elSpin = document.getElementById('spin');
-const elAns = document.getElementById('answer');
-const elAtts = document.getElementById('atts');
+  <script>
+    const qEl   = document.getElementById('q');
+    const send  = document.getElementById('send');
+    const spin  = document.getElementById('spin');
+    const ans   = document.getElementById('ans');
+    const attWrap = document.getElementById('att-wrap');
+    const atts  = document.getElementById('atts');
 
-function showSpinner(s){ elSpin.style.display = s ? 'inline-block' : 'none'; }
-function setAnswer(t){ elAns.style.display='block'; elAns.textContent = t; }
+    const viewer   = document.getElementById('viewer');
+    const closeX   = document.getElementById('closeX');
+    const viewImg  = document.getElementById('viewImg');
 
-async function ask(){
-  const q = elQ.value.trim();
-  if(!q){ setAnswer("Scrivi una domanda."); return; }
-  showSpinner(true); elAns.style.display='none'; elAtts.innerHTML='';
-  try{
-    const r = await fetch('/api/answer', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({question:q}) });
-    const j = await r.json();
-    setAnswer(j.answer || "Nessuna risposta.");
-    if(Array.isArray(j.attachments)){
-      j.attachments.forEach(a=>{
-        const link = document.createElement('a');
-        link.href = a.href; link.textContent = a.label || a.href; link.target = "_blank";
-        link.addEventListener('click', (ev)=>{
-          ev.preventDefault();
-          openModal(a);
-        });
-        elAtts.appendChild(link);
-      });
+    function showSpinner(v){ spin.style.display = v ? 'flex' : 'none'; }
+    function isImage(url){
+      return /\.(png|jpe?g|webp|gif|svg)$/i.test(url);
     }
-  }catch(e){
-    setAnswer("Errore di rete. Riprova tra poco.");
-  }finally{
-    showSpinner(false);
-  }
-}
+    function isPDF(url){
+      return /\.pdf$/i.test(url);
+    }
 
-elSend.addEventListener('click', ask);
-elQ.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && (e.ctrlKey || e.metaKey)) ask(); });
+    function openViewer(src){
+      viewImg.src = src;
+      viewer.classList.add('open');
+    }
+    function closeViewer(){
+      viewer.classList.remove('open');
+      viewImg.src = '';
+    }
+    viewer.addEventListener('click', (e)=>{ if(e.target===viewer) closeViewer(); });
+    closeX.addEventListener('click', closeViewer);
 
-// --- Modale con X per tornare al bot ---
-const modal = document.getElementById('modal');
-const modalBody = document.getElementById('modalBody');
-const modalClose = document.getElementById('modalClose');
-function openModal(att){
-  modal.style.display='flex';
-  modalBody.innerHTML='';
-  if(att.type==='image'){
-    const img = document.createElement('img'); img.src = att.href; modalBody.appendChild(img);
-  }else{
-    const ifr = document.createElement('iframe'); ifr.src = att.href; ifr.width="960"; ifr.height="600"; modalBody.appendChild(ifr);
-  }
-}
-modalClose.onclick = ()=>{ modal.style.display='none'; modalBody.innerHTML=''; };
-modal.onclick = (e)=>{ if(e.target===modal){ modal.style.display='none'; modalBody.innerHTML=''; } };
-</script>
+    async function ask() {
+      const question = (qEl.value || "").trim();
+      if(!question){ qEl.focus(); return; }
+      send.disabled = true;
+      showSpinner(true);
+      ans.textContent = "—";
+      attWrap.style.display = 'none';
+      atts.innerHTML = "";
+
+      try{
+        const resp = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+        if(!resp.ok){
+          const txt = await resp.text();
+          throw new Error("HTTP " + resp.status + " — " + txt);
+        }
+        const data = await resp.json();
+        if(data.error){
+          ans.textContent = "Errore: " + data.error;
+        } else {
+          ans.textContent = data.answer || "—";
+          const files = Array.isArray(data.attachments) ? data.attachments : [];
+          if(files.length){
+            attWrap.style.display = 'block';
+            for(const url of files){
+              const div = document.createElement('div');
+              div.className = 'thumb';
+              if(isImage(url)){
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = "allegato";
+                img.addEventListener('click', ()=> openViewer(url));
+                div.appendChild(img);
+                const a = document.createElement('a');
+                a.href = url; a.target = "_blank"; a.rel = "noopener";
+                a.textContent = "Apri immagine";
+                div.appendChild(a);
+              } else if(isPDF(url)) {
+                const a = document.createElement('a');
+                a.href = url; a.target = "_blank"; a.rel = "noopener";
+                a.textContent = "Apri PDF";
+                div.appendChild(a);
+              } else {
+                const a = document.createElement('a');
+                a.href = url; a.target = "_blank"; a.rel = "noopener";
+                a.textContent = "Apri file";
+                div.appendChild(a);
+              }
+              atts.appendChild(div);
+            }
+          }
+        }
+      } catch(err){
+        ans.textContent = "Errore: " + (err?.message || err);
+      } finally {
+        showSpinner(false);
+        send.disabled = false;
+      }
+    }
+
+    send.addEventListener('click', ask);
+    qEl.addEventListener('keydown', (e)=>{ if(e.key==="Enter" && (e.ctrlKey||e.metaKey)) ask(); });
+  </script>
 </body>
 </html>
