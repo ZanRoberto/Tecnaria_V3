@@ -1,17 +1,18 @@
-# app.py — Tecnaria Bot (senza RAG) • versione “allineata 97–98%”
+# app.py — Tecnaria Bot (senza RAG) • v2 con GOLDEN Q&A (risposte 100% identiche)
 # - UI su "/"
 # - Endpoint /ask (OpenAI Responses API) con fallback modelli
 # - Determinismo leggero (temperature=0.1)
 # - POLICY_MODE: P560_ONLY (rigida) | EQUIV_ALLOWED (porta di servizio)
 # - Guard-rails: no codici SPIT/HS numerici, no “saldatura”, no “passi tipici”,
 #                no disclaimer "AI/posso sbagliare", no parole morbide
-# - Fraseario canonico (es. “normale chiodatrice a sparo”)
-# - Template/heading auto quando la domanda chiede passo/posa/QA
+# - GOLDEN Q&A: libreria di risposte “bloccate” che bypassano il modello (100% identiche)
+#   • Config da ENV GOLDEN_QA_JSON (opzionale) o runtime via /teach (opzionale)
+# - Template/heading auto solo quando la domanda richiede posa/passo/QA
 
-import os, time, re
-from typing import Optional, Tuple
+import os, time, re, json
+from typing import Optional, Tuple, List, Dict, Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
@@ -38,6 +39,9 @@ MAX_OUTPUT_TOKENS = int(os.environ.get("MAX_OUTPUT_TOKENS", "1200"))
 # Linea commerciale/tecnica: rigida P560-only o equivalente approvato
 POLICY_MODE = (os.environ.get("POLICY_MODE") or "P560_ONLY").strip().upper()
 # valori ammessi: "P560_ONLY" oppure "EQUIV_ALLOWED"
+
+TEACH_TOKEN = os.environ.get("TEACH_TOKEN")  # opzionale per endpoint /teach
+GOLDEN_QA_JSON = os.environ.get("GOLDEN_QA_JSON")  # opzionale JSON di regole
 
 def _attrezzatura_line() -> str:
     if POLICY_MODE == "P560_ONLY":
@@ -184,6 +188,13 @@ class AskResponse(BaseModel):
     answer: str
     model: Optional[str] = None
 
+# (opzionale) endpoint per insegnare GOLDEN Q&A a runtime
+class TeachPayload(BaseModel):
+    patterns: List[str]
+    answer: str
+    lang: Optional[str] = "it"
+    insert_at_top: Optional[bool] = True
+
 # =========================
 # OpenAI helpers
 # =========================
@@ -245,6 +256,80 @@ def _call_responses(prompt: str, lang: str) -> Tuple[str, str]:
         status_code=504,
         detail=f"Impossibile contattare OpenAI o modelli non disponibili. Ultimo errore: {type(last_err).__name__}: {str(last_err)}"
     )
+
+# =========================
+# GOLDEN Q&A (risposte bloccate)
+# =========================
+GoldenRule = Dict[str, Any]
+GOLDEN_QA: List[GoldenRule] = []
+
+def _load_golden_from_env():
+    global GOLDEN_QA
+    if GOLDEN_QA_JSON:
+        try:
+            data = json.loads(GOLDEN_QA_JSON)
+            if isinstance(data, list):
+                # validazione minima
+                GOLDEN_QA.extend([r for r in data if isinstance(r, dict) and "patterns" in r and "answer" in r])
+        except Exception:
+            pass
+
+def _default_golden():
+    clausola = "{clausola_attrezzatura}"
+    return [
+        # Q1: CTF + “normale chiodatrice a sparo”
+        {
+            "patterns": [
+                r"\bctf\b.*\bchiodatrice\b.*\bnormal\w*",
+                r"\bchiodatrice\b.*\bsparo\b.*\bctf\b",
+                r"\bsi\s*possono\b.*\bctf\b.*\bchiodatrice\b"
+            ],
+            "lang": "it",
+            "answer":
+                "No: non con una 'normale' chiodatrice a sparo. "
+                f"Per la posa dei connettori CTF Tecnaria è ammessa {clausola}. "
+                "Ogni CTF richiede 2 chiodi idonei; utensile perpendicolare, piastra in appoggio pieno, posa al centro della gola; "
+                "prima della produzione: taratura su provino con registrazione lotti ed esiti."
+        },
+        # Q2: CTCEM + resine
+        {
+            "patterns": [
+                r"\bctcem\b.*\bresin\w+",
+                r"\bresin\w+.*\bctcem\b",
+                r"\bctcem\b.*\bpos[ao].*\bresin\w+",
+                r"\bconnettori\b.*\bctcem\b.*\bresin\w+"
+            ],
+            "lang": "it",
+            "answer":
+                "No: i CTCEM non si posano con resine. Il fissaggio è meccanico a secco: "
+                "si esegue la foratura del travetto, pulizia del foro e l'avvitamento della vite fino a battuta della piastra dentata, "
+                "secondo istruzioni CTCEM; niente resine/malte/schiume."
+        }
+    ]
+
+def _init_golden_rules():
+    GOLDEN_QA.extend(_default_golden())
+    _load_golden_from_env()
+
+_init_golden_rules()
+
+def _match_golden(question: str, lang: str) -> Optional[str]:
+    q = question.lower()
+    for rule in GOLDEN_QA:
+        rlang = (rule.get("lang") or "").lower()
+        if rlang and lang and rlang != lang.lower():
+            continue
+        for pat in rule.get("patterns", []):
+            try:
+                if re.search(pat, q, flags=re.I):
+                    # sostituzione placeholder clausola attrezzatura se presente
+                    ans = rule.get("answer", "")
+                    if "{clausola_attrezzatura}" in ans:
+                        ans = ans.format(clausola_attrezzatura=_attrezzatura_line())
+                    return ans.strip()
+            except re.error:
+                continue
+    return None
 
 # =========================
 # Prefissi/struttura
@@ -319,6 +404,12 @@ def _sanitize_answer(text: str, query: str) -> str:
     if _BANNED_SOFT_RX.search(out):
         out = _BANNED_SOFT_RX.sub("operativo", out)
 
+    # 8) CTCEM: evita "inserimento a pressione"
+    if "ctcem" in query.lower():
+        out = re.sub(r"inseriment[oa]\s+a\s+pressione|interferenza\s+meccanica",
+                     "avvitamento fino a battuta della piastra (sistema meccanico a secco)",
+                     out, flags=re.I)
+
     return out.strip()
 
 # =========================
@@ -331,9 +422,37 @@ def ask(payload: AskPayload):
         raise HTTPException(status_code=400, detail="question mancante.")
     lang = (payload.lang or DEFAULT_LANG).strip().lower()
 
+    # 1) GOLDEN Q&A: se combacia -> risposta 100% identica, niente headings auto
+    golden = _match_golden(q, lang)
+    if golden:
+        ans = _sanitize_answer(golden, q)
+        return JSONResponse({"ok": True, "answer": ans, "model": "golden"})
+
+    # 2) Modello
     answer, model_used = _call_responses(q, lang)
+
+    # 3) Prefissi/struttura/sanitize
     answer = _maybe_preface(answer, q)
     answer = _ensure_headings(answer, q)
     answer = _sanitize_answer(answer, q)
 
     return JSONResponse({"ok": True, "answer": answer, "model": model_used})
+
+# =========================
+# Endpoint /teach (opzionale, runtime only — no persistenza)
+# =========================
+@app.post("/teach")
+def teach(rule: TeachPayload, x_token: Optional[str] = Header(default=None)):
+    if TEACH_TOKEN:
+        token_ok = (x_token == TEACH_TOKEN)
+        if not token_ok:
+            raise HTTPException(status_code=403, detail="Token errato o mancante (X-Token).")
+    # valida regola
+    if not rule.patterns or not rule.answer:
+        raise HTTPException(status_code=400, detail="patterns e answer sono obbligatori.")
+    new_rule = {"patterns": rule.patterns, "answer": rule.answer, "lang": (rule.lang or "it")}
+    if rule.insert_at_top:
+        GOLDEN_QA.insert(0, new_rule)
+    else:
+        GOLDEN_QA.append(new_rule)
+    return {"ok": True, "count": len(GOLDEN_QA)}
