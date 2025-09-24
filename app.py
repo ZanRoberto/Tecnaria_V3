@@ -1,9 +1,5 @@
-# app.py — Tecnaria Bot "perfetto"
-# - UI integrata su "/"
-# - Endpoint /ask (Responses API con fallback modelli)
-# - Guard-rails Tecnaria (niente codici SPIT impropri, HS code prudente, no numeri inventati)
-# - Micro-RAG locale opzionale da ./static/docs/*.txt
-# - /docs disattivato, favicon silenziata
+# app.py — Tecnaria Bot "perfetto" (fix f-string in HTML)
+# UI su "/", endpoint /ask, fallback modelli, micro-RAG opzionale, guard-rails
 
 import os, time, re
 from pathlib import Path
@@ -14,44 +10,32 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
-# OpenAI Responses API (SDK >= 1.40)
 from openai import OpenAI
-from openai._exceptions import (
-    APIConnectionError, APIStatusError, RateLimitError, APITimeoutError
-)
+from openai._exceptions import APIConnectionError, APIStatusError, RateLimitError, APITimeoutError
 
 # =========================
-# Configurazione
+# Config
 # =========================
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY non impostata nelle Environment Variables.")
 
-# Modello preferito da ENV (es. "gpt-4o" o "gpt-4.1"). Default prudente: gpt-4.1
 PREFERRED_MODEL = (os.environ.get("MODEL_NAME") or "gpt-4.1").strip()
-
-# Fallback (ordine di prova)
 MODEL_FALLBACKS = [
     PREFERRED_MODEL,
-    "gpt-5",        # se abilitato sul tuo account
-    "gpt-5-mini",   # se abilitato
+    "gpt-5",
+    "gpt-5-mini",
     "gpt-4o",
     "gpt-4.1",
     "gpt-4.1-mini",
 ]
 
-# Lingua UI di default
 DEFAULT_LANG = (os.environ.get("DEFAULT_LANG") or "it").strip().lower()
-
-# Abilita RAG locale? (metti i .txt in ./static/docs)
-ENABLE_LOCAL_RAG = (os.environ.get("ENABLE_LOCAL_RAG") or "1").strip().lower() in ("1", "true", "yes")
+ENABLE_LOCAL_RAG = (os.environ.get("ENABLE_LOCAL_RAG") or "1").strip().lower() in ("1","true","yes")
 DOCS_DIR = Path("./static/docs")
+MAX_CTX_NOTES_CHARS = int(os.environ.get("MAX_CTX_NOTES_CHARS", "20000"))
+MAX_OUTPUT_TOKENS    = int(os.environ.get("MAX_OUTPUT_TOKENS", "1200"))
 
-# Limiti
-MAX_CTX_NOTES_CHARS = int(os.environ.get("MAX_CTX_NOTES_CHARS", "20000"))  # somma testi RAG
-MAX_OUTPUT_TOKENS    = int(os.environ.get("MAX_OUTPUT_TOKENS", "1200"))    # risposta massima
-
-# Prompt “policy Tecnaria”
 PROMPT_BASE = (
     "Sei un tecnico/commerciale esperto di TECNARIA S.p.A. (Bassano del Grappa). "
     "Regole d'oro:\n"
@@ -62,7 +46,6 @@ PROMPT_BASE = (
     "5) Una sola risposta completa, chiara, operativa. Se fai assunzioni, dichiarale.\n"
 )
 
-# Intestazione per eventuali note locali
 PROMPT_NOTES_HEADER = (
     "\n[NOTE TECNICHE LOCALI]\n"
     "Le seguenti note derivano da documenti interni (.txt) presenti sul server; usale SOLO come supporto "
@@ -71,14 +54,7 @@ PROMPT_NOTES_HEADER = (
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# =========================
-# App FastAPI
-# =========================
-app = FastAPI(
-    title="Tecnaria Bot",
-    docs_url=None, redoc_url=None, openapi_url=None  # nessuna /docs
-)
-
+app = FastAPI(title="Tecnaria Bot", docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True,
@@ -86,24 +62,24 @@ app.add_middleware(
 )
 
 # =========================
-# UI minimal su "/"
+# UI su "/"
 # =========================
-HOME_HTML = f"""<!doctype html>
+HOME_HTML_HEAD = """<!doctype html>
 <meta charset="utf-8" />
 <title>Tecnaria Bot</title>
 <style>
-  :root {{ --fg:#111; --muted:#666; --bd:#e5e7eb; --bg:#fff; }}
-  html,body{{background:var(--bg); color:var(--fg); font:16px system-ui, Arial; margin:0; padding:0}}
-  .wrap{{max-width:920px; margin:40px auto; padding:0 20px}}
-  h1{{font-size:22px; margin:0 0 6px}}
-  p.m{{color:var(--muted); margin:0 0 16px}}
-  textarea{{width:100%; height:150px; padding:12px; border:1px solid var(--bd); border-radius:12px; box-sizing:border-box; font:16px/1.3 system-ui, Arial}}
-  .row{{display:flex; gap:12px; align-items:center; margin:10px 0 0}}
-  select,button{{padding:10px; border:1px solid var(--bd); border-radius:10px}}
-  button{{background:#f8f9fb; cursor:pointer}}
-  button:active{{transform:translateY(1px)}}
-  .out{{white-space:pre-wrap; border:1px solid var(--bd); border-radius:12px; padding:12px; margin-top:14px; min-height:80px}}
-  .small{{font-size:12px; color:var(--muted); margin-top:8px}}
+  :root { --fg:#111; --muted:#666; --bd:#e5e7eb; --bg:#fff; }
+  html,body{background:var(--bg); color:var(--fg); font:16px system-ui, Arial; margin:0; padding:0}
+  .wrap{max-width:920px; margin:40px auto; padding:0 20px}
+  h1{font-size:22px; margin:0 0 6px}
+  p.m{color:var(--muted); margin:0 0 16px}
+  textarea{width:100%; height:150px; padding:12px; border:1px solid var(--bd); border-radius:12px; box-sizing:border-box; font:16px/1.3 system-ui, Arial}
+  .row{display:flex; gap:12px; align-items:center; margin:10px 0 0}
+  select,button{padding:10px; border:1px solid var(--bd); border-radius:10px}
+  button{background:#f8f9fb; cursor:pointer}
+  button:active{transform:translateY(1px)}
+  .out{white-space:pre-wrap; border:1px solid var(--bd); border-radius:12px; padding:12px; margin-top:14px; min-height:80px}
+  .small{font-size:12px; color:var(--muted); margin-top:8px}
 </style>
 <div class="wrap">
   <h1>🚀 Tecnaria Bot</h1>
@@ -114,17 +90,21 @@ HOME_HTML = f"""<!doctype html>
 
   <div class="row">
     <select id="lang">
-      <option value="it" {"selected" if DEFAULT_LANG=="it" else ""}>Italiano</option>
-      <option value="en" {"selected" if DEFAULT_LANG=="en" else ""}>English</option>
-      <option value="fr" {"selected" if DEFAULT_LANG=="fr" else ""}>Français</option>
-      <option value="de" {"selected" if DEFAULT_LANG=="de" else ""}>Deutsch</option>
-      <option value="es" {"selected" if DEFAULT_LANG=="es" else ""}>Español</option>
+      <option value="it" selected>Italiano</option>
+      <option value="en">English</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="es">Español</option>
     </select>
     <button onclick="ask()">Chiedi</button>
   </div>
 
   <div id="out" class="out"></div>
-  <div class="small">Endpoint: <code>/ask</code> • Modello preferito: <code>{PREFERRED_MODEL}</code> • RAG locale: <code>{"ON" if ENABLE_LOCAL_RAG else "OFF"}</code></div>
+  <div class="small">Endpoint: <code>/ask</code> • Modello: <code>"""
+
+HOME_HTML_TAIL = """</code> • RAG locale: <code>"""
+
+HOME_HTML_END = """</code></div>
 </div>
 <script>
 async function ask(){
@@ -149,6 +129,14 @@ async function ask(){
 </script>
 """
 
+HOME_HTML = (
+    HOME_HTML_HEAD
+    + PREFERRED_MODEL
+    + HOME_HTML_TAIL
+    + ("ON" if ENABLE_LOCAL_RAG else "OFF")
+    + HOME_HTML_END
+)
+
 @app.get("/", response_class=HTMLResponse)
 def home():
     return HTMLResponse(HOME_HTML)
@@ -170,12 +158,11 @@ class AskResponse(BaseModel):
     model: Optional[str] = None
 
 # =========================
-# Micro-RAG locale
+# Micro-RAG
 # =========================
 _DOC_CACHE: List[Tuple[str, str]] = []  # (filename, text)
 
 def _load_local_docs():
-    """Carica i .txt da ./static/docs se abilitato."""
     global _DOC_CACHE
     _DOC_CACHE = []
     if not ENABLE_LOCAL_RAG:
@@ -191,9 +178,7 @@ def _load_local_docs():
             continue
 
 def _best_notes_for(query: str, max_chars: int = MAX_CTX_NOTES_CHARS) -> str:
-    """
-    Semplice selezione per overlap di parole-chiave (robusto/veloce).
-    """
+    """Selezione semplice per overlap di parole-chiave."""
     if not ENABLE_LOCAL_RAG or not _DOC_CACHE:
         return ""
     q_words = set(re.findall(r"[a-zA-Z0-9\-/]+", query.lower()))
@@ -212,7 +197,6 @@ def _best_notes_for(query: str, max_chars: int = MAX_CTX_NOTES_CHARS) -> str:
         chunk = txt.strip()
         if not chunk:
             continue
-        # Limita contributo per file
         take = min(len(chunk), max_chars - used)
         chunk = chunk[:take]
         out.append(f"[{Path(fname).name}]\n{chunk}")
@@ -222,7 +206,6 @@ def _best_notes_for(query: str, max_chars: int = MAX_CTX_NOTES_CHARS) -> str:
         return ""
     return PROMPT_NOTES_HEADER + "\n\n".join(out)
 
-# carico i docs una volta all'avvio
 _load_local_docs()
 
 # =========================
@@ -240,7 +223,6 @@ def _call_with_model(model: str, full_input):
     )
     if getattr(resp, "output_text", None):
         return resp.output_text.strip()
-    # fallback estrazione
     items = getattr(resp, "output", None) or []
     chunks = []
     for it in items:
@@ -250,10 +232,8 @@ def _call_with_model(model: str, full_input):
                 chunks.append(getattr(c, "text", ""))
     return ("\n".join([c for c in chunks if c]).strip()) or str(resp)
 
-def _call_responses(prompt: str, lang: str) -> Tuple[str, str]:
-    """
-    Tenta i modelli in fallback. Ritorna (answer, model_used).
-    """
+def _call_responses(prompt: str, lang: str):
+    """Tenta i modelli in fallback. Ritorna (answer, model_used)."""
     notes = _best_notes_for(prompt)
     full_input = [
         {"role": "system", "content": PROMPT_BASE},
@@ -269,7 +249,7 @@ def _call_responses(prompt: str, lang: str) -> Tuple[str, str]:
                 return ans, model
             except APIStatusError as e:
                 if e.status_code == 400 and _is_model_not_found(e):
-                    break  # prova prossimo modello
+                    break
                 raise HTTPException(
                     status_code=502,
                     detail=f"Errore OpenAI (status {e.status_code}) con modello '{model}': {getattr(e, 'message', str(e))}"
@@ -294,28 +274,21 @@ _HS_PURE_RX   = re.compile(r"\b\d{6,10}\b")
 
 def _sanitize_answer(text: str, query: str) -> str:
     out = text
-
-    # 1) Non fissare codici chiodi: sostituisci con dicitura ufficiale
     if _SPIT_CODE_RX.search(out):
         out = _SPIT_CODE_RX.sub("chiodi idonei P560 secondo istruzioni Tecnaria", out)
-
-    # 2) HS code: evita codici numerici precisi → usa famiglia e validazione
     if ("hs" in query.lower() or "incoterm" in query.lower() or "export" in query.lower()
         or _HS_EXACT_RX.search(out) or "HS code" in out):
-            out = _HS_EXACT_RX.sub(
-                "HS code: famiglia 73 (strutture in ferro/acciaio) — validare con spedizioniere/dogana", out
-            )
-            out = _HS_PURE_RX.sub(lambda m: "XXXX", out)
-
-    # 3) Ammorbidisci “numeri fissi” su passi/interassi se non c’è condizione esplicita
+        out = _HS_EXACT_RX.sub(
+            "HS code: famiglia 73 (strutture in ferro/acciaio) — validare con spedizioniere/dogana", out
+        )
+        out = _HS_PURE_RX.sub(lambda m: "XXXX", out)
     if "passo" in out.lower() and ("V_Ed" not in out and "VEd" not in out):
         out += ("\n\nNota: il passo/interasse finale dipende dal V_Ed di progetto e dalla PRd tabellata "
                 "(profilo lamiera, cls, direzione).")
-
     return out.strip()
 
 # =========================
-# Endpoint principale
+# Endpoint /ask
 # =========================
 @app.post("/ask", response_model=AskResponse)
 def ask(payload: AskPayload):
@@ -323,11 +296,6 @@ def ask(payload: AskPayload):
     if not q:
         raise HTTPException(status_code=400, detail="question mancante.")
     lang = (payload.lang or DEFAULT_LANG).strip().lower()
-
-    # Chiamata OpenAI con fallback
     answer, model_used = _call_responses(q, lang)
-
-    # Post-process tecnico (guard-rails)
     answer = _sanitize_answer(answer, q)
-
     return JSONResponse({"ok": True, "answer": answer, "model": model_used})
