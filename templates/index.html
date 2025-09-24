@@ -1,251 +1,81 @@
 <!doctype html>
 <html lang="it">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
   <title>Tecnaria Bot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root {
-      --bg:#0f1115;
-      --card:#151822;
-      --text:#eaeef5;
-      --muted:#9aa4b2;
-      --accent:#ff7a00; /* arancione Tecnaria */
-      --ok:#22c55e;
-      --err:#ef4444;
-      --border:#22283a;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; background: var(--bg); color: var(--text);
-      font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
-    }
-    .wrap {
-      max-width: 860px; margin: 40px auto; padding: 0 16px;
-    }
-    .card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
-    }
-    h1 { margin: 0 0 10px; font-size: 22px; }
-    .muted { color: var(--muted); }
-    textarea {
-      width: 100%; min-height: 110px; resize: vertical;
-      background: #0c0f16; color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px; padding: 12px;
-      outline: none;
-    }
-    textarea:focus { border-color: var(--accent); }
-    .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
-    button {
-      background: var(--accent); color: #111; border: none;
-      padding: 10px 16px; border-radius: 12px; font-weight: 700;
-      cursor: pointer;
-    }
-    button:disabled { opacity: .6; cursor: not-allowed; }
-
-    .spinner {
-      display: none; gap: 10px; align-items: center; color: var(--muted);
-      font-size: 14px;
-    }
-    .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--accent); opacity: .6;
-      animation: pulse 1.2s infinite ease-in-out;
-    }
-    .dot:nth-child(2){ animation-delay: .2s }
-    .dot:nth-child(3){ animation-delay: .4s }
-    @keyframes pulse {
-      0%,100%{ transform: scale(.8); opacity: .5 }
-      50%{ transform: scale(1.2); opacity: 1 }
-    }
-
-    .section { margin-top: 18px; }
-    .title { font-weight: 700; margin-bottom: 6px; }
-    .answer {
-      background:#0c0f16; border:1px solid var(--border); border-radius: 10px;
-      padding: 12px; white-space: pre-wrap; word-wrap: break-word;
-    }
-
-    .attachments { display: grid; grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); gap: 10px; }
-    .thumb {
-      border:1px solid var(--border); border-radius: 10px; overflow: hidden;
-      background: #0c0f16;
-    }
-    .thumb img {
-      display: block; width: 100%; height: 100px; object-fit: cover; cursor: zoom-in;
-    }
-    .thumb a {
-      display:block; padding:10px; color: var(--accent); text-decoration: none;
-      font-weight: 600; font-size: 14px; text-align: center;
-      border-top:1px solid var(--border);
-    }
-    .thumb a:hover { text-decoration: underline; }
-
-    /* Modal viewer */
-    .modal {
-      position: fixed; inset: 0; background: rgba(0,0,0,.7);
-      display: none; align-items: center; justify-content: center; padding: 20px;
-    }
-    .modal.open { display: flex; }
-    .modal-content {
-      position: relative; max-width: 92vw; max-height: 86vh; border-radius: 10px;
-      overflow: hidden; background: #000;
-      border: 1px solid var(--border);
-    }
-    .modal-content img { display: block; max-width: 92vw; max-height: 86vh; }
-    .modal-close {
-      position: absolute; top: 6px; right: 6px;
-      background: rgba(17,17,17,.85); color: #fff; border: 1px solid #333;
-      width: 36px; height: 36px; border-radius: 10px; font-size: 18px;
-      cursor: pointer; font-weight: 800;
-    }
-
-    footer {
-      margin: 26px 0 10px; color: var(--muted); font-size: 12px; text-align: center;
-    }
+    body{background:#121212;color:#eaeaea;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0}
+    .wrap{max-width:900px;margin:40px auto;padding:0 16px}
+    h1{font-size:22px;margin:0 0 12px}
+    .card{background:#1e1e1e;border:1px solid #2a2a2a;border-radius:12px;padding:16px}
+    textarea{width:100%;min-height:120px;background:#0f0f0f;color:#eaeaea;border:1px solid #2a2a2a;border-radius:8px;padding:10px;resize:vertical}
+    button{background:#ff7a1a;border:0;color:#111;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:700}
+    .row{display:flex;gap:10px;align-items:center;margin-top:10px}
+    .answer{white-space:pre-wrap;line-height:1.5;margin-top:16px}
+    .spinner{display:none;margin-left:8px;border:3px solid #333;border-top:3px solid #ff7a1a;border-radius:50%;width:16px;height:16px;animation:spin 0.8s linear infinite}
+    @keyframes spin{100%{transform:rotate(360deg)}}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center}
+    .modal-inner{background:#1e1e1e;border:1px solid #2a2a2a;border-radius:12px;max-width:90vw;max-height:90vh;overflow:auto;position:relative}
+    .modal-x{position:absolute;top:8px;right:8px;background:#333;border:0;color:#fff;border-radius:999px;width:28px;height:28px;cursor:pointer;font-weight:700}
+    .disclaimer{opacity:.7;font-size:12px;margin-top:10px}
   </style>
 </head>
 <body>
   <div class="wrap">
+    <h1>Tecnaria Bot</h1>
     <div class="card">
-      <h1>Tecnaria Bot</h1>
-      <div class="muted">Fai domande su prodotti e posa Tecnaria.</div>
-
-      <div class="section">
-        <div class="title">Domanda</div>
-        <textarea id="q" placeholder="Scrivi qui la tua domanda…"></textarea>
-        <div class="row">
-          <button id="send">Invia</button>
-          <div class="spinner" id="spin">
-            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-            <span>Elaborazione…</span>
-          </div>
-        </div>
+      <label for="q">Domanda</label>
+      <textarea id="q" placeholder="Fai domande su prodotti e posa Tecnaria (CTF, CTL, CTCEM/VCEM, P560, ecc.)"></textarea>
+      <div class="row">
+        <button id="send">Invia</button>
+        <div id="spin" class="spinner"></div>
       </div>
-
-      <div class="section">
-        <div class="title">Risposta</div>
-        <div id="ans" class="answer">—</div>
-      </div>
-
-      <div class="section" id="att-wrap" style="display:none;">
-        <div class="title">Allegati</div>
-        <div id="atts" class="attachments"></div>
-      </div>
+      <div id="ans" class="answer"></div>
+      <div class="disclaimer">ChatGPT può commettere errori. Assicurati di verificare le informazioni importanti.</div>
     </div>
-
-    <footer>
-      ChatGPT può commettere errori. Assicurati di verificare le informazioni importanti. Vedi Preferenze sui cookie.
-    </footer>
   </div>
 
-  <!-- Modal viewer per immagini -->
-  <div class="modal" id="viewer">
-    <div class="modal-content">
-      <button class="modal-close" id="closeX" aria-label="Chiudi">×</button>
-      <img id="viewImg" alt="preview" />
+  <!-- Modal per immagini/pdf con pulsante X -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-inner">
+      <button class="modal-x" onclick="closeModal()">✕</button>
+      <div id="modal-body" style="padding:16px"></div>
     </div>
   </div>
 
   <script>
-    const qEl   = document.getElementById('q');
-    const send  = document.getElementById('send');
-    const spin  = document.getElementById('spin');
-    const ans   = document.getElementById('ans');
-    const attWrap = document.getElementById('att-wrap');
-    const atts  = document.getElementById('atts');
-
-    const viewer   = document.getElementById('viewer');
-    const closeX   = document.getElementById('closeX');
-    const viewImg  = document.getElementById('viewImg');
-
-    function showSpinner(v){ spin.style.display = v ? 'flex' : 'none'; }
-    function isImage(url){
-      return /\.(png|jpe?g|webp|gif|svg)$/i.test(url);
-    }
-    function isPDF(url){
-      return /\.pdf$/i.test(url);
-    }
-
-    function openViewer(src){
-      viewImg.src = src;
-      viewer.classList.add('open');
-    }
-    function closeViewer(){
-      viewer.classList.remove('open');
-      viewImg.src = '';
-    }
-    viewer.addEventListener('click', (e)=>{ if(e.target===viewer) closeViewer(); });
-    closeX.addEventListener('click', closeViewer);
+    const sendBtn = document.getElementById('send');
+    const qEl = document.getElementById('q');
+    const ansEl = document.getElementById('ans');
+    const spin = document.getElementById('spin');
 
     async function ask() {
-      const question = (qEl.value || "").trim();
-      if(!question){ qEl.focus(); return; }
-      send.disabled = true;
-      showSpinner(true);
-      ans.textContent = "—";
-      attWrap.style.display = 'none';
-      atts.innerHTML = "";
-
-      try{
-        const resp = await fetch("/ask", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question })
+      const question = qEl.value.trim();
+      if(!question) return;
+      ansEl.textContent = "";
+      spin.style.display = "inline-block";
+      try {
+        const r = await fetch("/ask", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({question})
         });
-        if(!resp.ok){
-          const txt = await resp.text();
-          throw new Error("HTTP " + resp.status + " — " + txt);
-        }
-        const data = await resp.json();
-        if(data.error){
-          ans.textContent = "Errore: " + data.error;
-        } else {
-          ans.textContent = data.answer || "—";
-          const files = Array.isArray(data.attachments) ? data.attachments : [];
-          if(files.length){
-            attWrap.style.display = 'block';
-            for(const url of files){
-              const div = document.createElement('div');
-              div.className = 'thumb';
-              if(isImage(url)){
-                const img = document.createElement('img');
-                img.src = url;
-                img.alt = "allegato";
-                img.addEventListener('click', ()=> openViewer(url));
-                div.appendChild(img);
-                const a = document.createElement('a');
-                a.href = url; a.target = "_blank"; a.rel = "noopener";
-                a.textContent = "Apri immagine";
-                div.appendChild(a);
-              } else if(isPDF(url)) {
-                const a = document.createElement('a');
-                a.href = url; a.target = "_blank"; a.rel = "noopener";
-                a.textContent = "Apri PDF";
-                div.appendChild(a);
-              } else {
-                const a = document.createElement('a');
-                a.href = url; a.target = "_blank"; a.rel = "noopener";
-                a.textContent = "Apri file";
-                div.appendChild(a);
-              }
-              atts.appendChild(div);
-            }
-          }
-        }
-      } catch(err){
-        ans.textContent = "Errore: " + (err?.message || err);
+        const j = await r.json();
+        ansEl.textContent = j.answer || "Nessuna risposta.";
+      } catch(e){
+        ansEl.textContent = "Errore di rete.";
       } finally {
-        showSpinner(false);
-        send.disabled = false;
+        spin.style.display = "none";
       }
     }
+    sendBtn.addEventListener('click', ask);
+    qEl.addEventListener('keydown', e => { if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ask(); });
 
-    send.addEventListener('click', ask);
-    qEl.addEventListener('keydown', (e)=>{ if(e.key==="Enter" && (e.ctrlKey||e.metaKey)) ask(); });
+    // Modal helpers (per aprire allegati in futuro)
+    function openModal(html){ document.getElementById('modal-body').innerHTML = html; document.getElementById('modal').style.display='flex'; }
+    function closeModal(){ document.getElementById('modal').style.display='none'; document.getElementById('modal-body').innerHTML=""; }
+    window.openModal = openModal; window.closeModal = closeModal;
   </script>
 </body>
 </html>
