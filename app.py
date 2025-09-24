@@ -1,4 +1,6 @@
-# app.py — Tecnaria Bot (solo /ask, no /health, no /docs)
+# app.py — Tecnaria Bot con UI integrata (homepage) + /ask
+# - Nessun /health, nessun /docs
+# - Homepage minimale per fare domande direttamente da Render
 
 import os
 import time
@@ -6,10 +8,10 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
-# OpenAI Responses API (SDK >= 1.40)
+# OpenAI Responses API
 from openai import OpenAI
 from openai._exceptions import (
     APIConnectionError,
@@ -23,7 +25,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY non impostata nelle Environment Variables.")
 
-MODEL_NAME = "gpt-5.0"  # Usa un modello abilitato sul tuo account
+MODEL_NAME = "gpt-5.0"  # usa un modello abilitato sul tuo account
 
 PROMPT_BASE = (
     "Sei un tecnico/commerciale esperto di TECNARIA S.p.A. (Bassano del Grappa). "
@@ -33,18 +35,13 @@ PROMPT_BASE = (
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Disabilito docs/redoc/openapi per non esporre nulla
-app = FastAPI(
-    title="Tecnaria Bot",
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None,
-)
+# Disabilito docs/redoc/openapi
+app = FastAPI(title="Tecnaria Bot", docs_url=None, redoc_url=None, openapi_url=None)
 
-# CORS (restringi allow_origins se hai un dominio preciso)
+# CORS (lasciato aperto per semplicità; limita a dominio tuo se vuoi)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],            # es. ["https://tuo-dominio.it"]
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,10 +54,6 @@ class AskPayload(BaseModel):
 
 # ------------------ OpenAI helper ------------------
 def _call_openai_responses(prompt: str, max_retries: int = 3, base_delay: float = 1.2) -> str:
-    """
-    Chiama la Responses API con retry/backoff.
-    Ritorna sempre testo (stringa). Lancia HTTPException se fallisce.
-    """
     last_err = None
     for attempt in range(1, max_retries + 1):
         try:
@@ -71,12 +64,9 @@ def _call_openai_responses(prompt: str, max_retries: int = 3, base_delay: float 
                     {"role": "user", "content": prompt},
                 ],
             )
-
-            # SDK moderno espone output_text
             if getattr(resp, "output_text", None):
                 return resp.output_text.strip()
 
-            # Fallback generico: estrazione dai chunks
             items = getattr(resp, "output", None) or []
             chunks = []
             for it in items:
@@ -88,11 +78,9 @@ def _call_openai_responses(prompt: str, max_retries: int = 3, base_delay: float 
             return text or str(resp)
 
         except (APIConnectionError, APITimeoutError, RateLimitError) as e:
-            # Ritenti con backoff
             last_err = e
             time.sleep(base_delay * attempt)
         except APIStatusError as e:
-            # 4xx/5xx da OpenAI → propaghiamo 502 per il frontend
             raise HTTPException(
                 status_code=502,
                 detail=f"Errore OpenAI (status {e.status_code}): {getattr(e, 'message', str(e))}",
@@ -101,20 +89,83 @@ def _call_openai_responses(prompt: str, max_retries: int = 3, base_delay: float 
             last_err = e
             break
 
-    # se qui → falliti tutti i retry
     raise HTTPException(
         status_code=504,
         detail=f"Impossibile contattare OpenAI: {type(last_err).__name__}: {str(last_err)}",
     )
 
-# ------------------ Probe "muto" per Render ------------------
-@app.head("/")
-def _probe_head():
-    return Response(status_code=204)
+# ------------------ UI integrata ------------------
+HOME_HTML = """<!doctype html>
+<meta charset="utf-8" />
+<title>Tecnaria Bot</title>
+<style>
+  :root { --fg:#111; --muted:#666; --bd:#e5e7eb; --bg:#fff; }
+  html,body{background:var(--bg); color:var(--fg); font:16px system-ui, Arial; margin:0; padding:0}
+  .wrap{max-width:920px; margin:40px auto; padding:0 20px}
+  h1{font-size:22px; margin:0 0 6px}
+  p.m{color:var(--muted); margin:0 0 16px}
+  textarea{width:100%; height:150px; padding:12px; border:1px solid var(--bd); border-radius:12px; box-sizing:border-box; font:16px/1.3 system-ui, Arial}
+  .row{display:flex; gap:12px; align-items:center; margin:10px 0 0}
+  input.url{flex:1; padding:10px; border:1px solid var(--bd); border-radius:10px}
+  select{padding:10px; border:1px solid var(--bd); border-radius:10px}
+  button{padding:12px 18px; border:1px solid var(--bd); border-radius:12px; background:#f8f9fb; cursor:pointer}
+  button:active{transform:translateY(1px)}
+  .out{white-space:pre-wrap; border:1px solid var(--bd); border-radius:12px; padding:12px; margin-top:14px; min-height:80px}
+  .small{font-size:12px; color:var(--muted); margin-top:8px}
+</style>
+<div class="wrap">
+  <h1>🚀 Tecnaria Bot</h1>
+  <p class="m">Fai una domanda tecnica o commerciale e premi “Chiedi”.</p>
 
-@app.get("/")
-def _probe_get():
-    return Response(status_code=204)
+  <label style="font-weight:600">Domanda</label>
+  <textarea id="q" placeholder="Es: Quali sono le differenze tra CTF e CTL?"></textarea>
+
+  <div class="row">
+    <select id="lang">
+      <option value="it" selected>Italiano</option>
+      <option value="en">English</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="es">Español</option>
+    </select>
+    <button onclick="ask()">Chiedi</button>
+  </div>
+
+  <div id="out" class="out"></div>
+  <div class="small">Endpoint usato: <code>/ask</code></div>
+</div>
+<script>
+async function ask(){
+  const out = document.getElementById('out');
+  const q   = document.getElementById('q').value.trim();
+  const lang= document.getElementById('lang').value;
+  if(!q){ out.textContent = "Inserisci una domanda."; return; }
+  out.textContent = "⏳ Invio...";
+  try{
+    const res = await fetch("/ask", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ question: q, lang: lang })
+    });
+    const data = await res.json();
+    if(data.ok){ out.textContent = data.answer; }
+    else{ out.textContent = "Errore: " + (data.detail || JSON.stringify(data)); }
+  }catch(e){
+    out.textContent = "Errore di rete: " + e.message;
+  }
+}
+</script>
+"""
+
+@app.get("/", response_class=HTMLResponse)
+def home():
+    # UI minimale servita dalla root
+    return HTMLResponse(HOME_HTML)
+
+# FavIcon "muta" per evitare richieste 404 nei log
+@app.get("/favicon.ico")
+def favicon():
+    return PlainTextResponse("", status_code=204)
 
 # ------------------ Endpoint principale ------------------
 @app.post("/ask")
@@ -122,14 +173,7 @@ def ask(payload: AskPayload):
     q = (payload.question or "").strip()
     if not q:
         raise HTTPException(status_code=400, detail="question mancante.")
-    # lingua
     lang = (payload.lang or "it").strip().lower()
     final_prompt = q if lang == "it" else f"[Rispondi in {lang}] {q}"
-
-    try:
-        answer = _call_openai_responses(final_prompt)
-        return JSONResponse({"ok": True, "answer": answer})
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Errore interno: {str(e)}")
+    answer = _call_openai_responses(final_prompt)
+    return JSONResponse({"ok": True, "answer": answer})
