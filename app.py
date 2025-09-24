@@ -1,11 +1,11 @@
 # app.py — Tecnaria Bot (senza RAG) • versione “allineata 97–98%”
 # - UI su "/"
 # - Endpoint /ask (OpenAI Responses API) con fallback modelli
-# - Determinismo (temperature=0.1)
+# - Determinismo leggero (temperature=0.1)
 # - POLICY_MODE: P560_ONLY (rigida) | EQUIV_ALLOWED (porta di servizio)
-# - Guard-rails: no codici SPIT, no HS numerici, no “saldatura”, no “passi tipici”,
+# - Guard-rails: no codici SPIT/HS numerici, no “saldatura”, no “passi tipici”,
 #                no disclaimer "AI/posso sbagliare", no parole morbide
-# - Fraseario canonico per domande ricorrenti (es. “normale chiodatrice a sparo”)
+# - Fraseario canonico (es. “normale chiodatrice a sparo”)
 # - Template/heading auto quando la domanda chiede passo/posa/QA
 
 import os, time, re
@@ -196,10 +196,8 @@ def _call_with_model(model: str, full_input):
         model=model,
         input=full_input,
         max_output_tokens=MAX_OUTPUT_TOKENS,
-        temperature=0.1,   # quasi deterministico
-        top_p=1,
-        presence_penalty=0,
-        frequency_penalty=0
+        temperature=0.1  # quasi deterministico
+        # NOTE: niente presence_penalty / frequency_penalty / top_p nella Responses API
     )
     if getattr(resp, "output_text", None):
         return resp.output_text.strip()
