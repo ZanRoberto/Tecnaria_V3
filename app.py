@@ -1,9 +1,9 @@
-# app.py — Tecnaria Bot v3 (Golden + Compatta + Estesa)
-# - UI semplice su "/"
-# - /ask: auto / compact / both
-# - Golden Q&A: risposte bloccate 100% identiche su pattern critici
-# - P560-first opponibile, niente presence/frequency penalty
-# - OpenAI Responses API con fallback modelli
+# app.py — Tecnaria Bot v3.1 (fix stringhe + GOLD + compatta/estesa)
+# - UI su "/"
+# - /ask: auto | compact | both
+# - Golden Q&A bloccate (100% identiche)
+# - P560-first opponibile; niente presence/frequency_penalty
+# - Responses API con fallback modelli
 
 import os, re, json, time
 from typing import Optional, Tuple, List, Dict, Any
@@ -24,9 +24,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY non impostata nelle Environment Variables.")
 
-# Modello preferito + fallback (usa nomi esistenti)
 PREFERRED_MODEL = (os.getenv("OPENAI_MODEL") or "gpt-4.1").strip()
-MODEL_FALLBACKS = []
+MODEL_FALLBACKS: List[str] = []
 for m in [PREFERRED_MODEL, "gpt-4o", "gpt-4.1", "gpt-4.1-mini"]:
     if m and m not in MODEL_FALLBACKS:
         MODEL_FALLBACKS.append(m)
@@ -34,54 +33,53 @@ for m in [PREFERRED_MODEL, "gpt-4o", "gpt-4.1", "gpt-4.1-mini"]:
 DEFAULT_LANG = (os.getenv("DEFAULT_LANG") or "it").strip().lower()
 MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "1000"))
 
-# Policy commerciale/tecnica (stringa autonoma, non dentro altre frasi)
 def attrezzatura_clause() -> str:
-    return ("Per garantire prestazioni ripetibili, tracciabilità e qualità, è ammessa la chiodatrice SPIT P560; "
-            "si usano chiodi idonei secondo istruzioni Tecnaria. Alternative solo previa approvazione tecnica scritta "
-            "di Tecnaria a seguito di prova di qualifica in sito.")
+    return (
+        "Per garantire prestazioni ripetibili, tracciabilità e qualità, è ammessa la chiodatrice SPIT P560; "
+        "si usano chiodi idonei secondo istruzioni Tecnaria. Alternative solo previa approvazione tecnica scritta "
+        "di Tecnaria a seguito di prova di qualifica in sito."
+    )
 
 # =========================
-# Prompt esteso (solo quando serve scheda+spiegazione)
+# Prompt esteso (niente triple-quoted: solo stringhe concatenate)
 # =========================
-SYSTEM_KB = """
-DOMINIO TECNARIA — REGOLE BASE (CTF e posa su lamiera):
-• Attrezzatura: chiodatrice strutturale idonea (linea SPIT P560 nel perimetro Tecnaria).
-• Fissaggio: ogni CTF si ancora con 2 chiodi idonei secondo istruzioni Tecnaria.
-• Posizione di posa: connettore in gola lamiera, utensile perpendicolare, piastra in appoggio pieno.
-• Taratura: prove su provino/lamiera identica prima della produzione; registrazione lotti ed esiti.
-• Passo: da progetto (V_Ed) e capacità da documentazione ufficiale; mai numeri “tipici” senza calcolo.
-• Lessico: NON parlare di “saldatura” per CTF; è ancoraggio/chiodatura meccanica.
-• Varianti: solo con approvazione tecnica scritta di Tecnaria dopo qualifica in sito.
-• Per CTCEM/VCEM (laterocemento): sistemi meccanici a secco; no resine; foratura+avvitamento a battuta piastra (CTCEM).
-"""
+SYSTEM_KB = (
+    "DOMINIO TECNARIA — REGOLE BASE (CTF e posa su lamiera):\n"
+    "• Attrezzatura: chiodatrice strutturale idonea (linea SPIT P560 nel perimetro Tecnaria).\n"
+    "• Fissaggio: ogni CTF si ancora con 2 chiodi idonei secondo istruzioni Tecnaria.\n"
+    "• Posizione di posa: connettore in gola lamiera, utensile perpendicolare, piastra in appoggio pieno.\n"
+    "• Taratura: prove su provino/lamiera identica prima della produzione; registrazione lotti ed esiti.\n"
+    "• Passo: da progetto (V_Ed) e capacità da documentazione ufficiale; mai numeri 'tipici' senza calcolo.\n"
+    "• Lessico: NON parlare di 'saldatura' per CTF; è ancoraggio/chiodatura meccanica.\n"
+    "• Varianti: solo con approvazione tecnica scritta di Tecnaria dopo qualifica in sito.\n"
+    "• Per CTCEM/VCEM (laterocemento): sistemi meccanici a secco; no resine; foratura+avvitamento a battuta piastra (CTCEM).\n"
+)
 
-SYSTEM_PROMPT_EXT = f"""Sei il BOT Tecnaria ufficiale (lingua: IT). Rispondi in modo opponibile, operativo e senza fronzoli.
-Segui strettamente le regole di dominio e NON inventare valori tabellari.
+SYSTEM_PROMPT_EXT = (
+    "Sei il BOT Tecnaria ufficiale (lingua: IT). Rispondi in modo opponibile, operativo e senza fronzoli.\n"
+    "Segui strettamente le regole di dominio e NON inventare valori tabellari.\n\n"
+    f"{SYSTEM_KB}\n"
+    "FORMATTA così:\n"
+    "A) BOT Tecnaria (scheda) → 4–10 bullet normativi, brevi e pronti per cantiere.\n"
+    "B) Spiegazione (ingegneristica) → 1–2 paragrafi (motivazioni operative, taratura, controlli).\n"
+    "C) Riferimenti → elenco sintetico (es. ETA/istruzioni Tecnaria).\n\n"
+    "Tono: assertivo, preciso, senza disclaimer 'AI può sbagliare'.\n"
+)
 
-{SYSTEM_KB}
-
-FORMATTA così:
-A) BOT Tecnaria (scheda) → 4–10 bullet normativi, brevi e pronti per cantiere.
-B) Spiegazione (ingegneristica) → 1–2 paragrafi (motivazioni operative, taratura, controlli).
-C) Riferimenti → elenco sintetico (es. ETA/istruzioni Tecnaria).
-
-Tono: assertivo, preciso, senza disclaimer “AI può sbagliare”.
-"""
-
-USER_WRAPPER_EXT = """Domanda utente:
-{question}
-
-ISTRUZIONI DI OUTPUT:
-• Se il tema è posa/passo/QA → includi voci su attrezzatura (P560), 2 chiodi idonei, taratura, gola, interassi da progetto.
-• Evita parole vaghe (“tipico”, “indicativo”, “di massima”). Usa formulazioni opponibili.
-"""
+USER_WRAPPER_EXT = (
+    "Domanda utente:\n"
+    "{question}\n\n"
+    "ISTRUZIONI DI OUTPUT:\n"
+    "• Se il tema è posa/passo/QA → includi voci su attrezzatura (P560), 2 chiodi idonei, taratura, gola, interassi da progetto.\n"
+    "• Evita parole vaghe ('tipico', 'indicativo', 'di massima'). Usa formulazioni opponibili.\n"
+)
 
 # =========================
 # Golden Q&A (risposte bloccate 100% identiche)
 # =========================
 GoldenRule = Dict[str, Any]
 GOLDEN_QA: List[GoldenRule] = [
-    {   # Q1: CTF + chiodatrice “normale”
+    {
         "lang": "it",
         "patterns": [
             r"\bctf\b.*\bchiodatrice\b.*\bnormal\w+",
@@ -96,7 +94,7 @@ GOLDEN_QA: List[GoldenRule] = [
             "di Tecnaria dopo qualifica in sito."
         )
     },
-    {   # Q2: CTCEM + resine
+    {
         "lang": "it",
         "patterns": [
             r"\bctcem\b.*\bresin\w+",
@@ -129,16 +127,13 @@ def match_golden(question: str, lang: str) -> Optional[str]:
 # =========================
 # FastAPI
 # =========================
-app = FastAPI(title="Tecnaria Bot v3")
-
+app = FastAPI(title="Tecnaria Bot v3.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],
 )
-
 client = OpenAI(api_key=OPENAI_API_KEY)
-
 
 # =========================
 # UI minima su "/"
@@ -201,7 +196,6 @@ def home():
 def favicon():
     return PlainTextResponse("", status_code=204)
 
-
 # =========================
 # Schemi I/O
 # =========================
@@ -216,7 +210,6 @@ class AskOut(BaseModel):
     model: Optional[str] = None
     mode: Optional[str] = None
 
-
 # =========================
 # Helpers OpenAI
 # =========================
@@ -225,10 +218,9 @@ def _is_model_not_found(e: APIStatusError) -> bool:
     return ("model_not_found" in msg) or ("does not exist" in msg and "model" in msg)
 
 def call_model_ext(question: str, lang: str) -> Tuple[str, str]:
-    """Chiama il modello in formato esteso (scheda+spiegazione+fonti)."""
     system_content = SYSTEM_PROMPT_EXT
     user_content = USER_WRAPPER_EXT.format(question=question.strip())
-    last_err = None
+    last_err: Optional[Exception] = None
     for model in MODEL_FALLBACKS:
         try:
             resp = client.responses.create(
@@ -240,14 +232,15 @@ def call_model_ext(question: str, lang: str) -> Tuple[str, str]:
                 temperature=0.2,
                 max_output_tokens=MAX_OUTPUT_TOKENS,
             )
-            text = getattr(resp, "output_text", "").strip()
-            if not text:
-                text = str(resp)
+            text = getattr(resp, "output_text", "").strip() or str(resp)
             return text, model
         except APIStatusError as e:
             if e.status_code == 400 and _is_model_not_found(e):
                 continue
-            raise HTTPException(status_code=502, detail=f"Errore OpenAI (status {e.status_code}) con modello '{model}': {getattr(e,'message',str(e))}") from e
+            raise HTTPException(
+                status_code=502,
+                detail=f"Errore OpenAI (status {e.status_code}) con modello '{model}': {getattr(e,'message',str(e))}"
+            ) from e
         except (APIConnectionError, APITimeoutError, RateLimitError) as e:
             last_err = e
             time.sleep(1.2)
@@ -255,7 +248,6 @@ def call_model_ext(question: str, lang: str) -> Tuple[str, str]:
             last_err = e
             break
     raise HTTPException(status_code=504, detail=f"OpenAI non disponibile. Ultimo errore: {type(last_err).__name__}: {str(last_err)}")
-
 
 # =========================
 # Post-processing minimo (anti-ripetizioni / terminologia)
@@ -266,32 +258,18 @@ SALD_RX = re.compile(r"\b(saldatur\w+|saldare|saldato)\b", re.I)
 
 def sanitize(text: str, query: str) -> str:
     out = text.strip()
-
-    # Uniforma macchina
     out = MACHINE_RX.sub("SPIT P560", out)
-
-    # Parole morbide -> riformula
     if SOFT_RX.search(out):
         out = SOFT_RX.sub("operativo", out)
-
-    # Chiarimento su 'saldatura'
     out = SALD_RX.sub("saldatura (non prevista per questo sistema)", out)
-
-    # Dupliche “.. Tecnaria Tecnaria ..”
     out = re.sub(r"\b(Tecnaria)\s+\1\b", r"\1", out)
-
-    # Spaziatura punteggiatura
     out = re.sub(r"\s+\.", ".", out)
     out = re.sub(r"\s+,", ",", out)
-
-    # Per CTCEM evita “inserimento a pressione”
     if "ctcem" in query.lower():
         out = re.sub(r"inseriment[oa]\s+a\s+pressione|interferenza\s+meccanica",
                      "avvitamento fino a battuta della piastra (sistema meccanico a secco)",
                      out, flags=re.I)
-
     return out.strip()
-
 
 # =========================
 # Endpoint
@@ -308,19 +286,18 @@ def ask(inp: AskIn):
     lang = (inp.lang or DEFAULT_LANG).strip().lower()
     mode = (inp.mode or "auto").strip().lower()
 
-    # 1) Golden Q&A
+    # 1) GOLDEN Q&A
     golden = match_golden(q, lang)
     if golden:
         return JSONResponse({"ok": True, "answer": golden, "model": "golden", "mode": "compact"})
 
-    # 2) Modalità auto/compact/both
+    # 2) Scelta modalità
     yesno_simple = any([
         ("ctf" in q.lower() and "chiodatrice" in q.lower()),
         ("ctcem" in q.lower() and ("resin" in q.lower() or "resine" in q.lower())),
     ]) and len(q) < 200
 
     if mode == "compact" or (mode == "auto" and yesno_simple):
-        # Compatta: formula opponibile, senza sezioni
         if "ctf" in q.lower() and "chiodatrice" in q.lower():
             ans = (
                 "No: non con una “normale” chiodatrice a sparo.\n"
@@ -335,18 +312,14 @@ def ask(inp: AskIn):
                 "fino a battuta della piastra dentata secondo istruzioni CTCEM."
             )
             return JSONResponse({"ok": True, "answer": sanitize(ans, q), "model": "compact", "mode": "compact"})
-        # generica compatta via modello (fallback breve)
         txt, used = call_model_ext(q, lang)
-        # Prova a prendere solo la sezione A) per avere sintesi compatta
         m = re.search(r"A\)\s*BOT\s+Tecnaria.*?:\s*(.+?)(?:\n\s*[B]\)|\Z)", txt, flags=re.I|re.S)
         compact = m.group(1).strip() if m else txt.strip()
         return JSONResponse({"ok": True, "answer": sanitize(compact, q), "model": used, "mode": "compact"})
 
-    # 3) Estesa (scheda + spiegazione + fonti)
+    # 3) Estesa (scheda + spiegazione + riferimenti)
     txt, used = call_model_ext(q, lang)
     return JSONResponse({"ok": True, "answer": sanitize(txt, q), "model": used, "mode": "both"})
 
-
-# ---- Avvio tipico su Render ----
-# Start command consigliato (Runtime: Python):
+# ---- Start command consigliato (Render Runtime: Python) ----
 # gunicorn -k uvicorn.workers.UvicornWorker -w 1 --timeout 180 -b 0.0.0.0:$PORT app:app
