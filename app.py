@@ -1,9 +1,5 @@
-# app.py — Tecnaria Bot v3.2 (PHASE=A lock per risposte commerciali GOLD)
-# - PHASE=A (default): SOLO risposte commerciali Gold, compatte, senza modello
-# - PHASE=B: attiva modello Responses API (scheda + spiegazione) con fallback
-# - Golden Q&A estese (preventivo/export, fasi ordine, CTF chiodatrice, CTCEM resine)
-# - UI semplice su "/"
-# - Start command (Render): gunicorn -k uvicorn.workers.UvicornWorker -w 1 --timeout 180 -b 0.0.0.0:$PORT app:app
+# app.py — Tecnaria Bot v3.2.1 (PHASE=A lock per risposte commerciali GOLD)
+# Change log 3.2.1: disattivata sostituzione "indicativo → operativo" nel sanitizer.
 
 import os, re, json, time
 from typing import Optional, Tuple, List, Dict, Any
@@ -212,7 +208,7 @@ def match_golden(question: str, lang: str) -> Optional[str]:
 # =========================
 # FastAPI
 # =========================
-app = FastAPI(title="Tecnaria Bot v3.2 — Phase Lock")
+app = FastAPI(title="Tecnaria Bot v3.2.1 — Phase Lock")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True,
@@ -329,17 +325,17 @@ def call_model_ext(question: str, lang: str) -> Tuple[str, str]:
     raise HTTPException(status_code=504, detail=f"OpenAI non disponibile. Ultimo errore: {type(last_err).__name__}: {str(last_err)}")
 
 # =========================
-# Sanitizer leggero
+# Sanitizer leggero (fix 3.2.1: NON sostituire più 'indicativo/indicative')
 # =========================
 MACHINE_RX = re.compile(r"\bspit\s*-?\s*p560\b", re.I)
-SOFT_RX = re.compile(r"\b(semplificat\w*|indicativ\w*|orientativ\w*|di\s*massima|tipic\w+)\b", re.I)
+# SOFT_RX era: r"(semplificat\w*|indicativ\w*|orientativ\w*|di\s*massima|tipic\w+)"
+# Disattivata per Fase A per evitare 'indicativo' -> 'operativo'.
 SALD_RX = re.compile(r"\b(saldatur\w+|saldare|saldato)\b", re.I)
 
 def sanitize(text: str, query: str) -> str:
     out = (text or "").strip()
     out = MACHINE_RX.sub("SPIT P560", out)
-    if SOFT_RX.search(out):
-        out = SOFT_RX.sub("operativo", out)
+    # NON toccare più 'indicativo/indicative' in nessun caso
     out = SALD_RX.sub("saldatura (non prevista per questo sistema)", out)
     out = re.sub(r"\b(Tecnaria)\s+\1\b", r"\1", out)
     out = re.sub(r"\s+\.", ".", out)
@@ -374,7 +370,6 @@ def ask(inp: AskIn):
         return JSONResponse({"ok": True, "answer": sanitize(GOLD_DEFAULT_A, q), "model": "golden-default", "mode": "compact"})
 
     # PHASE=B → come v3.1 (modello + compact/estesa)
-    # try golden prima comunque
     golden = match_golden(q, lang)
     if golden and (("ctf" in q.lower() and "chiodatrice" in q.lower()) or ("ctcem" in q.lower() and ("resin" in q.lower() or "resine" in q.lower()))):
         return JSONResponse({"ok": True, "answer": sanitize(golden, q), "model": "golden", "mode": "compact"})
