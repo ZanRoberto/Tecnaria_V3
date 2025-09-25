@@ -1,7 +1,18 @@
-# app.py — Tecnaria Bot v3.2.1 (PHASE=A lock per risposte commerciali GOLD)
-# Change log 3.2.1: disattivata sostituzione "indicativo → operativo" nel sanitizer.
+# app.py — Tecnaria Bot v4 (Reasoner + Guard-Rails)
+# Modalità:
+# - PHASE=A  → Solo GOLD commerciali (deterministiche)
+# - PHASE=B  → Modello esteso (come v3.x) + GOLD
+# - PHASE=C  → GOLD-first, poi Reasoner (modello) con Guard-Rails (DINAMICO ma SICURO)  ← CONSIGLIATO
+#
+# Novità v4:
+# - Validatore anti-errori: rimuove numeri non giustificati (mm/Ø/modelli) e impone clausole critiche di sicurezza
+# - Clausole automatiche: CTF↔P560/2 chiodi/in gola; CTCEM↔no resine + foratura/avvitamento; MAXI↔ancoraggio in trave
+# - Risposte opponibili e concise, senza presence/frequency_penalty
+#
+# Start (Render):
+# gunicorn -k uvicorn.workers.UvicornWorker -w 1 --timeout 180 -b 0.0.0.0:$PORT app:app
 
-import os, re, json, time
+import os, re, time
 from typing import Optional, Tuple, List, Dict, Any
 
 from fastapi import FastAPI, HTTPException
@@ -9,19 +20,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
-# Attiva OpenAI SOLO in PHASE=B
-PHASE = (os.getenv("PHASE") or "A").strip().upper()
+PHASE = (os.getenv("PHASE") or "C").strip().upper()  # C di default: dinamico ma con guard-rails
 
-if PHASE == "B":
+# OpenAI solo se serve (B o C)
+if PHASE in ("B", "C"):
     from openai import OpenAI
     from openai._exceptions import APIConnectionError, APIStatusError, RateLimitError, APITimeoutError
 else:
     OpenAI = None
-    APIConnectionError = APIStatusError = RateLimitError = APITimeoutError = Exception  # placeholders
+    APIConnectionError = APIStatusError = RateLimitError = APITimeoutError = Exception
 
-# =========================
-# Config comuni
-# =========================
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 PREFERRED_MODEL = (os.getenv("OPENAI_MODEL") or "gpt-4.1").strip()
 MODEL_FALLBACKS: List[str] = []
@@ -40,33 +48,30 @@ def attrezzatura_clause() -> str:
     )
 
 # =========================
-# Prompt (usati solo in PHASE=B). Nessuna triple-quoted string.
+# Prompt base (senza triple-quoted)
 # =========================
 SYSTEM_KB = (
-    "DOMINIO TECNARIA — REGOLE BASE:\n"
-    "• Fase A: solo commerciale (preventivo, export, documenti). No dettagli di posa.\n"
-    "• Fase B: tecnica (posa, taratura, interassi): attenersi a istruzioni/ETA.\n"
-    "• CTF: posa con chiodatrice idonea; P560 nel perimetro commerciale Tecnaria; 2 chiodi idonei; in gola.\n"
-    "• CTCEM/VCEM: sistemi meccanici a secco; no resine; foratura+avvitamento a battuta piastra (CTCEM).\n"
-    "• Documenti export: ETA, DoP, CE, packing list, famiglia HS code, fattura commerciale con Incoterms.\n"
+    "BOT Tecnaria (IT) — Regole: "
+    "Fase A: solo commerciale. Fase B: tecnica prudente secondo istruzioni/ETA. "
+    "CTF: posa con chiodatrice idonea; P560 nel perimetro commerciale; 2 chiodi idonei; in gola. "
+    "CTCEM/VCEM: sistemi meccanici a secco; no resine; foratura+avvitamento a battuta piastra (CTCEM). "
+    "Export: ETA, DoP, CE, packing list, famiglia HS code, fattura con Incoterms."
 )
 
-SYSTEM_PROMPT_EXT = (
-    "Sei il BOT Tecnaria ufficiale (IT). Rispondi in modo opponibile e sintetico.\n"
-    f"{SYSTEM_KB}\n"
-    "Formato esteso quando richiesto: A) Scheda (bullet), B) Spiegazione breve, C) Riferimenti.\n"
-    "Evita numeri non documentati e dettagli di posa se la domanda è commerciale.\n"
+SYSTEM_REASONER = (
+    "Sei un assistente Tecnaria prudente. Rispondi in italiano, conciso, opponibile. "
+    "Usa criteri e procedure, non inventare numeri (mm/Ø/modelli) che non siano citati dall'utente "
+    "o già standardizzati nelle GOLD aziendali. Se servono numeri, scrivi che si definiscono su DWG/PDF."
 )
 
-USER_WRAPPER_EXT = (
-    "Domanda utente:\n"
-    "{question}\n\n"
-    "Istruzioni: se è commerciale (preventivo/export/fasi), privilegia scheda concisa.\n"
-    "Se è tecnica (PHASE=B), inserisci solo regole opponibili, niente numeri inventati.\n"
+USER_WRAPPER = (
+    "Domanda utente:\n{question}\n\n"
+    "Istruzioni: se la domanda è commerciale (preventivo/export/fasi), rispondi schematico. "
+    "Se è tecnica, usa criteri prudenti e rimanda a elaborati per scelte definitive. "
 )
 
 # =========================
-# Golden Q&A — risposte bloccate (fase A)
+# GOLD — risposte bloccate (prima di tutto)
 # =========================
 GoldenRule = Dict[str, Any]
 
@@ -105,6 +110,18 @@ GOLD_CTCEM_RESINE = (
     "Eventuali varianti richiedono approvazione tecnica scritta di Tecnaria."
 )
 
+GOLD_MAXI_TAVOLATO = (
+    "Famiglia corretta: CTL MAXI per posa su tavolato. "
+    "Vincolo chiave: le viti devono attraversare il tavolato e ancorare nella trave; fissaggi solo nel tavolato non sono ammessi. "
+    "Tracciamento sull’asse della trave.\n\n"
+    "Altezza connettore: con soletta 5 cm si valutano CTL MAXI 30 o 40. La scelta dipende da quota rete e coperture "
+    "(testa sopra la rete ma sotto il filo superiore del getto), interferenze con armature/accessori, tolleranze e quote reali.\n\n"
+    "Fissaggio: viti idonee per CTL MAXI con lunghezza definita a disegno per passare il tavolato e ancorarsi nella trave, "
+    "secondo istruzioni Tecnaria (preforo/coppia se previsti).\n\n"
+    "Per confermare modello e viti: inviaci spaccato DWG/PDF con sezione trave, pacchetto (tavolato/interposti), quota rete nella soletta 5 cm, essenza/stato del legno.\n\n"
+    "Esito operativo: CTL MAXI 30 o 40 coerenti; la conferma si fa su elaborato, garantendo ancoraggio in trave e corretta posizione della testa rispetto alla rete."
+)
+
 GOLD_LEAD_TIME = (
     "Il lead time è indicato in offerta e viene confermato in conferma d’ordine in base a quantità, mix prodotti, imballi "
     "e resa Incoterms. Per urgenze valutiamo insieme disponibilità materiali e slot spedizione."
@@ -127,6 +144,17 @@ GOLD_DEFAULT_A = (
 )
 
 GOLDEN_QA: List[GoldenRule] = [
+    {   # MAXI su tavolato/assito/soletta
+        "lang": "it",
+        "patterns": [
+            r"\bmaxi\b.*\btavolat\w+\b.*\b2\s*cm\b.*\bsolett\w+\b.*\b5\s*cm\b",
+            r"\bctl\s*maxi\b.*\bmodello\b",
+            r"\bconnettori\b.*\bmaxi\b.*\bmodello\b",
+            r"\bmaxi\b.*\bsolett\w+\b.*\b5\s*cm\b",
+            r"\bmaxi\b.*\b(assito|perlinat\w+|tavolat\w+)\b",
+        ],
+        "answer": GOLD_MAXI_TAVOLATO
+    },
     {   # Preventivo + export
         "lang": "it",
         "patterns": [
@@ -136,7 +164,7 @@ GOLDEN_QA: List[GoldenRule] = [
         ],
         "answer": GOLD_PREVENTIVO_EXPORT
     },
-    {   # Fasi dall'offerta alla spedizione
+    {   # Fasi ordine→spedizione
         "lang": "it",
         "patterns": [
             r"\bfasi\b.*\bdall'?offerta\b.*\bspedizion\w+",
@@ -145,7 +173,7 @@ GOLDEN_QA: List[GoldenRule] = [
         ],
         "answer": GOLD_FASI_ORDINE
     },
-    {   # CTF + chiodatrice “normale”
+    {   # CTF + chiodatrice
         "lang": "it",
         "patterns": [
             r"\bctf\b.*\bchiodatrice\b.*\bnormal\w+",
@@ -208,18 +236,15 @@ def match_golden(question: str, lang: str) -> Optional[str]:
 # =========================
 # FastAPI
 # =========================
-app = FastAPI(title="Tecnaria Bot v3.2.1 — Phase Lock")
+app = FastAPI(title="Tecnaria Bot v4 — Reasoner + Guard-Rails")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],
 )
 
-client = OpenAI(api_key=OPENAI_API_KEY) if (PHASE == "B" and OPENAI_API_KEY) else None
+client = OpenAI(api_key=OPENAI_API_KEY) if (PHASE in ("B", "C") and OPENAI_API_KEY) else None
 
-# =========================
-# UI
-# =========================
 HOME_HTML = """<!doctype html>
 <meta charset="utf-8" />
 <title>Tecnaria Bot</title>
@@ -235,8 +260,8 @@ HOME_HTML = """<!doctype html>
 </style>
 <div class="wrap">
   <h1>🚀 Tecnaria Bot — Fase {PHASE}</h1>
-  <p>Fai una domanda commerciale (preventivo, export, fasi ordine) e premi “Chiedi”.</p>
-  <textarea id="q" placeholder="Es: Cosa serve per il preventivo export?"></textarea>
+  <p>Fai una domanda e premi “Chiedi”. GOLD-first; se non coperta, Reasoner con Guard-Rails.</p>
+  <textarea id="q" placeholder="Es: Vorrei usare MAXI su tavolato 2 cm e soletta 5 cm: che modello?"></textarea>
   <div class="row">
     <select id="mode">
       <option value="auto" selected>Auto</option>
@@ -272,9 +297,6 @@ def home():
 def favicon():
     return PlainTextResponse("", status_code=204)
 
-# =========================
-# Schemi I/O
-# =========================
 class AskIn(BaseModel):
     question: str
     mode: Optional[str] = "auto"
@@ -286,26 +308,30 @@ class AskOut(BaseModel):
     model: Optional[str] = None
     mode: Optional[str] = None
 
+@app.get("/health", response_model=dict)
+def health():
+    return {"status": "ok", "phase": PHASE, "model": PREFERRED_MODEL, "fallbacks": MODEL_FALLBACKS}
+
 # =========================
-# Helpers (PHASE=B)
+# Reasoner (modello) — usato in PHASE=B/C
 # =========================
 def _is_model_not_found(e) -> bool:
     msg = (getattr(e, "message", "") or str(e)).lower()
     return ("model_not_found" in msg) or ("does not exist" in msg and "model" in msg)
 
-def call_model_ext(question: str, lang: str) -> Tuple[str, str]:
-    if PHASE != "B" or client is None:
+def call_model_reasoner(question: str, lang: str) -> Tuple[str, str]:
+    if client is None:
         return ("", "disabled")
-    system_content = SYSTEM_PROMPT_EXT
-    user_content = USER_WRAPPER_EXT.format(question=question.strip())
+    system = f"{SYSTEM_KB}\n{SYSTEM_REASONER}"
+    user = USER_WRAPPER.format(question=question.strip())
     last_err: Optional[Exception] = None
     for model in MODEL_FALLBACKS:
         try:
             resp = client.responses.create(
                 model=model,
                 input=[
-                    {"role": "system", "content": system_content},
-                    {"role": "user", "content": user_content},
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
                 ],
                 temperature=0.2,
                 max_output_tokens=MAX_OUTPUT_TOKENS,
@@ -318,41 +344,93 @@ def call_model_ext(question: str, lang: str) -> Tuple[str, str]:
             raise HTTPException(status_code=502, detail=f"Errore OpenAI (status {getattr(e,'status_code',0)}) con modello '{model}': {getattr(e,'message',str(e))}") from e
         except (APIConnectionError, APITimeoutError, RateLimitError) as e:  # type: ignore
             last_err = e
-            time.sleep(1.2)
+            time.sleep(1.0)
         except Exception as e:
             last_err = e
             break
     raise HTTPException(status_code=504, detail=f"OpenAI non disponibile. Ultimo errore: {type(last_err).__name__}: {str(last_err)}")
 
 # =========================
-# Sanitizer leggero (fix 3.2.1: NON sostituire più 'indicativo/indicative')
+# Sanitizer + Guard-Rails
 # =========================
 MACHINE_RX = re.compile(r"\bspit\s*-?\s*p560\b", re.I)
-# SOFT_RX era: r"(semplificat\w*|indicativ\w*|orientativ\w*|di\s*massima|tipic\w+)"
-# Disattivata per Fase A per evitare 'indicativo' -> 'operativo'.
 SALD_RX = re.compile(r"\b(saldatur\w+|saldare|saldato)\b", re.I)
+DIM_RX = re.compile(r"\b(\d+(?:[.,]\d+)?)\s*(mm|cm)\b", re.I)
+DIA_RX = re.compile(r"[ØO]\s*\d+\b", re.I)
+MODEL_RX = re.compile(r"\b\d{2}\s*/\s*\d{3}\b")  # es. 12/040
 
-def sanitize(text: str, query: str) -> str:
+def sanitize_basic(text: str, query: str) -> str:
     out = (text or "").strip()
     out = MACHINE_RX.sub("SPIT P560", out)
-    # NON toccare più 'indicativo/indicative' in nessun caso
     out = SALD_RX.sub("saldatura (non prevista per questo sistema)", out)
     out = re.sub(r"\b(Tecnaria)\s+\1\b", r"\1", out)
     out = re.sub(r"\s+\.", ".", out)
     out = re.sub(r"\s+,", ",", out)
-    if "ctcem" in (query or "").lower():
-        out = re.sub(r"inseriment[oa]\s+a\s+pressione|interferenza\s+meccanica",
-                     "avvitamento fino a battuta della piastra (sistema meccanico a secco)",
-                     out, flags=re.I)
     return out.strip()
 
-# =========================
-# Endpoint
-# =========================
-@app.get("/health", response_model=dict)
-def health():
-    return {"status": "ok", "phase": PHASE, "model": PREFERRED_MODEL, "fallbacks": MODEL_FALLBACKS}
+def remove_unjustified_numbers(text: str, question: str) -> str:
+    """Elimina o neutralizza mm/Ø/modelli NON menzionati nella domanda."""
+    q = (question or "").lower()
+    def keep_token(tok: str) -> bool:
+        return tok.lower() in q
+    out = text
 
+    # mm/cm
+    for m in list(DIM_RX.finditer(out)):
+        tok = m.group(0)
+        if not keep_token(tok):
+            out = out.replace(tok, "valore da definire su elaborato")
+
+    # Ø
+    for m in list(DIA_RX.finditer(out)):
+        tok = m.group(0)
+        if not keep_token(tok):
+            out = out.replace(tok, "Ø da definire su elaborato")
+
+    # Modelli tipo 12/040
+    for m in list(MODEL_RX.finditer(out)):
+        tok = m.group(0)
+        if not keep_token(tok):
+            out = out.replace(tok, "modello da definire su elaborato")
+
+    # Pulizia ripetizioni
+    out = re.sub(r"(da definire su elaborato)(\s+\1)+", r"\1", out, flags=re.I)
+    return out
+
+def enforce_domain_clauses(question: str, answer: str) -> str:
+    ql = (question or "").lower()
+    out = answer
+
+    # MAXI su legno/tavolato
+    if ("maxi" in ql or "ctl maxi" in ql) and re.search(r"(tavolat|assito|perlinat)", ql):
+        if "ancorar" not in out.lower() or "trave" not in out.lower():
+            out += "\n\nVincolo chiave: le viti devono attraversare il tavolato e ancorare nella trave; fissaggi solo nel tavolato non sono ammessi."
+        if "dwg" not in out.lower() and "elaborat" not in out.lower():
+            out += "\nPer confermare modello e lunghezza viti: invia DWG/PDF con sezione trave, pacchetto e quota rete."
+    # CTF + chiodatrice
+    if ("ctf" in ql and ("chiodatrice" in ql or "sparo" in ql)):
+        clause = ("Per garantire prestazioni ripetibili, è ammessa la SPIT P560 con 2 chiodi idonei per connettore, posa in gola; "
+                  "alternative solo previa approvazione tecnica scritta di Tecnaria dopo prova di qualifica.")
+        if "spit p560" not in out.lower():
+            out += ("\n\n" + clause)
+    # CTCEM + resine
+    if ("ctcem" in ql and re.search(r"resin\w+", ql)):
+        if "resine" not in out.lower() or "no" not in out.lower():
+            out += "\n\nNota: i CTCEM non usano resine; fissaggio meccanico a secco con foratura e avvitamento a battuta piastra."
+
+    return out.strip()
+
+def guardrails(question: str, draft: str) -> str:
+    out = sanitize_basic(draft, question)
+    out = remove_unjustified_numbers(out, question)
+    out = enforce_domain_clauses(question, out)
+    # Compattezza
+    out = re.sub(r"\n{3,}", "\n\n", out).strip()
+    return out
+
+# =========================
+# Endpoint principale
+# =========================
 @app.post("/ask", response_model=AskOut)
 def ask(inp: AskIn):
     q = (inp.question or "").strip()
@@ -361,34 +439,20 @@ def ask(inp: AskIn):
     lang = (inp.lang or DEFAULT_LANG).strip().lower()
     mode = (inp.mode or "auto").strip().lower()
 
-    # PHASE=A → SOLO GOLD/COMMERCIALE, NIENTE MODELLO
-    if PHASE == "A":
-        golden = match_golden(q, lang)
-        if golden:
-            return JSONResponse({"ok": True, "answer": sanitize(golden, q), "model": "golden", "mode": "compact"})
-        # fallback commerciale generico, sicuro
-        return JSONResponse({"ok": True, "answer": sanitize(GOLD_DEFAULT_A, q), "model": "golden-default", "mode": "compact"})
-
-    # PHASE=B → come v3.1 (modello + compact/estesa)
+    # 1) GOLD-first (tutte le fasi)
     golden = match_golden(q, lang)
-    if golden and (("ctf" in q.lower() and "chiodatrice" in q.lower()) or ("ctcem" in q.lower() and ("resin" in q.lower() or "resine" in q.lower()))):
-        return JSONResponse({"ok": True, "answer": sanitize(golden, q), "model": "golden", "mode": "compact"})
+    if golden:
+        return JSONResponse({"ok": True, "answer": sanitize_basic(golden, q), "model": "golden", "mode": "compact"})
 
-    yesno_simple = any([
-        ("ctf" in q.lower() and "chiodatrice" in q.lower()),
-        ("ctcem" in q.lower() and ("resin" in q.lower() or "resine" in q.lower())),
-    ]) and len(q) < 200
+    # 2) PHASE=A → solo commerciale/gold default
+    if PHASE == "A":
+        return JSONResponse({"ok": True, "answer": sanitize_basic(GOLD_DEFAULT_A, q), "model": "golden-default", "mode": "compact"})
 
-    if mode == "compact" or (mode == "auto" and yesno_simple):
-        if golden:
-            return JSONResponse({"ok": True, "answer": sanitize(golden, q), "model": "golden", "mode": "compact"})
-        txt, used = call_model_ext(q, lang)
-        m = re.search(r"A\)\s*BOT\s+Tecnaria.*?:\s*(.+?)(?:\n\s*[B]\)|\Z)", txt, flags=re.I|re.S)
-        compact = m.group(1).strip() if m else txt.strip()
-        return JSONResponse({"ok": True, "answer": sanitize(compact, q), "model": used, "mode": "compact"})
+    # 3) PHASE=B/C → Reasoner (modello) + Guard-Rails
+    if PHASE in ("B", "C"):
+        draft, used = call_model_reasoner(q, lang)
+        safe = guardrails(q, draft)
+        return JSONResponse({"ok": True, "answer": safe, "model": used, "mode": "compact"})
 
-    txt, used = call_model_ext(q, lang)
-    return JSONResponse({"ok": True, "answer": sanitize(txt, q), "model": used, "mode": "both"})
-
-# ---- Start command (Render Runtime: Python) ----
-# gunicorn -k uvicorn.workers.UvicornWorker -w 1 --timeout 180 -b 0.0.0.0:$PORT app:app
+    # Fallback estremo
+    return JSONResponse({"ok": True, "answer": sanitize_basic(GOLD_DEFAULT_A, q), "model": "golden-default", "mode": "compact"})
