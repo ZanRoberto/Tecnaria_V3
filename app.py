@@ -1,9 +1,9 @@
-# app.py — Tecnaria Bot v3.1 (fix stringhe + GOLD + compatta/estesa)
-# - UI su "/"
-# - /ask: auto | compact | both
-# - Golden Q&A bloccate (100% identiche)
-# - P560-first opponibile; niente presence/frequency_penalty
-# - Responses API con fallback modelli
+# app.py — Tecnaria Bot v3.2 (PHASE=A lock per risposte commerciali GOLD)
+# - PHASE=A (default): SOLO risposte commerciali Gold, compatte, senza modello
+# - PHASE=B: attiva modello Responses API (scheda + spiegazione) con fallback
+# - Golden Q&A estese (preventivo/export, fasi ordine, CTF chiodatrice, CTCEM resine)
+# - UI semplice su "/"
+# - Start command (Render): gunicorn -k uvicorn.workers.UvicornWorker -w 1 --timeout 180 -b 0.0.0.0:$PORT app:app
 
 import os, re, json, time
 from typing import Optional, Tuple, List, Dict, Any
@@ -13,17 +13,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
-from openai import OpenAI
-from openai._exceptions import APIConnectionError, APIStatusError, RateLimitError, APITimeoutError
+# Attiva OpenAI SOLO in PHASE=B
+PHASE = (os.getenv("PHASE") or "A").strip().upper()
 
+if PHASE == "B":
+    from openai import OpenAI
+    from openai._exceptions import APIConnectionError, APIStatusError, RateLimitError, APITimeoutError
+else:
+    OpenAI = None
+    APIConnectionError = APIStatusError = RateLimitError = APITimeoutError = Exception  # placeholders
 
 # =========================
-# Config
+# Config comuni
 # =========================
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY non impostata nelle Environment Variables.")
-
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 PREFERRED_MODEL = (os.getenv("OPENAI_MODEL") or "gpt-4.1").strip()
 MODEL_FALLBACKS: List[str] = []
 for m in [PREFERRED_MODEL, "gpt-4o", "gpt-4.1", "gpt-4.1-mini"]:
@@ -31,7 +34,7 @@ for m in [PREFERRED_MODEL, "gpt-4o", "gpt-4.1", "gpt-4.1-mini"]:
         MODEL_FALLBACKS.append(m)
 
 DEFAULT_LANG = (os.getenv("DEFAULT_LANG") or "it").strip().lower()
-MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "1000"))
+MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "900"))
 
 def attrezzatura_clause() -> str:
     return (
@@ -41,60 +44,121 @@ def attrezzatura_clause() -> str:
     )
 
 # =========================
-# Prompt esteso (niente triple-quoted: solo stringhe concatenate)
+# Prompt (usati solo in PHASE=B). Nessuna triple-quoted string.
 # =========================
 SYSTEM_KB = (
-    "DOMINIO TECNARIA — REGOLE BASE (CTF e posa su lamiera):\n"
-    "• Attrezzatura: chiodatrice strutturale idonea (linea SPIT P560 nel perimetro Tecnaria).\n"
-    "• Fissaggio: ogni CTF si ancora con 2 chiodi idonei secondo istruzioni Tecnaria.\n"
-    "• Posizione di posa: connettore in gola lamiera, utensile perpendicolare, piastra in appoggio pieno.\n"
-    "• Taratura: prove su provino/lamiera identica prima della produzione; registrazione lotti ed esiti.\n"
-    "• Passo: da progetto (V_Ed) e capacità da documentazione ufficiale; mai numeri 'tipici' senza calcolo.\n"
-    "• Lessico: NON parlare di 'saldatura' per CTF; è ancoraggio/chiodatura meccanica.\n"
-    "• Varianti: solo con approvazione tecnica scritta di Tecnaria dopo qualifica in sito.\n"
-    "• Per CTCEM/VCEM (laterocemento): sistemi meccanici a secco; no resine; foratura+avvitamento a battuta piastra (CTCEM).\n"
+    "DOMINIO TECNARIA — REGOLE BASE:\n"
+    "• Fase A: solo commerciale (preventivo, export, documenti). No dettagli di posa.\n"
+    "• Fase B: tecnica (posa, taratura, interassi): attenersi a istruzioni/ETA.\n"
+    "• CTF: posa con chiodatrice idonea; P560 nel perimetro commerciale Tecnaria; 2 chiodi idonei; in gola.\n"
+    "• CTCEM/VCEM: sistemi meccanici a secco; no resine; foratura+avvitamento a battuta piastra (CTCEM).\n"
+    "• Documenti export: ETA, DoP, CE, packing list, famiglia HS code, fattura commerciale con Incoterms.\n"
 )
 
 SYSTEM_PROMPT_EXT = (
-    "Sei il BOT Tecnaria ufficiale (lingua: IT). Rispondi in modo opponibile, operativo e senza fronzoli.\n"
-    "Segui strettamente le regole di dominio e NON inventare valori tabellari.\n\n"
+    "Sei il BOT Tecnaria ufficiale (IT). Rispondi in modo opponibile e sintetico.\n"
     f"{SYSTEM_KB}\n"
-    "FORMATTA così:\n"
-    "A) BOT Tecnaria (scheda) → 4–10 bullet normativi, brevi e pronti per cantiere.\n"
-    "B) Spiegazione (ingegneristica) → 1–2 paragrafi (motivazioni operative, taratura, controlli).\n"
-    "C) Riferimenti → elenco sintetico (es. ETA/istruzioni Tecnaria).\n\n"
-    "Tono: assertivo, preciso, senza disclaimer 'AI può sbagliare'.\n"
+    "Formato esteso quando richiesto: A) Scheda (bullet), B) Spiegazione breve, C) Riferimenti.\n"
+    "Evita numeri non documentati e dettagli di posa se la domanda è commerciale.\n"
 )
 
 USER_WRAPPER_EXT = (
     "Domanda utente:\n"
     "{question}\n\n"
-    "ISTRUZIONI DI OUTPUT:\n"
-    "• Se il tema è posa/passo/QA → includi voci su attrezzatura (P560), 2 chiodi idonei, taratura, gola, interassi da progetto.\n"
-    "• Evita parole vaghe ('tipico', 'indicativo', 'di massima'). Usa formulazioni opponibili.\n"
+    "Istruzioni: se è commerciale (preventivo/export/fasi), privilegia scheda concisa.\n"
+    "Se è tecnica (PHASE=B), inserisci solo regole opponibili, niente numeri inventati.\n"
 )
 
 # =========================
-# Golden Q&A (risposte bloccate 100% identiche)
+# Golden Q&A — risposte bloccate (fase A)
 # =========================
 GoldenRule = Dict[str, Any]
+
+GOLD_PREVENTIVO_EXPORT = (
+    "Per il preventivo inviaci: elaborati del solaio (PDF/DWG) e tipologia (lamiera grecata o laterocemento); "
+    "quantità indicative e aree/lunghezze interessate; Paese di destinazione e resa Incoterms richiesta (es. EXW/FOB/CIF/DDP); "
+    "eventuali esigenze di imballo/etichette e dati aziendali (ragione sociale, VAT/EORI se applicabile, contatto). \n"
+    "In offerta ricevi: proposta prodotti e accessori (CTF/CTCEM), documenti di conformità disponibili (ETA, DoP, CE), "
+    "packing list e famiglia HS code indicata (conferma in conferma d’ordine), condizioni commerciali e logistiche "
+    "(Incoterms, luogo di resa, lead time indicativo, termini economici)."
+)
+
+GOLD_FASI_ORDINE = (
+    "1) Richiesta & offerta: inviate elaborati/bozza, quantità, Paese e resa Incoterms; ricevete offerta con prodotti "
+    "(CTF/CTCEM), condizioni e documenti disponibili (ETA, DoP, CE), nota su packing list e HS family. \n"
+    "2) Accettazione & proforma: invio PO/conferma offerta; emissione proforma con valori, Incoterms, luogo di resa, "
+    "lead time indicativo e dati fiscali. \n"
+    "3) Pagamento & pianificazione: pagamento come da proforma; pianificazione preparazione merce e imballi; coordinamento "
+    "con eventuale spedizioniere del cliente. \n"
+    "4) Documenti & spedizione: conferma d’ordine aggiornata + packing list (pesi/colli) + famiglia HS code; alla spedizione "
+    "fattura commerciale con Incoterms e tracking; ETA/DoP/CE allegati o linkati. \n"
+    "5) Post-vendita: supporto pratiche export e documenti; dettagli tecnici (posa/verifiche) in fase B su elaborati aggiornati."
+)
+
+GOLD_CTF_CHIODATRICE = (
+    "No: non con una “normale” chiodatrice a sparo. "
+    + attrezzatura_clause()
+    + " Ogni CTF va fissato con 2 chiodi idonei; utensile in asse, piastra in appoggio pieno, posa in gola; "
+      "prima della produzione: taratura su provino e tracciabilità lotti. Deroghe solo con approvazione tecnica scritta "
+      "di Tecnaria dopo qualifica in sito."
+)
+
+GOLD_CTCEM_RESINE = (
+    "No: i CTCEM non si posano con resine. Fissaggio meccanico a secco: foratura del travetto, pulizia del foro e "
+    "avvitamento della vite fino a battuta della piastra dentata, secondo istruzioni CTCEM. "
+    "Eventuali varianti richiedono approvazione tecnica scritta di Tecnaria."
+)
+
+GOLD_LEAD_TIME = (
+    "Il lead time è indicato in offerta e viene confermato in conferma d’ordine in base a quantità, mix prodotti, imballi "
+    "e resa Incoterms. Per urgenze valutiamo insieme disponibilità materiali e slot spedizione."
+)
+
+GOLD_PAGAMENTI = (
+    "Condizioni di pagamento come da offerta/proforma (es. bonifico anticipato o modalità concordate). "
+    "Dati fiscali e bancari sono riportati in proforma e fattura."
+)
+
+GOLD_DOCUMENTI_EXPORT = (
+    "Per l’export forniamo: ETA, DoP, Marcatura CE; packing list con pesi/colli; famiglia HS code; "
+    "fattura commerciale con Incoterms e dati del destinatario; eventuali allegati richiesti dal Paese di destinazione."
+)
+
+GOLD_DEFAULT_A = (
+    "Per la fase commerciale inviaci: elaborati del solaio (PDF/DWG), quantità indicative, Paese di destinazione e resa Incoterms. "
+    "In offerta riceverai prodotti coerenti (CTF/CTCEM), documenti di conformità (ETA, DoP, CE), packing list e famiglia HS code, "
+    "oltre a condizioni commerciali e logistiche. I dettagli tecnici di posa seguono in fase B."
+)
+
 GOLDEN_QA: List[GoldenRule] = [
-    {
+    {   # Preventivo + export
+        "lang": "it",
+        "patterns": [
+            r"\bpreventiv\w+\b.*\bexport\b",
+            r"\bpreventiv\w+\b.*\bdocument\w+\b",
+            r"\bofferta\b.*\bexport\b",
+        ],
+        "answer": GOLD_PREVENTIVO_EXPORT
+    },
+    {   # Fasi dall'offerta alla spedizione
+        "lang": "it",
+        "patterns": [
+            r"\bfasi\b.*\bdall'?offerta\b.*\bspedizion\w+",
+            r"\bdistributor\w*\b.*\bestero\b.*\bfasi\b.*\bspedizion\w+",
+            r"\bordine\b.*\bexport\b.*\bfasi\b",
+        ],
+        "answer": GOLD_FASI_ORDINE
+    },
+    {   # CTF + chiodatrice “normale”
         "lang": "it",
         "patterns": [
             r"\bctf\b.*\bchiodatrice\b.*\bnormal\w+",
             r"\bchiodatrice\b.*\bsparo\b.*\bctf\b",
             r"\bsi\s*possono\b.*\bctf\b.*\bchiodatrice\b",
         ],
-        "answer": (
-            "No: non con una “normale” chiodatrice a sparo.\n"
-            f"{attrezzatura_clause()}\n"
-            "Ogni CTF va fissato con 2 chiodi idonei, utensile in asse, piastra in appoggio pieno, posa al centro della gola; "
-            "prima della produzione: taratura su provino con registrazione lotti ed esiti. Deroghe: solo con approvazione tecnica scritta "
-            "di Tecnaria dopo qualifica in sito."
-        )
+        "answer": GOLD_CTF_CHIODATRICE
     },
-    {
+    {   # CTCEM + resine
         "lang": "it",
         "patterns": [
             r"\bctcem\b.*\bresin\w+",
@@ -102,12 +166,33 @@ GOLDEN_QA: List[GoldenRule] = [
             r"\bctcem\b.*\bpos[ao].*\bresin\w+",
             r"\bconnettori\b.*\bctcem\b.*\bresin\w+",
         ],
-        "answer": (
-            "No: i CTCEM non si posano con resine. Il fissaggio è meccanico a secco: si fora il travetto, si pulisce il foro "
-            "e si avvita la vite fino a battuta della piastra dentata, secondo istruzioni CTCEM. Niente resine/malte/schiume; "
-            "eventuali varianti richiedono approvazione tecnica scritta di Tecnaria."
-        )
-    }
+        "answer": GOLD_CTCEM_RESINE
+    },
+    {   # Lead time
+        "lang": "it",
+        "patterns": [
+            r"\btempi\b.*\bconsegn\w+",
+            r"\blead\s*time\b",
+            r"\bquando\b.*\bspedizion\w+",
+        ],
+        "answer": GOLD_LEAD_TIME
+    },
+    {   # Pagamenti
+        "lang": "it",
+        "patterns": [
+            r"\bpagament\w+\b",
+            r"\bterms?\b.*\bpayment\b",
+        ],
+        "answer": GOLD_PAGAMENTI
+    },
+    {   # Documenti export
+        "lang": "it",
+        "patterns": [
+            r"\bdocument\w+\b.*\bexport\b",
+            r"\bquali\b.*\bdocument\w+\b",
+        ],
+        "answer": GOLD_DOCUMENTI_EXPORT
+    },
 ]
 
 def match_golden(question: str, lang: str) -> Optional[str]:
@@ -127,16 +212,17 @@ def match_golden(question: str, lang: str) -> Optional[str]:
 # =========================
 # FastAPI
 # =========================
-app = FastAPI(title="Tecnaria Bot v3.1")
+app = FastAPI(title="Tecnaria Bot v3.2 — Phase Lock")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],
 )
-client = OpenAI(api_key=OPENAI_API_KEY)
+
+client = OpenAI(api_key=OPENAI_API_KEY) if (PHASE == "B" and OPENAI_API_KEY) else None
 
 # =========================
-# UI minima su "/"
+# UI
 # =========================
 HOME_HTML = """<!doctype html>
 <meta charset="utf-8" />
@@ -152,9 +238,9 @@ HOME_HTML = """<!doctype html>
   small{color:var(--muted)}
 </style>
 <div class="wrap">
-  <h1>🚀 Tecnaria Bot</h1>
-  <p>Fai una domanda tecnica o commerciale e premi “Chiedi”.</p>
-  <textarea id="q" placeholder="Es: Si possono posare i CTF con una 'normale' chiodatrice a sparo?"></textarea>
+  <h1>🚀 Tecnaria Bot — Fase {PHASE}</h1>
+  <p>Fai una domanda commerciale (preventivo, export, fasi ordine) e premi “Chiedi”.</p>
+  <textarea id="q" placeholder="Es: Cosa serve per il preventivo export?"></textarea>
   <div class="row">
     <select id="mode">
       <option value="auto" selected>Auto</option>
@@ -164,7 +250,7 @@ HOME_HTML = """<!doctype html>
     <button onclick="ask()">Chiedi</button>
   </div>
   <div id="out" class="out"></div>
-  <small>Endpoint: /ask • Modello: ENV OPENAI_MODEL con fallback • Max tokens: ENV MAX_OUTPUT_TOKENS</small>
+  <small>Endpoint: /ask • Phase: {PHASE} • Modello: {model}</small>
 </div>
 <script>
 async function ask(){
@@ -174,19 +260,13 @@ async function ask(){
   if(!q){ out.textContent="Inserisci una domanda."; return; }
   out.textContent="⏳...";
   try{
-    const r=await fetch("/ask",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({question:q, mode})
-    });
+    const r=await fetch("/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q, mode})});
     const data=await r.json();
-    if(data.ok){ out.textContent=data.answer; }
-    else if(data.answer){ out.textContent=data.answer; }
-    else { out.textContent="Errore: "+(data.detail||JSON.stringify(data)); }
+    out.textContent = data.answer || ("Errore: "+(data.detail||JSON.stringify(data)));
   }catch(e){ out.textContent="Errore di rete: "+e.message; }
 }
 </script>
-"""
+""".replace("{PHASE}", PHASE).replace("{model}", PREFERRED_MODEL)
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -201,7 +281,7 @@ def favicon():
 # =========================
 class AskIn(BaseModel):
     question: str
-    mode: Optional[str] = "auto"   # auto | compact | both
+    mode: Optional[str] = "auto"
     lang: Optional[str] = DEFAULT_LANG
 
 class AskOut(BaseModel):
@@ -211,13 +291,15 @@ class AskOut(BaseModel):
     mode: Optional[str] = None
 
 # =========================
-# Helpers OpenAI
+# Helpers (PHASE=B)
 # =========================
-def _is_model_not_found(e: APIStatusError) -> bool:
+def _is_model_not_found(e) -> bool:
     msg = (getattr(e, "message", "") or str(e)).lower()
     return ("model_not_found" in msg) or ("does not exist" in msg and "model" in msg)
 
 def call_model_ext(question: str, lang: str) -> Tuple[str, str]:
+    if PHASE != "B" or client is None:
+        return ("", "disabled")
     system_content = SYSTEM_PROMPT_EXT
     user_content = USER_WRAPPER_EXT.format(question=question.strip())
     last_err: Optional[Exception] = None
@@ -234,14 +316,11 @@ def call_model_ext(question: str, lang: str) -> Tuple[str, str]:
             )
             text = getattr(resp, "output_text", "").strip() or str(resp)
             return text, model
-        except APIStatusError as e:
-            if e.status_code == 400 and _is_model_not_found(e):
+        except APIStatusError as e:  # type: ignore
+            if getattr(e, "status_code", 400) == 400 and _is_model_not_found(e):
                 continue
-            raise HTTPException(
-                status_code=502,
-                detail=f"Errore OpenAI (status {e.status_code}) con modello '{model}': {getattr(e,'message',str(e))}"
-            ) from e
-        except (APIConnectionError, APITimeoutError, RateLimitError) as e:
+            raise HTTPException(status_code=502, detail=f"Errore OpenAI (status {getattr(e,'status_code',0)}) con modello '{model}': {getattr(e,'message',str(e))}") from e
+        except (APIConnectionError, APITimeoutError, RateLimitError) as e:  # type: ignore
             last_err = e
             time.sleep(1.2)
         except Exception as e:
@@ -250,14 +329,14 @@ def call_model_ext(question: str, lang: str) -> Tuple[str, str]:
     raise HTTPException(status_code=504, detail=f"OpenAI non disponibile. Ultimo errore: {type(last_err).__name__}: {str(last_err)}")
 
 # =========================
-# Post-processing minimo (anti-ripetizioni / terminologia)
+# Sanitizer leggero
 # =========================
 MACHINE_RX = re.compile(r"\bspit\s*-?\s*p560\b", re.I)
 SOFT_RX = re.compile(r"\b(semplificat\w*|indicativ\w*|orientativ\w*|di\s*massima|tipic\w+)\b", re.I)
 SALD_RX = re.compile(r"\b(saldatur\w+|saldare|saldato)\b", re.I)
 
 def sanitize(text: str, query: str) -> str:
-    out = text.strip()
+    out = (text or "").strip()
     out = MACHINE_RX.sub("SPIT P560", out)
     if SOFT_RX.search(out):
         out = SOFT_RX.sub("operativo", out)
@@ -265,7 +344,7 @@ def sanitize(text: str, query: str) -> str:
     out = re.sub(r"\b(Tecnaria)\s+\1\b", r"\1", out)
     out = re.sub(r"\s+\.", ".", out)
     out = re.sub(r"\s+,", ",", out)
-    if "ctcem" in query.lower():
+    if "ctcem" in (query or "").lower():
         out = re.sub(r"inseriment[oa]\s+a\s+pressione|interferenza\s+meccanica",
                      "avvitamento fino a battuta della piastra (sistema meccanico a secco)",
                      out, flags=re.I)
@@ -276,7 +355,7 @@ def sanitize(text: str, query: str) -> str:
 # =========================
 @app.get("/health", response_model=dict)
 def health():
-    return {"status": "ok", "model": PREFERRED_MODEL, "fallbacks": MODEL_FALLBACKS, "kb": True}
+    return {"status": "ok", "phase": PHASE, "model": PREFERRED_MODEL, "fallbacks": MODEL_FALLBACKS}
 
 @app.post("/ask", response_model=AskOut)
 def ask(inp: AskIn):
@@ -286,40 +365,35 @@ def ask(inp: AskIn):
     lang = (inp.lang or DEFAULT_LANG).strip().lower()
     mode = (inp.mode or "auto").strip().lower()
 
-    # 1) GOLDEN Q&A
-    golden = match_golden(q, lang)
-    if golden:
-        return JSONResponse({"ok": True, "answer": golden, "model": "golden", "mode": "compact"})
+    # PHASE=A → SOLO GOLD/COMMERCIALE, NIENTE MODELLO
+    if PHASE == "A":
+        golden = match_golden(q, lang)
+        if golden:
+            return JSONResponse({"ok": True, "answer": sanitize(golden, q), "model": "golden", "mode": "compact"})
+        # fallback commerciale generico, sicuro
+        return JSONResponse({"ok": True, "answer": sanitize(GOLD_DEFAULT_A, q), "model": "golden-default", "mode": "compact"})
 
-    # 2) Scelta modalità
+    # PHASE=B → come v3.1 (modello + compact/estesa)
+    # try golden prima comunque
+    golden = match_golden(q, lang)
+    if golden and (("ctf" in q.lower() and "chiodatrice" in q.lower()) or ("ctcem" in q.lower() and ("resin" in q.lower() or "resine" in q.lower()))):
+        return JSONResponse({"ok": True, "answer": sanitize(golden, q), "model": "golden", "mode": "compact"})
+
     yesno_simple = any([
         ("ctf" in q.lower() and "chiodatrice" in q.lower()),
         ("ctcem" in q.lower() and ("resin" in q.lower() or "resine" in q.lower())),
     ]) and len(q) < 200
 
     if mode == "compact" or (mode == "auto" and yesno_simple):
-        if "ctf" in q.lower() and "chiodatrice" in q.lower():
-            ans = (
-                "No: non con una “normale” chiodatrice a sparo.\n"
-                f"{attrezzatura_clause()}\n"
-                "Ogni CTF va fissato con 2 chiodi idonei; utensile in asse, piastra in appoggio pieno, posa in gola; "
-                "prima della produzione: taratura su provino e tracciabilità lotti."
-            )
-            return JSONResponse({"ok": True, "answer": sanitize(ans, q), "model": "compact", "mode": "compact"})
-        if "ctcem" in q.lower() and ("resin" in q.lower() or "resine" in q.lower()):
-            ans = (
-                "No: i CTCEM non usano resine. Fissaggio meccanico a secco: foratura, pulizia foro e avvitamento della vite "
-                "fino a battuta della piastra dentata secondo istruzioni CTCEM."
-            )
-            return JSONResponse({"ok": True, "answer": sanitize(ans, q), "model": "compact", "mode": "compact"})
+        if golden:
+            return JSONResponse({"ok": True, "answer": sanitize(golden, q), "model": "golden", "mode": "compact"})
         txt, used = call_model_ext(q, lang)
         m = re.search(r"A\)\s*BOT\s+Tecnaria.*?:\s*(.+?)(?:\n\s*[B]\)|\Z)", txt, flags=re.I|re.S)
         compact = m.group(1).strip() if m else txt.strip()
         return JSONResponse({"ok": True, "answer": sanitize(compact, q), "model": used, "mode": "compact"})
 
-    # 3) Estesa (scheda + spiegazione + riferimenti)
     txt, used = call_model_ext(q, lang)
     return JSONResponse({"ok": True, "answer": sanitize(txt, q), "model": used, "mode": "both"})
 
-# ---- Start command consigliato (Render Runtime: Python) ----
+# ---- Start command (Render Runtime: Python) ----
 # gunicorn -k uvicorn.workers.UvicornWorker -w 1 --timeout 180 -b 0.0.0.0:$PORT app:app
