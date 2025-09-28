@@ -1,6 +1,6 @@
 # app.py — Tecnaria Bot API (UI integrata, no SINAPSI)
-# - Home (/) con form per fare domande e vedere le risposte
-# - FastAPI + OpenAI Responses API (niente presence/frequency penalty)
+# - Home (/) con form per fare domande e vedere la risposta
+# - FastAPI + OpenAI Responses API (senza presence/frequency penalty)
 # - Dominio ristretto a Tecnaria (hard-guard)
 # - Stile “telefono” forzato via system prompt
 # - Shortcut “a scheda” per i casi ricorrenti (CTF/chiodatrice, CTCEM/resine, MAXI/tavolato, modalità di posa)
@@ -149,13 +149,15 @@ def call_openai(system_prompt: str, user_text: str) -> str:
         resp = client.responses.create(
             model=MODEL_NAME,
             input=[
-                {"role": "system", "content": [{"type": "text", "text": system_prompt}]},
-                {"role": "user",   "content": [{"type": "text", "text": user_text}]}
+                {"role": "system", "content": [{"type": "input_text", "text": system_prompt}]},
+                {"role": "user",   "content": [{"type": "input_text", "text": user_text}]}
             ]
         )
+        # SDK recente: resp.output_text
         try:
             return (resp.output_text or "").strip()
         except Exception:
+            # Fallback robusto
             if hasattr(resp, "output") and resp.output:
                 first = resp.output[0]
                 content = getattr(first, "content", None) or []
@@ -184,13 +186,14 @@ def index():
         "pre{white-space:pre-wrap;background:#0a0a0a;color:#f7f7f7;padding:14px;border-radius:10px;max-height:50vh;overflow:auto}"
         ".row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}"
         ".muted{color:#6b7280}"
+        "a{color:#0b5cff;text-decoration:none}"
         "</style></head><body>"
         "<div class='wrap'>"
         "<h1 style='margin:0 0 10px'>" + APP_NAME + "</h1>"
         "<div class='muted' style='margin-bottom:16px'>Fai una domanda Tecnaria e premi “Chiedi”.</div>"
         "<div class='card'>"
         "<label for='q' style='font-weight:600'>Domanda</label>"
-        "<textarea id='q' placeholder='Es.: i CTCEM si posano con resine? o CTF con chiodatrice normale?'></textarea>"
+        "<textarea id='q' placeholder='Es.: i CTCEM si posano con resine? oppure CTF con chiodatrice normale?'></textarea>"
         "<div class='row'>"
         "<div>Lingua: <select id='lang'><option value='it'>Italiano</option><option value='en'>English</option></select></div>"
         "<button id='go'>Chiedi</button>"
@@ -198,7 +201,7 @@ def index():
         "</div>"
         "<pre id='out' style='margin-top:12px'></pre>"
         "<div class='muted' style='font-size:13px;margin-top:6px'>"
-        "Endpoint: GET /health • POST /ask — body: {\"question\":\"...\",\"lang\":\"it\"}"
+        "Endpoint: <a href='/health'>GET /health</a> • POST /ask — body: {\"question\":\"...\",\"lang\":\"it\"}"
         "</div>"
         "</div></div>"
         "<script>"
