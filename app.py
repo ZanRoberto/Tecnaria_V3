@@ -2,10 +2,11 @@
 # - Home (/) con form per fare domande e vedere la risposta
 # - FastAPI + OpenAI Responses API (senza presence/frequency penalty)
 # - Dominio ristretto a Tecnaria (hard-guard)
-# - Stile “telefono” forzato via system prompt
+# - Stile “telefono” forzato via system prompt (se serve il modello)
 # - Scorciatoie “a scheda” per coerenza 100% (CTF/chiodatrice, CTCEM/resine, MAXI/tavolato, modalità posa)
 # - NEW: caso esplicito “CTF in CRESTA” → No, posa in GOLA
-# Endpoint: GET / (UI), GET /health, POST /ask
+# - NEW: scheda export (documenti, Incoterms, HS code) in versione “soft”
+# Endpoint: GET /(UI), GET /health, POST /ask
 
 import os, re
 from typing import List
@@ -31,7 +32,8 @@ app.add_middleware(
 TEC_KEYWORDS = [
     "tecnaria","ctf","ctcem","ctl","maxi","lamiera","grecata","laterocemento",
     "connettore","connettori","p560","spit","eta","dop","marcatura ce",
-    "posa","interasse","incoterms","packing list","hs code","soletta","tavolato","assito","trave","cresta","gola"
+    "posa","interasse","incoterms","packing list","hs code","soletta",
+    "tavolato","assito","trave","cresta","gola","export","spedizione","dogana"
 ]
 _dom_rx = re.compile("|".join([re.escape(k) for k in TEC_KEYWORDS]), re.I)
 
@@ -47,8 +49,9 @@ _RX = {
     "POSA_CTF":        re.compile(r"\bctf\b.*\b(posa|installaz|montagg)\w*\b|\b(posa|installaz|montagg)\w*\b.*\bctf\b", re.I),
     "POSA_CTCEM":      re.compile(r"\bctcem\b.*\b(posa|installaz|montagg)\w*\b|\b(posa|installaz|montagg)\w*\b.*\bctcem\b", re.I),
     "POSA_MAXI":       re.compile(r"\b(ctl\s*maxi|maxi)\b.*\b(posa|installaz|montagg)\w*\b|\b(posa|installaz|montagg)\w*\b.*\b(ctl\s*maxi|maxi)\b", re.I),
-    # NEW: domanda che cita CTF + "cresta"
     "CTF_CRESTA":      re.compile(r"\bctf\b.*\bcresta\b|\bcresta\b.*\bctf\b", re.I),
+    # NEW: export / documenti / Incoterms / HS code
+    "EXPORT_DOCS":     re.compile(r"\b(export|incoterm|hs\s*code|packing|spedizion|dogan)\w*\b", re.I),
 }
 
 def _bold(s: str) -> str:
@@ -62,12 +65,12 @@ def _pack(head: str, bullets: List[str], note: str) -> str:
 def sheet_ctf_chiodatrice() -> str:
     head = "Sì, ma **non** con una chiodatrice qualsiasi."
     bullets = [
-        f"usa {_bold('SPIT P560')} con {_bold('2 chiodi')} per connettore; kit/adattatori dedicati",
+        f"usa {_bold('SPIT P560')} con {_bold('2 chiodi')} per connettore",
         "posa **in gola**, utensile **perpendicolare**, piastra **in battuta**",
         "esegui **taratura** su provino identico prima della produzione",
         "varianti solo previa **approvazione Tecnaria** (qualifica in sito)",
     ]
-    note = "Nota: vedi **Istruzioni di posa CTF**."
+    note = "Nota: vedi **Istruuzioni di posa CTF**; interassi/quantità si **confermano su DWG/PDF**."
     return _pack(head, bullets, note)
 
 def sheet_ctcem_resine() -> str:
@@ -77,15 +80,15 @@ def sheet_ctcem_resine() -> str:
         "**foratura → pulizia foro → avvitamento a battuta piastra**",
         "varianti solo previa **approvazione Tecnaria**",
     ]
-    note = "Nota: vedi **Istruzioni di posa CTCEM**."
+    note = "Nota: vedi **Istruzioni di posa CTCEM**; interassi/quantità si **confermano su DWG/PDF**."
     return _pack(head, bullets, note)
 
 def sheet_maxi_tavolato() -> str:
     head = "Sì: **CTL MAXI** per posa su tavolato (modello/lunghezze da confermare su elaborati)."
     bullets = [
         "**viti** che **attraversano il tavolato e ancorano nella trave** (non solo nel tavolato)",
-        "testa **sopra la rete** e **sotto** il filo superiore del getto",
-        "modello/altezza e lunghezza viti **si confermano su DWG/PDF**",
+        "testa **sopra la rete** e **sotto** il filo del getto",
+        "modello/altezza e **lunghezza viti** si **confermano su DWG/PDF**",
     ]
     note = "Nota: vedi **Istruzioni CTL MAXI / particolari costruttivi**."
     return _pack(head, bullets, note)
@@ -98,7 +101,7 @@ def sheet_posa_ctf() -> str:
         "eseguire **taratura** su provino identico prima della produzione",
         "varianti solo previa **approvazione Tecnaria**",
     ]
-    note = "**Nota**: Istruzioni di posa **CTF**"
+    note = "**Nota**: Istruzioni di posa **CTF**; interassi/quantità su **DWG/PDF**."
     return _pack(head, bullets, note)
 
 def sheet_posa_ctcem() -> str:
@@ -108,23 +111,22 @@ def sheet_posa_ctcem() -> str:
         "**no resine**; varianti solo se approvate da Tecnaria",
         "confermare interassi e quantità su **DWG/PDF**",
     ]
-    note = "**Nota**: Istruzioni di posa **CTCEM**"
+    note = "**Nota**: Istruzioni di posa **CTCEM**."
     return _pack(head, bullets, note)
 
 def sheet_posa_maxi() -> str:
     head = "**CTL MAXI (legno / tavolato)**"
     bullets = [
         "**viti** che **attraversano il tavolato e ancorano nella trave** (non solo nel tavolato)",
-        "testa **sopra la rete** e **sotto** il filo superiore del getto",
+        "testa **sopra la rete** e **sotto** il filo del getto",
         "modello e lunghezza viti **si confermano su DWG/PDF**",
     ]
-    note = "**Nota**: Istruzioni **CTL MAXI / particolari costruttivi**"
+    note = "**Nota**: Istruzioni **CTL MAXI / particolari costruttivi**."
     return _pack(head, bullets, note)
 
 def sheet_posa_panorama() -> str:
     return "\n".join([sheet_posa_ctf(), "", sheet_posa_ctcem(), "", sheet_posa_maxi()])
 
-# NEW: scheda specifica per "CTF in cresta"
 def sheet_ctf_cresta() -> str:
     head = "No: la posa dei CTF su lamiera si fa **in gola**, non in cresta."
     bullets = [
@@ -136,6 +138,21 @@ def sheet_ctf_cresta() -> str:
     note = "Nota: vedi **Istruzioni di posa CTF**; interassi/quantità si **confermano su DWG/PDF**."
     return _pack(head, bullets, note)
 
+# NEW: Export (soft gold)
+def sheet_export_docs() -> str:
+    head = ("Per le forniture export forniamo la documentazione standard e possiamo applicare "
+            "gli Incoterms concordati in offerta; l’HS code viene indicato come famiglia e confermato in ordine.")
+    bullets = [
+        "**Documenti tecnici**: ETA, DoP, marcatura CE, istruzioni di posa",
+        "**Documenti export**: packing list, fattura proforma/commerciale, dichiarazione di origine (se richiesta), Paese d’origine, dati fiscali (VAT/EORI se necessario)",
+        "**Incoterms**: EXW / FCA / FOB / CIF / DDP, da definire insieme in fase di offerta",
+        "**HS code**: indichiamo la famiglia merceologica; conferma precisa in ordine",
+        "**Imballi/etichette**: standard o personalizzate su richiesta"
+    ]
+    note = ("**Nota:** per preparare un’offerta accurata servono PDF/DWG, quantità, Paese di destinazione "
+            "e la resa Incoterms desiderata.")
+    return _pack(head, bullets, note)
+
 # --------------------------- System prompt (stile “telefono”) ----------------------
 def build_system_prompt(lang: str = "it") -> str:
     lang = (lang or "it").strip().lower()
@@ -145,12 +162,13 @@ def build_system_prompt(lang: str = "it") -> str:
         " - Apri con verdetto secco **Sì/No + motivo breve** in UNA riga.",
         " - Poi 3–5 bullet telegrafici con parole chiave in **grassetto**.",
         " - Chiudi con **Nota** (Istruzioni Tecnaria o richiesta DWG/PDF).",
+        "Tono: chiaro e **morbido** (consiglia, evita termini perentori salvo necessità).",
         "Limiti:",
         " - Non inventare **mm/Ø/modelli** non presenti nella domanda.",
         " - Se mancano dati, usa: 'si conferma su DWG/PDF'.",
         " - Evita disclaimer o riferimenti all'AI.",
         "Contenuti cardine:",
-        " - CTF: **SPIT P560 + 2 chiodi**, **posa in gola**, **taratura** su provino; varianti solo con approvazione Tecnaria.",
+        " - CTF: **SPIT P560 + 2 chiodi**, **posa in gola**, **taratura** su provino; varianti con approvazione Tecnaria.",
         " - CTCEM: **no resine**; **foratura → pulizia foro → avvitamento a battuta piastra**.",
         " - CTL MAXI: **viti attraversano tavolato e ancorano nella trave**; testa **sopra rete/sotto filo getto**; modello/lunghezze su **DWG/PDF**.",
         f"Lingua: usa la lingua della domanda (default: {lang})."
@@ -172,7 +190,6 @@ def call_openai(system_prompt: str, user_text: str) -> str:
         try:
             return (resp.output_text or "").strip()
         except Exception:
-            # Fallback robusto
             if hasattr(resp, "output") and resp.output:
                 first = resp.output[0]
                 content = getattr(first, "content", None) or []
@@ -208,7 +225,7 @@ def index():
         "<div class='muted' style='margin-bottom:16px'>Fai una domanda Tecnaria e premi “Chiedi”.</div>"
         "<div class='card'>"
         "<label for='q' style='font-weight:600'>Domanda</label>"
-        "<textarea id='q' placeholder='Es.: CTF in cresta o in gola? CTCEM con resine? MAXI su tavolato?'></textarea>"
+        "<textarea id='q' placeholder='Es.: CTF in cresta o in gola? CTCEM con resine? MAXI su tavolato? Export/Incoterms?'></textarea>"
         "<div class='row'>"
         "<div>Lingua: <select id='lang'><option value='it'>Italiano</option><option value='en'>English</option></select></div>"
         "<button id='go'>Chiedi</button>"
@@ -262,6 +279,8 @@ async def ask(req: Request):
         return JSONResponse({"ok": True, "answer": msg, "model": "guard", "mode": "scope"})
 
     # Scorciatoie “a scheda” per coerenza 100%
+    if _RX["EXPORT_DOCS"].search(q):
+        return JSONResponse({"ok": True, "answer": sheet_export_docs(), "model": "style", "mode": "sheet"})
     if _RX["CTF_CRESTA"].search(q):
         return JSONResponse({"ok": True, "answer": sheet_ctf_cresta(), "model": "style", "mode": "sheet"})
     if _RX["CTF_CHIODATRICE"].search(q):
