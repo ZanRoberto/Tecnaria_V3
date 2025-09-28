@@ -1,13 +1,4 @@
-# app.py — Tecnaria Bot API (UI integrata)
-# - Home (/) con form per fare domande e vedere la risposta
-# - FastAPI + OpenAI Responses API (senza presence/frequency penalty)
-# - Dominio ristretto a Tecnaria (hard-guard)
-# - Stile “telefono” forzato via system prompt (se serve il modello)
-# - Scorciatoie “a scheda” per coerenza 100% (CTF/chiodatrice, CTCEM/resine, MAXI/tavolato, modalità posa)
-# - NEW: caso esplicito “CTF in CRESTA” → No, posa in GOLA
-# - NEW: scheda export (documenti, Incoterms, HS code) in versione “soft”
-# Endpoint: GET /(UI), GET /health, POST /ask
-
+# app.py — Tecnaria Bot API (UI integrata, versione “soft” export)
 import os, re
 from typing import List
 from fastapi import FastAPI, HTTPException, Request
@@ -50,7 +41,6 @@ _RX = {
     "POSA_CTCEM":      re.compile(r"\bctcem\b.*\b(posa|installaz|montagg)\w*\b|\b(posa|installaz|montagg)\w*\b.*\bctcem\b", re.I),
     "POSA_MAXI":       re.compile(r"\b(ctl\s*maxi|maxi)\b.*\b(posa|installaz|montagg)\w*\b|\b(posa|installaz|montagg)\w*\b.*\b(ctl\s*maxi|maxi)\b", re.I),
     "CTF_CRESTA":      re.compile(r"\bctf\b.*\bcresta\b|\bcresta\b.*\bctf\b", re.I),
-    # NEW: export / documenti / Incoterms / HS code
     "EXPORT_DOCS":     re.compile(r"\b(export|incoterm|hs\s*code|packing|spedizion|dogan)\w*\b", re.I),
 }
 
@@ -70,7 +60,7 @@ def sheet_ctf_chiodatrice() -> str:
         "esegui **taratura** su provino identico prima della produzione",
         "varianti solo previa **approvazione Tecnaria** (qualifica in sito)",
     ]
-    note = "Nota: vedi **Istruuzioni di posa CTF**; interassi/quantità si **confermano su DWG/PDF**."
+    note = "Nota: vedi **Istruzioni di posa CTF**; interassi/quantità si **confermano su DWG/PDF**."
     return _pack(head, bullets, note)
 
 def sheet_ctcem_resine() -> str:
@@ -138,19 +128,19 @@ def sheet_ctf_cresta() -> str:
     note = "Nota: vedi **Istruzioni di posa CTF**; interassi/quantità si **confermano su DWG/PDF**."
     return _pack(head, bullets, note)
 
-# NEW: Export (soft gold)
+# --------- Export (SOFT GOLD) — versione più morbida -----------
 def sheet_export_docs() -> str:
-    head = ("Per le forniture export forniamo la documentazione standard e possiamo applicare "
-            "gli Incoterms concordati in offerta; l’HS code viene indicato come famiglia e confermato in ordine.")
+    head = ("Sì, per le forniture all’estero possiamo fornire la documentazione export e gestire "
+            "Incoterms/HS code in base al Paese di destinazione.")
     bullets = [
-        "**Documenti tecnici**: ETA, DoP, marcatura CE, istruzioni di posa",
-        "**Documenti export**: packing list, fattura proforma/commerciale, dichiarazione di origine (se richiesta), Paese d’origine, dati fiscali (VAT/EORI se necessario)",
-        "**Incoterms**: EXW / FCA / FOB / CIF / DDP, da definire insieme in fase di offerta",
-        "**HS code**: indichiamo la famiglia merceologica; conferma precisa in ordine",
-        "**Imballi/etichette**: standard o personalizzate su richiesta"
+        "**Documenti**: packing list, fattura (proforma/commerciale), dichiarazione di origine se richiesta, "
+        "ETA/DoP/CE e istruzioni di posa",
+        "**Incoterms**: di solito EXW o FCA; altri (FOB, CIF, DDP) su accordo in offerta",
+        "**HS code**: indichiamo la **famiglia**; il dettaglio preciso si **conferma in ordine**",
+        "**Imballi/etichette**: standard; **personalizzazioni** disponibili su richiesta"
     ]
-    note = ("**Nota:** per preparare un’offerta accurata servono PDF/DWG, quantità, Paese di destinazione "
-            "e la resa Incoterms desiderata.")
+    note = ("**Nota**: inviaci **DWG/PDF**, **quantità**, **Paese di destinazione** e la **resa Incoterms** desiderata "
+            "per preparare un’offerta completa.")
     return _pack(head, bullets, note)
 
 # --------------------------- System prompt (stile “telefono”) ----------------------
@@ -186,7 +176,6 @@ def call_openai(system_prompt: str, user_text: str) -> str:
                 {"role": "user",   "content": [{"type": "input_text", "text": user_text}]}
             ]
         )
-        # SDK recente: resp.output_text
         try:
             return (resp.output_text or "").strip()
         except Exception:
@@ -202,7 +191,6 @@ def call_openai(system_prompt: str, user_text: str) -> str:
 # ----------------------------------- Routes --------------------------------------
 @app.get("/", response_class=HTMLResponse)
 def index():
-    # Pagina UI: scrivi domanda, premi "Chiedi", vedi risposta.
     html = (
         "<!doctype html><html><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
@@ -278,7 +266,7 @@ async def ask(req: Request):
                "documentazione, export). Per favore riformula la domanda in questo perimetro.")
         return JSONResponse({"ok": True, "answer": msg, "model": "guard", "mode": "scope"})
 
-    # Scorciatoie “a scheda” per coerenza 100%
+    # Scorciatoie “a scheda”
     if _RX["EXPORT_DOCS"].search(q):
         return JSONResponse({"ok": True, "answer": sheet_export_docs(), "model": "style", "mode": "sheet"})
     if _RX["CTF_CRESTA"].search(q):
