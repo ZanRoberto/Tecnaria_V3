@@ -1,10 +1,10 @@
-# app.py — Tecnaria Bot API (standalone, no SINAPSI)
-# - FastAPI + OpenAI Responses API
+# app.py — Tecnaria Bot API (UI integrata, no SINAPSI)
+# - Home (/) con form per fare domande e vedere le risposte
+# - FastAPI + OpenAI Responses API (niente presence/frequency penalty)
 # - Dominio ristretto a Tecnaria (hard-guard)
-# - Stile "telefono" forzato via system prompt
-# - Shortcut: per domande ricorrenti note (CTF+chiodatrice, CTCEM+resine, MAXI+tavolato, "modalità di posa")
-#   risponde con schede pre-formattate senza chiamare il modello (coerenza massima)
-# - Endpoint: GET /health, POST /ask  (body: {"question":"...", "lang":"it"})
+# - Stile “telefono” forzato via system prompt
+# - Shortcut “a scheda” per i casi ricorrenti (CTF/chiodatrice, CTCEM/resine, MAXI/tavolato, modalità di posa)
+# Endpoint: GET / (UI), GET /health, POST /ask
 
 import os, re
 from typing import List
@@ -17,11 +17,7 @@ APP_NAME = "Tecnaria Bot API"
 MODEL_NAME = (os.getenv("MODEL_NAME") or "gpt-4.1").strip()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or ""
 
-if not OPENAI_API_KEY:
-    # Non blocchiamo l'avvio: l'errore verrà gestito al primo /ask
-    pass
-
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 app = FastAPI(title=APP_NAME)
 app.add_middleware(
@@ -147,7 +143,7 @@ def build_system_prompt(lang: str = "it") -> str:
 
 # --------------------------- OpenAI Responses API wrapper -------------------------
 def call_openai(system_prompt: str, user_text: str) -> str:
-    if not OPENAI_API_KEY:
+    if not client:
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY non configurata.")
     try:
         resp = client.responses.create(
@@ -157,11 +153,9 @@ def call_openai(system_prompt: str, user_text: str) -> str:
                 {"role": "user",   "content": [{"type": "text", "text": user_text}]}
             ]
         )
-        # output_text nelle versioni recenti
         try:
             return (resp.output_text or "").strip()
         except Exception:
-            # Fallback robusto
             if hasattr(resp, "output") and resp.output:
                 first = resp.output[0]
                 content = getattr(first, "content", None) or []
@@ -174,20 +168,61 @@ def call_openai(system_prompt: str, user_text: str) -> str:
 # ----------------------------------- Routes --------------------------------------
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return f"""<!doctype html>
-<html><head><meta charset="utf-8"><title>{APP_NAME}</title></head>
-<body style="font-family:system-ui,Arial,sans-serif;padding:24px;line-height:1.5">
-<h1>{APP_NAME}</h1>
-<p>Endpoint:</p>
-<ul>
-<li><code>GET /health</code></li>
-<li><code>POST /ask</code> — body: <code>{{"question": "...", "lang": "it"}}</code></li>
-</ul>
-</body></html>"""
+    # Pagina UI: scrivi domanda, premi "Chiedi", vedi risposta.
+    html = (
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>" + APP_NAME + "</title>"
+        "<style>"
+        "body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:0;background:#f7f7fb;color:#111}"
+        ".wrap{max-width:900px;margin:32px auto;padding:16px}"
+        ".card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.06);padding:18px}"
+        "textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px;min-height:90px}"
+        "button{background:#0b5cff;color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}"
+        "button:disabled{opacity:.6;cursor:not-allowed}"
+        "select,input{border:1px solid #d1d5db;border-radius:8px;padding:8px}"
+        "pre{white-space:pre-wrap;background:#0a0a0a;color:#f7f7f7;padding:14px;border-radius:10px;max-height:50vh;overflow:auto}"
+        ".row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}"
+        ".muted{color:#6b7280}"
+        "</style></head><body>"
+        "<div class='wrap'>"
+        "<h1 style='margin:0 0 10px'>" + APP_NAME + "</h1>"
+        "<div class='muted' style='margin-bottom:16px'>Fai una domanda Tecnaria e premi “Chiedi”.</div>"
+        "<div class='card'>"
+        "<label for='q' style='font-weight:600'>Domanda</label>"
+        "<textarea id='q' placeholder='Es.: i CTCEM si posano con resine? o CTF con chiodatrice normale?'></textarea>"
+        "<div class='row'>"
+        "<div>Lingua: <select id='lang'><option value='it'>Italiano</option><option value='en'>English</option></select></div>"
+        "<button id='go'>Chiedi</button>"
+        "<span id='status' class='muted'></span>"
+        "</div>"
+        "<pre id='out' style='margin-top:12px'></pre>"
+        "<div class='muted' style='font-size:13px;margin-top:6px'>"
+        "Endpoint: GET /health • POST /ask — body: {\"question\":\"...\",\"lang\":\"it\"}"
+        "</div>"
+        "</div></div>"
+        "<script>"
+        "const $ = id => document.getElementById(id);"
+        "const q=$('q'), lang=$('lang'), go=$('go'), out=$('out'), statusEl=$('status');"
+        "go.onclick = async () => {"
+        "  const question = (q.value||'').trim();"
+        "  if(!question){ out.textContent='Scrivi una domanda.'; return; }"
+        "  go.disabled=true; statusEl.textContent='...'; out.textContent='';"
+        "  try{"
+        "    const r = await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,lang:lang.value})});"
+        "    const j = await r.json();"
+        "    out.textContent = j.answer || JSON.stringify(j,null,2);"
+        "  }catch(e){ out.textContent = 'Errore: '+e; }"
+        "  finally{ go.disabled=false; statusEl.textContent=''; }"
+        "};"
+        "</script>"
+        "</body></html>"
+    )
+    return HTMLResponse(content=html)
 
 @app.get("/health")
 def health():
-    return {"ok": True, "model": MODEL_NAME}
+    return {"ok": True, "model": MODEL_NAME, "api_key_set": bool(OPENAI_API_KEY)}
 
 @app.post("/ask")
 async def ask(req: Request):
@@ -208,7 +243,7 @@ async def ask(req: Request):
                "documentazione, export). Per favore riformula la domanda in questo perimetro.")
         return JSONResponse({"ok": True, "answer": msg, "model": "guard", "mode": "scope"})
 
-    # Shortcut per i casi ricorrenti (risposte “a scheda”, zero varianza)
+    # Shortcut “a scheda” per i casi ricorrenti (risposte coerenti al 100%)
     if _RX["CTF_CHIODATRICE"].search(q):
         return JSONResponse({"ok": True, "answer": sheet_ctf_chiodatrice(), "model": "style", "mode": "sheet"})
     if _RX["CTCEM_RESINE"].search(q):
@@ -224,7 +259,6 @@ async def ask(req: Request):
     if _RX["POSA_GENERIC"].search(q):
         return JSONResponse({"ok": True, "answer": sheet_posa_panorama(), "model": "style", "mode": "sheet"})
 
-    # Tutto il resto passa al modello, con stile imposto dal system prompt
-    system_prompt = build_system_prompt(lang=lang)
-    answer = call_openai(system_prompt, q)
+    # Tutto il resto: modello con stile forzato
+    answer = call_openai(build_system_prompt(lang=lang), q)
     return JSONResponse({"ok": True, "answer": answer, "model": MODEL_NAME, "mode": "responses"})
