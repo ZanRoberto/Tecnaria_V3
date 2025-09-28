@@ -1,4 +1,8 @@
-# app.py — Tecnaria Bot API (UI integrata, versione “soft” export)
+# app.py — Tecnaria Bot API (UI integrata, “soft gold” incluse)
+# Endpoint: GET /(UI), GET /health, POST /ask
+# Start cmd (Render):
+#   gunicorn app:app -k uvicorn.workers.UvicornWorker --timeout 180 --workers=1 --preload -b 0.0.0.0:$PORT
+
 import os, re
 from typing import List
 from fastapi import FastAPI, HTTPException, Request
@@ -24,7 +28,8 @@ TEC_KEYWORDS = [
     "tecnaria","ctf","ctcem","ctl","maxi","lamiera","grecata","laterocemento",
     "connettore","connettori","p560","spit","eta","dop","marcatura ce",
     "posa","interasse","incoterms","packing list","hs code","soletta",
-    "tavolato","assito","trave","cresta","gola","export","spedizione","dogana"
+    "tavolato","assito","trave","cresta","gola","export","spedizione","dogana",
+    "pagamento","preventivo","offerta","reclami","assistenza","reso","res i"
 ]
 _dom_rx = re.compile("|".join([re.escape(k) for k in TEC_KEYWORDS]), re.I)
 
@@ -41,7 +46,12 @@ _RX = {
     "POSA_CTCEM":      re.compile(r"\bctcem\b.*\b(posa|installaz|montagg)\w*\b|\b(posa|installaz|montagg)\w*\b.*\bctcem\b", re.I),
     "POSA_MAXI":       re.compile(r"\b(ctl\s*maxi|maxi)\b.*\b(posa|installaz|montagg)\w*\b|\b(posa|installaz|montagg)\w*\b.*\b(ctl\s*maxi|maxi)\b", re.I),
     "CTF_CRESTA":      re.compile(r"\bctf\b.*\bcresta\b|\bcresta\b.*\bctf\b", re.I),
+    # Commerciale
     "EXPORT_DOCS":     re.compile(r"\b(export|incoterm|hs\s*code|packing|spedizion|dogan)\w*\b", re.I),
+    "LEAD_TIMES":      re.compile(r"\b(tempi|consegn|lead\s*time|disponibilit[aà]|a\s*stock|pront[oi])\b", re.I),
+    "PAYMENTS":        re.compile(r"\b(pagament[io]|termini\s*di\s*pagamento|saldo|acconto|bonific[io])\b", re.I),
+    "SUPPORT_RET":     re.compile(r"\b(reclami?|assistenza|reso|resi|garanzi\w+|supporto)\b", re.I),
+    "QUOTE_MIN":       re.compile(r"(preventiv|offert)\w+|\b(cosa\s+vi\s+serve|dati\s+minimi)\b", re.I),
 }
 
 def _bold(s: str) -> str:
@@ -115,7 +125,7 @@ def sheet_posa_maxi() -> str:
     return _pack(head, bullets, note)
 
 def sheet_posa_panorama() -> str:
-    return "\n".join([sheet_posa_ctf(), "", sheet_posa_ctcem(), "", sheet_posa_maxi()])
+    return "\n\n".join([sheet_posa_ctf(), sheet_posa_ctcem(), sheet_posa_maxi()])
 
 def sheet_ctf_cresta() -> str:
     head = "No: la posa dei CTF su lamiera si fa **in gola**, non in cresta."
@@ -141,6 +151,59 @@ def sheet_export_docs() -> str:
     ]
     note = ("**Nota**: inviaci **DWG/PDF**, **quantità**, **Paese di destinazione** e la **resa Incoterms** desiderata "
             "per preparare un’offerta completa.")
+    return _pack(head, bullets, note)
+
+# --------- Lead times / disponibilità (SOFT GOLD) -----------
+def sheet_lead_times() -> str:
+    head = ("Possiamo indicare disponibilità e tempi in base al prodotto e alle quantità; "
+            "la conferma avviene in offerta/ordine.")
+    bullets = [
+        "**A stock / produzione**: alcuni articoli pronti, altri su **lead time**",
+        "**Indicazione tipica**: disponibilità o **settimane** di produzione; imballo standard",
+        "**Parziali**: possibili **spedizioni parziali** su richiesta",
+        "**Ritiro/resa**: **EXW/FCA** di norma; altre rese su accordo",
+        "**Conferma**: tempi e quantità **si confermano in offerta** (poi in ordine)",
+    ]
+    note = ("**Nota**: inviaci **PDF/DWG**, **quantità** e **Paese** per stimare correttamente tempi e spedizione.")
+    return _pack(head, bullets, note)
+
+# --------- Condizioni di pagamento (SOFT GOLD) -----------
+def sheet_payments() -> str:
+    head = "Definiamo il pagamento insieme in offerta in base a destinazione e Incoterms."
+    bullets = [
+        "**Modalità**: **bonifico bancario** (anticipo/saldo)",
+        "**Export extra-UE**: condizioni **senza IVA** con prova di export",
+        "**Incassi**: saldo **prima della spedizione** se non diversamente concordato",
+        "**Valuta**: normalmente **EUR** (altre valute su accordo)",
+        "**Documenti**: **proforma** per anticipo, **commercial invoice** a saldo",
+    ]
+    note = ("**Nota**: inserisci in richiesta **Paese**, **resa Incoterms** e l’eventuale **scadenza** desiderata.")
+    return _pack(head, bullets, note)
+
+# --------- Resi / Reclami / Assistenza (SOFT GOLD) -----------
+def sheet_support_returns() -> str:
+    head = "Siamo a disposizione per assistenza tecnica e gestione resi/reclami."
+    bullets = [
+        "**Assistenza**: supporto su posa/prodotto; invia foto/elaborati per analisi rapida",
+        "**Resi**: concordati caso per caso; imballo integro e autorizzazione preventiva",
+        "**Reclami**: apri ticket con **ordine/lotto**, descrizione e immagini",
+        "**Tempi**: riscontro **entro 2 giorni lavorativi**; soluzioni condivise",
+        "**Documenti**: verbale di non conformità se necessario",
+    ]
+    note = "**Nota**: scrivici i riferimenti d’ordine e il caso; ti guidiamo passo passo."
+    return _pack(head, bullets, note)
+
+# --------- Preventivo: dati minimi da inviare (SOFT GOLD) -----------
+def sheet_quote_min_data() -> str:
+    head = "Per preparare un preventivo accurato ci servono pochi dati chiave."
+    bullets = [
+        "**Elaborati**: PDF/DWG del solaio (tipologia: lamiera grecata o laterocemento)",
+        "**Quantità**: indicazioni per aree/lunghezze e connettori (se già stimati)",
+        "**Destinazione**: Paese e **Incoterms** desiderato (es. EXW/FCA/FOB/CIF/DDP)",
+        "**Tempistiche**: eventuale data obiettivo o vincoli di cantiere",
+        "**Contatti**: ragione sociale e recapito",
+    ]
+    note = "In base ai dati confermiamo prodotti/accessori (CTF/CTCEM/CTL MAXI) e tempistiche."
     return _pack(head, bullets, note)
 
 # --------------------------- System prompt (stile “telefono”) ----------------------
@@ -213,7 +276,7 @@ def index():
         "<div class='muted' style='margin-bottom:16px'>Fai una domanda Tecnaria e premi “Chiedi”.</div>"
         "<div class='card'>"
         "<label for='q' style='font-weight:600'>Domanda</label>"
-        "<textarea id='q' placeholder='Es.: CTF in cresta o in gola? CTCEM con resine? MAXI su tavolato? Export/Incoterms?'></textarea>"
+        "<textarea id='q' placeholder='Es.: CTF in gola? CTCEM con resine? MAXI su tavolato? Export/tempi/pagamenti?'></textarea>"
         "<div class='row'>"
         "<div>Lingua: <select id='lang'><option value='it'>Italiano</option><option value='en'>English</option></select></div>"
         "<button id='go'>Chiedi</button>"
@@ -266,9 +329,19 @@ async def ask(req: Request):
                "documentazione, export). Per favore riformula la domanda in questo perimetro.")
         return JSONResponse({"ok": True, "answer": msg, "model": "guard", "mode": "scope"})
 
-    # Scorciatoie “a scheda”
+    # Scorciatoie “a scheda” (risposte immediate, consistenti)
     if _RX["EXPORT_DOCS"].search(q):
         return JSONResponse({"ok": True, "answer": sheet_export_docs(), "model": "style", "mode": "sheet"})
+    if _RX["LEAD_TIMES"].search(q):
+        return JSONResponse({"ok": True, "answer": sheet_lead_times(), "model": "style", "mode": "sheet"})
+    if _RX["PAYMENTS"].search(q):
+        return JSONResponse({"ok": True, "answer": sheet_payments(), "model": "style", "mode": "sheet"})
+    if _RX["SUPPORT_RET"].search(q):
+        return JSONResponse({"ok": True, "answer": sheet_support_returns(), "model": "style", "mode": "sheet"})
+    if _RX["QUOTE_MIN"].search(q):
+        return JSONResponse({"ok": True, "answer": sheet_quote_min_data(), "model": "style", "mode": "sheet"})
+
+    # Tecniche
     if _RX["CTF_CRESTA"].search(q):
         return JSONResponse({"ok": True, "answer": sheet_ctf_cresta(), "model": "style", "mode": "sheet"})
     if _RX["CTF_CHIODATRICE"].search(q):
@@ -286,6 +359,6 @@ async def ask(req: Request):
     if _RX["POSA_GENERIC"].search(q):
         return JSONResponse({"ok": True, "answer": sheet_posa_panorama(), "model": "style", "mode": "sheet"})
 
-    # Tutto il resto: modello con stile forzato
+    # Fallback: modello con stile “telefono” forzato
     answer = call_openai(build_system_prompt(lang=lang), q)
     return JSONResponse({"ok": True, "answer": answer, "model": MODEL_NAME, "mode": "responses"})
