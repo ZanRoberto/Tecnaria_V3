@@ -1,318 +1,171 @@
-# app.py — Tecnaria Bot (Flask) • Render-ready • ChatGPT+Critici • Debug /diag
-import os, re, json, logging
-from pathlib import Path
-from typing import Optional, List
-
-from flask import Flask, request, jsonify, make_response
+import os, glob, re, httpx, asyncio
+from typing import List, Tuple
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from openai import OpenAI
 
-# ====== LOGGING SEMPLICE ======
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("tecnaria-bot")
+# ================== FASTAPI ==================
+app = FastAPI(title="Tecnaria Bot - Web+Local")
 
-# ====== ENV OBBLIGATORI / OPZIONALI ======
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# ================== ENV VARS ==================
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY non impostata (Render → Environment).")
+    raise RuntimeError("OPENAI_API_KEY non impostata.")
+MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.1-mini")
 
-# Interruttore arricchimenti (default ON)
-CRITICI_ENRICH = os.getenv("CRITICI_ENRICH", "1").lower() in ("1", "true", "yes")
-
-# Nome modello: priorità a MODEL_NAME; compatibilità con OPENAI_MODEL; poi fallback automatici
-MODEL_CANDIDATES = [
-    os.getenv("MODEL_NAME") or os.getenv("OPENAI_MODEL") or "",
-    "gpt-4o", "gpt-4.0",
-    "gpt-4.1", "gpt-4.1-mini",
-    "gpt-4o-mini",
+# Ricerca web
+SEARCH_API_ENDPOINT = os.environ.get("SEARCH_API_ENDPOINT")
+SEARCH_API_KEY = os.environ.get("SEARCH_API_KEY")
+SEARCH_TOPK = int(os.environ.get("SEARCH_TOPK", "5"))
+FETCH_WEB_FIRST = os.environ.get("FETCH_WEB_FIRST", "1") == "1"
+PREFERRED_DOMAINS = [
+    d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com").split(",") if d.strip()
 ]
 
-# ====== FILE LOCALI (OPZIONALI) ======
-CONTACTS_FILE = "static/data/contatti.json"       # recapiti base (opzionale)
-CRITICI_DIR   = "static/data/critici"
-F_CONTATTI    = Path(CRITICI_DIR) / "contatti.json"
-F_BANCARI     = Path(CRITICI_DIR) / "bancari.json"
-F_HSINC       = Path(CRITICI_DIR) / "hs_incoterms.json"
-F_POSACTF     = Path(CRITICI_DIR) / "posa_ctf.json"
-F_CERTS       = Path(CRITICI_DIR) / "certs.json"
-F_POLRESI     = Path(CRITICI_DIR) / "policy_resi.json"
+# Documenti locali
+DOC_GLOB = os.environ.get("DOC_GLOB", "static/docs/*.txt")
 
-# ====== OPENAI CLIENT ======
+DEBUG = os.environ.get("DEBUG", "0") == "1"
+
+# ================== OPENAI ==================
 client = OpenAI(api_key=OPENAI_API_KEY)
-MODEL_IN_USE: Optional[str] = None
 
+# ================== PROMPT ==================
 SYSTEM_PROMPT = """
-Sei un assistente tecnico-commerciale per TECNARIA S.p.A.
-- Rispondi in modo chiaro, sintetico, professionale, nella lingua dell'utente (IT di default).
-- Se un dato è incerto (numeri, recapiti, HS code): non inventare; segnala l'incertezza.
-- Non fornire contatti se non espressamente disponibili nei dati ufficiali dell'app.
-- Per posa: attieniti a documentazione Tecnaria; se il dettaglio non è certo, dillo.
-- Per export/Incoterms/HS code: EXW/FCA sono i più comuni, ma HS code richiede prodotto e Paese.
-- Evita dettagli non verificabili e toni categorici; usa bullet dove utile.
-"""
+Sei il Tecnaria Bot.
 
-# ====== FLASK ======
-app = Flask(__name__, static_folder="static", static_url_path="/static")
+- Usa prima i contenuti trovati sul WEB (ricerca aperta).
+- Se ci sono più fonti, privilegia quelle ufficiali o tecniche (es. sito produttore), ma non escludere le altre.
+- Se il WEB non fornisce nulla, integra con i documenti locali (static/docs).
+- Se non trovi nulla, dillo chiaramente senza inventare.
+- Rispondi in bullet chiari. Alla fine aggiungi una sezione **Fonti** con gli URL o con la scritta (file locale).
+- Lingua: IT.
+""".strip()
 
-# ====== UTILS ======
-def _pack(head: str, bullets: List[str], note: Optional[str] = None) -> str:
-    lines = [head] if head else []
-    lines += [f"- {b}" for b in bullets if b]
-    if note:
-        lines.append("")
-        lines.append(f"_Nota:_ {note}")
-    return "\n".join(lines).strip()
+# ================== MODELLI I/O ==================
+class ChatIn(BaseModel):
+    message: str
 
-def _load_json(path: Path) -> Optional[dict]:
-    try:
-        if not path.exists():
-            return None
-        with open(path, "r", encoding="utf-8") as f:
-            obj = json.load(f)
-            return obj if isinstance(obj, dict) else None
-    except Exception as e:
-        log.warning(f"Impossibile leggere {path}: {e}")
-        return None
+# ================== UTILS ==================
+def _prefer_score(url: str) -> int:
+    return 1 if any(p in url for p in PREFERRED_DOMAINS) else 0
 
-def _contacts_primary_block() -> Optional[str]:
-    p = Path(CONTACTS_FILE)
-    if not p.exists():
-        return None
-    try:
-        data = json.load(open(p, "r", encoding="utf-8"))
-    except Exception:
-        return None
-    lines = []
-    comp = data.get("company")
-    if comp: lines.append(f"**{comp}**")
-    addr = " ".join([data.get("address",""), data.get("city","")]).strip()
-    if addr: lines.append(addr)
-    if data.get("phone"):  lines.append(f"Tel: {data['phone']}")
-    if data.get("email"):  lines.append(f"Email: {data['email']}")
-    if data.get("website"):lines.append(f"Sito: {data['website']}")
-    if not lines:
-        return None
-    return _pack("Dati ufficiali", lines, "Fonte: static/data/contatti.json")
+async def web_search(query: str, topk: int = 5) -> list[dict]:
+    if not SEARCH_API_ENDPOINT or not SEARCH_API_KEY:
+        return []
+    headers = {"Ocp-Apim-Subscription-Key": SEARCH_API_KEY}
+    params = {"q": query, "count": topk, "textDecorations": False, "textFormat": "Raw"}
+    async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as ac:
+        r = await ac.get(SEARCH_API_ENDPOINT, headers=headers, params=params)
+        if r.status_code != 200:
+            return []
+        data = r.json()
+        items = []
+        for w in (data.get("webPages", {}) or {}).get("value", []):
+            items.append({"name": w.get("name"), "url": w.get("url")})
+        # ordina dando priorità ai domini preferiti
+        items.sort(key=lambda x: _prefer_score(x["url"]), reverse=True)
+        return items[:topk]
 
-def _contacts_critici_block() -> Optional[str]:
-    data = _load_json(F_CONTATTI)
-    if not data:
-        return None
-    lines = []
-    comp = data.get("company")
-    if comp: lines.append(f"**{comp}**")
-    addr = " ".join([data.get("address",""), data.get("city","")]).strip()
-    if addr: lines.append(addr)
-    if data.get("phone"):   lines.append(f"Tel: {data['phone']}")
-    if data.get("email"):   lines.append(f"Email: {data['email']}")
-    if data.get("pec"):     lines.append(f"PEC: {data['pec']}")
-    if data.get("website"): lines.append(f"Sito: {data['website']}")
-    # opzionali legali accorpati in contatti.json
-    for k,label in (("partita_iva","Partita IVA"),("codice_fiscale","Codice Fiscale"),("rea","REA"),("sdi","SDI")):
-        if data.get(k): lines.append(f"{label}: {data[k]}")
-    if not lines:
-        return None
-    return _pack("Dati ufficiali", lines, "Fonte: static/data/critici/contatti.json")
+def _sanitize(html: str, max_chars: int = 12000) -> str:
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:max_chars]
 
-# Trigger “critici”
-RX_CONTACTS  = re.compile(r"\b(contatt|telefono|tel\.?|telefon|mail|email|pec|sede|indirizzo|recapiti|ufficio)\b", re.I)
-RX_CTF_POSA  = re.compile(r"\b(ctf)\b.*\b(posa|fiss|chiod|lamiera)\b|\b(posa|fiss|chiod|lamiera)\b.*\b(ctf)\b", re.I)
-RX_EXPORT    = re.compile(r"\b(export|spedizion|incoterm|resa|hs\s*code|dogan)\b", re.I)
-RX_BANK      = re.compile(r"\b(iban|bic|swift|coordinate\s*banc|bonifico)\b", re.I)
-RX_CERTS     = re.compile(r"\b(eta|certificaz|marcatura\s*ce|do[pb]|rapporto\s*prova)\b", re.I)
-RX_RESI      = re.compile(r"\b(resi?|reso|rma|garanzi[ae])\b", re.I)
+async def gather_web_context_generic(user_query: str) -> list[Tuple[str, str]]:
+    results = await web_search(user_query, topk=SEARCH_TOPK)
+    ctx = []
+    async with httpx.AsyncClient(follow_redirects=True, timeout=20.0) as ac:
+        for it in results:
+            try:
+                resp = await ac.get(it["url"], headers={"User-Agent":"Mozilla/5.0"})
+                if resp.status_code == 200 and resp.text:
+                    ctx.append((it["url"], _sanitize(resp.text)))
+            except Exception:
+                continue
+    return ctx
 
-def _block_hs_incoterms() -> Optional[str]:
-    data = _load_json(F_HSINC)
-    if not data:
-        return _pack("Export & Incoterms – Nota",
-                     ["Incoterms più frequenti: **EXW** / **FCA**.",
-                      "Per **HS code** serve confermare **prodotto e Paese**."],
-                     "Confermare condizioni definitive in offerta/ordine.")
-    bullets = []
-    if data.get("nota"): bullets.append(data["nota"])
-    return _pack("Export & Incoterms – Nota", bullets, None) if bullets else None
-
-def _block_posa_ctf() -> Optional[str]:
-    data = _load_json(F_POSACTF)
-    if not data:
-        return _pack("Posa CTF – Nota",
-                     ["Per ogni connettore CTF: **2 chiodi HSBR14** con **SPIT P560**.",
-                      "Rispettare geometria lamiera e documentazione Tecnaria (ETA/tavole)."],
-                     "Condizioni particolari: attenersi alle tavole di progetto.")
-    bullets = []
-    if data.get("nota"): bullets.append(data["nota"])
-    return _pack("Posa CTF – Nota", bullets, None) if bullets else None
-
-def _block_bancari() -> Optional[str]:
-    data = _load_json(F_BANCARI)
-    if not data: return None
-    bullets = []
-    if data.get("beneficiario"): bullets.append(f"Beneficiario: {data['beneficiario']}")
-    if data.get("iban"):         bullets.append(f"IBAN: {data['iban']}")
-    if data.get("bic"):          bullets.append(f"BIC/SWIFT: {data['bic']}")
-    if data.get("banca"):        bullets.append(f"Banca: {data['banca']}")
-    return _pack("Coordinate bancarie (ufficiali)", bullets, "Fonte: static/data/critici/bancari.json") if bullets else None
-
-def _block_certs() -> Optional[str]:
-    data = _load_json(F_CERTS)
-    if not data: return None
-    bullets = []
-    eta = data.get("ETA")
-    if isinstance(eta, list) and eta:
-        bullets.append("ETA: " + ", ".join(eta))
-    if data.get("marcatura_CE"):
-        bullets.append(f"Marcatura CE: {data['marcatura_CE']}")
-    if data.get("note"):
-        bullets.append(f"Note: {data['note']}")
-    return _pack("Certificazioni", bullets, "Fonte: static/data/critici/certs.json") if bullets else None
-
-def _block_policy_resi() -> Optional[str]:
-    data = _load_json(F_POLRESI)
-    if not data: return None
-    bullets = []
-    if data.get("resi"):     bullets.append(f"Resi: {data['resi']}")
-    if data.get("garanzia"): bullets.append(f"Garanzia: {data['garanzia']}")
-    return _pack("Resi & Garanzia (policy)", bullets, "Fonte: static/data/critici/policy_resi.json") if bullets else None
-
-def _contacts_any() -> Optional[str]:
-    return _contacts_critici_block() or _contacts_primary_block()
-
-def _pick_model() -> str:
-    last_err = None
-    for m in [x for x in MODEL_CANDIDATES if x]:
+def load_local_docs() -> List[Tuple[str, str]]:
+    out = []
+    for path in glob.glob(DOC_GLOB):
         try:
-            client.responses.create(model=m, input=[{"role":"user","content":"ping"}], max_output_tokens=5)
-            log.info(f"Modello selezionato: {m}")
-            return m
-        except Exception as e:
-            last_err = e
-            log.warning(f"Modello non disponibile: {m} → {e}")
-            continue
-    raise RuntimeError(f"Nessun modello utilizzabile. Ultimo errore: {last_err}")
-
-def _answer_via_model(question: str, lang: str = "it") -> str:
-    global MODEL_IN_USE
-    if not question:
-        return ""
-    if not MODEL_IN_USE:
-        MODEL_IN_USE = _pick_model()
-    user_prompt = f"[Lingua: {lang}] Domanda: {question}"
-    resp = client.responses.create(
-        model=MODEL_IN_USE,
-        input=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": user_prompt},
-        ],
-        temperature=0.3,
-        max_output_tokens=800,
-    )
-    out = ""
-    for item in resp.output:  # type: ignore
-        if item.get("type") == "message":
-            for c in item["content"]:
-                if c.get("type") == "output_text":
-                    out += c.get("text","")
-    return (out or "").strip()
-
-def _enrich_minimally(question: str, model_answer: str) -> str:
-    if not CRITICI_ENRICH:
-        return model_answer.strip()
-    q = (question or "").lower()
-    enriched = model_answer.strip()
-    if RX_CONTACTS.search(q):
-        b = _contacts_any()
-        if b: enriched += "\n\n---\n" + b
-    if RX_CTF_POSA.search(q):
-        b = _block_posa_ctf()
-        if b: enriched += "\n\n---\n" + b
-    if RX_EXPORT.search(q):
-        b = _block_hs_incoterms()
-        if b: enriched += "\n\n---\n" + b
-    if RX_BANK.search(q):
-        b = _block_bancari()
-        if b: enriched += "\n\n---\n" + b
-    if RX_CERTS.search(q):
-        b = _block_certs()
-        if b: enriched += "\n\n---\n" + b
-    if RX_RESI.search(q):
-        b = _block_policy_resi()
-        if b: enriched += "\n\n---\n" + b
-    return enriched
-
-# ====== ENDPOINTS ======
-@app.route("/health")
-def health():
-    return jsonify({
-        "status": "ok",
-        "service": "Tecnaria Bot - Flask + Critici",
-        "enrich": CRITICI_ENRICH,
-        "model_in_use": MODEL_IN_USE
-    })
-
-@app.route("/diag")
-def diag():
-    # Diagnostica non sensibile (non mostra API key)
-    found = []
-    for p in [Path(CONTACTS_FILE), F_CONTATTI, F_BANCARI, F_HSINC, F_POSACTF, F_CERTS, F_POLRESI]:
-        try:
-            found.append({"file": str(p), "exists": p.exists(), "size": (p.stat().st_size if p.exists() else 0)})
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                out.append((f"(file locale) {os.path.basename(path)}", f.read()[:8000]))
         except Exception:
-            found.append({"file": str(p), "exists": False, "size": 0})
-    return jsonify({
-        "service": "Tecnaria Bot - Flask + Critici",
-        "CRITICI_ENRICH": CRITICI_ENRICH,
-        "MODEL_CANDIDATES": [m for m in MODEL_CANDIDATES if m],
-        "MODEL_IN_USE": MODEL_IN_USE,
-        "files": found
-    })
+            continue
+    return out
 
-# Home di cortesia (se non usi una tua index.html)
-@app.route("/")
-def home():
-    badge = "ON" if CRITICI_ENRICH else "OFF"
-    html = f"""<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tecnaria Bot</title>
-<style>body{{font-family:system-ui;max-width:820px;margin:40px auto;padding:0 16px}}textarea{{width:100%;height:120px}}pre{{background:#f6f6f6;padding:12px;border-radius:8px;white-space:pre-wrap}}</style></head>
-<body><h1>Tecnaria Bot</h1><p>Modello ➜ arricchimenti critici: <b>{badge}</b></p>
-<textarea id="q">Mi parli della P560?</textarea><br/><button onclick="ask()">Chiedi</button><pre id="out"></pre>
-<script>
-async function ask(){{
-  const q = document.getElementById('q').value;
-  const res = await fetch('/ask', {{method:'POST', headers:{{'Content-Type':'application/json'}}, body:JSON.stringify({{message:q}})}});
-  const j = await res.json();
-  document.getElementById('out').textContent = j.response || '(nessuna risposta)';
-}}
-</script></body></html>"""
-    resp = make_response(html)
-    resp.headers["Content-Type"] = "text/html; charset=utf-8"
-    return resp
+def build_input_blocks(system_prompt: str, user_query: str, web_ctx: List[Tuple[str,str]], local_ctx: List[Tuple[str,str]]):
+    chunks = []
+    if web_ctx:
+        for url, txt in web_ctx:
+            chunks.append(f"[WEB:{url}]\n{txt}")
+    if local_ctx:
+        for name, txt in local_ctx:
+            chunks.append(f"[LOCAL:{name}]\n{txt}")
 
-# ✅ Endpoint compatibile col tuo front-end (message / question → response)
-@app.route("/ask", methods=["POST"])
-def ask():
+    context_blob = "\n\n---\n\n".join(chunks) if chunks else "(nessun contesto disponibile)"
+    system = {"role": "system", "content":[{"type":"input_text","text": system_prompt}]}
+    user = {"role": "user", "content":[
+        {"type":"input_text","text": f"Domanda utente: {user_query}"},
+        {"type":"input_text","text": f"Contesto disponibile:\n{context_blob}"}
+    ]}
+    return [system, user]
+
+def post_format(answer: str, web_ctx: List[Tuple[str,str]], local_ctx: List[Tuple[str,str]]) -> str:
+    if "Fonti" not in answer:
+        srcs = [u for u,_ in web_ctx] + [n for n,_ in local_ctx]
+        if srcs:
+            answer += "\n\n**Fonti**\n" + "\n".join(f"- {s}" for s in srcs)
+        else:
+            answer += "\n\n**Fonti**\n- (nessuna fonte trovata)"
+    return answer
+
+# ================== ROUTE ==================
+@app.post("/api/ask")
+async def ask(inp: ChatIn):
+    q = inp.message.strip()
     try:
-        data = request.get_json(force=True, silent=False) or {}
-    except Exception:
-        return jsonify({"response": "Payload non valido."}), 400
+        web_ctx, local_ctx = [], []
 
-    text = (data.get("message") or data.get("question") or "").strip()
-    lang = (data.get("lang") or "it").lower()
-    if not text:
-        return jsonify({"response": "Domanda vuota."}), 400
+        if FETCH_WEB_FIRST:
+            web_ctx = await gather_web_context_generic(q)
+            if not web_ctx:
+                local_ctx = load_local_docs()
+        else:
+            local_ctx = load_local_docs()
+            if not local_ctx:
+                web_ctx = await gather_web_context_generic(q)
 
-    try:
-        model_answer = _answer_via_model(text, lang)
+        if not web_ctx and not local_ctx:
+            msgs = [
+                {"role":"system","content":[{"type":"input_text","text": SYSTEM_PROMPT}]},
+                {"role":"user","content":[{"type":"input_text","text": q}]}
+            ]
+        else:
+            msgs = build_input_blocks(SYSTEM_PROMPT, q, web_ctx, local_ctx)
+
+        resp = client.responses.create(
+            model=MODEL,
+            input=msgs,
+            temperature=0.2,
+        )
+        text = getattr(resp, "output_text", "").strip()
+        if not text:
+            raise RuntimeError("Risposta vuota dal modello.")
+
+        text = post_format(text, web_ctx, local_ctx)
+
+        if DEBUG:
+            print("[DEBUG] query:", q)
+            print("[DEBUG] web_ctx URLs:", [u for u,_ in web_ctx])
+            print("[DEBUG] local_ctx files:", [n for n,_ in local_ctx])
+
+        return {"ok": True, "answer": text}
+
     except Exception as e:
-        log.warning(f"OpenAI call failed: {e}")
-        return jsonify({"response": "Non ho trovato una risposta. Riprova tra poco."}), 503
-
-    if not model_answer:
-        return jsonify({"response": "Non ho trovato una risposta. Riprova tra poco."}), 503
-
-    final = _enrich_minimally(text, model_answer)
-    return jsonify({"response": final})
-
-# Stub audio: evita errori se la tua pagina lo chiama
-@app.route("/audio", methods=["POST"])
-def audio_stub():
-    return ("", 204)
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": str(e)}
+        )
