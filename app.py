@@ -1,57 +1,58 @@
-import os, glob, re, httpx, asyncio
+import os, glob, re
 from typing import List, Tuple
-from fastapi import FastAPI, HTTPException
+import httpx
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from openai import OpenAI
 
-# ================== FASTAPI ==================
+# ================== APP ==================
 app = FastAPI(title="Tecnaria Bot - Web+Local")
 
-# ================== ENV VARS ==================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # se vuoi, sostituisci con il tuo dominio
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ================== ENV ==================
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY non impostata.")
-MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.1-mini")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.1-mini")  # es. "gpt-5.1-mini" o "gpt-4o-mini"
 
-# Ricerca web
-SEARCH_API_ENDPOINT = os.environ.get("SEARCH_API_ENDPOINT")
+# Ricerca web generica (Bing Web Search API o SerpAPI/Google CSE, scegli tu)
+SEARCH_API_ENDPOINT = os.environ.get("SEARCH_API_ENDPOINT")  # es. https://api.bing.microsoft.com/v7.0/search
 SEARCH_API_KEY = os.environ.get("SEARCH_API_KEY")
 SEARCH_TOPK = int(os.environ.get("SEARCH_TOPK", "5"))
 FETCH_WEB_FIRST = os.environ.get("FETCH_WEB_FIRST", "1") == "1"
-PREFERRED_DOMAINS = [
-    d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com").split(",") if d.strip()
-]
+PREFERRED_DOMAINS = [d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com").split(",") if d.strip()]
 
-# Documenti locali
 DOC_GLOB = os.environ.get("DOC_GLOB", "static/docs/*.txt")
-
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 
-# ================== OPENAI ==================
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# ================== PROMPT ==================
 SYSTEM_PROMPT = """
 Sei il Tecnaria Bot.
-
-- Usa prima i contenuti trovati sul WEB (ricerca aperta).
-- Se ci sono più fonti, privilegia quelle ufficiali o tecniche (es. sito produttore), ma non escludere le altre.
+- Usa prima le evidenze dal WEB (ricerca aperta). Se ci sono più fonti, dai priorità alle fonti ufficiali/tecniche, ma non escludere le altre.
 - Se il WEB non fornisce nulla, integra con i documenti locali (static/docs).
 - Se non trovi nulla, dillo chiaramente senza inventare.
-- Rispondi in bullet chiari. Alla fine aggiungi una sezione **Fonti** con gli URL o con la scritta (file locale).
+- Rispondi con bullet chiari; chiudi con sezione **Fonti** (URL o “file locale”).
 - Lingua: IT.
 """.strip()
 
-# ================== MODELLI I/O ==================
 class ChatIn(BaseModel):
     message: str
 
-# ================== UTILS ==================
 def _prefer_score(url: str) -> int:
     return 1 if any(p in url for p in PREFERRED_DOMAINS) else 0
 
 async def web_search(query: str, topk: int = 5) -> list[dict]:
+    """Cerca sul web intero (no allowlist). Usa Bing Web Search API se configurata."""
     if not SEARCH_API_ENDPOINT or not SEARCH_API_KEY:
         return []
     headers = {"Ocp-Apim-Subscription-Key": SEARCH_API_KEY}
@@ -64,7 +65,6 @@ async def web_search(query: str, topk: int = 5) -> list[dict]:
         items = []
         for w in (data.get("webPages", {}) or {}).get("value", []):
             items.append({"name": w.get("name"), "url": w.get("url")})
-        # ordina dando priorità ai domini preferiti
         items.sort(key=lambda x: _prefer_score(x["url"]), reverse=True)
         return items[:topk]
 
@@ -73,13 +73,13 @@ def _sanitize(html: str, max_chars: int = 12000) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     return text[:max_chars]
 
-async def gather_web_context_generic(user_query: str) -> list[Tuple[str, str]]:
+async def gather_web_context_generic(user_query: str) -> List[Tuple[str, str]]:
     results = await web_search(user_query, topk=SEARCH_TOPK)
-    ctx = []
+    ctx: List[Tuple[str, str]] = []
     async with httpx.AsyncClient(follow_redirects=True, timeout=20.0) as ac:
         for it in results:
             try:
-                resp = await ac.get(it["url"], headers={"User-Agent":"Mozilla/5.0"})
+                resp = await ac.get(it["url"], headers={"User-Agent": "Mozilla/5.0"})
                 if resp.status_code == 200 and resp.text:
                     ctx.append((it["url"], _sanitize(resp.text)))
             except Exception:
@@ -87,7 +87,7 @@ async def gather_web_context_generic(user_query: str) -> list[Tuple[str, str]]:
     return ctx
 
 def load_local_docs() -> List[Tuple[str, str]]:
-    out = []
+    out: List[Tuple[str, str]] = []
     for path in glob.glob(DOC_GLOB):
         try:
             with open(path, "r", encoding="utf-8", errors="ignore") as f:
@@ -104,30 +104,36 @@ def build_input_blocks(system_prompt: str, user_query: str, web_ctx: List[Tuple[
     if local_ctx:
         for name, txt in local_ctx:
             chunks.append(f"[LOCAL:{name}]\n{txt}")
-
     context_blob = "\n\n---\n\n".join(chunks) if chunks else "(nessun contesto disponibile)"
     system = {"role": "system", "content":[{"type":"input_text","text": system_prompt}]}
     user = {"role": "user", "content":[
         {"type":"input_text","text": f"Domanda utente: {user_query}"},
-        {"type":"input_text","text": f"Contesto disponibile:\n{context_blob}"}
+        {"type":"input_text","text": f"Contesto disponibile:\n{context_blob}"},
     ]}
     return [system, user]
 
 def post_format(answer: str, web_ctx: List[Tuple[str,str]], local_ctx: List[Tuple[str,str]]) -> str:
-    if "Fonti" not in answer:
+    if "Fonti" not in answer and "Fonti:" not in answer:
         srcs = [u for u,_ in web_ctx] + [n for n,_ in local_ctx]
-        if srcs:
-            answer += "\n\n**Fonti**\n" + "\n".join(f"- {s}" for s in srcs)
-        else:
-            answer += "\n\n**Fonti**\n- (nessuna fonte trovata)"
+        answer += "\n\n**Fonti**\n" + ("\n".join(f"- {s}" for s in srcs) if srcs else "- (nessuna fonte trovata)")
     return answer
 
-# ================== ROUTE ==================
+# ---------------- Health / root ----------------
+@app.get("/")
+def root():
+    return {"status": "ok", "service": "Tecnaria Bot - Web+Local", "model": OPENAI_MODEL}
+
+@app.get("/ping")
+def ping():
+    return {"pong": True}
+
+# ---------------- API principale ---------------
 @app.post("/api/ask")
 async def ask(inp: ChatIn):
     q = inp.message.strip()
     try:
-        web_ctx, local_ctx = [], []
+        web_ctx: List[Tuple[str,str]] = []
+        local_ctx: List[Tuple[str,str]] = []
 
         if FETCH_WEB_FIRST:
             web_ctx = await gather_web_context_generic(q)
@@ -138,6 +144,7 @@ async def ask(inp: ChatIn):
             if not local_ctx:
                 web_ctx = await gather_web_context_generic(q)
 
+        # FALLBACK: anche se non abbiamo contesto, chiedi comunque al modello
         if not web_ctx and not local_ctx:
             msgs = [
                 {"role":"system","content":[{"type":"input_text","text": SYSTEM_PROMPT}]},
@@ -147,7 +154,7 @@ async def ask(inp: ChatIn):
             msgs = build_input_blocks(SYSTEM_PROMPT, q, web_ctx, local_ctx)
 
         resp = client.responses.create(
-            model=MODEL,
+            model=OPENAI_MODEL,
             input=msgs,
             temperature=0.2,
         )
@@ -165,7 +172,4 @@ async def ask(inp: ChatIn):
         return {"ok": True, "answer": text}
 
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"ok": False, "error": str(e)}
-        )
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
