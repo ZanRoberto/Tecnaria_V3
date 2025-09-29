@@ -1,9 +1,9 @@
-# app.py — Slim + Criticità + Interruttore CRITICI_ENRICH + Picker modelli per Render
+# app.py — Render-ready (message/question), Slim + Critici + Switch + Model picker
 import os, re, json
 from pathlib import Path
 from typing import Optional, List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -19,7 +19,7 @@ CRITICI_ENRICH = os.getenv("CRITICI_ENRICH", "1").lower() in ("1", "true", "yes"
 
 # Lista modelli: priorità a MODEL_NAME se definito su Render, poi fallback
 MODEL_CANDIDATES = [
-    os.getenv("MODEL_NAME") or "",
+    os.getenv("MODEL_NAME") or "",  # es. "gpt-4o" o "gpt-4.1"
     "gpt-4o", "gpt-4.0",
     "gpt-4.1", "gpt-4.1-mini",
     "gpt-4o-mini",
@@ -28,13 +28,12 @@ MODEL_CANDIDATES = [
 # File opzionali (arricchimenti minimi)
 CONTACTS_FILE = "static/data/contatti.json"             # recapiti ufficiali (semplice)
 CRITICI_DIR   = "static/data/critici"                   # cartella JSON critici
-F_CONTATTI    = Path(CRITICI_DIR) / "contatti.json"
+F_CONTATTI    = Path(CRITICI_DIR) / "contatti.json"     # (qui puoi avere anche PEC e dati legali)
 F_BANCARI     = Path(CRITICI_DIR) / "bancari.json"
 F_HSINC       = Path(CRITICI_DIR) / "hs_incoterms.json"
 F_POSACTF     = Path(CRITICI_DIR) / "posa_ctf.json"
 F_CERTS       = Path(CRITICI_DIR) / "certs.json"
 F_POLRESI     = Path(CRITICI_DIR) / "policy_resi.json"
-F_LEGAL       = Path(CRITICI_DIR) / "company_legal.json"
 
 # ================== OpenAI (Responses API) ==================
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -119,6 +118,11 @@ def _load_contacts_block_critici() -> Optional[str]:
     if data.get("email"):   lines.append(f"Email: {data['email']}")
     if data.get("pec"):     lines.append(f"PEC: {data['pec']}")
     if data.get("website"): lines.append(f"Sito: {data['website']}")
+    # opzionali legali nel contatti.json
+    if data.get("partita_iva"):    lines.append(f"Partita IVA: {data['partita_iva']}")
+    if data.get("codice_fiscale"): lines.append(f"Codice Fiscale: {data['codice_fiscale']}")
+    if data.get("rea"):            lines.append(f"REA: {data['rea']}")
+    if data.get("sdi"):            lines.append(f"SDI: {data['sdi']}")
     if not lines:
         return None
     return _pack("Dati ufficiali", lines, "Fonte: static/data/critici/contatti.json")
@@ -130,7 +134,6 @@ RX_EXPORT    = re.compile(r"\b(export|spedizion|incoterm|resa|hs\s*code|dogan)\b
 RX_BANK      = re.compile(r"\b(iban|bic|swift|coordinate\s*banc|bonifico)\b", re.I)
 RX_CERTS     = re.compile(r"\b(eta|certificaz|marcatura\s*ce|do[pb]|rapporto\s*prova)\b", re.I)
 RX_RESI      = re.compile(r"\b(resi?|reso|rma|garanzi[ae])\b", re.I)
-RX_LEGAL     = re.compile(r"\b(partita\s*iva|p\.*\s*iva|codice\s*fiscale|rea|sdi)\b", re.I)
 
 # ================== Blocchi critici ==================
 def block_hs_incoterms() -> Optional[str]:
@@ -185,16 +188,6 @@ def block_policy_resi() -> Optional[str]:
     if data.get("resi"):     bullets.append(f"Resi: {data['resi']}")
     if data.get("garanzia"): bullets.append(f"Garanzia: {data['garanzia']}")
     return _pack("Resi & Garanzia (policy)", bullets, "Fonte: static/data/critici/policy_resi.json") if bullets else None
-
-def block_company_legal() -> Optional[str]:
-    data = _load_json(F_LEGAL)
-    if not data: return None
-    bullets = []
-    if data.get("partita_iva"):   bullets.append(f"Partita IVA: {data['partita_iva']}")
-    if data.get("codice_fiscale"):bullets.append(f"Codice Fiscale: {data['codice_fiscale']}")
-    if data.get("rea"):           bullets.append(f"REA: {data['rea']}")
-    if data.get("sdi"):           bullets.append(f"SDI: {data['sdi']}")
-    return _pack("Dati legali aziendali", bullets, "Fonte: static/data/critici/company_legal.json") if bullets else None
 
 def block_contacts_any() -> Optional[str]:
     adv = _load_contacts_block_critici()
@@ -252,16 +245,8 @@ def enrich_minimally(question: str, model_answer: str) -> str:
     if RX_RESI.search(q):
         block = block_policy_resi()
         if block: enriched += "\n\n---\n" + block
-    if RX_LEGAL.search(q):
-        block = block_company_legal()
-        if block: enriched += "\n\n---\n" + block
 
     return enriched
-
-# ================== Schemi FastAPI ==================
-class AskPayload(BaseModel):
-    question: str
-    lang: Optional[str] = "it"
 
 # ================== Endpoints ==================
 @app.get("/health")
@@ -273,62 +258,61 @@ def health():
         "model_in_use": MODEL_IN_USE
     }
 
+# (Homepage minimale di cortesia, se non usi la tua index)
 @app.get("/", response_class=HTMLResponse)
 def home():
     badge = "ON" if CRITICI_ENRICH else "OFF"
     return f"""
 <!DOCTYPE html>
 <html lang="it">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Tecnaria Bot - Slim+Critici</title>
-<style>
-body{{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;max-width:840px;margin:40px auto;padding:0 16px}}
-textarea{{width:100%;height:140px;padding:10px;font-size:16px}}
-button{{padding:10px 16px;font-size:16px;cursor:pointer}}
-pre{{background:#f6f6f6;padding:14px;border-radius:8px;white-space:pre-wrap}}
-.badge{{display:inline-block;padding:4px 8px;border-radius:6px;background:#eef}}
-</style>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tecnaria Bot</title>
+<style>body{{font-family:system-ui;max-width:840px;margin:40px auto;padding:0 16px}}
+textarea{{width:100%;height:120px}}button{{padding:8px 12px}}pre{{background:#f6f6f6;padding:12px;border-radius:8px;white-space:pre-wrap}}</style>
 </head>
 <body>
 <h1>Tecnaria Bot</h1>
-<p>Modello OpenAI ➜ arricchimenti critici: <span class="badge">{badge}</span></p>
-<p><small>Modello effettivo visibile su <code>/health</code> dopo la prima risposta.</small></p>
-<textarea id="q" placeholder="Es. IBAN? / ETA? / Quanti chiodi per CTF?"></textarea><br/>
+<p>Modello OpenAI ➜ arricchimenti critici: <b>{badge}</b></p>
+<textarea id="q" placeholder="Scrivi qui (usa /ask con 'message')">Mi parli della P560?</textarea><br/>
 <button onclick="ask()">Chiedi</button>
 <pre id="out"></pre>
 <script>
 async function ask(){{
   const q = document.getElementById('q').value;
-  const res = await fetch('/ask', {{method:'POST', headers:{{'Content-Type':'application/json'}}, body:JSON.stringify({{question:q, lang:'it'}})}});
+  const res = await fetch('/ask', {{method:'POST', headers:{{'Content-Type':'application/json'}}, body:JSON.stringify({{message:q}})}});
   const j = await res.json();
-  document.getElementById('out').textContent = j.answer || '(nessuna risposta)';
+  document.getElementById('out').textContent = j.response || '(nessuna risposta)';
 }}
 </script>
-</body>
-</html>
+</body></html>
 """
 
+# ✅ Endpoint compatibile con il tuo front-end:
+# - accetta { "message": "..." } (e anche "question" come fallback)
+# - risponde sempre { "response": "..." }
 @app.post("/ask")
-def ask(payload: AskPayload):
-    q = (payload.question or "").strip()
-    lang = (payload.lang or "it").lower()
-    if not q:
-        raise HTTPException(status_code=400, detail="question vuota.")
+async def ask(request: Request):
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"response": "Payload non valido."}, status_code=400)
+
+    text = (data.get("message") or data.get("question") or "").strip()
+    lang = (data.get("lang") or "it").lower()
+    if not text:
+        return JSONResponse({"response": "Domanda vuota."}, status_code=400)
 
     # 1) Modello per primo (stile ChatGPT)
     model_answer = ""
     try:
-        model_answer = answer_via_model(q, lang)
+        model_answer = answer_via_model(text, lang)
     except Exception as e:
         print(f"[warn] model failed: {e}")
 
     # 2) Arricchimento opzionale (switch CRITICI_ENRICH)
     if model_answer:
-        final = enrich_minimally(q, model_answer)
-        mode = f"gen+critici({'ON' if CRITICI_ENRICH else 'OFF'})"
-        return JSONResponse({"ok": True, "answer": final, "model": MODEL_IN_USE, "mode": mode})
+        final = enrich_minimally(text, model_answer)
+        return JSONResponse({"response": final, "mode": f"gen+critici({'ON' if CRITICI_ENRICH else 'OFF'})"})
 
     # 3) Ultimo fallback
-    return JSONResponse({"ok": False, "answer": "Non ho trovato una risposta. Riprova tra poco."})
+    return JSONResponse({"response": "Non ho trovato una risposta. Riprova tra poco."}, status_code=503)
