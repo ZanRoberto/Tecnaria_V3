@@ -1,36 +1,39 @@
 import os, glob, re
 from typing import List, Tuple
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from openai import OpenAI
 
 # ================== APP ==================
 app = FastAPI(title="Tecnaria Bot - Web+Local")
 
+# Middleware CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # se vuoi, sostituisci con il tuo dominio
+    allow_origins=["*"],  # se vuoi puoi restringere al tuo dominio
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Templates
+templates = Jinja2Templates(directory="templates")
+
 # ================== ENV ==================
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY non impostata.")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.1-mini")  # es. "gpt-5.1-mini" o "gpt-4o-mini"
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.1-mini")
 
-# Ricerca web generica (Bing Web Search API o SerpAPI/Google CSE, scegli tu)
-SEARCH_API_ENDPOINT = os.environ.get("SEARCH_API_ENDPOINT")  # es. https://api.bing.microsoft.com/v7.0/search
+SEARCH_API_ENDPOINT = os.environ.get("SEARCH_API_ENDPOINT")  # es. Bing Web Search
 SEARCH_API_KEY = os.environ.get("SEARCH_API_KEY")
 SEARCH_TOPK = int(os.environ.get("SEARCH_TOPK", "5"))
 FETCH_WEB_FIRST = os.environ.get("FETCH_WEB_FIRST", "1") == "1"
 PREFERRED_DOMAINS = [d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com").split(",") if d.strip()]
-
 DOC_GLOB = os.environ.get("DOC_GLOB", "static/docs/*.txt")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 
@@ -38,8 +41,8 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 SYSTEM_PROMPT = """
 Sei il Tecnaria Bot.
-- Usa prima le evidenze dal WEB (ricerca aperta). Se ci sono più fonti, dai priorità alle fonti ufficiali/tecniche, ma non escludere le altre.
-- Se il WEB non fornisce nulla, integra con i documenti locali (static/docs).
+- Usa prima i contenuti dal WEB (ricerca aperta). Se ci sono più fonti, privilegia quelle ufficiali/tecniche, senza escludere le altre.
+- Se il WEB è vuoto, integra con i documenti locali (static/docs).
 - Se non trovi nulla, dillo chiaramente senza inventare.
 - Rispondi con bullet chiari; chiudi con sezione **Fonti** (URL o “file locale”).
 - Lingua: IT.
@@ -48,11 +51,11 @@ Sei il Tecnaria Bot.
 class ChatIn(BaseModel):
     message: str
 
+# ================== HELPERS ==================
 def _prefer_score(url: str) -> int:
     return 1 if any(p in url for p in PREFERRED_DOMAINS) else 0
 
 async def web_search(query: str, topk: int = 5) -> list[dict]:
-    """Cerca sul web intero (no allowlist). Usa Bing Web Search API se configurata."""
     if not SEARCH_API_ENDPOINT or not SEARCH_API_KEY:
         return []
     headers = {"Ocp-Apim-Subscription-Key": SEARCH_API_KEY}
@@ -118,16 +121,15 @@ def post_format(answer: str, web_ctx: List[Tuple[str,str]], local_ctx: List[Tupl
         answer += "\n\n**Fonti**\n" + ("\n".join(f"- {s}" for s in srcs) if srcs else "- (nessuna fonte trovata)")
     return answer
 
-# ---------------- Health / root ----------------
-@app.get("/")
-def root():
-    return {"status": "ok", "service": "Tecnaria Bot - Web+Local", "model": OPENAI_MODEL}
+# ================== ROUTES ==================
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/ping")
 def ping():
-    return {"pong": True}
+    return {"pong": True, "model": OPENAI_MODEL}
 
-# ---------------- API principale ---------------
 @app.post("/api/ask")
 async def ask(inp: ChatIn):
     q = inp.message.strip()
@@ -144,7 +146,6 @@ async def ask(inp: ChatIn):
             if not local_ctx:
                 web_ctx = await gather_web_context_generic(q)
 
-        # FALLBACK: anche se non abbiamo contesto, chiedi comunque al modello
         if not web_ctx and not local_ctx:
             msgs = [
                 {"role":"system","content":[{"type":"input_text","text": SYSTEM_PROMPT}]},
