@@ -1,25 +1,33 @@
-import os, re, json
+# app.py — Tecnaria Bot (Flask) • Render-ready • ChatGPT+Critici • Debug /diag
+import os, re, json, logging
 from pathlib import Path
 from typing import Optional, List
 
-from flask import Flask, request, jsonify, send_from_directory, make_response
+from flask import Flask, request, jsonify, make_response
 from openai import OpenAI
 
-# ================== Config da Environment (Render) ==================
+# ====== LOGGING SEMPLICE ======
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("tecnaria-bot")
+
+# ====== ENV OBBLIGATORI / OPZIONALI ======
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY non impostata (Render ➜ Environment).")
+    raise RuntimeError("OPENAI_API_KEY non impostata (Render → Environment).")
 
-CRITICI_ENRICH = os.getenv("CRITICI_ENRICH", "1").lower() in ("1","true","yes")
+# Interruttore arricchimenti (default ON)
+CRITICI_ENRICH = os.getenv("CRITICI_ENRICH", "1").lower() in ("1", "true", "yes")
 
+# Nome modello: priorità a MODEL_NAME; compatibilità con OPENAI_MODEL; poi fallback automatici
 MODEL_CANDIDATES = [
-    os.getenv("MODEL_NAME") or "",   # es. "gpt-4o" o "gpt-4.1"
+    os.getenv("MODEL_NAME") or os.getenv("OPENAI_MODEL") or "",
     "gpt-4o", "gpt-4.0",
     "gpt-4.1", "gpt-4.1-mini",
     "gpt-4o-mini",
 ]
 
-CONTACTS_FILE = "static/data/contatti.json"
+# ====== FILE LOCALI (OPZIONALI) ======
+CONTACTS_FILE = "static/data/contatti.json"       # recapiti base (opzionale)
 CRITICI_DIR   = "static/data/critici"
 F_CONTATTI    = Path(CRITICI_DIR) / "contatti.json"
 F_BANCARI     = Path(CRITICI_DIR) / "bancari.json"
@@ -28,6 +36,7 @@ F_POSACTF     = Path(CRITICI_DIR) / "posa_ctf.json"
 F_CERTS       = Path(CRITICI_DIR) / "certs.json"
 F_POLRESI     = Path(CRITICI_DIR) / "policy_resi.json"
 
+# ====== OPENAI CLIENT ======
 client = OpenAI(api_key=OPENAI_API_KEY)
 MODEL_IN_USE: Optional[str] = None
 
@@ -41,7 +50,10 @@ Sei un assistente tecnico-commerciale per TECNARIA S.p.A.
 - Evita dettagli non verificabili e toni categorici; usa bullet dove utile.
 """
 
-# ================== Helpers ==================
+# ====== FLASK ======
+app = Flask(__name__, static_folder="static", static_url_path="/static")
+
+# ====== UTILS ======
 def _pack(head: str, bullets: List[str], note: Optional[str] = None) -> str:
     lines = [head] if head else []
     lines += [f"- {b}" for b in bullets if b]
@@ -57,7 +69,8 @@ def _load_json(path: Path) -> Optional[dict]:
         with open(path, "r", encoding="utf-8") as f:
             obj = json.load(f)
             return obj if isinstance(obj, dict) else None
-    except Exception:
+    except Exception as e:
+        log.warning(f"Impossibile leggere {path}: {e}")
         return None
 
 def _contacts_primary_block() -> Optional[str]:
@@ -93,14 +106,14 @@ def _contacts_critici_block() -> Optional[str]:
     if data.get("email"):   lines.append(f"Email: {data['email']}")
     if data.get("pec"):     lines.append(f"PEC: {data['pec']}")
     if data.get("website"): lines.append(f"Sito: {data['website']}")
-    if data.get("partita_iva"):    lines.append(f"Partita IVA: {data['partita_iva']}")
-    if data.get("codice_fiscale"): lines.append(f"Codice Fiscale: {data['codice_fiscale']}")
-    if data.get("rea"):            lines.append(f"REA: {data['rea']}")
-    if data.get("sdi"):            lines.append(f"SDI: {data['sdi']}")
+    # opzionali legali accorpati in contatti.json
+    for k,label in (("partita_iva","Partita IVA"),("codice_fiscale","Codice Fiscale"),("rea","REA"),("sdi","SDI")):
+        if data.get(k): lines.append(f"{label}: {data[k]}")
     if not lines:
         return None
     return _pack("Dati ufficiali", lines, "Fonte: static/data/critici/contatti.json")
 
+# Trigger “critici”
 RX_CONTACTS  = re.compile(r"\b(contatt|telefono|tel\.?|telefon|mail|email|pec|sede|indirizzo|recapiti|ufficio)\b", re.I)
 RX_CTF_POSA  = re.compile(r"\b(ctf)\b.*\b(posa|fiss|chiod|lamiera)\b|\b(posa|fiss|chiod|lamiera)\b.*\b(ctf)\b", re.I)
 RX_EXPORT    = re.compile(r"\b(export|spedizion|incoterm|resa|hs\s*code|dogan)\b", re.I)
@@ -168,10 +181,12 @@ def _pick_model() -> str:
     last_err = None
     for m in [x for x in MODEL_CANDIDATES if x]:
         try:
-            _ = client.responses.create(model=m, input=[{"role":"user","content":"ping"}], max_output_tokens=5)
+            client.responses.create(model=m, input=[{"role":"user","content":"ping"}], max_output_tokens=5)
+            log.info(f"Modello selezionato: {m}")
             return m
         except Exception as e:
             last_err = e
+            log.warning(f"Modello non disponibile: {m} → {e}")
             continue
     raise RuntimeError(f"Nessun modello utilizzabile. Ultimo errore: {last_err}")
 
@@ -204,7 +219,6 @@ def _enrich_minimally(question: str, model_answer: str) -> str:
         return model_answer.strip()
     q = (question or "").lower()
     enriched = model_answer.strip()
-
     if RX_CONTACTS.search(q):
         b = _contacts_any()
         if b: enriched += "\n\n---\n" + b
@@ -225,9 +239,7 @@ def _enrich_minimally(question: str, model_answer: str) -> str:
         if b: enriched += "\n\n---\n" + b
     return enriched
 
-# ================== Flask app ==================
-app = Flask(__name__, static_folder="static", static_url_path="/static")
-
+# ====== ENDPOINTS ======
 @app.route("/health")
 def health():
     return jsonify({
@@ -237,13 +249,31 @@ def health():
         "model_in_use": MODEL_IN_USE
     })
 
-# Se hai già una tua index.html, puoi servirla da /static
+@app.route("/diag")
+def diag():
+    # Diagnostica non sensibile (non mostra API key)
+    found = []
+    for p in [Path(CONTACTS_FILE), F_CONTATTI, F_BANCARI, F_HSINC, F_POSACTF, F_CERTS, F_POLRESI]:
+        try:
+            found.append({"file": str(p), "exists": p.exists(), "size": (p.stat().st_size if p.exists() else 0)})
+        except Exception:
+            found.append({"file": str(p), "exists": False, "size": 0})
+    return jsonify({
+        "service": "Tecnaria Bot - Flask + Critici",
+        "CRITICI_ENRICH": CRITICI_ENRICH,
+        "MODEL_CANDIDATES": [m for m in MODEL_CANDIDATES if m],
+        "MODEL_IN_USE": MODEL_IN_USE,
+        "files": found
+    })
+
+# Home di cortesia (se non usi una tua index.html)
 @app.route("/")
 def home():
-    # Se hai un tuo index, commenta le righe sotto e lascia Flask servire /static/index.html
-    html = f"""<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tecnaria Bot</title>
+    badge = "ON" if CRITICI_ENRICH else "OFF"
+    html = f"""<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tecnaria Bot</title>
 <style>body{{font-family:system-ui;max-width:820px;margin:40px auto;padding:0 16px}}textarea{{width:100%;height:120px}}pre{{background:#f6f6f6;padding:12px;border-radius:8px;white-space:pre-wrap}}</style></head>
-<body><h1>Tecnaria Bot</h1><p>Modello ➜ arricchimenti critici: <b>{'ON' if CRITICI_ENRICH else 'OFF'}</b></p>
+<body><h1>Tecnaria Bot</h1><p>Modello ➜ arricchimenti critici: <b>{badge}</b></p>
 <textarea id="q">Mi parli della P560?</textarea><br/><button onclick="ask()">Chiedi</button><pre id="out"></pre>
 <script>
 async function ask(){{
@@ -257,7 +287,7 @@ async function ask(){{
     resp.headers["Content-Type"] = "text/html; charset=utf-8"
     return resp
 
-# ✅ Endpoint COMPATIBILE con il tuo front-end attuale
+# ✅ Endpoint compatibile col tuo front-end (message / question → response)
 @app.route("/ask", methods=["POST"])
 def ask():
     try:
@@ -273,7 +303,7 @@ def ask():
     try:
         model_answer = _answer_via_model(text, lang)
     except Exception as e:
-        print(f"[warn] model failed: {e}")
+        log.warning(f"OpenAI call failed: {e}")
         return jsonify({"response": "Non ho trovato una risposta. Riprova tra poco."}), 503
 
     if not model_answer:
@@ -282,7 +312,7 @@ def ask():
     final = _enrich_minimally(text, model_answer)
     return jsonify({"response": final})
 
-# (Opzionale) /audio: se il tuo front-end lo chiama, per ora restituiamo 204 (no content)
+# Stub audio: evita errori se la tua pagina lo chiama
 @app.route("/audio", methods=["POST"])
 def audio_stub():
     return ("", 204)
