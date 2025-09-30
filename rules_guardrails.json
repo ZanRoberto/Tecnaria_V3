@@ -14,7 +14,7 @@
   {
     "id": "CTL_NO_P560_VITI",
     "trigger_any_q": ["\\bctl\\b", "\\blegno\\b"],
-    "exclude_any_q": ["\\bprezz|\\bcost|\\bpreventiv"],
+    "exclude_any_q": ["\\b(?:prezz|cost|preventiv)\\w*"],
     "forbid_a": ["\\bp\\s*560\\b|\\bp560\\b"],
     "forbid_note": "Nota: per i **CTL** si impiegano **viti autofilettanti**; la **SPIT P560** non si utilizza.",
     "ensure_any_a": ["\\bviti\\s+autofilettanti\\b|\\bviti\\b"],
@@ -28,8 +28,9 @@
   },
   {
     "id": "PREZZO_COMMERCIALE",
-    "trigger_any_q": ["\\bprezz|\\bcost|\\bpreventiv"],
+    "trigger_any_q": ["\\b(?:prezz|cost|preventiv)\\w*"],
     "ensure_any_a": ["contattare il commerciale|richiedere un preventivo|ufficio commerciale"],
     "ensure_note": "Nota: per prezzi e preventivi contattare il commerciale Tecnaria o inviare email a info@tecnaria.com ."
   }
 ]
+
