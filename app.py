@@ -192,4 +192,199 @@ def _search_web(query: str, k: int) -> List[Dict]:
                 u = it.get("link")
                 if u and _allowed(u) and u not in [x["url"] for x in out]:
                     out.append({"title": it.get("title",""), "url": u})
-        # Br
+        # Brave
+        if len(out) < k and BRAVE_API_KEY:
+            r = httpx.get("https://api.search.brave.com/res/v1/web/search",
+                          params={"q":qq,"count":k}, headers={"X-Subscription-Token":BRAVE_API_KEY,"Accept":"application/json"}, timeout=10)
+            for it in (r.json().get("web",{}).get("results") or []):
+                u = it.get("url")
+                if u and _allowed(u) and u not in [x["url"] for x in out]:
+                    out.append({"title": it.get("title",""), "url": u})
+    except Exception:
+        pass
+    return out[:k]
+
+def _fetch_text(url: str) -> str:
+    try:
+        import httpx
+        r = httpx.get(url, timeout=WEB_FETCH_TIMEOUT, follow_redirects=True, headers={"User-Agent":"Mozilla/5.0"})
+        ctype = (r.headers.get("Content-Type","").lower())
+        if "application/pdf" in ctype or url.lower().endswith(".pdf"):
+            try:
+                from pdfminer.high_level import extract_text
+                return (extract_text(io.BytesIO(r.content)) or "")[:20000].strip()
+            except Exception:
+                return ""
+        text = r.text
+        text = re.sub(r"<script.*?</script>|<style.*?</style>", " ", text, flags=re.S|re.I)
+        text = re.sub(r"<[^>]+>", " ", text)
+        text = html.unescape(text)
+        return re.sub(r"\s+", " ", text).strip()[:20000]
+    except Exception:
+        return ""
+
+def _answer_from_web(question: str) -> Tuple[str, List[str]]:
+    results = _search_web(question, WEB_MAX_RESULTS)
+    sources, contents = [], []
+    for r in results:
+        if len(sources) >= WEB_MAX_PAGES: break
+        body = _fetch_text(r["url"])
+        if len(body) < 400:
+            continue
+        sources.append(r["url"])
+        contents.append(f"{r['url']}\n{body}")
+        time.sleep(0.25)
+    if not sources:
+        return "", []
+    sources_block = "\n\n".join(textwrap.shorten(c, width=3000, placeholder=" …") for c in contents)
+    sys = {"role":"system","content":"Rispondi SOLO usando le fonti fornite. Se un dato non c'è, scrivi: 'Dato non disponibile in queste fonti.' Cita con [1],[2],... in fondo."}
+    usr = {"role":"user","content": f"Domanda: {question}\n\nFonti:\n{sources_block}"}
+    try:
+        resp = client.chat.completions.create(model=OPENAI_MODEL, messages=[sys, usr], temperature=0.0, max_tokens=900)
+        txt = (resp.choices[0].message.content or "").strip()
+        if txt:
+            cite_block = "Fonti:\n" + "\n".join(f"[{i+1}] {u}" for i,u in enumerate(sources))
+            return f"{txt}\n\n{cite_block}", sources
+    except Exception:
+        pass
+    return "", sources
+
+# ─────────────── LOCALE (fallback) ───────────────
+def _answer_local_generic(question: str) -> str:
+    msgs = [{"role":"system","content":PROMPT}, {"role":"user","content":question}]
+    resp = client.chat.completions.create(model=OPENAI_MODEL, messages=msgs, temperature=0.0, top_p=1.0, max_tokens=750)
+    txt = (resp.choices[0].message.content or "").strip()
+    return txt or "Dato non disponibile in questa sede. Possiamo inviare la scheda tecnica/ETA su richiesta."
+
+def _answer_local_p560() -> str:
+    return (
+        "La SPIT P560 è una chiodatrice a propulsore per fissaggi su acciaio e lamiera grecata. "
+        "Impiego tipico con i connettori CTF su lamiere grecate o su travi metalliche; "
+        "consente posa rapida senza foratura tradizionale. "
+        "Per i sistemi su legno puro (CTL) non si usa la P560: si impiegano viti/bulloni. "
+        "La scelta di chiodi/propulsori e adattatori dipende da lamiera/profilo e va verificata su scheda tecnica. "
+        "PRd/codici specifici non sono forniti qui: li inviamo su richiesta."
+    )
+
+# ─────────────── SINAPSI (memoria tecnica minimale, fuori dal prompt) ───────────────
+def _sinapsi_load():
+    try:
+        with open(SINAPSI_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"_meta": {"version": 1, "updated_at": ""}}
+
+def _sinapsi_save(data: dict):
+    try:
+        data["_meta"]["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        with open(SINAPSI_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass  # su alcuni host il FS è effimero: ignora errori di scrittura
+
+def _sinapsi_merge_list(dst: list, vals: list) -> bool:
+    changed = False
+    for v in vals or []:
+        if v and v not in dst:
+            dst.append(v); changed = True
+    return changed
+
+def _sinapsi_upsert(topic: str, facts: dict) -> bool:
+    db = _sinapsi_load()
+    if topic not in db:
+        db[topic] = {"uso": [], "fissaggio": [], "vantaggi": [], "note": [], "compatibilita": []}
+    changed = False
+    for k, vals in facts.items():
+        if k not in db[topic]:
+            db[topic][k] = []
+        changed |= _sinapsi_merge_list(db[topic][k], vals)
+    if changed:
+        _sinapsi_save(db)
+    return changed
+
+def _sinapsi_autolearn(question: str, answer: str):
+    """
+    Estrae fatti semplici da Q&A e li memorizza (senza duplicati).
+    Non tocca il prompt; serve solo al correttore.
+    """
+    text = (question + " " + answer).lower()
+    topics = []
+    if re.search(r"\b(ctf|p\s*560|p560|lamiera|hsbr14)\b", text): topics += ["CTF","P560"]
+    if re.search(r"\bctl\b|\blegno\b", text): topics += ["CTL"]
+    topics = list(dict.fromkeys(topics))
+
+    facts = {"uso": [], "fissaggio": [], "vantaggi": [], "note": [], "compatibilita": []}
+    if "hsbr14" in text: facts["fissaggio"].append("chiodi HSBR14")
+    if re.search(r"\bp\s*560\b|\bspit\s*p560\b", text): facts["fissaggio"].append("SPIT P560")
+    if "lamiera" in text and "grec" in text: facts["uso"].append("lamiera grecata")
+    if "viti" in text or "autofilett" in text: facts["fissaggio"].append("viti autofilettanti")
+    if "posa" in text and "rapid" in text: facts["vantaggi"].append("posa rapida")
+    if "legno" in text: facts["uso"].append("legno+calcestruzzo")
+    if "acciaio" in text and "calcestruzzo" in text: facts["uso"].append("acciaio+calcestruzzo")
+
+    facts["fissaggio"] = [("SPIT P560" if "p560" in v.lower() else v) for v in facts["fissaggio"]]
+    for t in topics:
+        _sinapsi_upsert(t, facts)
+
+# ─────────────── CORRETTORE INVISIBILE (post-process, fuori dal prompt) ───────────────
+def _postprocess_corrector(question: str, answer: str) -> str:
+    """
+    NON tocca il prompt. Lavora SOLO sull'output.
+    Garantisce HSBR14 con P560/CTF e impedisce CTL+P560.
+    """
+    ql, al = question.lower(), answer.lower()
+
+    def need(term: str) -> bool:
+        return term.lower() not in al
+
+    is_ctf_or_p560 = bool(re.search(r"\b(ctf|p\s*560|p560)\b", ql))
+    is_ctl = ("ctl" in ql)
+
+    if is_ctf_or_p560:
+        add = []
+        if need("HSBR14"): add.append("**chiodi HSBR14**")
+        if need("SPIT P560"): add.append("**SPIT P560**")
+        if need("lamiera grecata"): add.append("**lamiera grecata**")
+        if add:
+            answer = answer.rstrip() + "\n\nNota: sistema CTF → " + ", ".join(add) + "."
+
+    if is_ctl:
+        if "p560" in al:
+            answer = answer.rstrip() + "\n\nCorrezione: per i **CTL** si usano **viti autofilettanti** (NO P560)."
+        elif "viti autofilettanti" not in al and "viti" not in al:
+            answer = answer.rstrip() + "\n\nNota: i **CTL** si fissano con **viti autofilettanti**."
+
+    return answer
+
+# ─────────────── API ───────────────
+@app.post("/api/ask")
+def api_ask(p: AskPayload):
+    q = (p.question or "").strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="La domanda è vuota.")
+
+    # 1) WEB FIRST
+    web_answer, sources = _answer_from_web(q)
+    ok_web = web_answer and "Dato non disponibile in queste fonti." not in web_answer
+    if ok_web:
+        final = web_answer
+    else:
+        # 2) FALLBACK LOCALE
+        qlow = q.lower()
+        if "p560" in qlow or "p 560" in qlow or ("spit" in qlow and "p560" in qlow):
+            final = _answer_local_p560()
+        else:
+            final = _answer_local_generic(q)
+        if sources:
+            final += "\n\nFonti utili (web):\n" + "\n".join(f"- {u}" for u in sources)
+
+    # 3) NOTA INTEGRATIVA (INTERNO) — se c’è match nel file KB
+    notes = _kb_notes_for(q)
+    if notes:
+        final += "\n\nNota integrativa (interno):\n" + "\n".join([f"- Q{n['id']}: {n['a']}" for n in notes])
+
+    # 4) CORREZIONE INVISIBILE + AUTOLEARN (NO prompt)
+    final = _postprocess_corrector(q, final)
+    _sinapsi_autolearn(q, final)
+
+    return JSONResponse({"answer": final})
