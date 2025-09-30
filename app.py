@@ -79,4 +79,117 @@ body{margin:0;background:var(--bg);color:#e6e6e6;font-family:system-ui,Segoe UI,
 h1{margin:.2rem 0 0;font-size:22px}
 .label{font-size:12px;color:var(--mut);margin:10px 0 6px}
 textarea{width:100%;height:320px;background:#0f1426;border:1px solid #26314a;border-radius:12px;color:#e6e6e6;padding:10px;resize:vertical}
-.btn{display:inline-block;backgr
+.btn{display:inline-block;background:var(--g);border:0;color:#07130d;font-weight:700;padding:10px 14px;border-radius:10px;cursor:pointer}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.tag{display:inline-block;border:1px solid #2a3a56;color:#bcd0ef;border-radius:999px;padding:4px 10px;font-size:12px;margin-right:6px}
+.code{white-space:pre-wrap;line-height:1.5}
+.small{font-size:12px;color:#aab7c7;margin-top:6px}
+</style>
+<div class="wrap">
+  <div class="header">
+    <div class="badge">pronto</div>
+    <div class="badge">web→locale</div>
+    <div class="badge">note interne: ON</div>
+  </div>
+  <h1>Tecnaria Bot</h1>
+  <div class="small">Prima Web (domini ufficiali), poi Locale. In coda aggiunge la <b>Nota integrativa (interno)</b> dal tuo file.</div>
+
+  <div class="panel">
+    <div class="left">
+      <div class="label">Domanda</div>
+      <textarea id="q" placeholder="Es.: “Se i chiodi si piegano o non entrano?”"></textarea>
+      <div style="margin-top:10px">
+        <button class="btn" id="ask">Chiedi</button>
+        <span class="tag">P560</span><span class="tag">Connettori CTF</span><span class="tag">Contatti</span>
+      </div>
+    </div>
+    <div class="right">
+      <div class="label">Risposta</div>
+      <div id="out" class="code">OK</div>
+    </div>
+  </div>
+</div>
+<script>
+const q = document.getElementById('q');
+const out = document.getElementById('out');
+document.getElementById('ask').addEventListener('click', async ()=>{
+  const question = q.value.trim();
+  if(!question){ out.textContent = "Scrivi una domanda."; return; }
+  out.textContent = "Cerco sul web…";
+  const r = await fetch('/api/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({question})});
+  const d = await r.json();
+  if(!r.ok){ out.textContent = "Errore: " + (d.detail || r.statusText); return; }
+  out.textContent = d.answer || "(nessuna risposta)";
+});
+</script>
+"""
+    return HTMLResponse(html_page)
+
+@app.get("/health")
+def health():
+    return JSONResponse({"status":"ok","mode":"web_first_then_local","kb_path":KB_PATH})
+
+# ─────────────── KB INTERNA: parser + match (SOLO nota) ───────────────
+KB_ENTRIES: List[Dict] = []
+
+def _load_kb(path: str) -> List[Dict]:
+    entries: List[Dict] = []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = f.read()
+        pattern = re.compile(r"(?mi)^Q(\d+):\s*(.+?)\s*\nA\1:\s*(.+?)(?=\nQ\d+:|\Z)", re.S)
+        for m in pattern.finditer(data):
+            idx = m.group(1)
+            qtext = m.group(2).strip()
+            atext = m.group(3).strip()
+            entries.append({"id": idx, "q": qtext, "a": atext})
+    except Exception:
+        pass
+    return entries
+
+def _tokenize(s: str) -> List[str]:
+    return [w for w in re.split(r"[^a-z0-9àèéìòóù]+", s.lower()) if len(w) >= 3]
+
+def _kb_notes_for(question: str, topk: int = KB_TOPK, min_overlap: int = KB_MIN_OVERLAP) -> List[Dict]:
+    if not KB_ENTRIES:
+        return []
+    qtok = set(_tokenize(question))
+    scored = []
+    for e in KB_ENTRIES:
+        etok = set(_tokenize(e["q"] + " " + e["a"]))
+        overlap = len(qtok & etok)
+        if overlap >= min_overlap:
+            scored.append((overlap, e))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [e for _, e in scored[:topk]]
+
+# Carica KB all’avvio
+KB_ENTRIES = _load_kb(KB_PATH)
+
+# ─────────────── WEB ───────────────
+def _allowed(url: str) -> bool:
+    u = url.lower()
+    return any(u.startswith("https://" + d) or u.startswith("http://" + d) or ("://" + d in u) for d in SAFE_DOMAINS)
+
+def _search_web(query: str, k: int) -> List[Dict]:
+    out: List[Dict] = []
+    try:
+        import httpx
+        qq = query
+        ql = qq.lower()
+        if "p560" in ql or "p 560" in ql:
+            qq += " SPIT P560 Tecnaria connettori CTF lamiera grecata chiodatrice"
+        # Tavily
+        if TAVILY_API_KEY:
+            r = httpx.post("https://api.tavily.com/search", json={"api_key":TAVILY_API_KEY,"query":qq,"max_results":k}, timeout=10)
+            for it in (r.json().get("results") or []):
+                u = it.get("url")
+                if u and _allowed(u): out.append({"title": it.get("title",""), "url": u})
+        # SerpAPI
+        if len(out) < k and SERPAPI_API_KEY:
+            r = httpx.get("https://serpapi.com/search.json", params={"q":qq,"api_key":SERPAPI_API_KEY,"num":k}, timeout=10)
+            for it in (r.json().get("organic_results") or []):
+                u = it.get("link")
+                if u and _allowed(u) and u not in [x["url"] for x in out]:
+                    out.append({"title": it.get("title",""), "url": u})
+        # Br
