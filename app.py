@@ -18,7 +18,6 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ------------------- Input model (tollerante) -------------------
 class AskRequest(BaseModel):
-    # Accetta varie chiavi dal frontend per evitare 422
     question: str | None = None
     message:  str | None = None
     Domanda:  str | None = None
@@ -42,7 +41,6 @@ def _prefer_score(url: str) -> int:
     return 1 if any(d in url.lower() for d in preferred) else 0
 
 async def web_search(query: str, topk: int = 5) -> List[Dict]:
-    """Ricerca web con Brave API (server-side)."""
     query = expand_query_if_needed(query)
     if os.getenv("SEARCH_PROVIDER", "brave") != "brave":
         return []
@@ -91,13 +89,16 @@ def load_local_docs() -> Dict[str, str]:
     return docs
 
 # ------------------- System prompt -------------------
-SYSTEM_PROMPT = """Parli come Tecnaria Bot per TECNARIA S.p.A. (Bassano del Grappa).
+SYSTEM_PROMPT = """Parli come il MIGLIOR TECNICO-COMMERCIALE di Tecnaria S.p.A. (Bassano del Grappa).
+- Sei competente, chiaro, autorevole, propositivo e vicino al cliente.
 - Usa prima il WEB (ricerca aperta). Se ci sono più fonti, privilegia domini ufficiali/tecnici (es. tecnaria.com), senza escludere gli altri.
 - Se il WEB non porta risultati utili, integra con documenti locali (static/docs). Se comunque non trovi, dillo onestamente.
-- P560/“SPIT P560”: è una chiodatrice a sparo (pistola sparachiodi) per la posa dei connettori. NON è un connettore.
-- Rispondi in bullet sintetici e chiudi SEMPRE con una sezione **Fonti** con URL (se web) o “file locale”.
-- Non annunciare attese/ricerche: fornisci direttamente la risposta con le Fonti.
-- Lingua: IT.
+- P560 / “SPIT P560”: è una chiodatrice a sparo (pistola sparachiodi) per la posa dei connettori Tecnaria. NON è un connettore.
+- Rispondi sempre in italiano, in tono tecnico-commerciale (non solo tecnico).
+- Struttura le risposte in punti elenco sintetici (max 5–7).
+- Quando opportuno, evidenzia anche vantaggi pratici, semplicità di utilizzo, efficienza in cantiere, convenienza per il cliente.
+- Chiudi SEMPRE con una sezione **Fonti** con URL (se web) o “file locale”.
+- Non annunciare attese o ricerche: fornisci direttamente la risposta con le Fonti.
 """
 
 # ------------------- Routes -------------------
@@ -132,7 +133,7 @@ async def ask(req: AskRequest):
 
         context_blob = "\n\n".join(parts) if parts else "(nessun contesto disponibile)"
 
-        # Messaggi per OpenAI (chat.completions: compatibilità massima)
+        # Messaggi per OpenAI
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": f"Domanda: {user_q}\n\nContesto disponibile:\n{context_blob}"}
