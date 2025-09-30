@@ -1,160 +1,180 @@
 import os
-import httpx
-from typing import List, Dict
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.templating import Jinja2Templates
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from openai import OpenAI
 
-# ------------------- App setup -------------------
-app = FastAPI(title="Tecnaria Bot - Web+Local")
-templates = Jinja2Templates(directory="templates")
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# ------------------- Config -------------------
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY non impostata.")
+    raise RuntimeError("OPENAI_API_KEY non impostata nelle Environment Variables di Render.")
+
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.0")
+OPENAI_MODEL_FALLBACK = os.environ.get("OPENAI_MODEL_FALLBACK")  # opzionale
+
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# ------------------- Input model (tollerante) -------------------
-class AskRequest(BaseModel):
-    question: str | None = None
-    message:  str | None = None
-    Domanda:  str | None = None
-    q:        str | None = None
+# ------------------- Prompt universale con stile -------------------
+PROMPT = """
+Sei un tecnico esperto di TECNARIA S.p.A. (Bassano del Grappa) e rispondi su:
+- Connettori per solai collaboranti: CTF (lamiera grecata), CTL (legno-calcestruzzo), CTCEM/VCEM (acciaio-calcestruzzo), sistemi correlati e accessori (es. chiodatrice SPIT P560, chiodi/propulsori, kit e adattatori).
+- Ambiti di utilizzo, posa, compatibilità, vantaggi, limiti d’impiego, indicazioni generali su certificazioni/ETA e documentazione tecnica.
+- Se la domanda richiede dati non presenti, NON inventare: dì chiaramente che l’informazione non è disponibile e proponi documentazione/contatto tecnico.
 
-    def text(self) -> str:
-        for k in (self.question, self.message, self.Domanda, self.q):
-            if k:
-                return k
-        return ""
+Regole di risposta (stile):
+1) Domanda semplice/commerciale → risposta BREVE, chiara, rassicurante.
+2) Domanda tecnica (progettista/ingegnere, normative, prestazioni) → risposta DETTAGLIATA con logica tecnica e riferimenti (senza inventare codici/ETA specifici: se mancano, indica che puoi fornirli su richiesta).
+3) Domanda ambigua → risposta STANDARD, poi offri di inviare schede tecniche/ETA o link ai PDF.
+4) Mai allungare inutilmente: la risposta deve essere corretta; varia solo la profondità (breve/standard/dettagliata).
+5) Se la domanda riguarda la P560: specifica che si usa per fissaggi su acciaio/lamiera (es. CTF, travi metalliche) e NON serve per fissaggi su legno puro (es. CTL) dove si usano viti/bulloni tradizionali.
+6) Se non sei certo di un dato (codici articolo, PRd, ETA numeriche, combinazioni di lamiera specifiche), dichiara la non disponibilità e suggerisci il documento o il canale corretto senza inventare.
 
-# ------------------- Helpers -------------------
-def expand_query_if_needed(query: str) -> str:
-    q = query.lower()
-    if "p560" in q and "spit" not in q:
-        return query + " SPIT chiodatrice pistola sparachiodi Tecnaria"
-    return query
-
-def _prefer_score(url: str) -> int:
-    preferred = [d.strip().lower() for d in (os.getenv("PREFERRED_DOMAINS") or "").split(",") if d.strip()]
-    return 1 if any(d in url.lower() for d in preferred) else 0
-
-async def web_search(query: str, topk: int = 5) -> List[Dict]:
-    query = expand_query_if_needed(query)
-    if os.getenv("SEARCH_PROVIDER", "brave") != "brave":
-        return []
-    key = os.getenv("BRAVE_API_KEY")
-    if not key:
-        if os.getenv("DEBUG") == "1":
-            print("[BRAVE] manca BRAVE_API_KEY")
-        return []
-
-    url = "https://api.search.brave.com/res/v1/web/search"
-    headers = {"X-Subscription-Token": key, "User-Agent": "Mozilla/5.0"}
-    params = {"q": query, "count": topk}
-
-    async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as ac:
-        r = await ac.get(url, headers=headers, params=params)
-        if os.getenv("DEBUG") == "1":
-            print("[BRAVE] status:", r.status_code)
-            try:
-                print("[BRAVE] body sample:", r.text[:300].replace("\n", " "))
-            except Exception:
-                pass
-        if r.status_code != 200:
-            return []
-
-        data = r.json()
-        results = []
-        for item in (data.get("web", {}).get("results") or [])[:topk]:
-            u = item.get("url")
-            if u:
-                results.append({"name": item.get("title", ""), "url": u})
-        results.sort(key=lambda x: _prefer_score(x["url"]), reverse=True)
-        return results
-
-def load_local_docs() -> Dict[str, str]:
-    docs: Dict[str, str] = {}
-    base = "static/docs"
-    if not os.path.isdir(base):
-        return docs
-    for fn in os.listdir(base):
-        if fn.endswith(".txt"):
-            try:
-                with open(os.path.join(base, fn), "r", encoding="utf-8") as f:
-                    docs[fn] = f.read()
-            except Exception:
-                continue
-    return docs
-
-# ------------------- System prompt -------------------
-SYSTEM_PROMPT = """Parli come il MIGLIOR TECNICO-COMMERCIALE di Tecnaria S.p.A. (Bassano del Grappa).
-- Sei competente, chiaro, autorevole, propositivo e vicino al cliente.
-- Usa prima il WEB (ricerca aperta). Se ci sono più fonti, privilegia domini ufficiali/tecnici (es. tecnaria.com), senza escludere gli altri.
-- Se il WEB non porta risultati utili, integra con documenti locali (static/docs). Se comunque non trovi, dillo onestamente.
-- P560 / “SPIT P560”: è una chiodatrice a sparo (pistola sparachiodi) per la posa dei connettori Tecnaria. NON è un connettore.
-- Rispondi sempre in italiano, in tono tecnico-commerciale (non solo tecnico).
-- Struttura le risposte in punti elenco sintetici (max 5–7).
-- Quando opportuno, evidenzia anche vantaggi pratici, semplicità di utilizzo, efficienza in cantiere, convenienza per il cliente.
-- Chiudi SEMPRE con una sezione **Fonti** con URL (se web) o “file locale”.
-- Non annunciare attese o ricerche: fornisci direttamente la risposta con le Fonti.
+Tono: tecnico, professionale, concreto. Linguaggio italiano. Non inserire markdown eccessivo: usa elenchi puntati solo se migliorano la leggibilità.
 """
 
-# ------------------- Routes -------------------
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+# ------------------- FastAPI -------------------
+app = FastAPI(title="Tecnaria Bot - Risposte uniformi (Prompt con stile)")
 
-@app.get("/ping")
-async def ping():
-    return {"status": "ok", "service": "Tecnaria Bot - Web+Local", "model": os.getenv("OPENAI_MODEL", "gpt-4o")}
+class AskPayload(BaseModel):
+    question: str
+    # opzionale: lascia vuoto, lo stile lo decide il prompt
+    context: Optional[str] = None
+
+@app.get("/", response_class=HTMLResponse)
+def root():
+    # Semplice UI monodominio (domanda → risposta)
+    html = """
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Tecnaria Bot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html,body {font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji"; margin:0; padding:0; background:#0b0f19; color:#e6e6e6;}
+    .wrap {max-width:900px; margin:32px auto; padding:0 16px;}
+    h1 {font-size:24px; margin:0 0 12px;}
+    p.sub {opacity:.7; margin:0 0 20px;}
+    form {display:flex; gap:8px; margin:16px 0 12px;}
+    input[type=text] {flex:1; padding:12px 14px; border-radius:12px; border:1px solid #273047; background:#12182b; color:#e6e6e6;}
+    button {padding:12px 16px; border:0; border-radius:12px; background:#3a5bfd; color:#fff; cursor:pointer; font-weight:600;}
+    button:disabled {opacity:.6; cursor:not-allowed;}
+    .card {background:#0f1527; border:1px solid #273047; border-radius:14px; padding:16px; margin-top:12px; white-space:pre-wrap; line-height:1.45}
+    .small {font-size:12px; opacity:.7; margin-top:8px;}
+    .foot {opacity:.55; font-size:12px; margin-top:18px}
+    a {color:#8fb3ff; text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Tecnaria Bot</h1>
+    <p class="sub">Una domanda alla volta. Risposta unica, con stile deciso dal prompt (breve/standard/dettagliata).</p>
+    <form id="f">
+      <input id="q" type="text" placeholder="Scrivi la tua domanda su CTF, CTL, P560, ecc." required />
+      <button id="b" type="submit">Chiedi</button>
+    </form>
+    <div id="out" class="card" style="display:none"></div>
+    <div id="meta" class="small"></div>
+    <div class="foot">Modello: <span id="model"></span></div>
+  </div>
+<script>
+const f = document.getElementById('f');
+const q = document.getElementById('q');
+const b = document.getElementById('b');
+const out = document.getElementById('out');
+const meta = document.getElementById('meta');
+const modelSpan = document.getElementById('model');
+
+async function ask(question){
+  const res = await fetch('/api/ask', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({question})
+  });
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error(t || ('HTTP ' + res.status));
+  }
+  return res.json();
+}
+
+f.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  b.disabled = true;
+  out.style.display = 'block';
+  out.textContent = 'Sto pensando...';
+  meta.textContent = '';
+  try{
+    const data = await ask(q.value);
+    out.textContent = data.answer || '(nessuna risposta)';
+    meta.textContent = data.info ? ('Info: ' + data.info) : '';
+    modelSpan.textContent = data.model || '';
+  }catch(err){
+    out.textContent = 'Errore: ' + (err.message || err);
+  }finally{
+    b.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
+"""
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+
+@app.get("/health")
+def health():
+    return JSONResponse({"status": "ok", "service": "Tecnaria Bot - Prompt con stile"})
+
+def _call_openai(model: str, question: str, context: Optional[str]) -> str:
+    """
+    Chiama la Responses API con messaggi (system + user). Ritorna il testo.
+    """
+    msgs = [
+        {"role": "system", "content": PROMPT.strip()},
+        {"role": "user", "content": question if not context else f"{question}\n\nContesto:\n{context}"}
+    ]
+    resp = client.responses.create(
+        model=model,
+        input=msgs,
+        temperature=0.2,          # stabilità
+        max_output_tokens=750,    # sufficiente per risposte dettagliate
+    )
+    # Estrarre il testo in modo robusto
+    for item in resp.output:
+        if item.type == "message" and item.message and item.message.content:
+            # content è una lista di blocchi (text, tool, ecc.)
+            chunks = []
+            for c in item.message.content:
+                if c.get("type") == "output_text" and "text" in c:
+                    chunks.append(c["text"])
+            if chunks:
+                return "\n".join(chunks).strip()
+    # Fallback generico
+    return (getattr(resp, "output_text", None) or "").strip() or "Non ho trovato una risposta utile con i dati disponibili."
 
 @app.post("/api/ask")
-async def ask(req: AskRequest):
+def api_ask(payload: AskPayload):
+    question = (payload.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="La domanda è vuota.")
+
+    # Primo tentativo con il modello principale
     try:
-        user_q = req.text().strip()
-        if not user_q:
-            return JSONResponse({"ok": False, "error": "Domanda mancante"}, status_code=400)
+        answer = _call_openai(OPENAI_MODEL, question, payload.context)
+        return JSONResponse({"answer": answer, "model": OPENAI_MODEL, "info": "primary"})
+    except Exception as e_primary:
+        # Fallback opzionale
+        if OPENAI_MODEL_FALLBACK:
+            try:
+                answer = _call_openai(OPENAI_MODEL_FALLBACK, question, payload.context)
+                return JSONResponse({"answer": answer, "model": OPENAI_MODEL_FALLBACK, "info": "fallback"})
+            except Exception as e_fallback:
+                raise HTTPException(status_code=500, detail=f"Errore modelli (fallback): {e_fallback}") from e_fallback
+        raise HTTPException(status_code=500, detail=f"Errore modello primario: {e_primary}")
 
-        fetch_web_first = os.getenv("FETCH_WEB_FIRST", "1") == "1"
-        topk = int(os.getenv("SEARCH_TOPK", "5"))
-
-        # Costruzione contesto
-        parts: List[str] = []
-        web_hits = []
-        if fetch_web_first:
-            web_hits = await web_search(user_q, topk=topk)
-            if web_hits:
-                parts.append("Fonti web:\n" + "\n".join(f"- {h['name']} {h['url']}" for h in web_hits))
-        local_docs = load_local_docs()
-        if local_docs:
-            parts.append("Documenti locali:\n" + "\n".join(f"- {k}" for k in local_docs.keys()))
-
-        context_blob = "\n\n".join(parts) if parts else "(nessun contesto disponibile)"
-
-        # Messaggi per OpenAI
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Domanda: {user_q}\n\nContesto disponibile:\n{context_blob}"}
-        ]
-
-        resp = client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o"),
-            messages=messages,
-            temperature=0.2,
-        )
-        text = resp.choices[0].message.content.strip()
-
-        # Post-format: assicurati sezione Fonti
-        if "**Fonti**" not in text and "Fonti" not in text:
-            sources = [h["url"] for h in web_hits] if web_hits else list(local_docs.keys())
-            if sources:
-                text += "\n\n**Fonti**\n" + "\n".join(f"- {s}" for s in sources)
-            else:
-                text += "\n\n**Fonti**\n- (nessuna fonte trovata)"
-
-        return {"ok": True, "answer": text}
-
-    except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+# Avvio locale (su Render usa Procfile/gunicorn/uvicorn)
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app:app", host="0.0.0.0", port=int(os.environ.get("PORT", "8000")))
