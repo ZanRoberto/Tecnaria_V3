@@ -32,12 +32,15 @@ KB_PATH = os.environ.get("KB_PATH", "KB_FAQ.md")
 KB_MIN_OVERLAP = int(os.environ.get("KB_MIN_OVERLAP", "1"))
 KB_TOPK = int(os.environ.get("KB_TOPK", "2"))
 
-# Memoria tecnica (Sinapsi) — opzionale, file JSON locale (best effort)
+# Memoria tecnica (Sinapsi) — best effort
 SINAPSI_PATH = os.environ.get("SINAPSI_PATH", "sinapsi_brain.json")
+
+# Regole esterne (guardrail data-driven)
+RULES_PATH = os.environ.get("RULES_PATH", "rules_guardrails.json")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# ─────────────── PROMPT LOCALE (immutato, niente dati “magici”) ───────────────
+# ─────────────── PROMPT LOCALE (immutato) ───────────────
 PROMPT = """
 Agisci come TECNICO-COMMERCIALE SENIOR di TECNARIA S.p.A. (Bassano del Grappa).
 Obiettivo: risposte corrette, sintetiche e utili alla decisione d’acquisto/posa. ZERO invenzioni.
@@ -56,7 +59,7 @@ Tono: tecnico, professionale, concreto. Italiano.
 """.strip()
 
 # ─────────────── FASTAPI ───────────────
-app = FastAPI(title="Tecnaria Bot — WEB → LOCALE + Note interne")
+app = FastAPI(title="Tecnaria Bot — WEB → LOCALE + Note interne + Regole esterne")
 
 class AskPayload(BaseModel):
     question: str
@@ -75,12 +78,11 @@ body{margin:0;background:var(--bg);color:#e6e6e6;font-family:system-ui,Segoe UI,
 .badge{background:#0e1c2f;border:1px solid #27405c;border-radius:999px;padding:6px 10px;font-size:12px;color:#cfe1ff}
 .panel{display:grid;grid-template-columns:320px 1fr;gap:20px;margin-top:14px}
 .left{background:var(--card);border:1px solid #273047;border-radius:16px;padding:14px}
-.right{background:#111833;border:1px solid #273047;border-radius:16px;padding:14px;min-height:180px}
+.right{background:#111833;border:1px solid #273047;border-radius:16px;min-height:180px}
 h1{margin:.2rem 0 0;font-size:22px}
 .label{font-size:12px;color:var(--mut);margin:10px 0 6px}
 textarea{width:100%;height:320px;background:#0f1426;border:1px solid #26314a;border-radius:12px;color:#e6e6e6;padding:10px;resize:vertical}
 .btn{display:inline-block;background:var(--g);border:0;color:#07130d;font-weight:700;padding:10px 14px;border-radius:10px;cursor:pointer}
-.btn:disabled{opacity:.6;cursor:not-allowed}
 .tag{display:inline-block;border:1px solid #2a3a56;color:#bcd0ef;border-radius:999px;padding:4px 10px;font-size:12px;margin-right:6px}
 .code{white-space:pre-wrap;line-height:1.5}
 .small{font-size:12px;color:#aab7c7;margin-top:6px}
@@ -90,9 +92,10 @@ textarea{width:100%;height:320px;background:#0f1426;border:1px solid #26314a;bor
     <div class="badge">pronto</div>
     <div class="badge">web→locale</div>
     <div class="badge">note interne: ON</div>
+    <div class="badge">regole esterne</div>
   </div>
   <h1>Tecnaria Bot</h1>
-  <div class="small">Prima Web (domini ufficiali), poi Locale. In coda aggiunge la <b>Nota integrativa (interno)</b> dal tuo file.</div>
+  <div class="small">Prima Web (domini ufficiali), poi Locale. In coda: <b>Nota integrativa</b> e regole da file.</div>
 
   <div class="panel">
     <div class="left">
@@ -100,7 +103,7 @@ textarea{width:100%;height:320px;background:#0f1426;border:1px solid #26314a;bor
       <textarea id="q" placeholder="Es.: “Se i chiodi si piegano o non entrano?”"></textarea>
       <div style="margin-top:10px">
         <button class="btn" id="ask">Chiedi</button>
-        <span class="tag">P560</span><span class="tag">Connettori CTF</span><span class="tag">Contatti</span>
+        <span class="tag">P560</span><span class="tag">CTF</span><span class="tag">CTL</span>
       </div>
     </div>
     <div class="right">
@@ -266,7 +269,7 @@ def _answer_local_p560() -> str:
         "PRd/codici specifici non sono forniti qui: li inviamo su richiesta."
     )
 
-# ─────────────── SINAPSI (memoria tecnica minimale, fuori dal prompt) ───────────────
+# ─────────────── SINAPSI (memoria tecnica minimale) ───────────────
 def _sinapsi_load():
     try:
         with open(SINAPSI_PATH, "r", encoding="utf-8") as f:
@@ -280,7 +283,7 @@ def _sinapsi_save(data: dict):
         with open(SINAPSI_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception:
-        pass  # su alcuni host il FS è effimero: ignora errori di scrittura
+        pass
 
 def _sinapsi_merge_list(dst: list, vals: list) -> bool:
     changed = False
@@ -303,16 +306,11 @@ def _sinapsi_upsert(topic: str, facts: dict) -> bool:
     return changed
 
 def _sinapsi_autolearn(question: str, answer: str):
-    """
-    Estrae fatti semplici da Q&A e li memorizza (senza duplicati).
-    Non tocca il prompt; serve solo al correttore.
-    """
     text = (question + " " + answer).lower()
     topics = []
     if re.search(r"\b(ctf|p\s*560|p560|lamiera|hsbr14)\b", text): topics += ["CTF","P560"]
     if re.search(r"\bctl\b|\blegno\b", text): topics += ["CTL"]
     topics = list(dict.fromkeys(topics))
-
     facts = {"uso": [], "fissaggio": [], "vantaggi": [], "note": [], "compatibilita": []}
     if "hsbr14" in text: facts["fissaggio"].append("chiodi HSBR14")
     if re.search(r"\bp\s*560\b|\bspit\s*p560\b", text): facts["fissaggio"].append("SPIT P560")
@@ -321,39 +319,70 @@ def _sinapsi_autolearn(question: str, answer: str):
     if "posa" in text and "rapid" in text: facts["vantaggi"].append("posa rapida")
     if "legno" in text: facts["uso"].append("legno+calcestruzzo")
     if "acciaio" in text and "calcestruzzo" in text: facts["uso"].append("acciaio+calcestruzzo")
-
     facts["fissaggio"] = [("SPIT P560" if "p560" in v.lower() else v) for v in facts["fissaggio"]]
     for t in topics:
         _sinapsi_upsert(t, facts)
 
-# ─────────────── CORRETTORE INVISIBILE (post-process, fuori dal prompt) ───────────────
+# ───────── RULES ENGINE (post-process data-driven) ─────────
+_RULES = None
+
+def _load_rules():
+    global _RULES
+    if _RULES is not None:
+        return _RULES
+    try:
+        with open(RULES_PATH, "r", encoding="utf-8") as f:
+            _RULES = json.load(f)
+    except Exception:
+        _RULES = []
+    return _RULES
+
+def _regex_any(text: str, patterns: list) -> bool:
+    return any(re.search(p, text, flags=re.I) for p in (patterns or []))
+
+def _regex_all(text: str, patterns: list) -> bool:
+    return all(re.search(p, text, flags=re.I) for p in (patterns or []))
+
 def _postprocess_corrector(question: str, answer: str) -> str:
     """
-    NON tocca il prompt. Lavora SOLO sull'output.
-    Garantisce HSBR14 con P560/CTF e impedisce CTL+P560.
+    Applica regole dal file JSON:
+    - trigger_any_q: se uno dei pattern è nella domanda → attiva regola
+    - exclude_any_q: se uno dei pattern è nella domanda → salta regola
+    - forbid_a: se la risposta contiene pattern vietati → aggiunge forbid_note
+    - ensure_any_a: se nessuno dei pattern è presente → aggiunge ensure_note
+    - require_if_missing_add_note.must_include_a: se NON sono tutti presenti → aggiunge note
     """
+    rules = _load_rules()
     ql, al = question.lower(), answer.lower()
+    adds = []
 
-    def need(term: str) -> bool:
-        return term.lower() not in al
+    for r in rules:
+        trig = r.get("trigger_any_q") or []
+        excl = r.get("exclude_any_q") or []
+        if trig and not _regex_any(ql, trig):
+            continue
+        if excl and _regex_any(ql, excl):
+            continue
 
-    is_ctf_or_p560 = bool(re.search(r"\b(ctf|p\s*560|p560)\b", ql))
-    is_ctl = ("ctl" in ql)
+        forbid = r.get("forbid_a") or []
+        if forbid and _regex_any(al, forbid):
+            n = (r.get("forbid_note") or "").strip()
+            if n and n not in answer:
+                adds.append(n)
 
-    if is_ctf_or_p560:
-        add = []
-        if need("HSBR14"): add.append("**chiodi HSBR14**")
-        if need("SPIT P560"): add.append("**SPIT P560**")
-        if need("lamiera grecata"): add.append("**lamiera grecata**")
-        if add:
-            answer = answer.rstrip() + "\n\nNota: sistema CTF → " + ", ".join(add) + "."
+        ens = r.get("ensure_any_a") or []
+        ens_note = (r.get("ensure_note") or "").strip()
+        if ens and not _regex_any(al, ens) and ens_note and ens_note not in answer:
+            adds.append(ens_note)
 
-    if is_ctl:
-        if "p560" in al:
-            answer = answer.rstrip() + "\n\nCorrezione: per i **CTL** si usano **viti autofilettanti** (NO P560)."
-        elif "viti autofilettanti" not in al and "viti" not in al:
-            answer = answer.rstrip() + "\n\nNota: i **CTL** si fissano con **viti autofilettanti**."
+        req = r.get("require_if_missing_add_note") or {}
+        must = req.get("must_include_a") or []
+        n2 = (req.get("note") or "").strip()
+        if must and (not _regex_all(al, must)) and n2 and n2 not in answer:
+            adds.append(n2)
 
+    if adds:
+        answer = answer.rstrip() + "\n\n" + "\n".join(adds)
     return answer
 
 # ─────────────── API ───────────────
@@ -378,12 +407,12 @@ def api_ask(p: AskPayload):
         if sources:
             final += "\n\nFonti utili (web):\n" + "\n".join(f"- {u}" for u in sources)
 
-    # 3) NOTA INTEGRATIVA (INTERNO) — se c’è match nel file KB
+    # 3) NOTA INTEGRATIVA (INTERNO)
     notes = _kb_notes_for(q)
     if notes:
         final += "\n\nNota integrativa (interno):\n" + "\n".join([f"- Q{n['id']}: {n['a']}" for n in notes])
 
-    # 4) CORREZIONE INVISIBILE + AUTOLEARN (NO prompt)
+    # 4) Correttore a regole + Sinapsi (fuori dal prompt)
     final = _postprocess_corrector(q, final)
     _sinapsi_autolearn(q, final)
 
