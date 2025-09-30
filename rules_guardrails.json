@@ -16,7 +16,7 @@
     "trigger_any_q": ["\\bctl\\b", "\\blegno\\b"],
     "exclude_any_q": ["\\bprezz|\\bcost|\\bpreventiv"],
     "forbid_a": ["\\bp\\s*560\\b|\\bp560\\b"],
-    "forbid_note": "Correzione: per i **CTL** si usano **viti autofilettanti** (NO P560).",
+    "forbid_note": "Nota: per i **CTL** si impiegano **viti autofilettanti**; la **SPIT P560** non si utilizza.",
     "ensure_any_a": ["\\bviti\\s+autofilettanti\\b|\\bviti\\b"],
     "ensure_note": "Nota: i **CTL** si fissano con **viti autofilettanti**."
   },
@@ -33,4 +33,3 @@
     "ensure_note": "Nota: per prezzi e preventivi contattare il commerciale Tecnaria."
   }
 ]
-
