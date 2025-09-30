@@ -5,12 +5,11 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from openai import OpenAI
 
-# ───────────────────── ENV / MODELLI ─────────────────────
+# ─────────────── ENV / MODELLI ───────────────
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY non impostata.")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
-# se qualcuno imposta un 5.x non compatibile con chat.completions, scendiamo a 4.x
 if OPENAI_MODEL.startswith("gpt-5"):
     OPENAI_MODEL = os.environ.get("OPENAI_MODEL_COMPAT", "gpt-4o")
 
@@ -28,9 +27,14 @@ TAVILY_API_KEY  = os.environ.get("TAVILY_API_KEY", "")
 SERPAPI_API_KEY = os.environ.get("SERPAPI_API_KEY", "")
 BRAVE_API_KEY   = os.environ.get("BRAVE_API_KEY", "")
 
+# Knowledge base interna
+KB_PATH = os.environ.get("KB_PATH", "KB_FAQ.md")
+KB_MIN_OVERLAP = int(os.environ.get("KB_MIN_OVERLAP", "1"))  # parole chiave in comune minime per mostrare nota
+KB_TOPK = int(os.environ.get("KB_TOPK", "2"))                # quante note interne mostrare al massimo
+
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# ───────────────────── PROMPT LOCALE ─────────────────────
+# ─────────────── PROMPT LOCALE ───────────────
 PROMPT = """
 Agisci come TECNICO-COMMERCIALE SENIOR di TECNARIA S.p.A. (Bassano del Grappa).
 Obiettivo: risposte corrette, sintetiche e utili alla decisione d’acquisto/posa. ZERO invenzioni.
@@ -48,13 +52,13 @@ Regole:
 Tono: tecnico, professionale, concreto. Italiano.
 """.strip()
 
-# ───────────────────── FASTAPI ─────────────────────
-app = FastAPI(title="Tecnaria Bot — WEB → LOCALE")
+# ─────────────── FASTAPI ───────────────
+app = FastAPI(title="Tecnaria Bot — WEB → LOCALE + Note interne")
 
 class AskPayload(BaseModel):
     question: str
 
-# ───────────────────── UI VERDE (NO f-string!) ─────────────────────
+# ─────────────── UI VERDE (no f-string) ───────────────
 @app.get("/", response_class=HTMLResponse)
 def ui():
     html_page = """
@@ -82,17 +86,15 @@ textarea{width:100%;height:320px;background:#0f1426;border:1px solid #26314a;bor
   <div class="header">
     <div class="badge">pronto</div>
     <div class="badge">web→locale</div>
-    <div class="badge">critici: ON</div>
-    <div style="flex:1"></div>
-    <div class="badge">modello: """ + OPENAI_MODEL + """</div>
+    <div class="badge">note interne: ON</div>
   </div>
   <h1>Tecnaria Bot</h1>
-  <div class="small">Ricerca web (domini ufficiali) → risposta; se le fonti non bastano, cade su base locale Tecnaria.</div>
+  <div class="small">Prima Web (domini ufficiali), poi Locale. In coda aggiunge la <b>Nota integrativa (interno)</b> dal tuo file.</div>
 
   <div class="panel">
     <div class="left">
       <div class="label">Domanda</div>
-      <textarea id="q" placeholder="Es.: “Mi parli della P560?”"></textarea>
+      <textarea id="q" placeholder="Es.: “Se i chiodi si piegano o non entrano?”"></textarea>
       <div style="margin-top:10px">
         <button class="btn" id="ask">Chiedi</button>
         <span class="tag">P560</span><span class="tag">Connettori CTF</span><span class="tag">Contatti</span>
@@ -122,9 +124,49 @@ document.getElementById('ask').addEventListener('click', async ()=>{
 
 @app.get("/health")
 def health():
-    return JSONResponse({"status":"ok","mode":"web_first_then_local","safe_domains":SAFE_DOMAINS,"model":OPENAI_MODEL})
+    return JSONResponse({"status":"ok","mode":"web_first_then_local","kb_path":KB_PATH,"model":OPENAI_MODEL})
 
-# ───────────────────── WEB ─────────────────────
+# ─────────────── KB INTERNA: parser + match ───────────────
+KB_ENTRIES: List[Dict] = []
+
+def _load_kb(path: str) -> List[Dict]:
+    entries: List[Dict] = []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = f.read()
+        # Cerca blocchi tipo:
+        # Q8: testo domanda
+        # A8: testo risposta (anche su più righe) ... fino alla prossima Qxx: o EOF
+        pattern = re.compile(r"(?mi)^Q(\d+):\s*(.+?)\s*\nA\1:\s*(.+?)(?=\nQ\d+:|\Z)", re.S)
+        for m in pattern.finditer(data):
+            idx = m.group(1)
+            qtext = m.group(2).strip()
+            atext = m.group(3).strip()
+            entries.append({"id": idx, "q": qtext, "a": atext})
+    except Exception:
+        pass
+    return entries
+
+def _tokenize(s: str) -> List[str]:
+    return [w for w in re.split(r"[^a-z0-9àèéìòóù]+", s.lower()) if len(w) >= 3]
+
+def _kb_notes_for(question: str, topk: int = KB_TOPK, min_overlap: int = KB_MIN_OVERLAP) -> List[Dict]:
+    if not KB_ENTRIES:
+        return []
+    qtok = set(_tokenize(question))
+    scored = []
+    for e in KB_ENTRIES:
+        etok = set(_tokenize(e["q"] + " " + e["a"]))
+        overlap = len(qtok & etok)
+        if overlap >= min_overlap:
+            scored.append((overlap, e))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [e for _, e in scored[:topk]]
+
+# Carica KB all’avvio
+KB_ENTRIES = _load_kb(KB_PATH)
+
+# ─────────────── WEB ───────────────
 def _allowed(url: str) -> bool:
     u = url.lower()
     return any(u.startswith("https://" + d) or u.startswith("http://" + d) or ("://" + d in u) for d in SAFE_DOMAINS)
@@ -134,22 +176,18 @@ def _search_web(query: str, k: int) -> List[Dict]:
     try:
         import httpx
         qq = query
-        # booster P560
         ql = qq.lower()
         if "p560" in ql or "p 560" in ql:
             qq += " SPIT P560 Tecnaria connettori CTF lamiera grecata chiodatrice"
         # Tavily
         if TAVILY_API_KEY:
-            r = httpx.post("https://api.tavily.com/search",
-                           json={"api_key":TAVILY_API_KEY,"query":qq,"max_results":k},
-                           timeout=10)
+            r = httpx.post("https://api.tavily.com/search", json={"api_key":TAVILY_API_KEY,"query":qq,"max_results":k}, timeout=10)
             for it in (r.json().get("results") or []):
                 u = it.get("url")
                 if u and _allowed(u): out.append({"title": it.get("title",""), "url": u})
         # SerpAPI
         if len(out) < k and SERPAPI_API_KEY:
-            r = httpx.get("https://serpapi.com/search.json",
-                          params={"q":qq,"api_key":SERPAPI_API_KEY,"num":k}, timeout=10)
+            r = httpx.get("https://serpapi.com/search.json", params={"q":qq,"api_key":SERPAPI_API_KEY,"num":k}, timeout=10)
             for it in (r.json().get("organic_results") or []):
                 u = it.get("link")
                 if u and _allowed(u) and u not in [x["url"] for x in out]:
@@ -157,9 +195,7 @@ def _search_web(query: str, k: int) -> List[Dict]:
         # Brave
         if len(out) < k and BRAVE_API_KEY:
             r = httpx.get("https://api.search.brave.com/res/v1/web/search",
-                          params={"q":qq,"count":k},
-                          headers={"X-Subscription-Token":BRAVE_API_KEY,"Accept":"application/json"},
-                          timeout=10)
+                          params={"q":qq,"count":k}, headers={"X-Subscription-Token":BRAVE_API_KEY,"Accept":"application/json"}, timeout=10)
             for it in (r.json().get("web",{}).get("results") or []):
                 u = it.get("url")
                 if u and _allowed(u) and u not in [x["url"] for x in out]:
@@ -173,14 +209,12 @@ def _fetch_text(url: str) -> str:
         import httpx
         r = httpx.get(url, timeout=WEB_FETCH_TIMEOUT, follow_redirects=True, headers={"User-Agent":"Mozilla/5.0"})
         ctype = (r.headers.get("Content-Type","").lower())
-        # PDF (se hai pdfminer.six installato)
         if "application/pdf" in ctype or url.lower().endswith(".pdf"):
             try:
                 from pdfminer.high_level import extract_text
                 return (extract_text(io.BytesIO(r.content)) or "")[:20000].strip()
             except Exception:
                 return ""
-        # HTML
         text = r.text
         text = re.sub(r"<script.*?</script>|<style.*?</style>", " ", text, flags=re.S|re.I)
         text = re.sub(r"<[^>]+>", " ", text)
@@ -195,27 +229,18 @@ def _answer_from_web(question: str) -> Tuple[str, List[str]]:
     for r in results:
         if len(sources) >= WEB_MAX_PAGES: break
         body = _fetch_text(r["url"])
-        if len(body) < 400:  # scarta pagine povere
+        if len(body) < 400:
             continue
         sources.append(r["url"])
         contents.append(f"{r['url']}\n{body}")
         time.sleep(0.25)
-
     if not sources:
         return "", []
-
     sources_block = "\n\n".join(textwrap.shorten(c, width=3000, placeholder=" …") for c in contents)
-    sys = {"role":"system","content":
-        "Rispondi SOLO usando le fonti fornite. Se un dato non c'è, scrivi: 'Dato non disponibile in queste fonti.' Cita con [1],[2],... in fondo."}
+    sys = {"role":"system","content":"Rispondi SOLO usando le fonti fornite. Se un dato non c'è, scrivi: 'Dato non disponibile in queste fonti.' Cita con [1],[2],... in fondo."}
     usr = {"role":"user","content": f"Domanda: {question}\n\nFonti:\n{sources_block}"}
-
     try:
-        resp = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[sys, usr],
-            temperature=0.0,
-            max_tokens=900,
-        )
+        resp = client.chat.completions.create(model=OPENAI_MODEL, messages=[sys, usr], temperature=0.0, max_tokens=900)
         txt = (resp.choices[0].message.content or "").strip()
         if txt:
             cite_block = "Fonti:\n" + "\n".join(f"[{i+1}] {u}" for i,u in enumerate(sources))
@@ -224,19 +249,10 @@ def _answer_from_web(question: str) -> Tuple[str, List[str]]:
         pass
     return "", sources
 
-# ───────────────────── LOCALE (fallback) ─────────────────────
+# ─────────────── LOCALE (fallback) ───────────────
 def _answer_local_generic(question: str) -> str:
-    msgs = [
-        {"role":"system","content":PROMPT},
-        {"role":"user","content":question},
-    ]
-    resp = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=msgs,
-        temperature=0.0,
-        top_p=1.0,
-        max_tokens=750,
-    )
+    msgs = [{"role":"system","content":PROMPT}, {"role":"user","content":question}]
+    resp = client.chat.completions.create(model=OPENAI_MODEL, messages=msgs, temperature=0.0, top_p=1.0, max_tokens=750)
     txt = (resp.choices[0].message.content or "").strip()
     return txt or "Dato non disponibile in questa sede. Possiamo inviare la scheda tecnica/ETA su richiesta."
 
@@ -250,7 +266,7 @@ def _answer_local_p560() -> str:
         "PRd/codici specifici non sono forniti qui: li inviamo su richiesta."
     )
 
-# ───────────────────── API ─────────────────────
+# ─────────────── API ───────────────
 @app.post("/api/ask")
 def api_ask(p: AskPayload):
     q = (p.question or "").strip()
@@ -260,17 +276,21 @@ def api_ask(p: AskPayload):
     # 1) WEB FIRST
     web_answer, sources = _answer_from_web(q)
     ok_web = web_answer and "Dato non disponibile in queste fonti." not in web_answer
-
     if ok_web:
-        return JSONResponse({"answer": web_answer, "model": OPENAI_MODEL})
-
-    # 2) FALLBACK LOCALE (con guard-rail P560)
-    qlow = q.lower()
-    if "p560" in qlow or "p 560" in qlow or ("spit" in qlow and "p560" in qlow):
-        base = _answer_local_p560()
+        final = web_answer
     else:
-        base = _answer_local_generic(q)
+        # 2) FALLBACK LOCALE (P560 guard-rail)
+        qlow = q.lower()
+        if "p560" in qlow or "p 560" in qlow or ("spit" in qlow and "p560" in qlow):
+            final = _answer_local_p560()
+        else:
+            final = _answer_local_generic(q)
+        if sources:
+            final += "\n\nFonti utili (web):\n" + "\n".join(f"- {u}" for u in sources)
 
-    if sources:
-        base += "\n\nFonti utili (web):\n" + "\n".join(f"- {u}" for u in sources)
-    return JSONResponse({"answer": base, "model": OPENAI_MODEL})
+    # 3) NOTA INTEGRATIVA (INTERNO) — sempre se c’è match nel file KB
+    notes = _kb_notes_for(q)
+    if notes:
+        final += "\n\nNota integrativa (interno):\n" + "\n".join([f"- Q{n['id']}: {n['a']}" for n in notes])
+
+    return JSONResponse({"answer": final, "model": OPENAI_MODEL})
