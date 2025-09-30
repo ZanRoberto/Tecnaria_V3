@@ -30,6 +30,6 @@
     "id": "PREZZO_COMMERCIALE",
     "trigger_any_q": ["\\bprezz|\\bcost|\\bpreventiv"],
     "ensure_any_a": ["contattare il commerciale|richiedere un preventivo|ufficio commerciale"],
-    "ensure_note": "Nota: per prezzi e preventivi contattare il commerciale Tecnaria."
+    "ensure_note": "Nota: per prezzi e preventivi contattare il commerciale Tecnaria o inviare email a info@tecnaria.com ."
   }
 ]
