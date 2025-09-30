@@ -1,6 +1,6 @@
 import os, re, html, time, textwrap, io, json
-from typing import List, Dict, Tuple
-from fastapi import FastAPI, HTTPException
+from typing import List, Dict, Tuple, Optional
+from fastapi import FastAPI, HTTPException, Request, Header
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from openai import OpenAI
@@ -22,7 +22,7 @@ SAFE_DOMAINS = [d.strip().lower() for d in os.environ.get(
     "tecnaria.com,www.tecnaria.com,spitpaslode.it,spit.eu,eta.europa.eu,cstb.fr"
 ).split(",") if d.strip()]
 
-# provider (ne basta uno)
+# Provider (ne basta uno)
 TAVILY_API_KEY  = os.environ.get("TAVILY_API_KEY", "")
 SERPAPI_API_KEY = os.environ.get("SERPAPI_API_KEY", "")
 BRAVE_API_KEY   = os.environ.get("BRAVE_API_KEY", "")
@@ -37,10 +37,11 @@ SINAPSI_PATH = os.environ.get("SINAPSI_PATH", "sinapsi_brain.json")
 
 # Regole esterne (guardrail data-driven)
 RULES_PATH = os.environ.get("RULES_PATH", "rules_guardrails.json")
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")  # se vuoto, POST /admin/rules è disabilitato
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# ─────────────── PROMPT LOCALE (immutato) ───────────────
+# ─────────────── PROMPT LOCALE (immutato, pulito) ───────────────
 PROMPT = """
 Agisci come TECNICO-COMMERCIALE SENIOR di TECNARIA S.p.A. (Bassano del Grappa).
 Obiettivo: risposte corrette, sintetiche e utili alla decisione d’acquisto/posa. ZERO invenzioni.
@@ -130,7 +131,16 @@ document.getElementById('ask').addEventListener('click', async ()=>{
 
 @app.get("/health")
 def health():
-    return JSONResponse({"status":"ok","mode":"web_first_then_local","kb_path":KB_PATH})
+    # Info utili (senza rivelare il modello)
+    rules_count, rules_mtime = _rules_info()
+    return JSONResponse({
+        "status":"ok",
+        "mode":"web_first_then_local",
+        "kb_path":KB_PATH,
+        "rules_path":RULES_PATH,
+        "rules_loaded": rules_count,
+        "rules_mtime": rules_mtime
+    })
 
 # ─────────────── KB INTERNA: parser + match (SOLO nota) ───────────────
 KB_ENTRIES: List[Dict] = []
@@ -283,7 +293,7 @@ def _sinapsi_save(data: dict):
         with open(SINAPSI_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception:
-        pass
+        pass  # FS effimero: ignora errori
 
 def _sinapsi_merge_list(dst: list, vals: list) -> bool:
     changed = False
@@ -324,17 +334,53 @@ def _sinapsi_autolearn(question: str, answer: str):
         _sinapsi_upsert(t, facts)
 
 # ───────── RULES ENGINE (post-process data-driven) ─────────
-_RULES = None
+_RULES: Optional[list] = None
+_RULES_MTIME: Optional[float] = None
 
-def _load_rules():
-    global _RULES
-    if _RULES is not None:
-        return _RULES
+def _rules_info():
+    cnt = 0
+    mtime_iso = ""
     try:
-        with open(RULES_PATH, "r", encoding="utf-8") as f:
-            _RULES = json.load(f)
+        st = os.stat(RULES_PATH)
+        global _RULES_MTIME
+        _RULES_MTIME = st.st_mtime if _RULES_MTIME is None else _RULES_MTIME
+        mtime_iso = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(st.st_mtime))
     except Exception:
-        _RULES = []
+        pass
+    try:
+        rules = _load_rules(force_check=True)
+        cnt = len(rules or [])
+    except Exception:
+        cnt = 0
+    return cnt, mtime_iso
+
+def _load_rules(force_check: bool = False):
+    """
+    Carica rules da file con auto-reload su cambio mtime.
+    """
+    global _RULES, _RULES_MTIME
+    try:
+        st = os.stat(RULES_PATH)
+        current_mtime = st.st_mtime
+    except Exception:
+        # file non presente o non leggibile
+        if _RULES is None:
+            _RULES = []
+            _RULES_MTIME = None
+        return _RULES
+
+    if _RULES is None or _RULES_MTIME is None or current_mtime != _RULES_MTIME or force_check:
+        try:
+            with open(RULES_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if not isinstance(data, list):
+                    # formato non valido
+                    _RULES = []
+                else:
+                    _RULES = data
+            _RULES_MTIME = current_mtime
+        except Exception:
+            _RULES = _RULES or []
     return _RULES
 
 def _regex_any(text: str, patterns: list) -> bool:
@@ -356,7 +402,7 @@ def _postprocess_corrector(question: str, answer: str) -> str:
     ql, al = question.lower(), answer.lower()
     adds = []
 
-    for r in rules:
+    for r in rules or []:
         trig = r.get("trigger_any_q") or []
         excl = r.get("exclude_any_q") or []
         if trig and not _regex_any(ql, trig):
@@ -364,17 +410,20 @@ def _postprocess_corrector(question: str, answer: str) -> str:
         if excl and _regex_any(ql, excl):
             continue
 
+        # 1) Vietati
         forbid = r.get("forbid_a") or []
         if forbid and _regex_any(al, forbid):
             n = (r.get("forbid_note") or "").strip()
             if n and n not in answer:
                 adds.append(n)
 
+        # 2) Assicurare almeno uno (ensure_any)
         ens = r.get("ensure_any_a") or []
         ens_note = (r.get("ensure_note") or "").strip()
         if ens and not _regex_any(al, ens) and ens_note and ens_note not in answer:
             adds.append(ens_note)
 
+        # 3) Richiedere tutti (require all)
         req = r.get("require_if_missing_add_note") or {}
         must = req.get("must_include_a") or []
         n2 = (req.get("note") or "").strip()
@@ -417,3 +466,40 @@ def api_ask(p: AskPayload):
     _sinapsi_autolearn(q, final)
 
     return JSONResponse({"answer": final})
+
+# ─────────────── ADMIN: gestione regole ───────────────
+@app.get("/admin/rules")
+def admin_get_rules(authorization: Optional[str] = Header(None)):
+    # GET può essere libero in sola lettura; se preferisci, proteggi anche questo con token
+    rules = _load_rules(force_check=True) or []
+    cnt, mtime_iso = _rules_info()
+    return JSONResponse({"rules": rules, "count": cnt, "mtime": mtime_iso, "path": RULES_PATH, "protected_post": bool(ADMIN_TOKEN)})
+
+@app.post("/admin/rules")
+async def admin_set_rules(request: Request, authorization: Optional[str] = Header(None)):
+    if not ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="ADMIN_TOKEN non configurato: POST /admin/rules disabilitato.")
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Autenticazione richiesta (Bearer token).")
+    token = authorization.split(" ", 1)[1].strip()
+    if token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="Token non valido.")
+
+    try:
+        body = await request.body()
+        data = json.loads(body.decode("utf-8"))
+        if not isinstance(data, list):
+            raise ValueError("Il JSON deve essere un array di regole.")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"JSON non valido: {e}")
+
+    # Salva su file
+    try:
+        with open(RULES_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        # Ricarica subito
+        _load_rules(force_check=True)
+        cnt, mtime_iso = _rules_info()
+        return JSONResponse({"status": "ok", "saved": len(data), "mtime": mtime_iso})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Errore salvataggio regole: {e}")
