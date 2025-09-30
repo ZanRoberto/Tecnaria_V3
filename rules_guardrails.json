@@ -26,4 +26,33 @@
     "ensure_note": ""
   }
 ]
+[
+  {
+    "id": "CTF_P560_HSBR14",
+    "trigger_any_q": ["\\b(ctf|p\\s*560|p560)\\b"],
+    "require_if_missing_add_note": {
+      "must_include_a": [
+        "\\bhsbr14\\b",
+        "\\bspit\\s*p\\s*560\\b|\\bp560\\b",
+        "\\blamier[ae]\\s+grecat[ae]\\b"
+      ],
+      "note": "Nota: sistema CTF → **chiodi HSBR14**, **SPIT P560**, **lamiera grecata**."
+    }
+  },
+  {
+    "id": "CTL_NO_P560_VITI",
+    "trigger_any_q": ["\\bctl\\b", "\\blegno\\b"],
+    "exclude_any_q": ["\\bprezz|\\bcost|\\bpreventiv"], 
+    "forbid_a": ["\\bp\\s*560\\b|\\bp560\\b"],
+    "forbid_note": "Correzione: per i **CTL** si usano **viti autofilettanti** (NO P560).",
+    "ensure_any_a": ["\\bviti\\s+autofilettanti\\b|\\bviti\\b"],
+    "ensure_note": "Nota: i **CTL** si fissano con **viti autofilettanti**."
+  },
+  {
+    "id": "PREZZO_COMMERCIALE",
+    "trigger_any_q": ["\\bprezz|\\bcost|\\bpreventiv"],
+    "ensure_any_a": ["contattare il commerciale|richiedere un preventivo|ufficio commerciale"],
+    "ensure_note": "Nota: per prezzi e preventivi contattare il commerciale Tecnaria."
+  }
+]
 
