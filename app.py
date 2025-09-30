@@ -6,8 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-
-# ✅ SDK OpenAI (1.x)
 from openai import OpenAI
 
 # ================== APP ==================
@@ -15,7 +13,7 @@ app = FastAPI(title="Tecnaria Bot - Web+Local")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # restringi al tuo dominio se vuoi
+    allow_origins=["*"],   # restringi al tuo dominio se vuoi
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,33 +31,53 @@ SEARCH_API_ENDPOINT = os.environ.get("SEARCH_API_ENDPOINT")  # es. Bing Web Sear
 SEARCH_API_KEY = os.environ.get("SEARCH_API_KEY")
 SEARCH_TOPK = int(os.environ.get("SEARCH_TOPK", "5"))
 FETCH_WEB_FIRST = os.environ.get("FETCH_WEB_FIRST", "1") == "1"
-PREFERRED_DOMAINS = [d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com").split(",") if d.strip()]
+PREFERRED_DOMAINS = [d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com").split(",") if d.strip()]
 DOC_GLOB = os.environ.get("DOC_GLOB", "static/docs/*.txt")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 
-# ================== OpenAI client ==================
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ================== PROMPT ==================
 SYSTEM_PROMPT = """
-Sei il Tecnaria Bot.
-- Usa prima il WEB (ricerca aperta). Se trovi più fonti, privilegia quelle ufficiali/tecniche, senza escludere le altre.
-- Se il WEB è vuoto, integra con i documenti locali (static/docs).
-- Se non trovi nulla, dillo chiaramente senza inventare.
-- Rispondi in bullet chiari; chiudi con sezione **Fonti** (URL o “file locale”).
+Parli come Tecnaria Bot per TECNARIA S.p.A. (Bassano del Grappa).
+
+TASSONOMIA OBBLIGATORIA (NON VIOLARE)
+- CONNETTORI Tecnaria: CTF (acciaio–calcestruzzo su lamiera grecata), CTL (legno–calcestruzzo), CTCEM/VCEM, Diapason, ecc.
+- ATTREZZATURE/ATTREZZAGGI: SPIT P560 = chiodatrice a sparo (pistola sparachiodi) per la posa dei connettori. NON è un connettore.
+  • Consumabili tipici: chiodi idonei (es. HSBR14) e propulsori a cartuccia adeguati.
+
+REGOLE
+- Se l’oggetto è “P560”/“SPIT P560”: trattala come chiodatrice/attrezzatura e dillo esplicitamente.
+- Usa prima il WEB (ricerca aperta); se ci sono più fonti dai priorità a pagine ufficiali/tecniche (es. tecnaria.com) senza escludere le altre.
+- Se il WEB è vuoto, integra con documenti locali; se comunque non trovi, dillo onestamente.
+- Non inventare. Risposte a bullet; chiudi SEMPRE con **Fonti** (URL o “file locale”).
 - Lingua: IT.
 """.strip()
 
-# ================== I/O Models ==================
+# ================== I/O ==================
 class ChatIn(BaseModel):
     message: str
 
-# ================== Helpers ==================
+# ================== HELPERS ==================
 def _prefer_score(url: str) -> int:
     return 1 if any(p in url for p in PREFERRED_DOMAINS) else 0
 
+def _sanitize(html: str, max_chars: int = 12000) -> str:
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:max_chars]
+
+def expand_query_if_needed(q: str) -> str:
+    """Aiuta la ricerca quando compare P560."""
+    if "p560" in q.lower():
+        extra = " SPIT P560 chiodatrice pistola sparachiodi Tecnaria connettori HSBR14 propulsori"
+        if extra.lower() not in q.lower():
+            return q + extra
+    return q
+
 async def web_search(query: str, topk: int = 5) -> list[dict]:
-    """Ricerca sul web tramite provider esterno (Bing Web Search API, SerpAPI, ecc.)."""
+    """Ricerca sul web tramite provider esterno (Bing Web Search API / SerpAPI / ecc.)."""
+    query = expand_query_if_needed(query)
     if not SEARCH_API_ENDPOINT or not SEARCH_API_KEY:
         return []
     headers = {"Ocp-Apim-Subscription-Key": SEARCH_API_KEY}
@@ -74,11 +92,6 @@ async def web_search(query: str, topk: int = 5) -> list[dict]:
             items.append({"name": w.get("name"), "url": w.get("url")})
         items.sort(key=lambda x: _prefer_score(x["url"]), reverse=True)
         return items[:topk]
-
-def _sanitize(html: str, max_chars: int = 12000) -> str:
-    text = re.sub(r"<[^>]+>", " ", html)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text[:max_chars]
 
 async def gather_web_context_generic(user_query: str) -> List[Tuple[str, str]]:
     results = await web_search(user_query, topk=SEARCH_TOPK)
@@ -121,11 +134,27 @@ def build_input_blocks(system_prompt: str, user_query: str, web_ctx: List[Tuple[
 
 def post_format(answer: str, web_ctx: List[Tuple[str,str]], local_ctx: List[Tuple[str,str]]) -> str:
     if "Fonti" not in answer and "Fonti:" not in answer:
-        srcs = [u for u,_ in web_ctx] + [n for n,_ in local_ctx]
+        srcs = [u for u,_ in web_ctx] or [n for n,_ in local_ctx]  # preferisci URL web se presenti
         answer += "\n\n**Fonti**\n" + ("\n".join(f"- {s}" for s in srcs) if srcs else "- (nessuna fonte trovata)")
     return answer
 
-# ================== Routes ==================
+def _looks_like_p560_misclassified(text: str) -> bool:
+    t = text.lower()
+    return ("p560" in t or "spit p560" in t) and ("connettor" in t) and not any(w in t for w in ["chiodatrice","pistola","sparachiodi"])
+
+def make_correction_prompt(user_q: str, bad_answer: str) -> list:
+    sys = {"role":"system","content":[{"type":"input_text","text": SYSTEM_PROMPT}]}
+    user = {"role":"user","content":[{"type":"input_text","text": f"""
+Correggi la seguente risposta errata: hai classificato la P560 come connettore ma è una chiodatrice a sparo (pistola sparachiodi) per la posa dei connettori.
+Riscrivi in 5–7 bullet (uso con connettori Tecnaria, consumabili/propulsori, note di posa/sicurezza, manutenzione) e chiudi con **Fonti** con URL.
+Domanda originale: {user_q}
+
+Risposta da correggere:
+{bad_answer}
+""".strip()}]}
+    return [sys, user]
+
+# ================== ROUTES ==================
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -150,7 +179,7 @@ async def ask(inp: ChatIn):
             if not local_ctx:
                 web_ctx = await gather_web_context_generic(q)
 
-        # Costruisci i messaggi per il modello (Responses API 1.x)
+        # Messaggi per Responses API (1.x)
         if not web_ctx and not local_ctx:
             msgs = [
                 {"role":"system","content":[{"type":"input_text","text": SYSTEM_PROMPT}]},
@@ -161,55 +190,35 @@ async def ask(inp: ChatIn):
 
         text = None
 
-        # ========== TENTATIVO 1: Responses API (openai>=1.0) ==========
+        # ---- Tentativo 1: Responses API (openai>=1.0)
         try:
-            resp = client.responses.create(
-                model=OPENAI_MODEL,
-                input=msgs,
-                temperature=0.2,
-            )
-            # openai>=1.0: comodo accessor
+            resp = client.responses.create(model=OPENAI_MODEL, input=msgs, temperature=0.2)
             text = getattr(resp, "output_text", None)
             if not text:
-                # estrazione manuale (difensiva) nel caso la property non ci sia
                 try:
-                    # resp.output[0].content[0].text
                     out = resp.output or []
                     if out and "content" in out[0] and out[0]["content"]:
                         text = out[0]["content"][0].get("text")
                 except Exception:
                     pass
         except Exception as e:
-            # Se proprio manca responses (SDK vecchio), scendiamo al fallback
             if DEBUG:
-                print("[DEBUG] Responses API non disponibile, uso fallback chat.completions:", repr(e))
+                print("[DEBUG] Responses API non disponibile, provo chat.completions:", repr(e))
 
-        # ========== TENTATIVO 2: Fallback chat.completions (openai<1.0) ==========
+        # ---- Tentativo 2: Fallback Chat Completions (SDK vecchio)
         if not text:
-            # Converto msgs (Responses) in messages (Chat Completions)
-            messages = []
-            # system
-            messages.append({"role": "system", "content": SYSTEM_PROMPT})
-            # user: prendo il testo della domanda + (opzionale) contesto raw
+            messages = [{"role":"system","content":SYSTEM_PROMPT}]
             user_txt = q
             if web_ctx or local_ctx:
-                ctx_lines = []
-                for url, _ in web_ctx:
-                    ctx_lines.append(f"[WEB:{url}]")
-                for name, _ in local_ctx:
-                    ctx_lines.append(f"[LOCAL:{name}]")
+                ctx_lines = [*(f"[WEB:{u}]" for u,_ in web_ctx), *(f"[LOCAL:{n}]" for n,_ in local_ctx)]
                 if ctx_lines:
                     user_txt = f"{q}\n\nContesto (sorgenti):\n" + "\n".join(ctx_lines)
-            messages.append({"role": "user", "content": user_txt})
-
-            # ⚠️ ATTENZIONE: in SDK vecchio, l’attributo è client.ChatCompletion.create o client.chat.completions.create
+            messages.append({"role":"user","content":user_txt})
             try:
                 resp2 = client.chat.completions.create(model=OPENAI_MODEL, messages=messages, temperature=0.2)
                 text = resp2.choices[0].message.content.strip()
             except Exception as e2:
-                # Ultimissimo fallback per installazioni 0.28.x
                 try:
-                    # type: ignore (vecchia firma)
                     resp2 = client.ChatCompletion.create(model=OPENAI_MODEL, messages=messages, temperature=0.2)  # type: ignore
                     text = resp2["choices"][0]["message"]["content"].strip()
                 except Exception as e3:
@@ -219,6 +228,23 @@ async def ask(inp: ChatIn):
             raise RuntimeError("Risposta vuota dal modello.")
 
         text = post_format(text.strip(), web_ctx, local_ctx)
+
+        # ---- Guardrail: P560 non deve essere mai “connettore”
+        if _looks_like_p560_misclassified(text):
+            if DEBUG:
+                print("[GUARD] P560 misclassificata. Rigenero risposta corretta.")
+            corr_msgs = make_correction_prompt(q, text)
+            try:
+                corr = client.responses.create(model=OPENAI_MODEL, input=corr_msgs, temperature=0.1)
+                fixed = getattr(corr, "output_text", "") or ""
+            except Exception:
+                # fallback vecchio SDK
+                messages = [{"role":"system","content":SYSTEM_PROMPT},
+                            {"role":"user","content":"Correggi: P560 è chiodatrice a sparo, non connettore. 5–7 bullet + Fonti con URL."}]
+                resp2 = client.chat.completions.create(model=OPENAI_MODEL, messages=messages, temperature=0.1)
+                fixed = resp2.choices[0].message.content.strip()
+            if fixed:
+                text = post_format(fixed.strip(), web_ctx, local_ctx)
 
         if DEBUG:
             print("[DEBUG] query:", q)
