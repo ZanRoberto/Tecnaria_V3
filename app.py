@@ -82,8 +82,13 @@ def find_sensitive_file_for_question(q: str) -> str | None:
 
 def load_json_file(path: str) -> dict | None:
     try:
-        return json.loads(Path(path).read_text(encoding="utf-8"))
-    except Exception:
+        raw = Path(path).read_text(encoding="utf-8")
+        if not raw.strip():
+            if DEBUG: print(f"[CRITICI] File vuoto: {path}")
+            return None
+        return json.loads(raw)
+    except Exception as e:
+        if DEBUG: print(f"[CRITICI] JSON non valido in {path}: {e}")
         return None
 
 def format_from_contatti(data: dict) -> str:
@@ -244,6 +249,13 @@ REGOLE DI RISPOSTA (OBBLIGATORIE)
 - NON confondere mai P560 con un connettore. Se la domanda contiene “P560”, chiarisci esplicitamente che è una chiodatrice.
 """.strip()
 
+# ------------------- Ambito aziendale (solo temi Tecnaria) -------------------
+SCOPE_KWS = re.compile(
+    r"\b(tecnaria|ctf|ctl|ctcem|vcem|diapason|lamiera|grecata|solai?|p560|spit|connettor\w+|"
+    r"acciaio|legno|laterocemento|collaborant\w+|eta|posa|chiodi|hsbr14)\b",
+    re.IGNORECASE
+)
+
 # ------------------- Routes -------------------
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -266,6 +278,17 @@ async def ask(req: AskRequest):
             if sensitive_path == "":
                 return {"ok": True, "answer": "- Informazione sensibile richiesta ma il file locale non è presente.\n\n**Fonti**\n- (file locale mancante)"}
             return {"ok": True, "answer": format_sensitive_answer_from_file(sensitive_path)}
+        # ---------------------------------------------------------------------
+
+        # --- AMBITO AZIENDALE: rispondi solo su temi Tecnaria -----------------
+        if not SCOPE_KWS.search(user_q):
+            msg = (
+                "- Ambito del bot: prodotti/soluzioni Tecnaria (connettori CTF/CTL/Diapason, posa, P560, documentazione, contatti, pagamenti).\n"
+                "- La tua domanda non rientra in questo ambito.\n"
+                "- Esempi utili: «Come si fissano i CTF su lamiera TR60?» · «Qual è il nostro IBAN?» · «Mi dai i contatti aziendali?»\n\n"
+                "**Fonti**\n- policy interna (ambito Tecnaria)"
+            )
+            return {"ok": True, "answer": msg}
         # ---------------------------------------------------------------------
 
         web_hits: List[Dict] = []
@@ -311,6 +334,14 @@ async def ask(req: AskRequest):
                 "Rispondi in 5–7 bullet e chiudi con **Fonti** (URL o file locale). "
                 f"\n\nDomanda: {user_q}"
             )
+            r2 = client.chat_completions.create(
+                model=OPENAI_MODEL,
+                messages=[{"role":"system","content":SYSTEM_PROMPT},
+                          {"role":"user","content":fix_prompt}],
+                temperature=0.1,
+                max_tokens=700,
+            ) if False else None  # safety: keep same OpenAI client usage below
+            # (riuso lo stesso metodo già usato sopra per coerenza)
             r2 = client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[{"role":"system","content":SYSTEM_PROMPT},
