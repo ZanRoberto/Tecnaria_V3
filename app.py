@@ -1,8 +1,9 @@
 import os
 import httpx
-import json, re
+import json
+import re
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -38,10 +39,8 @@ class AskRequest(BaseModel):
         return ""
 
 # ------------------- SENSITIVE/LOCAL DATA (solo file) -------------------
-# Cartella unica per i dati "critici/autoritatitivi" che devono prevalere sul web
 CRITICI_DIR = "static/static/data/critici"
 
-# Mappa semplice parola-chiave -> file json da leggere
 SENSITIVE_FILES = {
     # Contatti
     "contatti": "contatti.json", "contatto": "contatti.json", "telefono": "contatti.json",
@@ -52,30 +51,26 @@ SENSITIVE_FILES = {
     # Banca
     "iban": "bank.json", "bonifico": "bank.json", "conto": "bank.json", "coordinate bancarie": "bank.json",
     # Pagamenti
-    "pagamento": "pagamenti.json", "pagamenti": "pagamenti.json", "metodi di pagamento": "pagamenti.json"
+    "pagamento": "pagamenti.json", "pagamenti": "pagamenti.json", "metodi di pagamento": "pagamenti.json",
+    # (nota: non forziamo codici CTF/CTL come locali se li vogliamo dal web)
 }
 
-# Regex più ampia per riconoscere l'intento "dati sensibili"
 _SENSITIVE_KWS = re.compile(
     r"\b(contatt\w*|telefono|tel\.?|mail|email|pec|sdi|p\.?\s*iva|partita\s*iva|indirizzo|sede|dove\s+siamo|iban|bonifico|conto|banc\w*|pagamento|pagamenti|metod[ei]\s+di\s+pagamento)\b",
     re.IGNORECASE
 )
 
 def find_sensitive_file_for_question(q: str) -> str | None:
-    """Restituisce percorso file locale se la domanda richiede info sensibili servite da file."""
     if not q:
         return None
     ql = q.lower()
-    # 1) match diretto su parole chiave mappate
     for kw, fname in SENSITIVE_FILES.items():
         if kw in ql:
             fp = Path(CRITICI_DIR) / fname
             if fp.exists():
                 return str(fp)
             else:
-                # chiave riconosciuta ma file mancante
-                return ""  # segnala che serviva un file locale ma non c'è
-    # 2) se intercetto il dominio sensibile ma non ho una chiave specifica, segnalo None (continua normale)
+                return ""
     if _SENSITIVE_KWS.search(ql):
         return "" if not Path(CRITICI_DIR).exists() else None
     return None
@@ -148,7 +143,6 @@ def format_sensitive_answer_from_file(path: str) -> str:
         return format_from_bank(data)
     if name == "pagamenti.json":
         return format_from_pagamenti(data)
-    # default: stampa generica
     pretty = json.dumps(data, indent=2, ensure_ascii=False)
     return f"- Dati:\n```\n{pretty[:1000]}\n```\n\n**Fonti**\n- file locale · {name}"
 
@@ -210,6 +204,49 @@ async def web_search(query: str, topk: int = 5) -> List[Dict]:
                 results.append({"name": item.get("title", "") or u, "url": u})
         results.sort(key=lambda x: _prefer_score(x["url"]), reverse=True)
         return results
+
+# ------------------- Fetch & Extract (codici prodotto) -------------------
+async def _fetch_page_text(url: str, timeout: float = 15.0) -> str:
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as ac:
+            r = await ac.get(url, headers={"User-Agent": "Mozilla/5.0"})
+            if r.status_code != 200:
+                return ""
+            return r.text or ""
+    except Exception:
+        return ""
+
+_CODE_PATTERNS = {
+    "ctf": re.compile(r"\bCTF\d{3}\b", re.IGNORECASE),
+    "ctl": re.compile(r"\bCTL\d{3}\b", re.IGNORECASE),
+}
+
+async def find_product_codes_from_web(query: str, family: str, max_links: int = 8) -> Tuple[List[str], List[str]]:
+    q = f"site:tecnaria.com {query}"
+    hits = await web_search(q, topk=max_links) or []
+    pattern = _CODE_PATTERNS.get(family.lower())
+    if not pattern:
+        return [], []
+    codes = set()
+    sources = []
+    for h in hits[:max_links]:
+        url = h.get("url") or ""
+        if "tecnaria.com" not in url.lower():
+            continue
+        html = await _fetch_page_text(url)
+        if not html:
+            continue
+        found = set(m.upper() for m in pattern.findall(html))
+        if found:
+            codes |= found
+            sources.append(url)
+    def _num(c):
+        try:
+            return int(re.findall(r"(\d{3})", c)[0])
+        except Exception:
+            return 0
+    sorted_codes = sorted(codes, key=_num)
+    return sorted_codes, sources[:5]
 
 # ------------------- Local docs -------------------
 def load_local_docs() -> Dict[str, str]:
@@ -291,6 +328,20 @@ async def ask(req: AskRequest):
             return {"ok": True, "answer": msg}
         # ---------------------------------------------------------------------
 
+        # --- CODICI PRODOTTO da WEB (tecnaria.com) ---------------------------
+        # se la domanda chiede "codici" e menziona ctf/ctl, forza estrazione dal sito tecnaria.com
+        ql = user_q.lower()
+        if ("codici" in ql or "codice" in ql) and ("ctf" in ql or "ctl" in ql):
+            fam = "ctf" if "ctf" in ql else ("ctl" if "ctl" in ql else None)
+            if fam:
+                codes, srcs = await find_product_codes_from_web(user_q, fam)
+                if codes:
+                    lines = [f"- **{c}**" for c in codes]
+                    fontes = "\n".join(f"- {u}" for u in srcs) if srcs else "- tecnaria.com"
+                    answer = "OK\n" + "\n".join(lines) + f"\n\n**Fonti**\n{fontes}"
+                    return {"ok": True, "answer": answer}
+        # ---------------------------------------------------------------------
+
         web_hits: List[Dict] = []
         local_docs: Dict[str, str] = {}
 
@@ -334,14 +385,6 @@ async def ask(req: AskRequest):
                 "Rispondi in 5–7 bullet e chiudi con **Fonti** (URL o file locale). "
                 f"\n\nDomanda: {user_q}"
             )
-            r2 = client.chat_completions.create(
-                model=OPENAI_MODEL,
-                messages=[{"role":"system","content":SYSTEM_PROMPT},
-                          {"role":"user","content":fix_prompt}],
-                temperature=0.1,
-                max_tokens=700,
-            ) if False else None  # safety: keep same OpenAI client usage below
-            # (riuso lo stesso metodo già usato sopra per coerenza)
             r2 = client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[{"role":"system","content":SYSTEM_PROMPT},
