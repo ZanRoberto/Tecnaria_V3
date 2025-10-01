@@ -1,5 +1,7 @@
 import os
 import httpx
+import json, re
+from pathlib import Path
 from typing import List, Dict
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -35,10 +37,119 @@ class AskRequest(BaseModel):
                 return k
         return ""
 
-# ------------------- Helpers -------------------
+# ------------------- SENSITIVE/LOCAL DATA (solo file) -------------------
+# Cartella unica per i dati "critici/autoritatitivi" che devono prevalere sul web
+CRITICI_DIR = "static/static/data/critici"
+
+# Mappa semplice parola-chiave -> file json da leggere
+SENSITIVE_FILES = {
+    # Contatti
+    "contatti": "contatti.json", "contatto": "contatti.json", "telefono": "contatti.json",
+    "tel ": "contatti.json", "email": "contatti.json", "mail": "contatti.json",
+    "pec": "contatti.json", "sdi": "contatti.json", "p.iva": "contatti.json",
+    "partita iva": "contatti.json", "indirizzo": "contatti.json", "sede": "contatti.json",
+    "dove siamo": "contatti.json",
+    # Banca
+    "iban": "bank.json", "bonifico": "bank.json", "conto": "bank.json", "coordinate bancarie": "bank.json",
+    # Pagamenti
+    "pagamento": "pagamenti.json", "pagamenti": "pagamenti.json", "metodi di pagamento": "pagamenti.json"
+}
+
+# Regex più ampia per riconoscere l'intento "dati sensibili"
+_SENSITIVE_KWS = re.compile(
+    r"\b(contatt\w*|telefono|tel\.?|mail|email|pec|sdi|p\.?\s*iva|partita\s*iva|indirizzo|sede|dove\s+siamo|iban|bonifico|conto|banc\w*|pagamento|pagamenti|metod[ei]\s+di\s+pagamento)\b",
+    re.IGNORECASE
+)
+
+def find_sensitive_file_for_question(q: str) -> str | None:
+    """Restituisce percorso file locale se la domanda richiede info sensibili servite da file."""
+    if not q:
+        return None
+    ql = q.lower()
+    # 1) match diretto su parole chiave mappate
+    for kw, fname in SENSITIVE_FILES.items():
+        if kw in ql:
+            fp = Path(CRITICI_DIR) / fname
+            if fp.exists():
+                return str(fp)
+            else:
+                # chiave riconosciuta ma file mancante
+                return ""  # segnala che serviva un file locale ma non c'è
+    # 2) se intercetto il dominio sensibile ma non ho una chiave specifica, segnalo None (continua normale)
+    if _SENSITIVE_KWS.search(ql):
+        return "" if not Path(CRITICI_DIR).exists() else None
+    return None
+
+def load_json_file(path: str) -> dict | None:
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+def format_from_contatti(data: dict) -> str:
+    rs   = data.get("ragione_sociale") or "TECNARIA S.p.A."
+    piva = data.get("piva") or "Dato non disponibile"
+    sdi  = data.get("sdi")  or "Dato non disponibile"
+    tel  = data.get("telefono") or "Dato non disponibile"
+    email= data.get("email") or "Dato non disponibile"
+    pec  = data.get("pec") or "—"
+    ind  = data.get("indirizzo") or {}
+    addr = ", ".join([ind.get("via",""), ind.get("cap",""), ind.get("citta",""),
+                      ind.get("provincia",""), ind.get("stato","")]).replace(" ,","").strip(" ,")
+    return (
+        f"- **Ragione sociale**: {rs}\n"
+        f"- **P.IVA**: {piva}   **SDI**: {sdi}\n"
+        f"- **Indirizzo**: {addr or 'Dato non disponibile'}\n"
+        f"- **Telefono**: {tel}\n"
+        f"- **Email**: {email}\n"
+        f"- **PEC**: {pec}\n\n"
+        "**Fonti**\n- file locale · contatti.json"
+    )
+
+def format_from_bank(data: dict) -> str:
+    iban  = data.get("iban") or data.get("conto") or "Dato non disponibile"
+    intes = data.get("intestatario", "Dato non disponibile")
+    banca = data.get("banca", "Dato non disponibile")
+    bic   = data.get("bic", "Dato non disponibile")
+    note  = data.get("note", "-")
+    return (
+        f"- **Intestatario**: {intes}\n"
+        f"- **Banca**: {banca}\n"
+        f"- **IBAN**: {iban}\n"
+        f"- **BIC**: {bic}\n"
+        f"- **Note**: {note or '-'}\n\n"
+        "**Fonti**\n- file locale · bank.json"
+    )
+
+def format_from_pagamenti(data: dict) -> str:
+    lines = []
+    for m in data.get("metodi", []):
+        lines.append(f"- **{m.get('tipo','metodo')}**: {m.get('istruzioni','')}")
+    if not lines:
+        lines = ["- (nessun metodo di pagamento presente)"]
+    note = data.get("note")
+    if note:
+        lines.append(f"- **Note**: {note}")
+    return "\n".join(lines) + "\n\n**Fonti**\n- file locale · pagamenti.json"
+
+def format_sensitive_answer_from_file(path: str) -> str:
+    data = load_json_file(path)
+    if not data:
+        return "- Dato non disponibile nel file locale.\n\n**Fonti**\n- file locale"
+    name = Path(path).name
+    if name == "contatti.json":
+        return format_from_contatti(data)
+    if name == "bank.json":
+        return format_from_bank(data)
+    if name == "pagamenti.json":
+        return format_from_pagamenti(data)
+    # default: stampa generica
+    pretty = json.dumps(data, indent=2, ensure_ascii=False)
+    return f"- Dati:\n```\n{pretty[:1000]}\n```\n\n**Fonti**\n- file locale · {name}"
+
+# ------------------- Helpers (web/local generali) -------------------
 def expand_query_if_needed(query: str) -> str:
     q = query.lower()
-    # Aiuta la ricerca su "P560"
     if "p560" in q and "spit" not in q:
         return query + " SPIT chiodatrice pistola sparachiodi Tecnaria HSBR14"
     return query
@@ -53,7 +164,6 @@ def _looks_like_p560_misclassified(text: str) -> bool:
 
 def _force_bullets_and_sources(text: str, web_hits: List[Dict], local_docs: Dict[str, str]) -> str:
     txt = (text or "").strip()
-    # Se non trova "Fonti", aggiungi blocco Fonti
     has_sources = ("**Fonti**" in txt) or ("\nFonti\n" in txt) or ("\nFonti:" in txt)
     if not has_sources:
         sources = [h["url"] for h in web_hits] if web_hits else list(local_docs.keys())
@@ -150,6 +260,14 @@ async def ask(req: AskRequest):
         if not user_q:
             return JSONResponse({"ok": False, "error": "Domanda mancante"}, status_code=400)
 
+        # --- PRIORITÀ: dati sensibili/autoritatitivi solo da file locale ------
+        sensitive_path = find_sensitive_file_for_question(user_q)
+        if sensitive_path is not None:
+            if sensitive_path == "":
+                return {"ok": True, "answer": "- Informazione sensibile richiesta ma il file locale non è presente.\n\n**Fonti**\n- (file locale mancante)"}
+            return {"ok": True, "answer": format_sensitive_answer_from_file(sensitive_path)}
+        # ---------------------------------------------------------------------
+
         web_hits: List[Dict] = []
         local_docs: Dict[str, str] = {}
 
@@ -161,7 +279,6 @@ async def ask(req: AskRequest):
             if not local_docs:
                 web_hits = await web_search(user_q, topk=SEARCH_TOPK)
 
-        # Prepara contesto minimale per il modello (elenco sorgenti, non tutto l’HTML)
         parts: List[str] = []
         if web_hits:
             parts.append("Fonti web:\n" + "\n".join(f"- {h['name']} {h['url']}" for h in web_hits))
@@ -169,7 +286,6 @@ async def ask(req: AskRequest):
             parts.append("Documenti locali:\n" + "\n".join(f"- {k}" for k in local_docs.keys()))
         context_blob = "\n\n".join(parts) if parts else "(nessun contesto disponibile)"
 
-        # Prompt utente con formato obbligatorio (5–7 bullet + Fonti)
         user_prompt = (
             "Rispondi in 5–7 bullet tecnico-commerciali (vantaggi pratici, posa, sicurezza/certificazioni quando rilevanti). "
             "Chiudi con sezione **Fonti** (URL se web, altrimenti 'file locale'). "
@@ -187,7 +303,6 @@ async def ask(req: AskRequest):
         )
         text = (resp.choices[0].message.content or "").strip()
 
-        # Guardrail P560
         if _looks_like_p560_misclassified(text):
             if DEBUG:
                 print("[GUARD] Correzione P560: no 'connettore'.")
@@ -205,7 +320,6 @@ async def ask(req: AskRequest):
             )
             text = (r2.choices[0].message.content or "").strip()
 
-        # Post-format: assicurati Fonti
         text = _force_bullets_and_sources(text, web_hits, local_docs)
 
         return {"ok": True, "answer": text}
