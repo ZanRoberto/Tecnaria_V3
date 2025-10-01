@@ -1,1 +1,9 @@
+{
+  "metodi": [
+    {"tipo": "bonifico", "istruzioni": "Bonifico SEPA a intestazione/IBAN indicati in bank.json"},
+    {"tipo": "carta", "istruzioni": "Pagamento con carta via circuito aziendale (se previsto)"},
+    {"tipo": "contrassegno", "istruzioni": "Non accettato"}
+  ],
+  "note": "Per richieste particolari scrivere a info@tecnaria.com"
+}
 
