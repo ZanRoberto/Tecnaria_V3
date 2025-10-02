@@ -52,7 +52,7 @@ SENSITIVE_FILES = {
     "iban": "bank.json", "bonifico": "bank.json", "conto": "bank.json", "coordinate bancarie": "bank.json",
     # Pagamenti
     "pagamento": "pagamenti.json", "pagamenti": "pagamenti.json", "metodi di pagamento": "pagamenti.json",
-    # (nota: non forziamo codici CTF/CTL come locali se li vogliamo dal web)
+    # (Nota: i codici CTF/CTL NON sono locali: li estraiamo dal web)
 }
 
 _SENSITIVE_KWS = re.compile(
@@ -329,7 +329,6 @@ async def ask(req: AskRequest):
         # ---------------------------------------------------------------------
 
         # --- CODICI PRODOTTO da WEB (tecnaria.com) ---------------------------
-        # se la domanda chiede "codici" e menziona ctf/ctl, forza estrazione dal sito tecnaria.com
         ql = user_q.lower()
         if ("codici" in ql or "codice" in ql) and ("ctf" in ql or "ctl" in ql):
             fam = "ctf" if "ctf" in ql else ("ctl" if "ctl" in ql else None)
