@@ -1,4 +1,7 @@
 {
+  "version": "1.1",
+  "updated": "2025-10-02",
+
   "facts": [
     {
       "text": "SCOPE: Rispondi esclusivamente su temi Tecnaria (prodotti CTF/CTCEM/CTL MAXI, posa, accessori, documentazione, export). Se la domanda è fuori perimetro, chiedi gentilmente di riformularla in ambito Tecnaria."
@@ -12,31 +15,118 @@
     {
       "text": "LANG: Rispondi nella lingua della domanda."
     },
-
     {
       "text": "CTF_CHIODATRICE: Non usare 'chiodatrice qualsiasi'. **CTF = SPIT P560 + 2 chiodi** per connettore; **posa in gola**, utensile perpendicolare, piastra in appoggio pieno; **taratura** su provino identico prima della produzione; varianti solo previa **approvazione Tecnaria**. Nota: Istruzioni di posa **CTF**."
     },
     {
       "text": "CTF_POSA: Modalità di posa CTF (acciaio + lamiera grecata): **posa in gola**; **SPIT P560 + 2 chiodi**; **taratura su provino**; varianti solo con **approvazione Tecnaria**. Nota: Istruzioni di posa **CTF**."
     },
-
     {
       "text": "CTCEM_RESINE: **No resine**. **CTCEM = fissaggio meccanico a secco**: **foratura → pulizia foro → avvitamento a battuta piastra**. Varianti solo con approvazione Tecnaria. Nota: Istruzioni di posa **CTCEM**."
     },
     {
       "text": "CTCEM_POSA: Modalità di posa CTCEM: **a secco**; **foratura → pulizia → avvitamento a battuta piastra**; confermare interassi/quantità su **DWG/PDF**. Nota: Istruzioni di posa **CTCEM**."
     },
-
     {
       "text": "MAXI_TAVOLATO: **CTL MAXI** per tavolato: **viti attraversano il tavolato e ancorano nella trave** (non solo nel tavolato); testa **sopra la rete** e **sotto** il filo superiore del getto; modello e lunghezza viti **si confermano su DWG/PDF**. Nota: Istruzioni **CTL MAXI**."
     },
-
     {
       "text": "POSE_MODALITA_GENERICA: Se la domanda chiede 'modalità di posa' in generale, rispondi con tre sezioni separate in stile scheda: **CTF**, **CTCEM**, **CTL MAXI**, ciascuna con 3–4 bullet e Nota, seguendo lo stile 'telefono'."
     },
-
     {
       "text": "EXPORT_PREVENTIVO_STYLE: Per richieste commerciali (preventivo/export) usa lo stesso stile telegrafico: elenco documenti in/offerta (ETA, DoP, CE), **packing list**, Incoterms, famiglia HS code (conferma in ordine), dati aziendali e contatto."
+    }
+  ],
+
+  "normalizza": [
+    "CFT->CTF",
+    "(\\b\\d+)\\s*/\\s*(\\d+\\b)->$1/$2"
+  ],
+
+  "faq": [
+    {
+      "id": "codici-ctf",
+      "q": [
+        "mi dai i codici dei ctf",
+        "codici ctf",
+        "lista codici ctf",
+        "ctf codes"
+      ],
+      "a": "OK · Codici **CTF**\n- **CTF020**, **CTF025**, **CTF030**, **CTF040**, **CTF060**, **CTF070**, **CTF080**, **CTF090**, **CTF105**, **CTF125**, **CTF135**\n- Ø12 mm; fissaggio **a sparo con SPIT P560** (chiodi **HSBR14**)\n- Equivalenze: **12/40→CTF040**, **12/60→CTF060**, **12/105→CTF105**, **12/125→CTF125**, **12/135→CTF135**\n\n**Fonti**\n- sinapsi · qa_live\n- tecnaria.com"
+    },
+    {
+      "id": "equivalenze-ctf",
+      "q": [
+        "ctf 12/60 che codice e",
+        "equivalenza ctf 12/xx",
+        "ctf 12/105 codice"
+      ],
+      "a": "La notazione **CTF 12/xx** equivale al codice con altezza **xx**:\n- 12/40→**CTF040**, 12/60→**CTF060**, 12/105→**CTF105**, 12/125→**CTF125**, 12/135→**CTF135**\n\n**Fonti**\n- sinapsi · qa_live\n- tecnaria.com"
+    },
+    {
+      "id": "codici-ctl",
+      "q": [
+        "mi dai i codici dei ctl",
+        "codici ctl",
+        "lista codici ctl",
+        "ctl base codici",
+        "ctl maxi codici",
+        "ctl omega codici"
+      ],
+      "a": "OK · Codici **CTL**\n- **CTL Base (CTLB)**: CTLB020, 030, 040, 060, 070, 080, 105, 125, 150, 175, 200\n- **CTL Maxi (CTLM)**: CTLM020, 030, 040, 060, 070, 080, 105, 125, 150, 175, 200\n- **CTL Omega (CVT)**: CVT 40V-10/100, 40V-10/120, 40V-10/140\n- **Fissaggi su legno**: **viti/bulloni** (mai P560)\n\n**Fonti**\n- sinapsi · qa_live\n- tecnaria.com"
+    },
+    {
+      "id": "p560-non-connettore",
+      "q": [
+        "la p560 e un connettore",
+        "p560 connettore",
+        "p560 per ctl"
+      ],
+      "a": "**No**: **SPIT P560** è una **chiodatrice a sparo**, non un connettore.\n- Uso: fissaggio **CTF** su lamiera/acciaio con chiodi **HSBR14**\n- Su **legno** (CTL/CTCEM): **viti/bulloni**, **mai** P560\n\n**Fonti**\n- tecnaria.com\n- spit.eu"
+    },
+    {
+      "id": "differenze-famiglie",
+      "q": [
+        "differenza ctf ctl vcem",
+        "quale connettore usare",
+        "sistemi tecnaria differenze"
+      ],
+      "a": "- **CTF**: lamiera grecata + cls (acciaio–cls), posa **a sparo P560**\n- **CTL/CTCEM**: **legno–cls**, posa **a vite/bullone** (no P560)\n- **VCEM**: collegamento **trave acciaio–cls** (non lamiera)\n- **DIAPASON**: laterocemento\n\n**Fonti**\n- tecnaria.com"
+    },
+    {
+      "id": "chiusura-offerta",
+      "q": [
+        "ok grazie",
+        "perfetto",
+        "puoi mandarmi documenti",
+        "mi mandi schede"
+      ],
+      "a": "Ti invio **schede tecniche/ETA** e **tabelle compatibilità lamiera**. Se mi dai **mq, luce e tipo di lamiera**, preparo **layout di posa** e **offerta** oggi."
+    }
+  ],
+
+  "data": {
+    "codici": {
+      "ctf": ["CTF020","CTF025","CTF030","CTF040","CTF060","CTF070","CTF080","CTF090","CTF105","CTF125","CTF135"],
+      "ctl": ["CTLB020","CTLB030","CTLB040","CTLB060","CTLB070","CTLB080","CTLB105","CTLB125","CTLB150","CTLB175","CTLB200","CTLM020","CTLM030","CTLM040","CTLM060","CTLM070","CTLM080","CTLM105","CTLM125","CTLM150","CTLM175","CTLM200","CVT 40V-10/100","CVT 40V-10/120","CVT 40V-10/140"]
+    },
+    "note": "CTF Ø12 con P560 (HSBR14). CTL su legno: viti/bulloni; mai P560."
+  },
+
+  "qa_diff": [
+    {
+      "id": "diff-ctf-codici-v1",
+      "intent": "codici_prodotto",
+      "family": "CTF",
+      "bot_attuale": "Lista nuda codici CTF dal file locale.",
+      "target": "I codici CTF: 020, 025, 030, 040, 060, 070, 080, 090, 105, 125, 135 · Ø12 mm; **SPIT P560** (HSBR14). Equivalenze 12/xx → CTF0xx."
+    },
+    {
+      "id": "diff-ctl-codici-v1",
+      "intent": "codici_prodotto",
+      "family": "CTL",
+      "bot_attuale": "Non trovati da web in alcune build.",
+      "target": "Base **CTLB**, Maxi **CTLM**, Omega **CVT** (40V-10/100, /120, /140). Su legno **viti/bulloni** (no P560)."
     }
   ]
 }
