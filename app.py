@@ -19,10 +19,10 @@ if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY non impostata.")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-OPENAI_MODEL   = os.getenv("OPENAI_MODEL", "gpt-4o")
+OPENAI_MODEL    = os.getenv("OPENAI_MODEL", "gpt-4o")
 SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave")  # 'brave' o altro/vuoto per disattivare
 FETCH_WEB_FIRST = os.getenv("FETCH_WEB_FIRST", "1") == "1"
-SEARCH_TOPK     = int(os.getenv("SEARCH_TOPK", "5"))
+SEARCH_TOPK     = int(os.getenv("SEARCH_TOPK", "6"))
 DEBUG           = os.getenv("DEBUG", "0") == "1"
 
 # ------------------- Input model (tollerante) -------------------
@@ -51,7 +51,7 @@ SENSITIVE_FILES = {
     "iban": "bank.json", "bonifico": "bank.json", "conto": "bank.json", "coordinate bancarie": "bank.json",
     # Pagamenti
     "pagamento": "pagamenti.json", "pagamenti": "pagamenti.json", "metodi di pagamento": "pagamenti.json",
-    # (Nota: i codici prodotto NON sono locali: li estraiamo dal web)
+    # (codici prodotto: SOLO web, non locali)
 }
 
 _SENSITIVE_KWS = re.compile(
@@ -153,7 +153,7 @@ def expand_query_if_needed(query: str) -> str:
     return query
 
 def _prefer_score(url: str) -> int:
-    preferred = [d.strip().lower() for d in (os.getenv("PREFERRED_DOMAINS") or "tecnaria.com,spit.eu,spitpaslode.com").split(",") if d.strip()]
+    preferred = [d.strip().lower() for d in (os.getenv("PREFERRED_DOMAINS") or "tecnaria.com,spit.eu,spitpaslode.com,ordini.tecnaria.com").split(",") if d.strip()]
     return 1 if any(d in url.lower() for d in preferred) else 0
 
 def _looks_like_p560_misclassified(text: str) -> bool:
@@ -172,7 +172,7 @@ def _force_bullets_and_sources(text: str, web_hits: List[Dict], local_docs: Dict
     return txt
 
 # ------------------- Web search (Brave, server-side) -------------------
-async def web_search(query: str, topk: int = 5) -> List[Dict]:
+async def web_search(query: str, topk: int = 6) -> List[Dict]:
     if SEARCH_PROVIDER.lower() != "brave":
         return []
     key = os.getenv("BRAVE_API_KEY")
@@ -184,7 +184,7 @@ async def web_search(query: str, topk: int = 5) -> List[Dict]:
     url = "https://api.search.brave.com/res/v1/web/search"
     headers = {"X-Subscription-Token": key, "User-Agent": "Mozilla/5.0"}
     params = {"q": query, "count": topk}
-    async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as ac:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=18.0) as ac:
         r = await ac.get(url, headers=headers, params=params)
         if DEBUG:
             print("[BRAVE] status:", r.status_code)
@@ -204,14 +204,22 @@ async def web_search(query: str, topk: int = 5) -> List[Dict]:
         return results
 
 # ------------------- Fetch & Extract (codici prodotto) -------------------
-async def _fetch_page_text(url: str, timeout: float = 15.0) -> str:
+async def _fetch_text_for_regex(url: str, timeout: float = 18.0) -> str:
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as ac:
             r = await ac.get(url, headers={"User-Agent": "Mozilla/5.0"})
             if r.status_code != 200:
                 return ""
+            ct = (r.headers.get("content-type") or "").lower()
+            if "pdf" in ct or url.lower().endswith(".pdf"):
+                # estrazione "grezza" da bytes (funziona per molti PDF testuali)
+                try:
+                    return r.content.decode("latin-1", errors="ignore")
+                except Exception:
+                    return r.content.decode("utf-8", errors="ignore")
             return r.text or ""
-    except Exception:
+    except Exception as e:
+        if DEBUG: print("[FETCH] err:", url, e)
         return ""
 
 _CODE_PATTERNS = {
@@ -222,31 +230,69 @@ _CODE_PATTERNS = {
     "diapason": re.compile(r"\bDIAPASON\d{2,4}\b", re.IGNORECASE),
 }
 GENERIC_CODE = re.compile(r"\b[A-Z]{2,8}\d{2,4}\b")
+FAMILIES = ["ctf", "ctl", "ctcem", "vcem", "diapason"]
+_ALLOWED_DOMAINS = ("tecnaria.com", "ordini.tecnaria.com")
 
-async def find_product_codes_from_web(query: str, family: str, max_links: int = 8) -> Tuple[List[str], List[str]]:
-    q = f"site:tecnaria.com {query}"
-    hits = await web_search(q, topk=max_links) or []
+async def _collect_hits_from_queries(base_query: str, max_links: int) -> List[str]:
+    """Esegue due ricerche (normale + filetype:pdf) e restituisce URL unici (solo domini ammessi)."""
+    queries = [f"site:tecnaria.com {base_query}",
+               f"site:tecnaria.com filetype:pdf {base_query}"]
+    urls: List[str] = []
+    seen = set()
+    for q in queries:
+        hits = await web_search(q, topk=max_links) or []
+        for h in hits:
+            url = (h.get("url") or "").strip()
+            if not url:
+                continue
+            if not any(dom in url.lower() for dom in _ALLOWED_DOMAINS):
+                continue
+            if url in seen:
+                continue
+            seen.add(url)
+            urls.append(url)
+    return urls[:max_links]
+
+async def find_product_codes_from_web(query: str, family: str, max_links: int = 10) -> Tuple[List[str], List[str]]:
+    base_q = query
+    urls = await _collect_hits_from_queries(base_q, max_links)
     pattern = _CODE_PATTERNS.get(family.lower()) or GENERIC_CODE
-    codes = set()
-    sources = []
-    for h in hits[:max_links]:
-        url = h.get("url") or ""
-        if "tecnaria.com" not in url.lower():
+
+    codes: set[str] = set()
+    used_sources: List[str] = []
+
+    for url in urls:
+        text = await _fetch_text_for_regex(url)
+        if not text:
             continue
-        html = await _fetch_page_text(url)
-        if not html:
-            continue
-        found = set(m.upper() for m in pattern.findall(html))
+        found = set(m.upper() for m in pattern.findall(text))
         if found:
             codes |= found
-            sources.append(url)
-    def _num(c):
+            used_sources.append(url)
+
+    # Se non ha trovato nulla, tenta una query più "secca" sulla sigla
+    if not codes:
+        hint = family.upper() if family != "generic" else "CTF CTL VCEM CTCEM DIAPASON"
+        urls2 = await _collect_hits_from_queries(hint, max_links)
+        for url in urls2:
+            if url in used_sources:
+                continue
+            text = await _fetch_text_for_regex(url)
+            if not text:
+                continue
+            found = set(m.upper() for m in pattern.findall(text))
+            if found:
+                codes |= found
+                used_sources.append(url)
+
+    def _num_key(c: str) -> int:
         try:
             return int(re.findall(r"(\d{2,4})", c)[0])
         except Exception:
             return 0
-    sorted_codes = sorted(codes, key=_num)
-    return sorted_codes, sources[:5]
+
+    sorted_codes = sorted(codes, key=_num_key)
+    return sorted_codes, used_sources[:6]
 
 # ------------------- Local docs -------------------
 def load_local_docs() -> Dict[str, str]:
@@ -302,6 +348,22 @@ async def index(request: Request):
 async def ping():
     return {"status": "ok", "service": "Tecnaria Bot - Web+Local", "model": OPENAI_MODEL}
 
+# ------------------- Intent helper per "codici" -------------------
+CODICI_INTENT = re.compile(
+    r"\b(codic[io]|\bcod\.|\blista\s+codici|\btutti\s+i\s+codici|\bcodici\s+prodotti?)\b",
+    re.IGNORECASE
+)
+
+def _detect_family_in_text(t: str) -> str | None:
+    t = t.lower()
+    if   "ctf"      in t: return "ctf"
+    if   "ctl"      in t: return "ctl"
+    if   "ctcem"    in t: return "ctcem"
+    if   "vcem"     in t: return "vcem"
+    if   "diapason" in t: return "diapason"
+    return None
+
+# ------------------- Main route -------------------
 @app.post("/api/ask")
 async def ask(req: AskRequest):
     try:
@@ -328,22 +390,41 @@ async def ask(req: AskRequest):
             return {"ok": True, "answer": msg}
         # ---------------------------------------------------------------------
 
-        # --- CODICI PRODOTTO da WEB (tecnaria.com) ---------------------------
+        # --- CODICI PRODOTTO dal WEB (tecnaria.com + PDF) --------------------
         ql = user_q.lower()
-        if ("codici" in ql or "codice" in ql):
-            fam = None
-            if   "ctf"      in ql: fam = "ctf"
-            elif "ctl"      in ql: fam = "ctl"
-            elif "ctcem"    in ql: fam = "ctcem"
-            elif "vcem"     in ql: fam = "vcem"
-            elif "diapason" in ql: fam = "diapason"
-            else: fam = "generic"
-            codes, srcs = await find_product_codes_from_web(user_q, fam)
-            if codes:
-                lines = [f"- **{c}**" for c in codes]
-                fontes = "\n".join(f"- {u}" for u in srcs) if srcs else "- tecnaria.com"
-                answer = "OK\n" + "\n".join(lines) + f"\n\n**Fonti**\n{fontes}"
-                return {"ok": True, "answer": answer}
+        if CODICI_INTENT.search(ql):
+            fam = _detect_family_in_text(ql)
+
+            # Caso A: famiglia specificata
+            if fam:
+                codes, srcs = await find_product_codes_from_web(user_q, fam)
+                if codes:
+                    lines  = [f"- **{c}**" for c in codes]
+                    fontes = "\n".join(f"- {u}" for u in srcs) if srcs else "- tecnaria.com"
+                    return {"ok": True, "answer": f"OK · Codici {fam.upper()}\n" + "\n".join(lines) + f"\n\n**Fonti**\n{fontes}"}
+                else:
+                    tried = "- " + "\n- ".join(srcs) if srcs else "- (nessuna pagina rilevante trovata su tecnaria.com)"
+                    return {"ok": True, "answer": f"Non ho trovato codici {fam.upper()} su tecnaria.com.\n\n**Pagine controllate**\n{tried}\n\n**Fonti**\n- tecnaria.com"}
+
+            # Caso B: nessuna famiglia specificata → tutte
+            all_blocks: List[str] = []
+            all_sources: List[str] = []
+            found_any = False
+
+            for famx in FAMILIES:
+                codes, srcs = await find_product_codes_from_web(user_q, famx)
+                if codes:
+                    found_any = True
+                    all_blocks.append(f"**{famx.upper()}**\n" + "\n".join(f"- **{c}**" for c in codes))
+                    for s in srcs:
+                        if s not in all_sources:
+                            all_sources.append(s)
+
+            if found_any:
+                fontes = "\n".join(f"- {u}" for u in all_sources) if all_sources else "- tecnaria.com"
+                return {"ok": True, "answer": "OK · Codici prodotti Tecnaria\n" + "\n\n".join(all_blocks) + f"\n\n**Fonti**\n{fontes}"}
+            else:
+                return {"ok": True, "answer": "Non ho trovato codici su tecnaria.com per le famiglie note (CTF, CTL, CTCEM, VCEM, DIAPASON).\n\n**Fonti**\n- tecnaria.com"}
         # ---------------------------------------------------------------------
 
         # Flusso standard (web → locali → LLM)
