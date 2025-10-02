@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-# OpenAI SDK (opzionale)
+# OpenAI SDK (opzionale: l'app funziona anche senza, usando solo web+local)
 try:
     from openai import OpenAI
 except Exception:
@@ -37,7 +37,7 @@ DEBUG = os.getenv("DEBUG", "0") == "1"
 CRITICI_DIR = os.environ.get("CRITICI_DIR", "static/static/data/critici")
 LOCAL_DOCS_DIR = "static/docs"
 
-# Hotfix manuale (disattivo di default)
+# Hotfix manuale (disattivo di default; utile solo se vuoi forzare i CTF via ENV)
 CTF_HOTFIX = os.environ.get("CTF_HOTFIX", "0") == "1"
 CTF_CODES_INLINE = os.environ.get(
     "CTF_CODES_INLINE",
@@ -71,16 +71,15 @@ def _alias_canon(s: str) -> str:
     if not s:
         return ""
     out = s
-    # CFT -> CTF
+    # CFT -> CTF (typo)
     out = re.sub(r"\bCFT\b", "CTF", out, flags=re.IGNORECASE)
-    # 'CT F' -> 'CTF' (spazi in mezzo, eventuali)
-    out = re.sub(r"\bC\s*T\s*F\b", "CTF", out, flags=re.IGNORECASE)
+    out = re.sub(r"\bC\s*T\s*F\b", "CTF", out, flags=re.IGNORECASE)  # 'C T F' -> 'CTF'
     # normalizza '12 / 60' -> '12/60'
     out = re.sub(r"(\b\d+)\s*/\s*(\d+\b)", r"\1/\2", out)
     return out
 
 # -----------------------------------------------------------------------------
-# SCOPE (limita il dominio del bot a Tecnaria) – include typo 'cft'
+# SCOPE (limita il dominio del bot a Tecnaria) – include anche typo 'cft'
 # -----------------------------------------------------------------------------
 SCOPE_KWS = re.compile(
     r"\b(tecnaria|ctf|cft|ctl|ctcem|vcem|diapason|lamiera|grecata|solai?|p560|spit|connettor\w+|"
@@ -218,7 +217,7 @@ def format_sensitive_answer_from_file(path: str) -> str:
     return f"- Dati:\n```\n{pretty[:1000]}\n```\n\n**Fonti**\n- file locale · {name}"
 
 # -----------------------------------------------------------------------------
-# CRITICI: FAQ deterministiche + lettura diretta codici
+# CRITICI: FAQ deterministiche + lettura diretta codici (con alias per CTL)
 # -----------------------------------------------------------------------------
 def load_critici_faq(dir_path: str = CRITICI_DIR) -> Tuple[List[dict], List[str]]:
     qa_entries: List[dict] = []
@@ -253,11 +252,24 @@ def answer_from_critici(user_q: str) -> Optional[str]:
     return None
 
 def get_codes_from_critici(family: str = "ctf") -> List[str]:
+    """
+    Legge i codici direttamente dai JSON in CRITICI_DIR.
+    Per CTL accetta anche alias di prefisso: CTLB/CTLM e CVT (Omega).
+    """
     dirp = Path(CRITICI_DIR)
     if not dirp.exists():
         return []
     prefer = dirp / f"codici_{family}.json"
     candidates = [prefer] if prefer.exists() else list(dirp.glob("*.json"))
+
+    alias_prefix = {
+        "ctf": ("CTF",),
+        "ctl": ("CTL", "CTLB", "CTLM", "CVT"),  # accettiamo Base/Maxi/Omega
+        "ctcem": ("CTCEM",),
+        "vcem": ("VCEM",),
+        "diapason": ("DIAPASON",),
+    }
+    allowed = alias_prefix.get(family.lower(), (family.upper(),))
 
     codes: set[str] = set()
     for p in candidates:
@@ -276,16 +288,16 @@ def get_codes_from_critici(family: str = "ctf") -> List[str]:
             s = str(c).upper().strip()
             if not s:
                 continue
-            if family and not s.startswith(family.upper()):
+            if not any(s.startswith(pref) for pref in allowed):
                 continue
-            if re.match(rf"^{family.upper()}\d{{3,4}}$", s):
+            # accetta CTF###, CTLB###, CTLM### e stringhe tipo "CVT 40V-10/120"
+            if re.match(r"^[A-Z]{3,6}\s?[\w\-/]{2,}$", s):
                 codes.add(s)
 
     def _num_key(c: str) -> int:
-        try:
-            return int(re.findall(r"(\d{2,4})", c)[0])
-        except Exception:
-            return 0
+        m = re.findall(r"(\d{2,4})", c)
+        return int(m[-1]) if m else 0
+
     return sorted(codes, key=_num_key)
 
 # -----------------------------------------------------------------------------
@@ -365,12 +377,14 @@ async def _fetch_text_for_regex(url: str, timeout: float = 18.0) -> str:
     except Exception:
         return ""
 
+# Regex per estrazione codici (usata solo se il testo web è “leggibile”)
 _CODE_PATTERNS = {
     "ctf": re.compile(r"\bCTF\d{3}\b", re.IGNORECASE),
-    "ctl": re.compile(r"\bCTL\d{3}\b", re.IGNORECASE),
+    # CTL: accettiamo CTL###, CTLB###, CTLM### e pattern CVT ...
+    "ctl": re.compile(r"\b(CTL|CTLB|CTLM)\d{3}\b|\bCVT\s?[\w\-\/]{3,}\b", re.IGNORECASE),
     "ctcem": re.compile(r"\bCTCEM\d{3}\b", re.IGNORECASE),
-    "vcem": re.compile(r"\bVCEM\d{3}\b", re.IGNORECASE),
-    "diapason": re.compile(r"\bDIAPASON\d{2,4}\b", re.IGNORECASE),
+    "vcem": re.compile(r"\bVCEM[\w\-\/]*\b", re.IGNORECASE),
+    "diapason": re.compile(r"\bDIAPASON[\w\-\/]*\b", re.IGNORECASE),
 }
 GENERIC_CODE = re.compile(r"\b[A-Z]{2,8}\d{2,4}\b")
 FAMILIES = ["ctf", "ctl", "ctcem", "vcem", "diapason"]
@@ -401,7 +415,7 @@ async def _collect_hits_from_queries(base_query: str, max_links: int) -> List[st
 async def find_product_codes_from_web(query: str, family: str, max_links: int = 12) -> Tuple[List[str], List[str]]:
     synonyms = {
         "ctf": "CTF connettori Tecnaria lamiera grecata chiodi HSBR14 P560",
-        "ctl": "CTL connettori legno calcestruzzo viti",
+        "ctl": "CTL connettori legno calcestruzzo CTLB CTLM CVT",
         "ctcem": "CTCEM connettori legno calcestruzzo",
         "vcem": "VCEM connettori acciaio calcestruzzo",
         "diapason": "Diapason laterocemento",
@@ -423,10 +437,9 @@ async def find_product_codes_from_web(query: str, family: str, max_links: int = 
             used_sources.append(url)
 
     def _num_key(c: str) -> int:
-        try:
-            return int(re.findall(r"(\d{2,4})", c)[0])
-        except Exception:
-            return 0
+        m = re.findall(r"(\d{2,4})", c)
+        return int(m[-1]) if m else 0
+
     sorted_codes = sorted(codes, key=_num_key)
     return sorted_codes, used_sources[:8]
 
@@ -497,7 +510,7 @@ async def ask(req: AskRequest):
                 return {"ok": True, "answer": "- Informazione sensibile richiesta ma il file locale non è presente.\n\n**Fonti**\n- (file locale mancante)"}
             return {"ok": True, "answer": format_sensitive_answer_from_file(sensitive_path)}
 
-        # 1) Ambito aziendale (su query normalizzata)
+        # 1) Ambito aziendale
         if not SCOPE_KWS.search(user_q):
             msg = (
                 "- Ambito del bot: prodotti/soluzioni Tecnaria (connettori CTF/CTL/Diapason, posa, P560, documentazione, contatti, pagamenti).\n"
@@ -526,7 +539,7 @@ async def ask(req: AskRequest):
                 fonte = f"- file locale · critici/codici_{fam}.json" if (Path(CRITICI_DIR)/f"codici_{fam}.json").exists() else "- file locale · critici"
                 return {"ok": True, "answer": f"OK · Codici {fam.upper()}\n" + "\n".join(lines) + f"\n\n**Fonti**\n{fonte}"}
 
-            # C) (OPZ.) hotfix ENV
+            # C) (OPZ.) hotfix ENV per CTF
             if CTF_HOTFIX and fam == "ctf":
                 return {"ok": True, "answer": (
                     f"I codici ufficiali dei connettori CTF Tecnaria sono: {CTF_CODES_INLINE}. "
