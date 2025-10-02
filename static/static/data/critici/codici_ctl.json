@@ -1,1 +1,28 @@
+{
+  "version": "1.0",
+  "category": "prodotti/ctl",
+  "updated": "2025-10-02",
+  "data": {
+    "codici": [
+      "CTLB020","CTLB030","CTLB040","CTLB060","CTLB070","CTLB080","CTLB105","CTLB125","CTLB150","CTLB175","CTLB200",
+      "CTLM020","CTLM030","CTLM040","CTLM060","CTLM070","CTLM080","CTLM105","CTLM125","CTLM150","CTLM175","CTLM200",
+      "CVT 40V-10/100","CVT 40V-10/120","CVT 40V-10/140"
+    ],
+    "note": "Famiglia CTL: BASE (CTLB…), MAXI (CTLM…), OMEGA (codici CVT 40V-10/xxx)."
+  },
+  "faq": [
+    {
+      "q": [
+        "codici ctl",
+        "mi dai i codici dei ctl",
+        "lista codici ctl",
+        "ctl base codici",
+        "ctl maxi codici",
+        "ctl omega codici"
+      ],
+      "a": "CTL BASE: CTLB020, 030, 040, 060, 070, 080, 105, 125, 150, 175, 200 · CTL MAXI: CTLM020, 030, 040, 060, 070, 080, 105, 125, 150, 175, 200 · CTL OMEGA: CVT 40V-10/100, 10/120, 10/140."
+    }
+  ]
+}
+
 
