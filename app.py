@@ -11,11 +11,11 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-# OpenAI SDK (1.x)
+# OpenAI SDK (opzionale)
 try:
     from openai import OpenAI
 except Exception:
-    OpenAI = None  # consentiamo l'avvio anche senza SDK, ma alcune risposte useranno solo web/local
+    OpenAI = None
 
 # -----------------------------------------------------------------------------
 # APP SETUP
@@ -25,23 +25,19 @@ templates = Jinja2Templates(directory="templates")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
-
-client = None
-if OPENAI_API_KEY and OpenAI is not None:
-    client = OpenAI(api_key=OPENAI_API_KEY)
+client = OpenAI(api_key=OPENAI_API_KEY) if (OPENAI_API_KEY and OpenAI is not None) else None
 
 # Web-search
-SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave")  # "brave" per Brave Search API
+SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave")  # "brave" usa Brave Search API
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY", "")
-FETCH_WEB_FIRST = True
 SEARCH_TOPK = int(os.getenv("SEARCH_TOPK", "6"))
 DEBUG = os.getenv("DEBUG", "0") == "1"
 
 # Percorsi locali
 CRITICI_DIR = os.environ.get("CRITICI_DIR", "static/static/data/critici")
-LOCAL_DOCS_DIR = "static/docs"  # .txt facoltativi
+LOCAL_DOCS_DIR = "static/docs"
 
-# Facoltativo: hotfix manuale disattivato (rimane disponibile se vuoi abilitarlo via ENV)
+# Hotfix manuale (disattivo di default)
 CTF_HOTFIX = os.environ.get("CTF_HOTFIX", "0") == "1"
 CTF_CODES_INLINE = os.environ.get(
     "CTF_CODES_INLINE",
@@ -56,7 +52,6 @@ class AskRequest(BaseModel):
     message: Optional[str] = None
     Domanda: Optional[str] = None
     q: Optional[str] = None
-
     def text(self) -> str:
         for k in (self.question, self.message, self.Domanda, self.q):
             if k:
@@ -64,18 +59,31 @@ class AskRequest(BaseModel):
         return ""
 
 # -----------------------------------------------------------------------------
-# NORMALIZZAZIONE TESTO
+# NORMALIZZAZIONE / ALIAS
 # -----------------------------------------------------------------------------
 def _norma_txt(s: str) -> str:
     s = "".join(c for c in unicodedata.normalize("NFKD", s or "") if not unicodedata.combining(c))
     s = s.lower()
     return re.sub(r"[^a-z0-9/ ]+", "", s)
 
+def _alias_canon(s: str) -> str:
+    """Corregge i typo più comuni e normalizza '12 / 60' -> '12/60'."""
+    if not s:
+        return ""
+    out = s
+    # CFT -> CTF
+    out = re.sub(r"\bCFT\b", "CTF", out, flags=re.IGNORECASE)
+    # 'CT F' -> 'CTF' (spazi in mezzo, eventuali)
+    out = re.sub(r"\bC\s*T\s*F\b", "CTF", out, flags=re.IGNORECASE)
+    # normalizza '12 / 60' -> '12/60'
+    out = re.sub(r"(\b\d+)\s*/\s*(\d+\b)", r"\1/\2", out)
+    return out
+
 # -----------------------------------------------------------------------------
-# SCOPE (limita il dominio del bot a Tecnaria)
+# SCOPE (limita il dominio del bot a Tecnaria) – include typo 'cft'
 # -----------------------------------------------------------------------------
 SCOPE_KWS = re.compile(
-    r"\b(tecnaria|ctf|ctl|ctcem|vcem|diapason|lamiera|grecata|solai?|p560|spit|connettor\w+|"
+    r"\b(tecnaria|ctf|cft|ctl|ctcem|vcem|diapason|lamiera|grecata|solai?|p560|spit|connettor\w+|"
     r"acciaio|legno|laterocemento|collaborant\w+|eta|posa|chiodi|hsbr14)\b",
     re.IGNORECASE
 )
@@ -90,17 +98,17 @@ CODICI_INTENT = re.compile(
 
 def _detect_family_in_text(t: str) -> Optional[str]:
     t = (t or "").lower()
-    if "ctf" in t: return "ctf"
-    if "ctl" in t: return "ctl"
-    if "ctcem" in t: return "ctcem"
-    if "vcem" in t: return "vcem"
-    if "diapason" in t: return "diapason"
+    if "ctf" in t or "cft" in t: return "ctf"
+    if "ctl" in t:               return "ctl"
+    if "ctcem" in t:             return "ctcem"
+    if "vcem" in t:              return "vcem"
+    if "diapason" in t:          return "diapason"
     return None
 
 def _looks_like_ask_codes(q: str) -> bool:
     nq = _norma_txt(q)
     return ("codic" in nq or "lista codici" in nq or "codes" in nq) and any(
-        fam in nq for fam in ["ctf", "ctl", "ctcem", "vcem", "diapason"]
+        fam in nq for fam in ["ctf", "cft", "ctl", "ctcem", "vcem", "diapason"]
     )
 
 # -----------------------------------------------------------------------------
@@ -113,14 +121,13 @@ SENSITIVE_FILES = {
     "pec": "contatti.json", "sdi": "contatti.json", "p.iva": "contatti.json",
     "partita iva": "contatti.json", "indirizzo": "contatti.json", "sede": "contatti.json",
     "dove siamo": "contatti.json",
-    # Banca (naming atteso: bancari.json)
+    # Banca
     "iban": "bancari.json", "bonifico": "bancari.json", "conto": "bancari.json",
     "coordinate bancarie": "bancari.json",
     # Pagamenti
     "pagamento": "pagamenti.json", "pagamenti": "pagamenti.json",
     "metodi di pagamento": "pagamenti.json",
 }
-
 _SENSITIVE_KWS = re.compile(
     r"\b(contatt\w*|telefono|tel\.?|mail|email|pec|sdi|p\.?\s*iva|partita\s*iva|indirizzo|sede|dove\s+siamo|iban|bonifico|conto|banc\w*|pagamento|pagamenti|metod[ei]\s+di\s+pagamento)\b",
     re.IGNORECASE
@@ -134,9 +141,9 @@ def find_sensitive_file_for_question(q: str) -> Optional[str]:
         if kw in ql:
             fp = Path(CRITICI_DIR) / fname
             if fp.exists():
-                return str(fp)  # file trovato
+                return str(fp)
             else:
-                return ""       # richiesto ma file mancante
+                return ""
     if _SENSITIVE_KWS.search(ql):
         return "" if not Path(CRITICI_DIR).exists() else None
     return None
@@ -240,17 +247,12 @@ def answer_from_critici(user_q: str) -> Optional[str]:
         for trig in qa["triggers"]:
             if nq == trig or trig in nq:
                 return qa["answer"]
-    # micro-fallback “CTF 12/xx”
     if "ctf" in nq and "12/" in nq:
         return ("La notazione “CTF 12/xx” è equivalente al codice con altezza xx: "
                 "12/40→CTF040, 12/60→CTF060, 12/105→CTF105, 12/125→CTF125, 12/135→CTF135.")
     return None
 
 def get_codes_from_critici(family: str = "ctf") -> List[str]:
-    """
-    Legge direttamente i codici dal file critici, ignorando le frasi trigger.
-    Cerca prima codici_{family}.json, poi qualunque file in /critici/ con un array 'data.codici'.
-    """
     dirp = Path(CRITICI_DIR)
     if not dirp.exists():
         return []
@@ -266,7 +268,6 @@ def get_codes_from_critici(family: str = "ctf") -> List[str]:
         data = (doc.get("data") or {})
         arr = data.get("codici") or []
         if not arr:
-            # fallback: primo array stringhe in root
             for k, v in doc.items():
                 if isinstance(v, list) and any(isinstance(x, str) for x in v):
                     arr = v
@@ -285,7 +286,6 @@ def get_codes_from_critici(family: str = "ctf") -> List[str]:
             return int(re.findall(r"(\d{2,4})", c)[0])
         except Exception:
             return 0
-
     return sorted(codes, key=_num_key)
 
 # -----------------------------------------------------------------------------
@@ -296,25 +296,19 @@ Parli come il MIGLIOR TECNICO-COMMERCIALE di Tecnaria S.p.A. (Bassano del Grappa
 competente, chiaro, autorevole, propositivo e vicino al cliente.
 
 TASSONOMIA OBBLIGATORIA (NON VIOLARE)
-- P560 / SPIT P560 = chiodatrice a sparo (pistola sparachiodi) per fissaggi su ACCIAIO/LAMIERA. NON è un connettore.
+- P560 / SPIT P560 = chiodatrice a sparo (pistola) per fissaggi su ACCIAIO/LAMIERA. NON è un connettore.
   • Usata nei sistemi CTF (lamiera grecata + calcestruzzo) con chiodi HSBR14.
-  • Usata anche per fissare connettori su TRAVI IN ACCIAIO (es. VCEM/altre configurazioni su acciaio).
-  • NON si usa per connettori su LEGNO (CTL/CTCEM: fissaggi meccanici a vite/bullone).
+  • NON per connettori su LEGNO (CTL/CTCEM: viti/bulloni).
 - CTF = connettori per solai collaboranti ACCIAIO-CALCESTRUZZO su lamiera grecata; fissaggio a sparo (HSBR14) con P560.
 - CTL = connettori per solai collaboranti LEGNO-CALCESTRUZZO; fissaggio con VITI, NO P560.
-- DIAPASON (laterocemento) = fissaggi meccanici (bulloni/barre), NO P560.
+- DIAPASON (laterocemento) = fissaggi meccanici, NO P560.
 
-REGOLE DI RISPOSTA
+REGOLE
 - Ordine fonti: WEB → poi documenti locali. Se il web è vuoto, usa i locali; se comunque non trovi, dillo.
-- Stile TECNICO-COMMERCIALE in ITALIANO.
-- OUTPUT in 5–7 BULLET sintetici (vantaggi, posa, sicurezza/certificazioni quando rilevanti).
-- CHIUDI SEMPRE con sezione **Fonti** con URL (se web) o “file locale”.
+- 5–7 bullet sintetici e pratici. Chiudi con **Fonti** (URL o 'file locale').
 """.strip()
 
 def _force_bullets_and_sources(text: str, web_hits: List[Dict], local_docs: Dict[str, str]) -> str:
-    """
-    Garantisce una sezione Fonti finale.
-    """
     txt = (text or "").strip()
     has_sources = ("**Fonti**" in txt) or ("\nFonti\n" in txt) or ("\nFonti:" in txt)
     if not has_sources:
@@ -348,7 +342,6 @@ async def web_search(query: str, topk: int = 6) -> List[Dict]:
                 if not u:
                     continue
                 results.append({"name": item.get("title", "") or u, "url": u})
-            # preferisci domini ufficiali
             results.sort(key=lambda x: 1 if any(d in x["url"].lower() for d in _ALLOWED_DOMAINS) else 0, reverse=True)
             return results
     except Exception as e:
@@ -364,7 +357,6 @@ async def _fetch_text_for_regex(url: str, timeout: float = 18.0) -> str:
                 return ""
             ct = (r.headers.get("content-type") or "").lower()
             if "pdf" in ct or url.lower().endswith(".pdf"):
-                # senza parser PDF→tentiamo lettura bytes come testo (potrebbe non estrarre tutto)
                 try:
                     return r.content.decode("latin-1", errors="ignore")
                 except Exception:
@@ -435,7 +427,6 @@ async def find_product_codes_from_web(query: str, family: str, max_links: int = 
             return int(re.findall(r"(\d{2,4})", c)[0])
         except Exception:
             return 0
-
     sorted_codes = sorted(codes, key=_num_key)
     return sorted_codes, used_sources[:8]
 
@@ -492,18 +483,21 @@ async def ask_get(request: Request, q: str = ""):
 @app.post("/api/ask")
 async def ask(req: AskRequest):
     try:
-        user_q = (req.text() or "").strip()
-        if not user_q:
+        raw_q = (req.text() or "").strip()
+        if not raw_q:
             return JSONResponse({"ok": False, "error": "Domanda mancante"}, status_code=400)
 
-        # 0) Dati sensibili/autoritatitivi: SOLO da file locali
+        # normalizza typo e formati
+        user_q = _alias_canon(raw_q)
+
+        # 0) Dati sensibili: SOLO file locali
         sensitive_path = find_sensitive_file_for_question(user_q)
         if sensitive_path is not None:
             if sensitive_path == "":
                 return {"ok": True, "answer": "- Informazione sensibile richiesta ma il file locale non è presente.\n\n**Fonti**\n- (file locale mancante)"}
             return {"ok": True, "answer": format_sensitive_answer_from_file(sensitive_path)}
 
-        # 1) Ambito aziendale
+        # 1) Ambito aziendale (su query normalizzata)
         if not SCOPE_KWS.search(user_q):
             msg = (
                 "- Ambito del bot: prodotti/soluzioni Tecnaria (connettori CTF/CTL/Diapason, posa, P560, documentazione, contatti, pagamenti).\n"
@@ -513,10 +507,10 @@ async def ask(req: AskRequest):
             )
             return {"ok": True, "answer": msg}
 
-        # 2) Intent CODICI (WEB → poi locali → (facoltativo) hotfix ENV)
+        # 2) Intent CODICI (WEB → poi locali → (opz.) hotfix ENV)
         ql = user_q.lower()
         if CODICI_INTENT.search(ql) or _looks_like_ask_codes(user_q) or "ctf 12/" in ql:
-            fam = _detect_family_in_text(ql) or "ctf"  # default CTF se non indicato
+            fam = _detect_family_in_text(ql) or "ctf"
 
             # A) WEB FIRST
             codes, srcs = await find_product_codes_from_web(user_q, fam)
@@ -532,22 +526,20 @@ async def ask(req: AskRequest):
                 fonte = f"- file locale · critici/codici_{fam}.json" if (Path(CRITICI_DIR)/f"codici_{fam}.json").exists() else "- file locale · critici"
                 return {"ok": True, "answer": f"OK · Codici {fam.upper()}\n" + "\n".join(lines) + f"\n\n**Fonti**\n{fonte}"}
 
-            # C) (OPZIONALE) Ultimo paracadute manuale via ENV
+            # C) (OPZ.) hotfix ENV
             if CTF_HOTFIX and fam == "ctf":
                 return {"ok": True, "answer": (
                     f"I codici ufficiali dei connettori CTF Tecnaria sono: {CTF_CODES_INLINE}. "
                     "Ø12 mm; fissaggio con chiodatrice SPIT P560.\n\n**Fonti**\n- fallback manuale (env)"
                 )}
 
-            # D) Niente trovato
+            # D) Nessun risultato
             tried = "\n".join(f"- {u}" for u in (srcs or [])) or "- (nessuna pagina rilevante trovata su tecnaria.com)"
             return {"ok": True, "answer": f"Non ho trovato codici {fam.upper()} su tecnaria.com.\n\n**Pagine controllate**\n{tried}\n\n**Fonti**\n- tecnaria.com"}
 
         # 3) Flusso generale: WEB → locali → LLM (se disponibile)
-        web_hits: List[Dict] = []
-        local_docs: Dict[str, str] = {}
-        web_hits = await web_search(user_q, topk=SEARCH_TOPK)
-        local_docs = load_local_docs()
+        web_hits: List[Dict] = await web_search(user_q, topk=SEARCH_TOPK)
+        local_docs: Dict[str, str] = load_local_docs()
 
         parts: List[str] = []
         if web_hits:
@@ -557,7 +549,6 @@ async def ask(req: AskRequest):
         context_blob = "\n\n".join(parts) if parts else "(nessun contesto disponibile)"
 
         if client is None:
-            # Se manca OPENAI: restituiamo il contesto trovato
             answer = (
                 "- Modalità senza LLM attivo (manca OPENAI_API_KEY o SDK):\n"
                 + context_blob
