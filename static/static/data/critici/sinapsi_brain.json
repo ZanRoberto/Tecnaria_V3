@@ -155,4 +155,9 @@
     "lang": "it",
     "answer": "OK\n- **Compatibilità**: i **CTF** sono progettati per lamiere grecate certificate (es. **Hi-Bond**), garantendo piena collaborazione acciaio–calcestruzzo.\n- **Velocità di posa**: fissaggio dall’alto con **SPIT P560** e **2 chiodi HSBR14**, senza preforatura.\n- **Prestazioni**: maggiore rigidezza e capacità portante, deformazioni ridotte, luci maggiori a spessore contenuto.\n- **Sicurezza normativa**: documentazione **ETA** e tracciabilità.\n- **Efficienza**: tempi e costi di cantiere ridotti rispetto ad alternative non integrate.\n- **Supporto**: schede di posa, software e assistenza Tecnaria.\n\n**Fonti**\n- Sinapsi (curated)\n"
   }
+  {
+    "pattern": "(?i)ctl.*ctf|ctf.*ctl",
+    "lang": "it",
+    "answer": "OK\n- **CTL**: connettori per **solai legno–calcestruzzo**, ideali nelle ristrutturazioni dove occorre rendere collaborante una soletta in calcestruzzo sopra travi lignee. Installazione con **viti autoforanti**, senza chiodatrice.\n- **CTF**: connettori per **solai acciaio–calcestruzzo** su **lamiera grecata**, installati con **SPIT P560** e 2 chiodi HSBR14. Più adatti a nuove realizzazioni o rinforzi con lamiera.\n- **Certificazioni**: entrambi i sistemi sono coperti da **ETA** (European Technical Assessment) che ne garantisce la conformità ai requisiti strutturali europei. CTL → ETA per legno; CTF → ETA per acciaio e lamiera grecata.\n- **Quando usare**:\n  - **CTL** se lavori su strutture lignee e vuoi migliorare capacità portante e rigidezza.\n  - **CTF** se hai travi d’acciaio e lamiera collaborante, con esigenza di velocità e praticità in cantiere.\n\n**Fonti**\n- Sinapsi (curated)"
+  }
 ]
