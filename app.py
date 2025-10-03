@@ -288,7 +288,7 @@ def web_lookup(q: str,
     return "", sources, best_score
 
 # -----------------------------------------------------------------------------
-# FORMATTER – stile “tuo bot”
+# FORMATTER – stile “tuo bot” (FIXED)
 # -----------------------------------------------------------------------------
 def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
     if core_text.strip().startswith("OK"):
@@ -299,7 +299,7 @@ def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
         return core_text
     out = "OK\n" + core_text.strip()
     if sources:
-        out += "\n\n**Fonti**\n" + "\njoin(f\"- {u}\" for u in sources) + "\n"
+        out += "\n\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
     return out
 
 def answer_contacts() -> str:
@@ -384,7 +384,7 @@ app.add_middleware(
     allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
-# ⚠️ NESSUN BANNER A "/":
+# NIENTE banner su "/":
 # - se c'è ?q=... risponde come /ask GET
 # - altrimenti 404 Not Found
 @app.get("/")
