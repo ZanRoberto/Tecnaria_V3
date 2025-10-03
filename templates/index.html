@@ -1,204 +1,107 @@
 <!doctype html>
 <html lang="it">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Tecnaria Bot</title>
-<style>
-  :root{
-    /* 🎨 Colori aziendali (personalizzabili) */
-    --brand: #0e7a3f;        /* verde Tecnaria */
-    --brand-dark:#0a5a2e;
-    --accent:#f1b600;        /* giallo caldo per dettagli */
-    --bg:#f6f7f9;
-    --card:#ffffff;
-    --ink:#1a1f23;
-    --muted:#6b7280;
-    --border:#e6e8ee;
-    --success:#13a10e;
-    --danger:#c1121f;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0; background:linear-gradient(180deg,var(--bg),#fff);
-    color:var(--ink); font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  }
-  .wrap{max-width:1000px; margin:40px auto; padding:0 20px}
-  .header{
-    display:flex; align-items:center; gap:16px; margin-bottom:20px;
-  }
-  .logo{
-    width:46px; height:46px; border-radius:12px; background:var(--brand);
-    display:grid; place-items:center; color:#fff; font-weight:700;
-    box-shadow:0 8px 24px rgba(14,122,63,.25);
-  }
-  .title h1{margin:0; font-size:28px; letter-spacing:.2px}
-  .title .sub{color:var(--muted); font-size:13px}
-  .card{
-    background:var(--card); border:1px solid var(--border);
-    border-radius:16px; padding:18px; box-shadow:0 8px 24px rgba(10,90,46,.06);
-  }
-  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
-  .pill{
-    font-size:12px; padding:6px 10px; border-radius:20px; border:1px solid var(--border);
-    color:var(--muted); background:#fff;
-  }
-  .pill.ok{border-color:rgba(19,161,14,.2); color:var(--success); background:rgba(19,161,14,.06)}
-  .pill.warn{border-color:rgba(241,182,0,.25); color:#8a6a00; background:rgba(241,182,0,.10)}
-  .pill.bad{border-color:rgba(193,18,31,.25); color:var(--danger); background:rgba(193,18,31,.08)}
-  textarea{
-    width:100%; min-height:120px; resize:vertical; padding:14px 16px; border-radius:12px;
-    border:1px solid var(--border); outline:0; font:inherit; background:#fff;
-  }
-  textarea:focus{border-color:var(--brand); box-shadow:0 0 0 3px rgba(14,122,63,.12)}
-  .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
-  button{
-    appearance:none; border:0; border-radius:12px; padding:10px 14px; font-weight:600; cursor:pointer;
-    background:var(--brand); color:#fff; box-shadow:0 6px 16px rgba(14,122,63,.25);
-  }
-  button:hover{background:var(--brand-dark)}
-  .btn-secondary{background:#fff; color:var(--brand); border:1px solid var(--brand); box-shadow:none}
-  .btn-secondary:hover{background:#f1fff7}
-  .examples{display:flex; gap:8px; flex-wrap:wrap}
-  .chip{
-    background:#fff; border:1px solid var(--border); color:var(--ink);
-    padding:8px 12px; border-radius:999px; cursor:pointer; font-size:13px;
-  }
-  .chip:hover{border-color:var(--brand); color:var(--brand)}
-  .answer{
-    margin-top:16px; padding:16px; border-radius:14px; background:#fafafa; border:1px solid var(--border);
-    white-space:pre-wrap;
-  }
-  .status{margin-top:8px; color:var(--muted); font-size:13px}
-  .footer{margin:28px 0 8px; color:var(--muted); font-size:12px}
-  .split{display:grid; grid-template-columns:1fr 1fr; gap:16px}
-  @media (max-width:900px){ .split{grid-template-columns:1fr} }
-  .source-hint{font-size:12px; color:var(--muted); margin-top:6px}
-  .brandbar{
-    height:6px; background:linear-gradient(90deg,var(--brand),var(--brand-dark)); border-radius:999px; margin-bottom:18px;
-  }
-  .spinner{width:18px;height:18px;border:3px solid #fff;border-right-color:transparent;border-radius:50%;display:inline-block;animation:spin .6s linear infinite;vertical-align:-3px}
-  @keyframes spin{to{transform:rotate(1turn)}}
-  .right{margin-left:auto}
-  a{color:var(--brand-dark)}
-</style>
+  <meta charset="utf-8" />
+  <title>Tecnaria QA Bot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background:#0b1220; color:#e7eaf3; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 16px; font-size: 22px; font-weight: 700; }
+    .card { background:#121a2b; border:1px solid #1e2a44; border-radius: 14px; padding: 16px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    textarea { width:100%; min-height:120px; resize:vertical; padding:12px; border-radius:10px; border:1px solid #1e2a44; background:#0f1626; color:#fff; }
+    .btn { background:#2b5cff; color:#fff; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; }
+    .btn.secondary { background:#1f2a45; color:#cdd6f4; }
+    .btn:disabled { opacity:.6; cursor:not-allowed; }
+    .tags { display:flex; gap:8px; flex-wrap:wrap; }
+    .tag { background:#192543; border:1px solid #2a3a63; color:#cdd6f4; padding:6px 10px; border-radius:999px; cursor:pointer; }
+    .answer { white-space:pre-wrap; background:#0f1626; border:1px solid #1e2a44; border-radius:10px; padding:12px; min-height:140px; }
+    .muted { color:#99a6c4; font-size:12px; }
+  </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="brandbar"></div>
-    <div class="header">
-      <!-- Sostituisci con il tuo logo: static/logo.png -->
-      <div class="logo">T</div>
-      <div class="title">
-        <h1>Tecnaria Bot</h1>
-        <div class="sub">Ricerca web + basi locali • Risposte tecniche sintetiche</div>
-      </div>
-      <div class="right pill" id="modelPill">modello: …</div>
-    </div>
+    <h1>Tecnaria QA Bot</h1>
 
-    <div class="split">
-      <div class="card">
-        <div class="row" style="margin-bottom:8px">
-          <div class="pill ok" id="statusPill">pronto</div>
-          <div class="pill">web→locale</div>
-          <div class="pill">critici: ON</div>
-        </div>
-
-        <label for="q"><b>Domanda</b></label>
-        <textarea id="q" placeholder="Es: Mi parli della SPIT P560?"></textarea>
-
-        <div class="toolbar">
-          <button id="send"><span id="sendLabel">Chiedi</span></button>
-          <button class="btn-secondary" id="clear">Pulisci</button>
-          <div class="right"></div>
-          <button class="btn-secondary" id="copy">Copia risposta</button>
-        </div>
-
-        <div class="examples" style="margin-top:12px">
-          <div class="chip" data-ex="Mi parli della SPIT P560? Dammi 5–7 bullet (uso, consumabili/propulsori, posa, manutenzione) e chiudi con “Fonti” con URL.">P560</div>
-          <div class="chip" data-ex="Cosa sono i connettori CTF? Applicazioni su lamiera grecata e calcestruzzo, chiodi/propulsori, note di posa, documenti tecnici. Bullet + ‘Fonti’ con URL.">Connettori CTF</div>
-          <div class="chip" data-ex="Dammi i contatti ufficiali Tecnaria (ragione sociale, indirizzo, telefono, email, PEC se pubblica, sito) e chiudi con ‘Fonti’ con URL.">Contatti</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <b>Risposta</b>
-        <div class="status" id="status">In attesa…</div>
-        <div class="answer" id="answer"></div>
-        <div class="source-hint">Suggerimento: chiedi “Chiudi con sezione Fonti con URL” per ottenere i link.</div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="tags">
+        <span class="tag" data-q="Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino o formazione speciale?">P560 + CTF</span>
+        <span class="tag" data-q="Che differenza c’è tra un connettore CTF e il sistema Diapason?">CTF vs Diapason</span>
+        <span class="tag" data-q="Qual è la densità consigliata di connettori CTF per metro quadrato?">Densità CTF</span>
+        <span class="tag" data-q="contatti">Contatti</span>
       </div>
     </div>
 
-    <div class="footer">© Tecnaria • Interfaccia demo — personalizzabile (colori, logo, testi)</div>
+    <div class="card" style="margin-bottom:16px">
+      <textarea id="q" placeholder="Scrivi qui la tua domanda…"></textarea>
+      <div class="row" style="margin-top:12px">
+        <button id="btnAsk" class="btn">Chiedi</button>
+        <button id="btnClear" class="btn secondary">Pulisci</button>
+        <button id="btnCopy" class="btn secondary">Copia risposta</button>
+        <span id="status" class="muted"></span>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="muted"><input type="checkbox" id="useGet" /> usa GET (debug)</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="answer" class="answer">La risposta apparirà qui…</div>
+      <div style="margin-top:8px" class="muted">Endpoint: <code>/ask</code> (POST JSON { q } oppure GET ?q=…)</div>
+    </div>
   </div>
 
-<script>
-  // Utility: linkifica URL in testo semplice
-  function linkify(text){
-    const urlRegex = /(https?:\/\/[^\s)]+)|(www\.[^\s)]+)/gi;
-    return text.replace(urlRegex, m=>{
-      const url = m.startsWith('http') ? m : 'http://' + m;
-      return `<a href="${url}" target="_blank" rel="noopener">${m}</a>`;
+  <script>
+    const $ = sel => document.querySelector(sel);
+    const qEl = $("#q");
+    const ansEl = $("#answer");
+    const statusEl = $("#status");
+    const useGet = $("#useGet");
+
+    document.querySelectorAll(".tag").forEach(t => {
+      t.addEventListener("click", () => { qEl.value = t.dataset.q || ""; qEl.focus(); });
     });
-  }
 
-  async function ping(){
-    try{
-      const r = await fetch('/');
-      const t = await r.text();
-      const m = (t.match(/"model":"([^"]+)"/)||[])[1] || 'n/d';
-      document.getElementById('modelPill').textContent = 'modello: ' + m;
-    }catch{}
-  }
-  ping();
+    $("#btnCopy").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(ansEl.textContent || ""); flash("Risposta copiata"); }
+      catch { flash("Copia non disponibile"); }
+    });
 
-  const qEl = document.getElementById('q');
-  const ansEl = document.getElementById('answer');
-  const statusEl = document.getElementById('status');
-  const sendBtn = document.getElementById('send');
-  const sendLabel = document.getElementById('sendLabel');
-  const clearBtn = document.getElementById('clear');
-  const copyBtn = document.getElementById('copy');
+    $("#btnClear").addEventListener("click", () => {
+      qEl.value = ""; ansEl.textContent = "La risposta apparirà qui…"; flash("");
+    });
 
-  document.querySelectorAll('.chip').forEach(ch=>{
-    ch.addEventListener('click',()=>{ qEl.value = ch.dataset.ex; qEl.focus(); });
-  });
+    qEl.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") send(); });
+    $("#btnAsk").addEventListener("click", send);
 
-  async function ask(){
-    const q = qEl.value.trim();
-    if(!q){ qEl.focus(); return; }
-    sendBtn.disabled = true;
-    sendLabel.innerHTML = 'Invio <span class="spinner"></span>';
-    statusEl.textContent = 'Invio…';
-    ansEl.textContent = '';
-    try{
-      const r = await fetch('/api/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:q})});
-      const data = await r.json();
-      if(!r.ok || !data.ok){ throw new Error(data.error || ('HTTP '+r.status)); }
-      ansEl.innerHTML = linkify(data.answer);
-      statusEl.textContent = 'OK';
-    }catch(e){
-      statusEl.textContent = 'Errore: ' + e.message;
-    }finally{
-      sendBtn.disabled = false;
-      sendLabel.textContent = 'Chiedi';
+    async function send() {
+      const domanda = (qEl.value || "").trim();
+      if (!domanda) { ansEl.textContent = "OK\n- **Domanda vuota**: inserisci una richiesta valida."; return; }
+      $("#btnAsk").disabled = true; flash("Invio in corso…");
+      try {
+        let res;
+        if (useGet.checked) {
+          res = await fetch("/ask?q=" + encodeURIComponent(domanda), { method: "GET" });
+        } else {
+          res = await fetch("/ask", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ q: domanda })   // <<<<<< CHIAVE GIUSTA
+          });
+        }
+        const data = await res.json().catch(() => ({}));
+        ansEl.textContent = (data && data.answer) ? data.answer : "Errore di risposta";
+        flash("");
+      } catch (e) {
+        ansEl.textContent = "Errore di rete: " + (e?.message || e);
+        flash("errore");
+      } finally {
+        $("#btnAsk").disabled = false;
+      }
     }
-  }
-
-  sendBtn.addEventListener('click', ask);
-  qEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && (e.metaKey||e.ctrlKey)) ask(); });
-
-  clearBtn.addEventListener('click', ()=>{
-    qEl.value=''; ansEl.textContent=''; statusEl.textContent='In attesa…'; qEl.focus();
-  });
-
-  copyBtn.addEventListener('click', async ()=>{
-    try{
-      await navigator.clipboard.writeText(ansEl.innerText);
-      const old = copyBtn.textContent; copyBtn.textContent = 'Copiato ✓'; setTimeout(()=>copyBtn.textContent=old,1200);
-    }catch{}
-  });
-</script>
+    function flash(msg){ statusEl.textContent = msg || ""; }
+  </script>
 </body>
 </html>
