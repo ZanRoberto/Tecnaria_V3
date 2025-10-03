@@ -1,7 +1,8 @@
 # app.py
-# Tecnaria QA Bot — web-first con gestione PDF, snippet reale, contatti da CRITICI_DIR
-# + Template P560 e Template CTF densità/fissaggio
+# Tecnaria QA Bot — web-first con gestione PDF, snippet reale e template tecnici
 # Endpoints: /, /ping, /health, /ask (GET/POST), /api/ask
+# ENV minimi: SEARCH_PROVIDER=brave|bing + (BRAVE_API_KEY|BING_API_KEY)
+# Facoltativi: PREFERRED_DOMAINS, MIN_WEB_SCORE, CRITICI_DIR, DEBUG
 
 import os
 import re
@@ -303,6 +304,7 @@ def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
         out += "\n\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
     return out
 
+# ------------------------- TEMPLATE: P560 (patentino) -----------------------
 def answer_p560_template() -> str:
     return (
         "OK\n"
@@ -321,7 +323,7 @@ def build_p560_from_web(sources: List[str]) -> str:
         base += "\n**Fonti**\n- web (tecnaria.com)\n"
     return base
 
-# ---------- NUOVO: Template tecnico-commerciale CTF densità/fissaggio --------
+# ---------- TEMPLATE: CTF densità/fissaggio (commerciale tecnico) -----------
 CTF_KEY = re.compile(r"\bctf\b", re.I)
 DENSITY_KEYS = re.compile(r"\b(densit[aà]|quanti|numero|n[.\s]*connettori|pezzi|m2|m²|al\s*m2|per\s*m2)\b", re.I)
 FIX_KEYS = re.compile(r"\b(fissagg|posa|chiod|hsbr\s*14|hsbr14|p560|spit\s*p560)\b", re.I)
@@ -352,6 +354,30 @@ def build_ctf_density_answer(sources: List[str]) -> str:
         base += "\n**Fonti**\n- https://tecnaria.com/download/homepage/CT_CATALOGO_IT.pdf\n"
     return base
 
+# --------------- NUOVO TEMPLATE: CTF vs DIAPASON (pulito) -------------------
+COMPARE_KEYS = re.compile(r"\b(differenz|confront|quando\s+usare|quale\s+scegliere)\b", re.I)
+DIAPASON_KEY = re.compile(r"\bdiapason\b", re.I)
+
+def is_ctf_vs_diapason(nq: str) -> bool:
+    # Domanda che contiene CTF e Diapason o parole di confronto
+    has_ctf = bool(CTF_KEY.search(nq))
+    has_diap = bool(DIAPASON_KEY.search(nq))
+    return (has_ctf and has_diap) or (has_ctf and bool(COMPARE_KEYS.search(nq))) or (has_diap and bool(COMPARE_KEYS.search(nq)))
+
+def build_ctf_vs_diapason_answer(sources: List[str]) -> str:
+    base = (
+        "OK\n"
+        "- **CTF**: connettore per **solaio collaborante acciaio–calcestruzzo** su **lamiera grecata**; posa rapida con **SPIT P560** e **2 chiodi HSBR14**/pezzo; ideale per **nuovi solai** o rinforzi dove è prevista/già presente la lamiera (es. **Hi-Bond**).\n"
+        "- **Diapason**: sistema per **rinforzo di solai in laterocemento** esistenti; utilizza **fissaggi meccanici** (non la P560); indicato quando **non c’è lamiera** e si interviene dall’alto con getto collaborante.\n"
+        "- **Quando usare**: **CTF** se c’è/si posa la lamiera grecata e serve **velocità di cantiere**; **Diapason** se si deve **consolidare laterocemento** senza lamiera, con intervento poco invasivo.\n"
+        "- **Scelta pratica**: dipende da **tipologia solaio**, **carichi**, **vincoli di spessore**, **accessi** e **tempi**; il numero di connettori/ancoraggi è definito dal **calcolo strutturale**.\n"
+    )
+    if sources:
+        base += "\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
+    else:
+        base += "\n**Fonti**\n- https://tecnaria.com/download/homepage/CT_CATALOGO_IT.pdf\n"
+    return base
+
 # ----------------------------- ROUTING --------------------------------------
 def route_question_to_answer(raw_q: str) -> str:
     if not raw_q or not raw_q.strip():
@@ -366,12 +392,17 @@ def route_question_to_answer(raw_q: str) -> str:
 
     # Regola forte: P560 + patentino/formazione → template + (fonti web se disponibili)
     if P560_PAT.search(nq) and LIC_PAT.search(nq):
-        ans, srcs, _ = web_lookup_smart(q)
+        _, srcs, _ = web_lookup_smart(q)
         return build_p560_from_web(srcs)
 
-    # NUOVO: Domande su densità/fissaggio CTF → template tecnico + fonti web se disponibili
+    # NUOVO: Confronto CTF vs Diapason → sempre template pulito + fonti web
+    if is_ctf_vs_diapason(nq):
+        _, srcs, _ = web_lookup_smart(q)
+        return build_ctf_vs_diapason_answer(srcs)
+
+    # Domande su densità/fissaggio CTF → template tecnico + fonti web
     if is_ctf_density_question(nq):
-        ans_web, srcs, _ = web_lookup_smart(q)
+        _, srcs, _ = web_lookup_smart(q)
         return build_ctf_density_answer(srcs)
 
     # Se contiene parole chiave tecniche, forza WEB con strategia smart
@@ -391,7 +422,7 @@ def route_question_to_answer(raw_q: str) -> str:
             "Puoi riformulare la domanda oppure posso fornirti i contatti Tecnaria.\n")
 
 # ----------------------------- FASTAPI APP ----------------------------------
-app = FastAPI(title="Tecnaria QA Bot", version="3.4.0")
+app = FastAPI(title="Tecnaria QA Bot", version="3.5.0")
 
 # static + templates
 if os.path.isdir(STATIC_DIR):
