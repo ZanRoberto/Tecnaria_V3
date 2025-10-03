@@ -1,10 +1,11 @@
 # app.py
 # -------------------------------------------------------------------
 # Tecnaria QA Bot – Web-first + Sinapsi (override/augment/postscript)
-# FastAPI + Brave/Bing + PDF/HTML clean + domini preferiti Tecnaria
+# FastAPI + Brave/Bing + PDF-safe + preferenza domini Tecnaria
+# Interfaccia HTML inclusa (no asset esterni)
 # -------------------------------------------------------------------
 
-import os, re, json, glob, time, unicodedata
+import os, re, json, unicodedata
 from typing import List, Dict, Optional, Tuple
 from urllib.parse import urlparse
 import requests
@@ -17,7 +18,7 @@ DEBUG               = os.getenv("DEBUG", "0") == "1"
 SEARCH_PROVIDER     = os.getenv("SEARCH_PROVIDER", "brave").lower()  # brave|bing
 BRAVE_API_KEY       = os.getenv("BRAVE_API_KEY", "").strip()
 BING_API_KEY        = (os.getenv("BING_API_KEY", "") or os.getenv("AZURE_BING_KEY", "")).strip()
-SEARCH_API_ENDPOINT = os.getenv("SEARCH_API_ENDPOINT", "").strip()
+SEARCH_API_ENDPOINT = os.getenv("SEARCH_API_ENDPOINT", "").strip()   # opzionale per bing
 
 PREFERRED_DOMAINS   = [d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com").split(",") if d.strip()]
 MIN_WEB_SCORE       = float(os.getenv("MIN_WEB_SCORE", "0.35"))
@@ -25,12 +26,9 @@ WEB_TIMEOUT         = float(os.getenv("WEB_TIMEOUT", "6"))
 WEB_RETRIES         = int(os.getenv("WEB_RETRIES", "2"))
 
 CRITICI_DIR         = os.getenv("CRITICI_DIR", "Tecnaria_V3/static/static/data/critici").strip()
-DEMOTE_CONTACTS     = os.getenv("DEMOTE_CONTACTS", "1") == "1"
-
-DEFAULT_STYLE       = os.getenv("DEFAULT_STYLE", "curato")  # curato | essenziale
 
 print("[BOOT] -----------------------------------------------")
-print(f"[BOOT] SEARCH_PROVIDER={SEARCH_PROVIDER}; PREFERRED_DOMAINS={PREFERRED_DOMAINS}")
+print(f"[BOOT] WEB_FIRST; SEARCH_PROVIDER={SEARCH_PROVIDER}; PREFERRED_DOMAINS={PREFERRED_DOMAINS}")
 print(f"[BOOT] MIN_WEB_SCORE={MIN_WEB_SCORE} WEB_TIMEOUT={WEB_TIMEOUT}s WEB_RETRIES={WEB_RETRIES}")
 print(f"[BOOT] CRITICI_DIR={CRITICI_DIR}")
 print("[BOOT] ------------------------------------------------")
@@ -54,7 +52,7 @@ def strip_html_keep_text(html_text: str) -> str:
     soup = BeautifulSoup(html_text, "html.parser")
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
-    # elimina tag forti per evitare <strong> in output
+    # togli i tag che poi uscivano come <strong> ecc.
     for tag in soup.find_all(['strong','b','em','i']):
         tag.unwrap()
     text = soup.get_text("\n")
@@ -108,9 +106,9 @@ def fetch_text(url: str) -> str:
         r = requests.get(url, timeout=WEB_TIMEOUT, headers={"User-Agent":"Mozilla/5.0"})
         r.raise_for_status()
         ctype = r.headers.get("content-type","").lower()
+        # se è PDF: non sputare byte; restituisci un riassunto placeholder leggibile
         if "pdf" in ctype or url.lower().endswith(".pdf"):
-            # testo grezzo da PDF (non perfetto, ma meglio che vomitare byte)
-            return strip_html_keep_text(r.text) if "</" in r.text else short(r.text, 4000)
+            return "Documento **PDF**: apri la fonte per i dettagli tecnici. (contenuto binario non mostrabile qui)"
         return strip_html_keep_text(r.text)
     except Exception as e:
         if DEBUG: print("[FETCH][ERR]", url, e)
@@ -128,11 +126,9 @@ def rank_results(q: str, results: List[Dict]) -> List[Dict]:
     return sorted(results, key=lambda x: x.get("score",0.0), reverse=True)
 
 def web_lookup(q: str) -> Tuple[str, List[str], float]:
-    last_err = None
     for _ in range(WEB_RETRIES+1):
         rs = web_search(q, topk=8)
         if not rs: continue
-        # preferisci domini aziendali se presenti
         pref = [r for r in rs if any(pd in domain_of(r["url"]) for pd in PREFERRED_DOMAINS)]
         cand = pref if pref else rs
         ranked = rank_results(q, cand)
@@ -159,7 +155,6 @@ def load_sinapsi():
         path = os.path.join(CRITICI_DIR, "sinapsi_brain.json")
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        # normalizza struttura: id, pattern, mode, lang, answer
         for item in data:
             if "mode" not in item: item["mode"] = "augment"
             SINAPSI.append(item)
@@ -170,25 +165,18 @@ def load_sinapsi():
 load_sinapsi()
 
 def sinapsi_hit(q: str) -> List[Dict]:
-    nq = q or ""
     hits = []
     for it in SINAPSI:
         try:
-            if re.search(it.get("pattern",""), nq, flags=re.IGNORECASE):
+            if re.search(it.get("pattern",""), q or "", flags=re.IGNORECASE):
                 hits.append(it)
         except Exception:
             continue
     return hits
 
 def fuse_answer(web_core: str, web_sources: List[str], hits: List[Dict]) -> str:
-    """
-    Applica le 3 modalità:
-    - override: ignora web_core, usa solo answer sinapsi (se più override, concatena in ordine)
-    - augment: aggiunge bullet dopo web_core (se web_core vuoto, funge da risposta)
-    - postscript: aggiunge un PS finale
-    """
+    # 1) nessuna sinapsi -> web pure
     if not hits:
-        # solo web
         out = web_core or "OK\n- **Non ho trovato una risposta affidabile sul web**.\n"
         if web_sources:
             out += "\n**Fonti**\n" + "\n".join(f"- {u}" for u in web_sources) + "\n"
@@ -198,71 +186,118 @@ def fuse_answer(web_core: str, web_sources: List[str], hits: List[Dict]) -> str:
     augments   = [h for h in hits if h.get("mode") == "augment"]
     postscripts= [h for h in hits if h.get("mode") == "postscript"]
 
+    # 2) override -> solo sinapsi
     if overrides:
         out = "OK\n" + "\n".join(h.get("answer","").strip() for h in overrides if h.get("answer"))
         return out.strip()
 
-    # base: web
+    # 3) base web + add-on sinapsi + fonti
     out = web_core or "OK\n"
-    # append augments
     if augments:
         aug_txt = "\n".join(h.get("answer","").strip() for h in augments if h.get("answer"))
         if aug_txt:
             if not out.endswith("\n"): out += "\n"
             out += aug_txt.strip() + "\n"
-    # sources (web + sinapsi)
-    src = []
-    if web_sources: src += web_sources
-    if src:
+    if web_sources:
         if not out.endswith("\n"): out += "\n"
-        out += "**Fonti**\n" + "\n".join(f"- {u}" for u in src) + "\n"
-    # postscript
+        out += "**Fonti**\n" + "\n".join(f"- {u}" for u in web_sources) + "\n"
     if postscripts:
         ps = " ".join(h.get("answer","").strip() for h in postscripts if h.get("answer"))
         if ps:
             out += "\n_P.S._ " + ps.strip() + "\n"
     return out
 
-# ---------------------- ROUTER --------------------------------------
 def answer(q: str) -> str:
     q = (q or "").strip()
     if not q:
         return "OK\n- **Domanda vuota**: inserisci una richiesta valida.\n"
-
-    # 1) Web first
     web_core, web_src, _ = web_lookup(q)
-
-    # 2) Sinapsi
     hits = sinapsi_hit(q)
-
-    # 3) Fonde secondo mode
     out = fuse_answer(web_core, web_src, hits)
 
-    # 4) Stile essenziale se richiesto esplicitamente
+    # modalità "essenziale" su richiesta nel testo
     if re.search(r"(?i)\b(sintetico|in breve|da cantiere|essenziale)\b", q):
-        # prova a compattare
         lines = [ln.strip(" -") for ln in out.splitlines() if ln.strip()]
         bullets = [ln for ln in lines if ln.startswith("**") or ":" in ln]
         if bullets:
             out = "OK\n- " + "\n- ".join(bullets[:6]) + ("\n" if not bullets[-1].endswith("\n") else "")
-
     return out
 
 # ---------------------- API -----------------------------------------
-app = FastAPI(title="Tecnaria QA Bot", version="3.0.0")
+app = FastAPI(title="Tecnaria QA Bot", version="3.1.0")
 
+# ---- UI ----
 @app.get("/", response_class=HTMLResponse)
-def home():
+def ui():
     return """
-    <html><head><meta charset="utf-8"><title>Tecnaria QA Bot</title>
-    <style>body{font-family:system-ui,Arial;margin:40px} .wrap{max-width:880px;margin:0 auto}</style>
-    </head><body><div class="wrap">
-    <h2>Tecnaria QA Bot</h2>
-    <p>Endpoint:</p>
-    <pre>/ping
-/health
-/api/ask (GET q=... | POST JSON {"q":"..."})</pre>
-    </div></body></html>
+<!doctype html><html lang="it"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tecnaria QA Bot</title>
+<style>
+:root{--bg:#0b1220;--panel:#141b2d;--text:#e7f0ff;--muted:#9fb2d0;--accent:#25d366}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,Segoe UI,Arial}
+.wrap{max-width:980px;margin:24px auto;padding:16px}
+h1{font-size:22px;margin:0 0 8px}
+.badge{display:inline-block;padding:6px 12px;border-radius:999px;background:#1f2a44;margin:6px 6px 6px 0;color:#cfe1ff;cursor:pointer}
+.panel{background:var(--panel);border-radius:16px;padding:16px;margin:16px 0}
+textarea{width:100%;min-height:140px;border:1px solid #2b3758;background:#0e1626;color:var(--text);border-radius:10px;padding:12px}
+.row{display:flex;gap:10px;align-items:center;margin-top:12px}
+.btn{background:#2b3758;color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.out{white-space:pre-wrap;background:#0e1626;border-radius:12px;padding:12px;min-height:160px;border:1px solid #2b3758}
+.small{color:var(--muted);font-size:13px}
+.chk{display:inline-flex;align-items:center;gap:6px;color:#cfe1ff}
+kbd{background:#26314f;border-radius:6px;padding:2px 6px}
+</style>
+</head><body>
+<div class="wrap">
+  <h1>Tecnaria QA Bot</h1>
+  <div class="panel">
+    <div id="chips">
+      <span class="badge" data-q="Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino o formazione speciale?">P560 + CTF</span>
+      <span class="badge" data-q="Che differenza c’è tra CTF e il sistema Diapason? Quando usare uno o l’altro?">CTF vs Diapason</span>
+      <span class="badge" data-q="Quanti connettori CTF servono per m² e come si fissano con SPIT P560?">Densità CTF</span>
+      <span class="badge" data-q="Mi dai i contatti Tecnaria per assistenza tecnica/commerciale?">Contatti</span>
+    </div>
+    <textarea id="q" placeholder="Scrivi la domanda…"></textarea>
+    <div class="row">
+      <button class="btn" id="ask">Chiedi</button>
+      <button class="btn" id="clear">Pulisci</button>
+      <button class="btn" id="copy">Copia risposta</button>
+      <label class="chk"><input type="checkbox" id="useget"/> usa GET (debug)</label>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div id="out" class="out">Risposte qui…</div>
+    <div class="small">Endpoint: <kbd>/api/ask</kbd> (POST JSON { q }) oppure <kbd>/api/ask?q=…</kbd></div>
+  </div>
+</div>
+
+<script>
+const $ = (s)=>document.querySelector(s);
+document.querySelectorAll(".badge").forEach(b=>b.onclick=()=>{$("#q").value=b.dataset.q;});
+$("#clear").onclick=()=>{$("#q").value="";$("#out").textContent="";};
+$("#copy").onclick=()=>{navigator.clipboard.writeText($("#out").textContent||"");};
+$("#ask").onclick=async()=>{
+  const q = ($("#q").value||"").trim();
+  $("#out").textContent = "…";
+  try{
+    let data;
+    if($("#useget").checked){
+      const r = await fetch("/api/ask?q="+encodeURIComponent(q));
+      data = await r.json();
+    }else{
+      const r = await fetch("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q})});
+      data = await r.json();
+    }
+    $("#out").textContent = (data && (data.answer||data.error)) ? (data.answer||("Errore: "+data.error)) : "Errore di risposta";
+  }catch(e){
+    $("#out").textContent = "Errore di rete: "+e;
+  }
+};
+</script>
+</body></html>
     """
 
 @app.get("/ping")
