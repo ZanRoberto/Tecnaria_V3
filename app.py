@@ -1,14 +1,14 @@
 # app.py
-# Tecnaria QA Bot — web-first con gestione PDF, snippet puliti e template tecnici
+# Tecnaria QA Bot — Web-first + SINAPSI (fusione risposte curate), PDF-safe, anti-inglese
 # Endpoints: /, /ping, /health, /ask (GET/POST), /api/ask
-# ENV minimi: SEARCH_PROVIDER=brave|bing + (BRAVE_API_KEY|BING_API_KEY)
-# Facoltativi: PREFERRED_DOMAINS, MIN_WEB_SCORE, CRITICI_DIR, DEBUG
+# ENV: SEARCH_PROVIDER=brave|bing + (BRAVE_API_KEY|BING_API_KEY)
+# Opt: PREFERRED_DOMAINS, MIN_WEB_SCORE, CRITICI_DIR, DEBUG
 
 import os
 import re
 import json
 import glob
-import html  # <-- per unescape & pulizia snippet
+import html
 import unicodedata
 from typing import List, Dict, Tuple, Optional
 from urllib.parse import urlparse, parse_qs
@@ -23,8 +23,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # ----------------------------- ENV / CONFIG ---------------------------------
 DEBUG               = os.getenv("DEBUG", "0") == "1"
-
-MODE                = os.getenv("MODE", "web_first_then_local")  # compat
 SEARCH_PROVIDER     = os.getenv("SEARCH_PROVIDER", "brave").lower()  # brave|bing
 SEARCH_API_ENDPOINT = os.getenv("SEARCH_API_ENDPOINT", "").strip()
 BRAVE_API_KEY       = os.getenv("BRAVE_API_KEY", "").strip()
@@ -44,8 +42,7 @@ TEMPLATES_DIR       = os.getenv("TEMPLATES_DIR", "templates")
 STATIC_DIR          = os.getenv("STATIC_DIR", "static")
 
 print("[BOOT] -----------------------------------------------")
-print(f"[BOOT] MODE={MODE} SEARCH_PROVIDER={SEARCH_PROVIDER} "
-      f"PREFERRED_DOMAINS={PREFERRED_DOMAINS}")
+print(f"[BOOT] SEARCH_PROVIDER={SEARCH_PROVIDER} PREFERRED_DOMAINS={PREFERRED_DOMAINS}")
 print(f"[BOOT] MIN_WEB_SCORE={MIN_WEB_SCORE} WEB_TIMEOUT={WEB_TIMEOUT}s WEB_RETRIES={WEB_RETRIES}")
 print(f"[BOOT] CRITICI_DIR={CRITICI_DIR} TEMPLATES_DIR={TEMPLATES_DIR} STATIC_DIR={STATIC_DIR}")
 print("[BOOT] ------------------------------------------------")
@@ -53,6 +50,20 @@ print("[BOOT] ------------------------------------------------")
 # ----------------------------- UTIL -----------------------------------------
 P560_PAT = re.compile(r"\bp\s*[- ]?\s*560\b", re.I)
 LIC_PAT  = re.compile(r"\b(patentino|abilitazione|formazione)\b", re.I)
+
+CTF_KEY  = re.compile(r"\bctf\b", re.I)
+CTL_KEY  = re.compile(r"\bctl\b", re.I)
+DIAPASON_KEY = re.compile(r"\bdiapason\b", re.I)
+
+DENSITY_KEYS = re.compile(r"\b(densit[aà]|quanti|numero|n[.\s]*connettori|pezzi|m2|m²|al\s*m2|per\s*m2)\b", re.I)
+FIX_KEYS     = re.compile(r"\b(fissagg|posa|chiod|hsbr\s*14|hsbr14|p560|spit\s*p560)\b", re.I)
+
+COMPARE_KEYS = re.compile(r"\b(differenz|confront|quando\s+usare|quale\s+scegliere)\b", re.I)
+
+TECH_KEYS = re.compile(
+    r"\b(ctf|ctl|diapason|p560|hi[- ]?bond|lamiera|connettore|laterocemento|collaborante|solaio|eta|dop|ce)\b",
+    re.I
+)
 
 def normalize(text: str) -> str:
     if not text:
@@ -71,12 +82,29 @@ def short_text(text: str, n: int = 900) -> str:
     return (t[:n] + "…") if len(t) > n else t
 
 def strip_html_snippet(s: str) -> str:
-    """Rimuove tag HTML (es. <strong>) e normalizza spazi; fa unescape HTML entities."""
     if not s:
         return ""
     s = re.sub(r"<[^>]+>", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return html.unescape(s)
+
+# detection linguistica ultra-leggera
+IT_STOPS = set("il lo la gli le un una di del della dei delle che per con su tra fra come quanto quando quale perché dei nel nelle negli agli alle alla più meno già".split())
+EN_STOPS = set("the a an of for with by from to in on and or than which when why how is are was were be been being this that these those as about into onto over under more less already".split())
+
+def looks_italian(s: str) -> bool:
+    if not s: return False
+    low = normalize(s)
+    it = sum(1 for w in low.split() if w in IT_STOPS)
+    en = sum(1 for w in low.split() if w in EN_STOPS)
+    return it >= en
+
+def looks_english(s: str) -> bool:
+    if not s: return False
+    low = normalize(s)
+    it = sum(1 for w in low.split() if w in IT_STOPS)
+    en = sum(1 for w in low.split() if w in EN_STOPS)
+    return en > it
 
 # --------------------------- WEB SEARCH / FETCH ------------------------------
 def brave_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Dict]:
@@ -165,10 +193,6 @@ def web_lookup(q: str,
                timeout: float = WEB_TIMEOUT,
                retries: int = WEB_RETRIES,
                domains: Optional[List[str]] = None) -> Tuple[str, List[str], float]:
-    """
-    Cerca sul web (preferendo domini indicati) e restituisce UNA risposta
-    con snippet REALE per HTML, e snippet SERP pulito per PDF.
-    """
     doms = domains if domains is not None else PREFERRED_DOMAINS
     sources: List[str] = []
     best_score = 0.0
@@ -192,7 +216,7 @@ def web_lookup(q: str,
         url = top.get("url", "")
         title = top.get("title") or "pagina tecnica"
 
-        # PDF → usa snippet SERP pulito
+        # PDF → snippet SERP pulito
         if is_pdf_url(url):
             snippet_serp = strip_html_snippet((top.get("snippet") or "").strip())
             if not snippet_serp:
@@ -229,26 +253,148 @@ def web_lookup(q: str,
     return "", sources, best_score
 
 # -------------------- Smart lookup (secondo giro senza domini) ---------------
-KEYWORDS_FORCE_WEB = re.compile(
-    r"\b(ctf|ctl|diapason|p560|hi[- ]?bond|lamiera|connettore|laterocemento|collaborante|solaio)\b",
-    re.I
-)
-
-def force_web_needed(nq: str) -> bool:
-    return bool(KEYWORDS_FORCE_WEB.search(nq))
-
 def web_lookup_smart(q: str) -> Tuple[str, List[str], float]:
-    # 1) con domini preferiti
     ans, srcs, sc = web_lookup(q, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT,
                                retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
     if ans:
         return ans, srcs, sc
-    # 2) senza filtro domini (rank preferisce comunque Tecnaria)
     ans2, srcs2, sc2 = web_lookup(q, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT,
                                   retries=WEB_RETRIES, domains=[])
     return ans2, srcs2, sc2
 
-# ------------- CONTATTI dai file critici (no falsi positivi) -----------------
+# ----------------------------- SINAPSI --------------------------------------
+SINAPSI: List[Dict] = []
+
+BUILTIN_SINAPSI = [
+    {
+        "id": "ctf_vs_diapason",
+        "pattern": r"\b(ctf).*(diapason)|(diapason).*(ctf)|differenz|confront|quando\s+usare|quale\s+scegliere",
+        "lang": "it",
+        "answer": (
+            "OK\n"
+            "- **CTF**: connettore per **solaio collaborante acciaio–calcestruzzo** su **lamiera grecata**; posa rapida con **SPIT P560** e **2 chiodi HSBR14**/pezzo; ideale per **nuovi solai** o rinforzi dove è prevista/già presente la lamiera (es. **Hi-Bond**).\n"
+            "- **Diapason**: sistema per **rinforzo di solai in laterocemento** esistenti; utilizza **fissaggi meccanici** (non la P560); indicato quando **non c’è lamiera** e si interviene dall’alto con getto collaborante.\n"
+            "- **Quando usare**: **CTF** se c’è/si posa la lamiera grecata e serve **velocità di cantiere**; **Diapason** se si deve **consolidare laterocemento** senza lamiera, con intervento poco invasivo.\n"
+            "- **Scelta pratica**: dipende da **tipologia solaio**, **carichi**, **vincoli di spessore**, **accessi** e **tempi**; il numero di connettori/ancoraggi è definito dal **calcolo strutturale**.\n"
+            "\n**Fonti**\n- Sinapsi (curated)\n"
+        )
+    },
+    {
+        "id": "ctl_vs_diapason",
+        "pattern": r"\b(ctl).*(diapason)|(diapason).*(ctl)|laterocemento.*ctl|ctl.*laterocemento|differenz|confront",
+        "lang": "it",
+        "answer": (
+            "OK\n"
+            "- **CTL**: connettore per **solaio legno–calcestruzzo**; lavora con viti su supporto ligneo. Non è adatto a **laterocemento**.\n"
+            "- **Diapason**: sistema per **rinforzo solai in laterocemento** esistenti, con **fissaggi meccanici** e getto collaborante dall’alto.\n"
+            "- **Quando usare**: **Diapason** per laterocemento fessurato/da consolidare; **CTL** solo per solai in **legno**.\n"
+            "- **Scelta tecnica**: definita da **tipologia solaio** e **calcolo** (carichi, luci, deformazioni). Supporto di progetto disponibile.\n"
+            "\n**Fonti**\n- Sinapsi (curated)\n"
+        )
+    },
+    {
+        "id": "p560_paten",
+        "pattern": r"\bp\s*[- ]?\s*560\b.*(patentino|abilitazione|formazione)|\b(patentino|abilitazione|formazione)\b.*\bp\s*[- ]?\s*560\b",
+        "lang": "it",
+        "answer": (
+            "OK\n"
+            "- **Abilitazione/Patentino**: Non è richiesto un patentino specifico per la **SPIT P560**. È necessaria una **formazione interna** secondo le istruzioni del costruttore.\n"
+            "- **Formazione minima**: scelta propulsori, taratura potenza, prova su campione, verifica ancoraggio dei chiodi, gestione inceppamenti.\n"
+            "- **DPI e sicurezza**: occhiali, guanti, protezione udito; lamiera ben aderente; rispetto distanze dai bordi.\n"
+            "- **Procedura**: 1 **CTF** = **2 chiodi HSBR14** con **P560**, senza preforatura.\n"
+            "\n**Fonti**\n- Sinapsi (curated)\n"
+        )
+    },
+    {
+        "id": "ctf_density_fix",
+        "pattern": r"\bctf\b.*(densit|quanti|m2|m²|numero|pezzi|fissagg|chiod|p560|hsbr)",
+        "lang": "it",
+        "answer": (
+            "OK\n"
+            "- **Densità indicativa**: **~6–8 CTF/m²** (più fitta agli appoggi, più rada in mezzeria).\n"
+            "- **Determinazione esatta**: da **calcolo strutturale** (luci, carichi, profilo lamiera, cls, verifiche a taglio/scorrimento e deformazioni).\n"
+            "- **Fissaggio**: **2 chiodi HSBR14** per connettore con **SPIT P560**, senza preforatura; regolare potenza e fare prova su campione.\n"
+            "- **Sicurezza**: lamiera ben aderente, distanze dai bordi, DPI (occhiali/guanti/protezione udito).\n"
+            "\n**Fonti**\n- Sinapsi (curated)\n"
+        )
+    },
+    {
+        "id": "ctf_hibond_advantages",
+        "pattern": r"\bctf\b.*(hi[- ]?bond|lamiera)|hi[- ]?bond.*ctf|vantagg",
+        "lang": "it",
+        "answer": (
+            "OK\n"
+            "- **Compatibilità**: i **CTF** sono progettati per lamiere grecate certificate (es. **Hi-Bond**), garantendo piena collaborazione acciaio–calcestruzzo.\n"
+            "- **Velocità di posa**: fissaggio dall’alto con **SPIT P560** e **2 chiodi HSBR14**, senza preforatura.\n"
+            "- **Prestazioni**: maggiore rigidezza e capacità portante, deformazioni ridotte, luci maggiori a spessore contenuto.\n"
+            "- **Sicurezza normativa**: documentazione **ETA** e tracciabilità.\n"
+            "- **Efficienza**: tempi e costi di cantiere ridotti rispetto ad alternative non integrate.\n"
+            "- **Supporto**: schede di posa, software e assistenza Tecnaria.\n"
+            "\n**Fonti**\n- Sinapsi (curated)\n"
+        )
+    },
+]
+
+def load_sinapsi_from_file() -> List[Dict]:
+    if not CRITICI_DIR or not os.path.isdir(CRITICI_DIR):
+        return []
+    for pat in ["*sinapsi*.json", "sinapsi_brain.json"]:
+        for p in glob.glob(os.path.join(CRITICI_DIR, pat)):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    return data
+            except Exception as e:
+                if DEBUG: print("[SINAPSI][ERR]", e)
+    return []
+
+SINAPSI = load_sinapsi_from_file() or BUILTIN_SINAPSI
+print(f"[SINAPSI] Loaded {len(SINAPSI)} entries ({'file' if SINAPSI != BUILTIN_SINAPSI else 'builtin'})")
+
+def sinapsi_match_answer(q: str) -> Optional[str]:
+    """Se una regola SINAPSI matcha la domanda, restituisce la risposta curata."""
+    nq = normalize(q)
+    for entry in SINAPSI:
+        pat = entry.get("pattern")
+        ans = entry.get("answer")
+        if not pat or not ans:
+            continue
+        try:
+            if re.search(pat, nq, flags=re.I):
+                return ans
+        except re.error:
+            # pattern non valido: skip
+            continue
+    return None
+
+def merge_with_sinapsi(q: str, web_answer: str, web_sources: List[str]) -> str:
+    """
+    Fusiona: se SINAPSI ha risposta per q -> usa quella (autorità prioritaria).
+    Se la domanda è in IT ma lo snippet web è EN -> ignora snippet e mostra risposta SINAPSI in IT.
+    Altrimenti, se non c'è match SINAPSI -> lascia web_answer così com'è.
+    """
+    curated = sinapsi_match_answer(q)
+    if curated:
+        # Se c'è già "Fonti" dentro curated, ritorna as-is.
+        if "\n**Fonti**" in curated:
+            return curated
+        # Altrimenti aggiungi etichetta Sinapsi
+        return curated.rstrip() + "\n\n**Fonti**\n- Sinapsi (curated)\n"
+
+    # No entry Sinapsi: se domanda in IT e web_answer sembra EN → togli snippet EN
+    if looks_italian(q) and looks_english(web_answer):
+        # rimuovi “Sintesi web: ...” e tieni solo Riferimento + fonte
+        cleaned = re.sub(r"- \*\*Sintesi web\*\*:.*?(?:\n|$)", "", web_answer)
+        if cleaned.strip().startswith("OK"):
+            # aggiungi nota di traduzione evitando inglese
+            cleaned += "\n- **Nota**: contenuto originale in inglese; per dettagli fare riferimento a documentazione italiana o assistenza Tecnaria.\n"
+            if "\n**Fonti**" not in cleaned and web_sources:
+                cleaned += "\n**Fonti**\n" + "\n".join(f"- {u}" for u in web_sources) + "\n"
+            return cleaned
+    return web_answer
+
+# ----------------------------- CONTATTI -------------------------------------
 def _fmt(v): return str(v).strip() if v is not None else ""
 
 def load_contacts_from_critici() -> Optional[str]:
@@ -297,7 +443,7 @@ def answer_contacts() -> str:
 def is_explicit_contacts(nq: str) -> bool:
     if not re.search(r"\b(contatti|telefono|email|pec)\b", nq):
         return False
-    if re.search(r"\b(ctf|ctl|diapason|p560|hi[- ]?bond|lamiera|solaio|connettore|posa|densita|eta|dop|ce)\b", nq):
+    if TECH_KEYS.search(nq):
         return False
     return True
 
@@ -313,60 +459,10 @@ def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
         out += "\n\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
     return out
 
-# ------------------------- TEMPLATE: P560 (patentino) -----------------------
-def answer_p560_template() -> str:
-    return (
-        "OK\n"
-        "- **Abilitazione/Patentino**: Non è richiesto un patentino specifico per la SPIT P560. "
-        "È necessaria una formazione interna secondo le istruzioni del costruttore.\n"
-        "- **Formazione minima**: scelta propulsori, taratura potenza, prova su campione, verifica ancoraggio dei chiodi, gestione inceppamenti.\n"
-        "- **DPI e sicurezza**: occhiali, guanti, protezione udito; operare su lamiera ben aderente; rispettare distanze dai bordi.\n"
-        "- **Procedura di posa**: 1 connettore CTF = 2 chiodi HSBR14 con P560; potenza regolata in funzione di lamiera/trave.\n"
-    )
-
-def build_p560_from_web(sources: List[str]) -> str:
-    base = answer_p560_template()
-    if sources:
-        base += "\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
-    else:
-        base += "\n**Fonti**\n- web (tecnaria.com)\n"
-    return base
-
-# ---------- TEMPLATE: CTF densità/fissaggio (commerciale tecnico) -----------
-CTF_KEY = re.compile(r"\bctf\b", re.I)
-DENSITY_KEYS = re.compile(r"\b(densit[aà]|quanti|numero|n[.\s]*connettori|pezzi|m2|m²|al\s*m2|per\s*m2)\b", re.I)
-FIX_KEYS = re.compile(r"\b(fissagg|posa|chiod|hsbr\s*14|hsbr14|p560|spit\s*p560)\b", re.I)
-HIBOND_KEYS = re.compile(r"\bhi[- ]?bond\b", re.I)
-
+# ----------------------------- ROUTING --------------------------------------
 def is_ctf_density_question(nq: str) -> bool:
-    if not CTF_KEY.search(nq):
-        return False
-    has_density = bool(DENSITY_KEYS.search(nq))
-    has_fix = bool(FIX_KEYS.search(nq))
-    return has_density or has_fix
-
-def build_ctf_density_answer(sources: List[str]) -> str:
-    base = (
-        "OK\n"
-        "- **Densità indicativa**: per preventivo/pre-dimensionamento si considerano **~6–8 connettori CTF/m²** "
-        "(distribuzione più fitta presso appoggi/muri, più rada in mezzeria).\n"
-        "- **Determinazione esatta**: il **numero reale** di connettori è dato dal **calcolo strutturale** "
-        "(luci, carichi, profilo lamiera, cls, schema statico, verifiche a taglio/scorrimento e deformazioni).\n"
-        "- **Fissaggio**: ogni **CTF** si posa su lamiera grecata con **2 chiodi HSBR14** sparati con **SPIT P560**, "
-        "senza preforatura; regolare la potenza in funzione di lamiera/trave e fare una prova su campione.\n"
-        "- **Note di posa**: lamiera **ben aderente** all’appoggio; rispetto **distanze dai bordi**; DPI (occhiali, guanti, "
-        "protezione udito); controllo dell’**ancoraggio** dei chiodi.\n"
-    )
-    if sources:
-        base += "\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
-    else:
-        base += "\n**Fonti**\n- https://tecnaria.com/download/homepage/CT_CATALOGO_IT.pdf\n"
-    return base
-
-# --------------- TEMPLATE: CTF vs DIAPASON (pulito) -------------------------
-DIAPASON_KEY = re.compile(r"\bdiapason\b", re.I)
-COMPARE_KEYS = re.compile(r"\b(differenz|confront|quando\s+usare|quale\s+scegliere)\b", re.I)
-CTL_KEY = re.compile(r"\bctl\b", re.I)
+    if not CTF_KEY.search(nq): return False
+    return bool(DENSITY_KEYS.search(nq) or FIX_KEYS.search(nq))
 
 def is_connector_vs_diapason(nq: str) -> bool:
     has_ctf = bool(CTF_KEY.search(nq))
@@ -375,37 +471,6 @@ def is_connector_vs_diapason(nq: str) -> bool:
     has_comp = bool(COMPARE_KEYS.search(nq))
     return (has_diap and (has_ctf or has_ctl)) or (has_comp and (has_ctf or has_ctl or has_diap))
 
-def build_ctf_vs_diapason_answer(sources: List[str]) -> str:
-    base = (
-        "OK\n"
-        "- **CTF**: connettore per **solaio collaborante acciaio–calcestruzzo** su **lamiera grecata**; posa rapida con **SPIT P560** e **2 chiodi HSBR14**/pezzo; ideale per **nuovi solai** o rinforzi dove è prevista/già presente la lamiera (es. **Hi-Bond**).\n"
-        "- **Diapason**: sistema per **rinforzo di solai in laterocemento** esistenti; utilizza **fissaggi meccanici** (non la P560); indicato quando **non c’è lamiera** e si interviene dall’alto con getto collaborante.\n"
-        "- **Quando usare**: **CTF** se c’è/si posa la lamiera grecata e serve **velocità di cantiere**; **Diapason** se si deve **consolidare laterocemento** senza lamiera, con intervento poco invasivo.\n"
-        "- **Scelta pratica**: dipende da **tipologia solaio**, **carichi**, **vincoli di spessore**, **accessi** e **tempi**; il numero di connettori/ancoraggi è definito dal **calcolo strutturale**.\n"
-    )
-    if sources:
-        base += "\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
-    else:
-        base += "\n**Fonti**\n- https://tecnaria.com/download/homepage/CT_CATALOGO_IT.pdf\n"
-    return base
-
-def build_ctl_vs_diapason_answer(sources: List[str]) -> str:
-    base = (
-        "OK\n"
-        "- **CTL**: connettore per **solaio legno–calcestruzzo**; lavora con viti su supporto ligneo. "
-        "Non è adatto a solai in **laterocemento** (assenza di legno strutturale).\n"
-        "- **Diapason**: sistema per **rinforzo solai in laterocemento** esistenti, con **fissaggi meccanici** e getto collaborante dall’alto. "
-        "Indicato quando **non c’è lamiera** e si vuole evitare demolizioni invasive.\n"
-        "- **Quando usare**: **Diapason** per laterocemento fessurato/da consolidare; **CTL** solo per solai in **legno** che devono diventare collaboranti con calcestruzzo.\n"
-        "- **Scelta tecnica**: definita da **tipologia solaio** e **calcolo** (carichi, luci, deformazioni). Supporto di progetto disponibile.\n"
-    )
-    if sources:
-        base += "\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
-    else:
-        base += "\n**Fonti**\n- https://tecnaria.com/prodotti/diapason/\n"
-    return base
-
-# ----------------------------- ROUTING --------------------------------------
 def route_question_to_answer(raw_q: str) -> str:
     if not raw_q or not raw_q.strip():
         return "OK\n- **Domanda vuota**: inserisci una richiesta valida.\n"
@@ -413,46 +478,50 @@ def route_question_to_answer(raw_q: str) -> str:
     q = raw_q.strip()
     nq = normalize(q)
 
-    # Contatti → SOLO se chiesti davvero
+    # 0) Contatti → SOLO se chiesti davvero
     if is_explicit_contacts(nq):
         return answer_contacts()
 
-    # Regola forte: P560 + patentino/formazione → template + (fonti web se disponibili)
+    # 1) SINAPSI ha autorità: se esiste risposta curata → restituisci quella
+    curated = sinapsi_match_answer(q)
+    if curated:
+        return curated if "\n**Fonti**" in curated else curated.rstrip() + "\n\n**Fonti**\n- Sinapsi (curated)\n"
+
+    # 2) Regola forte: P560 + patentino/formazione → se manca SINAPSI sopra, fai web e poi fusiona
     if P560_PAT.search(nq) and LIC_PAT.search(nq):
-        _, srcs, _ = web_lookup_smart(q)
-        return build_p560_from_web(srcs)
+        web_ans, web_srcs, _ = web_lookup_smart(q)
+        fused = merge_with_sinapsi(q, web_ans or "", web_srcs)
+        return fused or format_as_bot("OK\n- **Informazione non presente**.\n")
 
-    # Confronto con Diapason (CTL o CTF) → template pulito + fonti web
-    if is_connector_vs_diapason(nq):
-        _, srcs, _ = web_lookup_smart(q)
-        if CTL_KEY.search(nq) and not CTF_KEY.search(nq):
-            return build_ctl_vs_diapason_answer(srcs)
-        else:
-            return build_ctf_vs_diapason_answer(srcs)
-
-    # Domande su densità/fissaggio CTF → template tecnico + fonti web se disponibili
+    # 3) Domande CTF densità/fissaggio → web + SINAPSI fusion
     if is_ctf_density_question(nq):
-        _, srcs, _ = web_lookup_smart(q)
-        return build_ctf_density_answer(srcs)
+        web_ans, web_srcs, _ = web_lookup_smart(q)
+        fused = merge_with_sinapsi(q, web_ans or "", web_srcs)
+        return fused or format_as_bot("OK\n- **Informazione non presente**.\n")
 
-    # Se contiene parole chiave tecniche, forza WEB con strategia smart
-    if force_web_needed(nq):
-        ans, srcs, _ = web_lookup_smart(q)
-        if ans:
-            return format_as_bot(ans, srcs)
+    # 4) Confronti con Diapason → web + SINAPSI fusion
+    if is_connector_vs_diapason(nq):
+        web_ans, web_srcs, _ = web_lookup_smart(q)
+        fused = merge_with_sinapsi(q, web_ans or "", web_srcs)
+        return fused or format_as_bot("OK\n- **Informazione non presente**.\n")
 
-    # Altrimenti normale web-first
-    ans, srcs, _ = web_lookup(q, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT,
-                              retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
-    if ans:
-        return format_as_bot(ans, srcs)
+    # 5) Tecnico: forza web smart; poi fusiona con SINAPSI (se snippet è inglese lo sostituisce)
+    if TECH_KEYS.search(nq):
+        web_ans, web_srcs, _ = web_lookup_smart(q)
+        if web_ans:
+            return merge_with_sinapsi(q, web_ans, web_srcs)
 
-    # Fallback elegante
-    return ("OK\n- **Non ho trovato una risposta affidabile sul web** (o la ricerca non è configurata). "
-            "Puoi riformulare la domanda oppure posso fornirti i contatti Tecnaria.\n")
+    # 6) Web-first standard
+    web_ans, web_srcs, _ = web_lookup(q, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT,
+                                      retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
+    if web_ans:
+        return merge_with_sinapsi(q, web_ans, web_srcs)
+
+    # 7) Fallback
+    return ("OK\n- **Non ho trovato una risposta affidabile**. Posso cercare meglio o metterti in contatto con un tecnico.\n")
 
 # ----------------------------- FASTAPI APP ----------------------------------
-app = FastAPI(title="Tecnaria QA Bot", version="3.6.0")
+app = FastAPI(title="Tecnaria QA Bot + SINAPSI", version="4.0.0")
 
 # static + templates
 if os.path.isdir(STATIC_DIR):
@@ -465,7 +534,7 @@ app.add_middleware(
     allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
-# Homepage: se esiste index.html lo serve; supporta anche ?q=... per test rapido
+# Homepage: se esiste index.html lo serve; supporta anche ?q=...
 @app.get("/", response_class=HTMLResponse)
 def root(request: Request, q: Optional[str] = Query(None)):
     if q and q.strip():
@@ -474,7 +543,7 @@ def root(request: Request, q: Optional[str] = Query(None)):
     index_path = os.path.join(TEMPLATES_DIR, "index.html")
     if os.path.isfile(index_path):
         return templates.TemplateResponse("index.html", {"request": request})
-    return JSONResponse({"service": "Tecnaria QA Bot",
+    return JSONResponse({"service": "Tecnaria QA Bot + SINAPSI",
                          "endpoints": ["/ping", "/health", "/ask (GET q=... | POST JSON/Form/Text)"]})
 
 @app.get("/ping")
@@ -493,6 +562,7 @@ def health():
             "min_web_score": MIN_WEB_SCORE
         },
         "critici": {"dir": CRITICI_DIR, "exists": bool(CRITICI_DIR and os.path.isdir(CRITICI_DIR))},
+        "sinapsi_entries": len(SINAPSI),
     }
 
 # Estrazione q robusta per POST
