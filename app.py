@@ -1,6 +1,6 @@
 # app.py
 # -----------------------------------------------------------------------------
-# Tecnaria QA Bot – web_first_then_local con regola P560, GET/POST /ask e CORS
+# Tecnaria QA Bot – web_first_then_local con regola P560, GET/POST /ask, NO banner su "/"
 # -----------------------------------------------------------------------------
 
 import os
@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from fastapi import FastAPI, Request, Query
+from fastapi import FastAPI, Request, Query, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -299,7 +299,7 @@ def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
         return core_text
     out = "OK\n" + core_text.strip()
     if sources:
-        out += "\n\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
+        out += "\n\n**Fonti**\n" + "\njoin(f\"- {u}\" for u in sources) + "\n"
     return out
 
 def answer_contacts() -> str:
@@ -384,9 +384,14 @@ app.add_middleware(
     allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
+# ⚠️ NESSUN BANNER A "/":
+# - se c'è ?q=... risponde come /ask GET
+# - altrimenti 404 Not Found
 @app.get("/")
-def root():
-    return {"service": "Tecnaria QA Bot", "endpoints": ["/health", "/ask (GET q=... | POST JSON {q})"]}
+def root(q: Optional[str] = Query(None)):
+    if q:
+        return {"ok": True, "answer": route_question_to_answer(q)}
+    raise HTTPException(status_code=404, detail="Not Found")
 
 @app.get("/health")
 def health():
@@ -406,7 +411,6 @@ def health():
         "kb": {"docs_loaded": len(KB_DOCS), "contacts": bool(CONTACTS_DOC), "doc_glob": DOC_GLOB}
     }
 
-# ➜ /ask funziona sia in POST JSON che in GET ?q=...
 @app.post("/ask")
 async def ask_post(req: Request):
     try:
