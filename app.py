@@ -41,7 +41,7 @@ FORCE_P560_WEB      = os.getenv("FORCE_P560_WEB", "1") == "1"
 DEMOTE_CONTACTS     = os.getenv("DEMOTE_CONTACTS", "1") == "1"
 
 # -----------------------------------------------------------------------------
-# LOG di avvio (vedi Render logs)
+# LOG di avvio
 # -----------------------------------------------------------------------------
 print("[BOOT] -----------------------------------------------")
 print(f"[BOOT] MODE={MODE} FETCH_WEB_FIRST={FETCH_WEB_FIRST} POLICY_MODE={POLICY_MODE}")
@@ -247,9 +247,9 @@ def web_lookup(q: str,
     best_score = 0.0
     last_err = None
 
-    # Se non ci sono API key per il web, salta direttamente al template
+    # se mancano API key, non rompiamo: ritorniamo vuoto e useremo il template
     if (SEARCH_PROVIDER == "brave" and not BRAVE_API_KEY) or (SEARCH_PROVIDER == "bing" and not BING_API_KEY):
-        if DEBUG: print("[WEB] No API key; returning empty to use template")
+        if DEBUG: print("[WEB] No API key; using template fallback")
         return "", [], 0.0
 
     for attempt in range(retries + 1):
@@ -406,7 +406,7 @@ def health():
         "kb": {"docs_loaded": len(KB_DOCS), "contacts": bool(CONTACTS_DOC), "doc_glob": DOC_GLOB}
     }
 
-# ➜ **/ask** ora funziona sia in POST JSON che in GET ?q=...
+# ➜ /ask funziona sia in POST JSON che in GET ?q=...
 @app.post("/ask")
 async def ask_post(req: Request):
     try:
