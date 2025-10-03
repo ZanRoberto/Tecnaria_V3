@@ -1,7 +1,7 @@
 # app.py
-# Tecnaria QA Bot — web-first con snippet reali dal sito + contatti da CRITICI_DIR
+# Tecnaria QA Bot — web-first con gestione PDF, snippet reale e contatti da CRITICI_DIR
 # Endpoints: /, /ping, /health, /ask (GET/POST), /api/ask
-# Nessuna UI integrata; se esiste templates/index.html viene servito come homepage.
+# Se esiste templates/index.html, viene servito come homepage.
 
 import os
 import re
@@ -22,7 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # ----------------------------- ENV / CONFIG ---------------------------------
 DEBUG               = os.getenv("DEBUG", "0") == "1"
 
-MODE                = os.getenv("MODE", "web_first_then_local")  # manteniamo compat
+MODE                = os.getenv("MODE", "web_first_then_local")  # compat
 SEARCH_PROVIDER     = os.getenv("SEARCH_PROVIDER", "brave").lower()  # brave|bing
 SEARCH_API_ENDPOINT = os.getenv("SEARCH_API_ENDPOINT", "").strip()
 BRAVE_API_KEY       = os.getenv("BRAVE_API_KEY", "").strip()
@@ -33,11 +33,11 @@ PREFERRED_DOMAINS   = [d.strip() for d in os.getenv(
     "PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com"
 ).split(",") if d.strip()]
 
-MIN_WEB_SCORE       = float(os.getenv("MIN_WEB_SCORE", "0.30"))
+MIN_WEB_SCORE       = float(os.getenv("MIN_WEB_SCORE", "0.35"))
 WEB_TIMEOUT         = float(os.getenv("WEB_TIMEOUT", "8"))
 WEB_RETRIES         = int(os.getenv("WEB_RETRIES", "2"))
 
-CRITICI_DIR         = os.getenv("CRITICI_DIR", "").strip()   # es: static/static/data/critici
+CRITICI_DIR         = os.getenv("CRITICI_DIR", "static/static/data/critici").strip()
 TEMPLATES_DIR       = os.getenv("TEMPLATES_DIR", "templates")
 STATIC_DIR          = os.getenv("STATIC_DIR", "static")
 
@@ -51,7 +51,6 @@ print("[BOOT] ------------------------------------------------")
 # ----------------------------- UTIL -----------------------------------------
 P560_PAT = re.compile(r"\bp\s*[- ]?\s*560\b", re.I)
 LIC_PAT  = re.compile(r"\b(patentino|abilitazione|formazione)\b", re.I)
-CONT_PAT = re.compile(r"\b(contatti|telefono|email|pec)\b", re.I)
 
 def normalize(text: str) -> str:
     if not text:
@@ -112,9 +111,18 @@ def bing_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Dic
 def web_search(q: str, topk: int = 5) -> List[Dict]:
     return bing_search(q, topk=topk) if SEARCH_PROVIDER == "bing" else brave_search(q, topk=topk)
 
-def fetch_text(url: str, timeout: float = WEB_TIMEOUT) -> str:
+# ----------- PDF-safe fetch (no blob), HTML -> testo pulito ------------------
+def is_pdf_url(url: str) -> bool:
+    u = (url or "").lower()
+    return u.endswith(".pdf") or "/download/" in u or "/pdf/" in u
+
+def fetch_text_or_none(url: str, timeout: float = WEB_TIMEOUT) -> Optional[str]:
+    """Ritorna testo SOLO se HTML; per PDF torna None (evita %PDF-1.7 blob)."""
     try:
-        r = requests.get(url, timeout=timeout, headers={"User-Agent": "Mozilla/5.0"})
+        r = requests.get(url, timeout=timeout, headers={"User-Agent": "Mozilla/5.0"}, stream=True)
+        ct = (r.headers.get("Content-Type") or "").lower()
+        if "application/pdf" in ct or is_pdf_url(url):
+            return None
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "html.parser")
         for tag in soup(["script", "style", "noscript"]):
@@ -122,10 +130,10 @@ def fetch_text(url: str, timeout: float = WEB_TIMEOUT) -> str:
         text = soup.get_text("\n")
         text = re.sub(r"\n\s*\n+", "\n\n", text)
         return text.strip()
-    except Exception as e:
-        if DEBUG: print("[FETCH][ERR]", url, e)
-        return ""
+    except Exception:
+        return None
 
+# --------------------------- RANK -------------------------------------------
 def rank_results(q: str, results: List[Dict]) -> List[Dict]:
     nq = normalize(q)
     for it in results:
@@ -136,10 +144,12 @@ def rank_results(q: str, results: List[Dict]) -> List[Dict]:
         for w in set(nq.split()):
             if w and w in sn:
                 score += 0.35
-        if P560_PAT.search(sn): score += 0.25
+        if P560_PAT.search(sn):
+            score += 0.25
         it["score"] = score
     return sorted(results, key=lambda x: x.get("score", 0.0), reverse=True)
 
+# --------------------------- WEB LOOKUP -------------------------------------
 def web_lookup(q: str,
                min_score: float = MIN_WEB_SCORE,
                timeout: float = WEB_TIMEOUT,
@@ -147,9 +157,9 @@ def web_lookup(q: str,
                domains: Optional[List[str]] = None) -> Tuple[str, List[str], float]:
     """
     Cerca sul web (preferendo domini indicati) e restituisce UNA risposta
-    con snippet REALE estratto dalla pagina/PDF.
+    con snippet REALE per HTML, e snippet SERP pulito per PDF.
     """
-    doms = domains or PREFERRED_DOMAINS
+    doms = domains if domains is not None else PREFERRED_DOMAINS
     sources: List[str] = []
     best_score = 0.0
 
@@ -170,20 +180,64 @@ def web_lookup(q: str,
         if best_score < min_score:
             continue
 
-        page_text = fetch_text(top.get("url", ""), timeout=timeout)
-        if not page_text:
-            continue
+        url = top.get("url", "")
+        title = top.get("title") or "pagina tecnica"
 
-        snippet = short_text(page_text, 800)  # <<< QUI: testo reale
-        sources = [top.get("url", "")]
+        # PDF -> non parseiamo: usiamo snippet SERP o fallback pulito
+        if is_pdf_url(url):
+            snippet_serp = (top.get("snippet") or "").strip()
+            if not snippet_serp:
+                snippet_serp = "Scheda/PDF Tecnaria pertinente alla domanda. Apri la fonte per i dettagli tecnici."
+            answer = (
+                "OK\n"
+                f"- **Riferimento**: {title}\n"
+                f"- **Sintesi web**: {snippet_serp}\n"
+            )
+            return answer, [url], best_score
+
+        # HTML -> estrai testo reale
+        page_text = fetch_text_or_none(url, timeout=timeout)
+        if page_text:
+            snippet = short_text(page_text, 800)
+            answer = (
+                "OK\n"
+                f"- **Riferimento**: {title}\n"
+                f"- **Sintesi web**: {snippet}\n"
+            )
+            return answer, [url], best_score
+
+        # Fallback: usa comunque snippet SERP
+        snippet_serp = (top.get("snippet") or "").strip()
+        if not snippet_serp:
+            snippet_serp = "Contenuto tecnico pertinente individuato. Apri la fonte per i dettagli."
         answer = (
             "OK\n"
-            f"- **Riferimento**: {top.get('title') or 'pagina tecnica'}\n"
-            f"- **Sintesi web**: {snippet}\n"
+            f"- **Riferimento**: {title}\n"
+            f"- **Sintesi web**: {snippet_serp}\n"
         )
-        return answer, sources, best_score
+        return answer, [url], best_score
 
     return "", sources, best_score
+
+# -------------------- Smart lookup (secondo giro senza domini) ---------------
+KEYWORDS_FORCE_WEB = re.compile(
+    r"\b(ctf|ctl|diapason|p560|hi[- ]?bond|lamiera|connettore|laterocemento|collaborante|solaio)\b",
+    re.I
+)
+
+def force_web_needed(nq: str) -> bool:
+    return bool(KEYWORDS_FORCE_WEB.search(nq))
+
+def web_lookup_smart(q: str) -> Tuple[str, List[str], float]:
+    # 1) con domini preferiti
+    ans, srcs, sc = web_lookup(q, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT,
+                               retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
+    if ans:
+        return ans, srcs, sc
+    # 2) senza filtro domini (rank preferisce comunque Tecnaria)
+    ans2, srcs2, sc2 = web_lookup(q, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT,
+                                  retries=WEB_RETRIES, domains=[])
+    return ans2, srcs2, sc2
 
 # ------------------------ CONTATTI dai file critici --------------------------
 def _fmt(v): return str(v).strip() if v is not None else ""
@@ -231,6 +285,15 @@ def answer_contacts() -> str:
         return c
     return ("OK\n- **Ragione sociale**: TECNARIA S.p.A.\n- **Telefono**: +39 0424 502029\n- **Email**: info@tecnaria.com\n")
 
+# --------- Contatti SOLO se chiesti esplicitamente (no falsi positivi) ------
+def is_explicit_contacts(nq: str) -> bool:
+    if not re.search(r"\b(contatti|telefono|email|pec)\b", nq):
+        return False
+    # se parole tecniche presenti, NON è richiesta contatti ma domanda tecnica
+    if re.search(r"\b(ctf|ctl|diapason|p560|hi[- ]?bond|lamiera|solaio|connettore|posa|densita|eta|dop|ce)\b", nq):
+        return False
+    return True
+
 # ----------------------------- FORMATTER ------------------------------------
 def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
     core = core_text or ""
@@ -269,17 +332,22 @@ def route_question_to_answer(raw_q: str) -> str:
     q = raw_q.strip()
     nq = normalize(q)
 
-    # Contatti → SOLO dai file critici
-    if CONT_PAT.search(nq):
+    # Contatti → SOLO se chiesti davvero
+    if is_explicit_contacts(nq):
         return answer_contacts()
 
     # Regola forte: P560 + patentino/formazione → template + (fonti web se disponibili)
     if P560_PAT.search(nq) and LIC_PAT.search(nq):
-        ans, srcs, _ = web_lookup(q, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT,
-                                  retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
+        ans, srcs, _ = web_lookup_smart(q)
         return build_p560_from_web(srcs)
 
-    # Web-first sempre (è quello che vuoi)
+    # Se contiene parole chiave tecniche, forza WEB con strategia smart
+    if force_web_needed(nq):
+        ans, srcs, _ = web_lookup_smart(q)
+        if ans:
+            return format_as_bot(ans, srcs)
+
+    # Altrimenti normale web-first
     ans, srcs, _ = web_lookup(q, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT,
                               retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
     if ans:
@@ -290,7 +358,7 @@ def route_question_to_answer(raw_q: str) -> str:
             "Puoi riformulare la domanda oppure posso fornirti i contatti Tecnaria.\n")
 
 # ----------------------------- FASTAPI APP ----------------------------------
-app = FastAPI(title="Tecnaria QA Bot", version="3.2.0")
+app = FastAPI(title="Tecnaria QA Bot", version="3.3.0")
 
 # static + templates
 if os.path.isdir(STATIC_DIR):
