@@ -1,1 +1,32 @@
-
+[
+  {
+    "id": "ctf_vs_diapason",
+    "pattern": "\\b(ctf).*(diapason)|(diapason).*(ctf)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
+    "lang": "it",
+    "answer": "OK\n- **CTF**: connettore per **solaio collaborante acciaio–calcestruzzo** su **lamiera grecata**; posa rapida con **SPIT P560** e **2 chiodi HSBR14**/pezzo; ideale per **nuovi solai** o rinforzi dove è prevista/già presente la lamiera (es. **Hi-Bond**).\n- **Diapason**: sistema per **rinforzo di solai in laterocemento** esistenti; utilizza **fissaggi meccanici** (non la P560); indicato quando **non c’è lamiera** e si interviene dall’alto con getto collaborante.\n- **Quando usare**: **CTF** se c’è/si posa la lamiera grecata e serve **velocità di cantiere**; **Diapason** se si deve **consolidare laterocemento** senza lamiera, con intervento poco invasivo.\n- **Scelta pratica**: dipende da **tipologia solaio**, **carichi**, **vincoli di spessore**, **accessi** e **tempi**; il numero di connettori/ancoraggi è definito dal **calcolo strutturale**.\n\n**Fonti**\n- Sinapsi (curated)\n"
+  },
+  {
+    "id": "ctl_vs_diapason",
+    "pattern": "\\b(ctl).*(diapason)|(diapason).*(ctl)|laterocemento.*ctl|ctl.*laterocemento|differenz|confront",
+    "lang": "it",
+    "answer": "OK\n- **CTL**: connettore per **solaio legno–calcestruzzo**; lavora con viti su supporto ligneo. Non è adatto a **laterocemento**.\n- **Diapason**: sistema per **rinforzo solai in laterocemento** esistenti, con **fissaggi meccanici** e getto collaborante dall’alto.\n- **Quando usare**: **Diapason** per laterocemento fessurato/da consolidare; **CTL** solo per solai in **legno**.\n- **Scelta tecnica**: definita da **tipologia solaio** e **calcolo** (carichi, luci, deformazioni). Supporto di progetto disponibile.\n\n**Fonti**\n- Sinapsi (curated)\n"
+  },
+  {
+    "id": "p560_paten",
+    "pattern": "\\bp\\s*[- ]?\\s*560\\b.*(patentino|abilitazione|formazione)|(patentino|abilitazione|formazione).*\\bp\\s*[- ]?\\s*560\\b",
+    "lang": "it",
+    "answer": "OK\n- **Abilitazione/Patentino**: Non è richiesto un patentino specifico per la **SPIT P560**. È necessaria una **formazione interna** secondo le istruzioni del costruttore.\n- **Formazione minima**: scelta propulsori, taratura potenza, prova su campione, verifica ancoraggio dei chiodi, gestione inceppamenti.\n- **DPI e sicurezza**: occhiali, guanti, protezione udito; lamiera ben aderente; rispetto distanze dai bordi.\n- **Procedura**: 1 **CTF** = **2 chiodi HSBR14** con **P560**, senza preforatura.\n\n**Fonti**\n- Sinapsi (curated)\n"
+  },
+  {
+    "id": "ctf_density_fix",
+    "pattern": "\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|fissagg|chiod|p560|hsbr)",
+    "lang": "it",
+    "answer": "OK\n- **Densità indicativa**: **~6–8 CTF/m²** (più fitta agli appoggi, più rada in mezzeria).\n- **Determinazione esatta**: da **calcolo strutturale** (luci, carichi, profilo lamiera, cls, verifiche a taglio/scorrimento e deformazioni).\n- **Fissaggio**: **2 chiodi HSBR14** per connettore con **SPIT P560**, senza preforatura; regolare potenza e fare prova su campione.\n- **Sicurezza**: lamiera ben aderente, distanze dai bordi, DPI (occhiali/guanti/protezione udito).\n\n**Fonti**\n- Sinapsi (curated)\n"
+  },
+  {
+    "id": "ctf_hibond_advantages",
+    "pattern": "\\bctf\\b.*(hi[- ]?bond|lamiera)|hi[- ]?bond.*ctf|vantagg",
+    "lang": "it",
+    "answer": "OK\n- **Compatibilità**: i **CTF** sono progettati per lamiere grecate certificate (es. **Hi-Bond**), garantendo piena collaborazione acciaio–calcestruzzo.\n- **Velocità di posa**: fissaggio dall’alto con **SPIT P560** e **2 chiodi HSBR14**, senza preforatura.\n- **Prestazioni**: maggiore rigidezza e capacità portante, deformazioni ridotte, luci maggiori a spessore contenuto.\n- **Sicurezza normativa**: documentazione **ETA** e tracciabilità.\n- **Efficienza**: tempi e costi di cantiere ridotti rispetto ad alternative non integrate.\n- **Supporto**: schede di posa, software e assistenza Tecnaria.\n\n**Fonti**\n- Sinapsi (curated)\n"
+  }
+]
