@@ -1,7 +1,7 @@
 # app.py
-# Tecnaria QA Bot — web-first con gestione PDF, snippet reale e contatti da CRITICI_DIR
+# Tecnaria QA Bot — web-first con gestione PDF, snippet reale, contatti da CRITICI_DIR
+# + Template P560 e Template CTF densità/fissaggio
 # Endpoints: /, /ping, /health, /ask (GET/POST), /api/ask
-# Se esiste templates/index.html, viene servito come homepage.
 
 import os
 import re
@@ -163,7 +163,6 @@ def web_lookup(q: str,
     sources: List[str] = []
     best_score = 0.0
 
-    # provider/chiavi devono combaciare, altrimenti niente web
     if (SEARCH_PROVIDER == "brave" and not BRAVE_API_KEY) or (SEARCH_PROVIDER == "bing" and not BING_API_KEY):
         return "", [], 0.0
 
@@ -183,7 +182,7 @@ def web_lookup(q: str,
         url = top.get("url", "")
         title = top.get("title") or "pagina tecnica"
 
-        # PDF -> non parseiamo: usiamo snippet SERP o fallback pulito
+        # PDF → usa snippet SERP o fallback pulito
         if is_pdf_url(url):
             snippet_serp = (top.get("snippet") or "").strip()
             if not snippet_serp:
@@ -195,7 +194,7 @@ def web_lookup(q: str,
             )
             return answer, [url], best_score
 
-        # HTML -> estrai testo reale
+        # HTML → estrai testo reale
         page_text = fetch_text_or_none(url, timeout=timeout)
         if page_text:
             snippet = short_text(page_text, 800)
@@ -206,7 +205,7 @@ def web_lookup(q: str,
             )
             return answer, [url], best_score
 
-        # Fallback: usa comunque snippet SERP
+        # Fallback: snippet SERP
         snippet_serp = (top.get("snippet") or "").strip()
         if not snippet_serp:
             snippet_serp = "Contenuto tecnico pertinente individuato. Apri la fonte per i dettagli."
@@ -239,7 +238,7 @@ def web_lookup_smart(q: str) -> Tuple[str, List[str], float]:
                                   retries=WEB_RETRIES, domains=[])
     return ans2, srcs2, sc2
 
-# ------------------------ CONTATTI dai file critici --------------------------
+# ------------- CONTATTI dai file critici (no falsi positivi) -----------------
 def _fmt(v): return str(v).strip() if v is not None else ""
 
 def load_contacts_from_critici() -> Optional[str]:
@@ -285,11 +284,9 @@ def answer_contacts() -> str:
         return c
     return ("OK\n- **Ragione sociale**: TECNARIA S.p.A.\n- **Telefono**: +39 0424 502029\n- **Email**: info@tecnaria.com\n")
 
-# --------- Contatti SOLO se chiesti esplicitamente (no falsi positivi) ------
 def is_explicit_contacts(nq: str) -> bool:
     if not re.search(r"\b(contatti|telefono|email|pec)\b", nq):
         return False
-    # se parole tecniche presenti, NON è richiesta contatti ma domanda tecnica
     if re.search(r"\b(ctf|ctl|diapason|p560|hi[- ]?bond|lamiera|solaio|connettore|posa|densita|eta|dop|ce)\b", nq):
         return False
     return True
@@ -324,6 +321,37 @@ def build_p560_from_web(sources: List[str]) -> str:
         base += "\n**Fonti**\n- web (tecnaria.com)\n"
     return base
 
+# ---------- NUOVO: Template tecnico-commerciale CTF densità/fissaggio --------
+CTF_KEY = re.compile(r"\bctf\b", re.I)
+DENSITY_KEYS = re.compile(r"\b(densit[aà]|quanti|numero|n[.\s]*connettori|pezzi|m2|m²|al\s*m2|per\s*m2)\b", re.I)
+FIX_KEYS = re.compile(r"\b(fissagg|posa|chiod|hsbr\s*14|hsbr14|p560|spit\s*p560)\b", re.I)
+HIBOND_KEYS = re.compile(r"\bhi[- ]?bond\b", re.I)
+
+def is_ctf_density_question(nq: str) -> bool:
+    if not CTF_KEY.search(nq):
+        return False
+    has_density = bool(DENSITY_KEYS.search(nq))
+    has_fix = bool(FIX_KEYS.search(nq))
+    return has_density or has_fix
+
+def build_ctf_density_answer(sources: List[str]) -> str:
+    base = (
+        "OK\n"
+        "- **Densità indicativa**: per preventivo/pre-dimensionamento si considerano **~6–8 connettori CTF/m²** "
+        "(distribuzione più fitta presso appoggi/muri, più rada in mezzeria).\n"
+        "- **Determinazione esatta**: il **numero reale** di connettori è dato dal **calcolo strutturale** "
+        "(luci, carichi, profilo lamiera, cls, schema statico, verifiche a taglio/scorrimento e deformazioni).\n"
+        "- **Fissaggio**: ogni **CTF** si posa su lamiera grecata con **2 chiodi HSBR14** sparati con **SPIT P560**, "
+        "senza preforatura; regolare la potenza in funzione di lamiera/trave e fare una prova su campione.\n"
+        "- **Note di posa**: lamiera **ben aderente** all’appoggio; rispetto **distanze dai bordi**; DPI (occhiali, guanti, "
+        "protezione udito); controllo dell’**ancoraggio** dei chiodi.\n"
+    )
+    if sources:
+        base += "\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
+    else:
+        base += "\n**Fonti**\n- https://tecnaria.com/download/homepage/CT_CATALOGO_IT.pdf\n"
+    return base
+
 # ----------------------------- ROUTING --------------------------------------
 def route_question_to_answer(raw_q: str) -> str:
     if not raw_q or not raw_q.strip():
@@ -340,6 +368,11 @@ def route_question_to_answer(raw_q: str) -> str:
     if P560_PAT.search(nq) and LIC_PAT.search(nq):
         ans, srcs, _ = web_lookup_smart(q)
         return build_p560_from_web(srcs)
+
+    # NUOVO: Domande su densità/fissaggio CTF → template tecnico + fonti web se disponibili
+    if is_ctf_density_question(nq):
+        ans_web, srcs, _ = web_lookup_smart(q)
+        return build_ctf_density_answer(srcs)
 
     # Se contiene parole chiave tecniche, forza WEB con strategia smart
     if force_web_needed(nq):
@@ -358,7 +391,7 @@ def route_question_to_answer(raw_q: str) -> str:
             "Puoi riformulare la domanda oppure posso fornirti i contatti Tecnaria.\n")
 
 # ----------------------------- FASTAPI APP ----------------------------------
-app = FastAPI(title="Tecnaria QA Bot", version="3.3.0")
+app = FastAPI(title="Tecnaria QA Bot", version="3.4.0")
 
 # static + templates
 if os.path.isdir(STATIC_DIR):
