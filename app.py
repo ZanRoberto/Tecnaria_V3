@@ -1,12 +1,11 @@
 # app.py
 # -----------------------------------------------------------------------------
-# Tecnaria QA Bot – web_first_then_local con regole P560 e demote "Contatti"
+# Tecnaria QA Bot – web_first_then_local con regola P560 e demote "Contatti"
 # FastAPI + web lookup (Brave/Bing) + KB locale semplice
 # -----------------------------------------------------------------------------
 
 import os
 import re
-import json
 import glob
 import time
 import unicodedata
@@ -25,18 +24,21 @@ DEBUG               = os.getenv("DEBUG", "0") == "1"
 MODE                = os.getenv("MODE", "web_first_then_local")  # "web_first_then_local" | "local_only" | "web_only"
 FETCH_WEB_FIRST     = os.getenv("FETCH_WEB_FIRST", "1") == "1"   # legacy flag
 POLICY_MODE         = os.getenv("POLICY_MODE", "default")
+
 SEARCH_PROVIDER     = os.getenv("SEARCH_PROVIDER", "brave").lower()  # "brave" | "bing"
 SEARCH_API_ENDPOINT = os.getenv("SEARCH_API_ENDPOINT", "").strip()   # opzionale per Bing
 BRAVE_API_KEY       = os.getenv("BRAVE_API_KEY", "").strip()
 BING_API_KEY        = os.getenv("BING_API_KEY", "").strip() or os.getenv("AZURE_BING_KEY", "").strip()
+
 PREFERRED_DOMAINS   = [d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com").split(",") if d.strip()]
 DOC_GLOB            = os.getenv("DOC_GLOB", "static/docs/*.txt")
+
 MIN_WEB_SCORE       = float(os.getenv("MIN_WEB_SCORE", "0.35"))
 WEB_TIMEOUT         = float(os.getenv("WEB_TIMEOUT", "6"))
 WEB_RETRIES         = int(os.getenv("WEB_RETRIES", "2"))
+
 FORCE_P560_WEB      = os.getenv("FORCE_P560_WEB", "1") == "1"
 DEMOTE_CONTACTS     = os.getenv("DEMOTE_CONTACTS", "1") == "1"
-ADMIN_TOKEN         = os.getenv("ADMIN_TOKEN", "")
 
 # -----------------------------------------------------------------------------
 # LOG di avvio
@@ -80,8 +82,7 @@ def clean_ui_noise(text: str) -> str:
         if any(low.startswith(pfx) for pfx in UI_NOISE_PREFIXES):
             continue
         keep.append(l)
-    s = " ".join(keep).strip()
-    return s
+    return " ".join(keep).strip()
 
 def domain_of(url: str) -> str:
     try:
@@ -154,8 +155,7 @@ def kb_lookup(q: str, exclude_contacts: bool = True) -> Optional[str]:
             best = doc
 
     if best and best_score > 0.5:
-        snippet = short_text(best["text"], 1200)
-        return snippet
+        return short_text(best["text"], 1200)
     return None
 
 # -----------------------------------------------------------------------------
@@ -300,8 +300,7 @@ def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
 
 def answer_contacts() -> str:
     if CONTACTS_DOC:
-        txt = CONTACTS_DOC["text"]
-        return "OK\n" + txt.strip()
+        return "OK\n" + CONTACTS_DOC["text"].strip()
     return (
         "OK\n"
         "- **Ragione sociale**: TECNARIA S.p.A.\n"
@@ -323,8 +322,7 @@ def answer_p560_template() -> str:
 def build_p560_from_web(sources: List[str]) -> str:
     base = answer_p560_template()
     if sources:
-        src_lines = "\n".join(f"- {u}" for u in sources)
-        base += f"\n**Fonti**\n{src_lines}\n"
+        base += "\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
     else:
         base += "\n**Fonti**\n- web (tecnaria.com)\n"
     return base
@@ -347,8 +345,8 @@ def route_question_to_answer(raw_q: str) -> str:
     if FORCE_P560_WEB and P560_PAT.search(nq) and LIC_PAT.search(nq):
         ans, srcs, _ = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
         if ans:
-            return build_p560_from_web(srcs)
-        return build_p560_from_web(srcs)  # template + (eventuali) fonti
+            return build_p560_from_web(srcs)   # sempre risposta “giusta” con fonti
+        return build_p560_from_web(srcs)       # template (se web non ha risposto)
 
     # 3) WEB-FIRST
     if MODE.startswith("web_first") or (FETCH_WEB_FIRST and MODE != "local_only"):
