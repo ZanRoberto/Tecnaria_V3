@@ -9,11 +9,9 @@ import re
 import json
 import glob
 import time
-import math
-import html
 import unicodedata
 from typing import List, Dict, Tuple, Optional
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -25,14 +23,14 @@ from fastapi.responses import JSONResponse
 # -----------------------------------------------------------------------------
 DEBUG               = os.getenv("DEBUG", "0") == "1"
 MODE                = os.getenv("MODE", "web_first_then_local")  # "web_first_then_local" | "local_only" | "web_only"
-FETCH_WEB_FIRST     = os.getenv("FETCH_WEB_FIRST", "1") == "1"   # legacy flag, manteniamo
+FETCH_WEB_FIRST     = os.getenv("FETCH_WEB_FIRST", "1") == "1"   # legacy flag
 POLICY_MODE         = os.getenv("POLICY_MODE", "default")
 SEARCH_PROVIDER     = os.getenv("SEARCH_PROVIDER", "brave").lower()  # "brave" | "bing"
 SEARCH_API_ENDPOINT = os.getenv("SEARCH_API_ENDPOINT", "").strip()   # opzionale per Bing
 BRAVE_API_KEY       = os.getenv("BRAVE_API_KEY", "").strip()
 BING_API_KEY        = os.getenv("BING_API_KEY", "").strip() or os.getenv("AZURE_BING_KEY", "").strip()
 PREFERRED_DOMAINS   = [d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com").split(",") if d.strip()]
-DOC_GLOB            = os.getenv("DOC_GLOB", "static/docs/*.txt")  # cartelle kb locali (txt/md/json)
+DOC_GLOB            = os.getenv("DOC_GLOB", "static/docs/*.txt")
 MIN_WEB_SCORE       = float(os.getenv("MIN_WEB_SCORE", "0.35"))
 WEB_TIMEOUT         = float(os.getenv("WEB_TIMEOUT", "6"))
 WEB_RETRIES         = int(os.getenv("WEB_RETRIES", "2"))
@@ -59,7 +57,7 @@ P560_PAT = re.compile(r"\bp\s*[- ]?\s*560\b", re.I)
 LIC_PAT  = re.compile(r"\b(patentino|abilitazione|formazione)\b", re.I)
 CONT_PAT = re.compile(r"\b(contatti|telefono|email|pec)\b", re.I)
 
-# ATTENZIONE: tolto "p560" dai prefix per non filtrare domande che iniziano con P560
+# (IMPORTANTE) niente "p560" qui, per non filtrare domande che iniziano con P560
 UI_NOISE_PREFIXES = (
     "chiedi", "pulisci", "copia risposta", "risposta", "connettori ctf",
     "contatti", "—"
@@ -83,7 +81,6 @@ def clean_ui_noise(text: str) -> str:
             continue
         keep.append(l)
     s = " ".join(keep).strip()
-    # non normalizziamo qui gli accenti (lo facciamo nella normalize)
     return s
 
 def domain_of(url: str) -> str:
@@ -133,14 +130,9 @@ load_kb()
 print(f"[KB] Caricati {len(KB_DOCS)} documenti. Contatti={'OK' if CONTACTS_DOC else 'NO'}")
 
 def kb_lookup(q: str, exclude_contacts: bool = True) -> Optional[str]:
-    """
-    Ricerca semplicistica su KB: match parole chiave e titolo file.
-    """
     nq = normalize(q)
     best = None
     best_score = 0.0
-
-    # Opzionalmente includi contatti
     candidates = KB_DOCS.copy()
     if not exclude_contacts and CONTACTS_DOC:
         candidates.append(CONTACTS_DOC)
@@ -150,11 +142,9 @@ def kb_lookup(q: str, exclude_contacts: bool = True) -> Optional[str]:
         name = doc["name"]
         score = 0.0
         low = normalize(text + " " + name)
-        # boost parole
         for w in set(nq.split()):
             if w and w in low:
                 score += 1.0
-        # penalty se è chiaramente "contatti" e non richiesto
         if "contatti" in name.lower() and exclude_contacts:
             score -= 3.0
         score += 0.2 if "p560" in low else 0.0
@@ -164,7 +154,6 @@ def kb_lookup(q: str, exclude_contacts: bool = True) -> Optional[str]:
             best = doc
 
     if best and best_score > 0.5:
-        # restituisci snippet
         snippet = short_text(best["text"], 1200)
         return snippet
     return None
@@ -172,9 +161,7 @@ def kb_lookup(q: str, exclude_contacts: bool = True) -> Optional[str]:
 # -----------------------------------------------------------------------------
 # WEB SEARCH / FETCH
 # -----------------------------------------------------------------------------
-
 def brave_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Dict]:
-    # Brave Search API. Richiede BRAVE_API_KEY.
     if not BRAVE_API_KEY:
         return []
     headers = {"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY}
@@ -193,8 +180,7 @@ def brave_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Di
             })
         return items
     except Exception as e:
-        if DEBUG:
-            print("[BRAVE][ERR]", e)
+        if DEBUG: print("[BRAVE][ERR]", e)
         return []
 
 def bing_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Dict]:
@@ -217,31 +203,24 @@ def bing_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Dic
             })
         return items
     except Exception as e:
-        if DEBUG:
-            print("[BING][ERR]", e)
+        if DEBUG: print("[BING][ERR]", e)
         return []
 
 def web_search(q: str, topk: int = 5) -> List[Dict]:
-    if SEARCH_PROVIDER == "bing":
-        return bing_search(q, topk=topk)
-    # default brave
-    return brave_search(q, topk=topk)
+    return bing_search(q, topk=topk) if SEARCH_PROVIDER == "bing" else brave_search(q, topk=topk)
 
 def fetch_text(url: str, timeout: float = WEB_TIMEOUT) -> str:
     try:
         r = requests.get(url, timeout=timeout, headers={"User-Agent": "Mozilla/5.0"})
         r.raise_for_status()
-        html_text = r.text
-        soup = BeautifulSoup(html_text, "html.parser")
-        # togli script/style
+        soup = BeautifulSoup(r.text, "html.parser")
         for tag in soup(["script", "style", "noscript"]):
             tag.decompose()
         text = soup.get_text("\n")
         text = re.sub(r"\n\s*\n+", "\n\n", text)
         return text.strip()
     except Exception as e:
-        if DEBUG:
-            print("[FETCH][ERR]", url, e)
+        if DEBUG: print("[FETCH][ERR]", url, e)
         return ""
 
 def rank_results(q: str, results: List[Dict], prefer_domains: List[str]) -> List[Dict]:
@@ -250,15 +229,12 @@ def rank_results(q: str, results: List[Dict], prefer_domains: List[str]) -> List
         score = 0.0
         score += prefer_score_for_domain(it.get("url", ""))
         sn = normalize((it.get("title") or "") + " " + (it.get("snippet") or ""))
-        # keyword matching
         for w in set(nq.split()):
             if w and w in sn:
                 score += 0.4
-        # P560 boost
         if P560_PAT.search(sn):
             score += 0.5
         it["score"] = score
-    # ordina per score desc
     return sorted(results, key=lambda x: x.get("score", 0.0), reverse=True)
 
 def web_lookup(q: str,
@@ -266,10 +242,6 @@ def web_lookup(q: str,
                timeout: float = WEB_TIMEOUT,
                retries: int = WEB_RETRIES,
                domains: Optional[List[str]] = None) -> Tuple[str, List[str], float]:
-    """
-    Cerca sul web; privilegia domini passati o PREFERRED_DOMAINS.
-    Torna (answer_text, sources_urls, best_score).
-    """
     doms = domains or PREFERRED_DOMAINS
     sources: List[str] = []
     best_score = 0.0
@@ -280,32 +252,21 @@ def web_lookup(q: str,
             results = web_search(q, topk=7)
             if not results:
                 continue
-            # filtra per domini preferiti (se impostati)
             if doms:
                 results = [r for r in results if any(d in domain_of(r["url"]) for d in doms)]
-                if DEBUG:
-                    print(f"[WEB] Filtered by domains {doms}: {len(results)} hits")
-
+                if DEBUG: print(f"[WEB] Filtered by domains {doms}: {len(results)} hits")
             ranked = rank_results(q, results, doms)
             if not ranked:
                 continue
             top = ranked[0]
             best_score = top.get("score", 0.0)
-            if DEBUG:
-                print(f"[WEB] best={top.get('url')} score={best_score:.2f}")
-
+            if DEBUG: print(f"[WEB] best={top.get('url')} score={best_score:.2f}")
             if best_score < min_score:
                 continue
-
             txt = fetch_text(top["url"], timeout=timeout)
             if not txt:
                 continue
-
             sources.append(top["url"])
-
-            # Costruiamo risposta breve (bot-style) per uso generale
-            snippet = short_text(txt, 1000)
-            # Non vogliamo incollare il testo della pagina; generiamo 4-5 bullet generici
             ans = (
                 "OK\n"
                 f"- **Riferimento**: {top.get('title') or 'pagina tecnica'}.\n"
@@ -313,29 +274,24 @@ def web_lookup(q: str,
                 "- **Nota**: verificare sempre le istruzioni ufficiali e la documentazione aggiornata.\n"
             )
             return ans, sources, best_score
-
         except Exception as e:
             last_err = e
             time.sleep(0.25)
 
     if DEBUG and last_err:
         print("[WEB][ERROR]", last_err)
-
     return "", sources, best_score
 
 # -----------------------------------------------------------------------------
 # FORMATTER – stile “tuo bot”
 # -----------------------------------------------------------------------------
 def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
-    # Lasciamo invariato il testo se già formattato in bullet "OK\n- ..."
     if core_text.strip().startswith("OK"):
         if sources:
             src_lines = "\n".join(f"- {u}" for u in sources)
             if "\n**Fonti**" not in core_text:
                 return core_text.rstrip() + f"\n\n**Fonti**\n{src_lines}\n"
         return core_text
-
-    # altrimenti incapsuliamo
     out = "OK\n" + core_text.strip()
     if sources:
         src_lines = "\n".join(f"- {u}" for u in sources)
@@ -344,10 +300,8 @@ def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
 
 def answer_contacts() -> str:
     if CONTACTS_DOC:
-        # prova a estrarre dati minimi
         txt = CONTACTS_DOC["text"]
         return "OK\n" + txt.strip()
-    # fallback minimo
     return (
         "OK\n"
         "- **Ragione sociale**: TECNARIA S.p.A.\n"
@@ -379,40 +333,35 @@ def build_p560_from_web(sources: List[str]) -> str:
 # ROUTING PRINCIPALE
 # -----------------------------------------------------------------------------
 def route_question_to_answer(raw_q: str) -> str:
-    """
-    Pipeline: pulizia -> regola P560 -> web first -> KB -> contatti (solo se chiesti) -> fallback elegante
-    """
     if not raw_q or not raw_q.strip():
         return "OK\n- **Domanda vuota**: inserisci una richiesta valida.\n"
 
     cleaned = clean_ui_noise(raw_q)
     nq = normalize(cleaned)
 
-    # 1) Se l'utente chiede contatti esplicitamente e non demotizziamo contatti:
+    # 1) Contatti espliciti (se non demotizzati)
     if CONT_PAT.search(nq) and not DEMOTE_CONTACTS:
         return answer_contacts()
 
     # 2) REGOLA FORTE: P560 + (patentino|formazione|abilitazione) => WEB su domini preferiti
     if FORCE_P560_WEB and P560_PAT.search(nq) and LIC_PAT.search(nq):
-        ans, srcs, sc = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
+        ans, srcs, _ = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
         if ans:
-            # riscrivi con la risposta canonica stile bot + fonti
             return build_p560_from_web(srcs)
-        # se il web non restituisce nulla → template tecnico (mai contatti)
-        return build_p560_from_web(srcs)
+        return build_p560_from_web(srcs)  # template + (eventuali) fonti
 
-    # 3) WEB-FIRST se richiesto
+    # 3) WEB-FIRST
     if MODE.startswith("web_first") or (FETCH_WEB_FIRST and MODE != "local_only"):
-        ans, srcs, sc = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES)
+        ans, srcs, _ = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES)
         if ans:
             return format_as_bot(ans, srcs)
 
-    # 4) KB locale (con contatti demotizzati se DEMOTE_CONTACTS=1)
+    # 4) KB locale (contatti demotizzati)
     local = kb_lookup(cleaned, exclude_contacts=DEMOTE_CONTACTS)
     if local:
         return format_as_bot("OK\n- **Riferimento locale** trovato.\n- **Sintesi**: " + short_text(local, 800))
 
-    # 5) SOLO se l'utente ha chiesto contatti e li abbiamo demotizzati
+    # 5) Contatti se esplicitamente chiesti (con demote attivo)
     if CONT_PAT.search(nq) and DEMOTE_CONTACTS:
         return answer_contacts()
 
@@ -426,6 +375,13 @@ def route_question_to_answer(raw_q: str) -> str:
 # API
 # -----------------------------------------------------------------------------
 app = FastAPI(title="Tecnaria QA Bot", version="1.0.0")
+
+@app.get("/")
+def root():
+    return {
+        "service": "Tecnaria QA Bot",
+        "endpoints": ["/health", "/ask (POST JSON: { q: ... })"]
+    }
 
 @app.get("/health")
 def health():
@@ -451,17 +407,16 @@ def health():
 
 @app.post("/ask")
 async def ask(req: Request):
-    data = {}
     try:
         data = await req.json()
     except Exception:
-        pass
+        data = {}
     q = (data.get("q") or data.get("question") or "").strip()
     ans = route_question_to_answer(q)
     return JSONResponse({"ok": True, "answer": ans})
 
 # -----------------------------------------------------------------------------
-# MAIN (per run locale: uvicorn app:app --reload)
+# MAIN (dev local)
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
