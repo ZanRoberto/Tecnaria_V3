@@ -1,488 +1,281 @@
-import os
-import httpx
-import json
-import re
-from pathlib import Path
-from typing import List, Dict, Tuple
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
-from openai import OpenAI
+# app.py
+# -----------------------------------------------------------------------------
+# Tecnaria QA Bot – homepage stabile (banner), /health, /ask (GET/POST),
+# web-first, regola P560, contatti demotizzati
+# -----------------------------------------------------------------------------
 
-# ------------------- App setup -------------------
-app = FastAPI(title="Tecnaria Bot - Web+Local")
-templates = Jinja2Templates(directory="templates")
+import os, re, glob, time, unicodedata
+from typing import List, Dict, Tuple, Optional
+from urllib.parse import urlparse
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY non impostata.")
-client = OpenAI(api_key=OPENAI_API_KEY)
+import requests
+from bs4 import BeautifulSoup
+from fastapi import FastAPI, Request, Query
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
-OPENAI_MODEL    = os.getenv("OPENAI_MODEL", "gpt-4o")
-SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave")  # 'brave' o altro/vuoto per disattivare
-FETCH_WEB_FIRST = os.getenv("FETCH_WEB_FIRST", "1") == "1"
-SEARCH_TOPK     = int(os.getenv("SEARCH_TOPK", "6"))
-DEBUG           = os.getenv("DEBUG", "0") == "1"
+# ------------------------------ ENV / CONFIG ---------------------------------
+DEBUG               = os.getenv("DEBUG", "0") == "1"
+MODE                = os.getenv("MODE", "web_first_then_local")
+FETCH_WEB_FIRST     = os.getenv("FETCH_WEB_FIRST", "1") == "1"
+POLICY_MODE         = os.getenv("POLICY_MODE", "default")
 
-# ------------------- Input model (tollerante) -------------------
-class AskRequest(BaseModel):
-    question: str | None = None
-    message:  str | None = None
-    Domanda:  str | None = None
-    q:        str | None = None
-    def text(self) -> str:
-        for k in (self.question, self.message, self.Domanda, self.q):
-            if k:
-                return k
-        return ""
+SEARCH_PROVIDER     = os.getenv("SEARCH_PROVIDER", "brave").lower()  # brave|bing
+SEARCH_API_ENDPOINT = os.getenv("SEARCH_API_ENDPOINT", "").strip()
+BRAVE_API_KEY       = os.getenv("BRAVE_API_KEY", "").strip()
+BING_API_KEY        = os.getenv("BING_API_KEY", "").strip() or os.getenv("AZURE_BING_KEY", "").strip()
 
-# ------------------- SENSITIVE/LOCAL DATA (solo file) -------------------
-CRITICI_DIR = "static/static/data/critici"
+PREFERRED_DOMAINS   = [d.strip() for d in os.getenv("PREFERRED_DOMAINS","tecnaria.com,spit.eu,spitpaslode.com").split(",") if d.strip()]
+DOC_GLOB            = os.getenv("DOC_GLOB", "static/docs/*.txt")
 
-SENSITIVE_FILES = {
-    # Contatti
-    "contatti": "contatti.json", "contatto": "contatti.json", "telefono": "contatti.json",
-    "tel ": "contatti.json", "email": "contatti.json", "mail": "contatti.json",
-    "pec": "contatti.json", "sdi": "contatti.json", "p.iva": "contatti.json",
-    "partita iva": "contatti.json", "indirizzo": "contatti.json", "sede": "contatti.json",
-    "dove siamo": "contatti.json",
-    # Banca
-    "iban": "bank.json", "bonifico": "bank.json", "conto": "bank.json", "coordinate bancarie": "bank.json",
-    # Pagamenti
-    "pagamento": "pagamenti.json", "pagamenti": "pagamenti.json", "metodi di pagamento": "pagamenti.json",
-    # (codici prodotto: SOLO web, non locali)
-}
+MIN_WEB_SCORE       = float(os.getenv("MIN_WEB_SCORE", "0.35"))
+WEB_TIMEOUT         = float(os.getenv("WEB_TIMEOUT", "6"))
+WEB_RETRIES         = int(os.getenv("WEB_RETRIES", "2"))
 
-_SENSITIVE_KWS = re.compile(
-    r"\b(contatt\w*|telefono|tel\.?|mail|email|pec|sdi|p\.?\s*iva|partita\s*iva|indirizzo|sede|dove\s+siamo|iban|bonifico|conto|banc\w*|pagamento|pagamenti|metod[ei]\s+di\s+pagamento)\b",
-    re.IGNORECASE
-)
+FORCE_P560_WEB      = os.getenv("FORCE_P560_WEB", "1") == "1"
+DEMOTE_CONTACTS     = os.getenv("DEMOTE_CONTACTS", "1") == "1"
 
-def find_sensitive_file_for_question(q: str) -> str | None:
-    if not q:
-        return None
-    ql = q.lower()
-    for kw, fname in SENSITIVE_FILES.items():
-        if kw in ql:
-            fp = Path(CRITICI_DIR) / fname
-            if fp.exists():
-                return str(fp)
-            else:
-                return ""
-    if _SENSITIVE_KWS.search(ql):
-        return "" if not Path(CRITICI_DIR).exists() else None
-    return None
+# ------------------------------ UTIL -----------------------------------------
+P560_PAT = re.compile(r"\bp\s*[- ]?\s*560\b", re.I)
+LIC_PAT  = re.compile(r"\b(patentino|abilitazione|formazione)\b", re.I)
+CONT_PAT = re.compile(r"\b(contatti|telefono|email|pec)\b", re.I)
 
-def load_json_file(path: str) -> dict | None:
-    try:
-        raw = Path(path).read_text(encoding="utf-8")
-        if not raw.strip():
-            if DEBUG: print(f"[CRITICI] File vuoto: {path}")
-            return None
-        return json.loads(raw)
-    except Exception as e:
-        if DEBUG: print(f"[CRITICI] JSON non valido in {path}: {e}")
-        return None
+UI_NOISE_PREFIXES = ("chiedi","pulisci","copia risposta","risposta","connettori ctf","contatti","—")
 
-def format_from_contatti(data: dict) -> str:
-    rs   = data.get("ragione_sociale") or "TECNARIA S.p.A."
-    piva = data.get("piva") or "Dato non disponibile"
-    sdi  = data.get("sdi")  or "Dato non disponibile"
-    tel  = data.get("telefono") or "Dato non disponibile"
-    email= data.get("email") or "Dato non disponibile"
-    pec  = data.get("pec") or "—"
-    ind  = data.get("indirizzo") or {}
-    addr = ", ".join([ind.get("via",""), ind.get("cap",""), ind.get("citta",""),
-                      ind.get("provincia",""), ind.get("stato","")]).replace(" ,","").strip(" ,")
-    return (
-        f"- **Ragione sociale**: {rs}\n"
-        f"- **P.IVA**: {piva}   **SDI**: {sdi}\n"
-        f"- **Indirizzo**: {addr or 'Dato non disponibile'}\n"
-        f"- **Telefono**: {tel}\n"
-        f"- **Email**: {email}\n"
-        f"- **PEC**: {pec}\n\n"
-        "**Fonti**\n- file locale · contatti.json"
-    )
+def normalize(t: str) -> str:
+    if not t: return ""
+    t = unicodedata.normalize("NFKD", t).encode("ascii","ignore").decode("ascii")
+    return re.sub(r"\s+"," ",t).strip().lower()
 
-def format_from_bank(data: dict) -> str:
-    iban  = data.get("iban") or data.get("conto") or "Dato non disponibile"
-    intes = data.get("intestatario", "Dato non disponibile")
-    banca = data.get("banca", "Dato non disponibile")
-    bic   = data.get("bic", "Dato non disponibile")
-    note  = data.get("note", "-")
-    return (
-        f"- **Intestatario**: {intes}\n"
-        f"- **Banca**: {banca}\n"
-        f"- **IBAN**: {iban}\n"
-        f"- **BIC**: {bic}\n"
-        f"- **Note**: {note or '-'}\n\n"
-        "**Fonti**\n- file locale · bank.json"
-    )
+def clean_ui_noise(text: str) -> str:
+    if not text: return ""
+    keep=[]
+    for l in [x for x in text.splitlines() if x.strip()]:
+        if any(l.strip().lower().startswith(p) for p in UI_NOISE_PREFIXES): continue
+        keep.append(l)
+    return " ".join(keep).strip()
 
-def format_from_pagamenti(data: dict) -> str:
-    lines = []
-    for m in data.get("metodi", []):
-        lines.append(f"- **{m.get('tipo','metodo')}**: {m.get('istruzioni','')}")
-    if not lines:
-        lines = ["- (nessun metodo di pagamento presente)"]
-    note = data.get("note")
-    if note:
-        lines.append(f"- **Note**: {note}")
-    return "\n".join(lines) + "\n\n**Fonti**\n- file locale · pagamenti.json"
+def domain_of(url: str) -> str:
+    try: return urlparse(url).netloc.lower()
+    except: return ""
 
-def format_sensitive_answer_from_file(path: str) -> str:
-    data = load_json_file(path)
-    if not data:
-        return "- Dato non disponibile nel file locale.\n\n**Fonti**\n- file locale"
-    name = Path(path).name
-    if name == "contatti.json":
-        return format_from_contatti(data)
-    if name == "bank.json":
-        return format_from_bank(data)
-    if name == "pagamenti.json":
-        return format_from_pagamenti(data)
-    pretty = json.dumps(data, indent=2, ensure_ascii=False)
-    return f"- Dati:\n```\n{pretty[:1000]}\n```\n\n**Fonti**\n- file locale · {name}"
+def prefer_score_for_domain(url: str) -> float:
+    d = domain_of(url)
+    return 0.25 if d and any(pd in d for pd in PREFERRED_DOMAINS) else 0.0
 
-# ------------------- Helpers (web/local generali) -------------------
-def expand_query_if_needed(query: str) -> str:
-    q = query.lower()
-    if "p560" in q and "spit" not in q:
-        return query + " SPIT chiodatrice pistola sparachiodi Tecnaria HSBR14"
-    return query
+def short_text(text: str, n: int = 900) -> str:
+    t = re.sub(r"\s+"," ", text or "").strip()
+    return (t[:n]+"…") if len(t)>n else t
 
-def _prefer_score(url: str) -> int:
-    preferred = [d.strip().lower() for d in (os.getenv("PREFERRED_DOMAINS") or "tecnaria.com,spit.eu,spitpaslode.com,ordini.tecnaria.com").split(",") if d.strip()]
-    return 1 if any(d in url.lower() for d in preferred) else 0
+# ------------------------------ KB LOCALE ------------------------------------
+KB_DOCS: List[Dict] = []
+CONTACTS_DOC: Optional[Dict] = None
 
-def _looks_like_p560_misclassified(text: str) -> bool:
-    t = (text or "").lower()
-    return ("p560" in t or "spit p560" in t) and ("connettor" in t) and not any(w in t for w in ["chiodatrice","pistola","sparachiodi"])
-
-def _force_bullets_and_sources(text: str, web_hits: List[Dict], local_docs: Dict[str, str]) -> str:
-    txt = (text or "").strip()
-    has_sources = ("**Fonti**" in txt) or ("\nFonti\n" in txt) or ("\nFonti:" in txt)
-    if not has_sources:
-        sources = [h["url"] for h in web_hits] if web_hits else list(local_docs.keys())
-        if sources:
-            txt += "\n\n**Fonti**\n" + "\n".join(f"- {s}" for s in sources)
-        else:
-            txt += "\n\n**Fonti**\n- (nessuna fonte trovata)"
-    return txt
-
-# ------------------- Web search (Brave, server-side) -------------------
-async def web_search(query: str, topk: int = 6) -> List[Dict]:
-    if SEARCH_PROVIDER.lower() != "brave":
-        return []
-    key = os.getenv("BRAVE_API_KEY")
-    if not key:
-        if DEBUG:
-            print("[BRAVE] manca BRAVE_API_KEY (il bot funzionerà solo con basi locali)")
-        return []
-    query = expand_query_if_needed(query)
-    url = "https://api.search.brave.com/res/v1/web/search"
-    headers = {"X-Subscription-Token": key, "User-Agent": "Mozilla/5.0"}
-    params = {"q": query, "count": topk}
-    async with httpx.AsyncClient(follow_redirects=True, timeout=18.0) as ac:
-        r = await ac.get(url, headers=headers, params=params)
-        if DEBUG:
-            print("[BRAVE] status:", r.status_code)
-            try:
-                print("[BRAVE] body sample:", r.text[:250].replace("\n", " "))
-            except Exception:
-                pass
-        if r.status_code != 200:
-            return []
-        data = r.json()
-        results = []
-        for item in (data.get("web", {}).get("results") or [])[:topk]:
-            u = item.get("url")
-            if u:
-                results.append({"name": item.get("title", "") or u, "url": u})
-        results.sort(key=lambda x: _prefer_score(x["url"]), reverse=True)
-        return results
-
-# ------------------- Fetch & Extract (codici prodotto) -------------------
-async def _fetch_text_for_regex(url: str, timeout: float = 18.0) -> str:
-    try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as ac:
-            r = await ac.get(url, headers={"User-Agent": "Mozilla/5.0"})
-            if r.status_code != 200:
-                return ""
-            ct = (r.headers.get("content-type") or "").lower()
-            if "pdf" in ct or url.lower().endswith(".pdf"):
-                # estrazione "grezza" da bytes (funziona per molti PDF testuali)
-                try:
-                    return r.content.decode("latin-1", errors="ignore")
-                except Exception:
-                    return r.content.decode("utf-8", errors="ignore")
-            return r.text or ""
-    except Exception as e:
-        if DEBUG: print("[FETCH] err:", url, e)
-        return ""
-
-_CODE_PATTERNS = {
-    "ctf": re.compile(r"\bCTF\d{3}\b", re.IGNORECASE),
-    "ctl": re.compile(r"\bCTL\d{3}\b", re.IGNORECASE),
-    "ctcem": re.compile(r"\bCTCEM\d{3}\b", re.IGNORECASE),
-    "vcem": re.compile(r"\bVCEM\d{3}\b", re.IGNORECASE),
-    "diapason": re.compile(r"\bDIAPASON\d{2,4}\b", re.IGNORECASE),
-}
-GENERIC_CODE = re.compile(r"\b[A-Z]{2,8}\d{2,4}\b")
-FAMILIES = ["ctf", "ctl", "ctcem", "vcem", "diapason"]
-_ALLOWED_DOMAINS = ("tecnaria.com", "ordini.tecnaria.com")
-
-async def _collect_hits_from_queries(base_query: str, max_links: int) -> List[str]:
-    """Esegue due ricerche (normale + filetype:pdf) e restituisce URL unici (solo domini ammessi)."""
-    queries = [f"site:tecnaria.com {base_query}",
-               f"site:tecnaria.com filetype:pdf {base_query}"]
-    urls: List[str] = []
-    seen = set()
-    for q in queries:
-        hits = await web_search(q, topk=max_links) or []
-        for h in hits:
-            url = (h.get("url") or "").strip()
-            if not url:
-                continue
-            if not any(dom in url.lower() for dom in _ALLOWED_DOMAINS):
-                continue
-            if url in seen:
-                continue
-            seen.add(url)
-            urls.append(url)
-    return urls[:max_links]
-
-async def find_product_codes_from_web(query: str, family: str, max_links: int = 10) -> Tuple[List[str], List[str]]:
-    base_q = query
-    urls = await _collect_hits_from_queries(base_q, max_links)
-    pattern = _CODE_PATTERNS.get(family.lower()) or GENERIC_CODE
-
-    codes: set[str] = set()
-    used_sources: List[str] = []
-
-    for url in urls:
-        text = await _fetch_text_for_regex(url)
-        if not text:
-            continue
-        found = set(m.upper() for m in pattern.findall(text))
-        if found:
-            codes |= found
-            used_sources.append(url)
-
-    # Se non ha trovato nulla, tenta una query più "secca" sulla sigla
-    if not codes:
-        hint = family.upper() if family != "generic" else "CTF CTL VCEM CTCEM DIAPASON"
-        urls2 = await _collect_hits_from_queries(hint, max_links)
-        for url in urls2:
-            if url in used_sources:
-                continue
-            text = await _fetch_text_for_regex(url)
-            if not text:
-                continue
-            found = set(m.upper() for m in pattern.findall(text))
-            if found:
-                codes |= found
-                used_sources.append(url)
-
-    def _num_key(c: str) -> int:
+def load_kb():
+    global KB_DOCS, CONTACTS_DOC
+    KB_DOCS=[]; CONTACTS_DOC=None
+    for p in glob.glob(DOC_GLOB) if DOC_GLOB else []:
         try:
-            return int(re.findall(r"(\d{2,4})", c)[0])
-        except Exception:
-            return 0
+            with open(p,"r",encoding="utf-8",errors="ignore") as f: txt=f.read()
+            entry={"path":p,"text":txt,"name":os.path.basename(p)}
+            if "contatti" in entry["name"].lower(): CONTACTS_DOC=entry
+            else: KB_DOCS.append(entry)
+        except Exception as e:
+            if DEBUG: print("[KB][ERR]", p, e)
 
-    sorted_codes = sorted(codes, key=_num_key)
-    return sorted_codes, used_sources[:6]
+load_kb()
 
-# ------------------- Local docs -------------------
-def load_local_docs() -> Dict[str, str]:
-    docs: Dict[str, str] = {}
-    base = "static/docs"
-    if not os.path.isdir(base):
-        return docs
-    for fn in os.listdir(base):
-        if fn.lower().endswith(".txt"):
-            try:
-                with open(os.path.join(base, fn), "r", encoding="utf-8") as f:
-                    docs[fn] = f.read()
-            except Exception:
-                continue
-    return docs
+def kb_lookup(q: str, exclude_contacts: bool=True) -> Optional[str]:
+    nq=normalize(q); best=None; best_s=0.0
+    candidates=KB_DOCS.copy()
+    if not exclude_contacts and CONTACTS_DOC: candidates.append(CONTACTS_DOC)
+    for doc in candidates:
+        low=normalize(doc["text"]+" "+doc["name"]); s=0.0
+        for w in set(nq.split()):
+            if w and w in low: s+=1.0
+        if "contatti" in doc["name"].lower() and exclude_contacts: s-=3.0
+        if "p560" in low: s+=0.2
+        if "ctf" in low: s+=0.2
+        if s>best_s: best_s=s; best=doc
+    return short_text(best["text"],1200) if best and best_s>0.5 else None
 
-# ------------------- System prompt -------------------
-SYSTEM_PROMPT = """
-Parli come il MIGLIOR TECNICO-COMMERCIALE di Tecnaria S.p.A. (Bassano del Grappa):
-competente, chiaro, autorevole, propositivo e vicino al cliente.
-
-TASSONOMIA OBBLIGATORIA (NON VIOLARE)
-- P560 / SPIT P560 = chiodatrice a sparo (pistola sparachiodi) per fissaggi su ACCIAIO/LAMIERA. NON è un connettore.
-  • Usata nei sistemi CTF (lamiera grecata + calcestruzzo) con chiodi HSBR14.
-  • Usata anche per fissare connettori su TRAVI IN ACCIAIO (es. VCEM/altre configurazioni su acciaio).
-  • NON si usa per connettori su LEGNO (CTL/CTCEM: fissaggi meccanici a vite/bullone).
-- CTF = connettori per solai collaboranti ACCIAIO-CALCESTRUZZO su lamiera grecata; fissaggio a sparo (HSBR14) con P560.
-- CTL = connettori per solai collaboranti LEGNO-CALCESTRUZZO; fissaggio con VITI, NO P560.
-- DIAPASON (laterocemento) = fissaggi meccanici (bulloni/barre), NO P560.
-
-REGOLE DI RISPOSTA (OBBLIGATORIE)
-- Ordine fonti: WEB → poi documenti locali. Se il web è vuoto, usa i locali; se comunque non trovi, dillo.
-- Stile TECNICO-COMMERCIALE in ITALIANO.
-- OUTPUT SEMPRE in 5–7 BULLET sintetici e pratici (vantaggi, efficienza in cantiere, sicurezza/certificazioni quando rilevanti).
-- CHIUDI SEMPRE con una sezione **Fonti** con URL (se web) o “file locale”.
-- NON annunciare ricerche/attese (“sto cercando…”, “un momento…”): fornisci direttamente il risultato.
-- NON confondere mai P560 con un connettore. Se la domanda contiene “P560”, chiarisci esplicitamente che è una chiodatrice.
-""".strip()
-
-# ------------------- Ambito aziendale (solo temi Tecnaria) -------------------
-SCOPE_KWS = re.compile(
-    r"\b(tecnaria|ctf|ctl|ctcem|vcem|diapason|lamiera|grecata|solai?|p560|spit|connettor\w+|"
-    r"acciaio|legno|laterocemento|collaborant\w+|eta|posa|chiodi|hsbr14)\b",
-    re.IGNORECASE
-)
-
-# ------------------- Routes -------------------
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-@app.get("/ping")
-async def ping():
-    return {"status": "ok", "service": "Tecnaria Bot - Web+Local", "model": OPENAI_MODEL}
-
-# ------------------- Intent helper per "codici" -------------------
-CODICI_INTENT = re.compile(
-    r"\b(codic[io]|\bcod\.|\blista\s+codici|\btutti\s+i\s+codici|\bcodici\s+prodotti?)\b",
-    re.IGNORECASE
-)
-
-def _detect_family_in_text(t: str) -> str | None:
-    t = t.lower()
-    if   "ctf"      in t: return "ctf"
-    if   "ctl"      in t: return "ctl"
-    if   "ctcem"    in t: return "ctcem"
-    if   "vcem"     in t: return "vcem"
-    if   "diapason" in t: return "diapason"
-    return None
-
-# ------------------- Main route -------------------
-@app.post("/api/ask")
-async def ask(req: AskRequest):
+# ------------------------------ WEB SEARCH -----------------------------------
+def brave_search(q, topk=5, timeout=WEB_TIMEOUT):
+    if not BRAVE_API_KEY: return []
     try:
-        user_q = req.text().strip()
-        if not user_q:
-            return JSONResponse({"ok": False, "error": "Domanda mancante"}, status_code=400)
-
-        # --- PRIORITÀ: dati sensibili/autoritatitivi solo da file locale ------
-        sensitive_path = find_sensitive_file_for_question(user_q)
-        if sensitive_path is not None:
-            if sensitive_path == "":
-                return {"ok": True, "answer": "- Informazione sensibile richiesta ma il file locale non è presente.\n\n**Fonti**\n- (file locale mancante)"}
-            return {"ok": True, "answer": format_sensitive_answer_from_file(sensitive_path)}
-        # ---------------------------------------------------------------------
-
-        # --- AMBITO AZIENDALE: rispondi solo su temi Tecnaria -----------------
-        if not SCOPE_KWS.search(user_q):
-            msg = (
-                "- Ambito del bot: prodotti/soluzioni Tecnaria (connettori CTF/CTL/Diapason, posa, P560, documentazione, contatti, pagamenti).\n"
-                "- La tua domanda non rientra in questo ambito.\n"
-                "- Esempi utili: «Come si fissano i CTF su lamiera TR60?» · «Qual è il nostro IBAN?» · «Mi dai i contatti aziendali?»\n\n"
-                "**Fonti**\n- policy interna (ambito Tecnaria)"
-            )
-            return {"ok": True, "answer": msg}
-        # ---------------------------------------------------------------------
-
-        # --- CODICI PRODOTTO dal WEB (tecnaria.com + PDF) --------------------
-        ql = user_q.lower()
-        if CODICI_INTENT.search(ql):
-            fam = _detect_family_in_text(ql)
-
-            # Caso A: famiglia specificata
-            if fam:
-                codes, srcs = await find_product_codes_from_web(user_q, fam)
-                if codes:
-                    lines  = [f"- **{c}**" for c in codes]
-                    fontes = "\n".join(f"- {u}" for u in srcs) if srcs else "- tecnaria.com"
-                    return {"ok": True, "answer": f"OK · Codici {fam.upper()}\n" + "\n".join(lines) + f"\n\n**Fonti**\n{fontes}"}
-                else:
-                    tried = "- " + "\n- ".join(srcs) if srcs else "- (nessuna pagina rilevante trovata su tecnaria.com)"
-                    return {"ok": True, "answer": f"Non ho trovato codici {fam.upper()} su tecnaria.com.\n\n**Pagine controllate**\n{tried}\n\n**Fonti**\n- tecnaria.com"}
-
-            # Caso B: nessuna famiglia specificata → tutte
-            all_blocks: List[str] = []
-            all_sources: List[str] = []
-            found_any = False
-
-            for famx in FAMILIES:
-                codes, srcs = await find_product_codes_from_web(user_q, famx)
-                if codes:
-                    found_any = True
-                    all_blocks.append(f"**{famx.upper()}**\n" + "\n".join(f"- **{c}**" for c in codes))
-                    for s in srcs:
-                        if s not in all_sources:
-                            all_sources.append(s)
-
-            if found_any:
-                fontes = "\n".join(f"- {u}" for u in all_sources) if all_sources else "- tecnaria.com"
-                return {"ok": True, "answer": "OK · Codici prodotti Tecnaria\n" + "\n\n".join(all_blocks) + f"\n\n**Fonti**\n{fontes}"}
-            else:
-                return {"ok": True, "answer": "Non ho trovato codici su tecnaria.com per le famiglie note (CTF, CTL, CTCEM, VCEM, DIAPASON).\n\n**Fonti**\n- tecnaria.com"}
-        # ---------------------------------------------------------------------
-
-        # Flusso standard (web → locali → LLM)
-        web_hits: List[Dict] = []
-        local_docs: Dict[str, str] = {}
-        if FETCH_WEB_FIRST:
-            web_hits = await web_search(user_q, topk=SEARCH_TOPK)
-            local_docs = load_local_docs()
-        else:
-            local_docs = load_local_docs()
-            if not local_docs:
-                web_hits = await web_search(user_q, topk=SEARCH_TOPK)
-
-        parts: List[str] = []
-        if web_hits:
-            parts.append("Fonti web:\n" + "\n".join(f"- {h['name']} {h['url']}" for h in web_hits))
-        if local_docs:
-            parts.append("Documenti locali:\n" + "\n".join(f"- {k}" for k in local_docs.keys()))
-        context_blob = "\n\n".join(parts) if parts else "(nessun contesto disponibile)"
-
-        user_prompt = (
-            "Rispondi in 5–7 bullet tecnico-commerciali (vantaggi pratici, posa, sicurezza/certificazioni quando rilevanti). "
-            "Chiudi con sezione **Fonti** (URL se web, altrimenti 'file locale'). "
-            f"\n\nDomanda: {user_q}\n\nSorgenti disponibili:\n{context_blob}"
-        )
-
-        resp = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.2,
-            max_tokens=900,
-        )
-        text = (resp.choices[0].message.content or "").strip()
-
-        if _looks_like_p560_misclassified(text):
-            if DEBUG:
-                print("[GUARD] Correzione P560: no 'connettore'.")
-            fix_prompt = (
-                "Correggi subito: la P560 è una chiodatrice a sparo (non un connettore) per fissaggi su acciaio/lamiera. "
-                "Rispondi in 5–7 bullet e chiudi con **Fonti** (URL o file locale). "
-                f"\n\nDomanda: {user_q}"
-            )
-            r2 = client.chat.completions.create(
-                model=OPENAI_MODEL,
-                messages=[{"role":"system","content":SYSTEM_PROMPT},
-                          {"role":"user","content":fix_prompt}],
-                temperature=0.1,
-                max_tokens=700,
-            )
-            text = (r2.choices[0].message.content or "").strip()
-
-        text = _force_bullets_and_sources(text, web_hits, local_docs)
-        return {"ok": True, "answer": text}
-
+        r=requests.get("https://api.search.brave.com/res/v1/web/search",
+                       headers={"Accept":"application/json","X-Subscription-Token":BRAVE_API_KEY},
+                       params={"q":q,"count":topk}, timeout=timeout)
+        r.raise_for_status(); data=r.json(); out=[]
+        for it in data.get("web",{}).get("results",[]):
+            out.append({"title":it.get("title",""),"url":it.get("url",""),"snippet":it.get("description","")})
+        return out
     except Exception as e:
-        if DEBUG:
-            print("[ERROR] /api/ask:", repr(e))
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+        if DEBUG: print("[BRAVE][ERR]", e)
+        return []
+
+def bing_search(q, topk=5, timeout=WEB_TIMEOUT):
+    key=BING_API_KEY; endpoint=SEARCH_API_ENDPOINT or "https://api.bing.microsoft.com/v7.0/search"
+    if not key: return []
+    try:
+        r=requests.get(endpoint, headers={"Ocp-Apim-Subscription-Key":key},
+                       params={"q":q,"count":topk,"responseFilter":"Webpages"}, timeout=timeout)
+        r.raise_for_status(); data=r.json(); out=[]
+        for it in data.get("webPages",{}).get("value",[]):
+            out.append({"title":it.get("name",""),"url":it.get("url",""),"snippet":it.get("snippet","")})
+        return out
+    except Exception as e:
+        if DEBUG: print("[BING][ERR]", e)
+        return []
+
+def web_search(q, topk=5): return bing_search(q, topk) if SEARCH_PROVIDER=="bing" else brave_search(q, topk)
+
+def fetch_text(url, timeout=WEB_TIMEOUT):
+    try:
+        r=requests.get(url, timeout=timeout, headers={"User-Agent":"Mozilla/5.0"}); r.raise_for_status()
+        soup=BeautifulSoup(r.text,"html.parser")
+        for t in soup(["script","style","noscript"]): t.decompose()
+        txt=soup.get_text("\n"); return re.sub(r"\n\s*\n+","\n\n",txt).strip()
+    except Exception as e:
+        if DEBUG: print("[FETCH][ERR]", url, e)
+        return ""
+
+def rank_results(q, results, prefer_domains):
+    nq=normalize(q)
+    for it in results:
+        s=prefer_score_for_domain(it.get("url",""))
+        sn=normalize((it.get("title","")+" "+it.get("snippet","")))
+        for w in set(nq.split()):
+            if w and w in sn: s+=0.4
+        if P560_PAT.search(sn): s+=0.5
+        it["score"]=s
+    return sorted(results, key=lambda x:x.get("score",0.0), reverse=True)
+
+def web_lookup(q, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES, domains=None)->Tuple[str,List[str],float]:
+    doms=domains or PREFERRED_DOMAINS; srcs=[]; best=0.0
+    # se mancano API key → usa template, non crashare
+    if (SEARCH_PROVIDER=="brave" and not BRAVE_API_KEY) or (SEARCH_PROVIDER=="bing" and not BING_API_KEY):
+        if DEBUG: print("[WEB] No API key; template fallback")
+        return "", [], 0.0
+    for _ in range(retries+1):
+        results=web_search(q, topk=7) or []
+        if doms: results=[r for r in results if any(d in domain_of(r["url"]) for d in doms)]
+        ranked=rank_results(q, results, doms)
+        if not ranked: continue
+        top=ranked[0]; best=top.get("score",0.0)
+        if best < min_score: continue
+        _txt=fetch_text(top["url"], timeout=timeout)
+        if not _txt: continue
+        srcs.append(top["url"])
+        ans=("OK\n"
+             f"- **Riferimento**: {top.get('title') or 'pagina tecnica'}.\n"
+             "- **Sintesi**: contenuti tecnici pertinenti alla query trovati sul sito preferito.\n"
+             "- **Nota**: verificare sempre le istruzioni ufficiali e la documentazione aggiornata.\n")
+        return ans, srcs, best
+    return "", srcs, best
+
+# ------------------------------ FORMAT ---------------------------------------
+def format_as_bot(core_text: str, sources: Optional[List[str]]=None) -> str:
+    if core_text.strip().startswith("OK"):
+        if sources:
+            src = "\n".join(f"- {u}" for u in sources)
+            if "\n**Fonti**" not in core_text:
+                return core_text.rstrip() + f"\n\n**Fonti**\n{src}\n"
+        return core_text
+    out = "OK\n" + core_text.strip()
+    if sources:
+        out += "\n\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
+    return out
+
+def answer_contacts() -> str:
+    if CONTACTS_DOC: return "OK\n" + CONTACTS_DOC["text"].strip()
+    return ("OK\n- **Ragione sociale**: TECNARIA S.p.A.\n- **Telefono**: +39 0424 502029\n- **Email**: info@tecnaria.com\n")
+
+def answer_p560_template() -> str:
+    return (
+        "OK\n"
+        "- **Abilitazione/Patentino**: Non è richiesto un patentino specifico per la **SPIT P560**. "
+        "È necessaria una **formazione interna** secondo le istruzioni del costruttore.\n"
+        "- **Formazione minima**: scelta propulsori, **taratura potenza**, prova su campione, verifica **ancoraggio** dei chiodi, gestione inceppamenti.\n"
+        "- **DPI e sicurezza**: **occhiali**, **guanti**, **protezione udito**; operare su **lamiera ben aderente**; rispettare distanze dai bordi; non sparare su supporti deformati/non idonei.\n"
+        "- **Procedura di posa**: 1 connettore **CTF** = **2 chiodi HSBR14** con **P560**; nessuna preforatura; potenza regolata in funzione di lamiera/trave.\n"
+        "- **Supporto Tecnaria**: disponibili **istruzioni di posa** e indicazioni pratiche per il cantiere.\n"
+    )
+
+def build_p560_from_web(sources: List[str]) -> str:
+    base = answer_p560_template()
+    base += ("\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n") if sources else "\n**Fonti**\n- web (tecnaria.com)\n"
+    return base
+
+# ------------------------------ ROUTING --------------------------------------
+def route_question_to_answer(raw_q: str) -> str:
+    if not raw_q or not raw_q.strip():
+        return "OK\n- **Domanda vuota**: inserisci una richiesta valida.\n"
+    cleaned = clean_ui_noise(raw_q); nq = normalize(cleaned)
+
+    if CONT_PAT.search(nq) and not DEMOTE_CONTACTS:
+        return answer_contacts()
+
+    if FORCE_P560_WEB and P560_PAT.search(nq) and LIC_PAT.search(nq):
+        ans, srcs, _ = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
+        return build_p560_from_web(srcs)
+
+    if MODE.startswith("web_first") or (FETCH_WEB_FIRST and MODE != "local_only"):
+        ans, srcs, _ = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES)
+        if ans: return format_as_bot(ans, srcs)
+
+    local = kb_lookup(cleaned, exclude_contacts=DEMOTE_CONTACTS)
+    if local:
+        return format_as_bot("OK\n- **Riferimento locale** trovato.\n- **Sintesi**: " + short_text(local, 800))
+
+    if CONT_PAT.search(nq) and DEMOTE_CONTACTS:
+        return answer_contacts()
+
+    return "OK\n- **Informazione non presente** in fonti web/KB. Posso cercare meglio sul web o metterti in contatto con un tecnico.\n"
+
+# ------------------------------ API ------------------------------------------
+app = FastAPI(title="Tecnaria QA Bot", version="1.0.0")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# HOMEPAGE STABILE:
+# - senza q → banner (mai errori)
+# - con q   → risponde come /ask
+@app.get("/")
+def root(q: Optional[str] = Query(None, description="Domanda opzionale")):
+    if q and q.strip():
+        return {"ok": True, "answer": route_question_to_answer(q)}
+    return {"service":"Tecnaria QA Bot","endpoints":["/health","/ask (GET q=... | POST JSON {q})"]}
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "mode": MODE,
+        "web_first": MODE.startswith("web_first") or FETCH_WEB_FIRST,
+        "policy_mode": POLICY_MODE,
+        "preferred_domains": PREFERRED_DOMAINS,
+        "rules": {
+            "force_p560_web": FORCE_P560_WEB,
+            "demote_contacts": DEMOTE_CONTACTS,
+            "min_web_score": MIN_WEB_SCORE,
+            "web_timeout": WEB_TIMEOUT,
+            "web_retries": WEB_RETRIES
+        },
+        "kb": {"docs_loaded": len(KB_DOCS), "contacts": bool(CONTACTS_DOC), "doc_glob": DOC_GLOB}
+    }
+
+@app.post("/ask")
+async def ask_post(req: Request):
+    try: data = await req.json()
+    except Exception: data = {}
+    q = (data.get("q") or data.get("question") or "").strip()
+    return JSONResponse({"ok": True, "answer": route_question_to_answer(q)})
+
+@app.get("/ask")
+async def ask_get(q: str = Query("", description="Domanda")):
+    return JSONResponse({"ok": True, "answer": route_question_to_answer(q or "")})
+
+# ------------------------------ MAIN (dev) -----------------------------------
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT","8000")), reload=True)
