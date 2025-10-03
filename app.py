@@ -1,68 +1,67 @@
 # app.py
 # -----------------------------------------------------------------------------
-# Tecnaria QA Bot – versione "prod" per interfaccia web
-# - Serve templates/ (index.html) e static/
-# - /ping, /health, /ask (GET/POST)
-# - web-first then local, regola P560 per "patentino/formazione"
-# - fallback sicuro se mancano API-keys
+# Tecnaria QA Bot – WEB ONLY + CONTATTI da "CRITICI" (JSON)
+# - /ping, /health, /ask (GET/POST) + /api/ask
+# - homepage: templates/index.html se presente, altrimenti banner JSON
+# - Regola P560 + (patentino|formazione) -> web con template tecnico
+# - NESSUNA KB LOCALE per le risposte tecniche (evita FAQ generiche)
+# - Contatti: SOLO da CRITICI_DIR (JSON)
 # -----------------------------------------------------------------------------
 
 import os
 import re
-import glob
 import time
+import json
 import unicodedata
 from typing import List, Dict, Tuple, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 import requests
 from bs4 import BeautifulSoup
-from fastapi import FastAPI, Request, Query, HTTPException
+from fastapi import FastAPI, Request, Query
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 
-# ------------------------------ CONFIG / ENV ---------------------------------
+# ------------------------------ ENV / CONFIG ---------------------------------
 DEBUG               = os.getenv("DEBUG", "0") == "1"
-MODE                = os.getenv("MODE", "web_first_then_local")  # web_first_then_local | local_only | web_only
-FETCH_WEB_FIRST     = os.getenv("FETCH_WEB_FIRST", "1") == "1"
-POLICY_MODE         = os.getenv("POLICY_MODE", "default")
 
+# Web only (nessuna KB locale)
 SEARCH_PROVIDER     = os.getenv("SEARCH_PROVIDER", "brave").lower()  # brave | bing
 SEARCH_API_ENDPOINT = os.getenv("SEARCH_API_ENDPOINT", "").strip()
 BRAVE_API_KEY       = os.getenv("BRAVE_API_KEY", "").strip()
 BING_API_KEY        = os.getenv("BING_API_KEY", "").strip() or os.getenv("AZURE_BING_KEY", "").strip()
-
 PREFERRED_DOMAINS   = [d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com").split(",") if d.strip()]
-DOC_GLOB            = os.getenv("DOC_GLOB", "static/docs/*.txt")
 
 MIN_WEB_SCORE       = float(os.getenv("MIN_WEB_SCORE", "0.35"))
 WEB_TIMEOUT         = float(os.getenv("WEB_TIMEOUT", "6"))
 WEB_RETRIES         = int(os.getenv("WEB_RETRIES", "2"))
 
-FORCE_P560_WEB      = os.getenv("FORCE_P560_WEB", "1") == "1"
-DEMOTE_CONTACTS     = os.getenv("DEMOTE_CONTACTS", "1") == "1"
+# CRITICI (contatti)
+CRITICI_DIR         = os.getenv("CRITICI_DIR", "").strip()
 
 # Template / static dirs
-TEMPLATES_DIR = os.getenv("TEMPLATES_DIR", "templates")
-STATIC_DIR = os.getenv("STATIC_DIR", "static")
+TEMPLATES_DIR       = os.getenv("TEMPLATES_DIR", "templates")
+STATIC_DIR          = os.getenv("STATIC_DIR", "static")
+
+# Regole
+FORCE_P560_WEB      = True
+DEMOTE_CONTACTS     = True  # irrilevante: i contatti vengono SOLO dai critici
 
 print("[BOOT] -----------------------------------------------")
-print(f"[BOOT] MODE={MODE} FETCH_WEB_FIRST={FETCH_WEB_FIRST} POLICY_MODE={POLICY_MODE}")
-print(f"[BOOT] SEARCH_PROVIDER={SEARCH_PROVIDER} SEARCH_API_ENDPOINT={(SEARCH_API_ENDPOINT or '(default)')}")
-print(f"[BOOT] PREFERRED_DOMAINS={PREFERRED_DOMAINS}")
+print(f"[BOOT] WEB_ONLY; SEARCH_PROVIDER={SEARCH_PROVIDER}; PREFERRED_DOMAINS={PREFERRED_DOMAINS}")
 print(f"[BOOT] MIN_WEB_SCORE={MIN_WEB_SCORE} WEB_TIMEOUT={WEB_TIMEOUT}s WEB_RETRIES={WEB_RETRIES}")
-print(f"[BOOT] FORCE_P560_WEB={FORCE_P560_WEB} DEMOTE_CONTACTS={DEMOTE_CONTACTS}")
-print(f"[BOOT] DOC_GLOB={DOC_GLOB} TEMPLATES_DIR={TEMPLATES_DIR} STATIC_DIR={STATIC_DIR}")
+print(f"[BOOT] CRITICI_DIR={CRITICI_DIR} TEMPLATES_DIR={TEMPLATES_DIR} STATIC_DIR={STATIC_DIR}")
 print("[BOOT] ------------------------------------------------")
 
 # ------------------------------ UTIL -----------------------------------------
 P560_PAT = re.compile(r"\bp\s*[- ]?\s*560\b", re.I)
 LIC_PAT  = re.compile(r"\b(patentino|abilitazione|formazione)\b", re.I)
 CONT_PAT = re.compile(r"\b(contatti|telefono|email|pec)\b", re.I)
+CTF_PAT  = re.compile(r"\bctf\b", re.I)
 
-UI_NOISE_PREFIXES = ("chiedi", "pulisci", "copia risposta", "risposta", "connettori ctf", "contatti", "—")
+UI_NOISE_PREFIXES = ("chiedi", "pulisci", "copia risposta", "risposta", "connettori ctf", "contatti", "—", "p560")
 
 def normalize(text: str) -> str:
     if not text:
@@ -101,61 +100,6 @@ def prefer_score_for_domain(url: str) -> float:
 def short_text(text: str, n: int = 900) -> str:
     t = re.sub(r"\s+", " ", text or "").strip()
     return (t[:n] + "…") if len(t) > n else t
-
-# ------------------------------ KB LOCALE ------------------------------------
-KB_DOCS: List[Dict] = []
-CONTACTS_DOC: Optional[Dict] = None
-
-def load_kb():
-    global KB_DOCS, CONTACTS_DOC
-    KB_DOCS = []
-    CONTACTS_DOC = None
-    paths = glob.glob(DOC_GLOB) if DOC_GLOB else []
-    for p in paths:
-        try:
-            with open(p, "r", encoding="utf-8", errors="ignore") as f:
-                txt = f.read()
-            entry = {"path": p, "text": txt, "name": os.path.basename(p)}
-            if entry["name"].lower().startswith("contatti") or "contatti" in entry["name"].lower():
-                CONTACTS_DOC = entry
-            else:
-                KB_DOCS.append(entry)
-        except Exception as e:
-            if DEBUG:
-                print("[KB][ERR]", p, e)
-
-load_kb()
-print(f"[KB] Caricati {len(KB_DOCS)} documenti. Contatti={'OK' if CONTACTS_DOC else 'NO'}")
-
-def kb_lookup(q: str, exclude_contacts: bool = True) -> Optional[str]:
-    nq = normalize(q)
-    best = None
-    best_score = 0.0
-    candidates = KB_DOCS.copy()
-    if not exclude_contacts and CONTACTS_DOC:
-        candidates.append(CONTACTS_DOC)
-
-    for doc in candidates:
-        text = doc["text"]
-        name = doc["name"]
-        score = 0.0
-        low = normalize(text + " " + name)
-        for w in set(nq.split()):
-            if w and w in low:
-                score += 1.0
-        if "contatti" in name.lower() and exclude_contacts:
-            score -= 3.0
-        if "p560" in low:
-            score += 0.2
-        if "ctf" in low:
-            score += 0.2
-        if score > best_score:
-            best_score = score
-            best = doc
-
-    if best and best_score > 0.5:
-        return short_text(best["text"], 1200)
-    return None
 
 # ------------------------------ WEB SEARCH / FETCH ---------------------------
 def brave_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Dict]:
@@ -223,17 +167,18 @@ def fetch_text(url: str, timeout: float = WEB_TIMEOUT) -> str:
             print("[FETCH][ERR]", url, e)
         return ""
 
-def rank_results(q: str, results: List[Dict], prefer_domains: List[str]) -> List[Dict]:
+def rank_results(q: str, results: List[Dict]) -> List[Dict]:
     nq = normalize(q)
     for it in results:
-        score = 0.0
-        score += prefer_score_for_domain(it.get("url", ""))
+        score = prefer_score_for_domain(it.get("url", ""))
         sn = normalize((it.get("title") or "") + " " + (it.get("snippet") or ""))
         for w in set(nq.split()):
             if w and w in sn:
                 score += 0.4
         if P560_PAT.search(sn):
             score += 0.5
+        if CTF_PAT.search(sn):
+            score += 0.4
         it["score"] = score
     return sorted(results, key=lambda x: x.get("score", 0.0), reverse=True)
 
@@ -242,54 +187,105 @@ def web_lookup(q: str,
                timeout: float = WEB_TIMEOUT,
                retries: int = WEB_RETRIES,
                domains: Optional[List[str]] = None) -> Tuple[str, List[str], float]:
+    """
+    Cerca sul web (filtrando *preferibilmente* i domini indicati).
+    Torna (answer_boilerplate, sources_urls, best_score). L'answer è un boilerplate safe.
+    """
     doms = domains or PREFERRED_DOMAINS
     sources: List[str] = []
     best_score = 0.0
-    last_err = None
 
-    # if missing API keys, return empty (we will use template fallback)
     if (SEARCH_PROVIDER == "brave" and not BRAVE_API_KEY) or (SEARCH_PROVIDER == "bing" and not BING_API_KEY):
-        if DEBUG:
-            print("[WEB] No API key; will use template fallback")
+        # Nessuna key: non possiamo fare web lookup vero.
         return "", [], 0.0
 
-    for attempt in range(retries + 1):
-        try:
-            results = web_search(q, topk=7)
-            if not results:
-                continue
-            if doms:
-                results = [r for r in results if any(d in domain_of(r["url"]) for d in doms)]
-                if DEBUG:
-                    print(f"[WEB] Filtered by domains {doms}: {len(results)} hits")
-            ranked = rank_results(q, results, doms)
-            if not ranked:
-                continue
-            top = ranked[0]
-            best_score = top.get("score", 0.0)
-            if DEBUG:
-                print(f"[WEB] best={top.get('url')} score={best_score:.2f}")
-            if best_score < min_score:
-                continue
-            txt = fetch_text(top["url"], timeout=timeout)
-            if not txt:
-                continue
-            sources.append(top["url"])
-            ans = (
-                "OK\n"
-                f"- **Riferimento**: {top.get('title') or 'pagina tecnica'}.\n"
-                "- **Sintesi**: contenuti tecnici pertinenti alla query trovati sul sito preferito.\n"
-                "- **Nota**: verificare sempre le istruzioni ufficiali e la documentazione aggiornata.\n"
-            )
-            return ans, sources, best_score
-        except Exception as e:
-            last_err = e
-            time.sleep(0.25)
-
-    if DEBUG and last_err:
-        print("[WEB][ERROR]", last_err)
+    for _ in range(retries + 1):
+        results = web_search(q, topk=7) or []
+        if doms:
+            results = [r for r in results if any(d in domain_of(r["url"]) for d in doms)]
+        ranked = rank_results(q, results)
+        if not ranked:
+            continue
+        top = ranked[0]
+        best_score = top.get("score", 0.0)
+        if best_score < min_score:
+            continue
+        txt = fetch_text(top["url"], timeout=timeout)
+        if not txt:
+            continue
+        sources.append(top["url"])
+        ans = (
+            "OK\n"
+            f"- **Riferimento**: {top.get('title') or 'pagina tecnica'}.\n"
+            "- **Sintesi**: contenuti tecnici pertinenti alla query trovati su fonte preferita.\n"
+            "- **Nota**: verificare sempre le istruzioni ufficiali aggiornate.\n"
+        )
+        return ans, sources, best_score
 
     return "", sources, best_score
+
+# ------------------------------ CONTATTI da CRITICI --------------------------
+def _fmt(val):
+    return str(val).strip() if val is not None else ""
+
+def load_contacts_from_critici() -> Optional[str]:
+    """
+    Cerca un file contatti nei 'critici' (JSON).
+    Accetta nomi tipo: contatti.json, contacts.json, contatti_*.json
+    Campi attesi (anche parziali): ragione_sociale, piva, sdi, indirizzo, telefono, email, pec
+    """
+    if not CRITICI_DIR or not os.path.isdir(CRITICI_DIR):
+        return None
+
+    patterns = ["*contatti*.json", "*contacts*.json", "*.json"]
+    import glob
+    for pat in patterns:
+        for p in glob.glob(os.path.join(CRITICI_DIR, pat)):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                continue
+
+            candidates = data if isinstance(data, list) else [data]
+            for obj in candidates:
+                if not isinstance(obj, dict):
+                    continue
+                rs  = obj.get("ragione_sociale") or obj.get("ragioneSociale") or obj.get("azienda") or ""
+                piva= obj.get("piva") or obj.get("partita_iva") or obj.get("partitaIva") or ""
+                sdi = obj.get("sdi")  or obj.get("SDI") or ""
+                ind = obj.get("indirizzo") or obj.get("address") or ""
+                tel = obj.get("telefono")  or obj.get("phone") or ""
+                em  = obj.get("email")     or obj.get("mail") or ""
+                pec = obj.get("pec")       or ""
+
+                if any([rs, tel, em]):
+                    lines = [
+                        "OK",
+                        f"- **Ragione sociale**: {_fmt(rs) or '—'}",
+                        f"- **P.IVA**: {_fmt(piva) or '—'}   **SDI**: {_fmt(sdi) or '—'}",
+                        f"- **Indirizzo**: {_fmt(ind) or '—'}",
+                        f"- **Telefono**: {_fmt(tel) or '—'}",
+                        f"- **Email**: {_fmt(em) or '—'}",
+                        f"- **PEC**: {_fmt(pec) or '—'}",
+                        "",
+                        "**Fonti**",
+                        f"- file critici · {os.path.basename(p)}"
+                    ]
+                    return "\n".join(lines)
+    return None
+
+def answer_contacts() -> str:
+    crit = load_contacts_from_critici()
+    if crit:
+        return crit
+    # fallback minimo hard-coded
+    return (
+        "OK\n"
+        "- **Ragione sociale**: TECNARIA S.p.A.\n"
+        "- **Telefono**: +39 0424 502029\n"
+        "- **Email**: info@tecnaria.com\n"
+    )
 
 # ------------------------------ FORMATTER -------------------------------------
 def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
@@ -304,17 +300,6 @@ def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
     if sources:
         out += "\n\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
     return out
-
-def answer_contacts() -> str:
-    if CONTACTS_DOC:
-        return "OK\n" + CONTACTS_DOC["text"].strip()
-    # fallback generic
-    return (
-        "OK\n"
-        "- **Ragione sociale**: TECNARIA S.p.A.\n"
-        "- **Telefono**: +39 0424 502029\n"
-        "- **Email**: info@tecnaria.com\n"
-    )
 
 def answer_p560_template() -> str:
     return (
@@ -343,66 +328,79 @@ def route_question_to_answer(raw_q: str) -> str:
     cleaned = clean_ui_noise(raw_q)
     nq = normalize(cleaned)
 
-    # 1) se utente chiede contatti esplicitamente (e non sono demotivati)
-    if CONT_PAT.search(nq) and not DEMOTE_CONTACTS:
+    # CONTATTI: SOLO dai critici
+    if CONT_PAT.search(nq):
         return answer_contacts()
 
-    # 2) regola forte: P560 + licenza/formazione => web preferito (PREFERRED_DOMAINS)
-    if FORCE_P560_WEB and P560_PAT.search(nq) and LIC_PAT.search(nq):
-        ans, srcs, sc = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
-        if ans:
-            return build_p560_from_web(srcs)
+    # P560 + (patentino|formazione): web + template tecnico
+    if P560_PAT.search(nq) and LIC_PAT.search(nq):
+        ans, srcs, _ = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
         return build_p560_from_web(srcs)
 
-    # 3) WEB-FIRST generale
-    if MODE.startswith("web_first") or (FETCH_WEB_FIRST and MODE != "local_only"):
-        ans, srcs, sc = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES)
-        if ans:
-            return format_as_bot(ans, srcs)
+    # GENERALE: WEB ONLY
+    ans, srcs, _ = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES)
+    if ans:
+        return format_as_bot(ans, srcs)
 
-    # 4) KB locale (con contatti demotizzati se DEMOTE_CONTACTS)
-    local = kb_lookup(cleaned, exclude_contacts=DEMOTE_CONTACTS)
-    if local:
-        return format_as_bot("OK\n- **Riferimento locale** trovato.\n- **Sintesi**: " + short_text(local, 800))
-
-    # 5) se chiede contatti e li abbiamo demotizzati
-    if CONT_PAT.search(nq) and DEMOTE_CONTACTS:
-        return answer_contacts()
-
-    # 6) fallback elegante
-    return "OK\n- **Informazione non presente** in fonti web/KB. Posso cercare meglio sul web o metterti in contatto con un tecnico.\n"
+    # Se il web non dà nulla (o manca API key), non usare KB, restituisci fallback
+    return (
+        "OK\n"
+        "- **Non ho trovato una risposta affidabile sul web** (o la ricerca non è configurata). "
+        "Indicami meglio la parola chiave (es. prodotto/voce tecnica) oppure scrivimi per contatto diretto.\n"
+    )
 
 # ------------------------------ FASTAPI APP ----------------------------------
-app = FastAPI(title="Tecnaria QA Bot", version="1.0.0")
+app = FastAPI(title="Tecnaria QA Bot", version="3.0.0")
 
-# static + templates mount
+# static + templates
 if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
-# CORS (se la UI è su altro origin)
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
-# Homepage: se c'è template index.html servilo, altrimenti banner JSON
+# Helper estrazione 'q' robusta
+def _extract_q_sync(body_bytes: bytes, content_type: str) -> str:
+    ct = (content_type or "").split(";")[0].strip().lower() if content_type else ""
+    # JSON
+    if "application/json" in ct:
+        try:
+            data = json.loads(body_bytes.decode("utf-8", errors="ignore") or "{}")
+            q = (data.get("q") or data.get("question") or "").strip()
+            if q: return q
+        except Exception:
+            pass
+    # Form
+    if "application/x-www-form-urlencoded" in ct or "multipart/form-data" in ct:
+        try:
+            s = body_bytes.decode("utf-8", errors="ignore")
+            d = parse_qs(s, keep_blank_values=True)
+            q = (d.get("q", [""])[0] or d.get("question", [""])[0]).strip()
+            if q: return q
+        except Exception:
+            pass
+    # text/plain o sconosciuto: tutto body
+    if "text/plain" in ct or not ct:
+        q = (body_bytes.decode("utf-8", errors="ignore") or "").strip()
+        if q: return q
+    return ""
+
+# Homepage: se c'è template index.html servilo, altrimenti banner JSON. Con ?q=... risponde.
 @app.get("/", response_class=HTMLResponse)
 def root(request: Request, q: Optional[str] = Query(None)):
     if q and q.strip():
         ans = route_question_to_answer(q)
         return JSONResponse({"ok": True, "answer": ans})
-    # prefer template if exists
     index_path = os.path.join(TEMPLATES_DIR, "index.html")
     if os.path.isfile(index_path):
         return templates.TemplateResponse("index.html", {"request": request})
-    # fallback banner
-    return JSONResponse({"service": "Tecnaria QA Bot", "endpoints": ["/ping", "/health", "/ask (GET q=... | POST JSON {q})"]})
+    return JSONResponse({"service": "Tecnaria QA Bot", "endpoints": ["/ping", "/health", "/ask (GET q=... | POST JSON/Form/Text)"]})
 
-# health endpoints for Render
+# Health
 @app.get("/ping")
 def ping():
     return {"ok": True, "pong": True}
@@ -411,51 +409,47 @@ def ping():
 def health():
     return {
         "status": "ok",
-        "mode": MODE,
-        "web_first": MODE.startswith("web_first") or FETCH_WEB_FIRST,
-        "policy_mode": POLICY_MODE,
-        "preferred_domains": PREFERRED_DOMAINS,
-        "rules": {
-            "force_p560_web": FORCE_P560_WEB,
-            "demote_contacts": DEMOTE_CONTACTS,
-            "min_web_score": MIN_WEB_SCORE,
-            "web_timeout": WEB_TIMEOUT,
-            "web_retries": WEB_RETRIES
+        "web_search": {
+            "provider": SEARCH_PROVIDER,
+            "brave_key": bool(BRAVE_API_KEY),
+            "bing_key": bool(BING_API_KEY),
+            "preferred_domains": PREFERRED_DOMAINS,
+            "min_web_score": MIN_WEB_SCORE
         },
-        "kb": {"docs_loaded": len(KB_DOCS), "contacts": bool(CONTACTS_DOC), "doc_glob": DOC_GLOB}
+        "critici": {"dir": CRITICI_DIR, "exists": bool(CRITICI_DIR and os.path.isdir(CRITICI_DIR))},
     }
 
-# /ask POST & GET for the web UI
+# /ask – POST (JSON / Form / Text)
 @app.post("/ask")
 async def ask_post(req: Request):
+    q = ""
+    # JSON prima
     try:
         data = await req.json()
+        q = (data.get("q") or data.get("question") or "").strip()
     except Exception:
-        data = {}
-    q = (data.get("q") or data.get("question") or "").strip()
+        pass
+    # fallback: altre forme
+    if not q:
+        body = await req.body()
+        q = _extract_q_sync(body, req.headers.get("content-type") or "")
     ans = route_question_to_answer(q)
     return JSONResponse({"ok": True, "answer": ans})
 
+# /ask – GET
 @app.get("/ask")
 async def ask_get(q: str = Query("", description="Domanda")):
-    ans = route_question_to_answer(q or "")
+    ans = route_question_to_answer((q or "").strip())
     return JSONResponse({"ok": True, "answer": ans})
 
-# alias endpoints for API usage (/api/ask)
+# alias API
 @app.post("/api/ask")
 async def api_ask_post(req: Request):
-    try:
-        data = await req.json()
-    except Exception:
-        data = {}
-    q = (data.get("q") or data.get("question") or "").strip()
-    ans = route_question_to_answer(q)
-    return JSONResponse({"ok": True, "answer": ans})
+    return await ask_post(req)
 
 @app.get("/api/ask")
 async def api_ask_get(q: str = Query("", description="Domanda")):
-    ans = route_question_to_answer(q or "")
-    return JSONResponse({"ok": True, "answer": ans})
+    return await ask_get(q)
 
 # ------------------------------ MAIN (dev) -----------------------------------
 if __name__ == "__main__":
