@@ -1,7 +1,6 @@
 # app.py
 # -----------------------------------------------------------------------------
-# Tecnaria QA Bot – web_first_then_local con regola P560 e demote "Contatti"
-# FastAPI + web lookup (Brave/Bing) + KB locale semplice
+# Tecnaria QA Bot – web_first_then_local con regola P560, GET/POST /ask e CORS
 # -----------------------------------------------------------------------------
 
 import os
@@ -14,15 +13,16 @@ from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 # -----------------------------------------------------------------------------
 # ENV / CONFIG
 # -----------------------------------------------------------------------------
 DEBUG               = os.getenv("DEBUG", "0") == "1"
 MODE                = os.getenv("MODE", "web_first_then_local")  # "web_first_then_local" | "local_only" | "web_only"
-FETCH_WEB_FIRST     = os.getenv("FETCH_WEB_FIRST", "1") == "1"   # legacy flag
+FETCH_WEB_FIRST     = os.getenv("FETCH_WEB_FIRST", "1") == "1"   # legacy
 POLICY_MODE         = os.getenv("POLICY_MODE", "default")
 
 SEARCH_PROVIDER     = os.getenv("SEARCH_PROVIDER", "brave").lower()  # "brave" | "bing"
@@ -41,7 +41,7 @@ FORCE_P560_WEB      = os.getenv("FORCE_P560_WEB", "1") == "1"
 DEMOTE_CONTACTS     = os.getenv("DEMOTE_CONTACTS", "1") == "1"
 
 # -----------------------------------------------------------------------------
-# LOG di avvio
+# LOG di avvio (vedi Render logs)
 # -----------------------------------------------------------------------------
 print("[BOOT] -----------------------------------------------")
 print(f"[BOOT] MODE={MODE} FETCH_WEB_FIRST={FETCH_WEB_FIRST} POLICY_MODE={POLICY_MODE}")
@@ -59,7 +59,7 @@ P560_PAT = re.compile(r"\bp\s*[- ]?\s*560\b", re.I)
 LIC_PAT  = re.compile(r"\b(patentino|abilitazione|formazione)\b", re.I)
 CONT_PAT = re.compile(r"\b(contatti|telefono|email|pec)\b", re.I)
 
-# (IMPORTANTE) niente "p560" qui, per non filtrare domande che iniziano con P560
+# NON inserire "p560" qui: non vogliamo filtrare via domande che iniziano con P560
 UI_NOISE_PREFIXES = (
     "chiedi", "pulisci", "copia risposta", "risposta", "connettori ctf",
     "contatti", "—"
@@ -247,6 +247,11 @@ def web_lookup(q: str,
     best_score = 0.0
     last_err = None
 
+    # Se non ci sono API key per il web, salta direttamente al template
+    if (SEARCH_PROVIDER == "brave" and not BRAVE_API_KEY) or (SEARCH_PROVIDER == "bing" and not BING_API_KEY):
+        if DEBUG: print("[WEB] No API key; returning empty to use template")
+        return "", [], 0.0
+
     for attempt in range(retries + 1):
         try:
             results = web_search(q, topk=7)
@@ -294,8 +299,7 @@ def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
         return core_text
     out = "OK\n" + core_text.strip()
     if sources:
-        src_lines = "\n".join(f"- {u}" for u in sources)
-        out += f"\n\n**Fonti**\n{src_lines}\n"
+        out += "\n\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
     return out
 
 def answer_contacts() -> str:
@@ -341,20 +345,20 @@ def route_question_to_answer(raw_q: str) -> str:
     if CONT_PAT.search(nq) and not DEMOTE_CONTACTS:
         return answer_contacts()
 
-    # 2) REGOLA FORTE: P560 + (patentino|formazione|abilitazione) => WEB su domini preferiti
+    # 2) Regola forte: P560 + (patentino|formazione|abilitazione) => WEB su domini preferiti
     if FORCE_P560_WEB and P560_PAT.search(nq) and LIC_PAT.search(nq):
         ans, srcs, _ = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
         if ans:
-            return build_p560_from_web(srcs)   # sempre risposta “giusta” con fonti
-        return build_p560_from_web(srcs)       # template (se web non ha risposto)
+            return build_p560_from_web(srcs)
+        return build_p560_from_web(srcs)  # template se il web non risponde
 
-    # 3) WEB-FIRST
+    # 3) WEB-FIRST (generale)
     if MODE.startswith("web_first") or (FETCH_WEB_FIRST and MODE != "local_only"):
         ans, srcs, _ = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES)
         if ans:
             return format_as_bot(ans, srcs)
 
-    # 4) KB locale (contatti demotizzati)
+    # 4) KB locale (con contatti demotizzati)
     local = kb_lookup(cleaned, exclude_contacts=DEMOTE_CONTACTS)
     if local:
         return format_as_bot("OK\n- **Riferimento locale** trovato.\n- **Sintesi**: " + short_text(local, 800))
@@ -374,12 +378,15 @@ def route_question_to_answer(raw_q: str) -> str:
 # -----------------------------------------------------------------------------
 app = FastAPI(title="Tecnaria QA Bot", version="1.0.0")
 
+# CORS aperto (se chiami da webapp)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+)
+
 @app.get("/")
 def root():
-    return {
-        "service": "Tecnaria QA Bot",
-        "endpoints": ["/health", "/ask (POST JSON: { q: ... })"]
-    }
+    return {"service": "Tecnaria QA Bot", "endpoints": ["/health", "/ask (GET q=... | POST JSON {q})"]}
 
 @app.get("/health")
 def health():
@@ -396,21 +403,23 @@ def health():
             "web_timeout": WEB_TIMEOUT,
             "web_retries": WEB_RETRIES
         },
-        "kb": {
-            "docs_loaded": len(KB_DOCS),
-            "contacts": bool(CONTACTS_DOC),
-            "doc_glob": DOC_GLOB
-        }
+        "kb": {"docs_loaded": len(KB_DOCS), "contacts": bool(CONTACTS_DOC), "doc_glob": DOC_GLOB}
     }
 
+# ➜ **/ask** ora funziona sia in POST JSON che in GET ?q=...
 @app.post("/ask")
-async def ask(req: Request):
+async def ask_post(req: Request):
     try:
         data = await req.json()
     except Exception:
         data = {}
     q = (data.get("q") or data.get("question") or "").strip()
     ans = route_question_to_answer(q)
+    return JSONResponse({"ok": True, "answer": ans})
+
+@app.get("/ask")
+async def ask_get(q: str = Query("", description="Domanda")):
+    ans = route_question_to_answer(q or "")
     return JSONResponse({"ok": True, "answer": ans})
 
 # -----------------------------------------------------------------------------
