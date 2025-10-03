@@ -1,17 +1,17 @@
 # app.py
 # -----------------------------------------------------------------------------
-# Tecnaria QA Bot – WEB ONLY + CONTATTI da "CRITICI" (JSON)
+# Tecnaria QA Bot – WEB ONLY + CONTATTI dai JSON in CRITICI_DIR
 # - /ping, /health, /ask (GET/POST) + /api/ask
-# - homepage: templates/index.html se presente, altrimenti banner JSON
-# - Regola P560 + (patentino|formazione) -> web con template tecnico
-# - NESSUNA KB LOCALE per le risposte tecniche (evita FAQ generiche)
-# - Contatti: SOLO da CRITICI_DIR (JSON)
+# - Homepage: templates/index.html se esiste, altrimenti banner JSON
+# - Regola forte P560 + (patentino|formazione): web + template tecnico
+# - Nessuna KB locale: niente risposte "FAQ" spurie
+# - POST robusto: JSON / form-data / urlencoded / text
 # -----------------------------------------------------------------------------
 
 import os
 import re
-import time
 import json
+import time
 import unicodedata
 from typing import List, Dict, Tuple, Optional
 from urllib.parse import urlparse, parse_qs
@@ -27,7 +27,6 @@ from fastapi.middleware.cors import CORSMiddleware
 # ------------------------------ ENV / CONFIG ---------------------------------
 DEBUG               = os.getenv("DEBUG", "0") == "1"
 
-# Web only (nessuna KB locale)
 SEARCH_PROVIDER     = os.getenv("SEARCH_PROVIDER", "brave").lower()  # brave | bing
 SEARCH_API_ENDPOINT = os.getenv("SEARCH_API_ENDPOINT", "").strip()
 BRAVE_API_KEY       = os.getenv("BRAVE_API_KEY", "").strip()
@@ -38,16 +37,14 @@ MIN_WEB_SCORE       = float(os.getenv("MIN_WEB_SCORE", "0.35"))
 WEB_TIMEOUT         = float(os.getenv("WEB_TIMEOUT", "6"))
 WEB_RETRIES         = int(os.getenv("WEB_RETRIES", "2"))
 
-# CRITICI (contatti)
 CRITICI_DIR         = os.getenv("CRITICI_DIR", "").strip()
 
-# Template / static dirs
 TEMPLATES_DIR       = os.getenv("TEMPLATES_DIR", "templates")
 STATIC_DIR          = os.getenv("STATIC_DIR", "static")
 
 # Regole
-FORCE_P560_WEB      = True
-DEMOTE_CONTACTS     = True  # irrilevante: i contatti vengono SOLO dai critici
+FORCE_P560_WEB      = True  # P560 + patentino/formazione -> web + template
+DEMOTE_CONTACTS     = True  # irrilevante qui, contatti solo da JSON
 
 print("[BOOT] -----------------------------------------------")
 print(f"[BOOT] WEB_ONLY; SEARCH_PROVIDER={SEARCH_PROVIDER}; PREFERRED_DOMAINS={PREFERRED_DOMAINS}")
@@ -188,15 +185,15 @@ def web_lookup(q: str,
                retries: int = WEB_RETRIES,
                domains: Optional[List[str]] = None) -> Tuple[str, List[str], float]:
     """
-    Cerca sul web (filtrando *preferibilmente* i domini indicati).
-    Torna (answer_boilerplate, sources_urls, best_score). L'answer è un boilerplate safe.
+    Cerca sul web (filtrando preferibilmente per PREFERRED_DOMAINS).
+    Ritorna (boilerplate_answer, sources, best_score).
     """
     doms = domains or PREFERRED_DOMAINS
     sources: List[str] = []
     best_score = 0.0
 
     if (SEARCH_PROVIDER == "brave" and not BRAVE_API_KEY) or (SEARCH_PROVIDER == "bing" and not BING_API_KEY):
-        # Nessuna key: non possiamo fare web lookup vero.
+        # Nessuna API key: niente lookup reale (ma l'app non crasha)
         return "", [], 0.0
 
     for _ in range(retries + 1):
@@ -217,7 +214,7 @@ def web_lookup(q: str,
         ans = (
             "OK\n"
             f"- **Riferimento**: {top.get('title') or 'pagina tecnica'}.\n"
-            "- **Sintesi**: contenuti tecnici pertinenti alla query trovati su fonte preferita.\n"
+            "- **Sintesi**: contenuti tecnici pertinenti trovati su fonte preferita.\n"
             "- **Nota**: verificare sempre le istruzioni ufficiali aggiornate.\n"
         )
         return ans, sources, best_score
@@ -237,8 +234,8 @@ def load_contacts_from_critici() -> Optional[str]:
     if not CRITICI_DIR or not os.path.isdir(CRITICI_DIR):
         return None
 
-    patterns = ["*contatti*.json", "*contacts*.json", "*.json"]
     import glob
+    patterns = ["*contatti*.json", "*contacts*.json", "*.json"]
     for pat in patterns:
         for p in glob.glob(os.path.join(CRITICI_DIR, pat)):
             try:
@@ -328,11 +325,11 @@ def route_question_to_answer(raw_q: str) -> str:
     cleaned = clean_ui_noise(raw_q)
     nq = normalize(cleaned)
 
-    # CONTATTI: SOLO dai critici
+    # CONTATTI -> SOLO dai JSON critici
     if CONT_PAT.search(nq):
         return answer_contacts()
 
-    # P560 + (patentino|formazione): web + template tecnico
+    # P560 + (patentino|formazione) -> web + template tecnico
     if P560_PAT.search(nq) and LIC_PAT.search(nq):
         ans, srcs, _ = web_lookup(cleaned, min_score=MIN_WEB_SCORE, timeout=WEB_TIMEOUT, retries=WEB_RETRIES, domains=PREFERRED_DOMAINS)
         return build_p560_from_web(srcs)
@@ -342,11 +339,11 @@ def route_question_to_answer(raw_q: str) -> str:
     if ans:
         return format_as_bot(ans, srcs)
 
-    # Se il web non dà nulla (o manca API key), non usare KB, restituisci fallback
+    # Web non disponibile o nessun risultato -> fallback
     return (
         "OK\n"
         "- **Non ho trovato una risposta affidabile sul web** (o la ricerca non è configurata). "
-        "Indicami meglio la parola chiave (es. prodotto/voce tecnica) oppure scrivimi per contatto diretto.\n"
+        "Indicami meglio la parola chiave oppure scrivimi per contatto diretto.\n"
     )
 
 # ------------------------------ FASTAPI APP ----------------------------------
@@ -363,33 +360,7 @@ app.add_middleware(
     allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
-# Helper estrazione 'q' robusta
-def _extract_q_sync(body_bytes: bytes, content_type: str) -> str:
-    ct = (content_type or "").split(";")[0].strip().lower() if content_type else ""
-    # JSON
-    if "application/json" in ct:
-        try:
-            data = json.loads(body_bytes.decode("utf-8", errors="ignore") or "{}")
-            q = (data.get("q") or data.get("question") or "").strip()
-            if q: return q
-        except Exception:
-            pass
-    # Form
-    if "application/x-www-form-urlencoded" in ct or "multipart/form-data" in ct:
-        try:
-            s = body_bytes.decode("utf-8", errors="ignore")
-            d = parse_qs(s, keep_blank_values=True)
-            q = (d.get("q", [""])[0] or d.get("question", [""])[0]).strip()
-            if q: return q
-        except Exception:
-            pass
-    # text/plain o sconosciuto: tutto body
-    if "text/plain" in ct or not ct:
-        q = (body_bytes.decode("utf-8", errors="ignore") or "").strip()
-        if q: return q
-    return ""
-
-# Homepage: se c'è template index.html servilo, altrimenti banner JSON. Con ?q=... risponde.
+# Homepage: se c'è index.html servilo, altrimenti banner. Con ?q=... risponde subito.
 @app.get("/", response_class=HTMLResponse)
 def root(request: Request, q: Optional[str] = Query(None)):
     if q and q.strip():
@@ -419,17 +390,43 @@ def health():
         "critici": {"dir": CRITICI_DIR, "exists": bool(CRITICI_DIR and os.path.isdir(CRITICI_DIR))},
     }
 
-# /ask – POST (JSON / Form / Text)
+# Estrazione q robusta
+def _extract_q_sync(body_bytes: bytes, content_type: str) -> str:
+    ct = (content_type or "").split(";")[0].strip().lower() if content_type else ""
+    # JSON
+    if "application/json" in ct:
+        try:
+            data = json.loads(body_bytes.decode("utf-8", errors="ignore") or "{}")
+            q = (data.get("q") or data.get("question") or "").strip()
+            if q: return q
+        except Exception:
+            pass
+    # Form
+    if "application/x-www-form-urlencoded" in ct or "multipart/form-data" in ct:
+        try:
+            s = body_bytes.decode("utf-8", errors="ignore")
+            d = parse_qs(s, keep_blank_values=True)
+            q = (d.get("q", [""])[0] or d.get("question", [""])[0]).strip()
+            if q: return q
+        except Exception:
+            pass
+    # Text / sconosciuto
+    if "text/plain" in ct or not ct:
+        q = (body_bytes.decode("utf-8", errors="ignore") or "").strip()
+        if q: return q
+    return ""
+
+# /ask – POST
 @app.post("/ask")
 async def ask_post(req: Request):
     q = ""
-    # JSON prima
+    # JSON
     try:
         data = await req.json()
         q = (data.get("q") or data.get("question") or "").strip()
     except Exception:
         pass
-    # fallback: altre forme
+    # Fallback: altre forme
     if not q:
         body = await req.body()
         q = _extract_q_sync(body, req.headers.get("content-type") or "")
@@ -442,7 +439,7 @@ async def ask_get(q: str = Query("", description="Domanda")):
     ans = route_question_to_answer((q or "").strip())
     return JSONResponse({"ok": True, "answer": ans})
 
-# alias API
+# Alias /api/ask
 @app.post("/api/ask")
 async def api_ask_post(req: Request):
     return await ask_post(req)
