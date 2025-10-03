@@ -1,7 +1,7 @@
 # app.py
 # -----------------------------------------------------------------------------
 # Tecnaria QA Bot – WEB ONLY + CONTATTI dai JSON in CRITICI_DIR
-# Endpoints: /ping, /health, /ask (GET/POST), /api/ask (alias)
+# Endpoints: /ping, /health, /ask (GET/POST), /api/ask (alias), /ui (UI integrata)
 # Homepage: templates/index.html (se presente), altrimenti banner JSON
 # -----------------------------------------------------------------------------
 
@@ -72,8 +72,9 @@ def clean_ui_noise(text: str) -> str:
     return " ".join(keep).strip()
 
 def domain_of(url: str) -> str:
+    from urllib.parse import urlparse as _urlparse
     try:
-        return urlparse(url).netloc.lower()
+        return _urlparse(url).netloc.lower()
     except Exception:
         return ""
 
@@ -100,10 +101,10 @@ def brave_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Di
     r = requests.get(url, headers=headers, params=params, timeout=timeout)
     r.raise_for_status()
     data = r.json()
-    items = []
-    for it in data.get("web", {}).get("results", []):
-        items.append({"title": it.get("title") or "", "url": it.get("url") or "", "snippet": it.get("description") or ""})
-    return items
+    return [
+        {"title": it.get("title") or "", "url": it.get("url") or "", "snippet": it.get("description") or ""}
+        for it in data.get("web", {}).get("results", [])
+    ]
 
 def bing_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Dict]:
     key = BING_API_KEY
@@ -115,10 +116,10 @@ def bing_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Dic
     r = requests.get(endpoint, headers=headers, params=params, timeout=timeout)
     r.raise_for_status()
     data = r.json()
-    items = []
-    for it in data.get("webPages", {}).get("value", []):
-        items.append({"title": it.get("name") or "", "url": it.get("url") or "", "snippet": it.get("snippet") or ""})
-    return items
+    return [
+        {"title": it.get("name") or "", "url": it.get("url") or "", "snippet": it.get("snippet") or ""}
+        for it in data.get("webPages", {}).get("value", [])
+    ]
 
 def web_search(q: str, topk: int = 5) -> List[Dict]:
     return bing_search(q, topk=topk) if SEARCH_PROVIDER == "bing" else brave_search(q, topk=topk)
@@ -127,7 +128,6 @@ def fetch_text(url: str, timeout: float = WEB_TIMEOUT) -> str:
     try:
         r = requests.get(url, timeout=timeout, headers={"User-Agent": "Mozilla/5.0"})
         r.raise_for_status()
-        from bs4 import BeautifulSoup
         soup = BeautifulSoup(r.text, "html.parser")
         for tag in soup(["script", "style", "noscript"]):
             tag.decompose()
@@ -240,6 +240,7 @@ def answer_contacts() -> str:
         "- **Email**: info@tecnaria.com\n"
     )
 
+# ------------------------------ FORMATTER -------------------------------------
 def format_as_bot(core_text: str, sources: Optional[List[str]] = None) -> str:
     core = core_text or ""
     if core.strip().startswith("OK"):
@@ -297,17 +298,20 @@ def route_question_to_answer(raw_q: str) -> str:
     )
 
 # ------------------------------ FASTAPI APP ----------------------------------
-app = FastAPI(title="Tecnaria QA Bot", version="3.0.0")
+app = FastAPI(title="Tecnaria QA Bot", version="3.1.0")
 
+# static + templates
 if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
+# Homepage: se c'è index.html servilo, altrimenti banner JSON. Con ?q=... risponde subito.
 @app.get("/", response_class=HTMLResponse)
 def root(request: Request, q: Optional[str] = Query(None)):
     if q and q.strip():
@@ -316,7 +320,7 @@ def root(request: Request, q: Optional[str] = Query(None)):
     index_path = os.path.join(TEMPLATES_DIR, "index.html")
     if os.path.isfile(index_path):
         return templates.TemplateResponse("index.html", {"request": request})
-    return JSONResponse({"service": "Tecnaria QA Bot", "endpoints": ["/ping", "/health", "/ask (GET q=... | POST JSON/Form/Text)"]})
+    return JSONResponse({"service": "Tecnaria QA Bot", "endpoints": ["/ping", "/health", "/ask (GET q=... | POST JSON/Form/Text)", "/ui"]})
 
 @app.get("/ping")
 def ping():
@@ -336,8 +340,10 @@ def health():
         "critici": {"dir": CRITICI_DIR, "exists": bool(CRITICI_DIR and os.path.isdir(CRITICI_DIR))},
     }
 
+# Estrazione q robusta (POST)
 def _extract_q_sync(body_bytes: bytes, content_type: str) -> str:
     ct = (content_type or "").split(";")[0].strip().lower() if content_type else ""
+    # JSON
     if "application/json" in ct:
         try:
             data = json.loads(body_bytes.decode("utf-8", errors="ignore") or "{}")
@@ -345,6 +351,7 @@ def _extract_q_sync(body_bytes: bytes, content_type: str) -> str:
             if q: return q
         except Exception:
             pass
+    # Form
     if "application/x-www-form-urlencoded" in ct or "multipart/form-data" in ct:
         try:
             s = body_bytes.decode("utf-8", errors="ignore")
@@ -353,11 +360,13 @@ def _extract_q_sync(body_bytes: bytes, content_type: str) -> str:
             if q: return q
         except Exception:
             pass
+    # Text / sconosciuto
     if "text/plain" in ct or not ct:
         q = (body_bytes.decode("utf-8", errors="ignore") or "").strip()
         if q: return q
     return ""
 
+# /ask – POST
 @app.post("/ask")
 async def ask_post(req: Request):
     q = ""
@@ -372,11 +381,13 @@ async def ask_post(req: Request):
     ans = route_question_to_answer(q)
     return JSONResponse({"ok": True, "answer": ans})
 
+# /ask – GET
 @app.get("/ask")
 async def ask_get(q: str = Query("", description="Domanda")):
     ans = route_question_to_answer((q or "").strip())
     return JSONResponse({"ok": True, "answer": ans})
 
+# alias API
 @app.post("/api/ask")
 async def api_ask_post(req: Request):
     return await ask_post(req)
@@ -385,6 +396,147 @@ async def api_ask_post(req: Request):
 async def api_ask_get(q: str = Query("", description="Domanda")):
     return await ask_get(q)
 
+# ------------------------------ UI INTEGRATA (ROBUSTA) ----------------------
+@app.get("/ui", response_class=HTMLResponse)
+def inline_ui():
+    # UI minimale con funzione send() robusta (gestisce JSON o testo)
+    html = """<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <title>Tecnaria QA Bot – UI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background:#0b1220; color:#e7eaf3; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 16px; font-size: 22px; font-weight: 700; }
+    .card { background:#121a2b; border:1px solid #1e2a44; border-radius: 14px; padding: 16px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    textarea { width:100%; min-height:120px; resize:vertical; padding:12px; border-radius:10px; border:1px solid #1e2a44; background:#0f1626; color:#fff; }
+    .btn { background:#2b5cff; color:#fff; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; }
+    .btn.secondary { background:#1f2a45; color:#cdd6f4; }
+    .btn:disabled { opacity:.6; cursor:not-allowed; }
+    .tags { display:flex; gap:8px; flex-wrap:wrap; }
+    .tag { background:#192543; border:1px solid #2a3a63; color:#cdd6f4; padding:6px 10px; border-radius:999px; cursor:pointer; }
+    .answer { white-space:pre-wrap; background:#0f1626; border:1px solid #1e2a44; border-radius:10px; padding:12px; min-height:140px; }
+    .muted { color:#99a6c4; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Tecnaria QA Bot – UI</h1>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="tags">
+        <span class="tag" data-q="Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino o formazione speciale?">P560 + CTF</span>
+        <span class="tag" data-q="Che differenza c’è tra un connettore CTF e il sistema Diapason?">CTF vs Diapason</span>
+        <span class="tag" data-q="Qual è la densità consigliata di connettori CTF per metro quadrato?">Densità CTF</span>
+        <span class="tag" data-q="contatti">Contatti</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <textarea id="q" placeholder="Scrivi qui la tua domanda…"></textarea>
+      <div class="row" style="margin-top:12px">
+        <button id="btnAsk" class="btn">Chiedi</button>
+        <button id="btnClear" class="btn secondary">Pulisci</button>
+        <button id="btnCopy" class="btn secondary">Copia risposta</button>
+        <span id="status" class="muted"></span>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="muted"><input type="checkbox" id="useGet" /> usa GET (debug)</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="answer" class="answer">La risposta apparirà qui…</div>
+      <div style="margin-top:8px" class="muted">Endpoint: <code>/ask</code> (POST JSON { q } oppure GET ?q=…)</div>
+    </div>
+  </div>
+
+  <script>
+    const $ = sel => document.querySelector(sel);
+    const qEl = $("#q");
+    const ansEl = $("#answer");
+    const statusEl = $("#status");
+    const btnAsk = $("#btnAsk");
+    const btnClear = $("#btnClear");
+    const btnCopy = $("#btnCopy");
+    const useGet = $("#useGet");
+
+    document.querySelectorAll(".tag").forEach(t => {
+      t.addEventListener("click", () => { qEl.value = t.dataset.q || ""; qEl.focus(); });
+    });
+
+    btnCopy.addEventListener("click", async () => {
+      const txt = ansEl.textContent || "";
+      try { await navigator.clipboard.writeText(txt); flash("Risposta copiata"); }
+      catch { flash("Copia non disponibile"); }
+    });
+
+    btnClear.addEventListener("click", () => {
+      qEl.value = "";
+      ansEl.textContent = "La risposta apparirà qui…";
+      flash("");
+    });
+
+    qEl.addEventListener("keydown", e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") send();
+    });
+
+    btnAsk.addEventListener("click", send);
+
+    async function send() {
+      const domanda = (qEl.value || "").trim();
+      if (!domanda) { ansEl.textContent = "OK\\n- **Domanda vuota**: inserisci una richiesta valida."; return; }
+
+      btnAsk.disabled = true; flash("Invio in corso…");
+      try {
+        let res;
+        if (useGet.checked) {
+          res = await fetch("/ask?q=" + encodeURIComponent(domanda), { method: "GET" });
+        } else {
+          res = await fetch("/ask", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ q: domanda })   // <<<<<< CHIAVE GIUSTA
+          });
+        }
+
+        // Robust parsing: prova JSON; se fallisce, prova testo
+        let data = null, text = null;
+        const ct = (res.headers.get("content-type") || "").toLowerCase();
+        if (ct.includes("application/json")) {
+          data = await res.json().catch(() => null);
+        } else {
+          text = await res.text().catch(() => "");
+        }
+
+        if (res.ok && data && typeof data.answer === "string" && data.answer.trim()) {
+          ansEl.textContent = data.answer;
+        } else if (res.ok && text) {
+          ansEl.textContent = text;
+        } else {
+          ansEl.textContent = "Errore di risposta (" + res.status + "): " + (text || JSON.stringify(data || {}));
+        }
+
+        flash("");
+      } catch (e) {
+        ansEl.textContent = "Errore di rete: " + (e?.message || e);
+        flash("errore");
+      } finally {
+        btnAsk.disabled = false;
+      }
+    }
+
+    function flash(msg){ statusEl.textContent = msg || ""; }
+  </script>
+</body>
+</html>"""
+    return HTMLResponse(html)
+
+# ------------------------------ MAIN (dev) -----------------------------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", "8000")), reload=True)
