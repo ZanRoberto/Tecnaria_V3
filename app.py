@@ -1,111 +1,45 @@
 import os
-import re
-import json
-import unicodedata
-from pathlib import Path
-from typing import List, Dict, Tuple, Optional
-
 import httpx
+import json
+import re
+from pathlib import Path
+from typing import List, Dict, Tuple
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from openai import OpenAI
 
-# OpenAI SDK (1.x)
-try:
-    from openai import OpenAI
-except Exception:
-    OpenAI = None  # consentiamo l'avvio anche senza SDK, ma alcune risposte useranno solo web/local
-
-# -----------------------------------------------------------------------------
-# APP SETUP
-# -----------------------------------------------------------------------------
+# ------------------- App setup -------------------
 app = FastAPI(title="Tecnaria Bot - Web+Local")
 templates = Jinja2Templates(directory="templates")
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise RuntimeError("OPENAI_API_KEY non impostata.")
+client = OpenAI(api_key=OPENAI_API_KEY)
 
-client = None
-if OPENAI_API_KEY and OpenAI is not None:
-    client = OpenAI(api_key=OPENAI_API_KEY)
+OPENAI_MODEL    = os.getenv("OPENAI_MODEL", "gpt-4o")
+SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave")  # 'brave' o altro/vuoto per disattivare
+FETCH_WEB_FIRST = os.getenv("FETCH_WEB_FIRST", "1") == "1"
+SEARCH_TOPK     = int(os.getenv("SEARCH_TOPK", "6"))
+DEBUG           = os.getenv("DEBUG", "0") == "1"
 
-# Web-search
-SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave")  # "brave" per Brave Search API
-BRAVE_API_KEY = os.getenv("BRAVE_API_KEY", "")
-FETCH_WEB_FIRST = True
-SEARCH_TOPK = int(os.getenv("SEARCH_TOPK", "6"))
-DEBUG = os.getenv("DEBUG", "0") == "1"
-
-# Percorsi locali
-CRITICI_DIR = os.environ.get("CRITICI_DIR", "static/static/data/critici")
-LOCAL_DOCS_DIR = "static/docs"  # .txt facoltativi
-
-# Facoltativo: hotfix manuale disattivato (rimane disponibile se vuoi abilitarlo via ENV)
-CTF_HOTFIX = os.environ.get("CTF_HOTFIX", "0") == "1"
-CTF_CODES_INLINE = os.environ.get(
-    "CTF_CODES_INLINE",
-    "CTF020,CTF025,CTF030,CTF040,CTF060,CTF070,CTF080,CTF090,CTF105,CTF125,CTF135"
-)
-
-# -----------------------------------------------------------------------------
-# INPUT MODEL
-# -----------------------------------------------------------------------------
+# ------------------- Input model (tollerante) -------------------
 class AskRequest(BaseModel):
-    question: Optional[str] = None
-    message: Optional[str] = None
-    Domanda: Optional[str] = None
-    q: Optional[str] = None
-
+    question: str | None = None
+    message:  str | None = None
+    Domanda:  str | None = None
+    q:        str | None = None
     def text(self) -> str:
         for k in (self.question, self.message, self.Domanda, self.q):
             if k:
                 return k
         return ""
 
-# -----------------------------------------------------------------------------
-# NORMALIZZAZIONE TESTO
-# -----------------------------------------------------------------------------
-def _norma_txt(s: str) -> str:
-    s = "".join(c for c in unicodedata.normalize("NFKD", s or "") if not unicodedata.combining(c))
-    s = s.lower()
-    return re.sub(r"[^a-z0-9/ ]+", "", s)
+# ------------------- SENSITIVE/LOCAL DATA (solo file) -------------------
+CRITICI_DIR = "static/static/data/critici"
 
-# -----------------------------------------------------------------------------
-# SCOPE (limita il dominio del bot a Tecnaria)
-# -----------------------------------------------------------------------------
-SCOPE_KWS = re.compile(
-    r"\b(tecnaria|ctf|ctl|ctcem|vcem|diapason|lamiera|grecata|solai?|p560|spit|connettor\w+|"
-    r"acciaio|legno|laterocemento|collaborant\w+|eta|posa|chiodi|hsbr14)\b",
-    re.IGNORECASE
-)
-
-# -----------------------------------------------------------------------------
-# INTENT E FAMIGLIE DI CODICI
-# -----------------------------------------------------------------------------
-CODICI_INTENT = re.compile(
-    r"\b(codic[io]|\bcod\.|\blista\s+codici|\btutti\s+i\s+codici|\bcodici\s+prodotti?)\b",
-    re.IGNORECASE
-)
-
-def _detect_family_in_text(t: str) -> Optional[str]:
-    t = (t or "").lower()
-    if "ctf" in t: return "ctf"
-    if "ctl" in t: return "ctl"
-    if "ctcem" in t: return "ctcem"
-    if "vcem" in t: return "vcem"
-    if "diapason" in t: return "diapason"
-    return None
-
-def _looks_like_ask_codes(q: str) -> bool:
-    nq = _norma_txt(q)
-    return ("codic" in nq or "lista codici" in nq or "codes" in nq) and any(
-        fam in nq for fam in ["ctf", "ctl", "ctcem", "vcem", "diapason"]
-    )
-
-# -----------------------------------------------------------------------------
-# SENSITIVE FILES (contatti / bancari / pagamenti) SOLO DA FILE LOCALI
-# -----------------------------------------------------------------------------
 SENSITIVE_FILES = {
     # Contatti
     "contatti": "contatti.json", "contatto": "contatti.json", "telefono": "contatti.json",
@@ -113,12 +47,11 @@ SENSITIVE_FILES = {
     "pec": "contatti.json", "sdi": "contatti.json", "p.iva": "contatti.json",
     "partita iva": "contatti.json", "indirizzo": "contatti.json", "sede": "contatti.json",
     "dove siamo": "contatti.json",
-    # Banca (naming atteso: bancari.json)
-    "iban": "bancari.json", "bonifico": "bancari.json", "conto": "bancari.json",
-    "coordinate bancarie": "bancari.json",
+    # Banca
+    "iban": "bank.json", "bonifico": "bank.json", "conto": "bank.json", "coordinate bancarie": "bank.json",
     # Pagamenti
-    "pagamento": "pagamenti.json", "pagamenti": "pagamenti.json",
-    "metodi di pagamento": "pagamenti.json",
+    "pagamento": "pagamenti.json", "pagamenti": "pagamenti.json", "metodi di pagamento": "pagamenti.json",
+    # (codici prodotto: SOLO web, non locali)
 }
 
 _SENSITIVE_KWS = re.compile(
@@ -126,7 +59,7 @@ _SENSITIVE_KWS = re.compile(
     re.IGNORECASE
 )
 
-def find_sensitive_file_for_question(q: str) -> Optional[str]:
+def find_sensitive_file_for_question(q: str) -> str | None:
     if not q:
         return None
     ql = q.lower()
@@ -134,25 +67,27 @@ def find_sensitive_file_for_question(q: str) -> Optional[str]:
         if kw in ql:
             fp = Path(CRITICI_DIR) / fname
             if fp.exists():
-                return str(fp)  # file trovato
+                return str(fp)
             else:
-                return ""       # richiesto ma file mancante
+                return ""
     if _SENSITIVE_KWS.search(ql):
         return "" if not Path(CRITICI_DIR).exists() else None
     return None
 
-def load_json_file(path: str) -> Optional[dict]:
+def load_json_file(path: str) -> dict | None:
     try:
         raw = Path(path).read_text(encoding="utf-8")
         if not raw.strip():
+            if DEBUG: print(f"[CRITICI] File vuoto: {path}")
             return None
         return json.loads(raw)
-    except Exception:
+    except Exception as e:
+        if DEBUG: print(f"[CRITICI] JSON non valido in {path}: {e}")
         return None
 
 def format_from_contatti(data: dict) -> str:
     rs   = data.get("ragione_sociale") or "TECNARIA S.p.A."
-    piva = data.get("piva") or data.get("partita_iva") or "Dato non disponibile"
+    piva = data.get("piva") or "Dato non disponibile"
     sdi  = data.get("sdi")  or "Dato non disponibile"
     tel  = data.get("telefono") or "Dato non disponibile"
     email= data.get("email") or "Dato non disponibile"
@@ -174,15 +109,15 @@ def format_from_bank(data: dict) -> str:
     iban  = data.get("iban") or data.get("conto") or "Dato non disponibile"
     intes = data.get("intestatario", "Dato non disponibile")
     banca = data.get("banca", "Dato non disponibile")
-    bic   = data.get("bic", data.get("swift", "Dato non disponibile"))
+    bic   = data.get("bic", "Dato non disponibile")
     note  = data.get("note", "-")
     return (
         f"- **Intestatario**: {intes}\n"
         f"- **Banca**: {banca}\n"
         f"- **IBAN**: {iban}\n"
-        f"- **BIC/SWIFT**: {bic}\n"
+        f"- **BIC**: {bic}\n"
         f"- **Note**: {note or '-'}\n\n"
-        "**Fonti**\n- file locale · bancari.json"
+        "**Fonti**\n- file locale · bank.json"
     )
 
 def format_from_pagamenti(data: dict) -> str:
@@ -203,118 +138,29 @@ def format_sensitive_answer_from_file(path: str) -> str:
     name = Path(path).name
     if name == "contatti.json":
         return format_from_contatti(data)
-    if name == "bancari.json":
+    if name == "bank.json":
         return format_from_bank(data)
     if name == "pagamenti.json":
         return format_from_pagamenti(data)
     pretty = json.dumps(data, indent=2, ensure_ascii=False)
     return f"- Dati:\n```\n{pretty[:1000]}\n```\n\n**Fonti**\n- file locale · {name}"
 
-# -----------------------------------------------------------------------------
-# CRITICI: FAQ deterministiche + lettura diretta codici
-# -----------------------------------------------------------------------------
-def load_critici_faq(dir_path: str = CRITICI_DIR) -> Tuple[List[dict], List[str]]:
-    qa_entries: List[dict] = []
-    files: List[str] = []
-    if not os.path.isdir(dir_path):
-        return qa_entries, files
-    for p in Path(dir_path).glob("*.json"):
-        try:
-            doc = json.loads(p.read_text(encoding="utf-8"))
-            for item in doc.get("faq", []):
-                triggers = [_norma_txt(q) for q in item.get("q", [])]
-                qa_entries.append({"triggers": triggers, "answer": item.get("a", "")})
-            files.append(p.name)
-        except Exception as e:
-            if DEBUG:
-                print(f"[critici] errore su {p}: {e}")
-    return qa_entries, files
+# ------------------- Helpers (web/local generali) -------------------
+def expand_query_if_needed(query: str) -> str:
+    q = query.lower()
+    if "p560" in q and "spit" not in q:
+        return query + " SPIT chiodatrice pistola sparachiodi Tecnaria HSBR14"
+    return query
 
-CRITICI_QA, CRITICI_FILES = load_critici_faq()
+def _prefer_score(url: str) -> int:
+    preferred = [d.strip().lower() for d in (os.getenv("PREFERRED_DOMAINS") or "tecnaria.com,spit.eu,spitpaslode.com,ordini.tecnaria.com").split(",") if d.strip()]
+    return 1 if any(d in url.lower() for d in preferred) else 0
 
-def answer_from_critici(user_q: str) -> Optional[str]:
-    if not user_q:
-        return None
-    nq = _norma_txt(user_q)
-    for qa in CRITICI_QA:
-        for trig in qa["triggers"]:
-            if nq == trig or trig in nq:
-                return qa["answer"]
-    # micro-fallback “CTF 12/xx”
-    if "ctf" in nq and "12/" in nq:
-        return ("La notazione “CTF 12/xx” è equivalente al codice con altezza xx: "
-                "12/40→CTF040, 12/60→CTF060, 12/105→CTF105, 12/125→CTF125, 12/135→CTF135.")
-    return None
-
-def get_codes_from_critici(family: str = "ctf") -> List[str]:
-    """
-    Legge direttamente i codici dal file critici, ignorando le frasi trigger.
-    Cerca prima codici_{family}.json, poi qualunque file in /critici/ con un array 'data.codici'.
-    """
-    dirp = Path(CRITICI_DIR)
-    if not dirp.exists():
-        return []
-    prefer = dirp / f"codici_{family}.json"
-    candidates = [prefer] if prefer.exists() else list(dirp.glob("*.json"))
-
-    codes: set[str] = set()
-    for p in candidates:
-        try:
-            doc = json.loads(p.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        data = (doc.get("data") or {})
-        arr = data.get("codici") or []
-        if not arr:
-            # fallback: primo array stringhe in root
-            for k, v in doc.items():
-                if isinstance(v, list) and any(isinstance(x, str) for x in v):
-                    arr = v
-                    break
-        for c in arr:
-            s = str(c).upper().strip()
-            if not s:
-                continue
-            if family and not s.startswith(family.upper()):
-                continue
-            if re.match(rf"^{family.upper()}\d{{3,4}}$", s):
-                codes.add(s)
-
-    def _num_key(c: str) -> int:
-        try:
-            return int(re.findall(r"(\d{2,4})", c)[0])
-        except Exception:
-            return 0
-
-    return sorted(codes, key=_num_key)
-
-# -----------------------------------------------------------------------------
-# SYSTEM PROMPT (per risposte generali via LLM)
-# -----------------------------------------------------------------------------
-SYSTEM_PROMPT = """
-Parli come il MIGLIOR TECNICO-COMMERCIALE di Tecnaria S.p.A. (Bassano del Grappa):
-competente, chiaro, autorevole, propositivo e vicino al cliente.
-
-TASSONOMIA OBBLIGATORIA (NON VIOLARE)
-- P560 / SPIT P560 = chiodatrice a sparo (pistola sparachiodi) per fissaggi su ACCIAIO/LAMIERA. NON è un connettore.
-  • Usata nei sistemi CTF (lamiera grecata + calcestruzzo) con chiodi HSBR14.
-  • Usata anche per fissare connettori su TRAVI IN ACCIAIO (es. VCEM/altre configurazioni su acciaio).
-  • NON si usa per connettori su LEGNO (CTL/CTCEM: fissaggi meccanici a vite/bullone).
-- CTF = connettori per solai collaboranti ACCIAIO-CALCESTRUZZO su lamiera grecata; fissaggio a sparo (HSBR14) con P560.
-- CTL = connettori per solai collaboranti LEGNO-CALCESTRUZZO; fissaggio con VITI, NO P560.
-- DIAPASON (laterocemento) = fissaggi meccanici (bulloni/barre), NO P560.
-
-REGOLE DI RISPOSTA
-- Ordine fonti: WEB → poi documenti locali. Se il web è vuoto, usa i locali; se comunque non trovi, dillo.
-- Stile TECNICO-COMMERCIALE in ITALIANO.
-- OUTPUT in 5–7 BULLET sintetici (vantaggi, posa, sicurezza/certificazioni quando rilevanti).
-- CHIUDI SEMPRE con sezione **Fonti** con URL (se web) o “file locale”.
-""".strip()
+def _looks_like_p560_misclassified(text: str) -> bool:
+    t = (text or "").lower()
+    return ("p560" in t or "spit p560" in t) and ("connettor" in t) and not any(w in t for w in ["chiodatrice","pistola","sparachiodi"])
 
 def _force_bullets_and_sources(text: str, web_hits: List[Dict], local_docs: Dict[str, str]) -> str:
-    """
-    Garantisce una sezione Fonti finale.
-    """
     txt = (text or "").strip()
     has_sources = ("**Fonti**" in txt) or ("\nFonti\n" in txt) or ("\nFonti:" in txt)
     if not has_sources:
@@ -325,37 +171,39 @@ def _force_bullets_and_sources(text: str, web_hits: List[Dict], local_docs: Dict
             txt += "\n\n**Fonti**\n- (nessuna fonte trovata)"
     return txt
 
-# -----------------------------------------------------------------------------
-# WEB SEARCH (Brave)
-# -----------------------------------------------------------------------------
-_ALLOWED_DOMAINS = ("tecnaria.com", "ordini.tecnaria.com")
-
+# ------------------- Web search (Brave, server-side) -------------------
 async def web_search(query: str, topk: int = 6) -> List[Dict]:
-    if SEARCH_PROVIDER.lower() != "brave" or not BRAVE_API_KEY:
+    if SEARCH_PROVIDER.lower() != "brave":
         return []
-    url = "https://api.search.brave.com/res/v1/web/search"
-    headers = {"X-Subscription-Token": BRAVE_API_KEY, "User-Agent": "Mozilla/5.0"}
-    params = {"q": query, "count": topk}
-    try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=18.0) as ac:
-            r = await ac.get(url, headers=headers, params=params)
-            if r.status_code != 200:
-                return []
-            data = r.json()
-            results = []
-            for item in (data.get("web", {}).get("results") or [])[:topk]:
-                u = item.get("url")
-                if not u:
-                    continue
-                results.append({"name": item.get("title", "") or u, "url": u})
-            # preferisci domini ufficiali
-            results.sort(key=lambda x: 1 if any(d in x["url"].lower() for d in _ALLOWED_DOMAINS) else 0, reverse=True)
-            return results
-    except Exception as e:
+    key = os.getenv("BRAVE_API_KEY")
+    if not key:
         if DEBUG:
-            print("[BRAVE] errore:", e)
+            print("[BRAVE] manca BRAVE_API_KEY (il bot funzionerà solo con basi locali)")
         return []
+    query = expand_query_if_needed(query)
+    url = "https://api.search.brave.com/res/v1/web/search"
+    headers = {"X-Subscription-Token": key, "User-Agent": "Mozilla/5.0"}
+    params = {"q": query, "count": topk}
+    async with httpx.AsyncClient(follow_redirects=True, timeout=18.0) as ac:
+        r = await ac.get(url, headers=headers, params=params)
+        if DEBUG:
+            print("[BRAVE] status:", r.status_code)
+            try:
+                print("[BRAVE] body sample:", r.text[:250].replace("\n", " "))
+            except Exception:
+                pass
+        if r.status_code != 200:
+            return []
+        data = r.json()
+        results = []
+        for item in (data.get("web", {}).get("results") or [])[:topk]:
+            u = item.get("url")
+            if u:
+                results.append({"name": item.get("title", "") or u, "url": u})
+        results.sort(key=lambda x: _prefer_score(x["url"]), reverse=True)
+        return results
 
+# ------------------- Fetch & Extract (codici prodotto) -------------------
 async def _fetch_text_for_regex(url: str, timeout: float = 18.0) -> str:
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=timeout) as ac:
@@ -364,13 +212,14 @@ async def _fetch_text_for_regex(url: str, timeout: float = 18.0) -> str:
                 return ""
             ct = (r.headers.get("content-type") or "").lower()
             if "pdf" in ct or url.lower().endswith(".pdf"):
-                # senza parser PDF→tentiamo lettura bytes come testo (potrebbe non estrarre tutto)
+                # estrazione "grezza" da bytes (funziona per molti PDF testuali)
                 try:
                     return r.content.decode("latin-1", errors="ignore")
                 except Exception:
                     return r.content.decode("utf-8", errors="ignore")
             return r.text or ""
-    except Exception:
+    except Exception as e:
+        if DEBUG: print("[FETCH] err:", url, e)
         return ""
 
 _CODE_PATTERNS = {
@@ -382,14 +231,12 @@ _CODE_PATTERNS = {
 }
 GENERIC_CODE = re.compile(r"\b[A-Z]{2,8}\d{2,4}\b")
 FAMILIES = ["ctf", "ctl", "ctcem", "vcem", "diapason"]
+_ALLOWED_DOMAINS = ("tecnaria.com", "ordini.tecnaria.com")
 
 async def _collect_hits_from_queries(base_query: str, max_links: int) -> List[str]:
-    queries = [
-        f'site:tecnaria.com {base_query}',
-        f'site:tecnaria.com "scheda tecnica" {base_query}',
-        f'site:tecnaria.com filetype:pdf {base_query}',
-        f'site:tecnaria.com CTF OR CTL OR CTCEM OR VCEM OR DIAPASON {base_query}',
-    ]
+    """Esegue due ricerche (normale + filetype:pdf) e restituisce URL unici (solo domini ammessi)."""
+    queries = [f"site:tecnaria.com {base_query}",
+               f"site:tecnaria.com filetype:pdf {base_query}"]
     urls: List[str] = []
     seen = set()
     for q in queries:
@@ -406,15 +253,8 @@ async def _collect_hits_from_queries(base_query: str, max_links: int) -> List[st
             urls.append(url)
     return urls[:max_links]
 
-async def find_product_codes_from_web(query: str, family: str, max_links: int = 12) -> Tuple[List[str], List[str]]:
-    synonyms = {
-        "ctf": "CTF connettori Tecnaria lamiera grecata chiodi HSBR14 P560",
-        "ctl": "CTL connettori legno calcestruzzo viti",
-        "ctcem": "CTCEM connettori legno calcestruzzo",
-        "vcem": "VCEM connettori acciaio calcestruzzo",
-        "diapason": "Diapason laterocemento",
-    }
-    base_q = synonyms.get(family.lower(), family)
+async def find_product_codes_from_web(query: str, family: str, max_links: int = 10) -> Tuple[List[str], List[str]]:
+    base_q = query
     urls = await _collect_hits_from_queries(base_q, max_links)
     pattern = _CODE_PATTERNS.get(family.lower()) or GENERIC_CODE
 
@@ -430,6 +270,21 @@ async def find_product_codes_from_web(query: str, family: str, max_links: int = 
             codes |= found
             used_sources.append(url)
 
+    # Se non ha trovato nulla, tenta una query più "secca" sulla sigla
+    if not codes:
+        hint = family.upper() if family != "generic" else "CTF CTL VCEM CTCEM DIAPASON"
+        urls2 = await _collect_hits_from_queries(hint, max_links)
+        for url in urls2:
+            if url in used_sources:
+                continue
+            text = await _fetch_text_for_regex(url)
+            if not text:
+                continue
+            found = set(m.upper() for m in pattern.findall(text))
+            if found:
+                codes |= found
+                used_sources.append(url)
+
     def _num_key(c: str) -> int:
         try:
             return int(re.findall(r"(\d{2,4})", c)[0])
@@ -437,14 +292,12 @@ async def find_product_codes_from_web(query: str, family: str, max_links: int = 
             return 0
 
     sorted_codes = sorted(codes, key=_num_key)
-    return sorted_codes, used_sources[:8]
+    return sorted_codes, used_sources[:6]
 
-# -----------------------------------------------------------------------------
-# LOCAL DOCS (txt facoltativi)
-# -----------------------------------------------------------------------------
+# ------------------- Local docs -------------------
 def load_local_docs() -> Dict[str, str]:
     docs: Dict[str, str] = {}
-    base = LOCAL_DOCS_DIR
+    base = "static/docs"
     if not os.path.isdir(base):
         return docs
     for fn in os.listdir(base):
@@ -456,9 +309,37 @@ def load_local_docs() -> Dict[str, str]:
                 continue
     return docs
 
-# -----------------------------------------------------------------------------
-# ROUTES
-# -----------------------------------------------------------------------------
+# ------------------- System prompt -------------------
+SYSTEM_PROMPT = """
+Parli come il MIGLIOR TECNICO-COMMERCIALE di Tecnaria S.p.A. (Bassano del Grappa):
+competente, chiaro, autorevole, propositivo e vicino al cliente.
+
+TASSONOMIA OBBLIGATORIA (NON VIOLARE)
+- P560 / SPIT P560 = chiodatrice a sparo (pistola sparachiodi) per fissaggi su ACCIAIO/LAMIERA. NON è un connettore.
+  • Usata nei sistemi CTF (lamiera grecata + calcestruzzo) con chiodi HSBR14.
+  • Usata anche per fissare connettori su TRAVI IN ACCIAIO (es. VCEM/altre configurazioni su acciaio).
+  • NON si usa per connettori su LEGNO (CTL/CTCEM: fissaggi meccanici a vite/bullone).
+- CTF = connettori per solai collaboranti ACCIAIO-CALCESTRUZZO su lamiera grecata; fissaggio a sparo (HSBR14) con P560.
+- CTL = connettori per solai collaboranti LEGNO-CALCESTRUZZO; fissaggio con VITI, NO P560.
+- DIAPASON (laterocemento) = fissaggi meccanici (bulloni/barre), NO P560.
+
+REGOLE DI RISPOSTA (OBBLIGATORIE)
+- Ordine fonti: WEB → poi documenti locali. Se il web è vuoto, usa i locali; se comunque non trovi, dillo.
+- Stile TECNICO-COMMERCIALE in ITALIANO.
+- OUTPUT SEMPRE in 5–7 BULLET sintetici e pratici (vantaggi, efficienza in cantiere, sicurezza/certificazioni quando rilevanti).
+- CHIUDI SEMPRE con una sezione **Fonti** con URL (se web) o “file locale”.
+- NON annunciare ricerche/attese (“sto cercando…”, “un momento…”): fornisci direttamente il risultato.
+- NON confondere mai P560 con un connettore. Se la domanda contiene “P560”, chiarisci esplicitamente che è una chiodatrice.
+""".strip()
+
+# ------------------- Ambito aziendale (solo temi Tecnaria) -------------------
+SCOPE_KWS = re.compile(
+    r"\b(tecnaria|ctf|ctl|ctcem|vcem|diapason|lamiera|grecata|solai?|p560|spit|connettor\w+|"
+    r"acciaio|legno|laterocemento|collaborant\w+|eta|posa|chiodi|hsbr14)\b",
+    re.IGNORECASE
+)
+
+# ------------------- Routes -------------------
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -467,43 +348,38 @@ async def index(request: Request):
 async def ping():
     return {"status": "ok", "service": "Tecnaria Bot - Web+Local", "model": OPENAI_MODEL}
 
-@app.get("/health_critici")
-async def health_critici():
-    return {
-        "dir": CRITICI_DIR,
-        "files": CRITICI_FILES,
-        "faq_loaded": sum(len(x["triggers"]) for x in CRITICI_QA) if CRITICI_QA else 0,
-        "hotfix_ctf": CTF_HOTFIX,
-        "ctf_codes_inline": CTF_CODES_INLINE
-    }
+# ------------------- Intent helper per "codici" -------------------
+CODICI_INTENT = re.compile(
+    r"\b(codic[io]|\bcod\.|\blista\s+codici|\btutti\s+i\s+codici|\bcodici\s+prodotti?)\b",
+    re.IGNORECASE
+)
 
-@app.get("/debug_codes")
-async def debug_codes(family: str = "ctf", q: str = ""):
-    fam = (family or "ctf").lower().strip()
-    base_q = q.strip() or fam
-    codes, srcs = await find_product_codes_from_web(base_q, fam)
-    local_codes = get_codes_from_critici(fam)
-    return {"family": fam, "query": base_q, "web_codes": codes, "local_codes": local_codes, "sources": srcs}
+def _detect_family_in_text(t: str) -> str | None:
+    t = t.lower()
+    if   "ctf"      in t: return "ctf"
+    if   "ctl"      in t: return "ctl"
+    if   "ctcem"    in t: return "ctcem"
+    if   "vcem"     in t: return "vcem"
+    if   "diapason" in t: return "diapason"
+    return None
 
-@app.get("/api/ask")
-async def ask_get(request: Request, q: str = ""):
-    return await ask(AskRequest(q=q))
-
+# ------------------- Main route -------------------
 @app.post("/api/ask")
 async def ask(req: AskRequest):
     try:
-        user_q = (req.text() or "").strip()
+        user_q = req.text().strip()
         if not user_q:
             return JSONResponse({"ok": False, "error": "Domanda mancante"}, status_code=400)
 
-        # 0) Dati sensibili/autoritatitivi: SOLO da file locali
+        # --- PRIORITÀ: dati sensibili/autoritatitivi solo da file locale ------
         sensitive_path = find_sensitive_file_for_question(user_q)
         if sensitive_path is not None:
             if sensitive_path == "":
                 return {"ok": True, "answer": "- Informazione sensibile richiesta ma il file locale non è presente.\n\n**Fonti**\n- (file locale mancante)"}
             return {"ok": True, "answer": format_sensitive_answer_from_file(sensitive_path)}
+        # ---------------------------------------------------------------------
 
-        # 1) Ambito aziendale
+        # --- AMBITO AZIENDALE: rispondi solo su temi Tecnaria -----------------
         if not SCOPE_KWS.search(user_q):
             msg = (
                 "- Ambito del bot: prodotti/soluzioni Tecnaria (connettori CTF/CTL/Diapason, posa, P560, documentazione, contatti, pagamenti).\n"
@@ -512,42 +388,55 @@ async def ask(req: AskRequest):
                 "**Fonti**\n- policy interna (ambito Tecnaria)"
             )
             return {"ok": True, "answer": msg}
+        # ---------------------------------------------------------------------
 
-        # 2) Intent CODICI (WEB → poi locali → (facoltativo) hotfix ENV)
+        # --- CODICI PRODOTTO dal WEB (tecnaria.com + PDF) --------------------
         ql = user_q.lower()
-        if CODICI_INTENT.search(ql) or _looks_like_ask_codes(user_q) or "ctf 12/" in ql:
-            fam = _detect_family_in_text(ql) or "ctf"  # default CTF se non indicato
+        if CODICI_INTENT.search(ql):
+            fam = _detect_family_in_text(ql)
 
-            # A) WEB FIRST
-            codes, srcs = await find_product_codes_from_web(user_q, fam)
-            if codes:
-                lines = [f"- **{c}**" for c in codes]
-                fontes = "\n".join(f"- {u}" for u in (srcs or [])) if srcs else "- tecnaria.com"
-                return {"ok": True, "answer": f"OK · Codici {fam.upper()}\n" + "\n".join(lines) + f"\n\n**Fonti**\n{fontes}"}
+            # Caso A: famiglia specificata
+            if fam:
+                codes, srcs = await find_product_codes_from_web(user_q, fam)
+                if codes:
+                    lines  = [f"- **{c}**" for c in codes]
+                    fontes = "\n".join(f"- {u}" for u in srcs) if srcs else "- tecnaria.com"
+                    return {"ok": True, "answer": f"OK · Codici {fam.upper()}\n" + "\n".join(lines) + f"\n\n**Fonti**\n{fontes}"}
+                else:
+                    tried = "- " + "\n- ".join(srcs) if srcs else "- (nessuna pagina rilevante trovata su tecnaria.com)"
+                    return {"ok": True, "answer": f"Non ho trovato codici {fam.upper()} su tecnaria.com.\n\n**Pagine controllate**\n{tried}\n\n**Fonti**\n- tecnaria.com"}
 
-            # B) LOCALE (critici diretti)
-            local_codes = get_codes_from_critici(fam)
-            if local_codes:
-                lines = [f"- **{c}**" for c in local_codes]
-                fonte = f"- file locale · critici/codici_{fam}.json" if (Path(CRITICI_DIR)/f"codici_{fam}.json").exists() else "- file locale · critici"
-                return {"ok": True, "answer": f"OK · Codici {fam.upper()}\n" + "\n".join(lines) + f"\n\n**Fonti**\n{fonte}"}
+            # Caso B: nessuna famiglia specificata → tutte
+            all_blocks: List[str] = []
+            all_sources: List[str] = []
+            found_any = False
 
-            # C) (OPZIONALE) Ultimo paracadute manuale via ENV
-            if CTF_HOTFIX and fam == "ctf":
-                return {"ok": True, "answer": (
-                    f"I codici ufficiali dei connettori CTF Tecnaria sono: {CTF_CODES_INLINE}. "
-                    "Ø12 mm; fissaggio con chiodatrice SPIT P560.\n\n**Fonti**\n- fallback manuale (env)"
-                )}
+            for famx in FAMILIES:
+                codes, srcs = await find_product_codes_from_web(user_q, famx)
+                if codes:
+                    found_any = True
+                    all_blocks.append(f"**{famx.upper()}**\n" + "\n".join(f"- **{c}**" for c in codes))
+                    for s in srcs:
+                        if s not in all_sources:
+                            all_sources.append(s)
 
-            # D) Niente trovato
-            tried = "\n".join(f"- {u}" for u in (srcs or [])) or "- (nessuna pagina rilevante trovata su tecnaria.com)"
-            return {"ok": True, "answer": f"Non ho trovato codici {fam.upper()} su tecnaria.com.\n\n**Pagine controllate**\n{tried}\n\n**Fonti**\n- tecnaria.com"}
+            if found_any:
+                fontes = "\n".join(f"- {u}" for u in all_sources) if all_sources else "- tecnaria.com"
+                return {"ok": True, "answer": "OK · Codici prodotti Tecnaria\n" + "\n\n".join(all_blocks) + f"\n\n**Fonti**\n{fontes}"}
+            else:
+                return {"ok": True, "answer": "Non ho trovato codici su tecnaria.com per le famiglie note (CTF, CTL, CTCEM, VCEM, DIAPASON).\n\n**Fonti**\n- tecnaria.com"}
+        # ---------------------------------------------------------------------
 
-        # 3) Flusso generale: WEB → locali → LLM (se disponibile)
+        # Flusso standard (web → locali → LLM)
         web_hits: List[Dict] = []
         local_docs: Dict[str, str] = {}
-        web_hits = await web_search(user_q, topk=SEARCH_TOPK)
-        local_docs = load_local_docs()
+        if FETCH_WEB_FIRST:
+            web_hits = await web_search(user_q, topk=SEARCH_TOPK)
+            local_docs = load_local_docs()
+        else:
+            local_docs = load_local_docs()
+            if not local_docs:
+                web_hits = await web_search(user_q, topk=SEARCH_TOPK)
 
         parts: List[str] = []
         if web_hits:
@@ -556,17 +445,8 @@ async def ask(req: AskRequest):
             parts.append("Documenti locali:\n" + "\n".join(f"- {k}" for k in local_docs.keys()))
         context_blob = "\n\n".join(parts) if parts else "(nessun contesto disponibile)"
 
-        if client is None:
-            # Se manca OPENAI: restituiamo il contesto trovato
-            answer = (
-                "- Modalità senza LLM attivo (manca OPENAI_API_KEY o SDK):\n"
-                + context_blob
-                + "\n\n**Fonti**\n- vedi elenco sopra"
-            )
-            return {"ok": True, "answer": answer}
-
         user_prompt = (
-            "Rispondi in 5–7 bullet tecnico-commerciali (vantaggi, posa, sicurezza/certificazioni quando rilevanti). "
+            "Rispondi in 5–7 bullet tecnico-commerciali (vantaggi pratici, posa, sicurezza/certificazioni quando rilevanti). "
             "Chiudi con sezione **Fonti** (URL se web, altrimenti 'file locale'). "
             f"\n\nDomanda: {user_q}\n\nSorgenti disponibili:\n{context_blob}"
         )
@@ -581,6 +461,24 @@ async def ask(req: AskRequest):
             max_tokens=900,
         )
         text = (resp.choices[0].message.content or "").strip()
+
+        if _looks_like_p560_misclassified(text):
+            if DEBUG:
+                print("[GUARD] Correzione P560: no 'connettore'.")
+            fix_prompt = (
+                "Correggi subito: la P560 è una chiodatrice a sparo (non un connettore) per fissaggi su acciaio/lamiera. "
+                "Rispondi in 5–7 bullet e chiudi con **Fonti** (URL o file locale). "
+                f"\n\nDomanda: {user_q}"
+            )
+            r2 = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[{"role":"system","content":SYSTEM_PROMPT},
+                          {"role":"user","content":fix_prompt}],
+                temperature=0.1,
+                max_tokens=700,
+            )
+            text = (r2.choices[0].message.content or "").strip()
+
         text = _force_bullets_and_sources(text, web_hits, local_docs)
         return {"ok": True, "answer": text}
 
