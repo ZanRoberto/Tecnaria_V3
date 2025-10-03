@@ -1,5 +1,5 @@
 # app.py
-# Tecnaria QA Bot — web-first con gestione PDF, snippet reale e template tecnici
+# Tecnaria QA Bot — web-first con gestione PDF, snippet puliti e template tecnici
 # Endpoints: /, /ping, /health, /ask (GET/POST), /api/ask
 # ENV minimi: SEARCH_PROVIDER=brave|bing + (BRAVE_API_KEY|BING_API_KEY)
 # Facoltativi: PREFERRED_DOMAINS, MIN_WEB_SCORE, CRITICI_DIR, DEBUG
@@ -8,6 +8,7 @@ import os
 import re
 import json
 import glob
+import html  # <-- per unescape & pulizia snippet
 import unicodedata
 from typing import List, Dict, Tuple, Optional
 from urllib.parse import urlparse, parse_qs
@@ -68,6 +69,14 @@ def domain_of(url: str) -> str:
 def short_text(text: str, n: int = 900) -> str:
     t = re.sub(r"\s+", " ", (text or "")).strip()
     return (t[:n] + "…") if len(t) > n else t
+
+def strip_html_snippet(s: str) -> str:
+    """Rimuove tag HTML (es. <strong>) e normalizza spazi; fa unescape HTML entities."""
+    if not s:
+        return ""
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return html.unescape(s)
 
 # --------------------------- WEB SEARCH / FETCH ------------------------------
 def brave_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Dict]:
@@ -183,9 +192,9 @@ def web_lookup(q: str,
         url = top.get("url", "")
         title = top.get("title") or "pagina tecnica"
 
-        # PDF → usa snippet SERP o fallback pulito
+        # PDF → usa snippet SERP pulito
         if is_pdf_url(url):
-            snippet_serp = (top.get("snippet") or "").strip()
+            snippet_serp = strip_html_snippet((top.get("snippet") or "").strip())
             if not snippet_serp:
                 snippet_serp = "Scheda/PDF Tecnaria pertinente alla domanda. Apri la fonte per i dettagli tecnici."
             answer = (
@@ -206,8 +215,8 @@ def web_lookup(q: str,
             )
             return answer, [url], best_score
 
-        # Fallback: snippet SERP
-        snippet_serp = (top.get("snippet") or "").strip()
+        # Fallback: snippet SERP (pulito)
+        snippet_serp = strip_html_snippet((top.get("snippet") or "").strip())
         if not snippet_serp:
             snippet_serp = "Contenuto tecnico pertinente individuato. Apri la fonte per i dettagli."
         answer = (
@@ -354,15 +363,17 @@ def build_ctf_density_answer(sources: List[str]) -> str:
         base += "\n**Fonti**\n- https://tecnaria.com/download/homepage/CT_CATALOGO_IT.pdf\n"
     return base
 
-# --------------- NUOVO TEMPLATE: CTF vs DIAPASON (pulito) -------------------
-COMPARE_KEYS = re.compile(r"\b(differenz|confront|quando\s+usare|quale\s+scegliere)\b", re.I)
+# --------------- TEMPLATE: CTF vs DIAPASON (pulito) -------------------------
 DIAPASON_KEY = re.compile(r"\bdiapason\b", re.I)
+COMPARE_KEYS = re.compile(r"\b(differenz|confront|quando\s+usare|quale\s+scegliere)\b", re.I)
+CTL_KEY = re.compile(r"\bctl\b", re.I)
 
-def is_ctf_vs_diapason(nq: str) -> bool:
-    # Domanda che contiene CTF e Diapason o parole di confronto
+def is_connector_vs_diapason(nq: str) -> bool:
     has_ctf = bool(CTF_KEY.search(nq))
+    has_ctl = bool(CTL_KEY.search(nq))
     has_diap = bool(DIAPASON_KEY.search(nq))
-    return (has_ctf and has_diap) or (has_ctf and bool(COMPARE_KEYS.search(nq))) or (has_diap and bool(COMPARE_KEYS.search(nq)))
+    has_comp = bool(COMPARE_KEYS.search(nq))
+    return (has_diap and (has_ctf or has_ctl)) or (has_comp and (has_ctf or has_ctl or has_diap))
 
 def build_ctf_vs_diapason_answer(sources: List[str]) -> str:
     base = (
@@ -376,6 +387,22 @@ def build_ctf_vs_diapason_answer(sources: List[str]) -> str:
         base += "\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
     else:
         base += "\n**Fonti**\n- https://tecnaria.com/download/homepage/CT_CATALOGO_IT.pdf\n"
+    return base
+
+def build_ctl_vs_diapason_answer(sources: List[str]) -> str:
+    base = (
+        "OK\n"
+        "- **CTL**: connettore per **solaio legno–calcestruzzo**; lavora con viti su supporto ligneo. "
+        "Non è adatto a solai in **laterocemento** (assenza di legno strutturale).\n"
+        "- **Diapason**: sistema per **rinforzo solai in laterocemento** esistenti, con **fissaggi meccanici** e getto collaborante dall’alto. "
+        "Indicato quando **non c’è lamiera** e si vuole evitare demolizioni invasive.\n"
+        "- **Quando usare**: **Diapason** per laterocemento fessurato/da consolidare; **CTL** solo per solai in **legno** che devono diventare collaboranti con calcestruzzo.\n"
+        "- **Scelta tecnica**: definita da **tipologia solaio** e **calcolo** (carichi, luci, deformazioni). Supporto di progetto disponibile.\n"
+    )
+    if sources:
+        base += "\n**Fonti**\n" + "\n".join(f"- {u}" for u in sources) + "\n"
+    else:
+        base += "\n**Fonti**\n- https://tecnaria.com/prodotti/diapason/\n"
     return base
 
 # ----------------------------- ROUTING --------------------------------------
@@ -395,12 +422,15 @@ def route_question_to_answer(raw_q: str) -> str:
         _, srcs, _ = web_lookup_smart(q)
         return build_p560_from_web(srcs)
 
-    # NUOVO: Confronto CTF vs Diapason → sempre template pulito + fonti web
-    if is_ctf_vs_diapason(nq):
+    # Confronto con Diapason (CTL o CTF) → template pulito + fonti web
+    if is_connector_vs_diapason(nq):
         _, srcs, _ = web_lookup_smart(q)
-        return build_ctf_vs_diapason_answer(srcs)
+        if CTL_KEY.search(nq) and not CTF_KEY.search(nq):
+            return build_ctl_vs_diapason_answer(srcs)
+        else:
+            return build_ctf_vs_diapason_answer(srcs)
 
-    # Domande su densità/fissaggio CTF → template tecnico + fonti web
+    # Domande su densità/fissaggio CTF → template tecnico + fonti web se disponibili
     if is_ctf_density_question(nq):
         _, srcs, _ = web_lookup_smart(q)
         return build_ctf_density_answer(srcs)
@@ -422,7 +452,7 @@ def route_question_to_answer(raw_q: str) -> str:
             "Puoi riformulare la domanda oppure posso fornirti i contatti Tecnaria.\n")
 
 # ----------------------------- FASTAPI APP ----------------------------------
-app = FastAPI(title="Tecnaria QA Bot", version="3.5.0")
+app = FastAPI(title="Tecnaria QA Bot", version="3.6.0")
 
 # static + templates
 if os.path.isdir(STATIC_DIR):
