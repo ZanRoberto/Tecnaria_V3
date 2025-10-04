@@ -5,6 +5,5 @@ requests
 beautifulsoup4
 pdfminer.six
 markdown-it-py
-mdurl
 gunicorn
 
