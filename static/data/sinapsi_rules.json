@@ -54,6 +54,12 @@
     "mode": "postscript",
     "lang": "it",
     "answer": "Le informazioni fornite sono a carattere tecnico-informativo e fanno riferimento ai prodotti **Tecnaria S.p.A.**, certificati e testati secondo normative europee vigenti. Per dati progettuali specifici, consultare le **schede tecniche ufficiali** disponibili su [tecnaria.com](https://tecnaria.com)."
-  }
-]
+  },
+  {
+  "id": "contatti_tecnaria_override",
+  "pattern": "(?i)(contatt|assistenza|supporto|preventiv|commerciale|tecnico|telefono|e[- ]?mail|info@tecnaria\\.com|\\+?39\\s*0424)",
+  "mode": "override",
+  "lang": "it",
+  "answer": "Contatta direttamente Tecnaria per assistenza tecnica o preventivi.<br><br>📍 <strong>TECNARIA S.p.A.</strong> – Bassano del Grappa (VI)<br>📧 <a href='mailto:info@tecnaria.com'>info@tecnaria.com</a><br>📞 <a href='tel:+390424502029'>+39 0424 502029</a><br><br><em>Per progetti specifici, consulta le schede tecniche ufficiali su</em> <a href='https://tecnaria.com' target='_blank'>tecnaria.com</a>."
+}
 
