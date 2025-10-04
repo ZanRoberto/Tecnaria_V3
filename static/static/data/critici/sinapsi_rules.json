@@ -1,1 +1,38 @@
+[
+  {
+    "id": "p560_policy",
+    "pattern": "(?i)\\bp\\s*[- ]?560\\b.*(patentino|abilitazione|formazione)|(patentino|abilitazione|formazione).*\\bp\\s*[- ]?560\\b",
+    "mode": "override",
+    "lang": "it",
+    "answer": "OK\n- **Abilitazione/Patentino**: non è richiesto un patentino specifico per **SPIT P560**; serve **formazione interna** secondo le istruzioni del costruttore.\n- **Fissaggio CTF**: **2 chiodi HSBR14** per connettore; nessuna preforatura; taratura potenza e **prova su campione**.\n- **DPI**: occhiali, guanti, protezione udito; lamiera ben aderente; rispetto distanze dai bordi.\n"
+  },
+  {
+    "id": "ctf_density_addon",
+    "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|fissagg|chiod|p560|hsbr|hi[- ]?bond)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Densità indicativa**: **~6–8 CTF/m²** (più fitta agli appoggi, più rada in mezzeria); valore **finale da calcolo**.\n- **Fissaggio**: **2 chiodi HSBR14**/CTF con **SPIT P560**; prova su campione e taratura potenza.\n- **Buone pratiche**: lamiera aderente alla trave, rispetto bordi/assi, DPI.\n"
+  },
+  {
+    "id": "ctf_vs_diapason_addon",
+    "pattern": "(?i)(ctf).*diapason|(diapason).*(ctf)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Quando CTF**: se c’è/si posa **lamiera grecata** e serve **velocità**; posa dall’alto con **SPIT P560** e **2 chiodi HSBR14**/pezzo.\n- **Quando Diapason**: **rinforzo laterocemento** senza lamiera; intervento dall’alto **poco invasivo** con fissaggi meccanici.\n- **Scelta pratica**: dipende da **tipologia solaio**, **carichi**, **vincoli di spessore**, **accessi** e **tempi**; quantità connettori/ancoraggi → **calcolo**.\n"
+  },
+  {
+    "id": "ctl_maxi_selector",
+    "pattern": "(?i)(ctl|maxi).*tavolato.*(1\\s*cm|2\\s*cm|20\\s*mm).*soletta.*5\\s*cm",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Se tavolato ~2 cm e soletta 5 cm** → **CTL MAXI 12/040**; viti **Ø10×100** (oppure **Ø10×120** se interposti/tavolato > 25–30 mm).\n- **Criterio**: testa **sopra la rete** a metà spessore e **sotto** il filo superiore del getto; se interferenze → **12/030**.\n"
+  },
+  {
+    "id": "ctf_hibond_advantages",
+    "pattern": "(?i)\\bctf\\b.*(hi[- ]?bond|lamiera)|hi[- ]?bond.*ctf|vantagg",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Compatibilità**: **CTF** progettati per lamiere grecate certificate (es. **Hi-Bond**), piena collaborazione acciaio–calcestruzzo.\n- **Velocità di posa**: dall’alto con **SPIT P560** e **2 chiodi HSBR14**, senza preforatura.\n- **Prestazioni**: maggiore rigidezza/capacità, deformazioni ridotte, luci maggiori a spessore contenuto.\n- **Normativa**: **ETA** e tracciabilità lotti.\n"
+  }
+]
 
