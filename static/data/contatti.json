@@ -1,1 +1,17 @@
+{
+  "ragione_sociale": "TECNARIA S.p.A.",
+  "piva": "01277680243",
+  "sdi": "J6URRTW",
+  "indirizzo": {
+    "via": "Viale Pecori Giraldi, 55",
+    "cap": "36061",
+    "citta": "Bassano del Grappa",
+    "provincia": "VI",
+    "stato": "Italia"
+    },
+  "telefono": "+39 0424 502029",
+  "email": "info@tecnaria.com",
+  "pec": null
+}
+
 
