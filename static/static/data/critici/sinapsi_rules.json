@@ -242,5 +242,12 @@
     "mode": "postscript",
     "lang": "it",
     "answer": "PS errori comuni: lamiera non aderente, carica errata, punzone usurato, distanze bordi non rispettate. Correggere e ripetere la prova."
-  }
-]
+  },
+  
+ {
+  "id": "p560_policy",
+  "pattern": "(?i)\\bp\\s*[- ]?560\\b.*(patentino|abilitazione|formazione)|(patentino|abilitazione|formazione).*\\bp\\s*[- ]?560\\b",
+  "mode": "override",
+  "lang": "it",
+  "answer": "OK\n- **Abilitazione/Patentino**: non è richiesto un patentino specifico per **SPIT P560**; serve **formazione interna** secondo le istruzioni del costruttore.\n- **Fissaggio CTF**: **2 chiodi HSBR14** per connettore; nessuna preforatura; taratura potenza e prova su campione.\n- **DPI**: occhiali, guanti, protezione udito; lamiera ben aderente; rispetto distanze dai bordi.\n\n**Fonti**\n- Sinapsi (curated)\n"
+}
