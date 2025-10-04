@@ -1,255 +1,318 @@
 import os
-import json
 import re
+import json
+import time
+import math
 from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, Request, Body, Query
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, PlainTextResponse
+import requests
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse, HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
-# --- Config ---
-APP_TITLE = "Tecnaria QA Bot"
-APP_ENDPOINTS = ["/ping", "/health", "/api/ask (GET q=... | POST JSON {q})"]
+# -----------------------------
+# Config & helpers
+# -----------------------------
+APP_NAME = "Tecnaria QA Bot"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Env
+CRITICI_DIR = os.getenv("CRITICI_DIR", os.path.join(BASE_DIR, "static", "data"))
+SINAPSI_FILE_ENV = os.getenv("SINAPSI_FILE", "sinapsi_rules.json")
+SINAPSI_PATH = SINAPSI_FILE_ENV if os.path.isabs(SINAPSI_FILE_ENV) else os.path.join(CRITICI_DIR, SINAPSI_FILE_ENV)
+
+SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave").lower().strip()
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY", "").strip()
 BING_API_KEY = os.getenv("BING_API_KEY", "").strip()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
-SEARCH_PROVIDER = (os.getenv("SEARCH_PROVIDER") or "brave").lower()
-PREFERRED_DOMAINS = [d.strip() for d in (os.getenv("PREFERRED_DOMAINS") or "tecnaria.com,spit.eu,spitpaslode.com").split(",") if d.strip()]
-MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE") or 0.35)
-WEB_TIMEOUT = float(os.getenv("WEB_TIMEOUT") or 6.0)
-WEB_RETRIES = int(os.getenv("WEB_RETRIES") or 2)
+PREFERRED_DOMAINS = [d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com").split(",") if d.strip()]
+MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.35"))
+WEB_TIMEOUT = float(os.getenv("WEB_TIMEOUT", "6"))
 
-CRITICI_DIR = os.getenv("CRITICI_DIR") or "static/data/critici"
-STATIC_DIR = os.getenv("STATIC_DIR") or "static"
-SINAPSI_FILE = os.path.join(os.getenv("STATIC_DATA_DIR") or "static/data", "sinapsi_rules.json")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+INDEX_HTML = os.path.join(STATIC_DIR, "index.html")
 
-# --- App ---
-app = FastAPI(title=APP_TITLE)
+# -----------------------------
+# App
+# -----------------------------
+app = FastAPI(title=APP_NAME)
 
-# Static mount (serve index.html se presente)
-if not os.path.isdir(STATIC_DIR):
-    os.makedirs(STATIC_DIR, exist_ok=True)
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_headers=["*"],
+    allow_methods=["*"],
+    allow_credentials=False,
+)
 
+# Mount /static
+if os.path.isdir(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-# --- Sinapsi loader ---
-class Rule(BaseModel):
-    id: Optional[str] = None
-    pattern: str
-    mode: str  # override | augment | postscript
-    lang: str = "it"
-    answer: str
+# -----------------------------
+# Sinapsi rules loader
+# -----------------------------
+class SynRule:
+    def __init__(self, rid: str, pattern: str, mode: str, lang: str, answer: str):
+        self.id = rid
+        self.pattern_raw = pattern
+        self.re = re.compile(pattern, re.IGNORECASE)
+        self.mode = (mode or "augment").lower()
+        self.lang = lang or "it"
+        self.answer = answer
 
-def _load_sinapsi_rules(path: str) -> List[Rule]:
+def load_sinapsi(path: str) -> List[SynRule]:
+    rules: List[SynRule] = []
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        rules: List[Rule] = []
-        for r in data:
-            # tollero duplicati e piccoli errori
-            try:
-                rules.append(Rule(**r))
-            except Exception:
-                continue
-        return rules
+        if isinstance(data, list):
+            for i, r in enumerate(data):
+                try:
+                    rules.append(SynRule(
+                        rid=r.get("id", f"rule_{i}"),
+                        pattern=r.get("pattern", ".^"),
+                        mode=r.get("mode", "augment"),
+                        lang=r.get("lang", "it"),
+                        answer=r.get("answer", "")
+                    ))
+                except Exception:
+                    continue
     except FileNotFoundError:
-        return []
+        pass
+    return rules
+
+SINAPSI_RULES: List[SynRule] = load_sinapsi(SINAPSI_PATH)
+
+# -----------------------------
+# Web search
+# -----------------------------
+def _score_for(idx: int) -> float:
+    # Simple decay by rank
+    return max(0.0, 1.0 - 0.12 * idx)
+
+def _domain(url: str) -> str:
+    try:
+        return url.split("//", 1)[1].split("/", 1)[0].lower()
     except Exception:
-        return []
+        return ""
 
-SINAPSI_RULES: List[Rule] = _load_sinapsi_rules(SINAPSI_FILE)
+def _is_pdf(result: Dict[str, Any]) -> bool:
+    url = result.get("url") or ""
+    return url.lower().endswith(".pdf")
 
-
-# --- Mini web search (placeholder robusto) ---
-import requests
-
-def _score_url(u: str) -> float:
-    base = u.split("/")[2] if "://" in u else u
-    for i, dom in enumerate(PREFERRED_DOMAINS):
-        if dom in base:
-            # più a sinistra nella lista = più importante
-            return 1.0 - (i * 0.1)
-    return 0.2
-
-def brave_search(q: str) -> List[Dict[str, Any]]:
+def brave_search(query: str, limit: int = 6) -> List[Dict[str, Any]]:
     if not BRAVE_API_KEY:
         return []
     url = "https://api.search.brave.com/res/v1/web/search"
-    headers = {"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY}
-    params = {"q": q, "count": 5, "search_lang": "it"}
+    headers = {"X-Subscription-Token": BRAVE_API_KEY}
+    params = {"q": query, "count": max(3, min(10, limit))}
     try:
         r = requests.get(url, headers=headers, params=params, timeout=WEB_TIMEOUT)
         r.raise_for_status()
-        data = r.json()
-        out = []
-        for item in (data.get("web", {}) or {}).get("results", []):
-            u = item.get("url")
-            title = item.get("title") or ""
-            snippet = item.get("description") or ""
-            score = _score_url(u)
-            out.append({"url": u, "title": title, "snippet": snippet, "score": score})
-        # preferiti prima
-        out.sort(key=lambda x: x.get("score", 0), reverse=True)
-        # filtra per soglia
-        out = [x for x in out if x["score"] >= MIN_WEB_SCORE]
-        return out
+        js = r.json()
+        items = []
+        for block in js.get("web", {}).get("results", []):
+            items.append({
+                "title": block.get("title") or "",
+                "url": block.get("url") or "",
+                "snippet": block.get("description") or ""
+            })
+        return items
     except Exception:
         return []
 
-def web_search(q: str) -> List[Dict[str, Any]]:
+def bing_search(query: str, limit: int = 6) -> List[Dict[str, Any]]:
+    if not BING_API_KEY:
+        return []
+    url = "https://api.bing.microsoft.com/v7.0/search"
+    headers = {"Ocp-Apim-Subscription-Key": BING_API_KEY}
+    params = {"q": query, "count": max(3, min(10, limit)), "textDecorations": False, "textFormat": "Raw"}
+    try:
+        r = requests.get(url, headers=headers, params=params, timeout=WEB_TIMEOUT)
+        r.raise_for_status()
+        js = r.json()
+        items = []
+        for d in js.get("webPages", {}).get("value", []):
+            items.append({
+                "title": d.get("name") or "",
+                "url": d.get("url") or "",
+                "snippet": d.get("snippet") or ""
+            })
+        return items
+    except Exception:
+        return []
+
+def search_web(query: str) -> List[Dict[str, Any]]:
+    results = []
     if SEARCH_PROVIDER == "brave":
-        return brave_search(q)
-    # fallback nullo se non supportato
-    return []
-
-
-# --- Composer risposte ---
-def apply_sinapsi(q: str, base_answer: str) -> str:
-    if not SINAPSI_RULES:
-        return base_answer
-
-    q_norm = q.strip().lower()
-    override_blocks: List[str] = []
-    augment_blocks: List[str] = []
-    postscripts: List[str] = []
-
-    for rule in SINAPSI_RULES:
-        try:
-            if re.search(rule.pattern, q, flags=re.IGNORECASE | re.DOTALL):
-                if rule.mode == "override":
-                    override_blocks.append(rule.answer.strip())
-                elif rule.mode == "augment":
-                    augment_blocks.append(rule.answer.strip())
-                elif rule.mode == "postscript":
-                    postscripts.append(rule.answer.strip())
-        except re.error:
-            # regex sbagliata → salto
-            continue
-
-    if override_blocks:
-        # se più override matchano, concateno (primo vince il tono)
-        out = "\n\n".join(override_blocks)
+        results = brave_search(query)
+        if not results and BING_API_KEY:
+            results = bing_search(query)
     else:
-        out = base_answer.strip()
-        if augment_blocks:
-            out += ("\n" if out else "") + "\n".join(augment_blocks)
-    if postscripts:
-        out += ("\n" if out else "") + "\n".join(postscripts)
+        results = bing_search(query)
+        if not results and BRAVE_API_KEY:
+            results = brave_search(query)
+    # Re-rank: preferred domains up, then by rank score
+    rescored = []
+    for i, r in enumerate(results):
+        url = r.get("url", "")
+        dom = _domain(url)
+        bonus = 0.3 if any(dom.endswith(p) or dom == p for p in PREFERRED_DOMAINS) else 0.0
+        score = _score_for(i) + bonus
+        rescored.append({**r, "score": round(score, 3)})
+    rescored.sort(key=lambda x: x["score"], reverse=True)
+    # Filter by minimal score
+    rescored = [r for r in rescored if r["score"] >= MIN_WEB_SCORE]
+    return rescored[:6]
 
-    return out.strip()
+# -----------------------------
+# Compose answer
+# -----------------------------
+def apply_sinapsi(question: str) -> Dict[str, Any]:
+    """Returns {'override': str|None, 'addons': [str]}"""
+    override_text: Optional[str] = None
+    addons: List[str] = []
+    for rule in SINAPSI_RULES:
+        if rule.re.search(question or ""):
+            if rule.mode == "override" and not override_text:
+                override_text = rule.answer.strip()
+            elif rule.mode in ("augment", "postscript"):
+                addons.append(rule.answer.strip())
+    return {"override": override_text, "addons": addons}
 
+def build_summary_from_web(results: List[Dict[str, Any]]) -> str:
+    """
+    Produce una sintesi breve e leggibile SOLO testuale (niente blob PDF).
+    """
+    if not results:
+        return ""
+    # Prendi 1–2 snippet utili delle fonti preferite (tecnaria.com prima)
+    primary: List[str] = []
+    for r in results:
+        snip = (r.get("snippet") or "").strip()
+        if not snip:
+            continue
+        # Evita contenuti troppo tecnici in inglese: accorcia
+        snip = re.sub(r"\s+", " ", snip)
+        primary.append(snip)
+        if len(primary) >= 2:
+            break
+    if not primary:
+        return ""
+    if len(primary) == 1:
+        return primary[0]
+    return f"{primary[0]} {primary[1]}"
 
-def build_web_answer(q: str, hits: List[Dict[str, Any]]) -> str:
-    if not hits:
-        return "OK\n- **Non ho trovato una risposta affidabile sul web** (o la ricerca non è configurata). Puoi riformulare la domanda oppure posso fornirti i contatti Tecnaria.\n"
-
-    # Sintesi molto leggibile (senza <strong> sporchi dai PDF)
-    bullet_intro = "OK\n- **Riferimento**: strutture miste e connettori"
-    # Prendo 1–3 fonti top
-    top = hits[:3]
-    # Lista fonti pulita
-    fonti = "\n".join(f"- {h['url']}" for h in top if h.get("url"))
-    out = f"{bullet_intro}\n\n**Fonti**\n{fonti}\n"
+def collect_sources(results: List[Dict[str, Any]]) -> List[str]:
+    seen = set()
+    out = []
+    for r in results:
+        u = r.get("url", "")
+        if not u or u in seen:
+            continue
+        seen.add(u)
+        out.append(u)
+        if len(out) >= 6:
+            break
     return out
 
+def format_answer(question: str, web_syn: str, addons: List[str], sources: List[str], override: Optional[str]) -> str:
+    """
+    Stile commerciale tecnico:
+    - 1 riga di stato "OK"
+    - Paragrafo chiaro
+    - Punti concisi
+    - Fonti sempre in fondo (link)
+    """
+    lines: List[str] = []
+    lines.append("OK")
 
-# --- API model ---
-class AskIn(BaseModel):
-    q: str
+    if override:
+        # Quando Sinapsi decide di rispondere al posto del web
+        lines.append(override.strip())
+    else:
+        # Corpo principale
+        if web_syn:
+            lines.append(web_syn.strip())
 
+        # Addons (Sinapsi) come integrazione
+        for add in addons:
+            if add:
+                lines.append(add.strip())
 
-# --- Routes ---
+    # Fonti in coda (mai prima)
+    if sources:
+        lines.append("")
+        lines.append("Fonti:")
+        for u in sources[:6]:
+            lines.append(f"- {u}")
+
+    return "\n".join(lines).strip() + "\n"
+
+# -----------------------------
+# API
+# -----------------------------
 @app.get("/ping")
 def ping():
     return {"ok": True, "pong": True}
 
 @app.get("/health")
 def health():
-    return {
+    info = {
         "status": "ok",
         "web_search": {
             "provider": SEARCH_PROVIDER,
             "brave_key": bool(BRAVE_API_KEY),
             "bing_key": bool(BING_API_KEY),
             "preferred_domains": PREFERRED_DOMAINS,
-            "min_web_score": MIN_WEB_SCORE,
+            "min_web_score": MIN_WEB_SCORE
         },
         "critici": {
-            "dir": os.path.abspath(os.path.join("static", "data")),
-            "exists": os.path.isdir(os.path.join("static", "data")),
-            "sinapsi_file": SINAPSI_FILE,
-            "sinapsi_loaded": len(SINAPSI_RULES),
-        },
+            "dir": CRITICI_DIR,
+            "exists": os.path.isdir(CRITICI_DIR),
+            "sinapsi_file": SINAPSI_PATH,
+            "sinapsi_loaded": len(SINAPSI_RULES)
+        }
     }
+    return JSONResponse(info)
 
-def _answer_flow(q: str) -> Dict[str, Any]:
+@app.get("/")
+def root():
+    if os.path.isfile(INDEX_HTML):
+        return FileResponse(INDEX_HTML, media_type="text/html; charset=utf-8")
+    return JSONResponse({"ok": True, "msg": "Use /ask or place static/index.html"})
+
+def _answer_core(q: str) -> Dict[str, Any]:
     q = (q or "").strip()
     if not q:
-        return {"ok": True, "answer": "OK\n- **Domanda vuota**: inserisci una richiesta valida.\n"}
+        return {"ok": True, "answer": "OK\nDomanda vuota: inserisci una richiesta valida.\n"}
 
     # 1) Web
-    hits = web_search(q)
-    base_answer = build_web_answer(q, hits)
+    web_results = search_web(q)
+    web_synopsis = build_summary_from_web(web_results)
+    sources = collect_sources(web_results)
 
     # 2) Sinapsi
-    final_answer = apply_sinapsi(q, base_answer)
+    syn = apply_sinapsi(q)
+    override = syn["override"]
+    addons = syn["addons"]
 
-    # 3) Se tutto still “vuoto” metto una chiusura educata
-    if not final_answer.strip():
-        final_answer = "OK\n- **Non ho trovato** una risposta utilizzabile. Vuoi che ti metta in contatto con un tecnico/commerciale Tecnaria?\n"
-
-    return {"ok": True, "answer": final_answer}
+    # 3) Format
+    answer = format_answer(q, web_synopsis, addons, sources, override)
+    return {"ok": True, "answer": answer}
 
 @app.get("/api/ask")
-def ask_get(q: str = Query(..., description="Domanda")):
-    return _answer_flow(q)
+def api_ask_get(q: str = Query("", description="Domanda")):
+    try:
+        return JSONResponse(_answer_core(q))
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": f"{type(e).__name__}: {e}"}, status_code=500)
 
 @app.post("/api/ask")
-def ask_post(payload: AskIn = Body(...)):
-    return _answer_flow(payload.q)
-
-@app.get("/", response_class=HTMLResponse)
-def root():
-    """
-    Se esiste static/index.html → serve UI
-    Altrimenti mostra un mini banner con gli endpoint.
-    """
-    index_path = os.path.join(STATIC_DIR, "index.html")
-    if os.path.isfile(index_path):
-        return FileResponse(index_path, media_type="text/html")
-    # fallback banner
-    body = {
-        "service": APP_TITLE,
-        "endpoints": APP_ENDPOINTS,
-        "msg": "Use /ask or place static/index.html",
-    }
-    html = f"""<!doctype html>
-<html lang="it">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>{APP_TITLE}</title>
-<style>
-  body {{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:0; padding:48px; background:#0b1220; color:#eee; }}
-  .wrap {{ max-width: 960px; margin: 0 auto; }}
-  .card {{ background:#0f172a; border:1px solid #1f2a44; border-radius:14px; padding:24px; }}
-  code, pre {{ background:#0b1220; color:#e2e8f0; padding:2px 6px; border-radius:6px; }}
-  a {{ color:#93c5fd; text-decoration:none; }}
-  h1 {{ margin-top:0 }}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="card">
-    <h1>{APP_TITLE}</h1>
-    <p>UI non trovata. Metti un file <code>static/index.html</code>.</p>
-    <pre>{json.dumps(body, ensure_ascii=False, indent=2)}</pre>
-  </div>
-</div>
-</body>
-</html>"""
-    return HTMLResponse(html)
+async def api_ask_post(payload: Dict[str, Any]):
+    try:
+        q = (payload or {}).get("q", "")
+        return JSONResponse(_answer_core(q))
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": f"{type(e).__name__}: {e}"}, status_code=500)
