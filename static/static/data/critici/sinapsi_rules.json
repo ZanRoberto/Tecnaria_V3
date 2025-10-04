@@ -1,73 +1,24 @@
 [
   {
-    "id": "p560_patentino_override",
-    "pattern": "(?i)\\bp\\s*[- ]?560\\b.*(patentino|abilitazione|formazione)|(patentino|abilitazione|formazione).*\\bp\\s*[- ]?560\\b",
+    "id": "p560_patentino",
+    "pattern": "(?i)\\bp560\\b.*(patentino|abilitazione|formazione)|(patentino|abilitazione|formazione).*\\bp560\\b",
     "mode": "override",
     "lang": "it",
-    "answer": "OK\n- **Abilitazione/Patentino**: non è richiesto un patentino specifico per **SPIT P560**; serve **formazione interna** secondo istruzioni del costruttore.\n- **Fissaggio CTF**: **2 chiodi HSBR14** per connettore; nessuna preforatura; taratura potenza e **prova su campione**.\n- **DPI**: occhiali, guanti, protezione udito; lamiera ben aderente alla trave; rispetto distanze dai bordi.\n\n**Fonti**\n- Sinapsi (curated)\n"
+    "answer": "OK\n- **Patentino**: non è richiesto un patentino specifico per **SPIT P560**; è necessaria **formazione interna** secondo le istruzioni del costruttore.\n- **Fissaggio CTF**: posa dall’alto con **2 chiodi HSBR14**/connettore, senza preforatura, tarando la potenza e facendo prova su campione.\n- **DPI**: occhiali, guanti, protezione udito; lamiera ben aderente e rispetto distanze dai bordi.\n\n**Fonti**\n- Sinapsi (curated)\n"
   },
   {
-    "id": "p560_generale_addon",
-    "pattern": "(?i)\\bp\\s*[- ]?560\\b|(spit)\\s*p560",
+    "id": "ctf_vs_diapason",
+    "pattern": "(?i)\\b(ctf).*(diapason)|(diapason).*(ctf)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Uso tipico**: posa dei **CTF** su travi in acciaio e lamiere grecate, fissaggio **a freddo** senza saldature.\n- **Chiodi**: **HSBR14** (2 per connettore). Propulsori a cartuccia, potenza da tarare.\n- **Manutenzione**: pulizia sede chiodo e controllo usura puntali/adattatori.\n"
+    "answer": "- **CTF**: per **solaio acciaio–calcestruzzo** su **lamiera grecata**; posa rapida con **SPIT P560** (2 chiodi/pezzo). Ideale in nuove strutture miste o rinforzi con lamiera.\n- **Diapason**: per **rinforzo laterocemento** esistente; **fissaggi meccanici** (non P560), getto collaborante dall’alto.\n- **Scelta**: dipende da **tipologia solaio**, **luci/carichi**, **vincoli di spessore e accessi**; quantità connettori da **calcolo**.\n"
   },
   {
-    "id": "ctf_vs_diapason_addon",
-    "pattern": "(?i)(ctf).*diapason|(diapason).*(ctf)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
+    "id": "ctf_density",
+    "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|fissagg|chiod|p560|hsbr)",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **CTF**: per **acciaio–calcestruzzo** su **lamiera grecata**; posa rapida dall’alto con **SPIT P560** (2 chiodi/pezzo).\n- **Diapason**: **rinforzo laterocemento** esistente con fissaggi meccanici; non richiede chiodatrice.\n- **Scelta**: CTF se c’è/si posa lamiera e serve **velocità**; Diapason per **recupero** di solai in laterocemento.\n"
-  },
-  {
-    "id": "ctf_density_addon",
-    "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|passi|interassi)",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Densità indicativa**: **~6–8 CTF/m²** (più fitta agli appoggi, più rada in mezzeria).\n- **Valore finale**: da **calcolo strutturale** (luci, carichi, profilo lamiera, cls, scorrimento, deformazioni).\n"
-  },
-  {
-    "id": "ctf_fissaggio_addon",
-    "pattern": "(?i)\\bctf\\b.*(fissagg|chiod|p560|hsbr|posa)|\\bp560\\b.*ctf",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Fissaggio**: ogni **CTF** con **2 chiodi HSBR14** su trave in acciaio; nessuna preforatura; prova su campione per la potenza.\n- **Requisiti**: trave ≥ **6 mm**; con lamiera: ok **1×1,5 mm** o **2×1,0 mm** se **perfettamente aderente** alla trave.\n"
-  },
-  {
-    "id": "ctf_hibond_advantages",
-    "pattern": "(?i)\\bctf\\b.*(hi[- ]?bond|lamiera)|hi[- ]?bond.*ctf|vantagg",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Compatibilità**: con lamiere grecate certificate (es. **Hi-Bond**) per collaborazione acciaio–cls.\n- **Cantiere**: posa veloce dall’alto con **SPIT P560**; tracciabilità lotti e **ETA**.\n- **Prestazioni**: rigidezza/portata elevate con spessori contenuti e deformazioni ridotte.\n"
-  },
-  {
-    "id": "ctl_vs_ctf_addon",
-    "pattern": "(?i)ctl.*ctf|ctf.*ctl",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **CTL**: connettori per **legno–calcestruzzo**, fissati con **viti** su travi lignee.\n- **CTF**: connettori per **acciaio–calcestruzzo** su **lamiera grecata**, fissati con **SPIT P560** (2 chiodi).\n- **ETA**: entrambi coperti da **valutazioni tecniche europee** nelle rispettive applicazioni.\n"
-  },
-  {
-    "id": "contatti_override",
-    "pattern": "(?i)contatt|telefono|referent|commercial|assistenza|tecnico\\s+commerciale",
-    "mode": "override",
-    "lang": "it",
-    "answer": "OK\n- **Assistenza Tecnaria**: supporto tecnico-commerciale su dimensionamento, posa e capitolati.\n- **Richiedi schede di posa, certificazioni e software** dedicato per il progetto.\n\n**Fonti**\n- Sinapsi (contatti aziendali)\n"
-  },
-  {
-    "id": "faq_non_qualsiasi_chiodatrice",
-    "pattern": "(?i)normale\\s+chiodatrice|qualsiasi\\s+chiodatrice|chiodatrice\\s+qualsiasi",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- Per i **CTF** non va bene “una chiodatrice qualsiasi”: è richiesta **SPIT P560** con puntali/adattatori dedicati.\n"
-  },
-  {
-    "id": "faq_traduzione_it",
-    "pattern": "(?i)rispondi.*italiano|traduci.*italiano|english.*italiano",
-    "mode": "postscript",
-    "lang": "it",
-    "answer": "Nota: eventuali estratti in inglese vengono **tradotti** e armonizzati in italiano nel testo di risposta.\n"
+    "answer": "- **Densità indicativa**: **~6–8 CTF/m²** (più fitta agli appoggi, più rada in mezzeria); valore **finale da calcolo**.\n- **Fissaggio**: **2 chiodi HSBR14**/CTF con **SPIT P560**; prova su campione e taratura potenza.\n- **Buone pratiche**: lamiera aderente, rispetto bordi/assi, DPI.\n"
   }
 ]
 
