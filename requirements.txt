@@ -1,8 +1,12 @@
 fastapi==0.118.0
 uvicorn==0.37.0
 gunicorn==23.0.0
-httpx==0.28.1
-markdown-it-py==4.0.0
+requests==2.32.5
 beautifulsoup4==4.14.2
 pdfminer.six==20250506
+jinja2==3.1.6
+markdown-it-py==4.0.0
+mdurl==0.1.2
+typing-inspection==0.4.2
+
 
