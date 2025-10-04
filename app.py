@@ -1,228 +1,316 @@
 # app.py
-import os, re, json, asyncio
-from typing import List, Optional, Dict, Any
-from urllib.parse import urlparse
-from fastapi import FastAPI, Request, Query, Body
+import os, re, json, time, html, textwrap
+from typing import List, Dict, Optional, Tuple
+from dataclasses import dataclass
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-import httpx
+import requests
+from bs4 import BeautifulSoup
 
 APP_NAME = "Tecnaria QA Bot"
-
-# --------- Config da ENV ----------
-SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave").lower()  # brave | bing | none
-BRAVE_API_KEY = os.getenv("BRAVE_API_KEY", "")
-BING_API_KEY  = os.getenv("BING_API_KEY", "")
-PREFERRED_DOMAINS = [d.strip() for d in os.getenv(
-    "PREFERRED_DOMAINS",
-    "tecnaria.com, spit.eu, spitpaslode.com"
-).split(",") if d.strip()]
-
-MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.50"))  # alza/abbassa qui (0-1)
-WEB_TIMEOUT   = float(os.getenv("WEB_TIMEOUT", "6.0"))
-WEB_RETRIES   = int(os.getenv("WEB_RETRIES", "2"))
-
-CRITICI_DIR   = os.getenv("CRITICI_DIR", "Tecnaria_V3/static/static/data/critici").strip()
-# nomi supportati per sinapsi
-SINAPSI_FILES = ["sinapsi_brain.json", "sinapsi_rules.json", "sinapsi.json"]
-
-# --------- App ----------
 app = FastAPI(title=APP_NAME)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_methods=["*"], allow_headers=["*"], allow_credentials=False
+    allow_origins=["*"], allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"],
 )
 
-# --------- Utility ----------
-def allowed_domain(url: str, prefer: List[str]) -> bool:
-    try:
-        netloc = urlparse(url).netloc.lower()
-        netloc = netloc[4:] if netloc.startswith("www.") else netloc
-        for d in prefer:
-            d = d.strip().lower()
-            if not d:
-                continue
-            if netloc == d or netloc.endswith("." + d):
-                return True
-        return False
-    except Exception:
-        return False
+# ---------- CONFIG ----------
+SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave").lower().strip()
+BRAVE_API_KEY  = os.getenv("BRAVE_API_KEY")
+BING_API_KEY   = os.getenv("BING_API_KEY")
+PREFERRED_DOMAINS = [d.strip() for d in os.getenv(
+    "PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com"
+).split(",") if d.strip()]
 
-def looks_like_binary_pdf(text: str) -> bool:
-    # Se la “descrizione” inizia con intestazioni PDF o byte strani, scartiamo
-    head = text[:15] if text else ""
-    return "%PDF" in head or "obj <<" in text[:200]
+MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.55"))  # soglia alta per qualità
+CRITICI_DIR   = os.getenv("CRITICI_DIR", "Tecnaria_V3/static/static/data/critici").strip()
 
-# --------- Sinapsi ----------
-class SinapsiRule:
-    def __init__(self, raw: Dict[str, Any]):
-        self.id   = raw.get("id") or ""
-        self.lang = raw.get("lang") or "it"
-        self.mode = (raw.get("mode") or "augment").lower()  # override | augment | postscript
-        self.answer = raw.get("answer") or ""
-        pat = raw.get("pattern") or ""
-        flags = re.IGNORECASE | re.DOTALL
+# ---------- SINAPSI ----------
+@dataclass
+class Rule:
+    id: str
+    pattern: re.Pattern
+    mode: str  # override | augment | postscript
+    lang: str
+    answer: str
+
+def load_sinapsi_rules() -> List[Rule]:
+    paths = [
+        os.path.join(CRITICI_DIR, "sinapsi_rules.json"),
+        os.path.join(CRITICI_DIR, "sinapsi_brain.json"),
+        os.path.join(CRITICI_DIR, "sinapsi.json"),
+    ]
+    rules: List[Rule] = []
+    for p in paths:
         try:
-            self.pattern = re.compile(pat, flags)
-        except re.error:
-            self.pattern = re.compile(re.escape(pat), flags)
-
-    def match(self, q: str) -> bool:
-        return bool(self.pattern.search(q))
-
-def load_sinapsi() -> List[SinapsiRule]:
-    rules: List[SinapsiRule] = []
-    if not CRITICI_DIR or not os.path.isdir(CRITICI_DIR):
-        return rules
-    for name in SINAPSI_FILES:
-        p = os.path.join(CRITICI_DIR, name)
-        if os.path.isfile(p):
-            try:
-                with open(p, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    if isinstance(data, list):
-                        rules += [SinapsiRule(x) for x in data if isinstance(x, dict)]
-            except Exception:
-                continue
+            if os.path.isfile(p):
+                data = json.loads(open(p, "r", encoding="utf-8").read())
+                for item in data:
+                    rules.append(
+                        Rule(
+                            id=item.get("id", f"rule_{len(rules)}"),
+                            pattern=re.compile(item["pattern"], re.IGNORECASE),
+                            mode=item.get("mode", "augment").lower(),
+                            lang=item.get("lang", "it"),
+                            answer=item.get("answer", "").strip()
+                        )
+                    )
+        except Exception:
+            continue
     return rules
 
-SINAPSI_RULES = load_sinapsi()
+SINAPSI_RULES = load_sinapsi_rules()
 
-def apply_sinapsi(q: str) -> Optional[Dict[str, str]]:
+def sinapsi_apply(q: str, base_text: str) -> Tuple[str, Optional[str]]:
+    """Ritorna testo e id regola usata (se applicata)."""
+    applied_id = None
     for r in SINAPSI_RULES:
-        if r.match(q):
-            return {"mode": r.mode, "answer": r.answer}
-    return None
+        if r.pattern.search(q):
+            applied_id = r.id
+            if r.mode == "override":
+                return refine_text(r.answer), r.id
+            elif r.mode == "augment":
+                merged = base_text.strip()
+                if merged:
+                    merged = merged.rstrip() + "\n\n" + refine_text(r.answer).strip()
+                else:
+                    merged = refine_text(r.answer).strip()
+                return merged, r.id
+            elif r.mode == "postscript":
+                merged = base_text.strip()
+                merged += "\n\n*Nota tecnica (Sinapsi)*\n" + refine_text(r.answer).strip()
+                return merged, r.id
+    return base_text, applied_id
 
-# --------- Web Search ----------
-async def brave_search(q: str) -> List[Dict[str, Any]]:
+# ---------- WEB SEARCH ----------
+def allowed_domain(url: str, prefer: List[str]) -> bool:
+    try:
+        from urllib.parse import urlparse
+        host = urlparse(url).netloc.lower()
+    except Exception:
+        return False
+    return any(host.endswith(d.lower()) for d in prefer)
+
+def brave_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
     if not BRAVE_API_KEY:
         return []
-    url = "https://api.search.brave.com/res/v1/web/search"
-    params = {"q": q, "count": 6, "source": "web"}
-    headers = {"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY}
-    for _ in range(WEB_RETRIES):
-        try:
-            async with httpx.AsyncClient(timeout=WEB_TIMEOUT) as client:
-                r = await client.get(url, params=params, headers=headers)
-                if r.status_code != 200:
-                    continue
-                j = r.json()
-                items = []
-                for it in j.get("web", {}).get("results", []):
-                    items.append({
-                        "url": it.get("url"),
-                        "title": it.get("title"),
-                        "snippet": it.get("description") or "",
-                        "score": float(it.get("v2_relevance_score") or 0.0),
-                    })
-                return items
-        except Exception:
-            await asyncio.sleep(0.15)
-    return []
+    headers = {"X-Subscription-Token": BRAVE_API_KEY}
+    try:
+        r = requests.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            params={"q": query, "count": n, "freshness": "month"},
+            headers=headers, timeout=timeout,
+        )
+        r.raise_for_status()
+        data = r.json()
+        out = []
+        for item in data.get("web", {}).get("results", []):
+            url = item.get("url","")
+            if not allowed_domain(url, PREFERRED_DOMAINS):  # filtro domini
+                continue
+            out.append({
+                "title": item.get("title",""),
+                "url": url,
+                "snippet": item.get("description",""),
+                "score": item.get("language","") and 0.75 or 0.65
+            })
+        return out
+    except Exception:
+        return []
 
-async def bing_search(q: str) -> List[Dict[str, Any]]:
+def bing_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
     if not BING_API_KEY:
         return []
-    url = "https://api.bing.microsoft.com/v7.0/search"
-    params = {"q": q, "count": 6, "mkt": "it-IT", "responseFilter": "Webpages"}
     headers = {"Ocp-Apim-Subscription-Key": BING_API_KEY}
-    for _ in range(WEB_RETRIES):
-        try:
-            async with httpx.AsyncClient(timeout=WEB_TIMEOUT) as client:
-                r = await client.get(url, params=params, headers=headers)
-                if r.status_code != 200:
-                    continue
-                j = r.json()
-                items = []
-                for it in j.get("webPages", {}).get("value", []):
-                    items.append({
-                        "url": it.get("url"),
-                        "title": it.get("name"),
-                        "snippet": it.get("snippet") or "",
-                        "score": float(it.get("rank") or 0.0),  # Bing non dà un vero score normalizzato
-                    })
-                return items
-        except Exception:
-            await asyncio.sleep(0.15)
-    return []
-
-async def web_search(q: str) -> List[Dict[str, Any]]:
-    if SEARCH_PROVIDER == "brave":
-        raw = await brave_search(q)
-    elif SEARCH_PROVIDER == "bing":
-        raw = await bing_search(q)
-    else:
+    try:
+        r = requests.get(
+            "https://api.bing.microsoft.com/v7.0/search",
+            params={"q": query, "count": n, "mkt":"it-IT"},
+            headers=headers, timeout=timeout,
+        )
+        r.raise_for_status()
+        data = r.json()
+        out = []
+        for item in data.get("webPages",{}).get("value",[]):
+            url = item.get("url","")
+            if not allowed_domain(url, PREFERRED_DOMAINS):
+                continue
+            out.append({
+                "title": item.get("name",""),
+                "url": url,
+                "snippet": item.get("snippet",""),
+                "score": 0.70
+            })
+        return out
+    except Exception:
         return []
 
-    # filtro dominio + soglia
-    preferred = [d for d in PREFERRED_DOMAINS if d]
-    filtered = [
-        it for it in raw
-        if it.get("url") and allowed_domain(it["url"], preferred)
-           and (it.get("snippet") and not looks_like_binary_pdf(it["snippet"]))
-           and float(it.get("score") or 0.0) >= MIN_WEB_SCORE
-    ]
-    # se troppo stretto, prova almeno dominio preferito ignorando soglia
-    if not filtered:
-        filtered = [
-            it for it in raw
-            if it.get("url") and allowed_domain(it["url"], preferred)
-               and (it.get("snippet") and not looks_like_binary_pdf(it["snippet"]))
-        ]
-    return filtered[:5]
-
-# --------- Sintesi risposta ----------
-def synthesize_from_hits(q: str, hits: List[Dict[str, Any]]) -> str:
-    if not hits:
+def fetch_url_text(url: str, timeout: float = 6.0) -> str:
+    try:
+        r = requests.get(url, timeout=timeout, headers={"User-Agent":"Mozilla/5.0"})
+        r.raise_for_status()
+        return r.text
+    except Exception:
         return ""
-    bullets = []
-    seen = set()
-    for it in hits:
-        title = (it.get("title") or "").strip()
-        snip  = (it.get("snippet") or "").strip()
-        url   = (it.get("url") or "").strip()
-        if not url or url in seen:
-            continue
-        seen.add(url)
-        # breve linea pulita
-        line = f"- {title}: {snip}"
-        # asciuga se lunghissimo
-        if len(line) > 320:
-            line = line[:317] + "…"
-        bullets.append(line)
-        if len(bullets) >= 4:
-            break
 
-    sources = [f"- {it['url']}" for it in hits[:4] if it.get("url")]
-    out = "OK\n- **Riferimento**: contenuti tecnici su fonti ufficiali.\n"
-    if bullets:
-        out += "- **Sintesi**:\n" + "\n".join(bullets) + "\n\n"
+def clean_html_text(raw: str) -> str:
+    if not raw:
+        return ""
+    try:
+        soup = BeautifulSoup(raw, "html.parser")
+        for tag in soup(["script","style","noscript"]):
+            tag.decompose()
+        text = soup.get_text(separator=" ")
+        text = html.unescape(text)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
+    except Exception:
+        # fallback rozzo
+        txt = re.sub(r"<[^>]+>", " ", raw)
+        txt = html.unescape(txt)
+        return re.sub(r"\s+", " ", txt).strip()
+
+def synthesize_snippets(snips: List[Dict], q: str) -> Tuple[str, List[str]]:
+    """Crea una sintesi pulita con elenco fonti (sempre IT, tono morbido)."""
+    if not snips:
+        return "", []
+    bodies = []
+    sources = []
+    for s in snips:
+        page = fetch_url_text(s["url"])
+        body = clean_html_text(page)
+        if not body:
+            # usa comunque lo snippet se significativo
+            body = clean_html_text(s.get("snippet",""))
+        if body:
+            bodies.append(body[:1500])
+            sources.append(s["url"])
+    joined = " ".join(bodies)[:4000]
+    if not joined:
+        return "", []
+    # Micro-sintesi “umana”
+    # (Regole semplici: tieni frasi con parole chiave e ricompattale)
+    key = ["CTF","lamiera","P560","HSBR","Diapason","ETA","connettore","soletta","laterocemento","Hi-Bond"]
+    sentences = re.split(r"(?<=[\.\!\?])\s+", joined)
+    keep = [s for s in sentences if any(k.lower() in s.lower() for k in key)]
+    draft = " ".join(keep)[:1200]
+    # ammorbidisci
+    draft = re.sub(r"\s{2,}"," ", draft).strip()
+    if not draft:
+        draft = joined[:800]
+    return draft, list(dict.fromkeys(sources))[:5]
+
+# ---------- REFINER ----------
+def refine_text(text_it: str) -> str:
+    if not text_it:
+        return ""
+    # pulizia header "OK - Riferimento..."
+    text_it = re.sub(r"^OK\s*-?\s*(Riferimento|Sintesi).*?\n", "", text_it, flags=re.I|re.M)
+    # bullets coerenti
+    # garantisci a capo prima di "**Fonti**"
+    text_it = text_it.replace("**Fonti**", "\n\n**Fonti**")
+    # tono Tecnaria
+    lead = (
+        "Ecco le informazioni richieste, in forma chiara e sintetica.\n"
+        "Se servono verifiche di progetto, le facciamo su dati reali del cantiere."
+    )
+    body = text_it.strip()
+    # evita doppio lead
+    if body.lower().startswith("ecco le informazioni"):
+        return body
+    return f"{lead}\n\n{body}".strip()
+
+def compose_final(answer: str, sources: List[str]) -> str:
+    answer = answer.strip()
     if sources:
-        out += "**Fonti**\n" + "\n".join(sources) + "\n"
+        src = "\n".join(f"- {u}" for u in sources)
+        if "**Fonti**" in answer:
+            # append se già presente
+            if not answer.strip().endswith("**Fonti**"):
+                if not answer.strip().endswith("\n"):
+                    answer += "\n"
+            answer += f"**Fonti**\n{src}\n"
+        else:
+            answer += f"\n\n**Fonti**\n{src}\n"
+    return answer
+
+# ---------- PIPELINE ----------
+def web_answer(q: str) -> Tuple[str, List[str]]:
+    # fai ricerca solo su domini preferiti
+    results = []
+    if SEARCH_PROVIDER == "brave":
+        results = brave_search(q, n=6)
+    elif SEARCH_PROVIDER == "bing":
+        results = bing_search(q, n=6)
+    else:
+        # se provider non configurato, niente web
+        results = []
+
+    if not results:
+        return "", []
+
+    text, sources = synthesize_snippets(results, q)
+    if not text:
+        return "", sources
+
+    # alza la qualità: riformula in bullet morbidi
+    blocks = []
+    # regolette di estrazione rapide
+    patterns = [
+        (r"(P560.*?HSBR.*?)(?:\.|;)", "- **Fissaggio**: \\1."),
+        (r"(ETA|European Technical Assessment.*?)(?:\.|;)", "- **Normativa**: \\1."),
+        (r"(lamiera.*?Hi[- ]?Bond.*?)(?:\.|;)", "- **Compatibilità**: \\1."),
+    ]
+    used = 0
+    for pat, lab in patterns:
+        m = re.search(pat, text, flags=re.I)
+        if m:
+            blocks.append(lab.replace("\\1", m.group(1)))
+            used += 1
+    if used < 2:
+        # se poco strutturato, metti un riassunto unico
+        blocks = [textwrap.shorten(text, 450, placeholder="…")]
+
+    ans = "OK\n" + "\n".join(blocks)
+    ans = refine_text(ans)
+    return ans, sources
+
+def answer_pipeline(q: str) -> str:
+    # 1) web
+    web_txt, web_sources = web_answer(q)
+
+    # 2) se web scarso, forza Sinapsi override/augment
+    if not web_txt or len(web_txt) < 60:
+        base = ""
+    else:
+        base = web_txt
+
+    final_txt, rule_id = sinapsi_apply(q, base)
+
+    # 3) se anche qui vuoto, prova “domande classiche” fallback
+    if not final_txt:
+        # micro fallback sensato
+        fallback = (
+            "Per questa richiesta servono dettagli tecnici (tipo solaio, luci, carichi, profilo lamiera, "
+            "spessori, vincoli). Possiamo stimare in modo prudente e poi validare col progetto."
+        )
+        final_txt = refine_text(fallback)
+
+    # 4) comporre + fonti
+    out = compose_final(final_txt, web_sources)
     return out
 
-def merge_with_sinapsi(base: str, sinapsi: Dict[str,str]) -> str:
-    mode = sinapsi["mode"]
-    ans  = sinapsi["answer"].rstrip() + "\n"
-    if mode == "override" or not base.strip():
-        return ans
-    if mode == "augment":
-        # attacca prima il web, poi sinapsi come blocco integrativo
-        return (base.rstrip() + "\n" +
-                ("" if base.endswith("\n\n") else "\n") +
-                ans)
-    if mode == "postscript":
-        return base.rstrip() + "\n\n**Nota (Sinapsi)**\n" + ans
-    return base or ans
-
-# --------- API ----------
+# ---------- HTTP ----------
 @app.get("/ping")
-async def ping():
+def ping():
     return {"ok": True, "pong": True}
 
 @app.get("/health")
-async def health():
+def health():
+    exists = os.path.isdir(CRITICI_DIR)
     return {
         "status": "ok",
         "web_search": {
@@ -230,145 +318,121 @@ async def health():
             "brave_key": bool(BRAVE_API_KEY),
             "bing_key": bool(BING_API_KEY),
             "preferred_domains": PREFERRED_DOMAINS,
-            "min_web_score": MIN_WEB_SCORE
+            "min_web_score": MIN_WEB_SCORE,
         },
-        "critici": {"dir": CRITICI_DIR, "exists": os.path.isdir(CRITICI_DIR), "rules": len(SINAPSI_RULES)}
+        "critici": {"dir": CRITICI_DIR, "exists": exists, "rules": len(SINAPSI_RULES)},
     }
 
-async def _answer_core(q: str) -> str:
-    q = (q or "").strip()
-    if not q:
-        return "OK\n- **Domanda vuota**: inserisci una richiesta valida.\n"
+@app.get("/")
+def home():
+    return HTMLResponse(UI_HTML)
 
-    # 1) web
-    hits: List[Dict[str, Any]] = []
-    if SEARCH_PROVIDER in ("brave", "bing"):
-        hits = await web_search(q)
-
-    web_text = synthesize_from_hits(q, hits)
-
-    # 2) sinapsi
-    s = apply_sinapsi(q)
-    if s:
-        return merge_with_sinapsi(web_text, s)
-
-    # 3) fallback se il web non ha dato fonti utili
-    if not web_text:
-        return ("OK\n- **Non ho trovato una risposta affidabile sul web**. "
-                "Puoi riformulare la domanda oppure ti fornisco i contatti Tecnaria.\n")
-
-    return web_text
+def get_q_from_req(request: Request) -> str:
+    try:
+        data = {}
+        if request.headers.get("content-type","").startswith("application/json"):
+            data = json.loads((yield from request.body()))
+        else:
+            data = {}
+    except Exception:
+        data = {}
+    return (data.get("q") or "").strip()
 
 @app.get("/ask")
-async def ask_get(q: str = Query("")):
-    ans = await _answer_core(q)
-    return {"ok": True, "answer": ans}
-
-@app.post("/ask")
-async def ask_post(payload: Dict[str, Any] = Body(...)):
-    q = (payload or {}).get("q", "")
-    ans = await _answer_core(q)
-    return {"ok": True, "answer": ans}
-
-# alias più “REST”
-@app.get("/api/ask")
-async def api_ask_get(q: str = Query("")):
-    ans = await _answer_core(q)
-    return {"ok": True, "answer": ans}
+def ask_get(q: str=""):
+    q = (q or "").strip()
+    if not q:
+        return JSONResponse({"ok": True, "answer": "OK\n- **Domanda vuota**: inserisci una richiesta valida."})
+    ans = answer_pipeline(q)
+    return JSONResponse({"ok": True, "answer": ans})
 
 @app.post("/api/ask")
-async def api_ask_post(payload: Dict[str, Any] = Body(...)):
-    q = (payload or {}).get("q", "")
-    ans = await _answer_core(q)
-    return {"ok": True, "answer": ans}
+async def ask_post(req: Request):
+    try:
+        body = await req.json()
+        q = (body.get("q") or "").strip()
+    except Exception:
+        q = ""
+    if not q:
+        return JSONResponse({"ok": False, "error": "Missing q"})
+    ans = answer_pipeline(q)
+    return JSONResponse({"ok": True, "answer": ans})
 
-# --------- UI (pagina scura) ----------
-DARK_HTML = """
-<!doctype html>
-<html lang="it">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+# ---------- UI (dark) ----------
+UI_HTML = """
+<!doctype html><html lang="it"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tecnaria QA Bot</title>
 <style>
-  :root {
-    --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --btn:#1f2937; --btn2:#0b2d18;
-  }
-  html,body{height:100%;}
-  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,Segoe UI,Roboto,Helvetica,Arial}
-  .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
-  h1{margin:0 0 14px 0;font-size:28px}
-  .chips{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 18px}
-  .chip{background:#0b1220;color:#cbd5e1;border:1px solid #1f2937;padding:8px 14px;border-radius:999px;cursor:pointer}
-  .card{background:var(--panel);border:1px solid #1f2937;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-  textarea{width:100%;min-height:180px;background:#0b1020;color:var(--text);border:1px solid #1f2937;border-radius:12px;padding:12px;resize:vertical}
-  .row{display:flex;align-items:center;gap:10px;margin-top:12px}
-  .btn{background:var(--btn);color:#fff;border:1px solid #334155;padding:10px 16px;border-radius:10px;cursor:pointer}
-  .btn:hover{border-color:#475569}
-  .btn.primary{background:var(--btn2);border-color:#14532d}
-  .muted{color:var(--muted);font-size:14px}
-  pre{white-space:pre-wrap;background:#0b1020;border:1px solid #1f2937;padding:16px;border-radius:12px;min-height:160px}
-  .foot{margin-top:8px;font-size:12px;color:#94a3b8}
+:root { --bg:#0f172a; --panel:#111827; --txt:#e5e7eb; --muted:#9ca3af; --acc:#16a34a; }
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.45 system-ui,Segoe UI,Roboto,Arial}
+.wrap{max-width:1100px;margin:28px auto;padding:0 20px}
+h1{font-size:22px;margin:0 0 14px}
+.topbar{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 18px}
+.tag{background:#0b1220;border:1px solid #1f2937;color:#d1d5db;padding:10px 14px;border-radius:26px;cursor:pointer}
+.tag:hover{border-color:#374151}
+.card{background:var(--panel);border:1px solid #1f2937;border-radius:14px;padding:14px 16px;margin:14px 0}
+textarea{width:100%;min-height:160px;background:#0b1220;border:1px solid #1f2937;border-radius:10px;color:var(--txt);padding:12px}
+.controls{display:flex;gap:10px;align-items:center;margin-top:12px}
+.btn{background:#0b1220;border:1px solid #1f2937;color:#d1d5db;padding:10px 16px;border-radius:10px;cursor:pointer}
+.btn:hover{border-color:#374151}
+.btn.primary{background:#052e16;border-color:#14532d;color:#d1fae5}
+.chk{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:14px;margin-top:8px}
+pre{white-space:pre-wrap;word-wrap:break-word}
+small{color:var(--muted)}
 </style>
-</head>
-<body>
+</head><body>
 <div class="wrap">
   <h1>Tecnaria QA Bot</h1>
-
-  <div class="chips">
-    <div class="chip" onclick="fill('Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino o formazione speciale?')">P560 + CTF</div>
-    <div class="chip" onclick="fill('Che differenza c’è tra un connettore CTF e il sistema Diapason? Quando conviene usare uno o l’altro?')">CTF vs Diapason</div>
-    <div class="chip" onclick="fill('Lamiera Hi-Bond 1 mm: quanti connettori CTF per m² e come si fissano?')">Densità CTF</div>
-    <div class="chip" onclick="fill('Mi dai i contatti Tecnaria per assistenza tecnica e commerciale?')">Contatti</div>
+  <div class="topbar">
+    <div class="tag" onclick="fill('Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino?')">P560 + CTF</div>
+    <div class="tag" onclick="fill('Che differenza c’è tra un connettore CTF e il sistema Diapason?')">CTF vs Diapason</div>
+    <div class="tag" onclick="fill('Quanti connettori CTF servono per m² su lamiera Hi-Bond e come si fissano?')">Densità CTF</div>
+    <div class="tag" onclick="fill('Mi dai i contatti Tecnaria per assistenza tecnica?')">Contatti</div>
   </div>
 
   <div class="card">
-    <textarea id="q" placeholder="Scrivi la tua domanda…"></textarea>
-    <div class="row">
+    <textarea id="q" placeholder="Scrivi la domanda..."></textarea>
+    <div class="controls">
       <button class="btn primary" onclick="ask()">Chiedi</button>
-      <button class="btn" onclick="clearQ()">Pulisci</button>
-      <button class="btn" onclick="copyOut()">Copia risposta</button>
-      <label class="muted" style="margin-left:12px"><input id="useGet" type="checkbox"> usa GET (debug)</label>
+      <button class="btn" onclick="clr()">Pulisci</button>
+      <button class="btn" onclick="copyAns()">Copia risposta</button>
     </div>
+    <label class="chk"><input type="checkbox" id="useget"> usa GET (debug)</label>
   </div>
 
   <div class="card">
-    <pre id="out" class="muted">Risposte qui…</pre>
-    <div class="foot">Endpoint: /ask (POST JSON { q }) oppure GET ?q=…</div>
+    <pre id="ans"> </pre>
+    <small>Endpoint: <code>/ask</code> (POST JSON { q }) oppure GET ?q=...</small>
   </div>
 </div>
 
 <script>
 function fill(t){document.getElementById('q').value=t;}
-function clearQ(){document.getElementById('q').value='';}
-async function copyOut(){
-  const txt=document.getElementById('out').innerText||'';
-  try{await navigator.clipboard.writeText(txt);}catch(e){}
-}
+function clr(){document.getElementById('q').value='';document.getElementById('ans').textContent='';}
 async function ask(){
-  const q=document.getElementById('q').value.trim();
-  const get=document.getElementById('useGet').checked;
-  const out=document.getElementById('out');
-  out.textContent='…';
+  const q = document.getElementById('q').value.trim();
+  if(!q){ document.getElementById('ans').textContent='OK\\n- **Domanda vuota**: inserisci una richiesta valida.'; return; }
+  const useget = document.getElementById('useget').checked;
   try{
-    let res;
-    if(get){
-      const u='/api/ask?q='+encodeURIComponent(q);
-      res = await fetch(u);
+    let resp;
+    if(useget){
+      const r = await fetch('/ask?q=' + encodeURIComponent(q));
+      resp = await r.json();
     }else{
-      res = await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q})});
+      const r = await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q})});
+      resp = await r.json();
     }
-    const j = await res.json();
-    out.textContent = j && j.answer ? j.answer : JSON.stringify(j,null,2);
+    if(resp.ok){ document.getElementById('ans').textContent = resp.answer; }
+    else{ document.getElementById('ans').textContent = 'Errore: ' + (resp.error||''); }
   }catch(e){
-    out.textContent = 'Errore di risposta';
+    document.getElementById('ans').textContent = 'Errore di risposta';
   }
 }
+function copyAns(){
+  const t = document.getElementById('ans').textContent;
+  navigator.clipboard.writeText(t || '');
+}
 </script>
-</body>
-</html>
+</body></html>
 """
-
-@app.get("/", response_class=HTMLResponse)
-async def ui():
-    return HTMLResponse(DARK_HTML)
