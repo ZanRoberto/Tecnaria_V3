@@ -1,459 +1,246 @@
-# app.py — Tecnaria QA Bot (versione completa, robusta)
-# Copia questo file in app.py nel repo e fai il deploy.
-import os
-import re
-import json
-import time
-import html
-import textwrap
-import urllib.request
-import urllib.parse
+[
+  {
+    "id": "p560_patentino_override",
+    "pattern": "(?is)(\\bp\\s*[- ]?560\\b|\\bspit\\s*p?560\\b|chiodatrice[^\\n]{0,40}p?560|sparachiod[^\\n]{0,40}p?560).*(patentin|abilitaz|formaz|corso|licen[zs])|(patentin|abilitaz|formaz|corso|licen[zs]).*(\\bp\\s*[- ]?560\\b|\\bspit\\s*p?560\\b)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Non serve un patentino specifico per la **SPIT P560**: è sufficiente una **formazione interna** secondo le istruzioni del costruttore. Ogni connettore **CTF** si fissa **dall’alto** con **2 chiodi HSBR14**, senza preforatura; regola la potenza in funzione di lamiera/trave ed esegui sempre una **prova su campione**. **DPI**: occhiali, guanti, protezione udito; lamiera ben aderente; rispetto delle distanze dai bordi."
+  },
+  {
+    "id": "p560_only_override",
+    "pattern": "(?is)(posso|si\\s*pu[oò]|va\\s*bene|ammess|compatibil|qualsiasi|qualunque|altra|diversa).*(chiodatrice|sparachiod|pistola).*?(ctf)|(ctf).*(chiodatrice|sparachiod|pistola).*(qualsiasi|qualunque|altra|diversa)|(hilti|bosch|dewalt).*(ctf)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Per i connettori **CTF** è ammessa **solo la chiodatrice SPIT P560** con accessori dedicati Tecnaria; altre macchine non sono ammesse. Ogni connettore: **2 chiodi HSBR14**, fissaggio dall’alto anche in presenza di lamiera aderente."
+  },
+  {
+    "id": "p560_kit_chiodi_override",
+    "pattern": "(?is)\\bp\\s*[- ]?560\\b.*(chiod|kit|magazzin|propulsor|cartucc)|\\bhsbr\\s*14\\b|\\bhsbr\\b",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Fissaggio **CTF** con **SPIT P560**: per ogni connettore servono **2 chiodi HSBR14** (acciaio HRC), propulsori a salve idonei, e adattatori Tecnaria. Tiro di prova per tarare la potenza; sostituire punzone/usura quando necessario."
+  },
 
-from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass
+  {
+    "id": "ctf_density_guide_augment",
+    "pattern": "(?is)\\bctf\\b.*(densit|quanti|pezzi|m2|m²|numero|passo|interasse|schema|disposizion|metratura)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Guida rapida**: **~6–8 CTF/m²**; più fitta agli appoggi, più rada in mezzeria. Valore finale **da calcolo** (luci, carichi, profilo lamiera, classe cls, scorrimento, deformazioni)."
+  },
+  {
+    "id": "ctf_fixing_augment",
+    "pattern": "(?is)\\bctf\\b.*(fissagg|posa|inchiod|sparachiod|pistola|p560|chiodi|hsbr)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Fissaggio**: **2 chiodi HSBR14/CTF** con **SPIT P560**, senza preforatura; lamiera aderente alla trave; prova su campione; rispetto dei bordi."
+  },
+  {
+    "id": "hibond_context_augment",
+    "pattern": "(?is)hi\\s*[- ]?bond|lamiera\\s*grecat",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Lamiera grecata/Hi-Bond**: CTF progettati per lamiere certificate; collaborazione acciaio–calcestruzzo e posa dall’alto."
+  },
+  {
+    "id": "steel_thickness_note_post",
+    "pattern": "(?is)\\b(ctf|p560|chiod|hsbr)\\b",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: spessore acciaio trave **≥ 6 mm**; con lamiera: ok **1×1,5 mm** o **2×1,0 mm** se **ben aderente** alla trave."
+  },
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
+  {
+    "id": "ctf_vs_diapason_augment",
+    "pattern": "(?is)(ctf).*diapason|(diapason).*(ctf)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **CTF**: solai acciaio–calcestruzzo su **lamiera grecata**; posa rapida dall’alto con **SPIT P560**.\n- **Diapason**: **rinforzo laterocemento** senza lamiera; fissaggi meccanici e getto collaborante dall’alto.\n- **Scelta**: tipo solaio, carichi, luci, spessore disponibile, accessi e tempi; quantità da **calcolo**."
+  },
+  {
+    "id": "ctl_vs_diapason_augment",
+    "pattern": "(?is)(ctl).*(diapason)|(diapason).*(ctl)|laterocemento.*ctl|ctl.*laterocemento",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **CTL**: connettori per **legno–calcestruzzo** (viti su travi lignee).\n- **Diapason**: **laterocemento** esistente con getto collaborante.\n- **Non** usare CTL su laterocemento."
+  },
+  {
+    "id": "ctl_selector_slab5_tavolato2_override",
+    "pattern": "(?is)ctl.*(maxi).*(tavolat|assito).*(2\\s*cm|20\\s*mm).*(solett|getto).*(5\\s*cm)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Con **tavolato ~2 cm** e **soletta 5 cm**: **CTL MAXI 12/040**; viti **Ø10×100** (oppure **Ø10×120** se interposti/tavolato > 25–30 mm). La testa deve restare **sopra la rete** a metà spessore e **sotto** il filo superiore del getto. Se interferenze → **12/030**."
+  },
+  {
+    "id": "ctl_viti_lunghezze_augment",
+    "pattern": "(?is)ctl.*(vite|viti|lunghez|diametr|\\bø\\b|fori)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Viti CTL**: Ø10 con lunghezze tipiche **100/120/140 mm**; scegliere in funzione di interposti/assito e ancoraggio utile nel legno."
+  },
 
-# Import opzionali (non bloccanti: se mancanti il server funziona lo stesso)
-try:
-    import requests  # più comodo per fetch
-except Exception:
-    requests = None
+  {
+    "id": "diapason_when_augment",
+    "pattern": "(?is)diapason.*(quando|dove|cas|intervento|applicaz|solaio|laterocement|travetti)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Quando Diapason**: rinforzo o ripristino di **solai in laterocemento** con getto collaborante dall’alto, quando **non c’è lamiera**."
+  },
+  {
+    "id": "diapason_intrusivita_post",
+    "pattern": "(?is)diapason",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: intervento **poco invasivo** dall’alto; schema/numero ancoraggi definiti da **calcolo** e dettagli di posa Tecnaria."
+  },
 
-try:
-    from bs4 import BeautifulSoup  # miglior pulizia HTML
-except Exception:
-    BeautifulSoup = None
+  {
+    "id": "p560_taratura_sicurezza_augment",
+    "pattern": "(?is)\\bp\\s*[- ]?560\\b|spit\\s*p?560|sparachiod",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Taratura**: avvia con carica media, verifica la penetrazione e la deformazione del chiodo; **tiro di prova** obbligatorio.\n- **Sicurezza**: DPI completi; verifica adesione lamiera; non sparare vicino ai bordi."
+  },
+  {
+    "id": "p560_manutenzione_post",
+    "pattern": "(?is)\\bp\\s*[- ]?560\\b|incepp|manutenz|pulizi|usura|punzon",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: pulizia periodica della P560; sostituisci punzone/parti usurate se la penetrazione cala o aumentano gli inceppamenti."
+  },
 
-APP_NAME = "Tecnaria QA Bot"
-app = FastAPI(title=APP_NAME)
+  {
+    "id": "eta_cert_augment",
+    "pattern": "(?is)eta|certificat|marcatura\\s*ce|valutazione\\s*tecnica",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Certificazioni**: connettori e sistemi Tecnaria sono coperti da **ETA** e documentazione tecnica; tracciabilità lotti disponibile."
+  },
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+  {
+    "id": "contatti_override",
+    "pattern": "(?is)(contatt|telefono|email|referent|commercial|tecnic).*(tecnaria)|assistenza.*tecnaria",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Per un supporto di progetto o un dimensionamento: **Tecnaria S.p.A., Bassano del Grappa (VI)**. Contatto tecnico-commerciale disponibile; forniamo schede di posa, software e assistenza alla scelta del sistema."
+  },
 
-# ---------- CONFIG ----------
-SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave").lower().strip()
-BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
-BING_API_KEY = os.getenv("BING_API_KEY")
-PREFERRED_DOMAINS = [d.strip() for d in os.getenv(
-    "PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com"
-).split(",") if d.strip()]
-MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.55"))  # soglia ricerca web (più alta = più filtrata)
-CRITICI_DIR = os.getenv("CRITICI_DIR", "Tecnaria_V3/static/static/data/critici").strip()
+  {
+    "id": "lamiera_doppia_aderenza_augment",
+    "pattern": "(?is)lamiera.*(doppia|2\\s*x|accoppiat)|aderent|aderenz",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Lamiera**: 1×1,5 mm o 2×1,0 mm **ok** se **perfettamente aderente** alla trave; altrimenti ripristinare l’aderenza prima della posa."
+  },
+  {
+    "id": "edge_distance_warning_post",
+    "pattern": "(?is)chiod|hsbr|p560|fissagg|posa",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: rispetta le **distanze minime** dai bordi/profili e gli interassi minimi tra connettori previsti dalle istruzioni Tecnaria."
+  },
 
-# ---------- SINAPSI ----------
-@dataclass
-class Rule:
-    id: str
-    pattern: re.Pattern
-    mode: str  # override | augment | postscript
-    lang: str
-    answer: str
+  {
+    "id": "cls_classe_rete_augment",
+    "pattern": "(?is)(cls|calcestruzz|solett|getto|rete)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Soletta**: classe e spessore come da progetto; rete **a metà spessore**; per legno-CLT o assito vedi CTL MAXI/BASE."
+  },
 
-def load_sinapsi_rules() -> List[Rule]:
-    """
-    Cerca file sinapsi_rules.json / sinapsi_brain.json / sinapsi.json nella cartella CRITICI_DIR
-    e carica le regole. Se non trova nulla, ritorna lista vuota.
-    """
-    paths = [
-        os.path.join(CRITICI_DIR, "sinapsi_rules.json"),
-        os.path.join(CRITICI_DIR, "sinapsi_brain.json"),
-        os.path.join(CRITICI_DIR, "sinapsi.json"),
-    ]
-    rules: List[Rule] = []
-    for p in paths:
-        try:
-            if os.path.isfile(p):
-                with open(p, "r", encoding="utf-8") as fh:
-                    data = json.load(fh)
-                for item in data:
-                    pat = item.get("pattern", None)
-                    if not pat:
-                        continue
-                    rules.append(
-                        Rule(
-                            id=item.get("id", f"rule_{len(rules)}"),
-                            pattern=re.compile(pat, re.IGNORECASE),
-                            mode=item.get("mode", "augment").lower(),
-                            lang=item.get("lang", "it"),
-                            answer=item.get("answer", "").strip()
-                        )
-                    )
-        except Exception:
-            # non interrompo il caricamento se un file è corrotto
-            continue
-    return rules
+  {
+    "id": "vibrazioni_rumore_post",
+    "pattern": "(?is)vibraz|rumor|cantiere|sicurezza",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: l’uso della P560 riduce i tempi e limita vibrazioni rispetto a saldature/forature; obbligatorie le protezioni acustiche."
+  },
 
-SINAPSI_RULES = load_sinapsi_rules()
+  {
+    "id": "traduzione_forzata_post",
+    "pattern": "(?is)(studies have|the|specifications|zinc plated|indirect action|weight).*",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: Contenuto originale individuato in inglese. Sintesi resa in italiano e armonizzata secondo le istruzioni Tecnaria."
+  },
 
-def sinapsi_apply(q: str, base_text: str) -> Tuple[str, Optional[str]]:
-    """
-    Applica la prima regola matchata (puoi modificare per applicarne più d'una).
-    Mode:
-      - override: usa solo Sinapsi
-      - augment: aggiunge Sinapsi dopo il testo web
-      - postscript: aggiunge un PS tecnico breve
-    Ritorna (testo_finale, applied_rule_id)
-    """
-    applied_id = None
-    for r in SINAPSI_RULES:
-        if r.pattern.search(q):
-            applied_id = r.id
-            if r.mode == "override":
-                return refine_text(r.answer), r.id
-            elif r.mode == "augment":
-                merged = base_text.strip()
-                addon = refine_text(r.answer).strip()
-                if merged:
-                    merged = merged.rstrip() + "\n\n" + addon
-                else:
-                    merged = addon
-                return merged, r.id
-            elif r.mode == "postscript":
-                merged = base_text.strip()
-                merged += "\n\n*Nota tecnica (Sinapsi)*\n" + refine_text(r.answer).strip()
-                return merged, r.id
-    return base_text, applied_id
+  {
+    "id": "faq_generica_fallback_override",
+    "pattern": "(?is)non\\s*(trovat|disponibil|visibil)|domanda\\s*generica|spiega.*(ctf|ctl|diapason|p560)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Ecco il quadro sintetico: **CTF** per solai acciaio–calcestruzzo su lamiera (posa dall’alto con **P560** e **2 chiodi HSBR14**/pezzo). **CTL** per legno–calcestruzzo (viti Ø10, altezze MAXI/BASE in funzione di soletta/assito). **Diapason** per laterocemento senza lamiera. Scelta finale e quantità sono **da calcolo**; forniamo schede di posa e supporto."
+  },
 
-# ---------- HTTP UTILS ----------
-def allowed_domain(url: str, prefer: List[str]) -> bool:
-    try:
-        from urllib.parse import urlparse
-        host = urlparse(url).netloc.lower()
-    except Exception:
-        return False
-    return any(host.endswith(d.lower()) for d in prefer)
+  {
+    "id": "ctf_passi_esempio_augment",
+    "pattern": "(?is)esempi|schema|passi|campionatur|disposizion.*ctf",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Esempio orientativo** (da verificare a calcolo): passo 30–40 cm in prossimità degli appoggi, 50–70 cm in mezzeria; allineamento lungo le greche/asse trave."
+  },
 
-def http_get(url: str, headers: Optional[Dict] = None, timeout: float = 6.0) -> Tuple[int, str]:
-    """
-    GET robusto: usa requests se presente, altrimenti urllib.
-    Ritorna (status_code, body_text)
-    """
-    headers = headers or {}
-    if requests:
-        try:
-            r = requests.get(url, headers=headers, timeout=timeout)
-            return r.status_code, r.text
-        except Exception:
-            pass
-    try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=timeout) as res:
-            status = getattr(res, "status", 200)
-            body = res.read().decode("utf-8", "ignore")
-            return status, body
-    except Exception:
-        return 599, ""
+  {
+    "id": "hibond_profilo_post",
+    "pattern": "(?is)hi\\s*[- ]?bond|grec|profilo\\s*lamiera",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: il **profilo della lamiera** (altezza greca/inerzia) influenza rigidezza e scorrimento; inserire il profilo esatto nel calcolo."
+  },
 
-# ---------- WEB SEARCH (Brave / Bing) ----------
-def brave_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
-    """
-    Usa Brave Web Search API se BRAVE_API_KEY è presente.
-    Filtra solo domini in PREFERRED_DOMAINS.
-    """
-    if not BRAVE_API_KEY:
-        return []
-    url = "https://api.search.brave.com/res/v1/web/search"
-    params = {"q": query, "count": n, "freshness": "month"}
-    full = url + "?" + urllib.parse.urlencode(params)
-    status, txt = http_get(full, headers={"X-Subscription-Token": BRAVE_API_KEY}, timeout=timeout)
-    if status != 200:
-        return []
-    try:
-        data = json.loads(txt)
-        out = []
-        for item in data.get("web", {}).get("results", []):
-            u = item.get("url", "")
-            if not allowed_domain(u, PREFERRED_DOMAINS):
-                continue
-            out.append({
-                "title": item.get("title", ""),
-                "url": u,
-                "snippet": item.get("description", ""),
-                "score": 0.75
-            })
-        return out
-    except Exception:
-        return []
+  {
+    "id": "tempi_costi_augment",
+    "pattern": "(?is)tempi|costi|veloc|produttiv",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Efficienza**: CTF + P560 → posa veloce senza preforo/saldature; riduce tempi e fermi cantiere rispetto a sistemi non integrati."
+  },
 
-def bing_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
-    if not BING_API_KEY:
-        return []
-    url = "https://api.bing.microsoft.com/v7.0/search"
-    params = {"q": query, "count": n, "mkt": "it-IT"}
-    full = url + "?" + urllib.parse.urlencode(params)
-    status, txt = http_get(full, headers={"Ocp-Apim-Subscription-Key": BING_API_KEY}, timeout=timeout)
-    if status != 200:
-        return []
-    try:
-        data = json.loads(txt)
-        out = []
-        for item in data.get("webPages", {}).get("value", []):
-            u = item.get("url", "")
-            if not allowed_domain(u, PREFERRED_DOMAINS):
-                continue
-            out.append({
-                "title": item.get("name", ""),
-                "url": u,
-                "snippet": item.get("snippet", ""),
-                "score": 0.70
-            })
-        return out
-    except Exception:
-        return []
+  {
+    "id": "limiti_operativi_post",
+    "pattern": "(?is)limiti|non\\s*ammess|non\\s*consent|attenzion",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: Non utilizzare P560 su acciai troppo sottili/fragili o non aderenti; evitare spari su bordi/fori esistenti; sostituire elementi usurati."
+  },
 
-def fetch_url_text(url: str, timeout: float = 6.0) -> str:
-    status, body = http_get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=timeout)
-    return body if status == 200 else ""
+  {
+    "id": "assistenza_sw_augment",
+    "pattern": "(?is)software|calcolo|verific|assistenza|supporto",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Supporto Tecnaria**: forniamo indicazioni di dimensionamento, schede di posa e strumenti di calcolo; possiamo verificare i dati del cantiere."
+  },
 
-# ---------- HTML CLEANER ----------
-def clean_html_text(raw: str) -> str:
-    if not raw:
-        return ""
-    if BeautifulSoup:
-        try:
-            soup = BeautifulSoup(raw, "html.parser")
-            for tag in soup(["script", "style", "noscript"]):
-                tag.decompose()
-            text = soup.get_text(separator=" ")
-            text = html.unescape(text)
-            text = re.sub(r"\s+", " ", text).strip()
-            return text
-        except Exception:
-            pass
-    # fallback regex
-    txt = re.sub(r"<[^>]+>", " ", raw)
-    txt = html.unescape(txt)
-    return re.sub(r"\s+", " ", txt).strip()
+  {
+    "id": "normativa_post",
+    "pattern": "(?is)eurocod|ntc|circolar|linee\\s*guida",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: progettazione secondo **Eurocodici/NTC**; uso di **ETA** e schede Tecnaria per le verifiche a taglio/scorrimento e deformazioni."
+  },
 
-# ---------- SNIPPET SYNTHESIS ----------
-def synthesize_snippets(snips: List[Dict], q: str) -> Tuple[str, List[str]]:
-    """
-    Scarica le pagine filtrate e crea un sommario ridotto.
-    Cerca parole chiave tecniche per restituire un contenuto utile.
-    """
-    if not snips:
-        return "", []
-    bodies, sources = [], []
-    for s in snips:
-        page = fetch_url_text(s["url"])
-        body = clean_html_text(page) or clean_html_text(s.get("snippet", ""))
-        if body:
-            bodies.append(body[:1500])
-            sources.append(s["url"])
-    if not bodies:
-        return "", sources
-    joined = " ".join(bodies)[:4000]
-    key = ["CTF", "lamiera", "P560", "HSBR", "Diapason", "ETA", "connettore", "soletta", "laterocemento", "Hi-Bond", "Tecnaria", "SPIT"]
-    sentences = re.split(r"(?<=[\.\!\?])\s+", joined)
-    keep = [s for s in sentences if any(k.lower() in s.lower() for k in key)]
-    draft = " ".join(keep)[:1200] or joined[:800]
-    draft = re.sub(r"\s{2,}", " ", draft).strip()
-    return draft, list(dict.fromkeys(sources))[:5]
+  {
+    "id": "traduci_en_hardening_post",
+    "pattern": "(?is)\\b(Spit P560 nail gun|indirect action|weight\\s*[0-9]|zinc plated|shank|diameter|base plate)\\b",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: sezioni in inglese rilevate: la risposta è stata **riassunta e resa in italiano** per chiarezza."
+  },
 
-# ---------- REFINER (tono, pulizia) ----------
-def refine_text(text_it: str) -> str:
-    """
-    Uniforma il testo in un tono 'Tecnaria' chiaro e sintetico.
-    Rimuove intestazioni superflue e aggiunge lead se mancante.
-    """
-    if not text_it:
-        return ""
-    # rimuovi eventuali intestazioni tipo "OK - Riferimento..."
-    text_it = re.sub(r"^OK\s*-?\s*(Riferimento|Sintesi).*?\n", "", text_it, flags=re.I | re.M)
-    text_it = text_it.replace("**Fonti**", "\n\n**Fonti**")
-    lead = (
-        "Ecco le informazioni richieste, in modo chiaro e sintetico.\n"
-        "Per verifiche di progetto approfondite possiamo lavorare sui dati reali del cantiere."
-    )
-    body = text_it.strip()
-    if body.lower().startswith("ecco le informazioni"):
-        return body
-    return f"{lead}\n\n{body}".strip()
+  {
+    "id": "p560_propulsori_augment",
+    "pattern": "(?is)propulsor|cartucc|carica|polver|salv[ae]",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Propulsori**: seleziona la carica adeguata alla combinazione lamiera/trave; evita sia sottopenetrazione sia eccessiva deformazione testa."
+  },
 
-def compose_final(answer: str, sources: List[str]) -> str:
-    answer = answer.strip()
-    if sources:
-        src = "\n".join(f"- {u}" for u in sources)
-        if "**Fonti**" in answer:
-            if not answer.strip().endswith("\n"):
-                answer += "\n"
-            answer += f"**Fonti**\n{src}\n"
-        else:
-            answer += f"\n\n**Fonti**\n{src}\n"
-    return answer
-
-# ---------- PIPELINE ----------
-def web_answer(q: str) -> Tuple[str, List[str]]:
-    results = []
-    if SEARCH_PROVIDER == "brave":
-        results = brave_search(q, n=6)
-    elif SEARCH_PROVIDER == "bing":
-        results = bing_search(q, n=6)
-    else:
-        results = []
-    if not results:
-        return "", []
-    text, sources = synthesize_snippets(results, q)
-    if not text:
-        return "", sources
-    blocks = []
-    patterns = [
-        (r"(P560.*?HSBR.*?)(?:\.|;)", "- **Fissaggio**: \\1."),
-        (r"(ETA|European Technical Assessment.*?)(?:\.|;)", "- **Normativa**: \\1."),
-        (r"(lamiera.*?Hi[- ]?Bond.*?)(?:\.|;)", "- **Compatibilità**: \\1."),
-    ]
-    used = 0
-    for pat, lab in patterns:
-        m = re.search(pat, text, flags=re.I)
-        if m:
-            blocks.append(lab.replace("\\1", m.group(1)))
-            used += 1
-    if used < 2:
-        blocks = [textwrap.shorten(text, 450, placeholder="…")]
-    ans = "OK\n" + "\n".join(blocks)
-    ans = refine_text(ans)
-    return ans, sources
-
-def answer_pipeline(q: str) -> str:
-    web_txt, web_sources = web_answer(q)
-    base = web_txt if (web_txt and len(web_txt) >= 60) else ""
-    final_txt, applied = sinapsi_apply(q, base)
-    if not final_txt:
-        final_txt = refine_text(
-            "Per questa richiesta servono alcuni dettagli (tipo solaio, luci, carichi, profili, spessori, vincoli). "
-            "Possiamo dare un indirizzo prudente e poi validare col calcolo."
-        )
-    return compose_final(final_txt, web_sources)
-
-# ---------- HTTP Endpoints ----------
-@app.get("/ping")
-def ping():
-    return {"ok": True, "pong": True}
-
-@app.get("/health")
-def health():
-    exists = os.path.isdir(CRITICI_DIR)
-    return {
-        "status": "ok",
-        "web_search": {
-            "provider": SEARCH_PROVIDER,
-            "brave_key": bool(BRAVE_API_KEY),
-            "bing_key": bool(BING_API_KEY),
-            "preferred_domains": PREFERRED_DOMAINS,
-            "min_web_score": MIN_WEB_SCORE,
-        },
-        "critici": {"dir": CRITICI_DIR, "exists": exists, "rules": len(SINAPSI_RULES)},
-    }
-
-@app.get("/")
-def home():
-    return HTMLResponse(UI_HTML)
-
-@app.get("/ask")
-def ask_get(q: str = ""):
-    q = (q or "").strip()
-    if not q:
-        return JSONResponse({"ok": True, "answer": "OK\n- **Domanda vuota**: inserisci una richiesta valida."})
-    ans = answer_pipeline(q)
-    return JSONResponse({"ok": True, "answer": ans})
-
-@app.post("/api/ask")
-async def ask_post(req: Request):
-    try:
-        body = await req.json()
-        q = (body.get("q") or "").strip()
-    except Exception:
-        q = ""
-    if not q:
-        return JSONResponse({"ok": False, "error": "Missing q"})
-    ans = answer_pipeline(q)
-    return JSONResponse({"ok": True, "answer": ans})
-
-# ---------- UI HTML (semplice) ----------
-UI_HTML = """
-<!doctype html><html lang="it"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tecnaria QA Bot</title>
-<style>
-:root { --bg:#0f172a; --panel:#111827; --txt:#e5e7eb; --muted:#9ca3af; --acc:#16a34a; }
-*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.45 system-ui,Segoe UI,Roboto,Arial}
-.wrap{max-width:1100px;margin:28px auto;padding:0 20px}
-h1{font-size:22px;margin:0 0 14px}
-.topbar{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 18px}
-.tag{background:#0b1220;border:1px solid #1f2937;color:#d1d5db;padding:10px 14px;border-radius:26px;cursor:pointer}
-.tag:hover{border-color:#374151}
-.card{background:var(--panel);border:1px solid #1f2937;border-radius:14px;padding:14px 16px;margin:14px 0}
-textarea{width:100%;min-height:160px;background:#0b1220;border:1px solid #1f2937;border-radius:10px;color:var(--txt);padding:12px}
-.controls{display:flex;gap:10px;align-items:center;margin-top:12px}
-.btn{background:#0b1220;border:1px solid #1f2937;color:#d1d5db;padding:10px 16px;border-radius:10px;cursor:pointer}
-.btn:hover{border-color:#374151}
-.btn.primary{background:#052e16;border-color:#14532d;color:#d1fae5}
-.chk{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:14px;margin-top:8px}
-pre{white-space:pre-wrap;word-wrap:break-word}
-small{color:var(--muted)}
-</style>
-</head><body>
-<div class="wrap">
-  <h1>Tecnaria QA Bot</h1>
-  <div class="topbar">
-    <div class="tag" onclick="fill('Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino?')">P560 + CTF</div>
-    <div class="tag" onclick="fill('Che differenza c\\'è tra un connettore CTF e il sistema Diapason?')">CTF vs Diapason</div>
-    <div class="tag" onclick="fill('Quanti connettori CTF servono per m² su lamiera Hi-Bond e come si fissano?')">Densità CTF</div>
-    <div class="tag" onclick="fill('Mi dai i contatti Tecnaria per assistenza tecnica?')">Contatti</div>
-  </div>
-
-  <div class="card">
-    <textarea id="q" placeholder="Scrivi la domanda..."></textarea>
-    <div class="controls">
-      <button class="btn primary" onclick="ask()">Chiedi</button>
-      <button class="btn" onclick="clr()">Pulisci</button>
-      <button class="btn" onclick="copyAns()">Copia risposta</button>
-    </div>
-    <label class="chk"><input type="checkbox" id="useget"> usa GET (debug)</label>
-  </div>
-
-  <div class="card">
-    <pre id="ans"> </pre>
-    <small>Endpoint: <code>/ask</code> (POST JSON { q }) oppure GET ?q=...</small>
-  </div>
-</div>
-
-<script>
-function fill(t){document.getElementById('q').value=t;}
-function clr(){document.getElementById('q').value='';document.getElementById('ans').textContent='';}
-async function ask(){
-  const q = document.getElementById('q').value.trim();
-  if(!q){ document.getElementById('ans').textContent='OK\\n- **Domanda vuota**: inserisci una richiesta valida.'; return; }
-  const useget = document.getElementById('useget').checked;
-  try{
-    let resp;
-    if(useget){
-      const r = await fetch('/ask?q=' + encodeURIComponent(q));
-      resp = await r.json();
-    }else{
-      const r = await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q})});
-      resp = await r.json();
-    }
-    if(resp.ok){ document.getElementById('ans').textContent = resp.answer; }
-    else{ document.getElementById('ans').textContent = 'Errore: ' + (resp.error||''); }
-  }catch(e){
-    document.getElementById('ans').textContent = 'Errore di risposta';
+  {
+    "id": "ctf_errori_comuni_post",
+    "pattern": "(?is)errore|problemi|non\\s*funzion|incepp|test",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS errori comuni: lamiera non aderente, carica errata, punzone usurato, distanze bordi non rispettate. Correggere e ripetere la prova."
   }
-}
-function copyAns(){
-  const t = document.getElementById('ans').textContent;
-  navigator.clipboard.writeText(t || '');
-}
-</script>
-</body></html>
-"""
-
-# ---- end of file
+]
