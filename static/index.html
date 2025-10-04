@@ -1,81 +1,109 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tecnaria QA Bot</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    :root { --bg:#f6f7fb; --fg:#222; --brand:#0d6efd; --card:#fff; --muted:#666; }
-    body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;color:var(--fg);background:var(--bg)}
-    .wrap{max-width:980px;margin:0 auto;padding:24px}
-    h1{color:var(--brand);font-size:22px;margin:0 0 16px}
-    .card{background:var(--card);border-radius:14px;padding:20px;box-shadow:0 6px 24px rgba(0,0,0,.06)}
-    label{font-size:12px;color:var(--muted)}
-    textarea{width:100%;min-height:80px;padding:12px;border-radius:10px;border:1px solid #ddd;font-size:15px;resize:vertical}
-    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-    button{background:var(--brand);color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
-    button.secondary{background:#e9eefc;color:#174ea6}
-    .answer{margin-top:16px}
-    .hint{font-size:12px;color:var(--muted);margin-top:4px}
-    a{color:var(--brand);text-decoration:none}
-    a:hover{text-decoration:underline}
-    .spinner{display:none;margin-left:8px}
+    body {
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background-color: #f8f9fb;
+      margin: 0;
+      padding: 0;
+      color: #222;
+    }
+    header {
+      background-color: #004c97;
+      color: white;
+      text-align: center;
+      padding: 20px 0;
+      font-size: 1.5em;
+      letter-spacing: 0.5px;
+    }
+    main {
+      max-width: 900px;
+      margin: 40px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    form {
+      display: flex;
+      margin-bottom: 20px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px 0 0 5px;
+      font-size: 1em;
+    }
+    button {
+      background-color: #004c97;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      font-size: 1em;
+      border-radius: 0 5px 5px 0;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #003c7a;
+    }
+    .answer {
+      margin-top: 25px;
+      line-height: 1.6;
+      font-size: 1.05em;
+    }
+    .answer a {
+      color: #004c97;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .answer a:hover {
+      text-decoration: underline;
+    }
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 0.9em;
+      color: #777;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Tecnaria QA Bot</h1>
-    <div class="card">
-      <label for="q">Domanda</label>
-      <textarea id="q" placeholder="Es. Devo usare la P560 per fissare i CTF: serve un patentino?"></textarea>
-      <div class="row">
-        <button id="askBtn">Chiedi</button>
-        <button class="secondary" id="getBtn">usa GET (debug)</button>
-        <span class="spinner" id="spin">⏳</span>
-      </div>
-      <div class="hint">I link nelle risposte sono cliccabili.</div>
-    </div>
-
-    <div class="card answer" id="out" hidden></div>
-  </div>
+  <header>
+    🔍 Tecnaria Q&A Assistant
+  </header>
+  <main>
+    <form id="qa-form">
+      <input type="text" id="question" placeholder="Fai una domanda su prodotti o sistemi Tecnaria..." />
+      <button type="submit">Chiedi</button>
+    </form>
+    <div class="answer" id="answer"></div>
+  </main>
+  <footer>
+    © Tecnaria S.p.A. – Sistema Q&A sperimentale. Le risposte sono di natura informativa.
+  </footer>
 
   <script>
-    const qEl   = document.getElementById('q');
-    const outEl = document.getElementById('out');
-    const spin  = document.getElementById('spin');
+    const form = document.getElementById("qa-form");
+    const answerDiv = document.getElementById("answer");
 
-    function show(html){
-      outEl.hidden=false;
-      outEl.innerHTML = html;
-      outEl.scrollIntoView({behavior:'smooth'});
-    }
-    function start(){ spin.style.display='inline-block'; }
-    function stop(){ spin.style.display='none'; }
-
-    document.getElementById('askBtn').onclick = async ()=>{
-      const q = qEl.value.trim();
-      if(!q){ show('<i>Inserisci una domanda.</i>'); return; }
-      start();
-      try{
-        const r = await fetch('/api/ask', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ q })
-        });
-        const data = await r.json();
-        // /api/ask restituisce HTML già pronto in data.answer
-        show(data && data.answer ? data.answer : '<i>Nessuna risposta.</i>');
-      }catch(e){
-        show('<i>Errore di rete.</i>');
-      }finally{ stop(); }
-    };
-
-    document.getElementById('getBtn').onclick = ()=>{
-      const q = qEl.value.trim();
-      if(!q){ show('<i>Inserisci una domanda.</i>'); return; }
-      // Apre l’endpoint GET /ask?q=...
-      window.location.href = '/ask?q=' + encodeURIComponent(q);
-    };
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const q = document.getElementById("question").value.trim();
+      if (!q) return;
+      answerDiv.innerHTML = "<em>Attendere...</em>";
+      try {
+        const res = await fetch(`/ask?q=${encodeURIComponent(q)}`);
+        const data = await res.text();
+        answerDiv.innerHTML = data;
+      } catch (err) {
+        answerDiv.innerHTML = "<span style='color:red'>Errore di rete o servizio non disponibile.</span>";
+      }
+    });
   </script>
 </body>
 </html>
