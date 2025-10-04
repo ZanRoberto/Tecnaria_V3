@@ -1,108 +1,87 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Tecnaria QA Bot</title>
   <style>
-    body {
-      font-family: "Segoe UI", Roboto, sans-serif;
-      background-color: #f8f9fb;
-      margin: 0;
-      padding: 0;
-      color: #222;
-    }
-    header {
-      background-color: #004c97;
-      color: white;
-      text-align: center;
-      padding: 20px 0;
-      font-size: 1.5em;
-      letter-spacing: 0.5px;
-    }
-    main {
-      max-width: 900px;
-      margin: 40px auto;
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-    }
-    form {
-      display: flex;
-      margin-bottom: 20px;
-    }
-    input[type="text"] {
-      flex: 1;
-      padding: 10px 15px;
-      border: 1px solid #ccc;
-      border-radius: 5px 0 0 5px;
-      font-size: 1em;
-    }
-    button {
-      background-color: #004c97;
-      border: none;
-      color: white;
-      padding: 10px 20px;
-      font-size: 1em;
-      border-radius: 0 5px 5px 0;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #003c7a;
-    }
-    .answer {
-      margin-top: 25px;
-      line-height: 1.6;
-      font-size: 1.05em;
-    }
-    .answer a {
-      color: #004c97;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    .answer a:hover {
-      text-decoration: underline;
-    }
-    footer {
-      text-align: center;
-      margin-top: 40px;
-      font-size: 0.9em;
-      color: #777;
-    }
+    :root{--bg:#0f172a; --panel:#111827; --panel2:#0b1220; --text:#e5e7eb; --muted:#94a3b8; --primary:#22c55e;}
+    html,body{height:100%}
+    body{margin:0;background:linear-gradient(180deg,var(--bg),#0b1328);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;color:var(--text)}
+    .wrap{max-width:980px;margin:32px auto;padding:0 16px}
+    .title{font-size:38px;font-weight:800;text-align:center;letter-spacing:.5px;margin:8px 0 18px}
+    .chips{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
+    .chip{background:#0e1b33;border:1px solid #1f2a44;color:#cbd5e1;padding:8px 12px;border-radius:999px;font-size:14px;cursor:pointer}
+    .card{background:linear-gradient(180deg,#0c1427,var(--panel));border:1px solid #1f2937;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+    .pad{padding:18px}
+    textarea{width:100%;min-height:150px;background:var(--panel2);border:1px solid #22324a;color:var(--text);border-radius:12px;padding:14px;font-size:15px;line-height:1.5;outline:none}
+    .actions{display:flex;gap:12px;align-items:center;margin-top:12px}
+    .btn{background:#1a2a44;border:1px solid #284061;color:#e2e8f0;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer}
+    .btn.primary{background:var(--primary);border-color:#16a34a;color:#051511}
+    .out{background:linear-gradient(180deg,#0c1427,var(--panel));border-top:1px solid #1f2937;border-radius:0 0 16px 16px;padding:16px;min-height:180px}
+    .answer{max-width:860px;margin:auto;line-height:1.6}
+    .answer h2{margin:0 0 8px 0}
+    .answer a{color:#86efac;text-decoration:none}
+    .answer a:hover{text-decoration:underline}
+    .ep{font-size:12px;color:var(--muted);margin-top:10px;text-align:center}
   </style>
 </head>
 <body>
-  <header>
-    🔍 Tecnaria Q&A Assistant
-  </header>
-  <main>
-    <form id="qa-form">
-      <input type="text" id="question" placeholder="Fai una domanda su prodotti o sistemi Tecnaria..." />
-      <button type="submit">Chiedi</button>
-    </form>
-    <div class="answer" id="answer"></div>
-  </main>
-  <footer>
-    © Tecnaria S.p.A. – Sistema Q&A sperimentale. Le risposte sono di natura informativa.
-  </footer>
+  <div class="wrap">
+    <div class="title">Tecnaria QA Bot</div>
+
+    <div class="chips">
+      <button class="chip" data-q="Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino o formazione speciale?">P560 + CTF</button>
+      <button class="chip" data-q="Che differenza c’è tra un connettore CTF e il sistema Diapason?">CTF vs Diapason</button>
+      <button class="chip" data-q="Qual è la densità di posa dei connettori CTF su lamiera Hi-Bond?">Densità CTF</button>
+      <button class="chip" data-q="Come posso contattare l’assistenza Tecnaria per supporto tecnico o preventivi?">Contatti</button>
+    </div>
+
+    <div class="card">
+      <div class="pad">
+        <textarea id="q" placeholder="Scrivi la domanda…"></textarea>
+        <div class="actions">
+          <button id="ask" class="btn primary">Chiedi</button>
+          <button id="clear" class="btn">Pulisci</button>
+          <button id="copy" class="btn">Copia risposta</button>
+        </div>
+      </div>
+      <div class="out">
+        <div id="answer" class="answer" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="ep">Endpoint: <code>/ask?q=…</code> (GET) oppure <code>/api/ask</code> (POST JSON)</div>
+  </div>
 
   <script>
-    const form = document.getElementById("qa-form");
-    const answerDiv = document.getElementById("answer");
+    const qEl = document.getElementById('q');
+    const ans = document.getElementById('answer');
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const q = document.getElementById("question").value.trim();
-      if (!q) return;
-      answerDiv.innerHTML = "<em>Attendere...</em>";
-      try {
-        const res = await fetch(`/ask?q=${encodeURIComponent(q)}`);
-        const data = await res.text();
-        answerDiv.innerHTML = data;
-      } catch (err) {
-        answerDiv.innerHTML = "<span style='color:red'>Errore di rete o servizio non disponibile.</span>";
+    document.querySelectorAll('.chip').forEach(c=>{
+      c.addEventListener('click', ()=>{ qEl.value=c.getAttribute('data-q'); });
+    });
+
+    document.getElementById('ask').addEventListener('click', async ()=>{
+      const q = qEl.value.trim();
+      if(!q){ ans.innerHTML = "<p>Inserisci una domanda.</p>"; return; }
+      ans.innerHTML = "<em>Attendere…</em>";
+      try{
+        const url = "/ask?" + new URLSearchParams({q});
+        const html = await (await fetch(url, {method:'GET'})).text();
+        ans.innerHTML = html;
+      }catch(e){
+        ans.textContent = "Errore di risposta";
       }
+    });
+
+    document.getElementById('clear').addEventListener('click', ()=>{
+      qEl.value=""; ans.innerHTML="";
+    });
+
+    document.getElementById('copy').addEventListener('click', async ()=>{
+      const tmp = ans.innerText;
+      if(tmp){ await navigator.clipboard.writeText(tmp); }
     });
   </script>
 </body>
