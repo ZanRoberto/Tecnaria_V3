@@ -4,35 +4,99 @@
     "pattern": "(?i)\\bp\\s*[- ]?560\\b.*(patentino|abilitazione|formazione)|(patentino|abilitazione|formazione).*\\bp\\s*[- ]?560\\b",
     "mode": "override",
     "lang": "it",
-    "answer": "OK\n- **Abilitazione/Patentino**: non è richiesto un patentino specifico per **SPIT P560**; serve **formazione interna** secondo le istruzioni del costruttore.\n- **Fissaggio CTF**: **2 chiodi HSBR14** per connettore; nessuna preforatura; taratura potenza e **prova su campione**.\n- **DPI**: occhiali, guanti, protezione udito; lamiera ben aderente; rispetto distanze dai bordi.\n"
+    "answer": "Non serve un patentino specifico per la SPIT P560: è sufficiente una formazione interna secondo le istruzioni del costruttore. Ogni connettore CTF si fissa con 2 chiodi HSBR14; nessuna preforatura; taratura della potenza e prova su campione. DPI obbligatori: occhiali, guanti, protezione udito; lamiera ben aderente; rispetto delle distanze dai bordi."
   },
   {
-    "id": "ctf_density_addon",
-    "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|fissagg|chiod|p560|hsbr|hi[- ]?bond)",
+    "id": "p560_only",
+    "pattern": "(?i)(p560|spit\\s*560|chiodatrice).*?(qualsiasi|qualunque|altra|diversa|hilt|bosch|dewalt|sparachiod|pistola).*?(ctf)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Per i connettori CTF è ammessa solo la chiodatrice a sparo **SPIT P560** con accessori dedicati. Altre macchine non sono ammesse. Ogni connettore: 2 chiodi HSBR14; fissaggio dall’alto anche in presenza di lamiera aderente."
+  },
+  {
+    "id": "ctf_density",
+    "pattern": "(?i)\\bctf\\b.*(quanti|densit|pezzi|m2|m²|passo|interasse|schema|layout|disposizione)",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Densità indicativa**: **~6–8 CTF/m²** (più fitta agli appoggi, più rada in mezzeria); valore **finale da calcolo**.\n- **Fissaggio**: **2 chiodi HSBR14**/CTF con **SPIT P560**; prova su campione e taratura potenza.\n- **Buone pratiche**: lamiera aderente alla trave, rispetto bordi/assi, DPI.\n"
+    "answer": "Densità indicativa di riferimento: **circa 6–8 CTF/m²** (maggiore vicino agli appoggi, più rada in mezzeria). La quantità finale deriva dal calcolo (luci, carichi, profilo lamiera, classe del CLS, verifiche a scorrimento e deformazioni)."
   },
   {
-    "id": "ctf_vs_diapason_addon",
+    "id": "ctf_fixing",
+    "pattern": "(?i)\\bctf\\b.*(fissa|fissagg|posa|install|chiod|p560|hsbr)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "Fissaggio: **2 chiodi HSBR14** per connettore con **SPIT P560**; nessuna preforatura. Regolare la potenza in funzione di lamiera/trave e fare sempre una prova su campione."
+  },
+  {
+    "id": "ctf_vs_diapason",
     "pattern": "(?i)(ctf).*diapason|(diapason).*(ctf)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Quando CTF**: se c’è/si posa **lamiera grecata** e serve **velocità**; posa dall’alto con **SPIT P560** e **2 chiodi HSBR14**/pezzo.\n- **Quando Diapason**: **rinforzo laterocemento** senza lamiera; intervento dall’alto **poco invasivo** con fissaggi meccanici.\n- **Scelta pratica**: dipende da **tipologia solaio**, **carichi**, **vincoli di spessore**, **accessi** e **tempi**; quantità connettori/ancoraggi → **calcolo**.\n"
+    "answer": "Quando **CTF**: c’è/si posa lamiera grecata e serve velocità; posa dall’alto con SPIT P560. Quando **Diapason**: rinforzo di laterocemento senza lamiera, con intervento dall’alto poco invasivo. La scelta dipende da tipologia di solaio, carichi, vincoli di spessore, accessi e tempi."
   },
   {
-    "id": "ctl_maxi_selector",
+    "id": "ctl_vs_diapason",
+    "pattern": "(?i)(ctl).*(diapason)|(diapason).*(ctl)|laterocemento.*ctl|ctl.*laterocemento",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "**CTL**: legno–calcestruzzo (viti su travi lignee), non adatto a laterocemento. **Diapason**: rinforzo laterocemento con fissaggi meccanici e getto collaborante."
+  },
+  {
+    "id": "ctl_tavolato_5cm",
     "pattern": "(?i)(ctl|maxi).*tavolato.*(1\\s*cm|2\\s*cm|20\\s*mm).*soletta.*5\\s*cm",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Se tavolato ~2 cm e soletta 5 cm** → **CTL MAXI 12/040**; viti **Ø10×100** (oppure **Ø10×120** se interposti/tavolato > 25–30 mm).\n- **Criterio**: testa **sopra la rete** a metà spessore e **sotto** il filo superiore del getto; se interferenze → **12/030**.\n"
+    "answer": "Caso tipico: **CTL MAXI 12/040**; viti **Ø10×100** (oppure **Ø10×120** se interposti/tavolato > 25–30 mm). Criterio: testa sopra la rete a metà spessore e sotto il filo superiore del getto; se interferenze → valutare 12/030."
   },
   {
-    "id": "ctf_hibond_advantages",
-    "pattern": "(?i)\\bctf\\b.*(hi[- ]?bond|lamiera)|hi[- ]?bond.*ctf|vantagg",
+    "id": "hibond_adv",
+    "pattern": "(?i)(hi[- ]?bond|lamiera\\s*grecata).*\\bctf\\b|\\bctf\\b.*(hi[- ]?bond|lamiera)",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Compatibilità**: **CTF** progettati per lamiere grecate certificate (es. **Hi-Bond**), piena collaborazione acciaio–calcestruzzo.\n- **Velocità di posa**: dall’alto con **SPIT P560** e **2 chiodi HSBR14**, senza preforatura.\n- **Prestazioni**: maggiore rigidezza/capacità, deformazioni ridotte, luci maggiori a spessore contenuto.\n- **Normativa**: **ETA** e tracciabilità lotti.\n"
+    "answer": "I CTF sono progettati per lamiere grecate certificate (es. **Hi-Bond**), garantendo piena collaborazione acciaio–calcestruzzo, rapidità di posa e tracciabilità ETA."
+  },
+  {
+    "id": "lamiera_thickness_limit",
+    "pattern": "(?i)(lamiera|grecata|hibond).*(1\\s*mm|1,0\\s*mm|0,8\\s*mm|spessore|doppia|doppio).*\\bctf\\b",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "Nota posa: lamiera aderente alla trave. Configurazioni tipiche: **1×1,5 mm** oppure **2×1,0 mm** ben serrate; evitare giochi tra lamiera e ala della trave."
+  },
+  {
+    "id": "dpi_safety",
+    "pattern": "(?i)(dpi|sicurezz|occhiali|guanti|udito|rischi|sicuro)",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "Sicurezza: occhiali, guanti, protezione udito; area pulita; rispetto dei bordi minimi; test iniziale su campione e verifica della penetrazione dei chiodi."
+  },
+  {
+    "id": "normativa_eta",
+    "pattern": "(?i)(eta|certificat|marcatura|ce|europe|conformit)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "I sistemi Tecnaria sono supportati da **valutazioni tecniche europee (ETA)** e documentazione di tracciabilità; i dimensionamenti devono rispettare normativa vigente e verifiche di progetto."
+  },
+  {
+    "id": "contatti_route",
+    "pattern": "(?i)(contatt|telefono|mail|tecnico|commerciale|assistenza)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Per un confronto diretto con il tecnico-commerciale di zona, usa i contatti ufficiali Tecnaria dal sito: scegli provincia e prodotto; riceverai supporto su dimensionamento, posa e logistica."
+  },
+  {
+    "id": "no_preforo",
+    "pattern": "(?i)(prefor|forare|trapano|punzon|foro).*\\b(ctf|p560)\\b",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Per i CTF con SPIT P560 **non si prefora**: fissaggio a freddo con 2 chiodi HSBR14, regolazione potenza e colpo di prova su lamiera/trave."
+  },
+  {
+    "id": "p560_troubleshoot",
+    "pattern": "(?i)(incepp|non\\s*entra|non\\s*penetra|salta|non\\s*fiss|problemi).*\\b(p560|chiod|hsbr)\\b",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Se il chiodo non penetra o si inceppa: ridurre/variare propulsore, controllare appoggio in squadro, aumentare pressione sull’utensile, verificare aderenza lamiera-trave, provare su campione e sostituire puntale/usura se necessario."
   }
 ]
+
 
