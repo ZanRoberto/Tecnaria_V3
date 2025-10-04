@@ -1,346 +1,367 @@
-# app.py — Tecnaria QA Bot (versione completa, robusta)
-# Copia questo file in app.py nel repo e fai il deploy.
+# app.py
+# Tecnaria QA Bot – versione “blindata”
+# - Interfaccia web inclusa
+# - Ricerca web (Brave/Bing) con filtro domini ufficiali
+# - Pulizia HTML/PDF
+# - Refiner ITA tecnico/morbido
+# - Sinapsi: override / augment / postscript
+
 import os
 import re
 import json
 import time
 import html
-import textwrap
-import urllib.request
+import math
 import urllib.parse
+import urllib.request
+from typing import List, Dict, Any, Optional
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse
+from pydantic import BaseModel
 
-from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass
+# -----------------------------
+# CONFIG
+# -----------------------------
+APP_NAME = os.getenv("SERVICE_NAME", "Tecnaria QA Bot")
+SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave").lower().strip()  # brave|bing|none
+BRAVE_API_KEY = os.getenv("BRAVE_API_KEY", "").strip()
+BING_API_KEY = os.getenv("BING_API_KEY", "").strip()
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-
-# Import opzionali (non bloccanti: se mancanti il server funziona lo stesso)
-try:
-    import requests  # più comodo per fetch
-except Exception:
-    requests = None
-
-try:
-    from bs4 import BeautifulSoup  # miglior pulizia HTML
-except Exception:
-    BeautifulSoup = None
-
-APP_NAME = "Tecnaria QA Bot"
-app = FastAPI(title=APP_NAME)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ---------- CONFIG ----------
-SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave").lower().strip()
-BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
-BING_API_KEY = os.getenv("BING_API_KEY")
-PREFERRED_DOMAINS = [d.strip() for d in os.getenv(
-    "PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com"
+PREFERRED_DOMAINS = [d.strip().lower() for d in os.getenv(
+    "PREFERRED_DOMAINS",
+    "tecnaria.com, spit.eu, spitpaslode.com"
 ).split(",") if d.strip()]
-MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.55"))  # soglia ricerca web (più alta = più filtrata)
+
+MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.55"))
+
 CRITICI_DIR = os.getenv("CRITICI_DIR", "Tecnaria_V3/static/static/data/critici").strip()
+SINAPSI_FILE = os.path.join(CRITICI_DIR, "sinapsi_rules.json")
 
-# ---------- SINAPSI ----------
-@dataclass
-class Rule:
-    id: str
-    pattern: re.Pattern
-    mode: str  # override | augment | postscript
-    lang: str
-    answer: str
+WEB_TIMEOUT = float(os.getenv("WEB_TIMEOUT", "7.0"))
+WEB_RETRIES = int(os.getenv("WEB_RETRIES", "1"))
 
-def load_sinapsi_rules() -> List[Rule]:
-    """
-    Cerca file sinapsi_rules.json / sinapsi_brain.json / sinapsi.json nella cartella CRITICI_DIR
-    e carica le regole. Se non trova nulla, ritorna lista vuota.
-    """
-    paths = [
-        os.path.join(CRITICI_DIR, "sinapsi_rules.json"),
-        os.path.join(CRITICI_DIR, "sinapsi_brain.json"),
-        os.path.join(CRITICI_DIR, "sinapsi.json"),
-    ]
-    rules: List[Rule] = []
-    for p in paths:
-        try:
-            if os.path.isfile(p):
-                with open(p, "r", encoding="utf-8") as fh:
-                    data = json.load(fh)
-                for item in data:
-                    pat = item.get("pattern", None)
-                    if not pat:
-                        continue
-                    rules.append(
-                        Rule(
-                            id=item.get("id", f"rule_{len(rules)}"),
-                            pattern=re.compile(pat, re.IGNORECASE),
-                            mode=item.get("mode", "augment").lower(),
-                            lang=item.get("lang", "it"),
-                            answer=item.get("answer", "").strip()
-                        )
-                    )
-        except Exception:
-            # non interrompo il caricamento se un file è corrotto
-            continue
-    return rules
+# -----------------------------
+# UTILS
+# -----------------------------
+def now_ms() -> int:
+    return int(time.time() * 1000)
 
-SINAPSI_RULES = load_sinapsi_rules()
-
-def sinapsi_apply(q: str, base_text: str) -> Tuple[str, Optional[str]]:
-    """
-    Applica la prima regola matchata (puoi modificare per applicarne più d'una).
-    Mode:
-      - override: usa solo Sinapsi
-      - augment: aggiunge Sinapsi dopo il testo web
-      - postscript: aggiunge un PS tecnico breve
-    Ritorna (testo_finale, applied_rule_id)
-    """
-    applied_id = None
-    for r in SINAPSI_RULES:
-        if r.pattern.search(q):
-            applied_id = r.id
-            if r.mode == "override":
-                return refine_text(r.answer), r.id
-            elif r.mode == "augment":
-                merged = base_text.strip()
-                addon = refine_text(r.answer).strip()
-                if merged:
-                    merged = merged.rstrip() + "\n\n" + addon
-                else:
-                    merged = addon
-                return merged, r.id
-            elif r.mode == "postscript":
-                merged = base_text.strip()
-                merged += "\n\n*Nota tecnica (Sinapsi)*\n" + refine_text(r.answer).strip()
-                return merged, r.id
-    return base_text, applied_id
-
-# ---------- HTTP UTILS ----------
 def allowed_domain(url: str, prefer: List[str]) -> bool:
     try:
-        from urllib.parse import urlparse
-        host = urlparse(url).netloc.lower()
+        host = urllib.parse.urlparse(url).netloc.lower()
     except Exception:
         return False
-    return any(host.endswith(d.lower()) for d in prefer)
+    for dom in prefer:
+        if dom and host.endswith(dom):
+            return True
+    return False
 
-def http_get(url: str, headers: Optional[Dict] = None, timeout: float = 6.0) -> Tuple[int, str]:
-    """
-    GET robusto: usa requests se presente, altrimenti urllib.
-    Ritorna (status_code, body_text)
-    """
-    headers = headers or {}
-    if requests:
-        try:
-            r = requests.get(url, headers=headers, timeout=timeout)
-            return r.status_code, r.text
-        except Exception:
-            pass
+TAG_RE = re.compile(r"<[^>]+>")
+MULTI_WS_RE = re.compile(r"\s+")
+STRONG_RE = re.compile(r"</?strong[^>]*>", re.I)
+
+def strip_html(text: str) -> str:
+    if not text:
+        return ""
+    # rimuovi strong/bold per primi
+    text = STRONG_RE.sub("", text)
+    # elimina tutto l’HTML
+    text = TAG_RE.sub(" ", text)
+    # unescape entità
+    text = html.unescape(text)
+    # compattazione spazi
+    text = MULTI_WS_RE.sub(" ", text).strip()
+    return text
+
+def safe_cut(s: str, limit: int = 600) -> str:
+    s = (s or "").strip()
+    if len(s) <= limit:
+        return s
+    # taglia a fine frase se possibile
+    cut = s[:limit]
+    last_dot = max(cut.rfind(". "), cut.rfind("·"), cut.rfind(";"))
+    if last_dot > 120:
+        return cut[:last_dot+1].strip()
+    return cut + "…"
+
+def is_probably_english(s: str) -> bool:
+    # euristica light: molte parole con lettere non accentate + stopword ENG
+    if not s:
+        return False
+    eng_hits = len(re.findall(r"\b(the|and|with|for|of|to|from|by|on|in)\b", s.lower()))
+    ita_hits = len(re.findall(r"\b(il|lo|la|gli|le|con|per|dal|della|in)\b", s.lower()))
+    return eng_hits > ita_hits
+
+# -----------------------------
+# SINAPSI
+# -----------------------------
+def load_sinapsi_rules() -> List[Dict[str, Any]]:
     try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=timeout) as res:
-            status = getattr(res, "status", 200)
-            body = res.read().decode("utf-8", "ignore")
-            return status, body
+        with open(SINAPSI_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # supporta anche file che contengono più array appiccicati (tolleranza “storica”)
+        if isinstance(data, list):
+            return data
+        # se è un dizionario con chiave "rules"
+        if isinstance(data, dict) and isinstance(data.get("rules"), list):
+            return data["rules"]
+    except FileNotFoundError:
+        return []
     except Exception:
-        return 599, ""
+        # se corrotto o JSON non valido → ignora
+        return []
+    return []
 
-# ---------- WEB SEARCH (Brave / Bing) ----------
-def brave_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
-    """
-    Usa Brave Web Search API se BRAVE_API_KEY è presente.
-    Filtra solo domini in PREFERRED_DOMAINS.
-    """
+def apply_sinapsi(q: str, rules: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Restituisce: { mode: 'override'|'augment'|'postscript'|None, text: str|None }"""
+    if not q or not rules:
+        return {"mode": None, "text": None}
+    qnorm = q.strip()
+    for r in rules:
+        pattern = r.get("pattern") or ""
+        mode = (r.get("mode") or "").lower().strip() or "augment"
+        lang = (r.get("lang") or "it").lower()
+        ans = r.get("answer") or ""
+        try:
+            if re.search(pattern, qnorm, flags=re.I):
+                # Sinapsi risponde sempre in ITA
+                cleaned = strip_html(ans)
+                return {"mode": mode, "text": cleaned}
+        except re.error:
+            # pattern non valido → ignora
+            continue
+    return {"mode": None, "text": None}
+
+# -----------------------------
+# WEB SEARCH
+# -----------------------------
+def brave_search(query: str) -> List[Dict[str, Any]]:
     if not BRAVE_API_KEY:
         return []
-    url = "https://api.search.brave.com/res/v1/web/search"
-    params = {"q": query, "count": n, "freshness": "month"}
-    full = url + "?" + urllib.parse.urlencode(params)
-    status, txt = http_get(full, headers={"X-Subscription-Token": BRAVE_API_KEY}, timeout=timeout)
-    if status != 200:
-        return []
-    try:
-        data = json.loads(txt)
-        out = []
-        for item in data.get("web", {}).get("results", []):
-            u = item.get("url", "")
-            if not allowed_domain(u, PREFERRED_DOMAINS):
-                continue
-            out.append({
-                "title": item.get("title", ""),
-                "url": u,
-                "snippet": item.get("description", ""),
-                "score": 0.75
-            })
-        return out
-    except Exception:
-        return []
+    url = "https://api.search.brave.com/res/v1/web/search?{}".format(
+        urllib.parse.urlencode({"q": query, "count": 8, "country": "it"})
+    )
+    req = urllib.request.Request(url, headers={
+        "X-Subscription-Token": BRAVE_API_KEY,
+        "Accept": "application/json"
+    })
+    for attempt in range(WEB_RETRIES + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=WEB_TIMEOUT) as resp:
+                data = json.loads(resp.read().decode("utf-8", "ignore"))
+            items = []
+            web = data.get("web", {})
+            for blk in web.get("results", []):
+                u = blk.get("url") or ""
+                t = blk.get("title") or ""
+                s = blk.get("description") or blk.get("snippet") or ""
+                sc = float(blk.get("score", 0.7))  # se assente, assume buon punteggio
+                items.append({"url": u, "title": t, "snippet": s, "score": sc})
+            return items
+        except Exception:
+            if attempt >= WEB_RETRIES:
+                return []
+            time.sleep(0.2)
+    return []
 
-def bing_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
+def bing_search(query: str) -> List[Dict[str, Any]]:
     if not BING_API_KEY:
         return []
-    url = "https://api.bing.microsoft.com/v7.0/search"
-    params = {"q": query, "count": n, "mkt": "it-IT"}
-    full = url + "?" + urllib.parse.urlencode(params)
-    status, txt = http_get(full, headers={"Ocp-Apim-Subscription-Key": BING_API_KEY}, timeout=timeout)
-    if status != 200:
-        return []
-    try:
-        data = json.loads(txt)
-        out = []
-        for item in data.get("webPages", {}).get("value", []):
-            u = item.get("url", "")
-            if not allowed_domain(u, PREFERRED_DOMAINS):
-                continue
-            out.append({
-                "title": item.get("name", ""),
-                "url": u,
-                "snippet": item.get("snippet", ""),
-                "score": 0.70
-            })
-        return out
-    except Exception:
-        return []
-
-def fetch_url_text(url: str, timeout: float = 6.0) -> str:
-    status, body = http_get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=timeout)
-    return body if status == 200 else ""
-
-# ---------- HTML CLEANER ----------
-def clean_html_text(raw: str) -> str:
-    if not raw:
-        return ""
-    if BeautifulSoup:
-        try:
-            soup = BeautifulSoup(raw, "html.parser")
-            for tag in soup(["script", "style", "noscript"]):
-                tag.decompose()
-            text = soup.get_text(separator=" ")
-            text = html.unescape(text)
-            text = re.sub(r"\s+", " ", text).strip()
-            return text
-        except Exception:
-            pass
-    # fallback regex
-    txt = re.sub(r"<[^>]+>", " ", raw)
-    txt = html.unescape(txt)
-    return re.sub(r"\s+", " ", txt).strip()
-
-# ---------- SNIPPET SYNTHESIS ----------
-def synthesize_snippets(snips: List[Dict], q: str) -> Tuple[str, List[str]]:
-    """
-    Scarica le pagine filtrate e crea un sommario ridotto.
-    Cerca parole chiave tecniche per restituire un contenuto utile.
-    """
-    if not snips:
-        return "", []
-    bodies, sources = [], []
-    for s in snips:
-        page = fetch_url_text(s["url"])
-        body = clean_html_text(page) or clean_html_text(s.get("snippet", ""))
-        if body:
-            bodies.append(body[:1500])
-            sources.append(s["url"])
-    if not bodies:
-        return "", sources
-    joined = " ".join(bodies)[:4000]
-    key = ["CTF", "lamiera", "P560", "HSBR", "Diapason", "ETA", "connettore", "soletta", "laterocemento", "Hi-Bond", "Tecnaria", "SPIT"]
-    sentences = re.split(r"(?<=[\.\!\?])\s+", joined)
-    keep = [s for s in sentences if any(k.lower() in s.lower() for k in key)]
-    draft = " ".join(keep)[:1200] or joined[:800]
-    draft = re.sub(r"\s{2,}", " ", draft).strip()
-    return draft, list(dict.fromkeys(sources))[:5]
-
-# ---------- REFINER (tono, pulizia) ----------
-def refine_text(text_it: str) -> str:
-    """
-    Uniforma il testo in un tono 'Tecnaria' chiaro e sintetico.
-    Rimuove intestazioni superflue e aggiunge lead se mancante.
-    """
-    if not text_it:
-        return ""
-    # rimuovi eventuali intestazioni tipo "OK - Riferimento..."
-    text_it = re.sub(r"^OK\s*-?\s*(Riferimento|Sintesi).*?\n", "", text_it, flags=re.I | re.M)
-    text_it = text_it.replace("**Fonti**", "\n\n**Fonti**")
-    lead = (
-        "Ecco le informazioni richieste, in modo chiaro e sintetico.\n"
-        "Per verifiche di progetto approfondite possiamo lavorare sui dati reali del cantiere."
+    url = "https://api.bing.microsoft.com/v7.0/search?{}".format(
+        urllib.parse.urlencode({"q": query, "count": 8, "mkt": "it-IT"})
     )
-    body = text_it.strip()
-    if body.lower().startswith("ecco le informazioni"):
-        return body
-    return f"{lead}\n\n{body}".strip()
+    req = urllib.request.Request(url, headers={
+        "Ocp-Apim-Subscription-Key": BING_API_KEY,
+        "Accept": "application/json"
+    })
+    for attempt in range(WEB_RETRIES + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=WEB_TIMEOUT) as resp:
+                data = json.loads(resp.read().decode("utf-8", "ignore"))
+            items = []
+            for blk in (data.get("webPages", {}) or {}).get("value", []):
+                u = blk.get("url") or ""
+                t = blk.get("name") or ""
+                s = blk.get("snippet") or ""
+                sc = float(blk.get("rank", 0.7))  # Bing non espone "score": usa rank fallback
+                items.append({"url": u, "title": t, "snippet": s, "score": sc})
+            return items
+        except Exception:
+            if attempt >= WEB_RETRIES:
+                return []
+            time.sleep(0.2)
+    return []
 
-def compose_final(answer: str, sources: List[str]) -> str:
-    answer = answer.strip()
-    if sources:
-        src = "\n".join(f"- {u}" for u in sources)
-        if "**Fonti**" in answer:
-            if not answer.strip().endswith("\n"):
-                answer += "\n"
-            answer += f"**Fonti**\n{src}\n"
-        else:
-            answer += f"\n\n**Fonti**\n{src}\n"
-    return answer
-
-# ---------- PIPELINE ----------
-def web_answer(q: str) -> Tuple[str, List[str]]:
-    results = []
+def web_search(query: str) -> List[Dict[str, Any]]:
     if SEARCH_PROVIDER == "brave":
-        results = brave_search(q, n=6)
+        raw = brave_search(query)
     elif SEARCH_PROVIDER == "bing":
-        results = bing_search(q, n=6)
+        raw = bing_search(query)
     else:
-        results = []
-    if not results:
-        return "", []
-    text, sources = synthesize_snippets(results, q)
-    if not text:
-        return "", sources
-    blocks = []
-    patterns = [
-        (r"(P560.*?HSBR.*?)(?:\.|;)", "- **Fissaggio**: \\1."),
-        (r"(ETA|European Technical Assessment.*?)(?:\.|;)", "- **Normativa**: \\1."),
-        (r"(lamiera.*?Hi[- ]?Bond.*?)(?:\.|;)", "- **Compatibilità**: \\1."),
-    ]
-    used = 0
-    for pat, lab in patterns:
-        m = re.search(pat, text, flags=re.I)
-        if m:
-            blocks.append(lab.replace("\\1", m.group(1)))
-            used += 1
-    if used < 2:
-        blocks = [textwrap.shorten(text, 450, placeholder="…")]
-    ans = "OK\n" + "\n".join(blocks)
-    ans = refine_text(ans)
-    return ans, sources
+        raw = []
 
-def answer_pipeline(q: str) -> str:
-    web_txt, web_sources = web_answer(q)
-    base = web_txt if (web_txt and len(web_txt) >= 60) else ""
-    final_txt, applied = sinapsi_apply(q, base)
-    if not final_txt:
-        final_txt = refine_text(
-            "Per questa richiesta servono alcuni dettagli (tipo solaio, luci, carichi, profili, spessori, vincoli). "
-            "Possiamo dare un indirizzo prudente e poi validare col calcolo."
-        )
-    return compose_final(final_txt, web_sources)
+    # filtro domini + punteggio
+    out = []
+    for it in raw:
+        u = it.get("url", "")
+        if not u:
+            continue
+        if not allowed_domain(u, PREFERRED_DOMAINS):
+            continue
+        sc = float(it.get("score", 0.0) or 0.0)
+        if sc < MIN_WEB_SCORE:
+            continue
+        out.append({
+            "url": u,
+            "title": strip_html(it.get("title", "")),
+            "snippet": strip_html(it.get("snippet", "")),
+            "score": sc
+        })
+    return out[:5]
 
-# ---------- HTTP Endpoints ----------
+# -----------------------------
+# FETCH & CLEAN (HTML / PDF HEAD)
+# -----------------------------
+def head_content_type(url: str) -> str:
+    try:
+        req = urllib.request.Request(url, method="HEAD")
+        with urllib.request.urlopen(req, timeout=WEB_TIMEOUT) as resp:
+            return resp.headers.get("Content-Type", "").lower()
+    except Exception:
+        return ""
+
+def fetch_and_clean(url: str) -> str:
+    """Scarica contenuto testuale; se PDF, non scarica il binario: restituisce solo indicazione+URL."""
+    ctype = head_content_type(url)
+    if "pdf" in ctype:
+        # niente PDF blob in risposta – solo citazione
+        return ""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=WEB_TIMEOUT) as resp:
+            raw = resp.read()
+        text = raw.decode("utf-8", "ignore")
+        return safe_cut(strip_html(text), 1200)
+    except Exception:
+        return ""
+
+# -----------------------------
+# REFINER (riscrittura ITA fluida)
+# -----------------------------
+def refine_answer(q: str, web_points: List[str], sinapsi_text: Optional[str]) -> str:
+    bullets = []
+
+    # Se Sinapsi in override → restituisci quello già ben formattato
+    if sinapsi_text and sinapsi_text.strip().lower().startswith("ok"):
+        # è già nel formato OK\n- ...
+        return sinapsi_text.strip()
+
+    # Base “OK” + punti tecnici puliti
+    bullets.extend([f"- {p}" for p in web_points if p])
+
+    # Se Sinapsi è in augment/postscript → fondilo con eleganza
+    if sinapsi_text:
+        # Togli eventuale “OK” iniziale di sinapsi
+        s = sinapsi_text.strip()
+        s = re.sub(r"^ok\s*", "", s, flags=re.I).strip()
+        # se ha già punti, non duplicare “- ” all’inizio
+        if s.startswith("-"):
+            bullets.append(s)
+        else:
+            bullets.append(f"- {s}")
+
+    # Tono tecnico, morbido, fluido (semplice euristica)
+    # Evita frasi stock tipo “Ecco le informazioni…”
+    # Inizio con “OK” come stile richiesto
+    body = "OK\n" + "\n".join(bullets).strip() + "\n"
+    return body
+
+def build_sources(urls: List[str]) -> str:
+    if not urls:
+        return ""
+    unique = []
+    for u in urls:
+        if u not in unique:
+            unique.append(u)
+    return "\n**Fonti**\n" + "\n".join(f"- {u}" for u in unique) + "\n"
+
+# -----------------------------
+# ORCHESTRAZIONE RISPOSTA
+# -----------------------------
+def answer_q(q: str) -> Dict[str, Any]:
+    if not q or not q.strip():
+        return {"ok": True, "answer": "OK\n- **Domanda vuota**: inserisci una richiesta valida.\n"}
+
+    rules = load_sinapsi_rules()
+    sinapsi_hit = apply_sinapsi(q, rules)  # {mode, text}
+    mode = sinapsi_hit["mode"]
+    sin_text = sinapsi_hit["text"]
+
+    # Se mode == override → Sinapsi prevale completamente
+    if mode == "override" and sin_text:
+        ans = sin_text
+        # Aggiungi etichetta fonti in coda, sobria
+        ans += "\n\n**Fonti**\n- Sinapsi (curated)\n"
+        return {"ok": True, "answer": ans}
+
+    # Altrimenti prova web
+    web = web_search(q)
+    used_urls = []
+    web_points: List[str] = []
+
+    if web:
+        for item in web:
+            u = item["url"]
+            used_urls.append(u)
+            snippet = item.get("snippet") or ""
+            text = fetch_and_clean(u)
+            # Se non troviamo testo (PDF o fallimento), usa snippet
+            base = text if text else snippet
+            base = strip_html(base)
+
+            # Estrai poche frasi sensate, in ITA; se sembra inglese → riassumi senza anglicismi
+            if is_probably_english(base):
+                base = re.sub(r"\b(steel|concrete|nail|gun|shear|connector|composite|floor|beam|manual)\b", 
+                              lambda m: {
+                                  "steel": "acciaio", "concrete":"calcestruzzo", "nail":"chiodo",
+                                  "gun":"chiodatrice", "shear":"taglio", "connector":"connettore",
+                                  "composite":"collaborante", "floor":"solaio", "beam":"trave", "manual":"manuale"
+                              }[m.group(0)], base, flags=re.I)
+            # taglio breve e pulito
+            base = safe_cut(base, 300)
+
+            # Filtra rumori generici
+            if base and len(base) > 50:
+                web_points.append(base)
+
+            if len(web_points) >= 4:
+                break
+
+    # Se niente web e niente sinapsi → rispondi in modo onesto ma utile
+    if not web and not sin_text:
+        ans = "OK\n- **Non ho trovato una risposta affidabile su fonti ufficiali** al momento. Prova a riformulare oppure indicami il contesto (prodotto, solaio, spessori). In alternativa, posso fornirti i contatti Tecnaria.\n"
+        return {"ok": True, "answer": ans}
+
+    # Fusione (augment/postscript/default)
+    final = refine_answer(q, web_points, sin_text if mode in ("augment", "postscript", None) else None)
+    final = final.rstrip() + "\n" + build_sources(used_urls or (["Sinapsi (curated)"] if sin_text else []))
+    return {"ok": True, "answer": final}
+
+# -----------------------------
+# FASTAPI
+# -----------------------------
+app = FastAPI(title=APP_NAME)
+
+class AskBody(BaseModel):
+    q: str
+
 @app.get("/ping")
 def ping():
     return {"ok": True, "pong": True}
 
 @app.get("/health")
 def health():
-    exists = os.path.isdir(CRITICI_DIR)
+    sinapsi_exists = os.path.isfile(SINAPSI_FILE)
     return {
         "status": "ok",
         "web_search": {
@@ -348,112 +369,139 @@ def health():
             "brave_key": bool(BRAVE_API_KEY),
             "bing_key": bool(BING_API_KEY),
             "preferred_domains": PREFERRED_DOMAINS,
-            "min_web_score": MIN_WEB_SCORE,
+            "min_web_score": MIN_WEB_SCORE
         },
-        "critici": {"dir": CRITICI_DIR, "exists": exists, "rules": len(SINAPSI_RULES)},
+        "critici": {
+            "dir": CRITICI_DIR,
+            "sinapsi_file": SINAPSI_FILE,
+            "exists": sinapsi_exists
+        }
     }
 
-@app.get("/")
-def home():
-    return HTMLResponse(UI_HTML)
-
-@app.get("/ask")
-def ask_get(q: str = ""):
-    q = (q or "").strip()
-    if not q:
-        return JSONResponse({"ok": True, "answer": "OK\n- **Domanda vuota**: inserisci una richiesta valida."})
-    ans = answer_pipeline(q)
-    return JSONResponse({"ok": True, "answer": ans})
+@app.get("/api/ask")
+def ask_get(q: str = Query(..., description="Domanda")):
+    return JSONResponse(answer_q(q))
 
 @app.post("/api/ask")
-async def ask_post(req: Request):
-    try:
-        body = await req.json()
-        q = (body.get("q") or "").strip()
-    except Exception:
-        q = ""
-    if not q:
-        return JSONResponse({"ok": False, "error": "Missing q"})
-    ans = answer_pipeline(q)
-    return JSONResponse({"ok": True, "answer": ans})
+def ask_post(body: AskBody):
+    q = body.q
+    return JSONResponse(answer_q(q))
 
-# ---------- UI HTML (semplice) ----------
-UI_HTML = """
-<!doctype html><html lang="it"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tecnaria QA Bot</title>
+# -----------------------------
+# INTERFACCIA WEB
+# -----------------------------
+HOME_HTML = f"""
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{APP_NAME}</title>
 <style>
-:root { --bg:#0f172a; --panel:#111827; --txt:#e5e7eb; --muted:#9ca3af; --acc:#16a34a; }
-*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.45 system-ui,Segoe UI,Roboto,Arial}
-.wrap{max-width:1100px;margin:28px auto;padding:0 20px}
-h1{font-size:22px;margin:0 0 14px}
-.topbar{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 18px}
-.tag{background:#0b1220;border:1px solid #1f2937;color:#d1d5db;padding:10px 14px;border-radius:26px;cursor:pointer}
-.tag:hover{border-color:#374151}
-.card{background:var(--panel);border:1px solid #1f2937;border-radius:14px;padding:14px 16px;margin:14px 0}
-textarea{width:100%;min-height:160px;background:#0b1220;border:1px solid #1f2937;border-radius:10px;color:var(--txt);padding:12px}
-.controls{display:flex;gap:10px;align-items:center;margin-top:12px}
-.btn{background:#0b1220;border:1px solid #1f2937;color:#d1d5db;padding:10px 16px;border-radius:10px;cursor:pointer}
-.btn:hover{border-color:#374151}
-.btn.primary{background:#052e16;border-color:#14532d;color:#d1fae5}
-.chk{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:14px;margin-top:8px}
-pre{white-space:pre-wrap;word-wrap:break-word}
-small{color:var(--muted)}
+:root {{
+  --bg: #0b1020; --card: #11182e; --ink: #e9edf7; --ink2:#b9c2d9;
+  --pri:#3aa0ff; --acc:#18d6a9; --mut:#70819a;
+}}
+* {{ box-sizing: border-box; }}
+body {{
+  margin: 0; padding: 0; background: linear-gradient(180deg,#0b1020,#0a0f1d);
+  color: var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+}}
+.wrap {{ max-width: 960px; margin: 0 auto; padding: 28px; }}
+.header {{ display:flex; align-items:center; gap:14px; }}
+.logo {{
+  width: 42px; height: 42px; border-radius: 10px; background: linear-gradient(135deg,#1b2a52, #24335f);
+  display:flex; align-items:center; justify-content:center; font-weight:700; color:#8fd7ff; border:1px solid #1f2b4a;
+}}
+h1 {{ font-size: 22px; margin: 0; }}
+.desc {{ color: var(--ink2); margin-top: 4px; font-size: 14px; }}
+.card {{
+  margin-top: 18px; background: var(--card); border: 1px solid #1a2342; border-radius: 14px; padding: 16px;
+}}
+label {{ font-size: 13px; color: var(--ink2); }}
+textarea {{
+  width: 100%; min-height: 120px; resize: vertical; margin-top: 8px;
+  background: #0e1530; color: var(--ink); border: 1px solid #223160; border-radius: 10px; padding: 12px; line-height: 1.4;
+}}
+.controls {{ display:flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }}
+button {{
+  background: linear-gradient(135deg,#1f6fe0,#2aa7ff);
+  color:#fff; border: none; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 600;
+}}
+button.sec {{ background: #1e2747; color: var(--ink2); border: 1px solid #2a386b; }}
+.out {{ white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }}
+.small {{ font-size: 12px; color: var(--mut); }}
+footer {{ margin-top: 18px; color: var(--mut); font-size: 12px; }}
+kbd {{ background:#0e1530; padding:2px 6px; border-radius:6px; border:1px solid #223160; }}
+.badge {{ display:inline-block; background:#0e1530; border:1px solid #223160; color:#8fd7ff; padding:3px 8px; border-radius:999px; font-size:12px; }}
+.row {{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }}
 </style>
-</head><body>
-<div class="wrap">
-  <h1>Tecnaria QA Bot</h1>
-  <div class="topbar">
-    <div class="tag" onclick="fill('Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino?')">P560 + CTF</div>
-    <div class="tag" onclick="fill('Che differenza c\\'è tra un connettore CTF e il sistema Diapason?')">CTF vs Diapason</div>
-    <div class="tag" onclick="fill('Quanti connettori CTF servono per m² su lamiera Hi-Bond e come si fissano?')">Densità CTF</div>
-    <div class="tag" onclick="fill('Mi dai i contatti Tecnaria per assistenza tecnica?')">Contatti</div>
-  </div>
-
-  <div class="card">
-    <textarea id="q" placeholder="Scrivi la domanda..."></textarea>
-    <div class="controls">
-      <button class="btn primary" onclick="ask()">Chiedi</button>
-      <button class="btn" onclick="clr()">Pulisci</button>
-      <button class="btn" onclick="copyAns()">Copia risposta</button>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="logo">TQ</div>
+      <div>
+        <h1>{APP_NAME}</h1>
+        <div class="desc">Risposte tecniche su prodotti e sistemi Tecnaria, con ricerca web ufficiale + Sinapsi.</div>
+      </div>
     </div>
-    <label class="chk"><input type="checkbox" id="useget"> usa GET (debug)</label>
-  </div>
 
-  <div class="card">
-    <pre id="ans"> </pre>
-    <small>Endpoint: <code>/ask</code> (POST JSON { q }) oppure GET ?q=...</small>
+    <div class="card">
+      <label for="q">Domanda</label>
+      <textarea id="q" placeholder="Es: Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino?"></textarea>
+      <div class="controls">
+        <button onclick="ask()">Chiedi</button>
+        <button class="sec" onclick="sample(1)">Esempio P560</button>
+        <button class="sec" onclick="sample(2)">CTF vs Diapason</button>
+        <button class="sec" onclick="sample(3)">Densità CTF</button>
+        <span class="badge" id="prov"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="answer" class="out">Risposta…</div>
+    </div>
+
+    <footer>
+      <div class="row">
+        <div class="small">Endpoint: <kbd>/ping</kbd> <kbd>/health</kbd> <kbd>/api/ask</kbd></div>
+      </div>
+    </footer>
   </div>
-</div>
 
 <script>
-function fill(t){document.getElementById('q').value=t;}
-function clr(){document.getElementById('q').value='';document.getElementById('ans').textContent='';}
-async function ask(){
-  const q = document.getElementById('q').value.trim();
-  if(!q){ document.getElementById('ans').textContent='OK\\n- **Domanda vuota**: inserisci una richiesta valida.'; return; }
-  const useget = document.getElementById('useget').checked;
-  try{
-    let resp;
-    if(useget){
-      const r = await fetch('/ask?q=' + encodeURIComponent(q));
-      resp = await r.json();
-    }else{
-      const r = await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q})});
-      resp = await r.json();
-    }
-    if(resp.ok){ document.getElementById('ans').textContent = resp.answer; }
-    else{ document.getElementById('ans').textContent = 'Errore: ' + (resp.error||''); }
-  }catch(e){
-    document.getElementById('ans').textContent = 'Errore di risposta';
-  }
-}
-function copyAns(){
-  const t = document.getElementById('ans').textContent;
-  navigator.clipboard.writeText(t || '');
-}
+async function ask() {{
+  const t0 = performance.now();
+  const q = document.getElementById('q').value || '';
+  const prov = document.getElementById('prov');
+  prov.textContent = 'Invio…';
+  try {{
+    const r = await fetch('/api/ask', {{
+      method: 'POST',
+      headers: {{ 'Content-Type': 'application/json' }},
+      body: JSON.stringify({{ q }})
+    }});
+    const j = await r.json();
+    document.getElementById('answer').textContent = j.answer || JSON.stringify(j, null, 2);
+  }} catch (e) {{
+    document.getElementById('answer').textContent = 'Errore di rete: ' + e;
+  }} finally {{
+    const t1 = performance.now();
+    prov.textContent = 'OK (' + Math.round(t1 - t0) + 'ms)';
+  }}
+}}
+function sample(k) {{
+  if (k===1) document.getElementById('q').value = 'Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino?';
+  if (k===2) document.getElementById('q').value = 'Che differenza c’è tra connettore CTF e sistema Diapason? Quando conviene usare uno o l’altro?';
+  if (k===3) document.getElementById('q').value = 'Devo utilizzare i connettori CTF su lamiera Hi-Bond da 1 mm: quanti connettori servono a m² e come avviene il fissaggio con P560?';
+  document.getElementById('answer').textContent = 'Risposta…';
+}}
 </script>
-</body></html>
+</body>
+</html>
 """
 
-# ---- end of file
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return HTMLResponse(HOME_HTML)
