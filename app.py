@@ -1,19 +1,29 @@
-# app.py — robusto a dipendenze mancanti (requests/bs4 opzionali)
-import os, re, json, time, html, textwrap, urllib.request, urllib.parse
+# app.py — Tecnaria QA Bot (versione completa, robusta)
+# Copia questo file in app.py nel repo e fai il deploy.
+import os
+import re
+import json
+import time
+import html
+import textwrap
+import urllib.request
+import urllib.parse
+
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-# Import opzionali (no crash se non presenti)
+# Import opzionali (non bloccanti: se mancanti il server funziona lo stesso)
 try:
-    import requests  # per HTTP comodo
+    import requests  # più comodo per fetch
 except Exception:
     requests = None
 
 try:
-    from bs4 import BeautifulSoup  # per pulizia HTML migliore
+    from bs4 import BeautifulSoup  # miglior pulizia HTML
 except Exception:
     BeautifulSoup = None
 
@@ -22,19 +32,21 @@ app = FastAPI(title=APP_NAME)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True,
-    allow_methods=["*"], allow_headers=["*"],
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ---------- CONFIG ----------
 SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave").lower().strip()
-BRAVE_API_KEY  = os.getenv("BRAVE_API_KEY")
-BING_API_KEY   = os.getenv("BING_API_KEY")
+BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
+BING_API_KEY = os.getenv("BING_API_KEY")
 PREFERRED_DOMAINS = [d.strip() for d in os.getenv(
     "PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com"
 ).split(",") if d.strip()]
-MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.55"))  # soglia alta
-CRITICI_DIR   = os.getenv("CRITICI_DIR", "Tecnaria_V3/static/static/data/critici").strip()
+MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.55"))  # soglia ricerca web (più alta = più filtrata)
+CRITICI_DIR = os.getenv("CRITICI_DIR", "Tecnaria_V3/static/static/data/critici").strip()
 
 # ---------- SINAPSI ----------
 @dataclass
@@ -46,6 +58,10 @@ class Rule:
     answer: str
 
 def load_sinapsi_rules() -> List[Rule]:
+    """
+    Cerca file sinapsi_rules.json / sinapsi_brain.json / sinapsi.json nella cartella CRITICI_DIR
+    e carica le regole. Se non trova nulla, ritorna lista vuota.
+    """
     paths = [
         os.path.join(CRITICI_DIR, "sinapsi_rules.json"),
         os.path.join(CRITICI_DIR, "sinapsi_brain.json"),
@@ -55,24 +71,37 @@ def load_sinapsi_rules() -> List[Rule]:
     for p in paths:
         try:
             if os.path.isfile(p):
-                data = json.loads(open(p, "r", encoding="utf-8").read())
+                with open(p, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
                 for item in data:
+                    pat = item.get("pattern", None)
+                    if not pat:
+                        continue
                     rules.append(
                         Rule(
                             id=item.get("id", f"rule_{len(rules)}"),
-                            pattern=re.compile(item["pattern"], re.IGNORECASE),
+                            pattern=re.compile(pat, re.IGNORECASE),
                             mode=item.get("mode", "augment").lower(),
                             lang=item.get("lang", "it"),
                             answer=item.get("answer", "").strip()
                         )
                     )
         except Exception:
+            # non interrompo il caricamento se un file è corrotto
             continue
     return rules
 
 SINAPSI_RULES = load_sinapsi_rules()
 
 def sinapsi_apply(q: str, base_text: str) -> Tuple[str, Optional[str]]:
+    """
+    Applica la prima regola matchata (puoi modificare per applicarne più d'una).
+    Mode:
+      - override: usa solo Sinapsi
+      - augment: aggiunge Sinapsi dopo il testo web
+      - postscript: aggiunge un PS tecnico breve
+    Ritorna (testo_finale, applied_rule_id)
+    """
     applied_id = None
     for r in SINAPSI_RULES:
         if r.pattern.search(q):
@@ -81,10 +110,11 @@ def sinapsi_apply(q: str, base_text: str) -> Tuple[str, Optional[str]]:
                 return refine_text(r.answer), r.id
             elif r.mode == "augment":
                 merged = base_text.strip()
+                addon = refine_text(r.answer).strip()
                 if merged:
-                    merged = merged.rstrip() + "\n\n" + refine_text(r.answer).strip()
+                    merged = merged.rstrip() + "\n\n" + addon
                 else:
-                    merged = refine_text(r.answer).strip()
+                    merged = addon
                 return merged, r.id
             elif r.mode == "postscript":
                 merged = base_text.strip()
@@ -92,7 +122,7 @@ def sinapsi_apply(q: str, base_text: str) -> Tuple[str, Optional[str]]:
                 return merged, r.id
     return base_text, applied_id
 
-# ---------- UTILS HTTP ----------
+# ---------- HTTP UTILS ----------
 def allowed_domain(url: str, prefer: List[str]) -> bool:
     try:
         from urllib.parse import urlparse
@@ -101,8 +131,11 @@ def allowed_domain(url: str, prefer: List[str]) -> bool:
         return False
     return any(host.endswith(d.lower()) for d in prefer)
 
-def http_get(url: str, headers: Optional[Dict]=None, timeout: float=6.0) -> Tuple[int, str]:
-    """GET robusto: usa requests se c'è, altrimenti urllib."""
+def http_get(url: str, headers: Optional[Dict] = None, timeout: float = 6.0) -> Tuple[int, str]:
+    """
+    GET robusto: usa requests se presente, altrimenti urllib.
+    Ritorna (status_code, body_text)
+    """
     headers = headers or {}
     if requests:
         try:
@@ -119,8 +152,12 @@ def http_get(url: str, headers: Optional[Dict]=None, timeout: float=6.0) -> Tupl
     except Exception:
         return 599, ""
 
-# ---------- WEB SEARCH ----------
+# ---------- WEB SEARCH (Brave / Bing) ----------
 def brave_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
+    """
+    Usa Brave Web Search API se BRAVE_API_KEY è presente.
+    Filtra solo domini in PREFERRED_DOMAINS.
+    """
     if not BRAVE_API_KEY:
         return []
     url = "https://api.search.brave.com/res/v1/web/search"
@@ -133,13 +170,13 @@ def brave_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
         data = json.loads(txt)
         out = []
         for item in data.get("web", {}).get("results", []):
-            u = item.get("url","")
+            u = item.get("url", "")
             if not allowed_domain(u, PREFERRED_DOMAINS):
                 continue
             out.append({
-                "title": item.get("title",""),
+                "title": item.get("title", ""),
                 "url": u,
-                "snippet": item.get("description",""),
+                "snippet": item.get("description", ""),
                 "score": 0.75
             })
         return out
@@ -150,7 +187,7 @@ def bing_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
     if not BING_API_KEY:
         return []
     url = "https://api.bing.microsoft.com/v7.0/search"
-    params = {"q": query, "count": n, "mkt":"it-IT"}
+    params = {"q": query, "count": n, "mkt": "it-IT"}
     full = url + "?" + urllib.parse.urlencode(params)
     status, txt = http_get(full, headers={"Ocp-Apim-Subscription-Key": BING_API_KEY}, timeout=timeout)
     if status != 200:
@@ -158,14 +195,14 @@ def bing_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
     try:
         data = json.loads(txt)
         out = []
-        for item in data.get("webPages",{}).get("value",[]):
-            u = item.get("url","")
+        for item in data.get("webPages", {}).get("value", []):
+            u = item.get("url", "")
             if not allowed_domain(u, PREFERRED_DOMAINS):
                 continue
             out.append({
-                "title": item.get("name",""),
+                "title": item.get("name", ""),
                 "url": u,
-                "snippet": item.get("snippet",""),
+                "snippet": item.get("snippet", ""),
                 "score": 0.70
             })
         return out
@@ -173,17 +210,17 @@ def bing_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
         return []
 
 def fetch_url_text(url: str, timeout: float = 6.0) -> str:
-    status, body = http_get(url, headers={"User-Agent":"Mozilla/5.0"}, timeout=timeout)
-    return body if status==200 else ""
+    status, body = http_get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=timeout)
+    return body if status == 200 else ""
 
+# ---------- HTML CLEANER ----------
 def clean_html_text(raw: str) -> str:
     if not raw:
         return ""
-    # Se bs4 c'è, usiamolo; altrimenti fallback regex
     if BeautifulSoup:
         try:
             soup = BeautifulSoup(raw, "html.parser")
-            for tag in soup(["script","style","noscript"]):
+            for tag in soup(["script", "style", "noscript"]):
                 tag.decompose()
             text = soup.get_text(separator=" ")
             text = html.unescape(text)
@@ -191,37 +228,46 @@ def clean_html_text(raw: str) -> str:
             return text
         except Exception:
             pass
-    # fallback
+    # fallback regex
     txt = re.sub(r"<[^>]+>", " ", raw)
     txt = html.unescape(txt)
     return re.sub(r"\s+", " ", txt).strip()
 
+# ---------- SNIPPET SYNTHESIS ----------
 def synthesize_snippets(snips: List[Dict], q: str) -> Tuple[str, List[str]]:
+    """
+    Scarica le pagine filtrate e crea un sommario ridotto.
+    Cerca parole chiave tecniche per restituire un contenuto utile.
+    """
     if not snips:
         return "", []
     bodies, sources = [], []
     for s in snips:
         page = fetch_url_text(s["url"])
-        body = clean_html_text(page) or clean_html_text(s.get("snippet",""))
+        body = clean_html_text(page) or clean_html_text(s.get("snippet", ""))
         if body:
             bodies.append(body[:1500])
             sources.append(s["url"])
+    if not bodies:
+        return "", sources
     joined = " ".join(bodies)[:4000]
-    if not joined:
-        return "", []
-    key = ["CTF","lamiera","P560","HSBR","Diapason","ETA","connettore","soletta","laterocemento","Hi-Bond","Tecnaria","SPIT"]
+    key = ["CTF", "lamiera", "P560", "HSBR", "Diapason", "ETA", "connettore", "soletta", "laterocemento", "Hi-Bond", "Tecnaria", "SPIT"]
     sentences = re.split(r"(?<=[\.\!\?])\s+", joined)
     keep = [s for s in sentences if any(k.lower() in s.lower() for k in key)]
     draft = " ".join(keep)[:1200] or joined[:800]
-    draft = re.sub(r"\s{2,}"," ", draft).strip()
+    draft = re.sub(r"\s{2,}", " ", draft).strip()
     return draft, list(dict.fromkeys(sources))[:5]
 
-# ---------- REFINER ----------
+# ---------- REFINER (tono, pulizia) ----------
 def refine_text(text_it: str) -> str:
+    """
+    Uniforma il testo in un tono 'Tecnaria' chiaro e sintetico.
+    Rimuove intestazioni superflue e aggiunge lead se mancante.
+    """
     if not text_it:
         return ""
-    # togli “OK / Riferimento / Sintesi” eventuali
-    text_it = re.sub(r"^OK\s*-?\s*(Riferimento|Sintesi).*?\n", "", text_it, flags=re.I|re.M)
+    # rimuovi eventuali intestazioni tipo "OK - Riferimento..."
+    text_it = re.sub(r"^OK\s*-?\s*(Riferimento|Sintesi).*?\n", "", text_it, flags=re.I | re.M)
     text_it = text_it.replace("**Fonti**", "\n\n**Fonti**")
     lead = (
         "Ecco le informazioni richieste, in modo chiaro e sintetico.\n"
@@ -253,14 +299,11 @@ def web_answer(q: str) -> Tuple[str, List[str]]:
         results = bing_search(q, n=6)
     else:
         results = []
-
     if not results:
         return "", []
-
     text, sources = synthesize_snippets(results, q)
     if not text:
         return "", sources
-
     blocks = []
     patterns = [
         (r"(P560.*?HSBR.*?)(?:\.|;)", "- **Fissaggio**: \\1."),
@@ -275,7 +318,6 @@ def web_answer(q: str) -> Tuple[str, List[str]]:
             used += 1
     if used < 2:
         blocks = [textwrap.shorten(text, 450, placeholder="…")]
-
     ans = "OK\n" + "\n".join(blocks)
     ans = refine_text(ans)
     return ans, sources
@@ -283,7 +325,7 @@ def web_answer(q: str) -> Tuple[str, List[str]]:
 def answer_pipeline(q: str) -> str:
     web_txt, web_sources = web_answer(q)
     base = web_txt if (web_txt and len(web_txt) >= 60) else ""
-    final_txt, _ = sinapsi_apply(q, base)
+    final_txt, applied = sinapsi_apply(q, base)
     if not final_txt:
         final_txt = refine_text(
             "Per questa richiesta servono alcuni dettagli (tipo solaio, luci, carichi, profili, spessori, vincoli). "
@@ -291,7 +333,7 @@ def answer_pipeline(q: str) -> str:
         )
     return compose_final(final_txt, web_sources)
 
-# ---------- HTTP ----------
+# ---------- HTTP Endpoints ----------
 @app.get("/ping")
 def ping():
     return {"ok": True, "pong": True}
@@ -316,7 +358,7 @@ def home():
     return HTMLResponse(UI_HTML)
 
 @app.get("/ask")
-def ask_get(q: str=""):
+def ask_get(q: str = ""):
     q = (q or "").strip()
     if not q:
         return JSONResponse({"ok": True, "answer": "OK\n- **Domanda vuota**: inserisci una richiesta valida."})
@@ -335,7 +377,7 @@ async def ask_post(req: Request):
     ans = answer_pipeline(q)
     return JSONResponse({"ok": True, "answer": ans})
 
-# ---------- UI ----------
+# ---------- UI HTML (semplice) ----------
 UI_HTML = """
 <!doctype html><html lang="it"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -363,7 +405,7 @@ small{color:var(--muted)}
   <h1>Tecnaria QA Bot</h1>
   <div class="topbar">
     <div class="tag" onclick="fill('Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino?')">P560 + CTF</div>
-    <div class="tag" onclick="fill('Che differenza c’è tra un connettore CTF e il sistema Diapason?')">CTF vs Diapason</div>
+    <div class="tag" onclick="fill('Che differenza c\\'è tra un connettore CTF e il sistema Diapason?')">CTF vs Diapason</div>
     <div class="tag" onclick="fill('Quanti connettori CTF servono per m² su lamiera Hi-Bond e come si fissano?')">Densità CTF</div>
     <div class="tag" onclick="fill('Mi dai i contatti Tecnaria per assistenza tecnica?')">Contatti</div>
   </div>
@@ -413,3 +455,5 @@ function copyAns(){
 </script>
 </body></html>
 """
+
+# ---- end of file
