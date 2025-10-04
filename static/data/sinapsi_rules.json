@@ -1,1 +1,24 @@
+[
+  {
+    "id": "p560_patentino",
+    "pattern": "(?i)\\bp560\\b.*(patentino|abilitazione|formazione)|(patentino|abilitazione|formazione).*\\bp560\\b",
+    "mode": "override",
+    "lang": "it",
+    "answer": "OK\n- **Patentino**: non è richiesto un patentino specifico per **SPIT P560**; è necessaria **formazione interna** secondo le istruzioni del costruttore.\n- **Fissaggio CTF**: posa dall’alto con **2 chiodi HSBR14**/connettore, senza preforatura, tarando la potenza e facendo prova su campione.\n- **DPI**: occhiali, guanti, protezione udito; lamiera ben aderente e rispetto distanze dai bordi.\n\n**Fonti**\n- Sinapsi (curated)\n"
+  },
+  {
+    "id": "ctf_vs_diapason",
+    "pattern": "(?i)\\b(ctf).*(diapason)|(diapason).*(ctf)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **CTF**: per **solaio acciaio–calcestruzzo** su **lamiera grecata**; posa rapida con **SPIT P560** (2 chiodi/pezzo). Ideale in nuove strutture miste o rinforzi con lamiera.\n- **Diapason**: per **rinforzo laterocemento** esistente; **fissaggi meccanici** (non P560), getto collaborante dall’alto.\n- **Scelta**: dipende da **tipologia solaio**, **luci/carichi**, **vincoli di spessore e accessi**; quantità connettori da **calcolo**.\n"
+  },
+  {
+    "id": "ctf_density",
+    "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|fissagg|chiod|p560|hsbr)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Densità indicativa**: **~6–8 CTF/m²** (più fitta agli appoggi, più rada in mezzeria); valore **finale da calcolo**.\n- **Fissaggio**: **2 chiodi HSBR14**/CTF con **SPIT P560**; prova su campione e taratura potenza.\n- **Buone pratiche**: lamiera aderente, rispetto bordi/assi, DPI.\n"
+  }
+]
 
