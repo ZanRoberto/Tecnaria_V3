@@ -1,67 +1,287 @@
 [
   {
     "id": "contacts_override",
-    "pattern": "(?i)contatt|telefono|mail|assistenza|referente|commerciale|tecnico",
+    "pattern": "(?i)contatt|telefono|mail|assistenza|referente|commerciale|tecnico|uffici|orari|sede",
     "mode": "override",
     "lang": "it",
-    "answer": "<h3>Contatti Tecnaria</h3><p>TECNARIA S.p.A. – Bassano del Grappa (VI)<br>📧 <a href='mailto:info@tecnaria.com' target='_blank'>info@tecnaria.com</a> · 📞 <a href='tel:+390424502029'>+39 0424 502029</a></p><p>Per supporto tecnico e preventivi, indicaci: tipologia solaio, luci, carichi, stratigrafia e prodotto d'interesse. Riceverai indicazioni e documenti di posa.</p>"
+    "answer": "<h3>Contatti Tecnaria</h3><p>TECNARIA S.p.A. – Bassano del Grappa (VI)<br>📧 <a href='mailto:info@tecnaria.com' target='_blank'>info@tecnaria.com</a> · 📞 <a href='tel:+390424502029'>+39 0424 502029</a></p><p>Per supporto tecnico/preventivi indica: tipologia solaio, luci, carichi, stratigrafia e prodotto d’interesse. Ti inviamo schede e indicazioni di posa.</p>"
   },
+
+  /* =========================
+     CTF — ACCIAIO / LAMIERA
+     ========================= */
+
+  {
+    "id": "ctf_descrizione",
+    "pattern": "(?i)\\bctf\\b(?!.*(diapason|ctl))|connettori\\s+acciaio|solai?\\s+acciaio.*calcestruzzo",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "<p><strong>CTF</strong> è il connettore Tecnaria per solai collaboranti acciaio–calcestruzzo su <strong>lamiera grecata</strong>. Progettato per posa dall’alto, velocizza il cantiere e garantisce piena collaborazione tra trave e soletta.</p><p>📎 <a href='https://tecnaria.com/prodotto/connettore-per-acciaio-ctf/' target='_blank'>Scheda CTF – Tecnaria</a> · 📎 <a href='https://tecnaria.com/solai-in-acciaio/tipologie-consolidamento-solai-acciaio/' target='_blank'>Solai in acciaio – Tipologie</a></p>"
+  },
+  {
+    "id": "ctf_densita",
+    "pattern": "(?i)\\bctf\\b.*(densit|quanti|numero|pezzi|m2|m²|a\\s*mq|al\\s*mq)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Densità indicativa CTF</h3><p>Indicazione generale: <strong>~6–8 CTF/m²</strong> (più fitta presso gli appoggi, più rada in mezzeria). Il numero esatto deriva dal <strong>calcolo strutturale</strong> in funzione di luci, carichi, profilo di lamiera, classe di calcestruzzo e verifiche a scorrimento/deformazioni.</p><p>📎 <a href='https://tecnaria.com/download/acciaio/download/CT_F_CATALOGO_IT.pdf' target='_blank'>Catalogo acciaio (PDF)</a></p>"
+  },
+  {
+    "id": "ctf_fissaggio_p560",
+    "pattern": "(?i)\\bctf\\b.*(fissagg|posa|chiod|p560|hsbr)|\\bp560\\b.*ctf",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Fissaggio CTF con SPIT P560</h3><p>Posa dall’alto con <strong>SPIT P560</strong> e <strong>2 chiodi HSBR14</strong> per connettore, senza preforatura. Tarare la potenza in base a lamiera/trave e fare una prova su campione. Lamiera ben aderente; rispettare distanze dai bordi.</p><p>📎 <a href='https://tecnaria.com/prodotto/connettore-per-acciaio-ctf/' target='_blank'>Scheda CTF</a> · 📎 <a href='https://spitpaslode.com' target='_blank'>SPIT P560</a></p>"
+  },
+  {
+    "id": "ctf_lamiera_compat",
+    "pattern": "(?i)\\bctf\\b.*(lamiera|hi[- ]?bond|grecat)|hi[- ]?bond.*ctf",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "<p><strong>Compatibilità lamiera</strong>: i CTF sono concepiti per <strong>lamiere grecate certificate</strong> (es. Hi-Bond), per garantire la collaborazione acciaio–calcestruzzo e la ripetibilità prestazionale.</p><p>📎 <a href='https://tecnaria.com/solai-in-acciaio/tipologie-consolidamento-solai-acciaio/' target='_blank'>Solai in acciaio – Tecnaria</a></p>"
+  },
+  {
+    "id": "ctf_spessori_lamiera_trave",
+    "pattern": "(?i)ctf.*(spessor|mm|lamiera).*trave|trave.*spessor.*ctf",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "<p><strong>Indicazioni operative</strong>: su trave d’acciaio tipica <strong>≥ 6 mm</strong>; con lamiera: ok 1×1,5 mm oppure 2×1,0 mm se perfettamente aderente alla trave. Verificare sempre le distanze minime dai bordi e l’ancoraggio dei chiodi dopo taratura.</p>"
+  },
+  {
+    "id": "ctf_cls_rete_spessori",
+    "pattern": "(?i)ctf.*(soletta|spessore|cls|calcestruzzo|rete|armatura)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "<p><strong>Soletta e rete</strong>: spessore definito da calcolo; rete a metà spessore con copriferro adeguato. Classe calcestruzzo e aggregati leggeri (se previsti) coerenti con il progetto. Cura di adesione su lamiera pulita e primerizzata secondo indicazioni di capitolato.</p>"
+  },
+
+  /* =========================
+     P560 — ABILITAZIONE / USO
+     ========================= */
+
   {
     "id": "p560_patentino",
-    "pattern": "(?i)\\bp\\s*[- ]?560\\b.*(patentino|abilitazione|formazione)|(patentino|abilitazione|formazione).*\\bp\\s*[- ]?560\\b",
+    "pattern": "(?i)\\bp\\s*[- ]?560\\b.*(patentino|abilitazione|licenza|corso|certificat)|(patentino|abilitazione).*\\bp\\s*[- ]?560\\b",
     "mode": "override",
     "lang": "it",
-    "answer": "<h3>SPIT P560 – Abilitazione</h3><p>Non serve un patentino specifico. È richiesta una breve formazione interna secondo il manuale del costruttore.</p><p>In cantiere: scelta propulsori, taratura potenza, prova su campione, verifica dell’ancoraggio, DPI (occhiali, guanti, protezione udito).</p><p>📎 <a href='https://spitpaslode.com' target='_blank'>SPIT P560 – Produttore</a></p>"
+    "answer": "<h3>SPIT P560 – abilitazione</h3><p><strong>Non è richiesto un patentino</strong> specifico. È necessaria una <strong>formazione interna</strong> secondo il manuale del costruttore: scelta propulsori, taratura potenza, prova su campione, verifica ancoraggi, gestione inceppamenti e DPI (occhiali, guanti, protezioni udito).</p><p>📎 <a href='https://spitpaslode.com' target='_blank'>SPIT P560 – Produttore</a></p>"
   },
   {
-    "id": "ctf_density",
-    "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi)|(m2|m²).*ctf",
+    "id": "p560_altre_chiodatrici",
+    "pattern": "(?i)chiodatrice.*(qualsiasi|normale|altra|diversa).*ctf|ctf.*(qualsiasi|normale|altra|diversa).*chiodatrice",
     "mode": "override",
     "lang": "it",
-    "answer": "<h3>Densità indicativa CTF su lamiera</h3><p>Indicazione generale: circa 6–8 connettori CTF per m² (più fitta in prossimità degli appoggi, più rada in mezzeria). Il valore esatto è definito dal calcolo strutturale in funzione di luci, carichi, profilo della lamiera e verifiche a scorrimento e deformazioni.</p><p>📎 <a href='https://tecnaria.com/prodotto/connettore-per-acciaio-ctf/' target='_blank'>Scheda CTF – Tecnaria</a> · 📎 <a href='https://tecnaria.com/download/acciaio/download/CT_F_CATALOGO_IT.pdf' target='_blank'>Catalogo acciaio (PDF)</a></p>"
+    "answer": "<h3>Macchine ammesse per CTF</h3><p>I CTF sono progettati per <strong>SPIT P560</strong> con accessori dedicati Tecnaria. L’uso di chiodatrici differenti <strong>non è ammesso</strong> perché non garantisce prestazioni e sicurezza di ancoraggio richieste.</p>"
   },
+
+  /* =========================
+     CTL — LEGNO / VITI
+     ========================= */
+
   {
-    "id": "ctf_fixing",
-    "pattern": "(?i)\\bctf\\b.*(fissagg|posa|chiod|p560|hsbr)",
+    "id": "ctl_descrizione",
+    "pattern": "(?i)\\bctl\\b(?!.*diapason)|connettori\\s+legno|solai?\\s+legno.*calcestruzzo",
     "mode": "augment",
     "lang": "it",
-    "answer": "<p><strong>Posa CTF</strong>: fissaggio dall’alto con chiodatrice SPIT P560 e 2 chiodi HSBR14 per connettore, senza preforatura. Regolare la potenza in base a lamiera/trave e fare sempre una prova su campione. Lamiera ben aderente alla trave; rispettare distanze dai bordi.</p>"
+    "answer": "<p><strong>CTL</strong> è la linea di connettori per <strong>solai legno–calcestruzzo</strong> con fissaggio a viti autoforanti su supporto ligneo (senza chiodatrice). Disponibile in vari modelli (BASE, MAXI) per diverse altezze e condizioni di cantiere.</p><p>📎 <a href='https://tecnaria.com/solai-in-legno/' target='_blank'>Solai in legno – Tecnaria</a> · 📎 <a href='https://tecnaria.com/download/legno/download/CT_L_CATALOGO_IT.pdf' target='_blank'>Catalogo legno (PDF)</a></p>"
   },
   {
-    "id": "ctf_hi_bond",
-    "pattern": "(?i)\\bctf\\b.*(hi[- ]?bond|lamiera)|hi[- ]?bond.*ctf",
+    "id": "ctl_maxi_tavolato_2cm_soletta5",
+    "pattern": "(?i)(ctl|maxi).*tavolato.*(2\\s*cm|20\\s*mm).*soletta.*5\\s*cm",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Selezione CTL MAXI su tavolato ~2 cm + soletta 5 cm</h3><p>Consigliato <strong>CTL MAXI 12/040</strong>, fissato sopra l’assito con 2 viti Ø10 (tipicamente <strong>Ø10×100</strong>; se interposti/tavolato > 25–30 mm → <strong>Ø10×120</strong>). La testa deve stare <strong>sopra la rete</strong> a metà spessore e <strong>sotto</strong> il filo superiore del getto.</p><p>Se interferenze con armature superiori, valutare 12/030.</p>"
+  },
+  {
+    "id": "ctl_viti_gamma",
+    "pattern": "(?i)ctl.*(viti|vite|diametr|lunghez)|viti.*ctl",
     "mode": "augment",
     "lang": "it",
-    "answer": "<p><strong>Compatibilità</strong>: i CTF sono progettati per lamiere grecate certificate (es. Hi-Bond), garantendo piena collaborazione acciaio–calcestruzzo e rapidità di cantiere.</p>"
+    "answer": "<p><strong>Fissaggio CTL</strong>: viti autoforanti Ø10 in lunghezze tipiche 100/120/140 mm, da determinare in base a interposti e spessori reali. Pre-foratura e coppie di serraggio secondo istruzioni di posa.</p>"
+  },
+
+  /* =========================
+     DIAPASON — LATEROCEMENTO
+     ========================= */
+
+  {
+    "id": "diapason_descrizione",
+    "pattern": "(?i)\\bdiapason\\b|laterocemento(?!.*(legno|acciaio))",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Diapason – laterocemento</h3><p><strong>Diapason</strong> è il sistema Tecnaria per <strong>solai in laterocemento</strong> esistenti, senza lamiera: intervento <strong>dall’alto</strong> con <strong>fissaggi meccanici</strong> e getto collaborante, particolarmente indicato per rinforzo e recupero.</p><p>📎 <a href='https://tecnaria.com/solai-in-laterocemento/' target='_blank'>Solai in laterocemento – Tecnaria</a></p>"
   },
   {
     "id": "ctf_vs_diapason",
     "pattern": "(?i)(ctf).*diapason|(diapason).*(ctf)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
     "mode": "override",
     "lang": "it",
-    "answer": "<h3>CTF vs Diapason: quando usare cosa</h3><p><strong>CTF</strong>: connettore per solai collaboranti acciaio–calcestruzzo su <strong>lamiera grecata</strong>. Posa rapida dall’alto con P560, 2 chiodi/pezzo. Ideale su nuovi solai o rinforzi con lamiera.</p><p><strong>Diapason</strong>: sistema per <strong>solai in laterocemento</strong> esistenti (senza lamiera). Fissaggi meccanici e getto collaborante dall’alto, intervento poco invasivo.</p><p>La scelta dipende da tipologia solaio, carichi, accessi e spessori disponibili. La quantità di connettori/ancoraggi è definita dal calcolo.</p><p>📎 <a href='https://tecnaria.com/solai-in-laterocemento/' target='_blank'>Laterocemento – Tecnaria</a> · 📎 <a href='https://tecnaria.com/prodotto/connettore-per-acciaio-ctf/' target='_blank'>CTF – Tecnaria</a></p>"
+    "answer": "<h3>CTF vs Diapason: scelta</h3><p><strong>CTF</strong>: per solai collaboranti acciaio–calcestruzzo su <strong>lamiera grecata</strong>, posa dall’alto con P560 (2 chiodi/pezzo). Ideale per nuovi solai o rinforzi dove la lamiera è prevista/presente.</p><p><strong>Diapason</strong>: per <strong>laterocemento</strong> esistente senza lamiera, con fissaggi meccanici e getto collaborante dall’alto. Intervento poco invasivo su edificato.</p><p>La scelta dipende da tipologia solaio, carichi, accessi e vincoli di spessore; quantità connettori/ancoraggi definite da calcolo.</p>"
   },
   {
-    "id": "ctl_selector_tavolato",
-    "pattern": "(?i)(ctl|maxi).*tavolato.*(1\\s*cm|2\\s*cm|20\\s*mm).*soletta.*5\\s*cm",
+    "id": "ctl_vs_diapason",
+    "pattern": "(?i)(ctl).*(diapason)|(diapason).*(ctl)|laterocemento.*ctl|ctl.*laterocemento",
     "mode": "override",
     "lang": "it",
-    "answer": "<h3>Selezione CTL MAXI su tavolato ~2 cm + soletta 5 cm</h3><p>Consiglio: <strong>CTL MAXI 12/040</strong>, fissato sull’assito con 2 viti Ø10 (100 mm; se interposti/tavolato > 25–30 mm → Ø10×120). La testa resta sopra la rete a metà spessore e sotto il filo superiore del getto.</p><p>Se interferenze con armature superiori, valutare 12/030.</p><p>📎 <a href='https://tecnaria.com/solai-in-legno/' target='_blank'>Solai in legno – Tecnaria</a></p>"
+    "answer": "<h3>CTL vs Diapason</h3><p><strong>CTL</strong>: per <strong>legno–calcestruzzo</strong> (viti su travi lignee), non adatto a laterocemento.</p><p><strong>Diapason</strong>: per <strong>laterocemento</strong> con getto collaborante e fissaggi meccanici.</p>"
+  },
+
+  /* =========================
+     SOLETTE / RETE / CLS
+     ========================= */
+
+  {
+    "id": "soletta_spessori_generali",
+    "pattern": "(?i)soletta|spessore\\s+soletta|rete\\s+elettrosaldata|copriferro|cls|calcestruzzo",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "<p><strong>Soletta</strong>: spessore e armatura sono da progetto. In generale, rete a metà spessore con adeguato copriferro, adesione curata (pulizia lamiera/caldana) e classe calcestruzzo coerente con le prestazioni richieste (normale o leggero strutturale se previsto).</p>"
   },
   {
-    "id": "cert_eta",
-    "pattern": "(?i)certificat|eta|socotec|avis\\s*tech",
+    "id": "cls_leggero",
+    "pattern": "(?i)(cls|calcestruzzo).*(legger|argilla|polistirolo|aggregati\\s*leggeri)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "<p><strong>Calcestruzzo leggero strutturale</strong>: ammissibile se previsto dal progetto e dalle schede tecniche del sistema; verificare resistenze meccaniche e modulo elastico in relazione alle verifiche di scorrimento e deformabilità.</p>"
+  },
+
+  /* =========================
+     VERIFICHE / CALCOLO
+     ========================= */
+
+  {
+    "id": "calcolo_dimensionamento",
+    "pattern": "(?i)calcolo|dimensionament|verifiche|portata|rigidezz|luci|max|deformaz|taglio|scorrimento",
     "mode": "override",
     "lang": "it",
-    "answer": "<h3>Certificazioni e documentazione</h3><p>I sistemi Tecnaria dispongono di <strong>ETA</strong> (European Technical Assessment) e documentazione di prova. Le schede tecniche aggiornate e i certificati sono disponibili sul sito ufficiale.</p><p>📎 <a href='https://tecnaria.com' target='_blank'>tecnaria.com</a></p>"
+    "answer": "<h3>Calcolo e verifiche</h3><p>Il <strong>dimensionamento</strong> (numero connettori, passi, spessori solette, armature) è definito dal <strong>calcolo strutturale</strong> in base a luci, carichi, profili di lamiera/legno/acciaio e verifiche di resistenza e deformabilità.</p><p>📎 <a href='https://tecnaria.com' target='_blank'>Documentazione Tecnaria</a></p>"
+  },
+
+  /* =========================
+     CERTIFICAZIONI / PRIVACY
+     ========================= */
+
+  {
+    "id": "certificazioni_eta",
+    "pattern": "(?i)eta|european\\s+technical|certificat|socotec|avis\\s*tech|marcatura|normativ",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Certificazioni</h3><p>I sistemi Tecnaria sono coperti da <strong>ETA</strong> e relative prove. Le versioni aggiornate dei certificati e delle schede sono disponibili sul sito.</p><p>📎 <a href='https://tecnaria.com' target='_blank'>tecnaria.com</a></p>"
   },
   {
-    "id": "postscript_safety",
-    "pattern": "(?i)ctf|ctl|diapason|p560|hsbr|lamiera|hi[- ]?bond|laterocemento|legno",
+    "id": "privacy_note",
+    "pattern": "(?i)privacy|gdpr|trattamento\\s+dati|cookie",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Informativa</h3><p>Per la privacy e i cookie fare riferimento all’informativa ufficiale presente su tecnaria.com.</p><p>📎 <a href='https://tecnaria.com' target='_blank'>tecnaria.com</a></p>"
+  },
+
+  /* =========================
+     PREVENTIVI / LOGISTICA
+     ========================= */
+
+  {
+    "id": "preventivo",
+    "pattern": "(?i)preventiv|offerta|costo|prezzo|listino",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Preventivi</h3><p>Per un’offerta precisa indica: tipologia solaio, luci, carichi, stratigrafie, quantità e prodotto d’interesse. Ti rispondiamo rapidamente con materiali, accessori e tempi.</p><p>📧 <a href='mailto:info@tecnaria.com' target='_blank'>info@tecnaria.com</a> · 📞 <a href='tel:+390424502029'>+39 0424 502029</a></p>"
+  },
+  {
+    "id": "spedizioni_tempi",
+    "pattern": "(?i)spedizion|consegna|tempi|disponibilit|stock|magazzino",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Disponibilità e consegne</h3><p>Le disponibilità dipendono dal prodotto e dai quantitativi. Invia la richiesta per verificare tempi e lotto minimo; offriamo supporto anche per programmazione consegne su cantiere.</p>"
+  },
+
+  /* =========================
+     SICUREZZA / DPI
+     ========================= */
+
+  {
+    "id": "sicurezza_dpi",
+    "pattern": "(?i)sicurezza|dpi|occhiali|guanti|udito|rischi|infortun|valigetta|manuale",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "<p><strong>Sicurezza</strong>: utilizzare sempre DPI (occhiali, guanti, protezioni acustiche), seguire il manuale del produttore delle attrezzature e rispettare distanze minime dai bordi di lamiere/travi. In caso di dubbio, contattare l’assistenza Tecnaria.</p>"
+  },
+
+  /* =========================
+     NON COMPATIBILITÀ / LIMITI
+     ========================= */
+
+  {
+    "id": "no_altre_marche",
+    "pattern": "(?i)(altri|altre)\\s+(marchi|marche|prodotti)|compatibilit.*(non|altre)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Compatibilità prodotti</h3><p>Le prestazioni sono garantite <strong>solo</strong> con sistemi Tecnaria e componenti/attrezzature previste (es. CTF con SPIT P560). L’impiego di prodotti non previsti non è coperto.</p>"
+  },
+
+  /* =========================
+     TROUBLESHOOTING POSA
+     ========================= */
+
+  {
+    "id": "troubleshooting_chiodi",
+    "pattern": "(?i)chiod[io].*(non|male|entra|penetra|tiene|stacca|salta)|inceppament|potenza.*p560",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Posa CTF – Risoluzione rapida</h3><p>1) Verifica <strong>aderenza lamiera–trave</strong>; 2) Seleziona <strong>propulsore</strong> idoneo e <strong>taratura</strong> graduale; 3) Esegui <strong>prova su campione</strong> e controlla l’ancoraggio; 4) Rispetta distanze dai bordi; 5) Sostituisci punzone/usura se necessario. Se il problema persiste, contatta l’assistenza.</p>"
+  },
+
+  /* =========================
+     FAQ VARIE (SHORT OVERRIDES)
+     ========================= */
+
+  {
+    "id": "faq_uso_lamiera_assente",
+    "pattern": "(?i)ctf.*senza\\s+lamiera|senza\\s+lamiera.*ctf",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>CTF senza lamiera?</h3><p>No: CTF lavora su lamiera grecata. Per laterocemento senza lamiera valuta <strong>Diapason</strong>.</p>"
+  },
+  {
+    "id": "faq_p560_obbligatoria",
+    "pattern": "(?i)p560.*obblig|obblig.*p560|serve.*p560.*ctf",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>P560 obbligatoria per CTF</h3><p>Sì: i CTF sono sviluppati per posa con <strong>SPIT P560</strong> e 2 chiodi HSBR14 per connettore.</p>"
+  },
+  {
+    "id": "faq_rete_posizione",
+    "pattern": "(?i)rete.*posizion|posizion.*rete",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Posizione rete</h3><p>Rete a <strong>metà spessore</strong> della soletta con copriferro coerente al progetto; testa connettore sotto il filo superiore del getto.</p>"
+  },
+  {
+    "id": "faq_cls_leggero_ok",
+    "pattern": "(?i)cls.*legger|calcestruzzo.*legger|argilla.*espansa|polistirolo.*cls",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Calcestruzzo leggero</h3><p>Ammissibile se previsto da progetto e schede tecniche. Verificare resistenze e modulo elastico ai fini delle verifiche.</p>"
+  },
+  {
+    "id": "faq_download_cataloghi",
+    "pattern": "(?i)catalogo|cataloghi|download|brochure|schede",
+    "mode": "override",
+    "lang": "it",
+    "answer": "<h3>Download documenti</h3><p>📎 <a href='https://tecnaria.com/download/acciaio/download/CT_F_CATALOGO_IT.pdf' target='_blank'>Catalogo acciaio (PDF)</a><br>📎 <a href='https://tecnaria.com/download/legno/download/CT_L_CATALOGO_IT.pdf' target='_blank'>Catalogo legno (PDF)</a><br>📎 <a href='https://tecnaria.com/solai-in-laterocemento/' target='_blank'>Laterocemento (pagina)</a></p>"
+  },
+
+  /* =========================
+     FINALI DI GARANZIA / POSTSCR.
+     ========================= */
+
+  {
+    "id": "postscript_tecnico",
+    "pattern": "(?i)ctf|ctl|diapason|p560|hsbr|lamiera|hi[- ]?bond|laterocemento|legno|acciaio|soletta|rete|cls|calcestruzzo|catalogo|certificat|eta",
     "mode": "postscript",
     "lang": "it",
-    "answer": "Nota: Le informazioni sono tecnico-informative e riferite ai prodotti Tecnaria S.p.A. Per verifiche e dimensionamenti utilizzare il calcolo strutturale e le schede ufficiali."
+    "answer": "Nota: informazioni tecnico–informative riferite ai prodotti Tecnaria S.p.A.; per dimensionamenti e verifiche attenersi al progetto strutturale e alle schede ufficiali."
   }
 ]
+
 
 
