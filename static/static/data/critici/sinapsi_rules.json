@@ -1,24 +1,59 @@
 [
   {
     "id": "p560_patentino",
-    "pattern": "(?i)\\bp560\\b.*(patentino|abilitazione|formazione)|(patentino|abilitazione|formazione).*\\bp560\\b",
+    "pattern": "(?i)\\bp\\s*560\\b.*(patentino|abilitazione|formazione)|(patentino|abilitazione|formazione).*\\bp\\s*560\\b",
     "mode": "override",
     "lang": "it",
-    "answer": "OK\n- **Patentino**: non è richiesto un patentino specifico per **SPIT P560**; è necessaria **formazione interna** secondo le istruzioni del costruttore.\n- **Fissaggio CTF**: posa dall’alto con **2 chiodi HSBR14**/connettore, senza preforatura, tarando la potenza e facendo prova su campione.\n- **DPI**: occhiali, guanti, protezione udito; lamiera ben aderente e rispetto distanze dai bordi.\n\n**Fonti**\n- Sinapsi (curated)\n"
+    "answer": "OK\n- **Patentino**: non è richiesto un patentino specifico per **SPIT P560**; serve **formazione interna** secondo istruzioni del costruttore.\n- **Fissaggio CTF**: posa dall’alto con **2 chiodi HSBR14**/connettore; nessuna preforatura; tarare potenza e fare prova su campione.\n- **DPI**: occhiali, guanti, protezione udito; lamiera ben aderente; rispetto distanze dai bordi.\n\n**Fonti**\n- Sinapsi (curated)\n"
   },
   {
     "id": "ctf_vs_diapason",
     "pattern": "(?i)\\b(ctf).*(diapason)|(diapason).*(ctf)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **CTF**: per **solaio acciaio–calcestruzzo** su **lamiera grecata**; posa rapida con **SPIT P560** (2 chiodi/pezzo). Ideale in nuove strutture miste o rinforzi con lamiera.\n- **Diapason**: per **rinforzo laterocemento** esistente; **fissaggi meccanici** (non P560), getto collaborante dall’alto.\n- **Scelta**: dipende da **tipologia solaio**, **luci/carichi**, **vincoli di spessore e accessi**; quantità connettori da **calcolo**.\n"
+    "answer": "- **Quando CTF**: solaio acciaio–calcestruzzo con **lamiera grecata**; posa rapida dall’alto con **SPIT P560** e **2 chiodi**/pezzo.\n- **Quando Diapason**: **rinforzo laterocemento** esistente **senza lamiera**; fissaggi meccanici (non P560) e getto collaborante.\n- **Scelta pratica**: dipende da **tipologia solaio**, **luci/carichi**, **vincoli di spessore e accessi**; quantità connettori/ancoraggi da **calcolo**.\n"
+  },
+  {
+    "id": "ctl_vs_diapason",
+    "pattern": "(?i)(ctl).*(diapason)|(diapason).*(ctl)|laterocemento.*ctl|ctl.*laterocemento",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **CTL**: per **legno–calcestruzzo** (viti su travi lignee), non per laterocemento.\n- **Diapason**: per **laterocemento** da consolidare con getto collaborante e fissaggi meccanici.\n"
   },
   {
     "id": "ctf_density",
-    "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|fissagg|chiod|p560|hsbr)",
+    "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|posa|fissagg|chiod|p560|hsbr|hi[- ]?bond)",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Densità indicativa**: **~6–8 CTF/m²** (più fitta agli appoggi, più rada in mezzeria); valore **finale da calcolo**.\n- **Fissaggio**: **2 chiodi HSBR14**/CTF con **SPIT P560**; prova su campione e taratura potenza.\n- **Buone pratiche**: lamiera aderente, rispetto bordi/assi, DPI.\n"
+    "answer": "- **Densità indicativa**: **~6–8 CTF/m²** (più fitta agli appoggi, più rada in mezzeria) → valore **finale da calcolo**.\n- **Fissaggio**: **2 chiodi HSBR14**/CTF con **SPIT P560**; prova su campione e taratura potenza.\n- **Buone pratiche**: lamiera aderente alla trave, rispetto bordi/assi, DPI.\n"
+  },
+  {
+    "id": "ctf_hibond_advantages",
+    "pattern": "(?i)\\bctf\\b.*(hi[- ]?bond|lamiera)|hi[- ]?bond.*ctf|vantagg",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Compatibilità**: **CTF** pensati per lamiere certificate (es. **Hi-Bond**) → piena collaborazione acciaio–calcestruzzo.\n- **Cantiere**: posa rapida dall’alto con **P560** (2 chiodi) senza preforatura → tempi/costi ridotti.\n- **Prestazioni**: rigidezza e portata superiori, deformazioni ridotte, luci maggiori a spessore contenuto.\n- **Norme**: **ETA** e tracciabilità lotti.\n"
+  },
+  {
+    "id": "ctf_lamiera_spessori",
+    "pattern": "(?i)ctf.*(spessor|lamiera|1\\s*mm|1,5\\s*mm|2\\s*mm|6\\s*mm)|lamiera.*ctf",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Supporto**: acciaio trave ≥ **6 mm**; con lamiera grecata: ok **1×1,5 mm** oppure **2×1,0 mm** ben aderente alla trave.\n- **Tiro**: due chiodi per connettore; eseguire test iniziale e controlli a campione.\n"
+  },
+  {
+    "id": "ctl_maxi_tavolato_2cm",
+    "pattern": "(?i)(ctl|maxi).*tavolat(o|i).*2\\s*cm.*soletta.*5\\s*cm",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Scelta**: **CTL MAXI 12/040** con **viti Ø10×100** (oppure **Ø10×120** se interposti o tavolato > 25–30 mm).\n- **Criterio**: testa sopra la rete a metà spessore, sotto il filo superiore del getto; se interferenze → **12/030**.\n"
+  },
+  {
+    "id": "contatti_escalation",
+    "pattern": "(?i)contatt|referent|commercial|tecnic.*contatt|email|telefono",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "— **Se serve un progetto/verifica**: inviaci **zona/cantiere**, **tipo solaio**, **luci/carichi** e ti mettiamo in contatto con il **tecnico Tecnaria** di riferimento.\n"
   }
 ]
 
