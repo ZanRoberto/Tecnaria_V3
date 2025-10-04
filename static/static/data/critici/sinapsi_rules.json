@@ -1,209 +1,209 @@
 [
   {
-    "id": "p560_patentino",
+    "id": "p560_patentino_override",
     "pattern": "(?i)\\bp\\s*[- ]?560\\b.*(patentino|abilitaz|attestato|certificat|corso)|\\b(patentino|abilitaz|attestato|certificat|formazione).*(p\\s*[- ]?560)",
     "mode": "override",
     "lang": "it",
-    "answer": "OK\n- **Patentino**: non è richiesto un patentino specifico per **SPIT P560**.\n- **Formazione**: è necessaria una **breve formazione interna** secondo il manuale del costruttore e le istruzioni Tecnaria.\n- **Operatività**: prove su campione, corretta scelta dei propulsori, taratura potenza, controllo ancoraggio.\n- **Sicurezza**: DPI obbligatori (occhiali, guanti, protezione udito) e rispetto delle distanze dai bordi.\n"
+    "answer": "OK\n- **Patentino**: non è richiesto un patentino specifico per **SPIT P560**.\n- **Formazione**: necessaria **breve formazione interna** secondo manuale SPIT e istruzioni Tecnaria.\n- **Operatività**: prova su campione, scelta propulsori, taratura potenza, controllo ancoraggio.\n- **Sicurezza**: DPI obbligatori (occhiali, guanti, protezione udito) e rispetto distanze dai bordi.\n"
   },
   {
-    "id": "p560_compatibilita",
-    "pattern": "(?i)(p\\s*[- ]?560|spit\\s*p560).*(compatibil|posso usare|va bene|funziona)|chiodatrice.*(p560|spit)",
+    "id": "p560_compatibilita_override",
+    "pattern": "(?i)(p\\s*[- ]?560|spit\\s*p560).*(compatibil|posso usare|va bene|funziona)|\\b(chiodatrice|sparachiodi)\\b.*(p560|spit)|\\bposso\\s+usare\\s+una\\s+chiodatrice\\s+qualsiasi",
     "mode": "override",
     "lang": "it",
-    "answer": "OK\n- **Compatibilità**: i connettori **CTF** richiedono **SPIT P560** con **kit/adattatori Tecnaria** dedicati.\n- **Altre macchine**: non ammesse.\n- **Fissaggio**: ogni CTF si posa con **2 chiodi HSBR14**; nessuna preforatura.\n- **Note**: usare propulsori adeguati e verificare l’aderenza della lamiera alla trave.\n"
+    "answer": "OK\n- **Compatibilità**: i **CTF** richiedono **SPIT P560** con **kit/adattatori Tecnaria** dedicati.\n- **Altre macchine**: non ammesse.\n- **Fissaggio**: ogni CTF si posa con **2 chiodi HSBR14**; nessuna preforatura.\n"
   },
   {
-    "id": "ctf_density",
-    "pattern": "(?i)\\bctf\\b.*(densit|quanti|pezzi|numero|m2|m²|passo)|\\b(m2|m²)\\b.*\\bctf\\b",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Densità indicativa**: **~6–8 CTF/m²** (più fitta verso gli appoggi, più rada in mezzeria); il valore **esatto deriva dal calcolo**.\n- **Fissaggio**: **2 chiodi HSBR14** per connettore con **SPIT P560**; eseguire una **prova su campione** e regolare la potenza.\n"
-  },
-  {
-    "id": "ctf_fixing_p560",
-    "pattern": "(?i)\\bctf\\b.*(fissagg|posa|chiod|p560|hsbr)|p560.*\\bctf\\b",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Procedura**: posa dall’alto; appoggiare il CTF, sparare **2 chiodi HSBR14**.\n- **Supporto**: lamiera ben aderente alla trave; controllare spessori e bordi.\n- **Controllo**: verificare la penetrazione dei chiodi e l’assenza di gioco.\n"
-  },
-  {
-    "id": "ctf_vs_diapason",
+    "id": "ctf_vs_diapason_augment",
     "pattern": "(?i)\\b(ctf).*(diapason)|(diapason).*(ctf)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **CTF**: per **solaio acciaio–calcestruzzo** su **lamiera grecata**; posa rapida con **SPIT P560**.\n- **Diapason**: per **rinforzo di solai in laterocemento** senza lamiera; fissaggi meccanici e getto collaborante.\n- **Scelta**: dipende da **tipologia solaio**, **vincoli di spessore**, **luci/carichi** e **tempi di cantiere**.\n"
+    "answer": "- **CTF**: per **solaio collaborante acciaio–calcestruzzo** su **lamiera grecata**; posa dall’alto con **SPIT P560** (2 chiodi/pezzo), soluzione rapida per nuove costruzioni o rinforzi con lamiera.\n- **Diapason**: per **rinforzo di solai in laterocemento** esistenti; fissaggi **meccanici** (no P560) e **getto collaborante**.\n- **Scelta**: dipende da **tipologia solaio**, **vincoli di spessore**, **luci/carichi** e **tempi**; quantità connettori/ancoraggi → **calcolo strutturale**.\n"
   },
   {
-    "id": "ctl_vs_diapason",
+    "id": "ctl_vs_diapason_augment",
     "pattern": "(?i)\\b(ctl).*(diapason)|(diapason).*(ctl)|laterocemento.*ctl|ctl.*laterocemento",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **CTL**: connettore per **legno–calcestruzzo** (viti su travi lignee).\n- **Diapason**: sistema per **laterocemento** esistente.\n- **Criterio**: usare **CTL** solo su legno; **Diapason** su laterocemento.\n"
+    "answer": "- **CTL**: connettore per **legno–calcestruzzo** (viti su travi lignee), non per laterocemento.\n- **Diapason**: sistema per **laterocemento** esistente con getto collaborante e ancoraggi meccanici.\n"
   },
   {
-    "id": "ctl_scelta_tavolato_2cm",
-    "pattern": "(?i)\\bctl\\b.*(tavolato|assito).*(2\\s*cm|20\\s*mm).*soletta.*(5\\s*cm|50\\s*mm)",
+    "id": "ctl_vs_ctf_override",
+    "pattern": "(?i)ctl.*ctf|ctf.*ctl",
     "mode": "override",
     "lang": "it",
-    "answer": "OK\n- **Consiglio**: **CTL MAXI 12/040** su tavolato ~2 cm con soletta **5 cm**.\n- **Viti**: **Ø10×100 mm** (oppure **Ø10×120 mm** se interposti/tavolato > 25–30 mm).\n- **Criterio**: testa del connettore **sopra la rete** a metà spessore e **sotto** il filo superiore del getto.\n"
+    "answer": "OK\n- **CTL** → solai **legno–calcestruzzo** (viti), ristrutturazioni su travi lignee.\n- **CTF** → solai **acciaio–calcestruzzo** su **lamiera grecata**, posa con **SPIT P560**.\n- Entrambi con **ETA**; la scelta dipende dal **supporto** (legno vs acciaio) e dal progetto.\n"
   },
   {
-    "id": "hibond_ctf_vantaggi",
-    "pattern": "(?i)(hi[- ]?bond|lamiera\\s+grecata).*(ctf)|\\bctf\\b.*(hi[- ]?bond|lamiera\\s+grecata)|vantagg.*(ctf|lamiera)",
+    "id": "ctf_density_augment",
+    "pattern": "(?i)\\bctf\\b.*(densit|quanti|pezzi|numero|m2|m²|passo)|\\b(m2|m²)\\b.*\\bctf\\b",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Compatibilità**: i **CTF** sono progettati per lamiere grecate certificate (es. **Hi-Bond**).\n- **Efficienza**: posa rapida, riduzione dei tempi/costi di cantiere.\n- **Prestazioni**: migliore collaborazione acciaio–calcestruzzo, rigidezza e luci maggiori a spessore contenuto.\n"
+    "answer": "- **Densità indicativa**: **~6–8 CTF/m²** (più fitta agli appoggi, più rada in mezzeria); il valore **esatto deriva dal calcolo**.\n- **Fissaggio**: **2 chiodi HSBR14**/CTF con **SPIT P560**; fare **prova su campione** e tarare la potenza.\n"
   },
   {
-    "id": "lamiera_spessori",
-    "pattern": "(?i)lamiera.*(spessor|spessore)|spessore.*lamiera|hi[- ]?bond.*(spessor|spessore)",
+    "id": "ctf_fixing_procedura_augment",
+    "pattern": "(?i)\\bctf\\b.*(fissagg|posa|chiod|p560|hsbr)|p560.*\\bctf\\b",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Indicazioni tipiche**: lamiera **1×1,5 mm** o **2×1,0 mm** ben aderente alla trave.\n- **Aderenza**: fondamentale per il corretto chiodaggio e trasferimento degli sforzi.\n"
+    "answer": "- **Procedura**: appoggiare il CTF in sede e sparare **2 chiodi HSBR14** dall’alto con **SPIT P560**.\n- **Supporto**: lamiera **ben aderente** alla trave; controlli visivi post-posa.\n"
   },
   {
-    "id": "distanze_bordi",
-    "pattern": "(?i)(distanze?|bordi?|bordo|margine).*chiod|ctf|p560",
-    "mode": "postscript",
-    "lang": "it",
-    "answer": "PS: rispettare le **distanze minime dai bordi** della lamiera/trave secondo le istruzioni Tecnaria per evitare fessurazioni o ancoraggi ridotti.\n"
-  },
-  {
-    "id": "dpi_sicurezza",
-    "pattern": "(?i)(dpi|sicurezza|dispositivi|occhiali|guanti|udito|rumore|cartucce|propulsori)",
-    "mode": "postscript",
-    "lang": "it",
-    "answer": "PS: usare sempre **DPI** (occhiali, guanti, protezione udito), tenere l’area sgombra, e maneggiare i **propulsori** secondo il manuale SPIT.\n"
-  },
-  {
-    "id": "formazione_operatore",
-    "pattern": "(?i)formazione|addestramento|istruzioni.*(posa|p560|ctf)",
-    "mode": "postscript",
-    "lang": "it",
-    "answer": "PS: prevedere **addestramento operativo** su: scelta propulsori, taratura potenza, prova su campione, gestione inceppamenti, controlli post-posa.\n"
-  },
-  {
-    "id": "certificazioni_eta",
-    "pattern": "(?i)(eta|certificat|marcatura\\s*ce|dop|valutazione tecnica|assessment)",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Documentazione**: disponibilità di **ETA/CE/DoP** e tracciabilità lotti per i sistemi Tecnaria.\n"
-  },
-  {
-    "id": "software_supporto",
-    "pattern": "(?i)(software|calcolo|verifiche|progetto|predimensionamento)",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Supporto**: strumenti di **calcolo/predimensionamento** e assistenza tecnica **Tecnaria** per le verifiche di progetto.\n"
-  },
-  {
-    "id": "calcestruzzo_classe_spessori",
-    "pattern": "(?i)(calcestruzzo|cls|classe|c25|c28|spessore|soletta).*",
-    "mode": "postscript",
-    "lang": "it",
-    "answer": "PS: usare classe **C25/30** (o conforme a progetto). Soletta tipica **≥ 5 cm** con rete a **metà spessore** salvo diversa indicazione strutturale.\n"
-  },
-  {
-    "id": "propulsori_scelta",
-    "pattern": "(?i)(propulsor|cartucce|cariche|potenza).*p560",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Scelta propulsori**: in base a **acciaio/trave** e **lamiera**; iniziare con potenza intermedia e regolare dopo la **prova su campione**.\n"
-  },
-  {
-    "id": "inceppamenti_troubleshooting",
-    "pattern": "(?i)(incepp|misfire|no\\s*sparo|mancato\\s*sparo|problemi).*p560",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Troubleshooting**: controllare pulizia, stato dei chiodi/propulsori, appoggio perpendicolare e **aderenza lamiera**; ripetere la prova su scarto.\n"
-  },
-  {
-    "id": "ambiente_corrosivo",
-    "pattern": "(?i)(corrosiv|classe di esposizione|zincatura|ambiente marino|aggressivo)",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Ambienti aggressivi**: valutare protezioni superficiali idonee e classi di esposizione; seguire le indicazioni del progettista e della norma applicabile.\n"
-  },
-  {
-    "id": "resistenza_fuoco",
-    "pattern": "(?i)(resistenza\\s*al\\s*fuoco|rei|fire|protezione\\s*al\\s*fuoco)",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Fuoco**: verifiche **R**/**REI** a progetto (profilo lamiera, spessori, protezioni); disponibilità di dati di prova/indicazioni Tecnaria.\n"
-  },
-  {
-    "id": "acustica",
-    "pattern": "(?i)(acustic|rumore|isolamento\\s*acustico|fonic)",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Acustica**: il solaio collaborante migliora **rigidezza**; l’isolamento richiede pacchetti specifici (massetti/fonoassorbenti) definiti dal progettista.\n"
-  },
-  {
-    "id": "sismica",
-    "pattern": "(?i)(sismic|zon[a|e]\\s*sismic|ntc|eurocod)",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Sismica**: adottare le verifiche previste da **NTC/Eurocodici**; i connettori garantiscono il collegamento acciaio-cls, la verifica globale resta a progetto.\n"
-  },
-  {
-    "id": "responsabilita_progetto",
-    "pattern": "(?i)(responsabilit|chi\\s*decide|chi\\s*calcola|calcolo\\s*strutturale)",
-    "mode": "override",
-    "lang": "it",
-    "answer": "OK\n- Il **dimensionamento** e le **verifiche** sono in capo al **progettista strutturale**.\n- Tecnaria fornisce **dati di prodotto**, **documentazione**, e **supporto tecnico** (anche di cantiere) a richiesta.\n"
-  },
-  {
-    "id": "preventivo_distributori",
-    "pattern": "(?i)(prezz|preventiv|costo|listino|distributor|rivenditor|dove\\s*comprare|acquistare|ordine|lead\\s*time|consegna)",
-    "mode": "override",
-    "lang": "it",
-    "answer": "OK\n- **Acquisto**: rete di **distributori** in Italia/UE; in assenza, **fornitura diretta**.\n- **Preventivo**: indica **prodotto**, **quantità** e **località** per un contatto rapido.\n- **Documenti**: ETA/CE/DoP con **tracciabilità lotti**.\n"
-  },
-  {
-    "id": "contatti_supporto",
-    "pattern": "(?i)(contatt|referent|assistenza|tecnic|commercial|telefono|email)",
-    "mode": "override",
-    "lang": "it",
-    "answer": "OK\n- Ti mettiamo in contatto con il **referente Tecnaria** più vicino (tecnico/commerciale).\n- Invia **città**, **cantiere** e **prodotto** d’interesse: attiviamo subito il supporto.\n"
-  },
-  {
-    "id": "no_preforatura",
+    "id": "no_preforatura_override",
     "pattern": "(?i)(preforat|foro|forare).*ctf|ctf.*(preforat|foro)",
     "mode": "override",
     "lang": "it",
-    "answer": "OK\n- **CTF** con **SPIT P560**: **nessuna preforatura**.\n- Accertarsi che la **lamiera aderisca** alla trave e che lo **spessore acciaio** sia idoneo secondo le istruzioni.\n"
+    "answer": "OK\n- **CTF + SPIT P560**: **nessuna preforatura**.\n- Verificare **aderenza lamiera** e **spessore acciaio** idoneo secondo istruzioni.\n"
   },
   {
-    "id": "limiti_operativi",
+    "id": "lamiera_spessori_augment",
+    "pattern": "(?i)lamiera.*(spessor|spessore)|spessore.*lamiera|hi[- ]?bond.*(spessor|spessore)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Indicazioni tipiche**: lamiera **1×1,5 mm** oppure **2×1,0 mm** ben aderente alla trave.\n"
+  },
+  {
+    "id": "hibond_vantaggi_augment",
+    "pattern": "(?i)(hi[- ]?bond|lamiera\\s+grecata).*(ctf)|\\bctf\\b.*(hi[- ]?bond|lamiera\\s+grecata)|vantagg.*(ctf|lamiera)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Compatibilità**: i **CTF** sono progettati per profili **Hi-Bond** e lamiere certificate.\n- **Efficienza**: posa rapida dall’alto; riduzione tempi/costi di cantiere.\n- **Prestazioni**: migliore collaborazione acciaio–cls, rigidezza e luci maggiori a spessore contenuto.\n"
+  },
+  {
+    "id": "ctl_tavolato_2cm_override",
+    "pattern": "(?i)\\bctl\\b.*(tavolato|assito).*(2\\s*cm|20\\s*mm).*soletta.*(5\\s*cm|50\\s*mm)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "OK\n- **Scelta**: **CTL MAXI 12/040** su tavolato ~2 cm con soletta **5 cm**.\n- **Viti**: **Ø10×100 mm** (oppure **Ø10×120 mm** se interposti/tavolato > 25–30 mm).\n- **Criterio**: testa **sopra la rete** a metà spessore e **sotto** il filo superiore del getto.\n"
+  },
+  {
+    "id": "ctl_viti_augment",
+    "pattern": "(?i)\\bctl\\b.*(vite|viti|fissagg|autoforanti)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Fissaggio CTL**: viti **Ø10** (100/120/140 mm secondo interposti) posate con avvitatore idoneo; niente chiodatrici.\n"
+  },
+  {
+    "id": "propulsori_scelta_augment",
+    "pattern": "(?i)(propulsor|cartucce|cariche|potenza).*p560",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Propulsori**: selezione in base a **spessore acciaio** e **lamiera**; partire da potenza intermedia e regolare dopo **prova su campione**.\n"
+  },
+  {
+    "id": "p560_troubleshooting_augment",
+    "pattern": "(?i)(incepp|misfire|no\\s*sparo|mancato\\s*sparo|problemi).*p560",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Troubleshooting P560**: pulizia arma, chiodi/propulsori conformi, appoggio perpendicolare, **aderenza lamiera**; ripetere prova su scarto se necessario.\n"
+  },
+  {
+    "id": "calcestruzzo_postscript",
+    "pattern": "(?i)(calcestruzzo|cls|classe|c25|c28|soletta|rete)",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: usare **C25/30** (o come da progetto). Soletta tipica **≥ 5 cm** con **rete a metà spessore** salvo diverse verifiche.\n"
+  },
+  {
+    "id": "certificazioni_eta_augment",
+    "pattern": "(?i)(eta|certificat|marcatura\\s*ce|dop|valutazione tecnica|assessment)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Documentazione**: disponibili **ETA/CE/DoP** e tracciabilità lotti per i sistemi Tecnaria.\n"
+  },
+  {
+    "id": "software_supporto_augment",
+    "pattern": "(?i)(software|calcolo|verifiche|progetto|predimensionamento)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Supporto**: strumenti di **predimensionamento** e **assistenza tecnica Tecnaria** per le verifiche di progetto.\n"
+  },
+  {
+    "id": "responsabilita_progetto_override",
+    "pattern": "(?i)(responsabilit|chi\\s*decide|chi\\s*calcola|calcolo\\s*strutturale)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "OK\n- Dimensionamento e verifiche sono in capo al **progettista strutturale**.\n- Tecnaria fornisce **dati di prodotto**, **documenti** e **supporto tecnico**.\n"
+  },
+  {
+    "id": "preventivo_distrib_override",
+    "pattern": "(?i)(prezz|preventiv|costo|listino|distributor|rivenditor|comprare|acquistare|ordine|consegna|lead\\s*time)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "OK\n- **Acquisto**: rete di **distributori** in Italia/UE; se assenti, **fornitura diretta**.\n- **Preventivo**: indica **prodotto**, **quantità** e **località** per un contatto rapido.\n"
+  },
+  {
+    "id": "contatti_override",
+    "pattern": "(?i)(contatt|referent|assistenza|tecnic|commercial|telefono|email)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "OK\n- Ti mettiamo in contatto con il **referente Tecnaria** più vicino (tecnico/commerciale).\n- Invia **città**, **cantiere** e **prodotto** d’interesse.\n"
+  },
+  {
+    "id": "limiti_operativi_augment",
     "pattern": "(?i)(limiti|non\\s*si\\s*pu[oò]|non\\s*ammess|controindicat|non\\s*compatibil)",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Non usare** chiodatrici diverse da **SPIT P560** sui CTF.\n- Evitare posa su **lamiere non aderenti**, supporti deformati o bordi non rispettati.\n"
+    "answer": "- **Non usare** chiodatrici diverse da **SPIT P560** sui CTF; evitare posa su lamiere **non aderenti** o bordi non rispettati.\n"
   },
   {
-    "id": "hi_bond_generico",
-    "pattern": "(?i)(hi[- ]?bond|hibond)\\b",
+    "id": "dpi_postscript",
+    "pattern": "(?i)(dpi|sicurezza|dispositivi|occhiali|guanti|udito|rumore|sicuro|sicurezza)",
     "mode": "postscript",
     "lang": "it",
-    "answer": "PS: con profili **Hi-Bond** attenersi alle **schede Tecnaria** e alle istruzioni del produttore lamiera per fori, appoggi e vincoli.\n"
+    "answer": "PS: indossare **DPI** (occhiali, guanti, protezione udito) e lavorare in area sgombra; gestire i **propulsori** secondo il manuale SPIT.\n"
   },
   {
-    "id": "faq_generiche",
+    "id": "distanze_bordi_postscript",
+    "pattern": "(?i)(distanze?|bordi?|bordo|margine).*chiod|ctf|p560",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: rispettare le **distanze minime dai bordi** della lamiera/trave come da istruzioni Tecnaria.\n"
+  },
+  {
+    "id": "traduzione_postscript",
+    "pattern": "(?i)(inglese|english|/en/|contenuti\\s*in\\s*inglese)",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "PS: se la fonte è in **inglese**, riportiamo i contenuti **in italiano** in modo coerente con la documentazione ufficiale.\n"
+  },
+  {
+    "id": "fuoco_augment",
+    "pattern": "(?i)(resistenza\\s*al\\s*fuoco|rei|fire|protezione\\s*al\\s*fuoco)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Fuoco**: verifiche **R/REI** da eseguire a progetto (lamiera, spessori, eventuali protezioni); disponibilità dati e indicazioni Tecnaria.\n"
+  },
+  {
+    "id": "acustica_augment",
+    "pattern": "(?i)(acustic|rumore|isolamento\\s*acustico|fono)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Acustica**: la soletta collaborante aumenta **rigidezza**; l’isolamento richiede pacchetti specifici (massetti/fonoassorbenti) da definire a progetto.\n"
+  },
+  {
+    "id": "sismica_augment",
+    "pattern": "(?i)(sismic|zona\\s*sismic|ntc|eurocod)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Sismica**: i connettori assicurano il **collegamento** acciaio-cls/legno-cls; le **verifiche globali** seguono **NTC/Eurocodici**.\n"
+  },
+  {
+    "id": "ambiente_corrosivo_augment",
+    "pattern": "(?i)(corrosiv|classe\\s*di\\s*esposizione|zincatura|ambiente\\s*marino|aggressivo)",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "- **Ambienti aggressivi**: prevedere protezioni superficiali idonee e rispettare le classi di esposizione; attenersi al progetto.\n"
+  },
+  {
+    "id": "faq_generiche_augment",
     "pattern": "(?i)(faq|domande\\s*frequenti|informazioni\\s*generali|panoramica|come\\s*funziona)",
     "mode": "augment",
     "lang": "it",
-    "answer": "- Consulta le **FAQ Tecnaria** per solai in acciaio/legno/laterocemento; per casi di progetto invia i **dati reali** del cantiere.\n"
+    "answer": "- **FAQ Tecnaria** disponibili per solai in acciaio/legno/laterocemento; per casi specifici inviare **dati reali** di cantiere.\n"
   },
   {
-    "id": "traduzione_en_it",
-    "pattern": "(?i)(in\\s*inglese|inglese|english|en:)\\b|https?://tecnaria\\.com/en/",
-    "mode": "postscript",
-    "lang": "it",
-    "answer": "PS: contenuti originali in **inglese**: li **riportiamo in italiano** in forma chiara e coerente con la documentazione ufficiale.\n"
-  },
-  {
-    "id": "tono_armonico_refiner",
+    "id": "tono_global_postscript",
     "pattern": "(?i).*",
     "mode": "postscript",
     "lang": "it",
