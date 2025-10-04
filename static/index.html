@@ -1,108 +1,186 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tecnaria QA Bot</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    body { margin: 0; background:#0b1220; color:#e7eaf3; }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
-    h1 { margin: 0 0 16px; font-size: 22px; font-weight: 700; }
-    .card { background:#121a2b; border:1px solid #1e2a44; border-radius: 14px; padding: 16px; }
-    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-    textarea { width:100%; min-height:120px; resize:vertical; padding:12px; border-radius:10px; border:1px solid #1e2a44; background:#0f1626; color:#fff; }
-    .btn { background:#2b5cff; color:#fff; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; }
-    .btn.secondary { background:#1f2a45; color:#cdd6f4; }
-    .btn:disabled { opacity:.6; cursor:not-allowed; }
-    .tags { display:flex; gap:8px; flex-wrap:wrap; }
-    .tag { background:#192543; border:1px solid #2a3a63; color:#cdd6f4; padding:6px 10px; border-radius:999px; cursor:pointer; }
-    .answer { white-space:pre-wrap; background:#0f1626; border:1px solid #1e2a44; border-radius:10px; padding:12px; min-height:140px; }
-    .muted { color:#99a6c4; font-size:12px; }
+    body {
+      background-color: #0f172a;
+      color: #e2e8f0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    h1 {
+      margin-top: 1.5rem;
+      color: #f8fafc;
+    }
+    .tags {
+      margin-top: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .tag {
+      background-color: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      border-radius: 9999px;
+      padding: 0.4rem 1rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tag:hover {
+      background-color: #334155;
+    }
+    .container {
+      margin-top: 1.5rem;
+      width: 90%;
+      max-width: 800px;
+      background-color: #1e293b;
+      border-radius: 1rem;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+      padding: 1.5rem;
+    }
+    textarea {
+      width: 100%;
+      height: 120px;
+      background-color: #0f172a;
+      color: #f8fafc;
+      border: 1px solid #475569;
+      border-radius: 0.5rem;
+      padding: 0.8rem;
+      font-size: 1rem;
+      resize: none;
+      outline: none;
+    }
+    .buttons {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1.2rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    #out {
+      background-color: #0f172a;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-top: 1rem;
+      white-space: pre-wrap;
+      font-family: monospace;
+      border: 1px solid #334155;
+      min-height: 80px;
+    }
+    small {
+      display: block;
+      margin-top: 0.8rem;
+      color: #64748b;
+    }
+    input[type="checkbox"] {
+      margin-right: 0.3rem;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Tecnaria QA Bot</h1>
+  <h1>Tecnaria QA Bot</h1>
 
-    <div class="card" style="margin-bottom:16px">
-      <div class="tags">
-        <span class="tag" data-q="Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino o formazione speciale?">P560 + CTF</span>
-        <span class="tag" data-q="Che differenza c’è tra un connettore CTF e il sistema Diapason?">CTF vs Diapason</span>
-        <span class="tag" data-q="Qual è la densità consigliata di connettori CTF per metro quadrato?">Densità CTF</span>
-        <span class="tag" data-q="contatti">Contatti</span>
-      </div>
+  <div class="tags">
+    <div class="tag" onclick="setQuestion('Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino o formazione speciale?')">P560 + CTF</div>
+    <div class="tag" onclick="setQuestion('Che differenza c’è tra un connettore CTF e il sistema Diapason?')">CTF vs Diapason</div>
+    <div class="tag" onclick="setQuestion('Qual è la densità di posa dei connettori CTF su lamiera grecata Hi-Bond?')">Densità CTF</div>
+    <div class="tag" onclick="setQuestion('Come posso contattare l’assistenza Tecnaria per supporto tecnico o preventivi?')">Contatti</div>
+  </div>
+
+  <div class="container">
+    <textarea id="q" placeholder="Scrivi la tua domanda qui..."></textarea>
+
+    <div class="buttons">
+      <button onclick="ask()">Chiedi</button>
+      <button onclick="clearOutput()">Pulisci</button>
+      <button onclick="copyAnswer()">Copia risposta</button>
+      <label>
+        <input type="checkbox" id="useGet" /> usa GET (debug)
+      </label>
     </div>
 
-    <div class="card" style="margin-bottom:16px">
-      <textarea id="q" placeholder="Scrivi qui la tua domanda…"></textarea>
-      <div class="row" style="margin-top:12px">
-        <button id="btnAsk" class="btn">Chiedi</button>
-        <button id="btnClear" class="btn secondary">Pulisci</button>
-        <button id="btnCopy" class="btn secondary">Copia risposta</button>
-        <span id="status" class="muted"></span>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <label class="muted"><input type="checkbox" id="useGet" /> usa GET (debug)</label>
-      </div>
-    </div>
-
-    <div class="card">
-      <div id="answer" class="answer">La risposta apparirà qui…</div>
-      <div style="margin-top:8px" class="muted">Endpoint: <code>/ask</code> (POST JSON { q } oppure GET ?q=…)</div>
-    </div>
+    <div id="out"></div>
+    <small>Endpoint: /api/ask (POST JSON { q }) oppure GET ?q=...</small>
   </div>
 
   <script>
-    const $ = sel => document.querySelector(sel);
-    const qEl = $("#q");
-    const ansEl = $("#answer");
-    const statusEl = $("#status");
-    const useGet = $("#useGet");
+    const ENDPOINT = '/api/ask';
 
-    document.querySelectorAll(".tag").forEach(t => {
-      t.addEventListener("click", () => { qEl.value = t.dataset.q || ""; qEl.focus(); });
-    });
+    function setQuestion(text) {
+      document.getElementById('q').value = text;
+    }
 
-    $("#btnCopy").addEventListener("click", async () => {
-      try { await navigator.clipboard.writeText(ansEl.textContent || ""); flash("Risposta copiata"); }
-      catch { flash("Copia non disponibile"); }
-    });
+    function clearOutput() {
+      document.getElementById('out').textContent = '';
+    }
 
-    $("#btnClear").addEventListener("click", () => {
-      qEl.value = ""; ansEl.textContent = "La risposta apparirà qui…"; flash("");
-    });
+    function copyAnswer() {
+      const text = document.getElementById('out').textContent;
+      navigator.clipboard.writeText(text);
+    }
 
-    qEl.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") send(); });
-    $("#btnAsk").addEventListener("click", send);
+    async function ask(evt) {
+      evt?.preventDefault();
+      const domanda = document.getElementById('q').value.trim();
+      const usaGet = document.getElementById('useGet').checked;
+      const out = document.getElementById('out');
+      if (!domanda) {
+        out.textContent = 'Scrivi una domanda prima di inviare.';
+        return;
+      }
 
-    async function send() {
-      const domanda = (qEl.value || "").trim();
-      if (!domanda) { ansEl.textContent = "OK\n- **Domanda vuota**: inserisci una richiesta valida."; return; }
-      $("#btnAsk").disabled = true; flash("Invio in corso…");
+      out.textContent = '⏳ Attendere...';
       try {
-        let res;
-        if (useGet.checked) {
-          res = await fetch("/ask?q=" + encodeURIComponent(domanda), { method: "GET" });
+        let resp;
+        if (usaGet) {
+          const url = ENDPOINT + '?q=' + encodeURIComponent(domanda);
+          resp = await fetch(url, { method: 'GET' });
         } else {
-          res = await fetch("/ask", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ q: domanda })   // <<<<<< CHIAVE GIUSTA
+          resp = await fetch(ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ q: domanda })
           });
         }
-        const data = await res.json().catch(() => ({}));
-        ansEl.textContent = (data && data.answer) ? data.answer : "Errore di risposta";
-        flash("");
+
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+        const data = await resp.json();
+        if (data.answer) {
+          out.innerHTML = data.answer;
+        } else {
+          out.textContent = JSON.stringify(data, null, 2);
+        }
       } catch (e) {
-        ansEl.textContent = "Errore di rete: " + (e?.message || e);
-        flash("errore");
-      } finally {
-        $("#btnAsk").disabled = false;
+        out.textContent = 'Errore di risposta: ' + (e.message || e);
       }
     }
-    function flash(msg){ statusEl.textContent = msg || ""; }
   </script>
 </body>
 </html>
+
 
