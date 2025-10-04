@@ -1,9 +1,4 @@
-fastapi
-uvicorn
-jinja2
-requests
-beautifulsoup4
-pdfminer.six
-markdown-it-py
-gunicorn
-
+fastapi==0.118.0
+uvicorn==0.37.0
+gunicorn==23.0.0
+httpx==0.28.1
