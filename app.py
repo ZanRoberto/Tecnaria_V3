@@ -1,122 +1,91 @@
 # app.py
 # -----------------------------------------------------------------------------
-# Tecnaria QA Bot – Web-first → Local KB → Sinapsi (override/augment/postscript)
-# Stile narrativo (no markdown pesante), fonti cliccabili, UI opzionale.
+# Tecnaria QA Bot – Web → Local → Sinapsi (override/augment/postscript)
+# FastAPI + Brave/Bing + KB locale semplice + formatter narrativo
 # -----------------------------------------------------------------------------
 
-import os, re, json, glob, time, unicodedata
+import os
+import re
+import json
+import glob
+import time
+import html
+import unicodedata
 from typing import List, Dict, Tuple, Optional
 from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 
 # -----------------------------------------------------------------------------
 # ENV / CONFIG
 # -----------------------------------------------------------------------------
 DEBUG               = os.getenv("DEBUG", "0") == "1"
-MODE                = os.getenv("MODE", "web_first_then_local")  # web_first_then_local | web_only | local_only
-SEARCH_PROVIDER     = os.getenv("SEARCH_PROVIDER", "brave").lower().strip()
+
+# Modalità di routing (stringa informativa, la pipeline resta: Web → Local → Sinapsi)
+MODE                = os.getenv("MODE", "web_first_then_local")
+
+# Web Search
+SEARCH_PROVIDER     = os.getenv("SEARCH_PROVIDER", "brave").lower()      # "brave" | "bing"
+SEARCH_API_ENDPOINT = os.getenv("SEARCH_API_ENDPOINT", "").strip()
 BRAVE_API_KEY       = os.getenv("BRAVE_API_KEY", "").strip()
-BING_API_KEY        = os.getenv("BING_API_KEY", "").strip() or os.getenv("AZURE_BING_KEY", "").strip()
-SEARCH_API_ENDPOINT = os.getenv("SEARCH_API_ENDPOINT", "").strip()  # opzionale per Bing
-
-PREFERRED_DOMAINS   = [d.strip().lower() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com").split(",") if d.strip()]
-DOC_GLOB            = os.getenv("DOC_GLOB", "static/docs/*.txt")
-CRITICI_DIR         = os.getenv("CRITICI_DIR", "static/data").strip()
-SINAPSI_FILE        = os.getenv("SINAPSI_FILE", os.path.join(CRITICI_DIR, "sinapsi_rules.json"))
-
+BING_API_KEY        = (os.getenv("BING_API_KEY", "") or os.getenv("AZURE_BING_KEY", "")).strip()
+PREFERRED_DOMAINS   = [d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com").split(",") if d.strip()]
 MIN_WEB_SCORE       = float(os.getenv("MIN_WEB_SCORE", "0.35"))
 WEB_TIMEOUT         = float(os.getenv("WEB_TIMEOUT", "6"))
 WEB_RETRIES         = int(os.getenv("WEB_RETRIES", "2"))
 
-FORCE_P560_WEB      = os.getenv("FORCE_P560_WEB", "1") == "1"
+# KB locale (txt/md/json semplici)
+DOC_GLOB            = os.getenv("DOC_GLOB", "static/docs/*.txt")
+
+# Cartella contenuti critici (Sinapsi)
+CRITICI_DIR         = os.getenv("CRITICI_DIR", "static/data").strip()
+SINAPSI_FILE        = os.path.join(CRITICI_DIR, os.getenv("SINAPSI_FILE", "sinapsi_rules.json"))
+
+# Demote contatti (non proporli mai se non esplicitamente richiesti)
 DEMOTE_CONTACTS     = os.getenv("DEMOTE_CONTACTS", "1") == "1"
 
-# traduzione opzionale: se deep_translator disponibile
-try:
-    from deep_translator import GoogleTranslator
-    TRANSLATOR_OK = True
-except Exception:
-    TRANSLATOR_OK = False
-
 # -----------------------------------------------------------------------------
-# LOG avvio
+# LOG AVVIO
 # -----------------------------------------------------------------------------
 print("[BOOT] -----------------------------------------------")
-print(f"[BOOT] MODE={MODE}; SEARCH_PROVIDER={SEARCH_PROVIDER}")
-print(f"[BOOT] PREF_DOMAINS={PREFERRED_DOMAINS}  MIN_WEB_SCORE={MIN_WEB_SCORE}  TIMEOUT={WEB_TIMEOUT}s  RETRIES={WEB_RETRIES}")
+print(f"[BOOT] MODE={MODE}")
+print(f"[BOOT] SEARCH_PROVIDER={SEARCH_PROVIDER} endpoint={SEARCH_API_ENDPOINT or '(default)'}")
+print(f"[BOOT] PREFERRED_DOMAINS={PREFERRED_DOMAINS} MIN_WEB_SCORE={MIN_WEB_SCORE}")
+print(f"[BOOT] WEB_TIMEOUT={WEB_TIMEOUT}s WEB_RETRIES={WEB_RETRIES}")
 print(f"[BOOT] DOC_GLOB={DOC_GLOB}")
-print(f"[BOOT] CRITICI_DIR={CRITICI_DIR}  SINAPSI_FILE={SINAPSI_FILE}")
-print(f"[BOOT] TRANSLATION={'ON' if TRANSLATOR_OK else 'OFF'}")
+print(f"[BOOT] CRITICI_DIR={CRITICI_DIR} SINAPSI_FILE={SINAPSI_FILE}")
 print("[BOOT] ------------------------------------------------")
 
 # -----------------------------------------------------------------------------
-# UTIL pulizie / lingua
+# UTILS
 # -----------------------------------------------------------------------------
-UI_STRIP_PREFIXES = ("chiedi", "pulisci", "copia risposta", "risposta", "p560", "connettori ctf", "contatti", "usa get (debug)")
+UI_NOISE_PREFIXES = ("chiedi", "pulisci", "copia risposta", "risposta", "—", "p560", "contatti")
 
-def normalize(s: str) -> str:
-    if not s: return ""
-    t = unicodedata.normalize("NFKD", s)
-    t = t.encode("ascii", "ignore").decode("ascii")
+P560_PAT = re.compile(r"\bp\s*[- ]?\s*560\b", re.I)
+LIC_PAT  = re.compile(r"\b(patentino|abilitazione|formazione)\b", re.I)
+CONT_PAT = re.compile(r"\b(contatti|telefono|email|pec)\b", re.I)
+
+def normalize(text: str) -> str:
+    if not text:
+        return ""
+    t = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
     t = re.sub(r"\s+", " ", t).strip().lower()
     return t
 
-def clean_prompt(s: str) -> str:
-    if not s: return ""
-    lines = [ln for ln in s.splitlines() if ln.strip()]
-    keep = []
+def clean_ui_noise(text: str) -> str:
+    if not text:
+        return ""
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    keep: List[str] = []
     for l in lines:
         low = l.strip().lower()
-        if any(low.startswith(p) for p in UI_STRIP_PREFIXES):
+        if any(low.startswith(pfx) for pfx in UI_NOISE_PREFIXES):
             continue
         keep.append(l)
     return " ".join(keep).strip()
-
-def detect_lang(text: str) -> str:
-    """Heuristica semplice: usa stopword minime per it/en/de/fr/es; fallback 'it'."""
-    if not text: return "it"
-    t = normalize(text)
-    score = {"it":0, "en":0, "de":0, "fr":0, "es":0}
-    sw = {
-        "it": {"il","lo","la","che","per","con","senza","quando","quale","una","dei","degli","delle"},
-        "en": {"the","and","for","with","without","when","which","a","of"},
-        "de": {"der","die","das","und","mit","ohne","wann","welche","ein"},
-        "fr": {"le","la","les","et","avec","sans","quand","quelle","un","une","des"},
-        "es": {"el","la","los","y","con","sin","cuando","cual","una","de","del"}
-    }
-    words = set(re.findall(r"[a-z]+", t))
-    for lang, bag in sw.items():
-        score[lang] = len(words & bag)
-    # pick max; default it
-    lang = max(score, key=score.get)
-    return lang or "it"
-
-def translate_to(text: str, target_lang: str) -> str:
-    if not text: return text
-    if not TRANSLATOR_OK: 
-        # fallback: se target è italiano o uguale, restituisci com’è
-        return text
-    try:
-        if target_lang == "it":
-            return GoogleTranslator(source="auto", target="it").translate(text)
-        elif target_lang == "en":
-            return GoogleTranslator(source="auto", target="en").translate(text)
-        elif target_lang == "de":
-            return GoogleTranslator(source="auto", target="de").translate(text)
-        elif target_lang == "fr":
-            return GoogleTranslator(source="auto", target="fr").translate(text)
-        elif target_lang == "es":
-            return GoogleTranslator(source="auto", target="es").translate(text)
-        else:
-            # default inglese se lingua esotica
-            return GoogleTranslator(source="auto", target="en").translate(text)
-    except Exception:
-        return text
 
 def domain_of(url: str) -> str:
     try:
@@ -124,12 +93,32 @@ def domain_of(url: str) -> str:
     except Exception:
         return ""
 
-def short_text(text: str, n:int=900) -> str:
-    t = re.sub(r"\s+", " ", text).strip()
+def prefer_score_for_domain(url: str) -> float:
+    dom = domain_of(url)
+    if not dom:
+        return 0.0
+    for pd in PREFERRED_DOMAINS:
+        if pd in dom:
+            return 0.25  # bonus
+    return 0.0
+
+def short_text(text: str, n: int = 1000) -> str:
+    t = re.sub(r"\s+", " ", text or "").strip()
     return (t[:n] + "…") if len(t) > n else t
 
+def detect_lang_from_text(s: str) -> str:
+    # euristico leggero per lingua output
+    if re.search(r"[àèéìòù]", s.lower()):
+        return "it"
+    if re.search(r"[äöüß]", s.lower()):
+        return "de"
+    if re.search(r"[áéíóúñ]", s.lower()):
+        return "es"
+    # fallback inglese se niente indizi
+    return "it" if re.search(r"[a-zàèéìòù]", s.lower()) else "it"
+
 # -----------------------------------------------------------------------------
-# KB LOCALE (semplice)
+# KB LOCALE
 # -----------------------------------------------------------------------------
 KB_DOCS: List[Dict] = []
 CONTACTS_DOC: Optional[Dict] = None
@@ -149,114 +138,102 @@ def load_kb():
             else:
                 KB_DOCS.append(entry)
         except Exception as e:
-            if DEBUG: print(f"[KB][ERR] {p}: {e}")
+            if DEBUG:
+                print(f"[KB][ERR] {p}: {e}")
 
 load_kb()
+print(f"[KB] Caricati {len(KB_DOCS)} documenti. Contatti={'OK' if CONTACTS_DOC else 'NO'}")
 
 def kb_lookup(q: str, exclude_contacts: bool = True) -> Optional[str]:
     nq = normalize(q)
     best = None
     best_score = 0.0
-    cands = KB_DOCS.copy()
+
+    candidates = KB_DOCS.copy()
     if not exclude_contacts and CONTACTS_DOC:
-        cands.append(CONTACTS_DOC)
-    for doc in cands:
-        low = normalize(doc["text"] + " " + doc["name"])
+        candidates.append(CONTACTS_DOC)
+
+    for doc in candidates:
+        text = doc["text"]
+        name = doc["name"]
+        low = normalize(text + " " + name)
         score = 0.0
         for w in set(nq.split()):
             if w and w in low:
                 score += 1.0
-        if "contatti" in doc["name"].lower() and exclude_contacts:
+        if "contatti" in name.lower() and exclude_contacts:
             score -= 3.0
+        if "ctf" in low:
+            score += 0.2
+        if "p560" in low:
+            score += 0.2
         if score > best_score:
             best_score = score
             best = doc
+
     if best and best_score > 0.5:
-        return short_text(best["text"], 1100)
+        return short_text(best["text"], 1200)
     return None
 
 # -----------------------------------------------------------------------------
 # WEB SEARCH / FETCH
 # -----------------------------------------------------------------------------
-def brave_search(q: str, topk:int=5, timeout:float=WEB_TIMEOUT) -> List[Dict]:
-    if not BRAVE_API_KEY: return []
-    url = "https://api.search.brave.com/res/v1/web/search"
-    headers = {"Accept":"application/json","X-Subscription-Token":BRAVE_API_KEY}
+def brave_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Dict]:
+    if not BRAVE_API_KEY:
+        return []
+    headers = {"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY}
     params = {"q": q, "count": topk}
+    url = "https://api.search.brave.com/res/v1/web/search"
     try:
         r = requests.get(url, headers=headers, params=params, timeout=timeout)
         r.raise_for_status()
         data = r.json()
-        out = []
+        items = []
         for it in data.get("web", {}).get("results", []):
-            out.append({
+            items.append({
                 "title": it.get("title") or "",
                 "url": it.get("url") or "",
                 "snippet": it.get("description") or ""
             })
-        return out
+        return items
     except Exception as e:
         if DEBUG: print("[BRAVE][ERR]", e)
         return []
 
-def bing_search(q: str, topk:int=5, timeout:float=WEB_TIMEOUT) -> List[Dict]:
+def bing_search(q: str, topk: int = 5, timeout: float = WEB_TIMEOUT) -> List[Dict]:
     key = BING_API_KEY
     endpoint = SEARCH_API_ENDPOINT or "https://api.bing.microsoft.com/v7.0/search"
-    if not key: return []
+    if not key:
+        return []
     headers = {"Ocp-Apim-Subscription-Key": key}
     params = {"q": q, "count": topk, "responseFilter": "Webpages"}
     try:
         r = requests.get(endpoint, headers=headers, params=params, timeout=timeout)
         r.raise_for_status()
         data = r.json()
-        out = []
+        items = []
         for it in data.get("webPages", {}).get("value", []):
-            out.append({
+            items.append({
                 "title": it.get("name") or "",
                 "url": it.get("url") or "",
                 "snippet": it.get("snippet") or ""
             })
-        return out
+        return items
     except Exception as e:
         if DEBUG: print("[BING][ERR]", e)
         return []
 
-def web_search(q: str, topk:int=6) -> List[Dict]:
+def web_search(q: str, topk: int = 7) -> List[Dict]:
     if SEARCH_PROVIDER == "bing":
         return bing_search(q, topk=topk)
     return brave_search(q, topk=topk)
 
-def prefer_score_for_domain(url: str) -> float:
-    d = domain_of(url)
-    for pd in PREFERRED_DOMAINS:
-        if pd in d:
-            return 0.35
-    return 0.0
-
-def rank_results(q: str, results: List[Dict]) -> List[Dict]:
-    nq = normalize(q)
-    for it in results:
-        s = 0.0
-        s += prefer_score_for_domain(it.get("url",""))
-        sn = normalize((it.get("title") or "") + " " + (it.get("snippet") or ""))
-        for w in set(nq.split()):
-            if w and w in sn: s += 0.25
-        if re.search(r"\b(ctf|p560|diapason|lamiera|tecnaria)\b", sn, re.I):
-            s += 0.3
-        it["score"] = s
-    return sorted(results, key=lambda x: x.get("score", 0.0), reverse=True)
-
 def fetch_text(url: str, timeout: float = WEB_TIMEOUT) -> str:
     try:
-        r = requests.get(url, timeout=timeout, headers={"User-Agent":"Mozilla/5.0"})
+        r = requests.get(url, timeout=timeout, headers={"User-Agent": "Mozilla/5.0"})
         r.raise_for_status()
-        ctype = r.headers.get("Content-Type","").lower()
-        if "pdf" in ctype:
-            # niente binario: prova a descrivere
-            return f"[PDF] {url}"
-        html_text = r.text
-        soup = BeautifulSoup(html_text, "html.parser")
-        for tag in soup(["script","style","noscript"]):
+        soup = BeautifulSoup(r.text, "html.parser")
+        for tag in soup(["script", "style", "noscript"]):
             tag.decompose()
         text = soup.get_text("\n")
         text = re.sub(r"\n\s*\n+", "\n\n", text)
@@ -265,243 +242,230 @@ def fetch_text(url: str, timeout: float = WEB_TIMEOUT) -> str:
         if DEBUG: print("[FETCH][ERR]", url, e)
         return ""
 
-def web_lookup(q: str, min_score: float = MIN_WEB_SCORE) -> Tuple[str, List[str], float]:
-    last_sources: List[str] = []
+def rank_results(q: str, results: List[Dict]) -> List[Dict]:
+    nq = normalize(q)
+    out = []
+    for it in results:
+        score = 0.0
+        score += prefer_score_for_domain(it.get("url", ""))
+        sn = normalize((it.get("title") or "") + " " + (it.get("snippet") or ""))
+        for w in set(nq.split()):
+            if w and w in sn:
+                score += 0.4
+        if P560_PAT.search(sn):
+            score += 0.4
+        it["score"] = score
+        out.append(it)
+    return sorted(out, key=lambda x: x.get("score", 0.0), reverse=True)
+
+def web_lookup(q: str) -> Tuple[str, List[Dict], List[str], float]:
+    """
+    Ritorna: (core_text, ranked_results, used_sources, best_score)
+    """
+    used_sources: List[str] = []
     best_score = 0.0
-    for _ in range(WEB_RETRIES+1):
-        results = web_search(q, topk=8)
-        if not results: 
+    for _ in range(WEB_RETRIES + 1):
+        results = web_search(q, topk=7)
+        if not results:
             continue
-        # filtra per domini preferiti se possibile ma consenti fallback
-        ranked = rank_results(q, results)
-        if not ranked: 
+        # filtra per domini preferiti se presenti
+        filtered = [r for r in results if any(d in domain_of(r["url"]) for d in PREFERRED_DOMAINS)] or results
+        ranked = rank_results(q, filtered)
+        if not ranked:
             continue
-        # prova i primi 4 finché trovi un testo non vuoto
-        for top in ranked[:4]:
-            best_score = max(best_score, top.get("score",0.0))
-            if best_score < min_score: 
-                continue
-            txt = fetch_text(top["url"])
-            if not txt: 
-                continue
-            last_sources = [top["url"]]
-            # costruzione narrativa breve
-            if txt.startswith("[PDF]"):
-                ans = "Riferimento tecnico in PDF pertinente all’argomento. Consulta la scheda per dettagli su posa, densità e requisiti."
-            else:
-                # estrai una mini-sintesi pulita
-                blob = short_text(txt, 650)
-                # rimuovi residui di layout
-                blob = re.sub(r"\s+", " ", blob)
-                ans = f"Sintesi dai contenuti tecnici pertinenti disponibili sul sito: {blob}"
-            return ans, last_sources, best_score
-    return "", last_sources, best_score
+        top = ranked[0]
+        best_score = top.get("score", 0.0)
+        if best_score < MIN_WEB_SCORE:
+            continue
+        txt = fetch_text(top["url"])
+        if not txt:
+            continue
+        used_sources.append(top["url"])
+        return short_text(txt, 1200), ranked, used_sources, best_score
+    return "", [], used_sources, best_score
 
 # -----------------------------------------------------------------------------
-# SINAPSI
+# SINAPSI RULES
 # -----------------------------------------------------------------------------
 SINAPSI_RULES: List[Dict] = []
 
-def load_sinapsi() -> int:
+def load_sinapsi():
     global SINAPSI_RULES
     SINAPSI_RULES = []
     try:
-        with open(SINAPSI_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        if os.path.exists(SINAPSI_FILE):
+            with open(SINAPSI_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
             if isinstance(data, list):
-                for it in data:
-                    # normalizza campi
-                    it.setdefault("mode", "augment")  # override | augment | postscript
-                    it.setdefault("lang", "it")
-                    it.setdefault("answer", "")
-                    it.setdefault("id", "")
-                    it.setdefault("pattern","")
-                    SINAPSI_RULES.append(it)
+                SINAPSI_RULES = data
     except Exception as e:
-        if DEBUG: print("[SINAPSI][ERR]", e)
-    return len(SINAPSI_RULES)
+        if DEBUG:
+            print("[SINAPSI][ERR] load:", e)
 
-SINAPSI_COUNT = load_sinapsi()
+load_sinapsi()
+print(f"[SINAPSI] Regole caricate: {len(SINAPSI_RULES)}")
 
-def apply_sinapsi(q: str, base_text: str, lang_target: str) -> str:
-    nq = q or ""
-    applied = False
-    augmented = base_text or ""
-    post = []
-    override_text = None
+# -----------------------------------------------------------------------------
+# FORMATTER – "Narrativo Tecnico Commerciale"
+# -----------------------------------------------------------------------------
+A_TAG = re.compile(r"\*{1,2}|_{1,2}")  # rimuove ** e __ e *
+HTML_TAGS = re.compile(r"<\s*\/?\s*(b|strong|em|i|u)\s*>", re.I)
 
-    for rule in SINAPSI_RULES:
-        pat = rule.get("pattern","")
-        mode = rule.get("mode","augment").lower()
-        ans  = rule.get("answer","")
-        if not pat or not ans: 
+def sanitize_markdown(s: str) -> str:
+    # toglie i marcatori bold/italic grezzi e tag html elementari
+    s = A_TAG.sub("", s or "")
+    s = HTML_TAGS.sub("", s)
+    s = s.replace("**", "").replace("__", "")
+    s = re.sub(r"\n{3,}", "\n\n", s).strip()
+    return s
+
+def normalize_sources(raw: List[str]) -> List[Tuple[str, str]]:
+    out = []
+    seen = set()
+    for u in raw:
+        if not u or u in seen:
             continue
+        seen.add(u)
+        title = "tecnaria.com"
         try:
-            if re.search(pat, nq, flags=re.I):
-                applied = True
-                if mode == "override":
-                    override_text = ans
-                elif mode == "augment":
-                    # se già abbiamo testo web: lo manteniamo e aggiungiamo blocco sinapsi
-                    augmented = (augmented.strip() + ("\n\n" if augmented else "") + ans.strip()).strip()
-                elif mode == "postscript":
-                    post.append(ans.strip())
-        except re.error:
-            continue
-
-    if not applied:
-        return base_text
-
-    # compone output
-    if override_text is not None:
-        out = override_text
-    else:
-        out = augmented
-        if post:
-            out += "\n\nNota finale:\n" + "\n".join(post)
-
-    # traduci se richiesto e possibile
-    detected_out_lang = "it"  # sinapsi è in IT
-    if lang_target != detected_out_lang:
-        out = translate_to(out, lang_target)
-
+            tld = urlparse(u).netloc.replace("www.", "")
+            if "tecnaria" in tld:
+                title = "Tecnaria"
+            elif "spit" in tld:
+                title = "SPIT"
+            else:
+                title = tld
+        except:
+            pass
+        out.append((title, u))
     return out
 
-# -----------------------------------------------------------------------------
-# FORMATTER – stile narrativo pulito (no **, no bullet brutti)
-# -----------------------------------------------------------------------------
-def format_narrative(core: str, sources: Optional[List[str]]=None) -> str:
-    # ripulisci markdown bold e strong
-    text = core.replace("**", "")
-    text = re.sub(r"</?strong>", "", text, flags=re.I)
-    text = re.sub(r"</?em>", "", text, flags=re.I)
-    text = re.sub(r"\s+\n", "\n", text)
+def format_narrative(core_text: str,
+                     sinapsi_addon: Optional[str],
+                     sources: List[str],
+                     lang: str) -> str:
+    """
+    Produce una risposta pulita, narrativa, con elenco leggibile e fonti cliccabili.
+    """
+    # 1) pulizia base
+    core = sanitize_markdown(core_text)
 
-    blocks = [t.strip() for t in text.strip().splitlines() if t.strip()]
-    final = "\n".join(blocks)
+    # 2) se Sinapsi ha dato override → prendiamo quello e basta
+    #    altrimenti se augment → lo appiccichiamo sotto forma di paragrafo finale
+    addon = sanitize_markdown(sinapsi_addon or "")
 
-    if sources:
-        # tieni solo URL uniche e preferisci tecnaria
-        uniq = []
-        seen = set()
-        for u in sources:
-            if u not in seen:
-                uniq.append(u); seen.add(u)
-        uniq = sorted(uniq, key=lambda u: (0 if "tecnaria.com" in u else 1, u))
-        # append sezione fonti come elenco link
-        src_lines = "\n".join(f"- {u}" for u in uniq)
-        final += "\n\nFonti:\n" + src_lines
+    # 3) fonti
+    src_pairs = normalize_sources(sources)
+    if lang == "it":
+        fonti_title = "Fonti"
+    elif lang == "de":
+        fonti_title = "Quellen"
+    elif lang == "en":
+        fonti_title = "Sources"
+    else:
+        fonti_title = "Fonti"
+
+    # 4) Assemblaggio finale (testo piano, con link in markdown)
+    blocks = []
+    if core:
+        blocks.append(core)
+    if addon:
+        blocks.append(addon)
+
+    if src_pairs:
+        src_lines = "\n".join([f"- [{name}]({url})" for name, url in src_pairs])
+        blocks.append(f"{fonti_title}:\n{src_lines}")
+
+    final = "\n\n".join(blocks).strip()
+    return final if final else "Non ho trovato informazioni sufficienti."
+
+# -----------------------------------------------------------------------------
+# ROUTING & FUSIONE (Web → Local → Sinapsi)
+# -----------------------------------------------------------------------------
+def apply_sinapsi(q: str, base_text: str, sources: List[str], lang: str) -> str:
+    """
+    Applica regole Sinapsi (override/augment/postscript).
+    Ritorna il testo finale già fuso.
+    """
+    n = normalize(q)
+    out_text = base_text
+    addon_texts: List[str] = []
+    post_texts: List[str] = []
+
+    for rule in SINAPSI_RULES:
+        pat = rule.get("pattern", "")
+        mode = (rule.get("mode") or "augment").lower()
+        ans  = rule.get("answer", "").strip()
+        if not pat or not ans:
+            continue
+        try:
+            if re.search(pat, q, flags=re.I):
+                if mode == "override":
+                    # override totale
+                    return format_narrative("", ans, sources, lang)
+                elif mode == "augment":
+                    addon_texts.append(ans)
+                elif mode == "postscript":
+                    post_texts.append(ans)
+        except re.error:
+            # pattern invalido: salta
+            continue
+
+    fused_addon = "\n".join(addon_texts).strip()
+    fused_post  = "\n".join(post_texts).strip()
+
+    # Se c'è postscript lo appendiamo alla fine come paragrafo separato
+    if fused_post:
+        fused_addon = (fused_addon + ("\n\n" if fused_addon else "") + fused_post).strip()
+
+    return format_narrative(out_text, fused_addon, sources, lang)
+
+def answer_contacts() -> str:
+    if CONTACTS_DOC:
+        return sanitize_markdown(CONTACTS_DOC["text"])
+    return ("TECNARIA S.p.A.\n"
+            "Telefono: +39 0424 502029\n"
+            "Email: info@tecnaria.com")
+
+def route_question_to_answer(raw_q: str) -> str:
+    if not raw_q or not raw_q.strip():
+        return "Domanda vuota: inserisci una richiesta valida."
+
+    cleaned = clean_ui_noise(raw_q)
+    nq = normalize(cleaned)
+    lang = detect_lang_from_text(cleaned)
+
+    # 1) Contatti espliciti (se non demotizzati)
+    if CONT_PAT.search(nq) and not DEMOTE_CONTACTS:
+        return answer_contacts()
+
+    # 2) WEB FIRST
+    web_text, ranked, used_sources, score = web_lookup(cleaned)
+
+    # 3) se web non c'è, prova KB locale
+    base_text = web_text
+    if not base_text:
+        local = kb_lookup(cleaned, exclude_contacts=DEMOTE_CONTACTS)
+        if local:
+            base_text = local
+
+    # 4) se ancora niente e l'utente ha chiesto contatti
+    if not base_text and CONT_PAT.search(nq) and DEMOTE_CONTACTS:
+        return answer_contacts()
+
+    # 5) applica Sinapsi (override/augment/postscript) e formatta in modo narrativo
+    final = apply_sinapsi(cleaned, base_text, [r.get("url") for r in ranked[:3] if r.get("url")] or used_sources, lang)
+
+    # 6) ultimo fallback pulito
+    if not final.strip():
+        return "Non ho trovato una risposta affidabile. Posso cercare meglio sul sito Tecnaria o metterti in contatto con un tecnico."
 
     return final
 
 # -----------------------------------------------------------------------------
-# ROUTER principale
-# -----------------------------------------------------------------------------
-P560_PAT = re.compile(r"\bp\s*[- ]?\s*560\b", re.I)
-LIC_PAT  = re.compile(r"\b(patentino|abilitazione|formazione)\b", re.I)
-CONT_PAT = re.compile(r"\b(contatti|telefono|email|pec)\b", re.I)
-
-def answer_contacts() -> str:
-    if CONTACTS_DOC:
-        return CONTACTS_DOC["text"].strip()
-    return ("Ragione sociale: TECNARIA S.p.A.\n"
-            "Telefono: +39 0424 502029\n"
-            "Email: info@tecnaria.com")
-
-def route_question(raw_q: str) -> Tuple[str, List[str]]:
-    if not raw_q or not raw_q.strip():
-        return ("Domanda vuota: inserisci una richiesta valida.", [])
-
-    question = clean_prompt(raw_q)
-    lang_in = detect_lang(question)
-
-    # Regola forte: P560 + (patentino/formazione) → vai web su domini preferiti e usa testo guida
-    if FORCE_P560_WEB and P560_PAT.search(question) and LIC_PAT.search(question):
-        # prova web
-        web_text, web_srcs, _ = web_lookup(question, min_score=MIN_WEB_SCORE)
-        # risposta tecnica canonica
-        canon = (
-            "Abilitazione/Patentino: non è richiesto un patentino specifico per SPIT P560; "
-            "è necessaria una formazione interna secondo le istruzioni del costruttore.\n"
-            "Formazione minima: scelta propulsori, taratura potenza, prova su campione, "
-            "verifica ancoraggio dei chiodi, gestione inceppamenti.\n"
-            "DPI e sicurezza: occhiali, guanti, protezione udito; lamiera ben aderente; rispetto distanze dai bordi.\n"
-            "Procedura di posa CTF: 2 chiodi HSBR14 per connettore con SPIT P560, senza preforatura."
-        )
-        # preferisci canon + fonti web (se trovate)
-        base = canon
-        sources = web_srcs
-        # sinapsi può ancora rifinire (override non necessario qui)
-        final = apply_sinapsi(question, base, lang_in)
-        return final, sources
-
-    # WEB FIRST (salvo local_only)
-    sources = []
-    base = ""
-    if MODE != "local_only":
-        web_text, web_srcs, score = web_lookup(question, min_score=MIN_WEB_SCORE)
-        if web_text:
-            base = web_text
-            sources = web_srcs
-
-    # KB come fallback / arricchimento
-    if not base and MODE != "web_only":
-        local = kb_lookup(question, exclude_contacts=DEMOTE_CONTACTS)
-        if local:
-            base = f"Sintesi da materiale locale disponibile: {local}"
-
-    # Contatti se esplicitamente chiesti e demotizzati
-    if not base and CONT_PAT.search(question):
-        return (answer_contacts(), [])
-
-    if not base:
-        base = ("Non ho trovato una risposta affidabile nelle fonti disponibili in questo momento. "
-                "Posso insistere nella ricerca sul sito Tecnaria o metterti in contatto con un tecnico.")
-
-    # Applica Sinapsi (augment/postscript/override)
-    base = apply_sinapsi(question, base, lang_in)
-
-    # Formatta narrativamente + fonti
-    out = format_narrative(base, sources)
-    return out, sources
-
-# -----------------------------------------------------------------------------
 # FASTAPI
 # -----------------------------------------------------------------------------
-app = FastAPI(title="Tecnaria QA Bot", version="3.x")
-
-# Static & UI
-if os.path.isdir("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/", response_class=HTMLResponse)
-def home():
-    # se c’è una UI custom in /static/index.html la serviamo
-    idx_static = os.path.join("static", "index.html")
-    if os.path.isfile(idx_static):
-        return FileResponse(idx_static)
-    # fallback: pagina endpoints
-    html = """
-<!doctype html><html lang="it"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tecnaria QA Bot</title>
-<style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Noto Sans",sans-serif;margin:0;color:#0a0a0a;background:#f7f7f8}
-.wrap{max-width:980px;margin:0 auto;padding:24px}
-h1{font-weight:700;margin:0 0 8px}
-.card{background:#fff;border:1px solid #e6e6eb;border-radius:12px;padding:16px}
-code,kbd{background:#f0f0f3;padding:2px 6px;border-radius:6px}
-a{color:#0b67ff;text-decoration:none}
-a:hover{text-decoration:underline}
-</style>
-</head><body><div class="wrap">
-<h1>Tecnaria QA Bot</h1>
-<p class="card">Endpoint:<br>
-/ping<br>
-/health<br>
-/api/ask (GET q=... | POST JSON {"q":"..."})</p>
-</div></body></html>"""
-    return HTMLResponse(html)
+app = FastAPI(title="Tecnaria QA Bot", version="3.0.0")
 
 @app.get("/ping")
 def ping():
@@ -523,34 +487,40 @@ def health():
             "exists": os.path.isdir(CRITICI_DIR),
             "sinapsi_file": os.path.abspath(SINAPSI_FILE),
             "sinapsi_loaded": len(SINAPSI_RULES)
-        },
-        "kb": {
-            "docs_loaded": len(KB_DOCS),
-            "contacts": bool(CONTACTS_DOC),
-            "doc_glob": DOC_GLOB
-        },
-        "translation": {"available": TRANSLATOR_OK}
+        }
     }
 
-@app.get("/api/ask")
-def ask_get(q: Optional[str] = ""):
-    text, _ = route_question(q or "")
-    return {"ok": True, "answer": text}
+@app.get("/")
+def home():
+    # serve interfaccia se presente
+    idx1 = os.path.join("static", "index.html")
+    idx2 = os.path.join("templates", "index.html")
+    if os.path.exists(idx1):
+        return FileResponse(idx1, media_type="text/html; charset=utf-8")
+    if os.path.exists(idx2):
+        return FileResponse(idx2, media_type="text/html; charset=utf-8")
+    return JSONResponse({"ok": True, "msg": "Use /ask or place static/index.html"})
+
+@app.get("/ask")
+def ask_get(q: Optional[str] = None):
+    ans = route_question_to_answer(q or "")
+    # Plain text per semplicità; la tua UI lo visualizza comunque bene
+    return PlainTextResponse(ans, media_type="text/plain; charset=utf-8")
 
 @app.post("/api/ask")
 async def ask_post(req: Request):
-    payload = {}
+    data = {}
     try:
-        payload = await req.json()
+        data = await req.json()
     except Exception:
         pass
-    q = (payload.get("q") or payload.get("question") or "").strip()
-    text, _ = route_question(q)
-    return JSONResponse({"ok": True, "answer": text})
+    q = (data.get("q") or "").strip()
+    ans = route_question_to_answer(q)
+    return JSONResponse({"ok": True, "answer": ans})
 
 # -----------------------------------------------------------------------------
-# MAIN (sviluppo locale)
+# MAIN (esecuzione locale)
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT","8000")), reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", "8000")))
