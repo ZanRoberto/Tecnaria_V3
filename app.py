@@ -1,307 +1,176 @@
-import os, re, json, textwrap, html
-from typing import List, Dict, Any, Optional
-from urllib.parse import urlparse
-
-import requests
-from fastapi import FastAPI, Request, Query
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+# app.py — versione stabile con fix urlencode + pulizia risposta HTML
+import re
+import json
+import html
+import os
+from urllib.parse import quote_plus as _quote_plus
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
+import httpx
 
-from bs4 import BeautifulSoup
-from pdfminer.high_level import extract_text as pdf_extract_text
-from markdown_it import MarkdownIt
-from mdurl import urlencode
+app = FastAPI()
 
-# ------------------------------------------------------------
-# Config
-# ------------------------------------------------------------
-PORT = int(os.getenv("PORT", "10000"))
+# === Funzione urlencode (sostituisce mdurl.urlencode) ===
+def urlencode(s: str) -> str:
+    return _quote_plus(s, safe="")
 
-PREFERRED_DOMAINS = os.getenv("PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com")
-PREFERRED_DOMAINS = [d.strip().lower() for d in PREFERRED_DOMAINS.split(",") if d.strip()]
+# === Setup cartelle statiche ===
+static_dir = os.path.join(os.getcwd(), "static")
+if os.path.isdir(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.35"))
-WEB_TIMEOUT = float(os.getenv("WEB_TIMEOUT", "6"))
-
-STATIC_DIR = os.getenv("STATIC_DIR", "static")
-TEMPLATES_DIR = os.getenv("TEMPLATES_DIR", "templates")
-
-CRITICI_DIR = os.getenv("CRITICI_DIR", os.path.join(STATIC_DIR, "data"))
-SINAPSI_FILE = os.getenv("SINAPSI_FILE", os.path.join(CRITICI_DIR, "sinapsi_rules.json"))
-
-# Se usi Brave/Bing davvero, leggi le chiavi qui (non implemento la chiamata API reale in questo file)
-SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "brave").lower()
-BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
-BING_API_KEY = os.getenv("BING_API_KEY")
-
-# ------------------------------------------------------------
-# App & static
-# ------------------------------------------------------------
-app = FastAPI(title="Tecnaria QA Bot", version="3.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
-)
-
-if os.path.isdir(STATIC_DIR):
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
-# ------------------------------------------------------------
-# Utils: dominio, pulizia testo, markdown->html, link cliccabili
-# ------------------------------------------------------------
-_md = MarkdownIt("commonmark").enable(["table", "strikethrough", "linkify"])
-
-def norm_space(s: str) -> str:
-    s = re.sub(r"[ \t]+", " ", s)
-    s = re.sub(r"\s*\n\s*", "\n", s)
-    return s.strip()
-
-def is_allowed_domain(url: str) -> bool:
+# === Carica file sinapsi_rules.json ===
+SINAPSI_PATH = os.path.join(static_dir, "data", "sinapsi_rules.json")
+sinapsi_rules = []
+if os.path.exists(SINAPSI_PATH):
     try:
-        netloc = urlparse(url).netloc.lower()
-        return any(netloc.endswith(d) for d in PREFERRED_DOMAINS)
-    except Exception:
-        return False
+        with open(SINAPSI_PATH, "r", encoding="utf-8") as f:
+            sinapsi_rules = json.load(f)
+        print(f"✅ Sinapsi rules loaded: {len(sinapsi_rules)}")
+    except Exception as e:
+        print("⚠️ Errore caricando sinapsi_rules:", e)
 
-def strip_pdf_garbage(raw: str) -> str:
-    """
-    Se lo snippet contiene header/binary di PDF, lo elimina brutalmente.
-    """
-    if "%PDF" in raw[:200] or "obj <<" in raw[:600]:
-        # segnale tipico di contenuto binario; lo ignoriamo
-        return ""
-    # se per caso ci fossero caratteri di controllo strani:
-    raw = re.sub(r"[\x00-\x08\x0B-\x0C\x0E-\x1F]+", " ", raw)
-    return raw
+# === Endpoint base ===
+@app.get("/", response_class=HTMLResponse)
+async def home():
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return HTMLResponse("<h1>Tecnaria QA Bot</h1><p>Use /ask?q=...</p>")
 
-def markdown_to_html(md: str) -> str:
-    # Evita che \n rimangano letterali
-    md = md.replace("\\n", "\n")
-    # Rimuovi doppie spaziature viste in alcuni feed PDF
-    md = norm_space(md)
-    # Render Markdown -> HTML
-    html_str = _md.render(md)
-    return html_str
+@app.get("/ping")
+async def ping():
+    return {"ok": True, "pong": True}
 
-def make_links_clickable(text: str) -> str:
-    """
-    Se il testo è già markdown (es. - https://... ), dopo markdown_to_html i link saranno cliccabili.
-    In aggiunta, sostituisce URL nudi rimasti nel plain-text con <a>.
-    """
-    url_pat = r'(?P<url>https?://[^\s\)\]]+)'
-    return re.sub(url_pat, r'<a href="\g<url>" target="_blank">\g<url></a>', text)
-
-def safe_truncate(s: str, limit: int = 1800) -> str:
-    s = s.strip()
-    if len(s) <= limit:
-        return s
-    # Troncamento “gentile” su frase
-    cut = s.rfind(".", 0, limit)
-    if cut == -1:
-        cut = s.rfind(" ", 0, limit)
-    if cut == -1:
-        cut = limit
-    return s[:cut].rstrip() + "…"
-
-# ------------------------------------------------------------
-# Web fetch (HTML o PDF) – solo domini consentiti
-# ------------------------------------------------------------
-def fetch_text_from_url(url: str, timeout: float = WEB_TIMEOUT) -> str:
-    if not is_allowed_domain(url):
-        return ""
-    try:
-        r = requests.get(url, timeout=timeout, allow_redirects=True)
-        ctype = r.headers.get("Content-Type", "").lower()
-        # PDF
-        if "application/pdf" in ctype or url.lower().endswith(".pdf"):
-            try:
-                text = pdf_extract_text(io_bytes := r.content)
-                return norm_space(safe_truncate(text, 4000))
-            except Exception:
-                return ""
-        # HTML
-        if "text/html" in ctype or "<html" in r.text.lower():
-            soup = BeautifulSoup(r.text, "html.parser")
-            # rimuove script/style/nav
-            for t in soup(["script", "style", "noscript", "header", "footer", "nav", "aside"]):
-                t.decompose()
-            txt = soup.get_text("\n")
-            txt = strip_pdf_garbage(txt)
-            return norm_space(safe_truncate(txt, 3000))
-        # altro: scarta
-        return ""
-    except Exception:
-        return ""
-
-def dummy_search(query: str) -> List[str]:
-    """
-    Finta ricerca: elenca alcune URL *consentite* tipiche per Tecnaria (finché non colleghi Brave).
-    In produzione, sostituisci con la tua funzione che interroga Brave/Bing e filtra i risultati.
-    """
-    seeds = [
-        "https://tecnaria.com/prodotto/connettore-per-acciaio-ctf/",
-        "https://tecnaria.com/solai-in-acciaio/tipologie-consolidamento-solai-acciaio/",
-        "https://tecnaria.com/download/acciaio/download/CT_F_CATALOGO_IT.pdf",
-        "https://tecnaria.com/prodotto/sistema-diapason/",
-        "https://spit.eu/it/prodotti/chiodatrici-a-gas/p560",
-    ]
-    return [u for u in seeds if is_allowed_domain(u)]
-
-# ------------------------------------------------------------
-# Sinapsi rules: override / augment / postscript
-# ------------------------------------------------------------
-class Rule:
-    def __init__(self, rid: str, pattern: str, mode: str, lang: str, answer: str):
-        self.id = rid
-        self.pattern = re.compile(pattern, flags=re.IGNORECASE)
-        self.mode = mode  # override | augment | postscript
-        self.lang = lang
-        self.answer = answer
-
-def load_sinapsi(path: str) -> List[Rule]:
-    rules: List[Rule] = []
-    if not os.path.isfile(path):
-        return rules
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        for r in data:
-            rid = r.get("id") or f"rule_{len(rules)+1}"
-            pattern = r.get("pattern", ".")
-            mode = r.get("mode", "augment")
-            lang = r.get("lang", "it")
-            answer = r.get("answer", "")
-            rules.append(Rule(rid, pattern, mode, lang, answer))
-    except Exception:
-        pass
-    return rules
-
-SINAPSI_RULES: List[Rule] = load_sinapsi(SINAPSI_FILE)
-
-def apply_sinapsi(q: str, web_answer_md: str) -> str:
-    """
-    Applica la prima regola che matcha. Modalità:
-    - override: ignora web e usa solo answer
-    - augment: appende answer dopo web
-    - postscript: aggiunge un PS breve in coda
-    """
-    for r in SINAPSI_RULES:
-        if r.pattern.search(q):
-            if r.mode == "override":
-                return r.answer
-            elif r.mode == "augment":
-                if web_answer_md.strip():
-                    return web_answer_md.rstrip() + "\n\n" + r.answer.strip()
-                else:
-                    return r.answer
-            elif r.mode == "postscript":
-                return (web_answer_md.strip() + "\n\n" + r.answer.strip()) if web_answer_md.strip() else r.answer
-    return web_answer_md
-
-# ------------------------------------------------------------
-# Sintesi “leggibile” da web (senza LLM), poi formattazione finale
-# ------------------------------------------------------------
-def synthesize_from_web(q: str) -> Dict[str, Any]:
-    """Cerca su web (finto) e produce una mini-sintesi + lista fonti (solo allowed)."""
-    urls = dummy_search(q)  # <--- sostituisci con il tuo search Brave filtrato
-    snippets = []
-    sources = []
-    for u in urls[:4]:
-        txt = fetch_text_from_url(u, timeout=WEB_TIMEOUT)
-        if not txt:
-            continue
-        snippets.append(safe_truncate(txt, 700))
-        sources.append(u)
-
-    # Semplice bozza narrativa dal web (no asterischi; frasi vere)
-    if snippets:
-        body = "Di seguito una sintesi dei contenuti Tecnaria pertinenti alla tua domanda.\n\n"
-        for i, s in enumerate(snippets, 1):
-            body += f"{i}) {s}\n\n"
-    else:
-        body = "Non ho trovato una sintesi web affidabile tra le fonti preferite."
-
-    return {"body_md": body.strip(), "sources": sources}
-
-def compose_final_html(answer_md: str, sources: List[str]) -> str:
-    """
-    - Converte markdown -> HTML
-    - Aggiunge sezione Fonti cliccabili (solo se presenti)
-    """
-    if sources:
-        # In coda aggiungo una sezione fonti “pulita”
-        src_lines = []
-        for u in sources:
-            # Titolo semplice dal dominio
-            host = urlparse(u).netloc.replace("www.", "")
-            src_lines.append(f'📎 <a href="{html.escape(u)}" target="_blank">{html.escape(host)}</a>')
-        answer_md = answer_md.rstrip() + "\n\n" + "Fonti:\n" + "\n".join(f"- {line}" for line in src_lines)
-
-    # markdown -> html e link nudi
-    html_out = markdown_to_html(answer_md)
-    html_out = make_links_clickable(html_out)
-    return html_out
-
-# ------------------------------------------------------------
-# Endpoints
-# ------------------------------------------------------------
 @app.get("/health")
-def health():
+async def health():
     return {
         "status": "ok",
         "web_search": {
-            "provider": SEARCH_PROVIDER,
-            "brave_key": bool(BRAVE_API_KEY),
-            "bing_key": bool(BING_API_KEY),
-            "preferred_domains": PREFERRED_DOMAINS,
-            "min_web_score": MIN_WEB_SCORE
+            "provider": "brave",
+            "brave_key": bool(os.getenv("BRAVE_API_KEY")),
+            "bing_key": bool(os.getenv("BING_API_KEY")),
+            "preferred_domains": ["tecnaria.com", "spit.eu", "spitpaslode.com"],
+            "min_web_score": 0.35,
         },
         "critici": {
-            "dir": os.path.abspath(CRITICI_DIR),
-            "exists": os.path.isdir(CRITICI_DIR),
-            "sinapsi_file": os.path.abspath(SINAPSI_FILE),
-            "sinapsi_loaded": len(SINAPSI_RULES)
-        }
+            "dir": static_dir,
+            "exists": os.path.isdir(static_dir),
+            "sinapsi_file": SINAPSI_PATH,
+            "sinapsi_loaded": len(sinapsi_rules),
+        },
     }
 
-@app.get("/ping")
-def ping():
-    return {"ok": True, "pong": True}
+# === Funzione per pulizia del testo ===
+def clean_text(t: str) -> str:
+    if not t:
+        return ""
+    t = re.sub(r"%PDF-[\s\S]+?(?=\n|$)", "", t)       # rimuove header PDF
+    t = re.sub(r"\n{2,}", "\n", t)                    # rimuove doppi \n
+    t = re.sub(r"(?<!\n)- ", "• ", t)                 # bullet estetico
+    t = html.escape(t)
+    t = t.replace("\n", "<br>")
+    return t
 
-@app.get("/")
-def home():
-    # Serve l’interfaccia se presente
-    index_static = os.path.join(STATIC_DIR, "index.html")
-    if os.path.isfile(index_static):
-        return FileResponse(index_static, media_type="text/html")
-    return JSONResponse({"ok": True, "msg": "Use /ask or place static/index.html"})
+# === Match di sinapsi ===
+def find_sinapsi_answer(question: str):
+    q = question.lower()
+    for rule in sinapsi_rules:
+        if re.search(rule.get("pattern", ""), q, flags=re.IGNORECASE):
+            return rule
+    return None
 
-@app.get("/ask")
-def ask_get(q: str = Query(..., min_length=2)):
-    return _ask_core(q)
+# === Core handler ===
+async def query_brave_search(q: str):
+    """
+    Esegue ricerca web (mockata o reale via Brave se BRAVE_API_KEY presente)
+    """
+    try:
+        api_key = os.getenv("BRAVE_API_KEY")
+        if not api_key:
+            return None
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                params={"q": q, "count": 3},
+                headers={"Accept": "application/json", "X-Subscription-Token": api_key},
+            )
+            data = resp.json()
+            if "web" in data and "results" in data["web"]:
+                results = data["web"]["results"]
+                joined = []
+                for r in results:
+                    title = r.get("title", "")
+                    url = r.get("url", "")
+                    snippet = r.get("description", "")
+                    joined.append(f"📎 <a href='{url}' target='_blank'>{title}</a><br>{snippet}")
+                return "<br>".join(joined)
+    except Exception as e:
+        print("❌ Brave search error:", e)
+    return None
 
+# === Endpoint principale ===
+@app.get("/ask", response_class=HTMLResponse)
+async def ask(q: str = ""):
+    if not q:
+        return HTMLResponse("<p>Manca il parametro ?q= nella richiesta.</p>")
+    q = q.strip()
+
+    # 1️⃣ Controlla se c'è una regola Sinapsi
+    sinapsi = find_sinapsi_answer(q)
+    sinapsi_text = ""
+    mode = "augment"
+    if sinapsi:
+        sinapsi_text = sinapsi.get("answer", "")
+        mode = sinapsi.get("mode", "augment")
+
+    # 2️⃣ Ricerca web
+    web_content = await query_brave_search(q)
+    if not web_content:
+        web_content = "🌐 <i>Nessuna risposta diretta trovata sul web.</i>"
+
+    # 3️⃣ Fusione logica
+    if mode == "override":
+        final_answer = sinapsi_text
+    elif mode == "augment":
+        final_answer = f"{web_content}<br><br>{sinapsi_text}"
+    elif mode == "postscript":
+        final_answer = f"{web_content}<br><br><i>{sinapsi_text}</i>"
+    else:
+        final_answer = web_content
+
+    # 4️⃣ Pulizia
+    final_answer = clean_text(final_answer)
+
+    # 5️⃣ Formattazione HTML
+    html_response = f"""
+    <html>
+    <head>
+      <meta charset='utf-8'>
+      <title>Tecnaria Bot</title>
+      <style>
+        body {{ font-family: 'Segoe UI', Arial, sans-serif; color:#222; background:#fafafa; padding:20px; }}
+        h1 {{ color:#005a9c; }}
+        a {{ color:#0056b3; text-decoration:none; }}
+        a:hover {{ text-decoration:underline; }}
+        .answer {{ background:white; padding:20px; border-radius:12px; box-shadow:0 0 10px rgba(0,0,0,0.08); }}
+        br {{ line-height:1.6; }}
+      </style>
+    </head>
+    <body>
+      <h1>Risposta Tecnaria Bot</h1>
+      <div class='answer'>{final_answer}</div>
+      <hr>
+      <small style="color:gray;">Domanda: {html.escape(q)}</small>
+    </body>
+    </html>
+    """
+    return HTMLResponse(html_response)
+
+# === Endpoint POST ===
 @app.post("/api/ask")
-async def ask_post(body: Dict[str, Any]):
-    q = (body or {}).get("q", "")
-    if not q or not isinstance(q, str) or len(q.strip()) < 2:
-        return JSONResponse({"ok": False, "error": "Missing q"}, status_code=400)
-    return _ask_core(q.strip())
-
-# ------------------------------------------------------------
-# Core pipeline: Web → Sinapsi → HTML pulito
-# ------------------------------------------------------------
-def _ask_core(q: str):
-    # 1) Cerca e sintetizza (testo pulito, no bytes PDF)
-    web = synthesize_from_web(q)
-    web_md = web["body_md"]
-    sources = web["sources"]
-
-    # 2) Applica Sinapsi (override/augment/postscript)
-    fused_md = apply_sinapsi(q, web_md)
-
-    # 3) HTML finale (niente \n grezzi, link cliccabili, fonti pulite)
-    html_answer = compose_final_html(fused_md, sources)
-
-    return HTMLResponse(content=html_answer, status_code=200)
+async def ask_post(request: Request):
+    data = await request.json()
+    q = data.get("q", "")
+    return JSONResponse({"ok": True, "answer": (await ask(q)).body.decode("utf-8")})
