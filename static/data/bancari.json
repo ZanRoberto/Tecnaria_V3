@@ -1,1 +1,7 @@
-
+{
+  "iban": "IT12A0123456789012345678901",
+  "intestatario": "TECNARIA S.p.A.",
+  "banca": "Banca Esempio S.p.A.",
+  "bic": "BANCIT22XXX",
+  "note": "Usare per bonifici SEPA. Inserire causale ordine/numero documento."
+}
