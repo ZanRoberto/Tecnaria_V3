@@ -1,176 +1,292 @@
-# app.py — versione stabile con fix urlencode + pulizia risposta HTML
-import re
-import json
-import html
-import os
-from urllib.parse import quote_plus as _quote_plus
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+import os, re, json, textwrap
+from fastapi import FastAPI, Request, Query
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
-import httpx
+from fastapi.templating import Jinja2Templates
+import requests
+from bs4 import BeautifulSoup
+from pdfminer.high_level import extract_text as pdf_extract_text
 
-app = FastAPI()
+APP_TITLE = "Tecnaria QA Bot"
+PREFERRED_DOMAINS = os.getenv("PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com").split(",")
+MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.35"))
+STATIC_DIR = os.getenv("STATIC_DIR", "static")
+TEMPLATES_DIR = os.getenv("TEMPLATES_DIR", "templates")
+CRITICI_DIR = os.getenv("CRITICI_DIR", os.path.join(STATIC_DIR, "data"))
+SINAPSI_FILE = os.path.join(CRITICI_DIR, "sinapsi_rules.json")
 
-# === Funzione urlencode (sostituisce mdurl.urlencode) ===
-def urlencode(s: str) -> str:
-    return _quote_plus(s, safe="")
+app = FastAPI(title=APP_TITLE)
 
-# === Setup cartelle statiche ===
-static_dir = os.path.join(os.getcwd(), "static")
-if os.path.isdir(static_dir):
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+# static & templates
+os.makedirs(STATIC_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=TEMPLATES_DIR if os.path.isdir(TEMPLATES_DIR) else STATIC_DIR)
 
-# === Carica file sinapsi_rules.json ===
-SINAPSI_PATH = os.path.join(static_dir, "data", "sinapsi_rules.json")
-sinapsi_rules = []
-if os.path.exists(SINAPSI_PATH):
+# -------------------- UTIL -------------------- #
+
+def _clean_spaces(s: str) -> str:
+    s = re.sub(r"[ \t]+", " ", s)
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
+
+def _html_escape(s: str) -> str:
+    return (s.replace("&", "&amp;")
+             .replace("<", "&lt;")
+             .replace(">", "&gt;"))
+
+def _make_link(url: str, label: str) -> str:
+    label = _html_escape(label)
+    return f"📎 <a href='{url}' target='_blank'>{label}</a>"
+
+def _pdf_to_text(url: str, timeout: float = 6.0) -> str:
     try:
-        with open(SINAPSI_PATH, "r", encoding="utf-8") as f:
-            sinapsi_rules = json.load(f)
-        print(f"✅ Sinapsi rules loaded: {len(sinapsi_rules)}")
-    except Exception as e:
-        print("⚠️ Errore caricando sinapsi_rules:", e)
+        r = requests.get(url, timeout=timeout)
+        r.raise_for_status()
+        # estrai SOLO testo; niente oggetti binari → niente "%PDF…"
+        text = pdf_extract_text(io=r.content) if hasattr(pdf_extract_text, "__call__") else ""
+    except Exception:
+        # fallback: scarica su disco e passa path (alcuni ambienti lo richiedono)
+        import tempfile
+        text = ""
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as tmp:
+                tmp.write(requests.get(url, timeout=timeout).content)
+                tmp.flush()
+                text = pdf_extract_text(tmp.name)
+        except Exception:
+            pass
+    if not text:
+        return ""
+    text = _clean_spaces(text)
+    # rimuovi eventuali “rumori” tipici PDF
+    text = re.sub(r"[%][A-Z]{3,5}-\d\.\d.*?\n", "", text)
+    return text
 
-# === Endpoint base ===
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    index_path = os.path.join(static_dir, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return HTMLResponse("<h1>Tecnaria QA Bot</h1><p>Use /ask?q=...</p>")
+def _htmlize_paragraphs(text: str) -> str:
+    # niente asterischi/markdown → tag HTML puliti
+    parts = [p.strip() for p in re.split(r"\n\s*\n", text.strip()) if p.strip()]
+    html = []
+    for p in parts:
+        # micro-bullet in frasi → mantieni come <p>, non <li>, per look commerciale
+        html.append(f"<p>{_html_escape(p)}</p>")
+    return "\n".join(html)
+
+def _detect_lang(q: str) -> str:
+    # euristica semplice: it/en/de/fr
+    ql = q.lower()
+    if re.search(r"[àèéìòù]|[a-z]+[àèéìòù]", ql) or "che " in ql or "qual" in ql:
+        return "it"
+    if re.search(r"\bwhat|how|when|which|do i|should i|can i\b", ql):
+        return "en"
+    if re.search(r"\bwas|wie|wann|welche|sollte ich|kann ich\b", ql):
+        return "de"
+    if re.search(r"\bquoi|comment|quand|lequel|devrais-je|puis-je\b", ql):
+        return "fr"
+    return "it"
+
+# -------------------- SINAPSI -------------------- #
+
+def load_sinapsi():
+    rules = []
+    if os.path.isfile(SINAPSI_FILE):
+        try:
+            with open(SINAPSI_FILE, "r", encoding="utf-8") as f:
+                rules = json.load(f)
+        except Exception:
+            rules = []
+    return rules
+
+SINAPSI = load_sinapsi()
+
+def sinapsi_apply(q: str, base_html: str, lang: str) -> str:
+    """
+    Applica regole:
+      - override: ignora web e restituisce answer
+      - augment: aggiunge box “Approfondimento”
+      - postscript: aggiunge nota finale
+    Tutto in HTML, senza asterischi.
+    """
+    applied = []
+    for r in SINAPSI:
+        try:
+            if r.get("lang", "it") != lang:
+                continue
+            pat = r.get("pattern", "")
+            if not pat:
+                continue
+            if re.search(pat, q, flags=re.IGNORECASE):
+                mode = r.get("mode", "augment")
+                ans = r.get("answer", "").strip()
+                if mode == "override":
+                    applied.append(("override", ans))
+                    break
+                elif mode == "augment":
+                    applied.append(("augment", ans))
+                elif mode == "postscript":
+                    applied.append(("postscript", ans))
+        except Exception:
+            continue
+
+    if not applied:
+        return base_html
+
+    # se esiste override → prendi solo quello
+    for t, ans in applied:
+        if t == "override":
+            return ans
+
+    # altrimenti assembla
+    html = [base_html] if base_html else []
+    for t, ans in applied:
+        if t == "augment":
+            html.append(f"<hr><h4>Approfondimento</h4>\n{ans}")
+    for t, ans in applied:
+        if t == "postscript":
+            html.append(f"<hr><p><em>{ans}</em></p>")
+    return "\n".join([h for h in html if h.strip()])
+
+# -------------------- WEB SCRAPE LEGGERO (FOCUS TECNARIA) -------------------- #
+
+def _fetch_url(url: str, timeout: float = 6.0) -> str:
+    try:
+        r = requests.get(url, timeout=timeout, headers={"User-Agent":"Mozilla/5.0"})
+        r.raise_for_status()
+        ctype = r.headers.get("content-type","").lower()
+        if "application/pdf" in ctype or url.lower().endswith(".pdf"):
+            return _pdf_to_text(url)
+        # html
+        soup = BeautifulSoup(r.text, "html.parser")
+        # togli nav/footer/aside
+        for t in soup(["header","footer","nav","script","style","noscript","iframe"]):
+            t.decompose()
+        text = soup.get_text("\n", strip=True)
+        return _clean_spaces(text)
+    except Exception:
+        return ""
+
+def web_summarize(q: str) -> (str, list):
+    """
+    Molto semplice: cerca 2–4 pagine note (Tecnaria) per topic noti.
+    Evita d’inserire direttamente il testo grezzo → produci un box Fonti + breve sintesi.
+    """
+    ql = q.lower()
+    candidates = []
+
+    # routing basilare per evitare risultati “strani”
+    if any(k in ql for k in ["ctf","lamiera","hi-bond","p560","chiodi","hsbr"]):
+        candidates.extend([
+            ("https://tecnaria.com/prodotto/connettore-per-acciaio-ctf/", "Scheda tecnica CTF – Tecnaria"),
+            ("https://tecnaria.com/solai-in-acciaio/tipologie-consolidamento-solai-acciaio/", "Solai in acciaio – Tipologie – Tecnaria"),
+            ("https://tecnaria.com/download/acciaio/download/CT_F_CATALOGO_IT.pdf", "Catalogo acciaio (PDF) – Tecnaria"),
+        ])
+    if any(k in ql for k in ["ctl","legno","tavolato","vite","maxi"]):
+        candidates.extend([
+            ("https://tecnaria.com/solai-in-legno/", "Solai in legno – Tecnaria"),
+            ("https://tecnaria.com/download/legno/download/CT_L_CATALOGO_IT.pdf", "Catalogo legno (PDF) – Tecnaria"),
+        ])
+    if any(k in ql for k in ["diapason","laterocemento"]):
+        candidates.extend([
+            ("https://tecnaria.com/solai-in-laterocemento/", "Solai in laterocemento – Tecnaria"),
+            ("https://tecnaria.com/faq-recupero-di-solai-in-acciaio-solai-nuovi/", "FAQ solai in acciaio – Tecnaria"),
+        ])
+    if not candidates:
+        # fallback neutro, solo domini preferiti
+        candidates = [
+            ("https://tecnaria.com/faq-recupero-di-solai-in-acciaio-solai-nuovi/", "FAQ solai – Tecnaria")
+        ]
+
+    texts = []
+    sources = []
+    for url, label in candidates[:4]:
+        txt = _fetch_url(url)
+        if txt:
+            texts.append((label, txt))
+            sources.append((url, label))
+
+    # sintesi minimal (completa poi con Sinapsi)
+    bullets = []
+    if "ctf" in ql:
+        bullets.append("I CTF sono connettori per solai collaboranti acciaio–calcestruzzo su lamiera grecata.")
+    if "p560" in ql or "chiod" in ql:
+        bullets.append("La posa avviene con SPIT P560 e 2 chiodi HSBR14 per connettore (senza preforatura).")
+    if "hi-bond" in ql:
+        bullets.append("Compatibile con lamiere certificate (es. Hi-Bond), con piena collaborazione acciaio–cls.")
+    if "densit" in ql or "m2" in ql or "m²" in ql:
+        bullets.append("Densità indicativa: ~6–8 CTF/m² (più fitta agli appoggi, più rada in mezzeria).")
+    if "diapason" in ql:
+        bullets.append("Diapason è per laterocemento: fissaggi meccanici e getto collaborante dall’alto (senza P560).")
+
+    head = "<h3>Risposta Tecnaria</h3>"
+    body = ""
+    if bullets:
+        body = "<p>" + " ".join(bullets) + "</p>"
+
+    if sources:
+        links = "<br>".join([_make_link(u, lbl) for u, lbl in sources])
+        fonti = f"<h4>Fonti</h4><p>{links}</p>"
+    else:
+        fonti = ""
+
+    return f"{head}\n{body}\n{fonti}", sources
+
+# -------------------- ENDPOINTS -------------------- #
 
 @app.get("/ping")
-async def ping():
+def ping():
     return {"ok": True, "pong": True}
 
 @app.get("/health")
-async def health():
+def health():
     return {
         "status": "ok",
         "web_search": {
-            "provider": "brave",
-            "brave_key": bool(os.getenv("BRAVE_API_KEY")),
-            "bing_key": bool(os.getenv("BING_API_KEY")),
-            "preferred_domains": ["tecnaria.com", "spit.eu", "spitpaslode.com"],
-            "min_web_score": 0.35,
+            "provider": "internal-lite",
+            "preferred_domains": PREFERRED_DOMAINS,
+            "min_web_score": MIN_WEB_SCORE,
         },
         "critici": {
-            "dir": static_dir,
-            "exists": os.path.isdir(static_dir),
-            "sinapsi_file": SINAPSI_PATH,
-            "sinapsi_loaded": len(sinapsi_rules),
-        },
+            "dir": CRITICI_DIR,
+            "exists": os.path.isdir(CRITICI_DIR),
+            "sinapsi_file": SINAPSI_FILE,
+            "sinapsi_loaded": len(SINAPSI),
+        }
     }
 
-# === Funzione per pulizia del testo ===
-def clean_text(t: str) -> str:
-    if not t:
-        return ""
-    t = re.sub(r"%PDF-[\s\S]+?(?=\n|$)", "", t)       # rimuove header PDF
-    t = re.sub(r"\n{2,}", "\n", t)                    # rimuove doppi \n
-    t = re.sub(r"(?<!\n)- ", "• ", t)                 # bullet estetico
-    t = html.escape(t)
-    t = t.replace("\n", "<br>")
-    return t
+def _answer_html(q: str) -> str:
+    lang = _detect_lang(q)
+    base_html, _ = web_summarize(q)
+    final_html = sinapsi_apply(q, base_html, lang)
+    if not final_html:
+        final_html = "<h3>OK</h3><p>Non ho trovato una risposta adeguata. Posso passarti i contatti Tecnaria o cercare meglio.</p>"
+    return final_html
 
-# === Match di sinapsi ===
-def find_sinapsi_answer(question: str):
-    q = question.lower()
-    for rule in sinapsi_rules:
-        if re.search(rule.get("pattern", ""), q, flags=re.IGNORECASE):
-            return rule
-    return None
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    # se c’è templates/index.html lo usa, altrimenti static/index.html, altrimenti landing minima
+    idx_path = os.path.join(TEMPLATES_DIR, "index.html")
+    if os.path.isfile(idx_path):
+        return templates.TemplateResponse("index.html", {"request": request, "service": APP_TITLE})
+    idx_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.isfile(idx_path):
+        with open(idx_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(f.read())
+    return HTMLResponse(f"<h2>{APP_TITLE}</h2><p>Usa <code>/ask?q=...</code> oppure metti <code>static/index.html</code>.</p>")
 
-# === Core handler ===
-async def query_brave_search(q: str):
-    """
-    Esegue ricerca web (mockata o reale via Brave se BRAVE_API_KEY presente)
-    """
-    try:
-        api_key = os.getenv("BRAVE_API_KEY")
-        if not api_key:
-            return None
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(
-                "https://api.search.brave.com/res/v1/web/search",
-                params={"q": q, "count": 3},
-                headers={"Accept": "application/json", "X-Subscription-Token": api_key},
-            )
-            data = resp.json()
-            if "web" in data and "results" in data["web"]:
-                results = data["web"]["results"]
-                joined = []
-                for r in results:
-                    title = r.get("title", "")
-                    url = r.get("url", "")
-                    snippet = r.get("description", "")
-                    joined.append(f"📎 <a href='{url}' target='_blank'>{title}</a><br>{snippet}")
-                return "<br>".join(joined)
-    except Exception as e:
-        print("❌ Brave search error:", e)
-    return None
-
-# === Endpoint principale ===
 @app.get("/ask", response_class=HTMLResponse)
-async def ask(q: str = ""):
+def ask_get(q: str = Query(""), debug: bool = Query(False)):
+    q = (q or "").strip()
     if not q:
-        return HTMLResponse("<p>Manca il parametro ?q= nella richiesta.</p>")
-    q = q.strip()
+        return HTMLResponse("<h3>OK</h3><p>Domanda vuota: inserisci una richiesta valida.</p>")
+    html = _answer_html(q)
+    if debug:
+        return HTMLResponse(f"<div class='debug'><pre>{_html_escape(q)}</pre></div>{html}")
+    return HTMLResponse(html)
 
-    # 1️⃣ Controlla se c'è una regola Sinapsi
-    sinapsi = find_sinapsi_answer(q)
-    sinapsi_text = ""
-    mode = "augment"
-    if sinapsi:
-        sinapsi_text = sinapsi.get("answer", "")
-        mode = sinapsi.get("mode", "augment")
-
-    # 2️⃣ Ricerca web
-    web_content = await query_brave_search(q)
-    if not web_content:
-        web_content = "🌐 <i>Nessuna risposta diretta trovata sul web.</i>"
-
-    # 3️⃣ Fusione logica
-    if mode == "override":
-        final_answer = sinapsi_text
-    elif mode == "augment":
-        final_answer = f"{web_content}<br><br>{sinapsi_text}"
-    elif mode == "postscript":
-        final_answer = f"{web_content}<br><br><i>{sinapsi_text}</i>"
-    else:
-        final_answer = web_content
-
-    # 4️⃣ Pulizia
-    final_answer = clean_text(final_answer)
-
-    # 5️⃣ Formattazione HTML
-    html_response = f"""
-    <html>
-    <head>
-      <meta charset='utf-8'>
-      <title>Tecnaria Bot</title>
-      <style>
-        body {{ font-family: 'Segoe UI', Arial, sans-serif; color:#222; background:#fafafa; padding:20px; }}
-        h1 {{ color:#005a9c; }}
-        a {{ color:#0056b3; text-decoration:none; }}
-        a:hover {{ text-decoration:underline; }}
-        .answer {{ background:white; padding:20px; border-radius:12px; box-shadow:0 0 10px rgba(0,0,0,0.08); }}
-        br {{ line-height:1.6; }}
-      </style>
-    </head>
-    <body>
-      <h1>Risposta Tecnaria Bot</h1>
-      <div class='answer'>{final_answer}</div>
-      <hr>
-      <small style="color:gray;">Domanda: {html.escape(q)}</small>
-    </body>
-    </html>
-    """
-    return HTMLResponse(html_response)
-
-# === Endpoint POST ===
 @app.post("/api/ask")
-async def ask_post(request: Request):
-    data = await request.json()
-    q = data.get("q", "")
-    return JSONResponse({"ok": True, "answer": (await ask(q)).body.decode("utf-8")})
+async def ask_post(payload: dict):
+    q = (payload or {}).get("q", "").strip()
+    if not q:
+        return JSONResponse({"ok": True, "answer": "OK\nDomanda vuota: inserisci una richiesta valida."})
+    html = _answer_html(q)
+    # client legacy vuole “answer” come testo → restituisco già HTML
+    return JSONResponse({"ok": True, "answer": html})
