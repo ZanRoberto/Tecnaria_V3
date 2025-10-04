@@ -1,1 +1,21 @@
+{
+  "version": "1.0",
+  "category": "prodotti/ctf",
+  "updated": "2025-10-02",
+  "data": {
+    "codici": ["CTF020","CTF025","CTF030","CTF040","CTF060","CTF070","CTF080","CTF090","CTF105","CTF125","CTF135"],
+    "equivalenze": ["CTF 12/40","CTF 12/60","CTF 12/105","CTF 12/125","CTF 12/135"],
+    "note": "Diametro nominale Ø12 mm; altezza = valore del codice; fissaggio con chiodatrice SPIT P560."
+  },
+  "faq": [
+    {
+      "q": ["codici ctf","codice ctf","quali sono i codici dei ctf","ctf codes","lista codici ctf","codici connettori ctf"],
+      "a": "I codici ufficiali dei connettori CTF Tecnaria sono: CTF020, CTF025, CTF030, CTF040, CTF060, CTF070, CTF080, CTF090, CTF105, CTF125, CTF135. Equivalenze usate in alcuni listini: CTF 12/40, 12/60, 12/105, 12/125, 12/135. (Ø12 mm; fissaggio con SPIT P560)."
+    },
+    {
+      "q": ["ctf 12/40","ctf 12/60","ctf 12/105","ctf 12/125","ctf 12/135"],
+      "a": "La notazione “CTF 12/xx” è equivalente ai codici CTF con Ø12 mm e altezza xx. Esempi: 12/40 → CTF040, 12/60 → CTF060, 12/105 → CTF105, 12/125 → CTF125, 12/135 → CTF135."
+    }
+  ]
+}
 
