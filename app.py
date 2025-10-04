@@ -1,12 +1,21 @@
-# app.py
-import os, re, json, time, html, textwrap
+# app.py — robusto a dipendenze mancanti (requests/bs4 opzionali)
+import os, re, json, time, html, textwrap, urllib.request, urllib.parse
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-import requests
-from bs4 import BeautifulSoup
+
+# Import opzionali (no crash se non presenti)
+try:
+    import requests  # per HTTP comodo
+except Exception:
+    requests = None
+
+try:
+    from bs4 import BeautifulSoup  # per pulizia HTML migliore
+except Exception:
+    BeautifulSoup = None
 
 APP_NAME = "Tecnaria QA Bot"
 app = FastAPI(title=APP_NAME)
@@ -24,8 +33,7 @@ BING_API_KEY   = os.getenv("BING_API_KEY")
 PREFERRED_DOMAINS = [d.strip() for d in os.getenv(
     "PREFERRED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com"
 ).split(",") if d.strip()]
-
-MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.55"))  # soglia alta per qualità
+MIN_WEB_SCORE = float(os.getenv("MIN_WEB_SCORE", "0.55"))  # soglia alta
 CRITICI_DIR   = os.getenv("CRITICI_DIR", "Tecnaria_V3/static/static/data/critici").strip()
 
 # ---------- SINAPSI ----------
@@ -65,7 +73,6 @@ def load_sinapsi_rules() -> List[Rule]:
 SINAPSI_RULES = load_sinapsi_rules()
 
 def sinapsi_apply(q: str, base_text: str) -> Tuple[str, Optional[str]]:
-    """Ritorna testo e id regola usata (se applicata)."""
     applied_id = None
     for r in SINAPSI_RULES:
         if r.pattern.search(q):
@@ -85,7 +92,7 @@ def sinapsi_apply(q: str, base_text: str) -> Tuple[str, Optional[str]]:
                 return merged, r.id
     return base_text, applied_id
 
-# ---------- WEB SEARCH ----------
+# ---------- UTILS HTTP ----------
 def allowed_domain(url: str, prefer: List[str]) -> bool:
     try:
         from urllib.parse import urlparse
@@ -94,28 +101,46 @@ def allowed_domain(url: str, prefer: List[str]) -> bool:
         return False
     return any(host.endswith(d.lower()) for d in prefer)
 
+def http_get(url: str, headers: Optional[Dict]=None, timeout: float=6.0) -> Tuple[int, str]:
+    """GET robusto: usa requests se c'è, altrimenti urllib."""
+    headers = headers or {}
+    if requests:
+        try:
+            r = requests.get(url, headers=headers, timeout=timeout)
+            return r.status_code, r.text
+        except Exception:
+            pass
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as res:
+            status = getattr(res, "status", 200)
+            body = res.read().decode("utf-8", "ignore")
+            return status, body
+    except Exception:
+        return 599, ""
+
+# ---------- WEB SEARCH ----------
 def brave_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
     if not BRAVE_API_KEY:
         return []
-    headers = {"X-Subscription-Token": BRAVE_API_KEY}
+    url = "https://api.search.brave.com/res/v1/web/search"
+    params = {"q": query, "count": n, "freshness": "month"}
+    full = url + "?" + urllib.parse.urlencode(params)
+    status, txt = http_get(full, headers={"X-Subscription-Token": BRAVE_API_KEY}, timeout=timeout)
+    if status != 200:
+        return []
     try:
-        r = requests.get(
-            "https://api.search.brave.com/res/v1/web/search",
-            params={"q": query, "count": n, "freshness": "month"},
-            headers=headers, timeout=timeout,
-        )
-        r.raise_for_status()
-        data = r.json()
+        data = json.loads(txt)
         out = []
         for item in data.get("web", {}).get("results", []):
-            url = item.get("url","")
-            if not allowed_domain(url, PREFERRED_DOMAINS):  # filtro domini
+            u = item.get("url","")
+            if not allowed_domain(u, PREFERRED_DOMAINS):
                 continue
             out.append({
                 "title": item.get("title",""),
-                "url": url,
+                "url": u,
                 "snippet": item.get("description",""),
-                "score": item.get("language","") and 0.75 or 0.65
+                "score": 0.75
             })
         return out
     except Exception:
@@ -124,23 +149,22 @@ def brave_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
 def bing_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
     if not BING_API_KEY:
         return []
-    headers = {"Ocp-Apim-Subscription-Key": BING_API_KEY}
+    url = "https://api.bing.microsoft.com/v7.0/search"
+    params = {"q": query, "count": n, "mkt":"it-IT"}
+    full = url + "?" + urllib.parse.urlencode(params)
+    status, txt = http_get(full, headers={"Ocp-Apim-Subscription-Key": BING_API_KEY}, timeout=timeout)
+    if status != 200:
+        return []
     try:
-        r = requests.get(
-            "https://api.bing.microsoft.com/v7.0/search",
-            params={"q": query, "count": n, "mkt":"it-IT"},
-            headers=headers, timeout=timeout,
-        )
-        r.raise_for_status()
-        data = r.json()
+        data = json.loads(txt)
         out = []
         for item in data.get("webPages",{}).get("value",[]):
-            url = item.get("url","")
-            if not allowed_domain(url, PREFERRED_DOMAINS):
+            u = item.get("url","")
+            if not allowed_domain(u, PREFERRED_DOMAINS):
                 continue
             out.append({
                 "title": item.get("name",""),
-                "url": url,
+                "url": u,
                 "snippet": item.get("snippet",""),
                 "score": 0.70
             })
@@ -149,76 +173,61 @@ def bing_search(query: str, n: int = 5, timeout: float = 6.0) -> List[Dict]:
         return []
 
 def fetch_url_text(url: str, timeout: float = 6.0) -> str:
-    try:
-        r = requests.get(url, timeout=timeout, headers={"User-Agent":"Mozilla/5.0"})
-        r.raise_for_status()
-        return r.text
-    except Exception:
-        return ""
+    status, body = http_get(url, headers={"User-Agent":"Mozilla/5.0"}, timeout=timeout)
+    return body if status==200 else ""
 
 def clean_html_text(raw: str) -> str:
     if not raw:
         return ""
-    try:
-        soup = BeautifulSoup(raw, "html.parser")
-        for tag in soup(["script","style","noscript"]):
-            tag.decompose()
-        text = soup.get_text(separator=" ")
-        text = html.unescape(text)
-        text = re.sub(r"\s+", " ", text).strip()
-        return text
-    except Exception:
-        # fallback rozzo
-        txt = re.sub(r"<[^>]+>", " ", raw)
-        txt = html.unescape(txt)
-        return re.sub(r"\s+", " ", txt).strip()
+    # Se bs4 c'è, usiamolo; altrimenti fallback regex
+    if BeautifulSoup:
+        try:
+            soup = BeautifulSoup(raw, "html.parser")
+            for tag in soup(["script","style","noscript"]):
+                tag.decompose()
+            text = soup.get_text(separator=" ")
+            text = html.unescape(text)
+            text = re.sub(r"\s+", " ", text).strip()
+            return text
+        except Exception:
+            pass
+    # fallback
+    txt = re.sub(r"<[^>]+>", " ", raw)
+    txt = html.unescape(txt)
+    return re.sub(r"\s+", " ", txt).strip()
 
 def synthesize_snippets(snips: List[Dict], q: str) -> Tuple[str, List[str]]:
-    """Crea una sintesi pulita con elenco fonti (sempre IT, tono morbido)."""
     if not snips:
         return "", []
-    bodies = []
-    sources = []
+    bodies, sources = [], []
     for s in snips:
         page = fetch_url_text(s["url"])
-        body = clean_html_text(page)
-        if not body:
-            # usa comunque lo snippet se significativo
-            body = clean_html_text(s.get("snippet",""))
+        body = clean_html_text(page) or clean_html_text(s.get("snippet",""))
         if body:
             bodies.append(body[:1500])
             sources.append(s["url"])
     joined = " ".join(bodies)[:4000]
     if not joined:
         return "", []
-    # Micro-sintesi “umana”
-    # (Regole semplici: tieni frasi con parole chiave e ricompattale)
-    key = ["CTF","lamiera","P560","HSBR","Diapason","ETA","connettore","soletta","laterocemento","Hi-Bond"]
+    key = ["CTF","lamiera","P560","HSBR","Diapason","ETA","connettore","soletta","laterocemento","Hi-Bond","Tecnaria","SPIT"]
     sentences = re.split(r"(?<=[\.\!\?])\s+", joined)
     keep = [s for s in sentences if any(k.lower() in s.lower() for k in key)]
-    draft = " ".join(keep)[:1200]
-    # ammorbidisci
+    draft = " ".join(keep)[:1200] or joined[:800]
     draft = re.sub(r"\s{2,}"," ", draft).strip()
-    if not draft:
-        draft = joined[:800]
     return draft, list(dict.fromkeys(sources))[:5]
 
 # ---------- REFINER ----------
 def refine_text(text_it: str) -> str:
     if not text_it:
         return ""
-    # pulizia header "OK - Riferimento..."
+    # togli “OK / Riferimento / Sintesi” eventuali
     text_it = re.sub(r"^OK\s*-?\s*(Riferimento|Sintesi).*?\n", "", text_it, flags=re.I|re.M)
-    # bullets coerenti
-    # garantisci a capo prima di "**Fonti**"
     text_it = text_it.replace("**Fonti**", "\n\n**Fonti**")
-    # tono Tecnaria
     lead = (
-        "Ecco le informazioni richieste, in forma chiara e sintetica.\n"
-        "Se servono verifiche di progetto, le facciamo su dati reali del cantiere."
+        "Ecco le informazioni richieste, in modo chiaro e sintetico.\n"
+        "Per verifiche di progetto approfondite possiamo lavorare sui dati reali del cantiere."
     )
     body = text_it.strip()
-    # evita doppio lead
     if body.lower().startswith("ecco le informazioni"):
         return body
     return f"{lead}\n\n{body}".strip()
@@ -228,10 +237,8 @@ def compose_final(answer: str, sources: List[str]) -> str:
     if sources:
         src = "\n".join(f"- {u}" for u in sources)
         if "**Fonti**" in answer:
-            # append se già presente
-            if not answer.strip().endswith("**Fonti**"):
-                if not answer.strip().endswith("\n"):
-                    answer += "\n"
+            if not answer.strip().endswith("\n"):
+                answer += "\n"
             answer += f"**Fonti**\n{src}\n"
         else:
             answer += f"\n\n**Fonti**\n{src}\n"
@@ -239,14 +246,12 @@ def compose_final(answer: str, sources: List[str]) -> str:
 
 # ---------- PIPELINE ----------
 def web_answer(q: str) -> Tuple[str, List[str]]:
-    # fai ricerca solo su domini preferiti
     results = []
     if SEARCH_PROVIDER == "brave":
         results = brave_search(q, n=6)
     elif SEARCH_PROVIDER == "bing":
         results = bing_search(q, n=6)
     else:
-        # se provider non configurato, niente web
         results = []
 
     if not results:
@@ -256,9 +261,7 @@ def web_answer(q: str) -> Tuple[str, List[str]]:
     if not text:
         return "", sources
 
-    # alza la qualità: riformula in bullet morbidi
     blocks = []
-    # regolette di estrazione rapide
     patterns = [
         (r"(P560.*?HSBR.*?)(?:\.|;)", "- **Fissaggio**: \\1."),
         (r"(ETA|European Technical Assessment.*?)(?:\.|;)", "- **Normativa**: \\1."),
@@ -271,7 +274,6 @@ def web_answer(q: str) -> Tuple[str, List[str]]:
             blocks.append(lab.replace("\\1", m.group(1)))
             used += 1
     if used < 2:
-        # se poco strutturato, metti un riassunto unico
         blocks = [textwrap.shorten(text, 450, placeholder="…")]
 
     ans = "OK\n" + "\n".join(blocks)
@@ -279,29 +281,15 @@ def web_answer(q: str) -> Tuple[str, List[str]]:
     return ans, sources
 
 def answer_pipeline(q: str) -> str:
-    # 1) web
     web_txt, web_sources = web_answer(q)
-
-    # 2) se web scarso, forza Sinapsi override/augment
-    if not web_txt or len(web_txt) < 60:
-        base = ""
-    else:
-        base = web_txt
-
-    final_txt, rule_id = sinapsi_apply(q, base)
-
-    # 3) se anche qui vuoto, prova “domande classiche” fallback
+    base = web_txt if (web_txt and len(web_txt) >= 60) else ""
+    final_txt, _ = sinapsi_apply(q, base)
     if not final_txt:
-        # micro fallback sensato
-        fallback = (
-            "Per questa richiesta servono dettagli tecnici (tipo solaio, luci, carichi, profilo lamiera, "
-            "spessori, vincoli). Possiamo stimare in modo prudente e poi validare col progetto."
+        final_txt = refine_text(
+            "Per questa richiesta servono alcuni dettagli (tipo solaio, luci, carichi, profili, spessori, vincoli). "
+            "Possiamo dare un indirizzo prudente e poi validare col calcolo."
         )
-        final_txt = refine_text(fallback)
-
-    # 4) comporre + fonti
-    out = compose_final(final_txt, web_sources)
-    return out
+    return compose_final(final_txt, web_sources)
 
 # ---------- HTTP ----------
 @app.get("/ping")
@@ -327,17 +315,6 @@ def health():
 def home():
     return HTMLResponse(UI_HTML)
 
-def get_q_from_req(request: Request) -> str:
-    try:
-        data = {}
-        if request.headers.get("content-type","").startswith("application/json"):
-            data = json.loads((yield from request.body()))
-        else:
-            data = {}
-    except Exception:
-        data = {}
-    return (data.get("q") or "").strip()
-
 @app.get("/ask")
 def ask_get(q: str=""):
     q = (q or "").strip()
@@ -358,7 +335,7 @@ async def ask_post(req: Request):
     ans = answer_pipeline(q)
     return JSONResponse({"ok": True, "answer": ans})
 
-# ---------- UI (dark) ----------
+# ---------- UI ----------
 UI_HTML = """
 <!doctype html><html lang="it"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
