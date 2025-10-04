@@ -1,59 +1,59 @@
 [
   {
-    "id": "p560_policy",
+    "id": "p560_training_override",
     "pattern": "(?i)\\bp\\s*[- ]?560\\b.*(patentino|abilitazione|formazione)|(patentino|abilitazione|formazione).*\\bp\\s*[- ]?560\\b",
     "mode": "override",
     "lang": "it",
-    "answer": "OK\n- **Abilitazione/Patentino**: non è richiesto un patentino specifico per **SPIT P560**; serve **formazione interna** secondo istruzioni del costruttore.\n- **Fissaggio CTF**: **2 chiodi HSBR14** per connettore; nessuna preforatura; taratura potenza e prova su campione.\n- **DPI**: occhiali, guanti, protezione udito; lamiera ben aderente; rispetto distanze dai bordi.\n\n**Fonti**\n- Sinapsi (curated)\n"
+    "answer": "Per utilizzare la **SPIT P560** non è richiesto alcun patentino o abilitazione specifica: è sufficiente una **breve formazione interna** basata sulle istruzioni del costruttore.\\n\\nDurante la posa dei connettori **CTF**, ciascun elemento viene fissato con **due chiodi HSBR14** a sparo, regolando la potenza in base allo spessore della lamiera o dell’acciaio sottostante. Prima dell’uso, è buona prassi effettuare una **prova su campione** per verificare l’efficacia dell’ancoraggio.\\n\\nLa P560 va sempre utilizzata con i **propulsori e adattatori Tecnaria dedicati**, mantenendo la lamiera ben aderente alla trave. Sono obbligatori **occhiali, guanti e protezioni acustiche**.\\n\\n📎 Scheda tecnica P560 (spitpaslode.com)\\n📎 Manuale d’uso e sicurezza (tecnaria.com)"
   },
   {
-    "id": "ctf_density_addon",
-    "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|fissagg|chiod|p560|hsbr|hi[- ]?bond)",
+    "id": "ctf_density_hibond_augment",
+    "pattern": "(?i)\\bctf\\b.*(densit|m2|m²|numero|pezzi|fissagg|chiod|p560|hsbr|hi[- ]?bond)",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Densità indicativa**: **~6–8 CTF/m²** (più fitta agli appoggi, più rada in mezzeria); valore **finale da calcolo**.\n- **Fissaggio**: **2 chiodi HSBR14**/CTF con **SPIT P560**; prova su campione e taratura potenza.\n- **Buone pratiche**: lamiera aderente alla trave, rispetto bordi/assi, DPI.\n"
+    "answer": "La **densità di posa** dei connettori CTF dipende dal calcolo strutturale, ma in via orientativa si prevedono **6–8 pezzi per metro quadrato**.\\n\\nOgni connettore viene fissato con **due chiodi HSBR14** utilizzando la **SPIT P560**, senza necessità di preforatura. La regolazione della potenza e la prova su campione sono fondamentali per garantire una corretta penetrazione.\\n\\nSu lamiera grecata certificata (es. **Hi-Bond**), il sistema assicura una perfetta collaborazione acciaio-calcestruzzo, con tempi di montaggio molto ridotti.\\n\\n📎 Scheda tecnica CTF (tecnaria.com)\\n📎 Gamma Hi-Bond (tecnaria.com)"
   },
   {
-    "id": "ctf_vs_diapason_addon",
+    "id": "ctf_vs_diapason_augment",
     "pattern": "(?i)(ctf).*diapason|(diapason).*(ctf)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Quando CTF**: se c’è/si posa **lamiera grecata** e serve **velocità**; posa dall’alto con **SPIT P560** e **2 chiodi HSBR14**/pezzo.\n- **Quando Diapason**: **rinforzo laterocemento** senza lamiera; intervento dall’alto **poco invasivo** con fissaggi meccanici.\n- **Scelta pratica**: dipende da **tipologia solaio**, **carichi**, **vincoli di spessore**, **accessi** e **tempi**; quantità connettori/ancoraggi → **calcolo**.\n"
+    "answer": "I **connettori CTF** e il sistema **Diapason** rispondono a due esigenze differenti. I primi sono destinati ai **solai collaboranti acciaio-calcestruzzo**, posati su **lamiera grecata** e fissati con **SPIT P560**; il secondo è un sistema per **solai in laterocemento**, utile nei casi di consolidamento e recupero strutturale.\\n\\nIn sintesi:\\n- **CTF** → nuove costruzioni o interventi con lamiera grecata presente, rapidità di posa e alte prestazioni meccaniche.\\n- **Diapason** → solai esistenti in laterocemento, senza lamiera, con fissaggi meccanici e getto collaborante dall’alto.\\n\\nLa scelta dipende da tipo di solaio, carichi, accessibilità e vincoli di spessore. Entrambi i sistemi sono certificati con **ETA** e documentazione tecnica Tecnaria.\\n\\n📎 Connettori CTF (tecnaria.com)\\n📎 Sistema Diapason (tecnaria.com)"
   },
   {
-    "id": "ctl_maxi_selector",
+    "id": "ctl_vs_diapason_augment",
+    "pattern": "(?i)(ctl).*(diapason)|(diapason).*(ctl)|laterocemento.*ctl|ctl.*laterocemento|differenz|confront",
+    "mode": "augment",
+    "lang": "it",
+    "answer": "I **connettori CTL** sono progettati per **solai legno-calcestruzzo**, mentre il sistema **Diapason** è pensato per **solai in laterocemento**.\\n\\nIl CTL lavora con **viti autoforanti** su supporto ligneo, senza l’uso di chiodatrici, mentre Diapason impiega **fissaggi meccanici** con getto collaborante dall’alto.\\n\\n- Usa **CTL** se devi rendere collaborante una soletta su travi in legno.\\n- Usa **Diapason** se devi rinforzare o recuperare un solaio in laterocemento esistente.\\n\\n📎 Scheda tecnica CTL (tecnaria.com)\\n📎 Sistema Diapason (tecnaria.com)"
+  },
+  {
+    "id": "ctl_maxi_selector_augment",
     "pattern": "(?i)(ctl|maxi).*tavolato.*(1\\s*cm|2\\s*cm|20\\s*mm).*soletta.*5\\s*cm",
     "mode": "augment",
     "lang": "it",
-    "answer": "- **Se tavolato ~2 cm e soletta 5 cm** → **CTL MAXI 12/040**; viti **Ø10×100** (oppure **Ø10×120** se interposti/tavolato > 25–30 mm).\n- **Criterio**: testa **sopra la rete** a metà spessore e **sotto** il filo superiore del getto; se interferenze → **12/030**.\n"
+    "answer": "In presenza di **tavolato di circa 2 cm** e **soletta di 5 cm**, la soluzione ideale è il **CTL MAXI 12/040**, fissato sopra il tavolato con **due viti Ø10 × 100 mm** (oppure **Ø10 × 120 mm** se lo spessore del tavolato supera i 25–30 mm).\\n\\nIl modello MAXI è pensato proprio per l’applicazione su assito ligneo e consente di ottenere un’ottima collaborazione tra legno e calcestruzzo.\\n\\n📎 Scheda CTL MAXI 12/040 (tecnaria.com)"
   },
   {
-    "id": "ctl_vs_diapason_addon",
-    "pattern": "(?i)(ctl).*(diapason)|(diapason).*(ctl)|laterocemento.*ctl|ctl.*laterocemento",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **CTL**: per **legno–calcestruzzo** con viti su travi lignee (non per laterocemento).\n- **Diapason**: per **rinforzo laterocemento** con getto collaborante e fissaggi meccanici.\n"
-  },
-  {
-    "id": "ctf_hibond_advantages",
-    "pattern": "(?i)\\bctf\\b.*(hi[- ]?bond|lamiera)|hi[- ]?bond.*ctf|vantagg",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **Compatibilità**: **CTF** progettati per lamiere grecate certificate (es. **Hi-Bond**), piena collaborazione acciaio–calcestruzzo.\n- **Velocità di posa**: dall’alto con **SPIT P560** e **2 chiodi HSBR14**, senza preforatura.\n- **Prestazioni**: maggiore rigidezza/capacità, deformazioni ridotte, luci maggiori a spessore contenuto.\n- **Normativa**: **ETA** e tracciabilità lotti.\n"
-  },
-  {
-    "id": "ctl_vs_ctf_bridge",
-    "pattern": "(?i)ctl.*ctf|ctf.*ctl",
-    "mode": "augment",
-    "lang": "it",
-    "answer": "- **CTL (legno–cls)**: connettori a vite su travi lignee; ideale in ristrutturazioni; niente chiodatrice.\n- **CTF (acciaio–cls)**: su **lamiera grecata**; posa veloce con **SPIT P560** + **2 HSBR14**/pezzo.\n- **Scelta**: dipende dal **supporto** (legno vs acciaio) e dalla presenza di **lamiera**.\n"
-  },
-  {
-    "id": "lang_bridge_en_it",
-    "pattern": "(?i)^(?=.*(certificate|approval|eta|declaration|declarations|assessment)).*(ctf|composite|steel|concrete|floor|hi[- ]?bond)",
+    "id": "ctf_certifications_postscript",
+    "pattern": "(?i)\\b(ctf)\\b.*(certificat|eta|marchio|approvaz|european)",
     "mode": "postscript",
     "lang": "it",
-    "answer": "_Nota_: contenuto origine **EN**; ho adattato in **italiano** la sintesi per chiarezza. Per i dettagli consultare la scheda/ETA in lingua.\n"
+    "answer": "Nota: i **connettori CTF** sono coperti da **ETA 18/0447** rilasciata da **Socotec** (Francia), che ne certifica le prestazioni meccaniche e la conformità ai requisiti europei per solai misti acciaio-calcestruzzo."
+  },
+  {
+    "id": "tecnaria_contact_postscript",
+    "pattern": "(?i)\\b(contatti|telefono|email|pec|assistenza|uffici)\\b",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "Per informazioni o assistenza tecnica: **TECNARIA S.p.A. – Bassano del Grappa (VI)** – 📧 info@tecnaria.com  📞 +39 0424 502029."
+  },
+  {
+    "id": "general_intro_postscript",
+    "pattern": "(?i)(tecnaria|connettori|solai|acciaio|legno|laterocemento)",
+    "mode": "postscript",
+    "lang": "it",
+    "answer": "Le informazioni fornite sono a carattere tecnico-informativo e fanno riferimento ai prodotti **Tecnaria S.p.A.**, certificati e testati secondo normative europee vigenti. Per dati progettuali specifici, consultare le **schede tecniche ufficiali** disponibili su [tecnaria.com](https://tecnaria.com)."
   }
 ]
 
