@@ -1,186 +1,186 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Tecnaria QA Bot</title>
   <style>
-    body {
-      background-color: #0f172a;
-      color: #e2e8f0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
+    :root{
+      --bg:#0b1320; --card:#121a2b; --muted:#9fb0d0; --text:#e8efff;
+      --accent:#32d4a4; --accent2:#69a9ff; --danger:#ff6b6b;
+      --ring: 0 0 0 3px rgba(50,212,164,.25);
     }
-    h1 {
-      margin-top: 1.5rem;
-      color: #f8fafc;
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:linear-gradient(180deg,#0b1320 0%, #0e1628 100%);
+      color:var(--text); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
     }
-    .tags {
-      margin-top: 1rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      justify-content: center;
+    .wrap{max-width:980px; margin:0 auto; padding:28px 16px 56px}
+    header{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+    .logo{
+      width:36px;height:36px;border-radius:10px; background:
+        radial-gradient(120% 120% at 0% 0%, #54ffcf 0%, #1d8dfe 55%, #0b1320 100%);
+      box-shadow:0 6px 18px rgba(29,141,254,.35), inset 0 0 0 1px rgba(255,255,255,.18);
     }
-    .tag {
-      background-color: #1e293b;
-      color: #e2e8f0;
-      border: 1px solid #334155;
-      border-radius: 9999px;
-      padding: 0.4rem 1rem;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: all 0.2s;
+    h1{font-size:20px; margin:0}
+    .sub{color:var(--muted); font-size:13px}
+
+    .card{
+      background:linear-gradient(180deg,#121a2b 0%, #0f1829 100%);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:16px; padding:16px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
     }
-    .tag:hover {
-      background-color: #334155;
+    .row{display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center}
+    .input{
+      width:100%; padding:14px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.08);
+      background:#0b1320; color:var(--text); outline:none; transition: box-shadow .15s, border-color .15s;
     }
-    .container {
-      margin-top: 1.5rem;
-      width: 90%;
-      max-width: 800px;
-      background-color: #1e293b;
-      border-radius: 1rem;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
-      padding: 1.5rem;
+    .input:focus{box-shadow:var(--ring); border-color:rgba(50,212,164,.45)}
+    .btn{
+      cursor:pointer; border:none; padding:12px 16px; border-radius:12px; color:#07121f;
+      background:linear-gradient(180deg,#54ffcf 0%, #32d4a4 100%); font-weight:600;
+      box-shadow:0 6px 20px rgba(50,212,164,.35);
     }
-    textarea {
-      width: 100%;
-      height: 120px;
-      background-color: #0f172a;
-      color: #f8fafc;
-      border: 1px solid #475569;
-      border-radius: 0.5rem;
-      padding: 0.8rem;
-      font-size: 1rem;
-      resize: none;
-      outline: none;
+    .btn:disabled{opacity:.6; cursor:not-allowed}
+    .toolbar{display:flex; align-items:center; gap:8px; margin-top:10px}
+    .tbtn{
+      background:#0b1320; color:var(--muted); border:1px solid rgba(255,255,255,.08);
+      border-radius:10px; padding:8px 10px; font-size:13px; cursor:pointer;
     }
-    .buttons {
-      display: flex;
-      justify-content: flex-start;
-      align-items: center;
-      gap: 0.8rem;
-      margin-top: 1rem;
+    .tbtn:hover{border-color:rgba(105,169,255,.45); color:#dbe9ff}
+    .answer{
+      margin-top:18px; padding:18px; border-radius:14px; border:1px solid rgba(255,255,255,.08);
+      background:linear-gradient(180deg,#0d1526 0%, #0a1221 100%);
+      min-height:120px;
     }
-    button {
-      background-color: #2563eb;
-      color: white;
-      border: none;
-      border-radius: 0.5rem;
-      padding: 0.5rem 1.2rem;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.2s;
+    .answer:empty::before{
+      content:"La risposta apparirà qui."; color:var(--muted);
     }
-    button:hover {
-      background-color: #1d4ed8;
+    .meta{display:flex; gap:10px; align-items:center; color:var(--muted); font-size:12px; margin-top:10px}
+    .pill{padding:4px 8px; border-radius:999px; background:#0b1320; border:1px solid rgba(255,255,255,.08)}
+    .examples{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px}
+    .ex{cursor:pointer; border:1px dashed rgba(255,255,255,.14); color:#cfe0ff;
+      background:#0b1320; padding:6px 8px; border-radius:10px; font-size:12px}
+    .hide{display:none}
+    .err{color:var(--danger); font-weight:600}
+    .spin{
+      width:16px;height:16px;border-radius:50%;
+      border:2px solid rgba(255,255,255,.25); border-top-color:#54ffcf;
+      animation: s 1s linear infinite;
     }
-    #out {
-      background-color: #0f172a;
-      border-radius: 0.5rem;
-      padding: 1rem;
-      margin-top: 1rem;
-      white-space: pre-wrap;
-      font-family: monospace;
-      border: 1px solid #334155;
-      min-height: 80px;
-    }
-    small {
-      display: block;
-      margin-top: 0.8rem;
-      color: #64748b;
-    }
-    input[type="checkbox"] {
-      margin-right: 0.3rem;
-    }
+    @keyframes s{to{transform:rotate(360deg)}}
+
+    /* Contenuto HTML renderizzato dall’API */
+    .answer h1,.answer h2,.answer h3{margin:.6em 0 .25em}
+    .answer p{margin:.6em 0}
+    .answer ul{margin:.6em 0 .6em 1.2em}
+    .answer li{margin:.25em 0}
+    .answer a{color:#9bd0ff; text-decoration:none; border-bottom:1px dotted rgba(155,208,255,.6)}
+    .answer a:hover{color:#cfe6ff; border-bottom-color:#cfe6ff}
+    .answer .note{color:#a6b9da; font-style:italic}
+    .answer .foot{margin-top:1em; padding-top:.6em; border-top:1px dashed rgba(255,255,255,.12); color:#a6b9da}
+    @media (max-width:640px){ .row{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
-  <h1>Tecnaria QA Bot</h1>
+  <div class="wrap">
+    <header>
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>Tecnaria QA Bot</h1>
+        <div class="sub">Ricerca su tecnaria.com · integrazione Sinapsi · risposta in chiaro</div>
+      </div>
+    </header>
 
-  <div class="tags">
-    <div class="tag" onclick="setQuestion('Devo usare la chiodatrice P560 per fissare i CTF. Serve un patentino o formazione speciale?')">P560 + CTF</div>
-    <div class="tag" onclick="setQuestion('Che differenza c’è tra un connettore CTF e il sistema Diapason?')">CTF vs Diapason</div>
-    <div class="tag" onclick="setQuestion('Qual è la densità di posa dei connettori CTF su lamiera grecata Hi-Bond?')">Densità CTF</div>
-    <div class="tag" onclick="setQuestion('Come posso contattare l’assistenza Tecnaria per supporto tecnico o preventivi?')">Contatti</div>
-  </div>
+    <div class="card">
+      <div class="row">
+        <input id="q" class="input" type="text" placeholder="Scrivi la tua domanda (es. “Qual è la densità CTF su Hi-Bond?”)" />
+        <button id="ask" class="btn">Chiedi</button>
+      </div>
 
-  <div class="container">
-    <textarea id="q" placeholder="Scrivi la tua domanda qui..."></textarea>
+      <div class="toolbar">
+        <button id="clear" class="tbtn" title="Pulisci">Pulisci</button>
+        <button id="copy" class="tbtn" title="Copia risposta">Copia risposta</button>
+        <div id="state" class="meta">
+          <span id="spinner" class="spin hide"></span>
+          <span id="status" class="pill">Pronto</span>
+        </div>
+      </div>
 
-    <div class="buttons">
-      <button onclick="ask()">Chiedi</button>
-      <button onclick="clearOutput()">Pulisci</button>
-      <button onclick="copyAnswer()">Copia risposta</button>
-      <label>
-        <input type="checkbox" id="useGet" /> usa GET (debug)
-      </label>
+      <div class="examples">
+        <span class="ex">Differenza tra CTF e Diapason?</span>
+        <span class="ex">Densità CTF su lamiera Hi-Bond da 1&nbsp;mm</span>
+        <span class="ex">P560: serve patentino o formazione?</span>
+        <span class="ex">CTL MAXI su tavolato da 2&nbsp;cm e soletta 5&nbsp;cm</span>
+      </div>
+
+      <div id="answer" class="answer"></div>
+      <div id="error" class="meta err hide"></div>
     </div>
-
-    <div id="out"></div>
-    <small>Endpoint: /api/ask (POST JSON { q }) oppure GET ?q=...</small>
   </div>
 
   <script>
-    const ENDPOINT = '/api/ask';
+    const $ = sel => document.querySelector(sel);
+    const qEl = $('#q'), askBtn = $('#ask'), ans = $('#answer'), err = $('#error');
+    const spin = $('#spinner'), status = $('#status'), clearBtn = $('#clear'), copyBtn = $('#copy');
 
-    function setQuestion(text) {
-      document.getElementById('q').value = text;
+    function setLoading(on){
+      spin.classList.toggle('hide', !on);
+      askBtn.disabled = on;
+      status.textContent = on ? 'Sto cercando…' : 'Pronto';
     }
 
-    function clearOutput() {
-      document.getElementById('out').textContent = '';
-    }
-
-    function copyAnswer() {
-      const text = document.getElementById('out').textContent;
-      navigator.clipboard.writeText(text);
-    }
-
-    async function ask(evt) {
-      evt?.preventDefault();
-      const domanda = document.getElementById('q').value.trim();
-      const usaGet = document.getElementById('useGet').checked;
-      const out = document.getElementById('out');
-      if (!domanda) {
-        out.textContent = 'Scrivi una domanda prima di inviare.';
-        return;
-      }
-
-      out.textContent = '⏳ Attendere...';
-      try {
-        let resp;
-        if (usaGet) {
-          const url = ENDPOINT + '?q=' + encodeURIComponent(domanda);
-          resp = await fetch(url, { method: 'GET' });
-        } else {
-          resp = await fetch(ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ q: domanda })
-          });
+    async function ask(){
+      const q = qEl.value.trim();
+      err.classList.add('hide'); err.textContent = '';
+      ans.innerHTML = '';
+      if(q.length < 2){ err.textContent = 'Domanda troppo corta.'; err.classList.remove('hide'); return; }
+      setLoading(true);
+      try{
+        // GET /ask → risponde HTML
+        const url = `/ask?q=${encodeURIComponent(q)}`;
+        const res = await fetch(url, {method:'GET'});
+        const txt = await res.text();
+        if(!res.ok){
+          err.textContent = `Errore ${res.status}: ${txt}`;
+          err.classList.remove('hide');
+        }else{
+          // l’API restituisce HTML pronto: lo inseriamo
+          ans.innerHTML = txt;
         }
-
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-
-        const data = await resp.json();
-        if (data.answer) {
-          out.innerHTML = data.answer;
-        } else {
-          out.textContent = JSON.stringify(data, null, 2);
-        }
-      } catch (e) {
-        out.textContent = 'Errore di risposta: ' + (e.message || e);
+      }catch(e){
+        err.textContent = 'Errore di rete. Riprova.';
+        err.classList.remove('hide');
+      }finally{
+        setLoading(false);
       }
     }
+
+    askBtn.addEventListener('click', ask);
+    qEl.addEventListener('keydown', e => { if(e.key === 'Enter') ask(); });
+    clearBtn.addEventListener('click', () => { qEl.value=''; ans.innerHTML=''; err.textContent=''; err.classList.add('hide'); qEl.focus(); });
+    copyBtn.addEventListener('click', async () => {
+      // copia la sola risposta visibile (testo + link come URL)
+      const tmp = ans.cloneNode(true);
+      // trasforma i link in 'titolo (URL)'
+      tmp.querySelectorAll('a').forEach(a=>{
+        a.replaceWith(`${a.textContent} (${a.href})`);
+      });
+      const plain = tmp.textContent.trim();
+      try{ await navigator.clipboard.writeText(plain); status.textContent='Copiato'; setTimeout(()=>status.textContent='Pronto',1200); }catch{}
+    });
+
+    // esempi cliccabili
+    document.querySelectorAll('.ex').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        qEl.value = el.textContent.replace(/\s+/g,' ').trim();
+        ask();
+      });
+    });
+
+    // focus all’avvio
+    qEl.focus();
   </script>
 </body>
 </html>
-
-
