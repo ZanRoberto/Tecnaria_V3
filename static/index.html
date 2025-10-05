@@ -97,7 +97,8 @@
         <div class="input" role="search">
           <input id="q" type="text" placeholder="Fai una domanda (es. Serve il patentino per la P560?)" autocomplete="off" autofocus>
         </div>
-        <button id="go" class="btn btn-primary">Chiedi</button>
+        <!-- type='button' evita submit del form -->
+        <button id="go" type="button" class="btn btn-primary">Chiedi</button>
       </div>
       <div class="chips" aria-label="Esempi di domanda">
         <span class="chip" data-q="Differenza CTF e Diapason">Differenza CTF e Diapason</span>
@@ -111,7 +112,7 @@
       <div id="result" class="result"></div>
       <div class="toolbar">
         <button class="tool" id="copyBtn" title="Copia risposta">Copia</button>
-              </div>
+      </div>
     </section>
   </main>
 
@@ -120,13 +121,13 @@
   </footer>
 
   <script>
+  document.addEventListener('DOMContentLoaded', () => {
     const qEl = document.getElementById('q');
     const goEl = document.getElementById('go');
     const resEl = document.getElementById('result');
     const statusEl = document.getElementById('status');
     const answerCardEl = document.getElementById('answerCard');
     const copyBtn = document.getElementById('copyBtn');
-    const printBtn = document.getElementById('printBtn');
 
     document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -151,7 +152,6 @@
         const data = await r.json();
         if(!data.ok){ throw new Error(data.error || 'Errore'); }
         resEl.innerHTML = data.html; // l'HTML è generato dal backend
-        // scroll alla risposta
         answerCardEl.scrollIntoView({behavior:'smooth', block:'start'});
       }catch(err){
         resEl.innerHTML = `<div style="color:#b42318">Si è verificato un errore. Riprova più tardi. <small>${(err&&err.message)||''}</small></div>`;
@@ -183,7 +183,7 @@
         setTimeout(()=> copyBtn.textContent = 'Copia', 1200);
       }catch{}
     });
-
-    // stampa / salva PDF
-    printBtn.addEventListener('click', ()=> window.print());
-  </script
+  });
+  </script>
+</body>
+</html>
