@@ -1,8 +1,7 @@
-# app.py — Tecnaria QA Bot (WEB → Sinapsi refine, risposta unica)
-# - Nessun KB locale
+# app.py — Tecnaria QA Bot (WEB → Sinapsi refine, risposta unica) con loader JSONC robusto
 # - SINAPSI_FILE default: static/data/sinapsi_rules.json
-# - /health pulito
-# - Pipeline: Web (Brave, domini ammessi) -> Sinapsi refine -> testo unico
+# - Tollerante a commenti /* ... */, // ... e virgole finali
+# - Nessun KB locale
 
 import os
 import re
@@ -26,9 +25,15 @@ app = FastAPI(title=APP_TITLE)
 # Config
 # -----------------------------
 STATIC_DIR = os.environ.get("STATIC_DIR", "static")
-SINAPSI_FILE = os.environ.get("SINAPSI_FILE", os.path.join(STATIC_DIR, "data", "sinapsi_rules.json"))
+SINAPSI_FILE = os.environ.get(
+    "SINAPSI_FILE",
+    os.path.join(STATIC_DIR, "data", "sinapsi_rules.json")
+)
 BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
-ALLOWED_DOMAINS = json.loads(os.environ.get("ALLOWED_DOMAINS_JSON", '["tecnaria.com","spit.eu","spitpaslode.com"]'))
+ALLOWED_DOMAINS = json.loads(os.environ.get(
+    "ALLOWED_DOMAINS_JSON",
+    '["tecnaria.com","spit.eu","spitpaslode.com"]'
+))
 MIN_WEB_SCORE = float(os.environ.get("MIN_WEB_SCORE", "0.35"))   # confermato
 MAX_WEB_RESULTS = int(os.environ.get("MAX_WEB_RESULTS", "5"))
 WEB_MIN_QUALITY = float(os.environ.get("WEB_MIN_QUALITY", "0.55"))
@@ -42,6 +47,20 @@ if os.path.isdir(STATIC_DIR):
 # -----------------------------
 # Sinapsi loader & engine
 # -----------------------------
+def _jsonc_to_json(txt: str) -> str:
+    """Rimuove commenti /*...*/, //... e virgole finali da JSON stile 'JSONC'."""
+    if not txt:
+        return ""
+    # BOM
+    txt = txt.lstrip("\ufeff")
+    # /* ... */ (multiline)
+    txt = re.sub(r"/\*[\s\S]*?\*/", "", txt)
+    # // ... (line comments)
+    txt = re.sub(r"(^|\s)//[^\n\r]*", r"\1", txt)
+    # virgole finali prima di ] o }
+    txt = re.sub(r",\s*(\]|\})", r"\1", txt)
+    return txt.strip()
+
 class Rule:
     def __init__(self, rid: str, pattern: str, mode: str, lang: str, answer: str,
                  sources: Optional[List[Dict[str, str]]] = None):
@@ -57,29 +76,42 @@ class SinapsiEngine:
     def __init__(self, path: str):
         self.path = path
         self.rules: List[Rule] = []
-        self.meta = {}
+        self.meta = {"count": 0, "path": path, "error": None}
 
     def load(self) -> int:
         if not os.path.exists(self.path):
             self.rules = []
-            self.meta = {"count": 0, "path": self.path}
+            self.meta = {"count": 0, "path": self.path, "error": "file-not-found"}
             return 0
-        with open(self.path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        rules_raw = data["rules"] if isinstance(data, dict) and "rules" in data else data
-        loaded: List[Rule] = []
-        for r in rules_raw:
-            loaded.append(Rule(
-                rid=r.get("id", ""),
-                pattern=r.get("pattern", "(?s).*"),
-                mode=r.get("mode", "augment"),
-                lang=r.get("lang", "it"),
-                answer=r.get("answer", ""),
-                sources=r.get("sources", [])
-            ))
-        self.rules = loaded
-        self.meta = {"count": len(self.rules), "path": self.path}
-        return len(self.rules)
+        try:
+            with open(self.path, "r", encoding="utf-8") as f:
+                raw = f.read()
+            cleaned = _jsonc_to_json(raw)
+            if not cleaned:
+                # file vuoto
+                self.rules = []
+                self.meta = {"count": 0, "path": self.path, "error": "empty-file"}
+                return 0
+            data = json.loads(cleaned)
+            rules_raw = data["rules"] if isinstance(data, dict) and "rules" in data else data
+            loaded: List[Rule] = []
+            for r in rules_raw:
+                loaded.append(Rule(
+                    rid=r.get("id", ""),
+                    pattern=r.get("pattern", "(?s).*"),
+                    mode=r.get("mode", "augment"),
+                    lang=r.get("lang", "it"),
+                    answer=r.get("answer", ""),
+                    sources=r.get("sources", [])
+                ))
+            self.rules = loaded
+            self.meta = {"count": len(self.rules), "path": self.path, "error": None}
+            return len(self.rules)
+        except Exception as e:
+            # Non blocco l'avvio: segnalo errore in /health
+            self.rules = []
+            self.meta = {"count": 0, "path": self.path, "error": f"parse-failed: {type(e).__name__}"}
+            return 0
 
     def apply(self, question: str, lang_hint: str = "it") -> Dict[str, Any]:
         ov: Optional[str] = None
@@ -101,7 +133,7 @@ class SinapsiEngine:
         return {"override": ov, "augments": aug, "postscripts": ps, "sources": srcs}
 
 SINAPSI = SinapsiEngine(SINAPSI_FILE)
-SINAPSI.load()  # ✅ precaricato all'avvio
+SINAPSI.load()  # ✅ precaricato all'avvio (non blocca se JSONC/empty)
 
 # -----------------------------
 # Utilità lingua & pulizia
@@ -149,7 +181,7 @@ def brave_search(query: str, lang: str = "it") -> List[Dict[str, Any]]:
             "country": "it",
             "source": "web",
             "count": 10,
-            "freshness": "month"  # se vuoi più fresco: "week" o "day"
+            "freshness": "month"  # "week"/"day" se vuoi più fresco
         }
         r = requests.get(url, headers=headers, params=params, timeout=8)
         r.raise_for_status()
@@ -183,8 +215,8 @@ def score_web_quality(web_hits: List[Dict[str, Any]]) -> float:
     total_len = sum(len(h.get("snippet", "")) for h in web_hits)
     uniq_hosts = len({urlparse(h.get("url","")).netloc for h in web_hits if h.get("url")})
     n_term = min(n / max(1, MAX_WEB_RESULTS), 1.0)
-    len_term = min(total_len / 900.0, 1.0)       # ~3 snippet medi
-    host_term = min(uniq_hosts / 3.0, 1.0)       # varietà 2-3 host
+    len_term = min(total_len / 900.0, 1.0)
+    host_term = min(uniq_hosts / 3.0, 1.0)
     return 0.45*n_term + 0.40*len_term + 0.15*host_term
 
 # -----------------------------
@@ -192,7 +224,6 @@ def score_web_quality(web_hits: List[Dict[str, Any]]) -> float:
 # -----------------------------
 def compose_single_answer(question: str, lang: str, sinapsi_pack: Dict[str, Any],
                           web_hits: List[Dict[str, Any]]) -> Tuple[str, List[Dict[str, str]]]:
-    """Ritorna (testo_unico, sources)."""
     sources: List[Dict[str, str]] = []
     override = sinapsi_pack.get("override")
     augments: List[str] = sinapsi_pack.get("augments", [])
@@ -200,7 +231,6 @@ def compose_single_answer(question: str, lang: str, sinapsi_pack: Dict[str, Any]
     sinapsi_sources = sinapsi_pack.get("sources", [])
     web_quality = score_web_quality(web_hits)
 
-    # 1) Base: web (se buono) altrimenti override Sinapsi
     base_parts: List[str] = []
     if web_quality >= WEB_MIN_QUALITY and web_hits:
         picked = [h for h in web_hits if h.get("snippet")]
@@ -211,7 +241,6 @@ def compose_single_answer(question: str, lang: str, sinapsi_pack: Dict[str, Any]
             base_parts.append("Informazioni ufficiali reperite dai siti consentiti.")
         for h in web_hits:
             sources.append({"title": h.get("title") or h.get("url","Fonte"), "url": h.get("url","")})
-        # Se c'è un override, lo uso come "nota tecnica" fondendolo nel testo
         if override:
             base_parts.append(override.strip())
             sources.extend(sinapsi_sources)
@@ -219,21 +248,14 @@ def compose_single_answer(question: str, lang: str, sinapsi_pack: Dict[str, Any]
         if override:
             base_parts.append(override.strip())
             sources.extend(sinapsi_sources)
-        else:
-            # nessun web utile e nessun override -> provo con augment/postscript
-            pass
 
-    # 2) Arricchisco con augment e postscript (coda)
     if augments:
         base_parts.append(" ".join(a.strip() for a in augments if a and a.strip()))
     if postscripts:
         base_parts.append(" ".join(p.strip() for p in postscripts if p and p.strip()))
 
-    # 3) Fallback
     final_text = " ".join([b for b in base_parts if b]).strip() or \
                  "Non ho trovato elementi sufficienti su domini autorizzati o nelle regole. Raffina la domanda o aggiorna le regole."
-
-    # Compatta spazi
     final_text = re.sub(r"\s+", " ", final_text).strip()
     return final_text, sources
 
@@ -277,9 +299,10 @@ def home():
     index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path, media_type="text/html; charset=utf-8")
-    # fallback minimo se manca l'index
-    return HTMLResponse("<pre>{\"ok\":true,\"msg\":\"Use /ask or place static/index.html\"}</pre>",
-                        media_type="text/html; charset=utf-8")
+    return HTMLResponse(
+        "<pre>{\"ok\":true,\"msg\":\"Use /ask or place static/index.html\"}</pre>",
+        media_type="text/html; charset=utf-8"
+    )
 
 @app.get("/health", response_class=JSONResponse)
 def health():
@@ -296,7 +319,8 @@ def health():
         "critici": {
             "dir": STATIC_DIR,
             "sinapsi_file": SINAPSI_FILE,
-            "sinapsi_loaded": SINAPSI.meta.get("count", 0)
+            "sinapsi_loaded": SINAPSI.meta.get("count", 0),
+            "sinapsi_error": SINAPSI.meta.get("error")
         }
     })
 
@@ -307,10 +331,9 @@ def ask_get(q: Optional[str] = None):
     if not question:
         return HTMLResponse(render_card_html("Scrivi una domanda su prodotti e sistemi Tecnaria.", [], 0),
                             media_type="text/html; charset=utf-8")
-
     lang = detect_lang(question)
-    web_hits = brave_search(question, lang=lang)       # 1) WEB
-    pack = SINAPSI.apply(question, lang_hint=lang)     # 2) SINAPSI refine
+    web_hits = brave_search(question, lang=lang)
+    pack = SINAPSI.apply(question, lang_hint=lang)
     text, sources = compose_single_answer(question, lang, pack, web_hits)
     html_card = render_card_html(text, sources, int((time.time()-started)*1000))
     return HTMLResponse(html_card, media_type="text/html; charset=utf-8")
