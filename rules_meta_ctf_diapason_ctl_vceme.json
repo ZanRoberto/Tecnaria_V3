@@ -1,0 +1,110 @@
+[
+  {
+    "id": "meta_ctf_chiodatrice_solo_p560",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\bctf\\b)(?=.*\\b(chiodatrice|spara?chiod|pistola|sparo)\\b).*",
+    "mode": "override",
+    "lang": "it",
+    "answer": "No: per i connettori CTF si usa esclusivamente la chiodatrice a sparo SPIT P560 con kit/adattatori Tecnaria; altre macchine non sono ammesse.",
+    "sources": []
+  },
+  {
+    "id": "meta_ctf_quanti_chiodi_per_connettore",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\bctf\\b)(?=.*\\b(chiodi|hsbr)\\b).*(quanti|numero|n\\.?|servono|per\\s*pezzo|per\\s*connettore)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Ogni connettore CTF richiede 2 chiodi HSBR14 sparati con SPIT P560.",
+    "sources": []
+  },
+  {
+    "id": "meta_ctf_p560_serve_patentino",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\b(p\\s*560|spit\\s*p\\s*560)\\b)(?=.*\\b(patentino|abilitazion[ei]|patente|corso)\\b).*",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Per usare la SPIT P560 non è richiesto un patentino dedicato: è sufficiente una breve formazione interna e l’uso dei DPI.",
+    "sources": []
+  },
+  {
+    "id": "meta_ctf_lamiera_grecata_ok_se_aderente",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\bctf\\b)(?=.*\\blamier[ae]\\b)(?=.*\\bgrecat[ae]\\b).*",
+    "mode": "override",
+    "lang": "it",
+    "answer": "I CTF si posano dall’alto anche con lamiera grecata, purché ben aderente alla trave; eseguire prova su campione e taratura della potenza.",
+    "sources": []
+  },
+  {
+    "id": "meta_ctf_spessore_minimo_trave_acciaio",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\bctf\\b)(?=.*\\bspessore\\b)(?=.*\\b(minimo|min)\\b)(?=.*\\btrave\\b)(?=.*\\bacciaio\\b).*",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Indicativamente, per travi in acciaio si considera spessore ≥ 6 mm; con lamiera va verificata l’aderenza e gli spessori previsti.",
+    "sources": []
+  },
+  {
+    "id": "meta_ctf_quanti_al_mq_interasse",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\bctf\\b)(?=.*\\b(m2|m\\s*²|metro\\s*quadr|al\\s*mq|a\\s*mq|interasse)\\b).*",
+    "mode": "override",
+    "lang": "it",
+    "answer": "La quantità/interasse dei CTF deriva dal calcolo (luci, carichi, profilo lamiera). Indicativamente 6–8 connettori/m², più fitti agli appoggi.",
+    "sources": []
+  },
+  {
+    "id": "meta_diapason_che_cos_e_applicazione",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\bdiapason\\b).*(che\\s*c(?:o|ò)s'?*\\s*è|cosa\\s*è|descriz|sistema|come\\s*funziona)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Diapason è un sistema per rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall’alto.",
+    "sources": []
+  },
+  {
+    "id": "meta_diapason_non_per_lamiera_o_travi_acciaio",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\bdiapason\\b).*(lamiera|grecata|travi?\\s*in\\s*acciaio)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "Diapason non è per sistemi con lamiera/travi in acciaio: è pensato per solai in laterocemento senza lamiera, con ancoraggio nei travetti.",
+    "sources": []
+  },
+  {
+    "id": "meta_ctl_che_cos_e",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\bctl\\b).*(che\\s*c(?:o|ò)s'?*\\s*è|cosa\\s*è|descriz|a\\s*cosa\\s*serve)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "I connettori CTL rendono collaborante la soletta su solai legno–calcestruzzo; posa dall’alto con viti specifiche.",
+    "sources": []
+  },
+  {
+    "id": "meta_ctl_quando_maxi_vs_base",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\bctl\\b)(?=.*\\bmaxi\\b).*(quando|quale|scegliere|uso|indicat[oa])",
+    "mode": "override",
+    "lang": "it",
+    "answer": "CTL BASE e CTL MAXI coprono le esigenze tipiche; MAXI si usa quando servono altezze maggiori o maggior ingaggio in calcestruzzo/assito.",
+    "sources": []
+  },
+  {
+    "id": "meta_vceme_che_cos_e",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\b(v\\s*cem\\s*[- ]?e)\\b).*(che\\s*c(?:o|ò)s'?*\\s*è|cosa\\s*è|descriz)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "V CEM-E è un connettore a vite per solai in laterocemento: avvitato nei travetti e getto collaborante dall’alto con rete a metà spessore.",
+    "sources": []
+  },
+  {
+    "id": "meta_vceme_vs_mini_quale_scelta",
+    "priority": 8,
+    "pattern": "(?i)(?=.*\\b(v\\s*cem\\s*[- ]?e)\\b|\\bmini\\s*cem\\s*[- ]?e\\b).*(scegliere|differenza|quando|quale|mini)",
+    "mode": "override",
+    "lang": "it",
+    "answer": "La scelta tra V CEM-E e MINI CEM-E dipende da spessori disponibili, interferenze e livello di miglioramento richiesto: MINI per spazi ridotti.",
+    "sources": []
+  }
+]
