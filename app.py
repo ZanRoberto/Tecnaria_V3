@@ -1,326 +1,347 @@
-import os, re, json, html, time
-from typing import List, Dict, Any
-from urllib.parse import quote_plus
-import requests
-from bs4 import BeautifulSoup
+import os
+import re
+import json
+import time
+import html
+from typing import List, Dict, Any, Optional, Tuple
 
-from fastapi import FastAPI, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+import requests
+from fastapi import FastAPI, Request, Body
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.background import BackgroundTask
 
 APP_TITLE = "Tecnaria QA Bot"
-ALLOWED_DOMAINS = os.getenv("ALLOWED_DOMAINS", "tecnaria.com,spit.eu,spitpaslode.com").split(",")
-ALLOWED_DOMAINS = [d.strip().lower() for d in ALLOWED_DOMAINS if d.strip()]
-SINAPSI_FILE = os.getenv("SINAPSI_FILE", "./static/data/sinapsi_rules.json")
-BRAVE_API_KEY = os.getenv("BRAVE_API_KEY", "")
-PREFERRED_LANGS = os.getenv("PREFERRED_LANGS", "it,en,de,fr,es").split(",")
-
-# -----------------------------
-# Sinapsi: pre-caricamento
-# -----------------------------
-class Rule:
-    def __init__(self, r: Dict[str, Any]):
-        self.id = r.get("id", "")
-        self.mode = r.get("mode", "augment")
-        self.lang = r.get("lang", "it")
-        self.answer = r.get("answer", "").strip()
-        pat = r.get("pattern", ".*")
-        self.pattern = re.compile(pat, re.IGNORECASE)
-
-    def matches(self, q: str) -> bool:
-        return bool(self.pattern.search(q or ""))
-
-def load_sinapsi_rules(path: str) -> List[Rule]:
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        rules = data.get("rules", data)  # accetta anche la forma lista
-        return [Rule(r) for r in rules]
-    except Exception as e:
-        print(f"[WARN] Impossibile caricare Sinapsi: {e}")
-        return []
-
-SINAPSI_RULES: List[Rule] = load_sinapsi_rules(SINAPSI_FILE)
-
-# -----------------------------
-# Utils
-# -----------------------------
-def clean_text(txt: str) -> str:
-    # rimuove caratteri binari / PDF garbage e normalizza spazi
-    txt = txt.replace("\x00", " ")
-    txt = re.sub(r"[^\S\r\n]+", " ", txt)
-    txt = re.sub(r"[\u0000-\u001F\u007F]", " ", txt)  # ctrl chars
-    txt = re.sub(r"\s+\n", "\n", txt)
-    txt = re.sub(r"\n\s+", "\n", txt)
-    return txt.strip()
-
-def clip(txt: str, n: int = 550) -> str:
-    txt = txt.strip()
-    if len(txt) <= n: 
-        return txt
-    cut = txt[:n]
-    cut = cut.rsplit(" ", 1)[0]
-    return cut + "…"
-
-def is_allowed(url: str) -> bool:
-    url_l = url.lower()
-    return any(("://"+d) in url_l or (".%s" % d) in url_l or url_l.endswith(d) or f"//{d}/" in url_l for d in ALLOWED_DOMAINS)
-
-def brave_search(query: str, count: int = 5) -> List[Dict[str, str]]:
-    if not BRAVE_API_KEY:
-        return []
-    headers = {
-        "Accept": "application/json",
-        "X-Subscription-Token": BRAVE_API_KEY
-    }
-    # forza filtro su domini consentiti
-    site_filter = " OR ".join([f"site:{d}" for d in ALLOWED_DOMAINS])
-    q = f"{query} ({site_filter})"
-    url = f"https://api.search.brave.com/res/v1/web/search?q={quote_plus(q)}&count={count}"
-    try:
-        r = requests.get(url, headers=headers, timeout=12)
-        if r.status_code != 200:
-            return []
-        data = r.json()
-        items = []
-        for res in (data.get("web", {}).get("results", []) or []):
-            href = res.get("url") or res.get("link") or ""
-            if href and is_allowed(href):
-                title = res.get("title") or res.get("pageTitle") or ""
-                desc = res.get("description") or ""
-                items.append({"url": href, "title": title, "description": desc})
-        return items
-    except Exception as e:
-        print(f"[WARN] Brave search error: {e}")
-        return []
-
-def fetch_snippet(url: str) -> str:
-    try:
-        r = requests.get(url, timeout=12)
-        ct = r.headers.get("Content-Type", "")
-        if "text/html" in ct:
-            soup = BeautifulSoup(r.text, "html.parser")
-            # meta description o primi paragrafi utili
-            md = soup.find("meta", {"name": "description"})
-            if md and md.get("content"):
-                return clean_text(md["content"])
-            ps = soup.find_all("p")
-            for p in ps[:5]:
-                t = clean_text(p.get_text(" ", strip=True))
-                if len(t) > 60:
-                    return clip(t, 600)
-            # fallback al titolo
-            if soup.title:
-                return clip(clean_text(soup.title.get_text(" ", strip=True)), 200)
-            return ""
-        else:
-            # Evita di iniettare binari (PDF/XML), nessun parsing qui
-            return ""
-    except Exception:
-        return ""
-
-def compose_narrative(q: str, web_hits: List[Dict[str, str]]) -> Dict[str, Any]:
-    # testo principale in frasi, senza bullet/asterischi
-    lines = []
-    used = []
-    for hit in web_hits[:3]:
-        snippet = fetch_snippet(hit["url"])
-        if snippet:
-            used.append({"title": hit["title"] or hit["url"], "url": hit["url"]})
-            lines.append(snippet)
-
-    body = ""
-    if lines:
-        # unisci 2–3 frasi, pulizia leggera
-        joined = " ".join(lines)
-        joined = re.sub(r"\s{2,}", " ", joined)
-        # evita testo troppo lungo
-        body = clip(joined, 900)
-
-    return {"body": body, "sources": used}
-
-def apply_sinapsi(q: str, base_html: str, mode_hits: List[Rule]) -> str:
-    # Se c'è un override, vince lui
-    override_rules = [r for r in mode_hits if r.mode == "override"]
-    if override_rules:
-        # prendi il più specifico (il primo che ha matchato)
-        txt = override_rules[0].answer
-        return render_card(title="Risposta Tecnaria", paragraphs=[txt], sources=[], footer="Risposta da Sinapsi (override).")
-
-    # Altrimenti augment (+ postscript)
-    augment_parts = [r.answer for r in mode_hits if r.mode == "augment" and r.answer]
-    post_parts = [r.answer for r in mode_hits if r.mode == "postscript" and r.answer]
-
-    if not augment_parts and not post_parts:
-        return base_html  # nessun intervento
-
-    # Inserisci le frasi di augment in coda (o se base vuoto, diventano il corpo)
-    # Ricomponi il contenuto HTML estraendo body e sources dal base_html
-    content = extract_card_content(base_html)
-    paragraphs = []
-    if content["body"]:
-        paragraphs.append(content["body"])
-    if augment_parts:
-        paragraphs.append(" ".join(augment_parts))
-    if post_parts:
-        paragraphs.append(" ".join(post_parts))
-
-    return render_card(
-        title="Risposta Tecnaria",
-        paragraphs=paragraphs,
-        sources=content["sources"],
-        footer="Sintesi da web ufficiale + rifinitura Sinapsi."
-    )
-
-def extract_card_content(card_html: str) -> Dict[str, Any]:
-    # parsing molto semplice: estrae <p> principali e link <a> nella sezione fonti
-    body = ""
-    sources = []
-    try:
-        soup = BeautifulSoup(card_html, "html.parser")
-        # primo .card -> paragrafi
-        card = soup.find("div", {"class": "card"})
-        if card:
-            ps = card.find_all("p")
-            if ps:
-                # unisci i primi paragrafi (ignorando la riga "⏱")
-                texts = []
-                for p in ps:
-                    t = p.get_text(" ", strip=True)
-                    if t and not t.startswith("⏱"):
-                        texts.append(t)
-                body = " ".join(texts).strip()
-
-        # Fonti: link all’interno del card
-        for a in soup.find_all("a"):
-            href = a.get("href", "")
-            if href and is_allowed(href):
-                sources.append({"title": a.get_text(strip=True) or href, "url": href})
-    except Exception:
-        pass
-
-    return {"body": body, "sources": sources}
-
-def render_sources(sources: List[Dict[str, str]]) -> str:
-    if not sources:
-        return ""
-    items = []
-    for s in sources:
-        title = html.escape(s.get("title") or "Fonte")
-        url = html.escape(s.get("url") or "#")
-        items.append(f"📎 <a href='{url}' target='_blank'>{title}</a>")
-    return "<div class='sources'>" + "<br>".join(items) + "</div>"
-
-def render_card(title: str, paragraphs: List[str], sources: List[Dict[str, str]], footer: str = "", took_ms: int = None) -> str:
-    safe_ps = [html.escape(clean_text(p)) for p in paragraphs if p and p.strip()]
-    body_html = "".join([f"<p>{p}</p>" for p in safe_ps])
-
-    src_html = render_sources(sources)
-    timer = f"<div class='card' style='margin-top:10px'><small>⏱ {took_ms} ms</small></div>" if took_ms is not None else ""
-
-    footer_html = f"<p><small>{html.escape(footer)}</small></p>" if footer else ""
-    return f"""
-    <div class="card">
-      <h2>{html.escape(title)}</h2>
-      {body_html}
-      {src_html}
-      {footer_html}
-    </div>{timer}
-    """
-
-def answer_html_for(q: str) -> str:
-    t0 = time.time()
-
-    # 1) applica regole Sinapsi per capire se c'è override o augment
-    hits = [r for r in SINAPSI_RULES if r.matches(q)]
-
-    # 2) se c'è override: risposta diretta (niente web)
-    if any(r.mode == "override" for r in hits):
-        html_out = apply_sinapsi(q, base_html="", mode_hits=hits)
-        took = int((time.time() - t0) * 1000)
-        return render_card("Risposta Tecnaria", [BeautifulSoup(html_out, "html.parser").get_text(" ", strip=True)], [], "Risposta da Sinapsi (override).", took_ms=took)
-
-    # 3) altrimenti: cerca SOLO su domini consentiti (Brave). NIENTE fonti esterne.
-    web_hits = brave_search(q, count=6)
-
-    # Se niente Brave o niente risultati sul dominio → risposta minima, ma sicura
-    if not web_hits:
-        base = render_card("Risposta Tecnaria",
-                           [ "Ho consultato esclusivamente le fonti ufficiali consentite. Al momento non ho trovato un estratto testuale adatto, ma posso indicare le pagine utili qui sotto." ],
-                           [ {"title": d, "url": f"https://{d}"} for d in ALLOWED_DOMAINS ],
-                           "Nota: ricerca limitata ai domini autorizzati.")
-        # poi Sinapsi in augment se presente
-        html_out = apply_sinapsi(q, base, hits)
-        return html_out
-
-    # 4) comporre narrativa (pulita) dai primi snippet
-    comp = compose_narrative(q, web_hits)
-
-    # Se proprio non c'è testo, mostra comunque i link filtrati
-    if not comp["body"]:
-        comp["body"] = "Ho selezionato le pagine ufficiali più pertinenti. Apri i collegamenti per i dettagli tecnici completi."
-        comp["sources"] = web_hits[:4]
-
-    base = render_card("Risposta Tecnaria", [comp["body"]], comp["sources"], "Sintesi da fonti ufficiali (domini consentiti).", took_ms=int((time.time()-t0)*1000))
-
-    # 5) augment/postscript di Sinapsi (se ci sono)
-    final_html = apply_sinapsi(q, base, hits)
-    return final_html
-
-# -----------------------------
-# FastAPI
-# -----------------------------
 app = FastAPI(title=APP_TITLE)
 
-# static (index.html)
-if not os.path.exists("./static"):
-    os.makedirs("./static", exist_ok=True)
-if not os.path.exists("./static/data"):
-    os.makedirs("./static/data", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# -----------------------------
+# Config
+# -----------------------------
+STATIC_DIR = os.environ.get("STATIC_DIR", "static")
+SINAPSI_FILE = os.environ.get("SINAPSI_FILE", os.path.join(STATIC_DIR, "sinapsi_rules.json"))
+BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
+ALLOWED_DOMAINS = json.loads(os.environ.get("ALLOWED_DOMAINS_JSON", '["tecnaria.com","spit.eu","spitpaslode.com"]'))
+MIN_WEB_SCORE = float(os.environ.get("MIN_WEB_SCORE", "0.35"))
 
+# -----------------------------
+# Static mount (se esiste)
+# -----------------------------
+if os.path.isdir(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+# -----------------------------
+# Sinapsi loader & engine
+# -----------------------------
+class Rule:
+    def __init__(self, rid: str, pattern: str, mode: str, lang: str, answer: str, sources: Optional[List[Dict[str, str]]] = None):
+        self.id = rid
+        self.pattern_str = pattern
+        self.pattern = re.compile(pattern, re.IGNORECASE | re.DOTALL)
+        self.mode = mode.lower().strip()  # override | augment | postscript
+        self.lang = lang
+        self.answer = answer
+        self.sources = sources or []
+
+class SinapsiEngine:
+    def __init__(self, path: str):
+        self.path = path
+        self.rules: List[Rule] = []
+        self.meta = {}
+
+    def load(self) -> int:
+        if not os.path.exists(self.path):
+            self.rules = []
+            return 0
+        with open(self.path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        rules_raw = data["rules"] if isinstance(data, dict) and "rules" in data else data
+        loaded = []
+        for r in rules_raw:
+            loaded.append(Rule(
+                rid=r.get("id", ""),
+                pattern=r.get("pattern", "(?s).*"),
+                mode=r.get("mode", "augment"),
+                lang=r.get("lang", "it"),
+                answer=r.get("answer", ""),
+                sources=r.get("sources", [])
+            ))
+        self.rules = loaded
+        self.meta = {"count": len(self.rules)}
+        return len(self.rules)
+
+    def apply(self, question: str, lang_hint: str = "it") -> Dict[str, Any]:
+        """
+        Ritorna:
+        {
+          "override": str|None,
+          "augments": [str],
+          "postscripts": [str],
+          "sources": [ {title,url}, ... ]  # dei blocchi sinapsi usati
+        }
+        """
+        ov: Optional[str] = None
+        aug: List[str] = []
+        ps: List[str] = []
+        srcs: List[Dict[str,str]] = []
+        for rule in self.rules:
+            if rule.pattern.search(question or ""):
+                if rule.mode == "override" and ov is None:
+                    ov = rule.answer
+                    srcs.extend(rule.sources)
+                elif rule.mode == "augment":
+                    aug.append(rule.answer)
+                    srcs.extend(rule.sources)
+                elif rule.mode == "postscript":
+                    ps.append(rule.answer)
+                    srcs.extend(rule.sources)
+        return {"override": ov, "augments": aug, "postscripts": ps, "sources": srcs}
+
+
+SINAPSI = SinapsiEngine(SINAPSI_FILE)
+SINAPSI_COUNT = SINAPSI.load()  # pre-warm all'avvio
+
+
+# -----------------------------
+# Utilità
+# -----------------------------
+NOISE_PATTERNS = re.compile(
+    r"(just a moment|checking your browser|questo sito utilizza i cookie|cookie policy|"
+    r"%PDF-|stream x��|base64,|consenso cookie|enable javascript)",
+    re.IGNORECASE
+)
+
+def is_allowed_domain(url: str) -> bool:
+    try:
+        from urllib.parse import urlparse
+        netloc = urlparse(url).netloc.lower()
+        return any(netloc.endswith(d) for d in ALLOWED_DOMAINS)
+    except Exception:
+        return False
+
+def clean_snippet(text: str) -> str:
+    if not text:
+        return ""
+    t = html.unescape(text)
+    # rimuovi rumore noto
+    if NOISE_PATTERNS.search(t):
+        return ""
+    # elimina eccessi di whitespace
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+def detect_lang(question: str) -> str:
+    q = (question or "").lower()
+    # euristica minimale: IT default
+    if re.search(r"[äöüß]|(der|die|das|und|ist)\b", q):
+        return "de"
+    if re.search(r"\b(the|and|what|how|when|which|sheet|manual)\b", q):
+        return "en"
+    if re.search(r"\b(que|cómo|cuál|cuando|ventajas)\b", q):
+        return "es"
+    if re.search(r"\b(quels|comment|avantages|quand)\b", q):
+        return "fr"
+    return "it"
+
+# -----------------------------
+# Web search (Brave) opzionale
+# -----------------------------
+def brave_search(query: str, lang: str = "it") -> List[Dict[str, Any]]:
+    if not BRAVE_API_KEY:
+        return []
+    try:
+        url = "https://api.search.brave.com/res/v1/web/search"
+        headers = {"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY}
+        params = {
+            "q": query,
+            "country": "it",
+            "source": "web",
+            "count": 7,
+            "freshness": "month"
+        }
+        r = requests.get(url, headers=headers, params=params, timeout=8)
+        r.raise_for_status()
+        data = r.json()
+        web = data.get("web", {})
+        results = []
+        for item in web.get("results", []):
+            url_i = item.get("url", "")
+            if not is_allowed_domain(url_i):
+                continue
+            score = float(item.get("properties", {}).get("score", 0.0))
+            if score < MIN_WEB_SCORE:
+                continue
+            title = clean_snippet(item.get("title", ""))
+            snippet = clean_snippet(item.get("description", "")) or clean_snippet(item.get("snippet", ""))
+            if not title and not snippet:
+                continue
+            results.append({"title": title or url_i, "url": url_i, "snippet": snippet})
+        return results[:5]
+    except Exception:
+        return []
+
+
+# -----------------------------
+# Composer narrativo + HTML
+# -----------------------------
+def compose_narrative(question: str, lang: str, sinapsi_pack: Dict[str, Any], web_hits: List[Dict[str, Any]]) -> Tuple[str, List[Dict[str,str]]]:
+    """
+    Restituisce (testo_principale, sources)
+    Logica:
+      - se esiste un override → usalo come corpo (narrativo già pronto)
+      - altrimenti crea narrativa da web_hits (allowed domains) + eventuali augment/postscript
+    """
+    used_sources: List[Dict[str,str]] = []
+
+    override = sinapsi_pack.get("override")
+    augments: List[str] = sinapsi_pack.get("augments", [])
+    postscripts: List[str] = sinapsi_pack.get("postscripts", [])
+    sinapsi_sources = sinapsi_pack.get("sources", [])
+
+    if override:
+        body = override.strip()
+        used_sources.extend(sinapsi_sources)
+        # chiudiamo con un’eventuale riga di stile
+        return (body, used_sources)
+
+    # Se non c'è override, proviamo a costruire una risposta da web + augment/postscript
+    paragraphs: List[str] = []
+
+    # Sintesi web (solo allowed domains)
+    if web_hits:
+        # Proviamo a tessere 4-5 frasi in modo narrativo
+        bullets = []
+        for h in web_hits[:3]:
+            if h.get("snippet"):
+                bullets.append(h["snippet"])
+        if bullets:
+            if lang == "it":
+                intro = "Ecco una sintesi tecnico-commerciale dai contenuti ufficiali:"
+            elif lang == "en":
+                intro = "Here is a technical-commercial summary from official materials:"
+            elif lang == "de":
+                intro = "Technisch-kaufmännische Zusammenfassung aus offiziellen Unterlagen:"
+            else:
+                intro = "Sintesi dai contenuti ufficiali:"
+            paragraphs.append(intro + " " + " ".join(bullets))
+
+        # raccogliamo fonti
+        for h in web_hits:
+            used_sources.append({"title": h.get("title") or h.get("url","Fonte"), "url": h.get("url","")})
+
+    # Augment: frasi additive
+    for a in augments:
+        if a and a not in paragraphs:
+            paragraphs.append(a.strip())
+
+    # Postscript: stile/note
+    for p in postscripts:
+        if p:
+            paragraphs.append(p.strip())
+
+    if not paragraphs:
+        # fallback minimo
+        paragraphs.append("Ho raccolto le informazioni pertinenti dai materiali Tecnaria e partner tecnici consentiti, in base alla tua domanda.")
+
+    return ("\n\n".join(paragraphs), used_sources + sinapsi_sources)
+
+
+def render_sources_html(sources: List[Dict[str, str]]) -> str:
+    if not sources:
+        return ""
+    # Dedup per URL
+    seen = set()
+    items = []
+    for s in sources:
+        url = s.get("url","").strip()
+        title = s.get("title","Fonte").strip() or "Fonte"
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        items.append(f"📎 <a href='{html.escape(url)}' target='_blank'>{html.escape(title)}</a>")
+    if not items:
+        return ""
+    return "<div class='sources'><strong>Fonti</strong><br>" + "<br>".join(items) + "</div>"
+
+
+def render_card_html(body_text: str, sources: List[Dict[str,str]], elapsed_ms: int, subtitle: str = "Risposta Tecnaria") -> str:
+    # Escaping conservativo: body_text è contenuto curato (può contenere link già formattati dagli override)
+    safe_body = body_text.replace("\n\n", "</p><p>").replace("\n", "<br>")
+    sources_html = render_sources_html(sources)
+    return f"""
+    <div class="card">
+      <h2>{html.escape(subtitle)}</h2>
+      <p>{safe_body}</p>
+      {sources_html}
+      <p><small>⏱ {elapsed_ms} ms</small></p>
+    </div>
+    """
+
+
+# -----------------------------
+# Endpoints
+# -----------------------------
 @app.get("/", response_class=HTMLResponse)
 def home():
-    # se c'è un index.html nella /static, servilo
-    idx = os.path.join("static", "index.html")
-    if os.path.exists(idx):
-        with open(idx, "r", encoding="utf-8") as f:
-            return HTMLResponse(f.read())
-    return HTMLResponse("""<pre>{"ok":true,"msg":"Use /ask or place static/index.html"}</pre>""")
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path, media_type="text/html; charset=utf-8")
+    return HTMLResponse(
+        "<pre>{\"ok\":true,\"msg\":\"Use /ask or place static/index.html\"}</pre>",
+        media_type="text/html; charset=utf-8"
+    )
 
-@app.get("/ping")
-def ping():
-    return {"ok": True, "msg": "pong"}
 
-@app.get("/health")
+@app.get("/health", response_class=JSONResponse)
 def health():
-    return {
+    return JSONResponse({
         "status": "ok",
         "web_search": {
             "provider": "brave",
-            "brave_key": bool(BRAVE_API_KEY),
-            "preferred_domains": ALLOWED_DOMAINS
+            "enabled": bool(BRAVE_API_KEY),
+            "preferred_domains": ALLOWED_DOMAINS,
+            "min_web_score": MIN_WEB_SCORE
         },
         "critici": {
-            "dir": "./static/data",
-            "exists": os.path.exists("./static/data"),
+            "dir": STATIC_DIR,
             "sinapsi_file": SINAPSI_FILE,
-            "sinapsi_loaded": len(SINAPSI_RULES)
+            "sinapsi_loaded": SINAPSI.meta.get("count", 0)
         }
-    }
+    })
+
 
 @app.get("/ask", response_class=HTMLResponse)
-def ask_get(q: str = Query(..., description="Domanda")):
-    q = (q or "").strip()
-    if not q:
-        return HTMLResponse(render_card("Risposta Tecnaria", ["Inserisci una domanda."], [], ""))
-    html_answer = answer_html_for(q)
-    return HTMLResponse(html_answer)
+def ask_get(q: Optional[str] = None):
+    started = time.time()
+    question = (q or "").strip()
+    if not question:
+        return HTMLResponse(render_card_html("Scrivi una domanda su prodotti e sistemi Tecnaria.", [], 0), media_type="text/html; charset=utf-8")
+
+    lang = detect_lang(question)
+    pack = SINAPSI.apply(question, lang_hint=lang)
+    web_hits = []
+    # Solo se NON c'è override usiamo la ricerca (filtrata)
+    if not pack.get("override"):
+        web_hits = brave_search(question, lang=lang)
+
+    body, sources = compose_narrative(question, lang, pack, web_hits)
+    html_card = render_card_html(body, sources, int((time.time()-started)*1000))
+    return HTMLResponse(html_card, media_type="text/html; charset=utf-8")
+
 
 @app.post("/api/ask", response_class=JSONResponse)
-async def ask_post(payload: Dict[str, Any]):
-    q = (payload or {}).get("q", "").strip()
-    if not q:
-        return JSONResponse({"ok": False, "error": "Missing q"})
-    html_answer = answer_html_for(q)
-    return JSONResponse({"ok": True, "answer_html": html_answer})
+def ask_post(payload: Dict[str, Any] = Body(...)):
+    started = time.time()
+    question = (payload.get("q") or "").strip()
+    if not question:
+        return JSONResponse({"ok": False, "error": "missing q"})
+
+    lang = detect_lang(question)
+    pack = SINAPSI.apply(question, lang_hint=lang)
+    web_hits = []
+    if not pack.get("override"):
+        web_hits = brave_search(question, lang=lang)
+
+    body, sources = compose_narrative(question, lang, pack, web_hits)
+    html_card = render_card_html(body, sources, int((time.time()-started)*1000))
+    return JSONResponse({"ok": True, "html": html_card})
