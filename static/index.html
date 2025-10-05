@@ -1,73 +1,83 @@
 <!doctype html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tecnaria QA Bot</title>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#0b1220;--card:#101a2d;--ink:#e6edf7;--muted:#97a3b6;--accent:#38bdf8;--chip:#1b2740;}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-.wrap{max-width:960px;margin:40px auto;padding:0 20px}
-h1{font-size:22px;margin:0 0 12px;font-weight:600}
-.card{background:var(--card);border:1px solid #1f2a44;border-radius:14px;padding:20px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
-input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #1f2a44;background:#0d1526;color:var(--ink)}
-.toolbar{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-button{background:var(--accent);color:#02101c;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
-button.secondary{background:#1e293b;color:#dbeafe}
-#ans > .card{margin-top:16px}
-.sources{margin-top:14px;background:#0d1526;border:1px solid #1f2a44;border-radius:10px;padding:12px}
-.src-title{font-weight:600;color:#8ab4f8;margin-bottom:6px}
-h2{font-size:18px;margin:0 0 6px}
-p,li{line-height:1.55;color:#d8e1f2}
-ul{margin:10px 0 0 18px}
-small.m{color:var(--muted)}
-.kv{margin-top:10px}
-.kv code{background:#0d1526;padding:2px 6px;border-radius:6px;border:1px solid #1f2a44}
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Tecnaria QA Bot</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+           margin:0; background: #0b0f14; color: #e6edf3; }
+    header { padding: 18px 20px; border-bottom:1px solid #1f2630; display:flex; gap:12px; align-items:center;}
+    header h1 { font-size: 18px; margin:0; font-weight:600; }
+    .container { max-width: 920px; margin: 24px auto; padding: 0 16px; }
+    .panel { background:#0f1621; border:1px solid #1f2630; border-radius:14px; padding:18px; }
+    label { display:block; font-size:13px; opacity:.85; margin-bottom:6px;}
+    textarea { width:100%; min-height: 90px; border-radius:12px; background:#0b1220; color:#e6edf3;
+               border:1px solid #223049; padding:12px; resize:vertical; }
+    .actions { margin-top:10px; display:flex; gap:10px; }
+    button { background:#1b67f3; color:#fff; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; }
+    button.secondary { background:#111723; color:#dbe7ff; border:1px solid #223049; }
+    .card { background:#0f1621; border:1px solid #1f2630; border-radius:14px; padding:16px; margin-top:16px; }
+    .card h2 { font-size:16px; margin:0 0 8px 0; }
+    .card p { margin: 8px 0; line-height:1.45; }
+    .sources { margin-top:10px; opacity:.95 }
+    .sources a { color:#8ab4ff; text-decoration:none; }
+    .sources a:hover { text-decoration:underline; }
+    footer { opacity:.7; font-size:12px; margin-top:8px; }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
+  <header>
     <h1>🇮🇹 Tecnaria QA Bot</h1>
-    <input id="q" type="text" placeholder='Scrivi una domanda (es. "Differenza CTF e Diapason")'>
-    <div class="toolbar">
-      <button onclick="ask()">Chiedi</button>
-      <button class="secondary" onclick="clearA()">Pulisci</button>
-      <button class="secondary" onclick="copyA()">Copia risposta</button>
+  </header>
+  <div class="container">
+    <div class="panel">
+      <label for="q">Domanda</label>
+      <textarea id="q" placeholder="Es. Qual è la differenza tra CTF e Diapason?"></textarea>
+      <div class="actions">
+        <button onclick="ask()">Chiedi</button>
+        <button class="secondary" onclick="clearAns()">Pulisci</button>
+        <button class="secondary" onclick="copyAns()">Copia risposta</button>
+        <label style="margin-left:auto; font-size:12px; opacity:.7">
+          <input type="checkbox" id="useGet" /> usa GET (debug)
+        </label>
+      </div>
     </div>
-    <div id="ans"></div>
-    <div class="kv">
-      <small class="m">Domini consentiti: <code>tecnaria.com</code> • <code>spit.eu</code> • <code>spitpaslode.com</code></small>
-    </div>
+    <div id="answer"></div>
   </div>
-</div>
+
 <script>
 async function ask(){
   const q = document.getElementById('q').value.trim();
-  const ans = document.getElementById('ans');
-  if(!q){ ans.innerHTML = "<small class='m'>Inserisci una domanda…</small>"; return; }
-  ans.innerHTML = "<small class='m'>Sto preparando la risposta…</small>";
-  const r = await fetch("/ask?q=" + encodeURIComponent(q));
-  const html = await r.text();
-  ans.innerHTML = html;
+  const useGet = document.getElementById('useGet').checked;
+  const box = document.getElementById('answer');
+  if(!q){ return; }
+  box.innerHTML = `<div class="card"><h2>Risposta Tecnaria</h2><p>Sto componendo la risposta…</p></div>`;
+  try{
+    let html = "";
+    if(useGet){
+      const r = await fetch(`/ask?q=${encodeURIComponent(q)}`);
+      html = await r.text();
+    }else{
+      const r = await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q})});
+      const js = await r.json();
+      if(js.ok){ html = js.answer_html; } else { html = `<div class="card"><p>Errore: ${js.error||"richiesta non valida"}</p></div>`; }
+    }
+    // inietto HTML “card” già pronto (cliccabile e tipografico)
+    box.innerHTML = html;
+  }catch(e){
+    box.innerHTML = `<div class="card"><p>Errore di rete.</p></div>`;
+  }
 }
-function clearA(){
-  document.getElementById('q').value = "";
-  document.getElementById('ans').innerHTML = "";
-}
-function copyA(){
-  const el = document.getElementById('ans');
-  const range = document.createRange();
-  range.selectNode(el);
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-  try{ document.execCommand('copy'); }catch(e){}
-  sel.removeAllRanges();
+function clearAns(){ document.getElementById('answer').innerHTML = ""; }
+function copyAns(){
+  const tmp = document.createElement('div');
+  tmp.innerHTML = document.getElementById('answer').innerHTML;
+  const text = tmp.innerText;
+  navigator.clipboard.writeText(text||"");
 }
 </script>
 </body>
 </html>
+
