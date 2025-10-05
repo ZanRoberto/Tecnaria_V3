@@ -1,231 +1,284 @@
 {
   "rules": [
+    /* =========================
+       P560 — USO, FORMAZIONE, NOLEGGIO, RICAMBI
+       ========================= */
     {
       "id": "p560_overview",
-      "pattern": "(?i)\\b(p\\s*560|spit\\s*p560|chiodatrice).*?(cos|che cos|parlami|mi parli|informazioni|scheda|manuale)",
+      "pattern": "(?i)\\b(p\\s*560|spit\\s*p560|chiodatrice)\\b.*(cos|che cos|parlami|mi\\s+parli|informaz|scheda|manuale|funzion|utilizz|uso)",
       "mode": "override",
       "lang": "it",
-      "answer": "La SPIT P560 è la chiodatrice a tiro indiretto adottata da Tecnaria per il fissaggio a freddo dei connettori CTF su travi in acciaio, anche in presenza di lamiera grecata. La posa è dall’alto: ogni connettore richiede due chiodi HSBR14, con taratura della potenza in funzione degli spessori e una prova su campione per verificare l’ancoraggio. L’uso corretto prevede DPI, controllo dell’aderenza della lamiera alla trave e impiego degli adattatori dedicati. Sono disponibili noleggio e assistenza con istruzioni di uso e manutenzione."
+      "answer": "La SPIT P560 è la chiodatrice a tiro indiretto impiegata da Tecnaria per il fissaggio a freddo dei connettori CTF su travi in acciaio, anche con lamiera grecata. La posa è dall’alto: ogni connettore CTF si fissa con due chiodi HSBR14, tarando la potenza in funzione degli spessori e verificando l’ancoraggio con una prova su campione. Sono essenziali DPI, controllo dell’aderenza della lamiera alla trave e uso degli adattatori dedicati."
     },
     {
-      "id": "p560_patentino",
-      "pattern": "(?i)\\b(p\\s*560|spit\\s*p560).*?(patentino|abilitazione|licenza|corso|formazione)",
+      "id": "p560_patentino_formazione",
+      "pattern": "(?i)\\b(p\\s*560|spit\\s*p560)\\b.*(patentino|abilitazione|licenza|corso|formazione|certificat)",
       "mode": "override",
       "lang": "it",
-      "answer": "Per utilizzare la SPIT P560 non è richiesto un patentino specifico: è sufficiente una breve formazione interna secondo le istruzioni del costruttore. In cantiere si raccomandano prova su campione, corretta taratura della potenza e DPI; l’operatore deve rispettare distanze dai bordi e modalità d’uso previste."
+      "answer": "Per la SPIT P560 non è richiesto un patentino specifico. È sufficiente una breve formazione interna secondo le istruzioni del costruttore, con prova su campione, corretta taratura della potenza e utilizzo dei DPI previsti."
     },
     {
       "id": "p560_noleggio",
-      "pattern": "(?i)\\b(p\\s*560|spit\\s*p560).*?(noleggi|nolo|affitt|costo|costi|prezzo|tariff)",
+      "pattern": "(?i)\\b(p\\s*560|spit\\s*p560)\\b.*(nolo|nolegg|affitt|costo|tariff|prezzo|disponibilit)",
       "mode": "override",
       "lang": "it",
-      "answer": "La P560 è disponibile a noleggio o in vendita tramite Tecnaria. Il nolo è tipicamente a periodi (settimanali o frazioni), con macchine revisionate e pronte all’uso; sono indicati i ricambi consigliati in funzione dei colpi. Per disponibilità, tempi e quotazioni, il contatto dedicato è l’assistenza Tecnaria."
+      "answer": "La P560 è disponibile a noleggio o in vendita tramite Tecnaria. Il noleggio è normalmente a periodi e le macchine vengono consegnate revisionate. Per disponibilità e condizioni economiche contatta l’assistenza Tecnaria."
+    },
+    {
+      "id": "p560_ricambi_manutenzione",
+      "pattern": "(?i)\\b(p\\s*560|spit\\s*p560)\\b.*(ricambi|pistone|guidapunte|anello|manutenz|pulizia|incepp|problemi|assistenza)",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Tecnaria fornisce istruzioni e supporto per la manutenzione della P560: sostituzione pistone e anello ammortizzatore, controllo guidapunte, pulizia e gestione inceppamenti. Ricambi e tempi di sostituzione dipendono dal numero di connettori sparati; l’assistenza Tecnaria indica componenti e cicli consigliati."
     },
 
-    /* =======================
-       CTF (acciaio-calcestruzzo)
-       ======================= */
+    /* =========================
+       CTF — ACCIAIO–CALCESTRUZZO SU LAMIERA GRECATA
+       ========================= */
     {
-      "id": "ctf_cos_e",
-      "pattern": "(?i)\\bctf\\b.*?(cos|che cos|informaz|descrizione|a cosa serve|quando|utilizz)",
+      "id": "ctf_che_cosa",
+      "pattern": "(?i)\\bctf\\b.*(cos|che\\s+cosa|informaz|descrizion|a\\s+cosa\\s+serve|impieg|applicaz|utilizz|vantagg)",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF sono connettori a taglio per solai collaboranti acciaio–calcestruzzo posati su lamiera grecata. Consentono la collaborazione tra trave d’acciaio, lamiera e getto, migliorando rigidezza e capacità portante con posa rapida dall’alto tramite chiodatrice SPIT P560."
+      "answer": "I CTF sono connettori a taglio per solai collaboranti acciaio–calcestruzzo su lamiera grecata. Creano la collaborazione tra trave d’acciaio, lamiera e getto, aumentando rigidezza e capacità portante con posa rapida dall’alto mediante SPIT P560."
     },
     {
-      "id": "ctf_fixing",
-      "pattern": "(?i)\\bctf\\b.*?(fissagg|chiod|hsbr|p560|spar|posa|installaz|dall.?alto)",
+      "id": "ctf_fissaggio",
+      "pattern": "(?i)\\bctf\\b.*(fissagg|posa|installaz|chiod|hsbr|spar|dall.?alto|adattator|attrezz)",
       "mode": "augment",
       "lang": "it",
-      "answer": "Il fissaggio dei CTF avviene dall’alto con SPIT P560; ogni connettore è bloccato con due chiodi HSBR14 senza preforatura. È essenziale verificare l’aderenza della lamiera alla trave e impostare correttamente la potenza, effettuando una prova su campione prima dell’avvio."
+      "answer": "Il fissaggio è dall’alto con SPIT P560. Ogni CTF richiede due chiodi HSBR14 senza preforatura; è fondamentale tarare la potenza, verificare l’aderenza della lamiera alla trave ed eseguire una prova su campione prima della posa in produzione."
     },
     {
-      "id": "ctf_density",
-      "pattern": "(?i)\\bctf\\b.*?(densit|quanti|m2|m²|numero|pezzi|passo|interasse)",
+      "id": "ctf_densita_interassi",
+      "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|interasse|passo)",
       "mode": "augment",
       "lang": "it",
-      "answer": "Come ordine di grandezza si adottano circa sei–otto CTF per metro quadrato, con disposizione più fitta in prossimità degli appoggi e più rada in mezzeria. Il passo finale discende dal calcolo strutturale in funzione di luci, carichi, profilo della lamiera e verifiche di scorrimento e deformazione."
+      "answer": "In via indicativa si impiegano circa sei–otto CTF per metro quadrato, con una maglia più fitta in prossimità degli appoggi e più rada in mezzeria. Il passo effettivo deriva dal calcolo strutturale in funzione di luci, carichi, profilo di lamiera, soletta e verifiche di scorrimento e deformazione."
     },
     {
-      "id": "ctf_hibond",
-      "pattern": "(?i)\\bctf\\b.*(hi[- ]?bond|lamiera)|hi[- ]?bond.*\\bctf\\b|\\bctf\\b.*(grecat)",
+      "id": "ctf_spessori_lamiera_acciaio",
+      "pattern": "(?i)\\bctf\\b.*(lamiera|grecat|spessore|acciaio|trave|sovrapposizion|doppia\\s+lamiera)",
       "mode": "augment",
       "lang": "it",
-      "answer": "I CTF sono progettati per lavorare con lamiere grecate certificate, come le Hi-Bond, assicurando piena collaborazione tra acciaio e calcestruzzo. Ne derivano rapidità di posa, rigidezza elevata e buona capacità portante a spessore contenuto."
+      "answer": "I CTF lavorano con lamiere grecate certificate (es. gamme Hi-Bond). Sono ammessi pacchetti tipici come 1×1,5 mm o 2×1,0 mm se ben aderenti alla trave; lo spessore della trave d’acciaio deve essere idoneo alla chiodatura a freddo. La verifica finale è a cura del progettista."
     },
     {
       "id": "ctf_vs_diapason",
-      "pattern": "(?i)(\\bctf\\b).*diapason|(\\bdiapason\\b).*(\\bctf\\b)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
+      "pattern": "(?i)(\\bctf\\b).*diapason|(\\bdiapason\\b).*(\\bctf\\b)|differenz|confront|quando\\s+usare|scelgo|quale\\s+scegliere",
       "mode": "override",
       "lang": "it",
-      "answer": "CTF e Diapason rispondono a esigenze diverse. I CTF sono connettori per solai collaboranti acciaio–calcestruzzo su lamiera grecata, con posa rapida dall’alto mediante SPIT P560. Diapason è un sistema per il rinforzo di solai in laterocemento esistenti, senza lamiera, con fissaggi meccanici e getto collaborante dall’alto. La scelta dipende da tipologia del solaio, spessori disponibili, luci e tempi di cantiere."
+      "answer": "CTF e Diapason hanno campi d’impiego diversi. CTF: solai collaboranti acciaio–calcestruzzo su lamiera grecata con posa dall’alto a elevata produttività. Diapason: rinforzo dall’alto di solai in laterocemento senza lamiera, con fissaggi meccanici e getto collaborante. La scelta dipende da tipologia del solaio, spessori disponibili, luci, accessi e tempi di cantiere."
+    },
+    {
+      "id": "ctf_hibond",
+      "pattern": "(?i)\\bctf\\b.*(hi[- ]?bond|lamiera)|hi[- ]?bond.*\\bctf\\b",
+      "mode": "augment",
+      "lang": "it",
+      "answer": "I CTF sono progettati per lavorare con lamiere grecate certificate come le Hi-Bond, assicurando una piena collaborazione acciaio–calcestruzzo, posa veloce e ottima rigidezza a parità di spessore."
     },
 
-    /* =======================
-       CTL (legno-calcestruzzo)
-       ======================= */
+    /* =========================
+       CTL — LEGNO–CALCESTRUZZO (BASE / MAXI)
+       ========================= */
     {
-      "id": "ctl_base_overview",
+      "id": "ctl_base",
       "pattern": "(?i)\\bctl\\b.*(base|standard|normale)|(connettore\\s+legno).*(base|standard)",
       "mode": "override",
       "lang": "it",
-      "answer": "Il connettore CTL BASE è dedicato ai solai legno–calcestruzzo quando si interviene dall’alto su travi in legno con soletta collaborante. Lavora con viti autoforanti su supporto ligneo, garantendo una posa semplice e una collaborazione efficace tra soletta e travi."
+      "answer": "CTL BASE è il connettore per solai legno–calcestruzzo quando si realizza una soletta collaborante su travi in legno. La posa avviene dall’alto con viti autoforanti; la collaborazione migliora rigidezza e capacità portante del sistema."
     },
     {
-      "id": "ctl_maxi_overview",
+      "id": "ctl_maxi",
       "pattern": "(?i)\\bctl\\b.*(maxi)|(connettore\\s+legno).*(maxi)",
       "mode": "override",
       "lang": "it",
-      "answer": "Il CTL MAXI è il connettore per solai legno–calcestruzzo ottimizzato per posa sull’assito/tavolato esistente. Con altezze di gambo differenziate, permette di adattare la posizione della testa rispetto alla rete e al getto, mantenendo una posa rapida con viti autoforanti."
+      "answer": "CTL MAXI è pensato per posa sull’assito/tavolato. Le altezze di gambo disponibili consentono di posizionare la testa in relazione a rete e spessore del getto. La posa è rapida, con viti autoforanti dimensionate in funzione degli strati presenti."
     },
     {
       "id": "ctl_maxi_selector",
       "pattern": "(?i)(ctl|maxi).*tavolato.*(1\\s*cm|2\\s*cm|20\\s*mm).*soletta.*5\\s*cm",
       "mode": "override",
       "lang": "it",
-      "answer": "Per tavolato di circa 2 cm con soletta da 5 cm si impiega CTL MAXI 12/040. Il fissaggio avviene con due viti Ø10×100; se sono presenti strati interposti o tavolato più spesso, si può passare a Ø10×120. La testa del connettore deve risultare sopra la rete ma sotto il filo superiore del getto; in caso di interferenze si valuta 12/030."
+      "answer": "Con tavolato di circa 2 cm e soletta da 5 cm si usa CTL MAXI 12/040. Fissaggio con due viti Ø10×100; se sono presenti strati interposti o tavolato più spesso si impiegano viti Ø10×120. La testa deve risultare sopra la rete e sotto il filo superiore del getto; in caso di interferenze si può valutare 12/030."
     },
     {
       "id": "ctl_vs_diapason",
       "pattern": "(?i)(\\bctl\\b).*(\\bdiapason\\b)|(\\bdiapason\\b).*(\\bctl\\b)|laterocemento.*\\bctl\\b|\\bctl\\b.*laterocemento",
       "mode": "override",
       "lang": "it",
-      "answer": "I connettori CTL sono dedicati ai solai legno–calcestruzzo e lavorano con viti autoforanti su supporto ligneo; Diapason è destinato al rinforzo di solai in laterocemento con getto collaborante e fissaggi meccanici. Si utilizza CTL su strutture in legno, Diapason su laterocemento."
+      "answer": "I CTL sono specifici per solai legno–calcestruzzo con viti autoforanti su travi lignee; Diapason è destinato al laterocemento con getto collaborante e fissaggi meccanici. La scelta dipende dalla natura del solaio esistente."
     },
 
-    /* =======================
-       Laterocemento: V CEM-E / MINI CEM-E / Diapason
-       ======================= */
+    /* =========================
+       LATEROCEMENTO — V CEM-E / MINI CEM-E / DIAPASON
+       ========================= */
     {
-      "id": "v_cem_e_overview",
-      "pattern": "(?i)\\b(v\\s*cem[- ]?e|vcem|v\\-?cem\\-?e)\\b.*(cos|che cos|informaz|parlami|uso|utilizzo)",
+      "id": "v_cem_e",
+      "pattern": "(?i)\\b(v\\s*cem[- ]?e|vcem|v\\-?cem\\-?e)\\b.*(cos|che\\s+cosa|parlami|uso|utilizzo|informaz|applicaz)",
       "mode": "override",
       "lang": "it",
-      "answer": "V CEM-E è un connettore a vite per il rinforzo di solai in laterocemento. Si applica dall’alto dopo l’individuazione dei travetti e il ripristino dell’intonaco, creando la collaborazione tra travetto esistente e nuova soletta in calcestruzzo. È indicato quando si vuole migliorare rigidezza e capacità senza ricorrere alla lamiera grecata."
+      "answer": "V CEM-E è un connettore a vite per rendere collaborante la nuova soletta su solai in laterocemento. Si interviene dall’alto dopo l’individuazione dei travetti, migliorando rigidezza e capacità senza ricorrere alla lamiera grecata."
     },
     {
-      "id": "mini_cem_e_overview",
-      "pattern": "(?i)(mini\\s*cem[- ]?e|mini\\-?cem\\-?e)\\b.*(cos|che cos|informaz|parlami|uso|utilizzo)",
+      "id": "mini_cem_e",
+      "pattern": "(?i)(mini\\s*cem[- ]?e|mini\\-?cem\\-?e)\\b.*(cos|che\\s+cosa|parlami|uso|utilizzo|informaz|applicaz)",
       "mode": "override",
       "lang": "it",
-      "answer": "MINI CEM-E è la versione compatta del connettore a vite per laterocemento, utile quando gli spessori disponibili o le interferenze impiantistiche richiedono ingombri ridotti. Mantiene la logica di collaborazione tra travetti e nuova soletta, con posa dall’alto e fissaggio meccanico."
+      "answer": "MINI CEM-E è la versione compatta per laterocemento, utile dove spessori e interferenze sono critici. Mantiene la logica di collaborazione tra travetto e soletta con fissaggi meccanici dall’alto."
     },
     {
-      "id": "v_cem_e_vs_diapason",
+      "id": "v_mini_vs_diapason",
       "pattern": "(?i)(v\\s*cem[- ]?e|mini\\s*cem[- ]?e).*diapason|diapason.*(v\\s*cem[- ]?e|mini\\s*cem[- ]?e)",
       "mode": "override",
       "lang": "it",
-      "answer": "Sia V CEM-E che MINI CEM-E sono connettori a vite per rendere collaborante il getto su solai in laterocemento. Diapason è un sistema di rinforzo che integra fissaggi e getto collaborante con una gamma più estesa di accessori e soluzioni operative. La scelta dipende da geometrie, spessori disponibili, stato dei travetti e obiettivo prestazionale."
+      "answer": "V CEM-E e MINI CEM-E sono connettori a vite per laterocemento; Diapason è un sistema di rinforzo che integra fissaggi meccanici e getto collaborante con ampia dotazione di accessori. La scelta dipende da spessori disponibili, geometrie, stato dei travetti e obiettivi di progetto."
     },
     {
-      "id": "diapason_overview",
-      "pattern": "(?i)\\bdiapason\\b.*(cos|che cos|informaz|parlami|sistema|uso|utilizzo)",
+      "id": "diapason",
+      "pattern": "(?i)\\bdiapason\\b.*(cos|che\\s+cosa|parlami|uso|utilizzo|informaz|applicaz|sistema)",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason è il sistema Tecnaria per il rinforzo e la riqualificazione di solai in laterocemento dall’alto, senza lamiera. Prevede fissaggi meccanici e getto collaborante che uniscono la nuova soletta ai travetti esistenti, migliorando rigidezza e capacità con intervento poco invasivo."
+      "answer": "Diapason è il sistema Tecnaria per il rinforzo dall’alto dei solai in laterocemento, senza lamiera. Con fissaggi meccanici e getto collaborante si unisce la nuova soletta ai travetti esistenti, con intervento poco invasivo e tempi contenuti."
     },
 
-    /* =======================
-       Dettagli di posa e materiali (trasversali)
-       ======================= */
+    /* =========================
+       DETTAGLI DI POSA — SOLETTA, RETE, CLS, IMPIANTI
+       ========================= */
     {
-      "id": "soletta_spessori_rete",
-      "pattern": "(?i)(soletta|spessore|get(to)?|cls|calcestruzzo).*?(minim|spessore|rete|posizion|armatura)",
+      "id": "soletta_rete_generale",
+      "pattern": "(?i)(soletta|spessore|get(to)?|cls|calcestruzzo).*?(minim|spessore|rete|posizion|armatura|copriferro)",
       "mode": "augment",
       "lang": "it",
-      "answer": "Per gli interventi collaboranti, la soletta viene dimensionata dal progettista. In linea generale, connettori e rete vanno coordinati in modo che la testa del connettore risulti sopra la rete ma sotto il filo superiore del getto. La rete è solitamente a metà spessore, con copriferri idonei e compatibilità con eventuali armature integrative."
+      "answer": "La soletta collaborante è dimensionata dal progettista. In generale, la rete è posta a metà spessore e la testa del connettore deve risultare sopra la rete ma sotto il filo superiore del getto, rispettando i copriferri e l’eventuale armatura integrativa."
     },
     {
-      "id": "cls_leggero",
-      "pattern": "(?i)(calcestruzzo\\s+leggero|cls\\s+leggero|argilla|polistir|perlite).*(collaborante|soletta|peso|densit|spessori)",
+      "id": "calcestruzzo_leggero",
+      "pattern": "(?i)(calcestruzzo\\s+leggero|cls\\s+leggero|argilla|polistir|perlite).*(collaborante|soletta|peso|densit|spessori|compatibilit)",
       "mode": "augment",
       "lang": "it",
-      "answer": "È possibile impiegare calcestruzzi leggeri strutturali quando richiesto da peso proprio o condizioni di cantiere, nel rispetto delle prestazioni meccaniche indicate in progetto. La compatibilità con i connettori è garantita; restano invariati i criteri di copriferro, annegamento delle teste e posizione della rete."
+      "answer": "È possibile impiegare calcestruzzi leggeri strutturali quando richiesto da peso proprio o condizioni di cantiere, nel rispetto delle prestazioni meccaniche previste in progetto. Restano invariati i criteri di annegamento delle teste, posizione rete e copriferri."
     },
     {
       "id": "interferenze_impianti",
-      "pattern": "(?i)(impianti|tubi|passaggi|interferenze).*?(soletta|rete|connettori|posizion)",
+      "pattern": "(?i)(impianti|tubi|passaggi|interferenze|cavidotti).*?(soletta|rete|connettori|posizion|fori|scassi)",
       "mode": "augment",
       "lang": "it",
-      "answer": "In presenza di impianti o passaggi, la disposizione dei connettori e della rete viene adattata salvaguardando le aree di massima influenza. Quando gli ingombri sono critici, si impiegano connettori con altezze inferiori o si localizzano staffe integrative secondo le verifiche."
-    },
-    {
-      "id": "verifiche_calcolo",
-      "pattern": "(?i)(calcolo|verifiche|dimensiona|resistenze|portata|deformazioni|frecce)",
-      "mode": "augment",
-      "lang": "it",
-      "answer": "Il dimensionamento è eseguito dal progettista sulla base delle norme vigenti, verificando resistenza a taglio/scorrimento, portata e deformazioni. La densità dei connettori e lo spessore della soletta derivano da luci, carichi e dettagli costruttivi del solaio esistente."
+      "answer": "In presenza di impianti la disposizione di connettori e rete si adatta salvaguardando le zone più sollecitate. Se gli ingombri sono critici si adottano connettori più bassi o si integrano staffe/armature locali secondo le verifiche di progetto."
     },
 
-    /* =======================
-       FAQ di scelta rapida
-       ======================= */
+    /* =========================
+       VERIFICHE DI CALCOLO — DIMENSIONAMENTO
+       ========================= */
+    {
+      "id": "verifiche_dimensionamento",
+      "pattern": "(?i)(calcolo|verifiche|dimensiona|resistenze|portata|deformazioni|frecce|norme|eu|eta)",
+      "mode": "augment",
+      "lang": "it",
+      "answer": "Il progetto verifica resistenza a taglio/scorrimento, portata e deformazioni in base alle norme vigenti. Densità dei connettori, spessore della soletta e disposizioni locali discendono da luci, carichi e dettagli costruttivi del solaio."
+    },
+
+    /* =========================
+       SCELTA RAPIDA — QUALI SISTEMI E QUANDO
+       ========================= */
     {
       "id": "quando_usare_ctf",
-      "pattern": "(?i)(quando|quale).*\\b(usare|scegliere).*\\bctf\\b",
+      "pattern": "(?i)(quando|quale).*(usare|scegliere).*\\bctf\\b",
       "mode": "override",
       "lang": "it",
-      "answer": "Si usa CTF quando è presente o si prevede lamiera grecata e si vuole una posa rapida dall’alto con collaborazione acciaio–calcestruzzo. È tipico di nuove realizzazioni o rinforzi con lamiera e travi in acciaio accessibili dall’alto."
+      "answer": "Si usano i CTF quando è presente o prevista lamiera grecata e si vuole una posa dall’alto molto veloce con collaborazione acciaio–calcestruzzo. Tipici di nuove realizzazioni o rinforzi su travi in acciaio accessibili dall’alto."
     },
     {
       "id": "quando_usare_ctl",
-      "pattern": "(?i)(quando|quale).*\\b(usare|scegliere).*\\bctl\\b",
+      "pattern": "(?i)(quando|quale).*(usare|scegliere).*\\bctl\\b",
       "mode": "override",
       "lang": "it",
-      "answer": "Si usa CTL (BASE o MAXI) quando il solaio è in legno e si realizza una soletta collaborante dall’alto con viti autoforanti. Il MAXI è indicato quando si posa sopra l’assito, scegliendo l’altezza del gambo in funzione di rete e spessore di getto."
+      "answer": "Si usano i CTL (BASE o MAXI) su solai in legno quando si realizza una soletta collaborante con viti autoforanti. Il MAXI è indicato sopra tavolato/assito; si sceglie l’altezza del gambo in funzione di rete e spessore del getto."
     },
     {
       "id": "quando_usare_diapason",
-      "pattern": "(?i)(quando|quale).*\\b(usare|scegliere).*\\bdiapason\\b",
+      "pattern": "(?i)(quando|quale).*(usare|scegliere).*\\bdiapason\\b",
       "mode": "override",
       "lang": "it",
-      "answer": "Si usa Diapason per consolidare solai in laterocemento senza lamiera, intervenendo dall’alto con fissaggi meccanici e getto collaborante. È indicato quando si richiede un intervento poco invasivo e compatibile con spessori limitati."
+      "answer": "Si usa Diapason per consolidare solai in laterocemento senza lamiera intervenendo dall’alto con fissaggi meccanici e getto collaborante. È indicato dove servono interventi poco invasivi e spessori contenuti."
     },
     {
-      "id": "quando_usare_v_mini_cem",
-      "pattern": "(?i)(quando|quale).*\\b(usare|scegliere).*(v\\s*cem[- ]?e|mini\\s*cem[- ]?e)",
+      "id": "quando_usare_v_mini",
+      "pattern": "(?i)(quando|quale).*(usare|scegliere).*(v\\s*cem[- ]?e|mini\\s*cem[- ]?e)",
       "mode": "override",
       "lang": "it",
-      "answer": "Si usano V CEM-E o MINI CEM-E quando si vuole rendere collaborante una soletta su solaio in laterocemento tramite connettori a vite. Si sceglie MINI CEM-E quando gli spazi disponibili sono ridotti o vi sono interferenze che richiedono ingombri minori."
+      "answer": "V CEM-E o MINI CEM-E si usano per rendere collaborante la soletta su laterocemento con connettori a vite. MINI CEM-E è preferibile quando gli ingombri sono ridotti o vi sono interferenze impiantistiche."
     },
 
-    /* =======================
-       Contesto aziendale
-       ======================= */
+    /* =========================
+       LOGISTICA, PREVENTIVI, CAPITOLATI, SOFTWARE, BIM
+       ========================= */
     {
-      "id": "contacts",
-      "pattern": "(?i)contatt|telefono|mail|email|assistenza|supporto|reperibil|sede|indirizzo",
+      "id": "preventivi",
+      "pattern": "(?i)preventiv|offerta|quotazion|prezzo|listino|sconto|ordine|acquisto",
       "mode": "override",
       "lang": "it",
-      "answer": "TECNARIA S.p.A. – Via Malaspina 2, 36061 Bassano del Grappa (VI). Telefono +39 0424 502029 – Email info@tecnaria.com. Per progetti, capitolati e sopralluoghi è disponibile il supporto tecnico con documentazione aggiornata e software di calcolo."
+      "answer": "Per preventivi e ordini contatta l’ufficio commerciale Tecnaria indicando tipologia di solaio, superficie, sistema scelto e tempi di cantiere. È possibile coordinare fornitura di connettori, accessori e, se necessario, noleggio P560."
     },
     {
-      "id": "cataloghi_download",
-      "pattern": "(?i)catalogh|brochure|scheda\\s+tecnica|download|pdf",
+      "id": "spedizioni_consegne",
+      "pattern": "(?i)spedizion|consegn|tempi|lead\\s*time|disponibilit\\s*magazzino",
       "mode": "override",
       "lang": "it",
-      "answer": "Schede tecniche e cataloghi sono disponibili nell’area download del sito Tecnaria, con versioni in italiano e inglese. I documenti riportano posa, dati meccanici, limiti d’impiego e riferimenti normativi, oltre a indicazioni su manutenzione e accessori."
+      "answer": "Le consegne vengono pianificate in base a disponibilità e tempi di cantiere. Per urgenze è consigliato segnalare la data di getto e lotti necessari; Tecnaria organizza spedizioni e supporto in modo coordinato."
+    },
+    {
+      "id": "software_supporto",
+      "pattern": "(?i)software|calcolo.*(tecnaria|soletta|composito)|tool|programma",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Sono disponibili strumenti di supporto al dimensionamento e schede tecniche aggiornate. Il team Tecnaria affianca il progettista nella definizione della maglia dei connettori, degli spessori di soletta e delle verifiche."
+    },
+    {
+      "id": "capitolati_bim",
+      "pattern": "(?i)capitolat|voci\\s*prezzo|bim|revit|ifc|modell|librerie",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Su richiesta Tecnaria fornisce testi di capitolato, voci prezzo e materiali BIM/IFC per integrare i sistemi nel modello informativo, con indicazioni su posa, controlli e collaudi."
+    },
+
+    /* =========================
+       CATALOGHI, CERTIFICAZIONI, CONTATTI, PRIVACY
+       ========================= */
+    {
+      "id": "cataloghi_download",
+      "pattern": "(?i)catalogh|brochure|scheda\\s+tecnica|download|pdf|manuale",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Cataloghi e schede tecniche sono disponibili nell’area download del sito Tecnaria con indicazioni di posa, dati meccanici, limiti d’impiego e riferimenti normativi. Sono presenti anche manuali di uso e sicurezza."
     },
     {
       "id": "certificazioni_eta",
-      "pattern": "(?i)eta|certificaz|valutazione\\s+tecnica|marcatura|ce\\b|tracciabil",
-      "mode": "augment",
+      "pattern": "(?i)eta|certificaz|marcatura|ce\\b|valutazione\\s+tecnica|tracciabilit",
+      "mode": "override",
       "lang": "it",
-      "answer": "I sistemi sono accompagnati da documentazione tecnica e valutazioni europee, con tracciabilità dei componenti. I riferimenti aggiornati sono indicati nelle schede di prodotto e nei certificati pubblicati sul sito."
+      "answer": "I sistemi sono corredati da documentazione e valutazioni europee, con tracciabilità dei componenti. I riferimenti aggiornati sono riportati nelle schede prodotto e nelle certificazioni pubblicate sul sito."
     },
     {
-      "id": "privacy_claimer",
+      "id": "contatti",
+      "pattern": "(?i)contatt|telefono|mail|email|assistenza|supporto|sede|indirizzo|ufficio",
+      "mode": "override",
+      "lang": "it",
+      "answer": "TECNARIA S.p.A. – Via Malaspina 2, 36061 Bassano del Grappa (VI). Telefono +39 0424 502029 – Email info@tecnaria.com. Supporto tecnico e commerciale per progetti, capitolati, sopralluoghi e pianificazione forniture."
+    },
+    {
+      "id": "privacy_cookie",
       "pattern": "(?i)privacy|gdpr|trattamento\\s+dati|cookie",
       "mode": "override",
       "lang": "it",
-      "answer": "Le informazioni fornite sono a carattere tecnico-informativo e riferite ai prodotti Tecnaria. Per il trattamento dei dati si rimanda all’informativa privacy e alla cookie policy pubblicate sul sito ufficiale."
+      "answer": "Le informazioni fornite sono a carattere tecnico-informativo e riferite ai prodotti Tecnaria. Per il trattamento dei dati si rimanda a informativa privacy e cookie policy sul sito ufficiale."
     },
 
-    /* =======================
-       Lingue (nota non invadente)
-       ======================= */
+    /* =========================
+       LINGUE — NOTA LEGGERA
+       ========================= */
     {
-      "id": "language_hint",
+      "id": "language_note",
       "pattern": "(?i)^en:|^de:|^fr:|^es:",
       "mode": "postscript",
       "lang": "it",
