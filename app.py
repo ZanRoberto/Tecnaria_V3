@@ -241,4 +241,141 @@ def compose_single_answer(question: str, sinapsi_pack: Dict[str, Any],
         parts.append(" ".join(a.strip() for a in augments if a and a.strip()))
 
     text_it = " ".join([p for p in parts if p]).strip() or \
-              "Non ho trovato elementi sufficienti su domini autorizzati o nelle regole. Raffina la domanda o aggiorna le regol
+              "Non ho trovato elementi sufficienti su domini autorizzati o nelle regole. Raffina la domanda o aggiorna le regole."
+    text_it = re.sub(r"\s+", " ", text_it).strip()
+    return text_it, sources
+
+# -----------------------------
+# Rendering card unica
+# -----------------------------
+def render_sources_html(sources: List[Dict[str, str]]) -> str:
+    if not sources:
+        return ""
+    seen = set()
+    items = []
+    for s in sources:
+        url = (s.get("url") or "").strip()
+        title = (s.get("title") or "Fonte").strip() or "Fonte"
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        items.append(f"📎 <a href='{html.escape(url)}' target='_blank'>{html.escape(title)}</a>")
+    if not items:
+        return ""
+    return "<div class='sources'><strong>Fonti</strong><br>" + "<br>".join(items) + "</div>"
+
+def render_card_html(body_text: str, sources: List[Dict[str,str]], elapsed_ms: int,
+                     subtitle: str = "Risposta Tecnaria") -> str:
+    safe_body = html.escape(body_text).replace("\n\n", "</p><p>").replace("\n", "<br>")
+    sources_html = render_sources_html(sources)
+    return f"""
+    <div class="card">
+      <h2>{html.escape(subtitle)}</h2>
+      <p>{safe_body}</p>
+      {sources_html}
+      <p><small>⏱ {elapsed_ms} ms</small></p>
+    </div>
+    """
+
+# -----------------------------
+# Endpoints
+# -----------------------------
+@app.get("/", response_class=HTMLResponse)
+def home():
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path, media_type="text/html; charset=utf-8")
+    return HTMLResponse("<pre>{\"ok\":true,\"msg\":\"Use /ask or place static/index.html\"}</pre>",
+                        media_type="text/html; charset=utf-8")
+
+@app.get("/health", response_class=JSONResponse)
+def health():
+    return JSONResponse({
+        "status": "ok",
+        "mode": MODE,
+        "web_search": {
+            "provider": "brave",
+            "enabled": bool(BRAVE_API_KEY),
+            "preferred_domains": ALLOWED_DOMAINS,
+            "min_web_score": MIN_WEB_SCORE,
+            "web_min_quality": WEB_MIN_QUALITY
+        },
+        "behavior": {
+            "strict_on_override": STRICT_ON_OVERRIDE
+        },
+        "critici": {
+            "dir": STATIC_DIR,
+            "sinapsi_file": SINAPSI_FILE,
+            "sinapsi_loaded": SINAPSI.meta.get("count", 0),
+            "sinapsi_error": SINAPSI.meta.get("error")
+        }
+    })
+
+@app.get("/ask", response_class=HTMLResponse)
+def ask_get(q: Optional[str] = None):
+    started = time.time()
+    question = (q or "").strip()
+    if not question:
+        return HTMLResponse(render_card_html("Scrivi una domanda su prodotti e sistemi Tecnaria.", [], 0),
+                            media_type="text/html; charset=utf-8")
+
+    web_hits = brave_search(question)      # 1) WEB (se attivo)
+    pack = SINAPSI.apply(question)         # 2) SINAPSI refine (priorità)
+    text_it, sources = compose_single_answer(question, pack, web_hits)
+    html_card = render_card_html(text_it, sources, int((time.time()-started)*1000))
+    return HTMLResponse(html_card, media_type="text/html; charset=utf-8")
+
+@app.post("/api/ask", response_class=JSONResponse)
+def ask_post(payload: Dict[str, Any] = Body(...)):
+    started = time.time()
+    question = (payload.get("q") or "").strip()
+    if not question:
+        return JSONResponse({"ok": False, "error": "missing q"})
+    web_hits = brave_search(question)
+    pack = SINAPSI.apply(question)
+    text_it, sources = compose_single_answer(question, pack, web_hits)
+    html_card = render_card_html(text_it, sources, int((time.time()-started)*1000))
+    return JSONResponse({"ok": True, "html": html_card})
+
+# -----------------------------
+# Self-test (per demo/cliente)
+# -----------------------------
+def _contains_any(text: str, needles: List[str]) -> bool:
+    t = (text or "").lower()
+    return any(n.lower() in t for n in needles)
+
+@app.get("/selftest", response_class=JSONResponse)
+def selftest():
+    """Esegue 4 test chiave senza web (deterministici) e ritorna PASS/FAIL."""
+    tests = [
+        {
+            "name": "P560 - non qualsiasi chiodatrice",
+            "q": "posso usare una normale chiodatrice a sparo per i CTF?",
+            "expect_any": ["non con una chiodatrice qualsiasi", "solo SPIT P560", "2 chiodi", "HSBR14"]
+        },
+        {
+            "name": "CTF vs Diapason",
+            "q": "Differenza CTF e Diapason",
+            "expect_any": ["CTF", "Diapason", "lamiera grecata", "laterocemento"]
+        },
+        {
+            "name": "Densità CTF",
+            "q": "Quanti CTF al m2",
+            "expect_any": ["6–8", "6-8", "6 — 8", "connettori/m²"]
+        },
+        {
+            "name": "P560 overview",
+            "q": "p560",
+            "expect_any": ["chiodatrice", "SPIT P560", "due chiodi", "HSBR14"]
+        }
+    ]
+
+    out = []
+    for t in tests:
+        pack = SINAPSI.apply(t["q"])
+        # Forziamo web vuoto per evitare rumore esterno
+        ans, _ = compose_single_answer(t["q"], pack, web_hits=[])
+        ok = _contains_any(ans, t["expect_any"])
+        out.append({"test": t["name"], "query": t["q"], "pass": ok, "answer": ans[:220] + ("…" if len(ans) > 220 else "")})
+
+    return JSONResponse({"ok": all(x["pass"] for x in out), "results": out, "rules_loaded": SINAPSI.meta.get("count", 0)})
