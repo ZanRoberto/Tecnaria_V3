@@ -11,7 +11,6 @@
         { "title": "Catalogo acciaio (CTF)", "url": "https://tecnaria.com/download/acciaio/download/CT_F_CATALOGO_IT.pdf" }
       ]
     },
-
     {
       "id": "p560_overview",
       "pattern": "(?i)\\b(p\\s*[- ]?560|spit\\s*[- ]?p560|chiodatrice)\\b(?!.*(patentino|abilitaz|licenza|corso|formazione|noleggio|nolo|normale|qualsiasi|qualunque|va\\s*bene))",
@@ -22,7 +21,6 @@
         { "title": "CTF – Connettori per acciaio", "url": "https://tecnaria.com/prodotto/connettore-per-acciaio-ctf/" }
       ]
     },
-
     {
       "id": "ctf_density",
       "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|interasse|passo)",
@@ -33,7 +31,6 @@
         { "title": "Catalogo acciaio (CTF)", "url": "https://tecnaria.com/download/acciaio/download/CT_F_CATALOGO_IT.pdf" }
       ]
     },
-
     {
       "id": "ctf_overview",
       "pattern": "(?i)\\bctf\\b(?!.*(vs|contro|diapason|ctl))",
@@ -45,7 +42,6 @@
         { "title": "Catalogo acciaio", "url": "https://tecnaria.com/download/acciaio/download/CT_F_CATALOGO_IT.pdf" }
       ]
     },
-
     {
       "id": "ctf_hibond",
       "pattern": "(?i)(hi[- ]?bond|hibond).*\\bctf\\b|\\bctf\\b.*(hi[- ]?bond|hibond)|lamiera\\s+grecata.*\\bctf\\b",
@@ -57,7 +53,6 @@
         { "title": "Catalogo acciaio", "url": "https://tecnaria.com/download/acciaio/download/CT_F_CATALOGO_IT.pdf" }
       ]
     },
-
     {
       "id": "p560_patentino",
       "pattern": "(?i)(patentino|abilitazione|licenza|corso|formazione).*(p\\s*[- ]?560|spit\\s*[- ]?p560)|\\b(p\\s*[- ]?560|spit\\s*[- ]?p560)\\b.*(patentino|abilitazione|licenza|corso|formazione)",
@@ -65,7 +60,6 @@
       "lang": "it",
       "answer": "Per l’uso della SPIT P560 non è richiesto un patentino dedicato. È raccomandata una breve formazione interna secondo le istruzioni del costruttore: scelta dei propulsori, taratura della potenza, prova su campione e controlli dell’ancoraggio. Obbligatori i DPI (occhiali, guanti, protezione udito)."
     },
-
     {
       "id": "p560_consumables",
       "pattern": "(?i)(propulsor|caric|chiodi|hsbr|manutenz|pistone|guidapunte|anello).*\\b(p\\s*[- ]?560|spit\\s*[- ]?p560)\\b",
@@ -73,7 +67,6 @@
       "lang": "it",
       "answer": "Per la posa dei CTF con P560 si impiegano chiodi HSBR14 e propulsori idonei all’infissione sul supporto previsto. La manutenzione (pistone, guidapunte, anello ammortizzatore) segue le indicazioni del costruttore e i controlli Tecnaria in cantiere."
     },
-
     {
       "id": "ctf_vs_diapason",
       "pattern": "(?i)(\\bctf\\b).*diapason|(\\bdiapason\\b).*(\\bctf\\b)|differenz|confront|quando\\s+usare|quale\\s+scegliere",
@@ -85,7 +78,6 @@
         { "title": "Sistema Diapason", "url": "https://tecnaria.com/solai-in-laterocemento/" }
       ]
     },
-
     {
       "id": "downloads",
       "pattern": "(?i)cataloghi|catalogo|schede|download|documentazione|brochure",
@@ -96,7 +88,6 @@
         { "title": "Area Download Tecnaria", "url": "https://tecnaria.com/download/" }
       ]
     },
-
     {
       "id": "contacts",
       "pattern": "(?i)contatt|telefono|mail|email|assistenza|supporto|commerciale|tecnico",
@@ -109,3 +100,4 @@
     }
   ]
 }
+
