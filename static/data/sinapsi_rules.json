@@ -13,7 +13,7 @@
       "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(patentin\\w*|abilitazion\\w*|licenz\\w*|certificat\\w*|corso)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Per la SPIT P560 non ¨ richiesto un patentino dedicato: ¨ sufficiente una breve formazione interna e lâ€™uso dei DPI.",
+      "answer": "Per la SPIT P560 non è richiesto un patentino dedicato: è sufficiente una breve formazione interna e luso dei DPI.",
       "priority": 999
     },
     {
@@ -29,7 +29,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(m2|m\\s*²|mq|metro\\s*quadrato)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantit  dei CTF deriva dal calcolo (luci, carichi, profilo lamiera). Ordine di grandezza: 6â€“8 connettori/m², pi¹ fitti agli appoggi.",
+      "answer": "La quantità dei CTF deriva dal calcolo (luci, carichi, profilo lamiera). Ordine di grandezza: 68 connettori/m², più fitti agli appoggi.",
       "priority": 900
     },
     {
@@ -45,7 +45,7 @@
       "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(lamiera|grecat\\w*)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Posa dallâ€™alto anche con lamiera grecata, purch© ben aderente alla trave.",
+      "answer": "Posa dallalto anche con lamiera grecata, purché ben aderente alla trave.",
       "priority": 850
     },
     {
@@ -77,7 +77,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(posa|fissagg\\w*)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dallâ€™alto su trave in acciaio con SPIT P560; per ogni connettore 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallalto su trave in acciaio con SPIT P560; per ogni connettore 2 chiodi HSBR14.",
       "priority": 800
     },
     {
@@ -125,7 +125,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*|spiega\\w*)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ¨ un sistema per rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâ€™alto.",
+      "answer": "Diapason è un sistema per rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallalto.",
       "priority": 700
     },
     {
@@ -133,7 +133,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(casi|quando|in\\s*che\\s*casi|impiegh\\w*)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Indicato su solai in laterocemento esistenti senza lamiera, con intervento dallâ€™alto e ancoraggio ai travetti.",
+      "answer": "Indicato su solai in laterocemento esistenti senza lamiera, con intervento dallalto e ancoraggio ai travetti.",
       "priority": 650
     },
     {
@@ -141,7 +141,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(limiti|evitar\\w*|non\\s*adatt\\w*)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Evitare se non ¨ garantito lâ€™ancoraggio ai travetti o le condizioni del solaio non lo consentono.",
+      "answer": "Evitare se non è garantito lancoraggio ai travetti o le condizioni del solaio non lo consentono.",
       "priority": 650
     },
     {
@@ -157,7 +157,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(travett\\w*|sondagg\\w*|localizz\\w*)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "ˆ necessario localizzare i travetti (sondaggi) per garantire corretto fissaggio e ancoraggio.",
+      "answer": " necessario localizzare i travetti (sondaggi) per garantire corretto fissaggio e ancoraggio.",
       "priority": 600
     },
     {
@@ -165,7 +165,7 @@
       "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I connettori CTL rendono collaborante la soletta su solai legnoâ€“calcestruzzo con posa dallâ€™alto.",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legnocalcestruzzo con posa dallalto.",
       "priority": 700
     },
     {
@@ -181,7 +181,7 @@
       "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(vit\\w*|fissagg\\w*)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Viti ˜10 in lunghezze 100/120/140 mm in funzione di assito/interposti e altezza connettore.",
+      "answer": "Viti 10 in lunghezze 100/120/140 mm in funzione di assito/interposti e altezza connettore.",
       "priority": 600
     },
     {
@@ -205,7 +205,7 @@
       "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e|cem\\s*-?e)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "V CEM-E ¨ un connettore a vite per solai in laterocemento con fissaggio dallâ€™alto nei travetti; MINI CEM-E ¨ la versione compatta.",
+      "answer": "V CEM-E è un connettore a vite per solai in laterocemento con fissaggio dallalto nei travetti; MINI CEM-E è la versione compatta.",
       "priority": 700
     },
     {
@@ -221,7 +221,7 @@
       "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e)\\b)(?=.*\\b(posa|avvit\\w*|getto|rete)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Posa dallâ€™alto: avvitamento nel travetto e getto collaborante con rete a circa met  spessore.",
+      "answer": "Posa dallalto: avvitamento nel travetto e getto collaborante con rete a circa metà spessore.",
       "priority": 600
     },
     {
@@ -250,7 +250,7 @@
     },
     {
       "id": "sugg_si_pu_usare_una_sparachiodi_qualunque_per_i_ctf",
-      "pattern": "(?i)(?=.*\\b(chiodatrice|sparachiod|sparo|pistola)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpuƒ²\\b)(?=.*\\busare\\b)(?=.*\\bsparachiodi\\b)(?=.*\\bqualunque\\b).*",
+      "pattern": "(?i)(?=.*\\b(chiodatrice|sparachiod|sparo|pistola)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpu²\\b)(?=.*\\busare\\b)(?=.*\\bsparachiodi\\b)(?=.*\\bqualunque\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Per i CTF non si usa una chiodatrice qualsiasi: va impiegata esclusivamente la chiodatrice a sparo SPIT P560 con kit/adattatori Tecnaria.",
@@ -259,7 +259,7 @@
     },
     {
       "id": "sugg_quanti_chiodi_servono_per_fissare_un_connettore_ctf_con_p560",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bchiodi\\b)(?=.*\\bservono\\b)(?=.*\\bfissare\\b)(?=.*\\bconnettore\\b).*",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bchiodi\\b)(?=.*\\bservono\\b)(?=.*\\bfissare\\b)(?=.*\\bconnettore\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
@@ -268,7 +268,7 @@
     },
     {
       "id": "sugg_ctf_numero_chiodi_per_pezzo_con_p560",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bctf\\b)(?=.*\\bnumero\\b)(?=.*\\bchiodi\\b)(?=.*\\bpezzo\\b).*",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bctf\\b)(?=.*\\bnumero\\b)(?=.*\\bchiodi\\b)(?=.*\\bpezzo\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
@@ -277,25 +277,25 @@
     },
     {
       "id": "sugg_serve_un_patentino_per_usare_la_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bserve\\b)(?=.*\\bpatentino\\b)(?=.*\\busare\\b)(?=.*\\bp560\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bserve\\b)(?=.*\\bpatentino\\b)(?=.*\\busare\\b)(?=.*\\bp560\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Per la P560 non ƒ¨ richiesto un patentino dedicato: serve una breve formazione interna e l¢â‚¬â„¢uso dei DPI.",
+      "answer": "Per la P560 non ¨ richiesto un patentino dedicato: serve una breve formazione interna e lâuso dei DPI.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_p560_necessario_un_patentino_abilitazione",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bnecessario\\b)(?=.*\\bpatentino/abilitazione\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bp560\\b)(?=.*\\bnecessario\\b)(?=.*\\bpatentino/abilitazione\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Per la P560 non ƒ¨ richiesto un patentino dedicato: serve una breve formazione interna e l¢â‚¬â„¢uso dei DPI.",
+      "answer": "Per la P560 non ¨ richiesto un patentino dedicato: serve una breve formazione interna e lâuso dei DPI.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_come_regolo_la_potenza_della_p560_in_cantiere",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bregolo\\b)(?=.*\\bpotenza\\b)(?=.*\\bp560\\b)(?=.*\\bcantiere\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bregolo\\b)(?=.*\\bpotenza\\b)(?=.*\\bp560\\b)(?=.*\\bcantiere\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
@@ -304,7 +304,7 @@
     },
     {
       "id": "sugg_p560_come_tarare_propulsori_potenza",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\btarare\\b)(?=.*\\bpropulsori/potenza\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bp560\\b)(?=.*\\btarare\\b)(?=.*\\bpropulsori/potenza\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
@@ -313,25 +313,25 @@
     },
     {
       "id": "sugg_la_p560_funziona_anche_con_lamiera_grecata_presente",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bfunziona\\b)(?=.*\\banche\\b)(?=.*\\blamiera\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bp560\\b)(?=.*\\bfunziona\\b)(?=.*\\banche\\b)(?=.*\\blamiera\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto anche con lamiera grecata, purchƒ© ben aderente alla trave.",
+      "answer": "La posa ¨ dallâalto anche con lamiera grecata, purch© ben aderente alla trave.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_p560_ok_con_lamiera_aderente",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\blamiera\\b)(?=.*\\baderente\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bp560\\b)(?=.*\\blamiera\\b)(?=.*\\baderente\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto anche con lamiera grecata, purchƒ© ben aderente alla trave.",
+      "answer": "La posa ¨ dallâalto anche con lamiera grecata, purch© ben aderente alla trave.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_p560_manutenzione_periodica",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bmanutenzione\\b)(?=.*\\bperiodica\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bp560\\b)(?=.*\\bmanutenzione\\b)(?=.*\\bperiodica\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "La P560 richiede manutenzione di pistone, guidapunte e anello ammortizzatore secondo manuale.",
@@ -340,16 +340,16 @@
     },
     {
       "id": "sugg_la_p560_disponibile_a_noleggio",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bdisponibile\\b)(?=.*\\bnoleggio\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bp560\\b)(?=.*\\bdisponibile\\b)(?=.*\\bnoleggio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "ƒË† disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
+      "answer": " disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_quali_dpi_servono_per_usare_la_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bservono\\b)(?=.*\\busare\\b)(?=.*\\bp560\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bservono\\b)(?=.*\\busare\\b)(?=.*\\bp560\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
@@ -358,7 +358,7 @@
     },
     {
       "id": "sugg_dpi_obbligatori_con_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bobbligatori\\b)(?=.*\\bp560\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bobbligatori\\b)(?=.*\\bp560\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
@@ -367,19 +367,19 @@
     },
     {
       "id": "sugg_che_spessore_minimo_di_trave_in_acciaio_per_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspessore\\b)(?=.*\\bminimo\\b)(?=.*\\btrave\\b)(?=.*\\bacciaio\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bspessore\\b)(?=.*\\bminimo\\b)(?=.*\\btrave\\b)(?=.*\\bacciaio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Indicativamente per le travi in acciaio si considera spessore ¢â€°¥ 6 mm; con lamiera va verificata l¢â‚¬â„¢aderenza e gli spessori previsti.",
+      "answer": "Indicativamente per le travi in acciaio si considera spessore â¥ 6 mm; con lamiera va verificata lâaderenza e gli spessori previsti.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_p560_spessore_acciaio_minimo",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bspessore\\b)(?=.*\\bacciaio\\b)(?=.*\\bminimo\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bp560\\b)(?=.*\\bspessore\\b)(?=.*\\bacciaio\\b)(?=.*\\bminimo\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Indicativamente per le travi in acciaio si considera spessore ¢â€°¥ 6 mm; con lamiera va verificata l¢â‚¬â„¢aderenza e gli spessori previsti.",
+      "answer": "Indicativamente per le travi in acciaio si considera spessore â¥ 6 mm; con lamiera va verificata lâaderenza e gli spessori previsti.",
       "sources": [],
       "priority": 10
     },
@@ -388,7 +388,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bcosa\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -397,7 +397,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bdescrizione\\b)(?=.*\\bsintetica\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -406,7 +406,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bcosa\\b)(?=.*\\bservono\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -415,7 +415,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bavviene\\b)(?=.*\\bfissaggio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
@@ -424,16 +424,16 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bfissano\\b)(?=.*\\bctf\\b)(?=.*\\bsulla\\b)(?=.*\\btrave\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
     {
       "id": "sugg_quanti_ctf_al_metro_quadrato_servono_di_solito",
-      "pattern": "(?i)(?=.*\\b(m2|m‚²|metro|metri)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bmetro\\b)(?=.*\\bquadrato\\b)(?=.*\\bservono\\b).*",
+      "pattern": "(?i)(?=.*\\b(m2|m²|metro|metri)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bmetro\\b)(?=.*\\bquadrato\\b)(?=.*\\bservono\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantitƒ  dei CTF deriva dal calcolo; come ordine di grandezza 6¢â‚¬â€œ8 connettori/m‚², piƒ¹ fitti agli appoggi.",
+      "answer": "La quantit  dei CTF deriva dal calcolo; come ordine di grandezza 6â8 connettori/m², pi¹ fitti agli appoggi.",
       "sources": [],
       "priority": 20
     },
@@ -460,7 +460,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bspessore\\b)(?=.*\\btipico\\b)(?=.*\\bsoletta\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Lo spessore della soletta ƒ¨ definito in progetto e la rete si dispone circa a metƒ  spessore.",
+      "answer": "Lo spessore della soletta ¨ definito in progetto e la rete si dispone circa a met  spessore.",
       "sources": [],
       "priority": 60
     },
@@ -469,7 +469,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bquale\\b)(?=.*\\bspessore\\b)(?=.*\\bsoletta\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Lo spessore della soletta ƒ¨ definito in progetto e la rete si dispone circa a metƒ  spessore.",
+      "answer": "Lo spessore della soletta ¨ definito in progetto e la rete si dispone circa a met  spessore.",
       "sources": [],
       "priority": 60
     },
@@ -487,7 +487,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpasso\\b)(?=.*\\bctf\\b)(?=.*\\bagli\\b)(?=.*\\bappoggi\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantitƒ  dei CTF deriva dal calcolo; come ordine di grandezza 6¢â‚¬â€œ8 connettori/m‚², piƒ¹ fitti agli appoggi.",
+      "answer": "La quantit  dei CTF deriva dal calcolo; come ordine di grandezza 6â8 connettori/m², pi¹ fitti agli appoggi.",
       "sources": [],
       "priority": 20
     },
@@ -496,7 +496,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bcontrolli\\b)(?=.*\\bcantiere\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "In cantiere: prova su campione, verifica profonditƒ /ancoraggio chiodi e tracciabilitƒ  dei pezzi posati.",
+      "answer": "In cantiere: prova su campione, verifica profondit /ancoraggio chiodi e tracciabilit  dei pezzi posati.",
       "sources": [],
       "priority": 60
     },
@@ -505,7 +505,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bverifiche\\b)(?=.*\\bposa\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
@@ -514,7 +514,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bevitare\\b)(?=.*\\buso\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Evitare i CTF se i supporti sono inadeguati o se la lamiera non ƒ¨ aderente secondo specifica.",
+      "answer": "Evitare i CTF se i supporti sono inadeguati o se la lamiera non ¨ aderente secondo specifica.",
       "sources": [],
       "priority": 60
     },
@@ -523,7 +523,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\badatti\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -532,7 +532,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bserve\\b)(?=.*\\bcalcolo\\b)(?=.*\\bstrutturale\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantitƒ  e l¢â‚¬â„¢interasse derivano dal calcolo su luci, carichi e profilo della lamiera.",
+      "answer": "La quantit  e lâinterasse derivano dal calcolo su luci, carichi e profilo della lamiera.",
       "sources": [],
       "priority": 60
     },
@@ -541,7 +541,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse/numero\\b)(?=.*\\bctf\\b)(?=.*\\bcalcola\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantitƒ  dei CTF deriva dal calcolo; come ordine di grandezza 6¢â‚¬â€œ8 connettori/m‚², piƒ¹ fitti agli appoggi.",
+      "answer": "La quantit  dei CTF deriva dal calcolo; come ordine di grandezza 6â8 connettori/m², pi¹ fitti agli appoggi.",
       "sources": [],
       "priority": 20
     },
@@ -550,7 +550,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bclasse\\b)(?=.*\\bcalcestruzzo\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La classe del calcestruzzo ƒ¨ definita in progetto; rispettare specifiche di getto e maturazione.",
+      "answer": "La classe del calcestruzzo ¨ definita in progetto; rispettare specifiche di getto e maturazione.",
       "sources": [],
       "priority": 60
     },
@@ -559,7 +559,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bclasse\\b)(?=.*\\bcalcestruzzo\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La classe del calcestruzzo ƒ¨ definita in progetto; rispettare specifiche di getto e maturazione.",
+      "answer": "La classe del calcestruzzo ¨ definita in progetto; rispettare specifiche di getto e maturazione.",
       "sources": [],
       "priority": 60
     },
@@ -568,7 +568,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\btempi\\b)(?=.*\\bposa\\b)(?=.*\\brispetto\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
@@ -577,7 +577,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bvantaggi\\b)(?=.*\\bsui\\b)(?=.*\\btempi\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "In cantiere: prova su campione, verifica profonditƒ /ancoraggio chiodi e tracciabilitƒ  dei pezzi posati.",
+      "answer": "In cantiere: prova su campione, verifica profondit /ancoraggio chiodi e tracciabilit  dei pezzi posati.",
       "sources": [],
       "priority": 60
     },
@@ -586,7 +586,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse\\b)(?=.*\\btipico\\b)(?=.*\\bdei\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantitƒ  dei CTF deriva dal calcolo; come ordine di grandezza 6¢â‚¬â€œ8 connettori/m‚², piƒ¹ fitti agli appoggi.",
+      "answer": "La quantit  dei CTF deriva dal calcolo; come ordine di grandezza 6â8 connettori/m², pi¹ fitti agli appoggi.",
       "sources": [],
       "priority": 20
     },
@@ -595,25 +595,25 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse\\b)(?=.*\\btipico\\b)(?=.*\\bdei\\b)(?=.*\\bconnettori\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantitƒ  dei CTF deriva dal calcolo; come ordine di grandezza 6¢â‚¬â€œ8 connettori/m‚², piƒ¹ fitti agli appoggi.",
+      "answer": "La quantit  dei CTF deriva dal calcolo; come ordine di grandezza 6â8 connettori/m², pi¹ fitti agli appoggi.",
       "sources": [],
       "priority": 20
     },
     {
       "id": "sugg_ctf_compatibilit_con_profili_di_lamiera_diversi",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bcompatibilitƒ \\b)(?=.*\\bprofili\\b)(?=.*\\blamiera\\b).*",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bcompatibilit \\b)(?=.*\\bprofili\\b)(?=.*\\blamiera\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF lavorano con lamiere grecate certificate (es. famiglie Hi¢â‚¬â€˜Bond); la compatibilitƒ  dipende dal profilo impiegato.",
+      "answer": "I CTF lavorano con lamiere grecate certificate (es. famiglie HiâBond); la compatibilit  dipende dal profilo impiegato.",
       "sources": [],
       "priority": 60
     },
     {
       "id": "sugg_connettori_ctf_compatibilit_con_profili_di_lamiera_diversi",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bcompatibilitƒ \\b)(?=.*\\bprofili\\b).*",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bcompatibilit \\b)(?=.*\\bprofili\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF lavorano con lamiere grecate certificate (es. famiglie Hi¢â‚¬â€˜Bond); la compatibilitƒ  dipende dal profilo impiegato.",
+      "answer": "I CTF lavorano con lamiere grecate certificate (es. famiglie HiâBond); la compatibilit  dipende dal profilo impiegato.",
       "sources": [],
       "priority": 60
     },
@@ -622,7 +622,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bposiziona\\b)(?=.*\\brete\\b)(?=.*\\bnella\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Lo spessore della soletta ƒ¨ definito in progetto e la rete si dispone circa a metƒ  spessore.",
+      "answer": "Lo spessore della soletta ¨ definito in progetto e la rete si dispone circa a met  spessore.",
       "sources": [],
       "priority": 60
     },
@@ -631,7 +631,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bposiziona\\b)(?=.*\\brete\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Lo spessore della soletta ƒ¨ definito in progetto e la rete si dispone circa a metƒ  spessore.",
+      "answer": "Lo spessore della soletta ¨ definito in progetto e la rete si dispone circa a met  spessore.",
       "sources": [],
       "priority": 60
     },
@@ -640,7 +640,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bindicazioni\\b)(?=.*\\bsicurezza\\b)(?=.*\\bposa\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
@@ -649,7 +649,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bindicazioni\\b)(?=.*\\bsicurezza\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
@@ -658,16 +658,16 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bdiapason\\b)(?=.*\\bfunziona\\b)(?=.*\\btravi\\b)(?=.*\\bacciaio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
     {
       "id": "sugg_si_pu_usare_diapason_con_lamiera_grecata",
-      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bpuƒ²\\b)(?=.*\\busare\\b)(?=.*\\bdiapason\\b)(?=.*\\blamiera\\b).*",
+      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bpu²\\b)(?=.*\\busare\\b)(?=.*\\bdiapason\\b)(?=.*\\blamiera\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
@@ -676,7 +676,7 @@
       "pattern": "(?i)(?=.*\\bquale\\b)(?=.*\\bsistema\\b)(?=.*\\brecupero\\b)(?=.*\\bsolaio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -685,7 +685,7 @@
       "pattern": "(?i)(?=.*\\bnuova\\b)(?=.*\\bsoletta\\b)(?=.*\\btravi\\b)(?=.*\\bacciaio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -694,7 +694,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bsistema\\b)(?=.*\\bdiapason\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
@@ -703,7 +703,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bdiapason\\b)(?=.*\\bcasi\\b)(?=.*\\busa\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
@@ -712,7 +712,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bdiapason\\b)(?=.*\\bposa\\b)(?=.*\\bdall\\b)(?=.*\\balto\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
@@ -721,7 +721,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bdiapason\\b)(?=.*\\blocalizzano\\b)(?=.*\\btravetti\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Con Diapason si localizzano i travetti (sondaggi) per fissare correttamente e garantire l¢â‚¬â„¢ancoraggio.",
+      "answer": "Con Diapason si localizzano i travetti (sondaggi) per fissare correttamente e garantire lâancoraggio.",
       "sources": [],
       "priority": 60
     },
@@ -730,7 +730,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\brete\\b)(?=.*\\busa\\b)(?=.*\\bdiapason\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Con Diapason la rete elettrosaldata si dispone a circa metƒ  della nuova soletta collaborante.",
+      "answer": "Con Diapason la rete elettrosaldata si dispone a circa met  della nuova soletta collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -739,7 +739,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\brete\\b)(?=.*\\bposizione\\b)(?=.*\\bnella\\b)(?=.*\\bsoletta\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Con Diapason la rete elettrosaldata si dispone a circa metƒ  della nuova soletta collaborante.",
+      "answer": "Con Diapason la rete elettrosaldata si dispone a circa met  della nuova soletta collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -748,7 +748,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bevitare\\b)(?=.*\\bdiapason\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Evitare Diapason se non ci si puƒ² ancorare ai travetti o le condizioni del solaio non lo consentono.",
+      "answer": "Evitare Diapason se non ci si pu² ancorare ai travetti o le condizioni del solaio non lo consentono.",
       "sources": [],
       "priority": 60
     },
@@ -757,7 +757,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bdiapason\\b)(?=.*\\blimiti\\b)(?=.*\\bapplicativi\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
@@ -784,7 +784,7 @@
       "pattern": "(?i)(?=.*\\bctl\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I connettori CTL rendono collaborante la soletta su solai legno¢â‚¬â€œcalcestruzzo.",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legnoâcalcestruzzo.",
       "sources": [],
       "priority": 60
     },
@@ -793,7 +793,7 @@
       "pattern": "(?i)(?=.*\\bcosa\\b)(?=.*\\bserve\\b)(?=.*\\bsistema\\b)(?=.*\\bctl\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I connettori CTL rendono collaborante la soletta su solai legno¢â‚¬â€œcalcestruzzo.",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legnoâcalcestruzzo.",
       "sources": [],
       "priority": 60
     },
@@ -802,7 +802,7 @@
       "pattern": "(?i)(?=.*\\bctl\\b)(?=.*\\bsolai\\b)(?=.*\\blegno\\b)(?=.*\\bcalcestruzzo\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I connettori CTL rendono collaborante la soletta su solai legno¢â‚¬â€œcalcestruzzo.",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legnoâcalcestruzzo.",
       "sources": [],
       "priority": 60
     },
@@ -838,7 +838,7 @@
       "pattern": "(?i)(?=.*\\bviti\\b)(?=.*\\bctl\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Viti ƒËœ10 in lunghezze 100/120/140 mm in base ad assito/interposti e altezza connettore.",
+      "answer": "Viti 10 in lunghezze 100/120/140 mm in base ad assito/interposti e altezza connettore.",
       "sources": [],
       "priority": 60
     },
@@ -847,7 +847,7 @@
       "pattern": "(?i)(?=.*\\bviti\\b)(?=.*\\blunghezze\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -856,7 +856,7 @@
       "pattern": "(?i)(?=.*\\bposiziona\\b)(?=.*\\brete\\b)(?=.*\\bctl\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La rete si posiziona a circa metƒ  spessore della soletta collaborante.",
+      "answer": "La rete si posiziona a circa met  spessore della soletta collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -865,7 +865,7 @@
       "pattern": "(?i)(?=.*\\brete\\b)(?=.*\\bnella\\b)(?=.*\\bsoletta\\b)(?=.*\\bcollaborante\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La rete si posiziona a circa metƒ  spessore della soletta collaborante.",
+      "answer": "La rete si posiziona a circa met  spessore della soletta collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -874,7 +874,7 @@
       "pattern": "(?i)(?=.*\\bposa\\b)(?=.*\\bctl\\b)(?=.*\\bdall\\b)(?=.*\\balto\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto su elementi lignei con viti specifiche.",
+      "answer": "La posa ¨ dallâalto su elementi lignei con viti specifiche.",
       "sources": [],
       "priority": 60
     },
@@ -883,7 +883,7 @@
       "pattern": "(?i)(?=.*\\bavviene\\b)(?=.*\\bposa\\b)(?=.*\\bdei\\b)(?=.*\\bctl\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto su elementi lignei con viti specifiche.",
+      "answer": "La posa ¨ dallâalto su elementi lignei con viti specifiche.",
       "sources": [],
       "priority": 60
     },
@@ -910,7 +910,7 @@
       "pattern": "(?i)(?=.*\\bctl\\b)(?=.*\\binterferenze\\b)(?=.*\\bimpianti\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Verificare interferenze e scegliere l¢â‚¬â„¢altezza connettore adeguata (es. 12/030 vs 12/040).",
+      "answer": "Verificare interferenze e scegliere lâaltezza connettore adeguata (es. 12/030 vs 12/040).",
       "sources": [],
       "priority": 60
     },
@@ -919,7 +919,7 @@
       "pattern": "(?i)(?=.*\\bgestire\\b)(?=.*\\binterferenze\\b)(?=.*\\bscegliendo\\b)(?=.*\\b12/030\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -934,10 +934,10 @@
     },
     {
       "id": "sugg_limiti_di_applicabilit_di_ctl",
-      "pattern": "(?i)(?=.*\\blimiti\\b)(?=.*\\bapplicabilitƒ \\b)(?=.*\\bctl\\b).*",
+      "pattern": "(?i)(?=.*\\blimiti\\b)(?=.*\\bapplicabilit \\b)(?=.*\\bctl\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I connettori CTL rendono collaborante la soletta su solai legno¢â‚¬â€œcalcestruzzo.",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legnoâcalcestruzzo.",
       "sources": [],
       "priority": 60
     },
@@ -946,7 +946,7 @@
       "pattern": "(?i)(?=.*\\bbenefici\\b)(?=.*\\bctl\\b)(?=.*\\brispetto\\b)(?=.*\\bsola\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La collaborazione legno¢â‚¬â€œcalcestruzzo aumenta rigidezza e portata riducendo deformazioni.",
+      "answer": "La collaborazione legnoâcalcestruzzo aumenta rigidezza e portata riducendo deformazioni.",
       "sources": [],
       "priority": 60
     },
@@ -955,7 +955,7 @@
       "pattern": "(?i)(?=.*\\bvantaggi\\b)(?=.*\\bstrutturali\\b)(?=.*\\bdei\\b)(?=.*\\bctl\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La collaborazione legno¢â‚¬â€œcalcestruzzo aumenta rigidezza e portata riducendo deformazioni.",
+      "answer": "La collaborazione legnoâcalcestruzzo aumenta rigidezza e portata riducendo deformazioni.",
       "sources": [],
       "priority": 60
     },
@@ -964,7 +964,7 @@
       "pattern": "(?i)(?=.*\\bcem\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "V CEM¢â‚¬â€˜E ƒ¨ un connettore a vite per rinforzo di solai in laterocemento con fissaggio dall¢â‚¬â„¢alto nei travetti.",
+      "answer": "V CEMâE ¨ un connettore a vite per rinforzo di solai in laterocemento con fissaggio dallâalto nei travetti.",
       "sources": [],
       "priority": 60
     },
@@ -973,7 +973,7 @@
       "pattern": "(?i)(?=.*\\bmini\\b)(?=.*\\bcem\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "MINI CEM¢â‚¬â€˜E ƒ¨ la versione compatta del connettore a vite per laterocemento quando gli spazi sono ridotti.",
+      "answer": "MINI CEMâE ¨ la versione compatta del connettore a vite per laterocemento quando gli spazi sono ridotti.",
       "sources": [],
       "priority": 60
     },
@@ -982,7 +982,7 @@
       "pattern": "(?i)(?=.*\\bscegliere\\b)(?=.*\\bcem\\b)(?=.*\\bmini\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La scelta tra V CEM¢â‚¬â€˜E e MINI dipende da spessori disponibili, interferenze e livello di miglioramento richiesto.",
+      "answer": "La scelta tra V CEMâE e MINI dipende da spessori disponibili, interferenze e livello di miglioramento richiesto.",
       "sources": [],
       "priority": 60
     },
@@ -991,7 +991,7 @@
       "pattern": "(?i)(?=.*\\bbase\\b)(?=.*\\bcosa\\b)(?=.*\\bscelgo\\b)(?=.*\\btra\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "MINI CEM¢â‚¬â€˜E ƒ¨ la versione compatta del connettore a vite per laterocemento quando gli spazi sono ridotti.",
+      "answer": "MINI CEMâE ¨ la versione compatta del connettore a vite per laterocemento quando gli spazi sono ridotti.",
       "sources": [],
       "priority": 60
     },
@@ -1000,7 +1000,7 @@
       "pattern": "(?i)(?=.*\\bindividuano\\b)(?=.*\\btravetti\\b)(?=.*\\bcem\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Si individuano i travetti con sondaggi prima dell¢â‚¬â„¢avvitamento e del getto collaborante.",
+      "answer": "Si individuano i travetti con sondaggi prima dellâavvitamento e del getto collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -1009,7 +1009,7 @@
       "pattern": "(?i)(?=.*\\bcem\\b)(?=.*\\bsondaggi\\b)(?=.*\\btravetti\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Si individuano i travetti con sondaggi prima dell¢â‚¬â„¢avvitamento e del getto collaborante.",
+      "answer": "Si individuano i travetti con sondaggi prima dellâavvitamento e del getto collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -1018,16 +1018,16 @@
       "pattern": "(?i)(?=.*\\bcem\\b)(?=.*\\bposa\\b)(?=.*\\bdall\\b)(?=.*\\balto\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto: avvitamento del connettore e getto con rete a metƒ  spessore.",
+      "answer": "La posa ¨ dallâalto: avvitamento del connettore e getto con rete a met  spessore.",
       "sources": [],
       "priority": 60
     },
     {
       "id": "sugg_rete_a_met_spessore_con_v_cem_e",
-      "pattern": "(?i)(?=.*\\brete\\b)(?=.*\\bmetƒ \\b)(?=.*\\bspessore\\b)(?=.*\\bcem\\b).*",
+      "pattern": "(?i)(?=.*\\brete\\b)(?=.*\\bmet \\b)(?=.*\\bspessore\\b)(?=.*\\bcem\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto: avvitamento del connettore e getto con rete a metƒ  spessore.",
+      "answer": "La posa ¨ dallâalto: avvitamento del connettore e getto con rete a met  spessore.",
       "sources": [],
       "priority": 60
     },
@@ -1054,7 +1054,7 @@
       "pattern": "(?i)(?=.*\\bevitare\\b)(?=.*\\bcem\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Evitare se non ƒ¨ garantito l¢â‚¬â„¢ancoraggio nei travetti o mancano spessori sufficienti.",
+      "answer": "Evitare se non ¨ garantito lâancoraggio nei travetti o mancano spessori sufficienti.",
       "sources": [],
       "priority": 60
     },
@@ -1063,7 +1063,7 @@
       "pattern": "(?i)(?=.*\\blimiti\\b)(?=.*\\bapplicativi\\b)(?=.*\\bcem\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "V CEM¢â‚¬â€˜E ƒ¨ un connettore a vite per rinforzo di solai in laterocemento con fissaggio dall¢â‚¬â„¢alto nei travetti.",
+      "answer": "V CEMâE ¨ un connettore a vite per rinforzo di solai in laterocemento con fissaggio dallâalto nei travetti.",
       "sources": [],
       "priority": 60
     },
@@ -1072,16 +1072,16 @@
       "pattern": "(?i)(?=.*\\bvantaggi\\b)(?=.*\\bprincipali\\b)(?=.*\\bcem\\b)(?=.*\\be/mini\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Intervento dall¢â‚¬â„¢alto, cantiere asciutto e miglioramento di rigidezza/portata con getto collaborante.",
+      "answer": "Intervento dallâalto, cantiere asciutto e miglioramento di rigidezza/portata con getto collaborante.",
       "sources": [],
       "priority": 60
     },
     {
       "id": "sugg_perch_scegliere_v_cem_e_mini",
-      "pattern": "(?i)(?=.*\\bperchƒ©\\b)(?=.*\\bscegliere\\b)(?=.*\\bcem\\b)(?=.*\\be/mini\\b).*",
+      "pattern": "(?i)(?=.*\\bperch©\\b)(?=.*\\bscegliere\\b)(?=.*\\bcem\\b)(?=.*\\be/mini\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La scelta tra V CEM¢â‚¬â€˜E e MINI dipende da spessori disponibili, interferenze e livello di miglioramento richiesto.",
+      "answer": "La scelta tra V CEMâE e MINI dipende da spessori disponibili, interferenze e livello di miglioramento richiesto.",
       "sources": [],
       "priority": 60
     },
@@ -1090,7 +1090,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\btrovo\\b)(?=.*\\bistruzioni\\b)(?=.*\\bposa\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
@@ -1099,7 +1099,7 @@
       "pattern": "(?i)(?=.*\\btecnaria\\b)(?=.*\\boffre\\b)(?=.*\\bnoleggio\\b)(?=.*\\battrezzature\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "ƒË† disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
+      "answer": " disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
       "sources": [],
       "priority": 25
     },
@@ -1117,7 +1117,7 @@
       "pattern": "(?i)(?=.*\\btecnaria\\b)(?=.*\\bvalutazioni\\b)(?=.*\\beta\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I sistemi sono supportati da documentazione tecnica e valutazioni di conformitƒ  (ETA).",
+      "answer": "I sistemi sono supportati da documentazione tecnica e valutazioni di conformit  (ETA).",
       "sources": [],
       "priority": 60
     },
@@ -1135,13 +1135,13 @@
       "pattern": "(?i)(?=.*\\bverifico\\b)(?=.*\\baderenza\\b)(?=.*\\blamiera\\b)(?=.*\\btrave\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Si verifica l¢â‚¬â„¢aderenza lamiera¢â‚¬â€œtrave con ispezione, fissaggi adeguati e prova su campione.",
+      "answer": "Si verifica lâaderenza lamieraâtrave con ispezione, fissaggi adeguati e prova su campione.",
       "sources": [],
       "priority": 60
     },
     {
       "id": "sugg_si_pu_usare_una_sparachiodi_qualunque_per_i_connettori_ctf",
-      "pattern": "(?i)(?=.*\\b(chiodatrice|sparachiod|sparo|pistola)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpuƒ²\\b)(?=.*\\busare\\b)(?=.*\\bsparachiodi\\b)(?=.*\\bqualunque\\b).*",
+      "pattern": "(?i)(?=.*\\b(chiodatrice|sparachiod|sparo|pistola)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpu²\\b)(?=.*\\busare\\b)(?=.*\\bsparachiodi\\b)(?=.*\\bqualunque\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Per i CTF non si usa una chiodatrice qualsiasi: va impiegata esclusivamente la chiodatrice a sparo SPIT P560 con kit/adattatori Tecnaria.",
@@ -1150,7 +1150,7 @@
     },
     {
       "id": "sugg_quanti_chiodi_servono_per_fissare_un_connettore_connettori_ctf_con_spit_p560",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bchiodi\\b)(?=.*\\bservono\\b)(?=.*\\bfissare\\b)(?=.*\\bconnettore\\b).*",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bchiodi\\b)(?=.*\\bservono\\b)(?=.*\\bfissare\\b)(?=.*\\bconnettore\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
@@ -1159,7 +1159,7 @@
     },
     {
       "id": "sugg_connettori_ctf_numero_chiodi_per_pezzo_con_spit_p560",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bnumero\\b)(?=.*\\bchiodi\\b).*",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bnumero\\b)(?=.*\\bchiodi\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
@@ -1168,25 +1168,25 @@
     },
     {
       "id": "sugg_serve_un_patentino_per_usare_la_spit_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bserve\\b)(?=.*\\bpatentino\\b)(?=.*\\busare\\b)(?=.*\\bspit\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bserve\\b)(?=.*\\bpatentino\\b)(?=.*\\busare\\b)(?=.*\\bspit\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Per la P560 non ƒ¨ richiesto un patentino dedicato: serve una breve formazione interna e l¢â‚¬â„¢uso dei DPI.",
+      "answer": "Per la P560 non ¨ richiesto un patentino dedicato: serve una breve formazione interna e lâuso dei DPI.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_spit_p560_necessario_un_patentino_abilitazione",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bnecessario\\b)(?=.*\\bpatentino/abilitazione\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bnecessario\\b)(?=.*\\bpatentino/abilitazione\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Per la P560 non ƒ¨ richiesto un patentino dedicato: serve una breve formazione interna e l¢â‚¬â„¢uso dei DPI.",
+      "answer": "Per la P560 non ¨ richiesto un patentino dedicato: serve una breve formazione interna e lâuso dei DPI.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_come_regolo_la_potenza_della_spit_p560_in_cantiere",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bregolo\\b)(?=.*\\bpotenza\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bregolo\\b)(?=.*\\bpotenza\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
@@ -1195,7 +1195,7 @@
     },
     {
       "id": "sugg_spit_p560_come_tarare_propulsori_potenza",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\btarare\\b)(?=.*\\bpropulsori/potenza\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\btarare\\b)(?=.*\\bpropulsori/potenza\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
@@ -1204,25 +1204,25 @@
     },
     {
       "id": "sugg_la_spit_p560_funziona_anche_con_lamiera_grecata_presente",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bfunziona\\b)(?=.*\\banche\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bfunziona\\b)(?=.*\\banche\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto anche con lamiera grecata, purchƒ© ben aderente alla trave.",
+      "answer": "La posa ¨ dallâalto anche con lamiera grecata, purch© ben aderente alla trave.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_spit_p560_ok_con_lamiera_aderente",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\blamiera\\b)(?=.*\\baderente\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\blamiera\\b)(?=.*\\baderente\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto anche con lamiera grecata, purchƒ© ben aderente alla trave.",
+      "answer": "La posa ¨ dallâalto anche con lamiera grecata, purch© ben aderente alla trave.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_spit_p560_manutenzione_periodica",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bmanutenzione\\b)(?=.*\\bperiodica\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bmanutenzione\\b)(?=.*\\bperiodica\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "La P560 richiede manutenzione di pistone, guidapunte e anello ammortizzatore secondo manuale.",
@@ -1231,16 +1231,16 @@
     },
     {
       "id": "sugg_la_spit_p560_disponibile_a_noleggio",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bdisponibile\\b)(?=.*\\bnoleggio\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bdisponibile\\b)(?=.*\\bnoleggio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "ƒË† disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
+      "answer": " disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_quali_dpi_servono_per_usare_la_spit_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bservono\\b)(?=.*\\busare\\b)(?=.*\\bspit\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bservono\\b)(?=.*\\busare\\b)(?=.*\\bspit\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
@@ -1249,7 +1249,7 @@
     },
     {
       "id": "sugg_dpi_obbligatori_con_spit_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bobbligatori\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bobbligatori\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
@@ -1258,19 +1258,19 @@
     },
     {
       "id": "sugg_che_spessore_minimo_di_trave_in_acciaio_per_spit_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspessore\\b)(?=.*\\bminimo\\b)(?=.*\\btrave\\b)(?=.*\\bacciaio\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bspessore\\b)(?=.*\\bminimo\\b)(?=.*\\btrave\\b)(?=.*\\bacciaio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Indicativamente per le travi in acciaio si considera spessore ¢â€°¥ 6 mm; con lamiera va verificata l¢â‚¬â„¢aderenza e gli spessori previsti.",
+      "answer": "Indicativamente per le travi in acciaio si considera spessore â¥ 6 mm; con lamiera va verificata lâaderenza e gli spessori previsti.",
       "sources": [],
       "priority": 10
     },
     {
       "id": "sugg_spit_p560_spessore_acciaio_minimo",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bspessore\\b)(?=.*\\bacciaio\\b).*",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\ p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bspessore\\b)(?=.*\\bacciaio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Indicativamente per le travi in acciaio si considera spessore ¢â€°¥ 6 mm; con lamiera va verificata l¢â‚¬â„¢aderenza e gli spessori previsti.",
+      "answer": "Indicativamente per le travi in acciaio si considera spessore â¥ 6 mm; con lamiera va verificata lâaderenza e gli spessori previsti.",
       "sources": [],
       "priority": 10
     },
@@ -1279,7 +1279,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bcosa\\b)(?=.*\\bconnettori\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -1288,7 +1288,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bdescrizione\\b)(?=.*\\bsintetica\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -1297,7 +1297,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bcosa\\b)(?=.*\\bservono\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -1306,7 +1306,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bavviene\\b)(?=.*\\bfissaggio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
@@ -1315,16 +1315,16 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bfissano\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bsulla\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
     {
       "id": "sugg_quanti_connettori_ctf_al_metro_quadrato_servono_di_solito",
-      "pattern": "(?i)(?=.*\\b(m2|m‚²|metro|metri)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bmetro\\b)(?=.*\\bquadrato\\b).*",
+      "pattern": "(?i)(?=.*\\b(m2|m²|metro|metri)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bmetro\\b)(?=.*\\bquadrato\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantitƒ  dei CTF deriva dal calcolo; come ordine di grandezza 6¢â‚¬â€œ8 connettori/m‚², piƒ¹ fitti agli appoggi.",
+      "answer": "La quantit  dei CTF deriva dal calcolo; come ordine di grandezza 6â8 connettori/m², pi¹ fitti agli appoggi.",
       "sources": [],
       "priority": 20
     },
@@ -1351,7 +1351,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bspessore\\b)(?=.*\\btipico\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Lo spessore della soletta ƒ¨ definito in progetto e la rete si dispone circa a metƒ  spessore.",
+      "answer": "Lo spessore della soletta ¨ definito in progetto e la rete si dispone circa a met  spessore.",
       "sources": [],
       "priority": 60
     },
@@ -1360,7 +1360,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bspessore\\b)(?=.*\\bsoletta\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Lo spessore della soletta ƒ¨ definito in progetto e la rete si dispone circa a metƒ  spessore.",
+      "answer": "Lo spessore della soletta ¨ definito in progetto e la rete si dispone circa a met  spessore.",
       "sources": [],
       "priority": 60
     },
@@ -1378,7 +1378,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpasso\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bagli\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantitƒ  dei CTF deriva dal calcolo; come ordine di grandezza 6¢â‚¬â€œ8 connettori/m‚², piƒ¹ fitti agli appoggi.",
+      "answer": "La quantit  dei CTF deriva dal calcolo; come ordine di grandezza 6â8 connettori/m², pi¹ fitti agli appoggi.",
       "sources": [],
       "priority": 20
     },
@@ -1387,7 +1387,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bcontrolli\\b)(?=.*\\bcantiere\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "In cantiere: prova su campione, verifica profonditƒ /ancoraggio chiodi e tracciabilitƒ  dei pezzi posati.",
+      "answer": "In cantiere: prova su campione, verifica profondit /ancoraggio chiodi e tracciabilit  dei pezzi posati.",
       "sources": [],
       "priority": 60
     },
@@ -1396,7 +1396,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bverifiche\\b)(?=.*\\bposa\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
@@ -1405,7 +1405,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bevitare\\b)(?=.*\\buso\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Evitare i CTF se i supporti sono inadeguati o se la lamiera non ƒ¨ aderente secondo specifica.",
+      "answer": "Evitare i CTF se i supporti sono inadeguati o se la lamiera non ¨ aderente secondo specifica.",
       "sources": [],
       "priority": 60
     },
@@ -1414,7 +1414,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\badatti\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -1423,7 +1423,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bserve\\b)(?=.*\\bcalcolo\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantitƒ  e l¢â‚¬â„¢interasse derivano dal calcolo su luci, carichi e profilo della lamiera.",
+      "answer": "La quantit  e lâinterasse derivano dal calcolo su luci, carichi e profilo della lamiera.",
       "sources": [],
       "priority": 60
     },
@@ -1432,7 +1432,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse/numero\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bcalcola\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantitƒ  dei CTF deriva dal calcolo; come ordine di grandezza 6¢â‚¬â€œ8 connettori/m‚², piƒ¹ fitti agli appoggi.",
+      "answer": "La quantit  dei CTF deriva dal calcolo; come ordine di grandezza 6â8 connettori/m², pi¹ fitti agli appoggi.",
       "sources": [],
       "priority": 20
     },
@@ -1441,7 +1441,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bclasse\\b)(?=.*\\bcalcestruzzo\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La classe del calcestruzzo ƒ¨ definita in progetto; rispettare specifiche di getto e maturazione.",
+      "answer": "La classe del calcestruzzo ¨ definita in progetto; rispettare specifiche di getto e maturazione.",
       "sources": [],
       "priority": 60
     },
@@ -1450,7 +1450,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bclasse\\b)(?=.*\\bcalcestruzzo\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La classe del calcestruzzo ƒ¨ definita in progetto; rispettare specifiche di getto e maturazione.",
+      "answer": "La classe del calcestruzzo ¨ definita in progetto; rispettare specifiche di getto e maturazione.",
       "sources": [],
       "priority": 60
     },
@@ -1459,7 +1459,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\btempi\\b)(?=.*\\bposa\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
@@ -1468,7 +1468,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bvantaggi\\b)(?=.*\\bsui\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "In cantiere: prova su campione, verifica profonditƒ /ancoraggio chiodi e tracciabilitƒ  dei pezzi posati.",
+      "answer": "In cantiere: prova su campione, verifica profondit /ancoraggio chiodi e tracciabilit  dei pezzi posati.",
       "sources": [],
       "priority": 60
     },
@@ -1477,16 +1477,16 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse\\b)(?=.*\\btipico\\b)(?=.*\\bdei\\b)(?=.*\\bconnettori\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantitƒ  dei CTF deriva dal calcolo; come ordine di grandezza 6¢â‚¬â€œ8 connettori/m‚², piƒ¹ fitti agli appoggi.",
+      "answer": "La quantit  dei CTF deriva dal calcolo; come ordine di grandezza 6â8 connettori/m², pi¹ fitti agli appoggi.",
       "sources": [],
       "priority": 20
     },
     {
       "id": "sugg_connettori_connettori_ctf_compatibilit_con_profili_di_lamiera_diversi",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bcompatibilitƒ \\b).*",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bcompatibilit \\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF lavorano con lamiere grecate certificate (es. famiglie Hi¢â‚¬â€˜Bond); la compatibilitƒ  dipende dal profilo impiegato.",
+      "answer": "I CTF lavorano con lamiere grecate certificate (es. famiglie HiâBond); la compatibilit  dipende dal profilo impiegato.",
       "sources": [],
       "priority": 60
     },
@@ -1495,7 +1495,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bposiziona\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Lo spessore della soletta ƒ¨ definito in progetto e la rete si dispone circa a metƒ  spessore.",
+      "answer": "Lo spessore della soletta ¨ definito in progetto e la rete si dispone circa a met  spessore.",
       "sources": [],
       "priority": 60
     },
@@ -1504,7 +1504,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bindicazioni\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
@@ -1513,16 +1513,16 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bdiapason\\b)(?=.*\\bfunziona\\b)(?=.*\\btravi\\b)(?=.*\\bacciaio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
     {
       "id": "sugg_si_pu_usare_diapason_con_lamiera_grecata_spiega_in_breve",
-      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bpuƒ²\\b)(?=.*\\busare\\b)(?=.*\\bdiapason\\b)(?=.*\\blamiera\\b).*",
+      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bpu²\\b)(?=.*\\busare\\b)(?=.*\\bdiapason\\b)(?=.*\\blamiera\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
@@ -1531,7 +1531,7 @@
       "pattern": "(?i)(?=.*\\bsistema\\b)(?=.*\\brecupero\\b)(?=.*\\bsolaio\\b)(?=.*\\blaterocemento\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -1540,7 +1540,7 @@
       "pattern": "(?i)(?=.*\\bnuova\\b)(?=.*\\bsoletta\\b)(?=.*\\btravi\\b)(?=.*\\bacciaio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -1549,7 +1549,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bsistema\\b)(?=.*\\bdiapason\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
@@ -1558,7 +1558,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bdiapason\\b)(?=.*\\bcasi\\b)(?=.*\\busa\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
@@ -1567,7 +1567,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bdiapason\\b)(?=.*\\bposa\\b)(?=.*\\bdall\\b)(?=.*\\balto\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
@@ -1576,7 +1576,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bdiapason\\b)(?=.*\\blocalizzano\\b)(?=.*\\btravetti\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Con Diapason si localizzano i travetti (sondaggi) per fissare correttamente e garantire l¢â‚¬â„¢ancoraggio.",
+      "answer": "Con Diapason si localizzano i travetti (sondaggi) per fissare correttamente e garantire lâancoraggio.",
       "sources": [],
       "priority": 60
     },
@@ -1585,7 +1585,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\brete\\b)(?=.*\\busa\\b)(?=.*\\bdiapason\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Con Diapason la rete elettrosaldata si dispone a circa metƒ  della nuova soletta collaborante.",
+      "answer": "Con Diapason la rete elettrosaldata si dispone a circa met  della nuova soletta collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -1594,7 +1594,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\brete\\b)(?=.*\\bposizione\\b)(?=.*\\bnella\\b)(?=.*\\bsoletta\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Con Diapason la rete elettrosaldata si dispone a circa metƒ  della nuova soletta collaborante.",
+      "answer": "Con Diapason la rete elettrosaldata si dispone a circa met  della nuova soletta collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -1603,7 +1603,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bevitare\\b)(?=.*\\bdiapason\\b)(?=.*\\bspiega\\b)(?=.*\\bbreve\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Evitare Diapason se non ci si puƒ² ancorare ai travetti o le condizioni del solaio non lo consentono.",
+      "answer": "Evitare Diapason se non ci si pu² ancorare ai travetti o le condizioni del solaio non lo consentono.",
       "sources": [],
       "priority": 60
     },
@@ -1612,7 +1612,7 @@
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\bdiapason\\b)(?=.*\\blimiti\\b)(?=.*\\bapplicativi\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ƒ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall¢â‚¬â„¢alto.",
+      "answer": "Diapason ¨ un sistema per il rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dallâalto.",
       "sources": [],
       "priority": 60
     },
@@ -1639,7 +1639,7 @@
       "pattern": "(?i)(?=.*\\bctl\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I connettori CTL rendono collaborante la soletta su solai legno¢â‚¬â€œcalcestruzzo.",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legnoâcalcestruzzo.",
       "sources": [],
       "priority": 60
     },
@@ -1648,7 +1648,7 @@
       "pattern": "(?i)(?=.*\\bcosa\\b)(?=.*\\bserve\\b)(?=.*\\bsistema\\b)(?=.*\\bctl\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I connettori CTL rendono collaborante la soletta su solai legno¢â‚¬â€œcalcestruzzo.",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legnoâcalcestruzzo.",
       "sources": [],
       "priority": 60
     },
@@ -1657,7 +1657,7 @@
       "pattern": "(?i)(?=.*\\bctl\\b)(?=.*\\bsolai\\b)(?=.*\\blegno\\b)(?=.*\\bcalcestruzzo\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I connettori CTL rendono collaborante la soletta su solai legno¢â‚¬â€œcalcestruzzo.",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legnoâcalcestruzzo.",
       "sources": [],
       "priority": 60
     },
@@ -1693,7 +1693,7 @@
       "pattern": "(?i)(?=.*\\bviti\\b)(?=.*\\bctl\\b)(?=.*\\bspiega\\b)(?=.*\\bbreve\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Viti ƒËœ10 in lunghezze 100/120/140 mm in base ad assito/interposti e altezza connettore.",
+      "answer": "Viti 10 in lunghezze 100/120/140 mm in base ad assito/interposti e altezza connettore.",
       "sources": [],
       "priority": 60
     },
@@ -1702,7 +1702,7 @@
       "pattern": "(?i)(?=.*\\bviti\\b)(?=.*\\blunghezze\\b)(?=.*\\bspiega\\b)(?=.*\\bbreve\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -1711,7 +1711,7 @@
       "pattern": "(?i)(?=.*\\bposiziona\\b)(?=.*\\brete\\b)(?=.*\\bctl\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La rete si posiziona a circa metƒ  spessore della soletta collaborante.",
+      "answer": "La rete si posiziona a circa met  spessore della soletta collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -1720,7 +1720,7 @@
       "pattern": "(?i)(?=.*\\brete\\b)(?=.*\\bnella\\b)(?=.*\\bsoletta\\b)(?=.*\\bcollaborante\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La rete si posiziona a circa metƒ  spessore della soletta collaborante.",
+      "answer": "La rete si posiziona a circa met  spessore della soletta collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -1729,7 +1729,7 @@
       "pattern": "(?i)(?=.*\\bposa\\b)(?=.*\\bctl\\b)(?=.*\\bdall\\b)(?=.*\\balto\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto su elementi lignei con viti specifiche.",
+      "answer": "La posa ¨ dallâalto su elementi lignei con viti specifiche.",
       "sources": [],
       "priority": 60
     },
@@ -1738,7 +1738,7 @@
       "pattern": "(?i)(?=.*\\bavviene\\b)(?=.*\\bposa\\b)(?=.*\\bdei\\b)(?=.*\\bctl\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto su elementi lignei con viti specifiche.",
+      "answer": "La posa ¨ dallâalto su elementi lignei con viti specifiche.",
       "sources": [],
       "priority": 60
     },
@@ -1765,7 +1765,7 @@
       "pattern": "(?i)(?=.*\\bctl\\b)(?=.*\\binterferenze\\b)(?=.*\\bimpianti\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Verificare interferenze e scegliere l¢â‚¬â„¢altezza connettore adeguata (es. 12/030 vs 12/040).",
+      "answer": "Verificare interferenze e scegliere lâaltezza connettore adeguata (es. 12/030 vs 12/040).",
       "sources": [],
       "priority": 60
     },
@@ -1774,7 +1774,7 @@
       "pattern": "(?i)(?=.*\\bgestire\\b)(?=.*\\binterferenze\\b)(?=.*\\bscegliendo\\b)(?=.*\\b12/030\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Riformula la domanda con piƒ¹ contesto (prodotto, solaio, travi, spessori).",
+      "answer": "Riformula la domanda con pi¹ contesto (prodotto, solaio, travi, spessori).",
       "sources": [],
       "priority": 60
     },
@@ -1789,10 +1789,10 @@
     },
     {
       "id": "sugg_limiti_di_applicabilit_di_ctl_spiega_in_breve",
-      "pattern": "(?i)(?=.*\\blimiti\\b)(?=.*\\bapplicabilitƒ \\b)(?=.*\\bctl\\b)(?=.*\\bspiega\\b).*",
+      "pattern": "(?i)(?=.*\\blimiti\\b)(?=.*\\bapplicabilit \\b)(?=.*\\bctl\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I connettori CTL rendono collaborante la soletta su solai legno¢â‚¬â€œcalcestruzzo.",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legnoâcalcestruzzo.",
       "sources": [],
       "priority": 60
     },
@@ -1801,7 +1801,7 @@
       "pattern": "(?i)(?=.*\\bbenefici\\b)(?=.*\\bctl\\b)(?=.*\\brispetto\\b)(?=.*\\bsola\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La collaborazione legno¢â‚¬â€œcalcestruzzo aumenta rigidezza e portata riducendo deformazioni.",
+      "answer": "La collaborazione legnoâcalcestruzzo aumenta rigidezza e portata riducendo deformazioni.",
       "sources": [],
       "priority": 60
     },
@@ -1810,7 +1810,7 @@
       "pattern": "(?i)(?=.*\\bvantaggi\\b)(?=.*\\bstrutturali\\b)(?=.*\\bdei\\b)(?=.*\\bctl\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La collaborazione legno¢â‚¬â€œcalcestruzzo aumenta rigidezza e portata riducendo deformazioni.",
+      "answer": "La collaborazione legnoâcalcestruzzo aumenta rigidezza e portata riducendo deformazioni.",
       "sources": [],
       "priority": 60
     },
@@ -1819,7 +1819,7 @@
       "pattern": "(?i)(?=.*\\bcem\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "V CEM¢â‚¬â€˜E ƒ¨ un connettore a vite per rinforzo di solai in laterocemento con fissaggio dall¢â‚¬â„¢alto nei travetti.",
+      "answer": "V CEMâE ¨ un connettore a vite per rinforzo di solai in laterocemento con fissaggio dallâalto nei travetti.",
       "sources": [],
       "priority": 60
     },
@@ -1828,7 +1828,7 @@
       "pattern": "(?i)(?=.*\\bmini\\b)(?=.*\\bcem\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "MINI CEM¢â‚¬â€˜E ƒ¨ la versione compatta del connettore a vite per laterocemento quando gli spazi sono ridotti.",
+      "answer": "MINI CEMâE ¨ la versione compatta del connettore a vite per laterocemento quando gli spazi sono ridotti.",
       "sources": [],
       "priority": 60
     },
@@ -1837,7 +1837,7 @@
       "pattern": "(?i)(?=.*\\bscegliere\\b)(?=.*\\bcem\\b)(?=.*\\bmini\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La scelta tra V CEM¢â‚¬â€˜E e MINI dipende da spessori disponibili, interferenze e livello di miglioramento richiesto.",
+      "answer": "La scelta tra V CEMâE e MINI dipende da spessori disponibili, interferenze e livello di miglioramento richiesto.",
       "sources": [],
       "priority": 60
     },
@@ -1846,7 +1846,7 @@
       "pattern": "(?i)(?=.*\\bbase\\b)(?=.*\\bcosa\\b)(?=.*\\bscelgo\\b)(?=.*\\btra\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "MINI CEM¢â‚¬â€˜E ƒ¨ la versione compatta del connettore a vite per laterocemento quando gli spazi sono ridotti.",
+      "answer": "MINI CEMâE ¨ la versione compatta del connettore a vite per laterocemento quando gli spazi sono ridotti.",
       "sources": [],
       "priority": 60
     },
@@ -1855,7 +1855,7 @@
       "pattern": "(?i)(?=.*\\bindividuano\\b)(?=.*\\btravetti\\b)(?=.*\\bcem\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Si individuano i travetti con sondaggi prima dell¢â‚¬â„¢avvitamento e del getto collaborante.",
+      "answer": "Si individuano i travetti con sondaggi prima dellâavvitamento e del getto collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -1864,7 +1864,7 @@
       "pattern": "(?i)(?=.*\\bcem\\b)(?=.*\\bsondaggi\\b)(?=.*\\btravetti\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Si individuano i travetti con sondaggi prima dell¢â‚¬â„¢avvitamento e del getto collaborante.",
+      "answer": "Si individuano i travetti con sondaggi prima dellâavvitamento e del getto collaborante.",
       "sources": [],
       "priority": 60
     },
@@ -1873,16 +1873,16 @@
       "pattern": "(?i)(?=.*\\bcem\\b)(?=.*\\bposa\\b)(?=.*\\bdall\\b)(?=.*\\balto\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto: avvitamento del connettore e getto con rete a metƒ  spessore.",
+      "answer": "La posa ¨ dallâalto: avvitamento del connettore e getto con rete a met  spessore.",
       "sources": [],
       "priority": 60
     },
     {
       "id": "sugg_rete_a_met_spessore_con_v_cem_e_spiega_in_breve",
-      "pattern": "(?i)(?=.*\\brete\\b)(?=.*\\bmetƒ \\b)(?=.*\\bspessore\\b)(?=.*\\bcem\\b).*",
+      "pattern": "(?i)(?=.*\\brete\\b)(?=.*\\bmet \\b)(?=.*\\bspessore\\b)(?=.*\\bcem\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La posa ƒ¨ dall¢â‚¬â„¢alto: avvitamento del connettore e getto con rete a metƒ  spessore.",
+      "answer": "La posa ¨ dallâalto: avvitamento del connettore e getto con rete a met  spessore.",
       "sources": [],
       "priority": 60
     },
@@ -1909,7 +1909,7 @@
       "pattern": "(?i)(?=.*\\bevitare\\b)(?=.*\\bcem\\b)(?=.*\\bspiega\\b)(?=.*\\bbreve\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Evitare se non ƒ¨ garantito l¢â‚¬â„¢ancoraggio nei travetti o mancano spessori sufficienti.",
+      "answer": "Evitare se non ¨ garantito lâancoraggio nei travetti o mancano spessori sufficienti.",
       "sources": [],
       "priority": 60
     },
@@ -1918,7 +1918,7 @@
       "pattern": "(?i)(?=.*\\blimiti\\b)(?=.*\\bapplicativi\\b)(?=.*\\bcem\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "V CEM¢â‚¬â€˜E ƒ¨ un connettore a vite per rinforzo di solai in laterocemento con fissaggio dall¢â‚¬â„¢alto nei travetti.",
+      "answer": "V CEMâE ¨ un connettore a vite per rinforzo di solai in laterocemento con fissaggio dallâalto nei travetti.",
       "sources": [],
       "priority": 60
     },
@@ -1927,16 +1927,16 @@
       "pattern": "(?i)(?=.*\\bvantaggi\\b)(?=.*\\bprincipali\\b)(?=.*\\bcem\\b)(?=.*\\be/mini\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Intervento dall¢â‚¬â„¢alto, cantiere asciutto e miglioramento di rigidezza/portata con getto collaborante.",
+      "answer": "Intervento dallâalto, cantiere asciutto e miglioramento di rigidezza/portata con getto collaborante.",
       "sources": [],
       "priority": 60
     },
     {
       "id": "sugg_perch_scegliere_v_cem_e_mini_spiega_in_breve",
-      "pattern": "(?i)(?=.*\\bperchƒ©\\b)(?=.*\\bscegliere\\b)(?=.*\\bcem\\b)(?=.*\\be/mini\\b).*",
+      "pattern": "(?i)(?=.*\\bperch©\\b)(?=.*\\bscegliere\\b)(?=.*\\bcem\\b)(?=.*\\be/mini\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La scelta tra V CEM¢â‚¬â€˜E e MINI dipende da spessori disponibili, interferenze e livello di miglioramento richiesto.",
+      "answer": "La scelta tra V CEMâE e MINI dipende da spessori disponibili, interferenze e livello di miglioramento richiesto.",
       "sources": [],
       "priority": 60
     },
@@ -1945,7 +1945,7 @@
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\btrovo\\b)(?=.*\\bistruzioni\\b)(?=.*\\bposa\\b)(?=.*\\bconnettori\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall¢â‚¬â„¢alto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
+      "answer": "I CTF si fissano dallâalto con SPIT P560; ogni connettore richiede 2 chiodi HSBR14.",
       "sources": [],
       "priority": 60
     },
@@ -1954,7 +1954,7 @@
       "pattern": "(?i)(?=.*\\btecnaria\\b)(?=.*\\boffre\\b)(?=.*\\bnoleggio\\b)(?=.*\\battrezzature\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "ƒË† disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
+      "answer": " disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
       "sources": [],
       "priority": 25
     },
@@ -1972,7 +1972,7 @@
       "pattern": "(?i)(?=.*\\btecnaria\\b)(?=.*\\bvalutazioni\\b)(?=.*\\beta\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I sistemi sono supportati da documentazione tecnica e valutazioni di conformitƒ  (ETA).",
+      "answer": "I sistemi sono supportati da documentazione tecnica e valutazioni di conformit  (ETA).",
       "sources": [],
       "priority": 60
     },
@@ -1990,7 +1990,7 @@
       "pattern": "(?i)(?=.*\\bverifico\\b)(?=.*\\baderenza\\b)(?=.*\\blamiera\\b)(?=.*\\btrave\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Si verifica l¢â‚¬â„¢aderenza lamiera¢â‚¬â€œtrave con ispezione, fissaggi adeguati e prova su campione.",
+      "answer": "Si verifica lâaderenza lamieraâtrave con ispezione, fissaggi adeguati e prova su campione.",
       "sources": [],
       "priority": 60
     },
@@ -1999,120 +1999,120 @@
       "pattern": "(?i)\\b(p\\s*560|spit\\s*p560|chiodatrice)\\b.*(cos|che cos|parlami|mi\\s+parli|informaz|scheda|manuale|funzion|utilizz|uso)",
       "mode": "override",
       "lang": "it",
-      "answer": "La SPIT P560 ¨ la chiodatrice a tiro indiretto impiegata da Tecnaria per il fissaggio a freddo dei connettori CTF su travi in acciaio, anche con lamiera grecata. La posa ¨ dallâ€™alto: ogni connettore CTF si fissa con due chiodi HSBR14, tarando la potenza in funzione degli spessori e verificando lâ€™ancoraggio con una prova su campione. Sono essenziali DPI, controllo dellâ€™aderenza della lamiera alla trave e uso degli adattatori dedicati.",
-      "priority": 500
+      "answer": "La SPIT P560 è la chiodatrice a tiro indiretto impiegata da Tecnaria per il fissaggio a freddo dei connettori CTF su travi in acciaio, anche con lamiera grecata. La posa è dallalto: ogni connettore CTF si fissa con due chiodi HSBR14, tarando la potenza in funzione degli spessori e verificando lancoraggio con una prova su campione. Sono essenziali DPI, controllo delladerenza della lamiera alla trave e uso degli adattatori dedicati.",
+      "priority": 50
     },
     {
       "id": "p560_patentino_formazione",
       "pattern": "(?i)\\b(p\\s*560|spit\\s*p560)\\b.*(patentino|abilitazione|licenza|corso|formazione|certificat)",
       "mode": "override",
       "lang": "it",
-      "answer": "Per la SPIT P560 non ¨ richiesto un patentino specifico. ˆ sufficiente una breve formazione interna secondo le istruzioni del costruttore, con prova su campione, corretta taratura della potenza e utilizzo dei DPI previsti.",
-      "priority": 500
+      "answer": "Per la SPIT P560 non è richiesto un patentino specifico.  sufficiente una breve formazione interna secondo le istruzioni del costruttore, con prova su campione, corretta taratura della potenza e utilizzo dei DPI previsti.",
+      "priority": 50
     },
     {
       "id": "p560_ricambi_manutenzione",
       "pattern": "(?i)\\b(p\\s*560|spit\\s*p560)\\b.*(ricambi|pistone|guidapunte|anello|manutenz|pulizia|incepp|problemi|assistenza)",
       "mode": "override",
       "lang": "it",
-      "answer": "Tecnaria fornisce istruzioni e supporto per la manutenzione della P560: sostituzione pistone e anello ammortizzatore, controllo guidapunte, pulizia e gestione inceppamenti. Ricambi e tempi di sostituzione dipendono dal numero di connettori sparati; lâ€™assistenza Tecnaria indica componenti e cicli consigliati.",
-      "priority": 500
+      "answer": "Tecnaria fornisce istruzioni e supporto per la manutenzione della P560: sostituzione pistone e anello ammortizzatore, controllo guidapunte, pulizia e gestione inceppamenti. Ricambi e tempi di sostituzione dipendono dal numero di connettori sparati; lassistenza Tecnaria indica componenti e cicli consigliati.",
+      "priority": 50
     },
     {
       "id": "ctf_che_cosa",
       "pattern": "(?i)\\bctf\\b.*(cos|che\\s+cosa|informaz|descrizion|a\\s+cosa\\s+serve|impieg|applicaz|utilizz|vantagg)",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF sono connettori a taglio per solai collaboranti acciaioâ€“calcestruzzo su lamiera grecata. Creano la collaborazione tra trave dâ€™acciaio, lamiera e getto, aumentando rigidezza e capacit  portante con posa rapida dallâ€™alto mediante SPIT P560.",
-      "priority": 500
+      "answer": "I CTF sono connettori a taglio per solai collaboranti acciaiocalcestruzzo su lamiera grecata. Creano la collaborazione tra trave dacciaio, lamiera e getto, aumentando rigidezza e capacità portante con posa rapida dallalto mediante SPIT P560.",
+      "priority": 50
     },
     {
       "id": "ctf_fissaggio",
       "pattern": "(?i)\\bctf\\b.*(fissagg|posa|installaz|chiod|hsbr|spar|dall.?alto|adattator|attrezz)",
       "mode": "augment",
       "lang": "it",
-      "answer": "Il fissaggio ¨ dallâ€™alto con SPIT P560. Ogni CTF richiede due chiodi HSBR14 senza preforatura; ¨ fondamentale tarare la potenza, verificare lâ€™aderenza della lamiera alla trave ed eseguire una prova su campione prima della posa in produzione.",
-      "priority": 500
+      "answer": "Il fissaggio è dallalto con SPIT P560. Ogni CTF richiede due chiodi HSBR14 senza preforatura; è fondamentale tarare la potenza, verificare laderenza della lamiera alla trave ed eseguire una prova su campione prima della posa in produzione.",
+      "priority": 50
     },
     {
       "id": "ctf_densita_interassi",
       "pattern": "(?i)\\bctf\\b.*(densit|quanti|m2|m²|numero|pezzi|interasse|passo)",
       "mode": "augment",
       "lang": "it",
-      "answer": "In via indicativa si impiegano circa seiâ€“otto CTF per metro quadrato, con una maglia pi¹ fitta in prossimit  degli appoggi e pi¹ rada in mezzeria. Il passo effettivo deriva dal calcolo strutturale in funzione di luci, carichi, profilo di lamiera, soletta e verifiche di scorrimento e deformazione.",
-      "priority": 500
+      "answer": "In via indicativa si impiegano circa seiotto CTF per metro quadrato, con una maglia più fitta in prossimità degli appoggi e più rada in mezzeria. Il passo effettivo deriva dal calcolo strutturale in funzione di luci, carichi, profilo di lamiera, soletta e verifiche di scorrimento e deformazione.",
+      "priority": 50
     },
     {
       "id": "ctf_spessori_lamiera_acciaio",
       "pattern": "(?i)\\bctf\\b.*(lamiera|grecat|spessore|acciaio|trave|sovrapposizion|doppia\\s+lamiera)",
       "mode": "augment",
       "lang": "it",
-      "answer": "I CTF lavorano con lamiere grecate certificate (es. gamme Hi-Bond). Sono ammessi pacchetti tipici come 1—1,5 mm o 2—1,0 mm se ben aderenti alla trave; lo spessore della trave dâ€™acciaio deve essere idoneo alla chiodatura a freddo. La verifica finale ¨ a cura del progettista.",
-      "priority": 500
+      "answer": "I CTF lavorano con lamiere grecate certificate (es. gamme Hi-Bond). Sono ammessi pacchetti tipici come 11,5 mm o 21,0 mm se ben aderenti alla trave; lo spessore della trave dacciaio deve essere idoneo alla chiodatura a freddo. La verifica finale è a cura del progettista.",
+      "priority": 50
     },
     {
       "id": "ctf_vs_diapason",
       "pattern": "(?i)(\\bctf\\b).*diapason|(\\bdiapason\\b).*(\\bctf\\b)|differenz|confront|quando\\s+usare|scelgo|quale\\s+scegliere",
       "mode": "override",
       "lang": "it",
-      "answer": "CTF e Diapason hanno campi dâ€™impiego diversi. CTF: solai collaboranti acciaioâ€“calcestruzzo su lamiera grecata con posa dallâ€™alto a elevata produttivit . Diapason: rinforzo dallâ€™alto di solai in laterocemento senza lamiera, con fissaggi meccanici e getto collaborante. La scelta dipende da tipologia del solaio, spessori disponibili, luci, accessi e tempi di cantiere.",
-      "priority": 500
+      "answer": "CTF e Diapason hanno campi dimpiego diversi. CTF: solai collaboranti acciaiocalcestruzzo su lamiera grecata con posa dallalto a elevata produttività. Diapason: rinforzo dallalto di solai in laterocemento senza lamiera, con fissaggi meccanici e getto collaborante. La scelta dipende da tipologia del solaio, spessori disponibili, luci, accessi e tempi di cantiere.",
+      "priority": 50
     },
     {
       "id": "ctf_hibond",
       "pattern": "(?i)\\bctf\\b.*(hi[- ]?bond|lamiera)|hi[- ]?bond.*\\bctf\\b",
       "mode": "augment",
       "lang": "it",
-      "answer": "I CTF sono progettati per lavorare con lamiere grecate certificate come le Hi-Bond, assicurando una piena collaborazione acciaioâ€“calcestruzzo, posa veloce e ottima rigidezza a parit  di spessore.",
-      "priority": 500
+      "answer": "I CTF sono progettati per lavorare con lamiere grecate certificate come le Hi-Bond, assicurando una piena collaborazione acciaiocalcestruzzo, posa veloce e ottima rigidezza a parità di spessore.",
+      "priority": 50
     },
     {
       "id": "ctl_base",
       "pattern": "(?i)\\bctl\\b.*(base|standard|normale)|(connettore\\s+legno).*(base|standard)",
       "mode": "override",
       "lang": "it",
-      "answer": "CTL BASE ¨ il connettore per solai legnoâ€“calcestruzzo quando si realizza una soletta collaborante su travi in legno. La posa avviene dallâ€™alto con viti autoforanti; la collaborazione migliora rigidezza e capacit  portante del sistema.",
-      "priority": 500
+      "answer": "CTL BASE è il connettore per solai legnocalcestruzzo quando si realizza una soletta collaborante su travi in legno. La posa avviene dallalto con viti autoforanti; la collaborazione migliora rigidezza e capacità portante del sistema.",
+      "priority": 50
     },
     {
       "id": "ctl_maxi",
       "pattern": "(?i)\\bctl\\b.*(maxi)|(connettore\\s+legno).*(maxi)",
       "mode": "override",
       "lang": "it",
-      "answer": "CTL MAXI ¨ pensato per posa sullâ€™assito/tavolato. Le altezze di gambo disponibili consentono di posizionare la testa in relazione a rete e spessore del getto. La posa ¨ rapida, con viti autoforanti dimensionate in funzione degli strati presenti.",
-      "priority": 500
+      "answer": "CTL MAXI è pensato per posa sullassito/tavolato. Le altezze di gambo disponibili consentono di posizionare la testa in relazione a rete e spessore del getto. La posa è rapida, con viti autoforanti dimensionate in funzione degli strati presenti.",
+      "priority": 50
     },
     {
       "id": "ctl_maxi_selector",
       "pattern": "(?i)(ctl|maxi).*tavolato.*(1\\s*cm|2\\s*cm|20\\s*mm).*soletta.*5\\s*cm",
       "mode": "override",
       "lang": "it",
-      "answer": "Con tavolato di circa 2 cm e soletta da 5 cm si usa CTL MAXI 12/040. Fissaggio con due viti ˜10—100; se sono presenti strati interposti o tavolato pi¹ spesso si impiegano viti ˜10—120. La testa deve risultare sopra la rete e sotto il filo superiore del getto; in caso di interferenze si pu² valutare 12/030.",
-      "priority": 500
+      "answer": "Con tavolato di circa 2 cm e soletta da 5 cm si usa CTL MAXI 12/040. Fissaggio con due viti 10100; se sono presenti strati interposti o tavolato più spesso si impiegano viti 10120. La testa deve risultare sopra la rete e sotto il filo superiore del getto; in caso di interferenze si può valutare 12/030.",
+      "priority": 50
     },
     {
       "id": "ctl_vs_diapason",
       "pattern": "(?i)(\\bctl\\b).*(\\bdiapason\\b)|(\\bdiapason\\b).*(\\bctl\\b)|laterocemento.*\\bctl\\b|\\bctl\\b.*laterocemento",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTL sono specifici per solai legnoâ€“calcestruzzo con viti autoforanti su travi lignee; Diapason ¨ destinato al laterocemento con getto collaborante e fissaggi meccanici. La scelta dipende dalla natura del solaio esistente.",
-      "priority": 500
+      "answer": "I CTL sono specifici per solai legnocalcestruzzo con viti autoforanti su travi lignee; Diapason è destinato al laterocemento con getto collaborante e fissaggi meccanici. La scelta dipende dalla natura del solaio esistente.",
+      "priority": 50
     },
     {
       "id": "v_cem_e",
       "pattern": "(?i)\\b(v\\s*cem[- ]?e|vcem|v\\-?cem\\-?e)\\b.*(cos|che\\s+cosa|parlami|uso|utilizzo|informaz|applicaz)",
       "mode": "override",
       "lang": "it",
-      "answer": "V CEM-E ¨ un connettore a vite per rendere collaborante la nuova soletta su solai in laterocemento. Si interviene dallâ€™alto dopo lâ€™individuazione dei travetti, migliorando rigidezza e capacit  senza ricorrere alla lamiera grecata.",
-      "priority": 500
+      "answer": "V CEM-E è un connettore a vite per rendere collaborante la nuova soletta su solai in laterocemento. Si interviene dallalto dopo lindividuazione dei travetti, migliorando rigidezza e capacità senza ricorrere alla lamiera grecata.",
+      "priority": 50
     },
     {
       "id": "mini_cem_e",
       "pattern": "(?i)(mini\\s*cem[- ]?e|mini\\-?cem\\-?e)\\b.*(cos|che\\s+cosa|parlami|uso|utilizzo|informaz|applicaz)",
       "mode": "override",
       "lang": "it",
-      "answer": "MINI CEM-E ¨ la versione compatta per laterocemento, utile dove spessori e interferenze sono critici. Mantiene la logica di collaborazione tra travetto e soletta con fissaggi meccanici dallâ€™alto.",
-      "priority": 500
+      "answer": "MINI CEM-E è la versione compatta per laterocemento, utile dove spessori e interferenze sono critici. Mantiene la logica di collaborazione tra travetto e soletta con fissaggi meccanici dallalto.",
+      "priority": 50
     },
     {
       "id": "v_mini_vs_diapason",
@@ -2120,31 +2120,31 @@
       "mode": "override",
       "lang": "it",
       "answer": "V CEM-E e MINI CEM-E sono connettori a vite per laterocemento; Diapason è un sistema di rinforzo che integra fissaggi meccanici e getto collaborante con ampia dotazione di accessori. La scelta dipende da spessori disponibili, geometrie, stato dei travetti e obiettivi di progetto.",
-      "priority": 500
+      "priority": 50
     },
     {
       "id": "diapason",
       "pattern": "(?i)\\bdiapason\\b.*(cos|che\\s+cosa|parlami|uso|utilizzo|informaz|applicaz|sistema)",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason ¨ il sistema Tecnaria per il rinforzo dallâ€™alto dei solai in laterocemento, senza lamiera. Con fissaggi meccanici e getto collaborante si unisce la nuova soletta ai travetti esistenti, con intervento poco invasivo e tempi contenuti.",
-      "priority": 500
+      "answer": "Diapason è il sistema Tecnaria per il rinforzo dallalto dei solai in laterocemento, senza lamiera. Con fissaggi meccanici e getto collaborante si unisce la nuova soletta ai travetti esistenti, con intervento poco invasivo e tempi contenuti.",
+      "priority": 50
     },
     {
       "id": "soletta_rete_generale",
       "pattern": "(?i)(soletta|spessore|get(to)?|cls|calcestruzzo).*?(minim|spessore|rete|posizion|armatura|copriferro)",
       "mode": "augment",
       "lang": "it",
-      "answer": "La soletta collaborante ¨ dimensionata dal progettista. In generale, la rete ¨ posta a met  spessore e la testa del connettore deve risultare sopra la rete ma sotto il filo superiore del getto, rispettando i copriferri e lâ€™eventuale armatura integrativa.",
-      "priority": 500
+      "answer": "La soletta collaborante è dimensionata dal progettista. In generale, la rete è posta a metà spessore e la testa del connettore deve risultare sopra la rete ma sotto il filo superiore del getto, rispettando i copriferri e leventuale armatura integrativa.",
+      "priority": 50
     },
     {
       "id": "calcestruzzo_leggero",
       "pattern": "(?i)(calcestruzzo\\s+leggero|cls\\s+leggero|argilla|polistir|perlite).*(collaborante|soletta|peso|densit|spessori|compatibilit)",
       "mode": "augment",
       "lang": "it",
-      "answer": "ˆ possibile impiegare calcestruzzi leggeri strutturali quando richiesto da peso proprio o condizioni di cantiere, nel rispetto delle prestazioni meccaniche previste in progetto. Restano invariati i criteri di annegamento delle teste, posizione rete e copriferri.",
-      "priority": 500
+      "answer": " possibile impiegare calcestruzzi leggeri strutturali quando richiesto da peso proprio o condizioni di cantiere, nel rispetto delle prestazioni meccaniche previste in progetto. Restano invariati i criteri di annegamento delle teste, posizione rete e copriferri.",
+      "priority": 50
     },
     {
       "id": "interferenze_impianti",
@@ -2152,7 +2152,7 @@
       "mode": "augment",
       "lang": "it",
       "answer": "In presenza di impianti la disposizione di connettori e rete si adatta salvaguardando le zone più sollecitate. Se gli ingombri sono critici si adottano connettori più bassi o si integrano staffe/armature locali secondo le verifiche di progetto.",
-      "priority": 500
+      "priority": 50
     },
     {
       "id": "verifiche_dimensionamento",
@@ -2160,31 +2160,31 @@
       "mode": "augment",
       "lang": "it",
       "answer": "Il progetto verifica resistenza a taglio/scorrimento, portata e deformazioni in base alle norme vigenti. Densità dei connettori, spessore della soletta e disposizioni locali discendono da luci, carichi e dettagli costruttivi del solaio.",
-      "priority": 500
+      "priority": 50
     },
     {
       "id": "quando_usare_ctf",
       "pattern": "(?i)(quando|quale).*(usare|scegliere).*\\bctf\\b",
       "mode": "override",
       "lang": "it",
-      "answer": "Si usano i CTF quando ¨ presente o prevista lamiera grecata e si vuole una posa dallâ€™alto molto veloce con collaborazione acciaioâ€“calcestruzzo. Tipici di nuove realizzazioni o rinforzi su travi in acciaio accessibili dallâ€™alto.",
-      "priority": 500
+      "answer": "Si usano i CTF quando è presente o prevista lamiera grecata e si vuole una posa dallalto molto veloce con collaborazione acciaiocalcestruzzo. Tipici di nuove realizzazioni o rinforzi su travi in acciaio accessibili dallalto.",
+      "priority": 50
     },
     {
       "id": "quando_usare_ctl",
       "pattern": "(?i)(quando|quale).*(usare|scegliere).*\\bctl\\b",
       "mode": "override",
       "lang": "it",
-      "answer": "Si usano i CTL (BASE o MAXI) su solai in legno quando si realizza una soletta collaborante con viti autoforanti. Il MAXI ¨ indicato sopra tavolato/assito; si sceglie lâ€™altezza del gambo in funzione di rete e spessore del getto.",
-      "priority": 500
+      "answer": "Si usano i CTL (BASE o MAXI) su solai in legno quando si realizza una soletta collaborante con viti autoforanti. Il MAXI è indicato sopra tavolato/assito; si sceglie laltezza del gambo in funzione di rete e spessore del getto.",
+      "priority": 50
     },
     {
       "id": "quando_usare_diapason",
       "pattern": "(?i)(quando|quale).*(usare|scegliere).*\\bdiapason\\b",
       "mode": "override",
       "lang": "it",
-      "answer": "Si usa Diapason per consolidare solai in laterocemento senza lamiera intervenendo dallâ€™alto con fissaggi meccanici e getto collaborante. ˆ indicato dove servono interventi poco invasivi e spessori contenuti.",
-      "priority": 500
+      "answer": "Si usa Diapason per consolidare solai in laterocemento senza lamiera intervenendo dallalto con fissaggi meccanici e getto collaborante.  indicato dove servono interventi poco invasivi e spessori contenuti.",
+      "priority": 50
     },
     {
       "id": "quando_usare_v_mini",
@@ -2192,15 +2192,15 @@
       "mode": "override",
       "lang": "it",
       "answer": "V CEM-E o MINI CEM-E si usano per rendere collaborante la soletta su laterocemento con connettori a vite. MINI CEM-E è preferibile quando gli ingombri sono ridotti o vi sono interferenze impiantistiche.",
-      "priority": 500
+      "priority": 50
     },
     {
       "id": "preventivi",
       "pattern": "(?i)preventiv|offerta|quotazion|prezzo|listino|sconto|ordine|acquisto",
       "mode": "override",
       "lang": "it",
-      "answer": "Per preventivi e ordini contatta lâ€™ufficio commerciale Tecnaria indicando tipologia di solaio, superficie, sistema scelto e tempi di cantiere. ˆ possibile coordinare fornitura di connettori, accessori e, se necessario, noleggio P560.",
-      "priority": 500
+      "answer": "Per preventivi e ordini contatta lufficio commerciale Tecnaria indicando tipologia di solaio, superficie, sistema scelto e tempi di cantiere.  possibile coordinare fornitura di connettori, accessori e, se necessario, noleggio P560.",
+      "priority": 50
     },
     {
       "id": "spedizioni_consegne",
@@ -2208,7 +2208,7 @@
       "mode": "override",
       "lang": "it",
       "answer": "Le consegne vengono pianificate in base a disponibilità e tempi di cantiere. Per urgenze è consigliato segnalare la data di getto e lotti necessari; Tecnaria organizza spedizioni e supporto in modo coordinato.",
-      "priority": 500
+      "priority": 50
     },
     {
       "id": "software_supporto",
@@ -2216,7 +2216,7 @@
       "mode": "override",
       "lang": "it",
       "answer": "Sono disponibili strumenti di supporto al dimensionamento e schede tecniche aggiornate. Il team Tecnaria affianca il progettista nella definizione della maglia dei connettori, degli spessori di soletta e delle verifiche.",
-      "priority": 500
+      "priority": 50
     },
     {
       "id": "capitolati_bim",
@@ -2224,15 +2224,15 @@
       "mode": "override",
       "lang": "it",
       "answer": "Su richiesta Tecnaria fornisce testi di capitolato, voci prezzo e materiali BIM/IFC per integrare i sistemi nel modello informativo, con indicazioni su posa, controlli e collaudi.",
-      "priority": 500
+      "priority": 50
     },
     {
       "id": "cataloghi_download",
       "pattern": "(?i)catalogh|brochure|scheda\\s+tecnica|download|pdf|manuale",
       "mode": "override",
       "lang": "it",
-      "answer": "Cataloghi e schede tecniche sono disponibili nellâ€™area download del sito Tecnaria con indicazioni di posa, dati meccanici, limiti dâ€™impiego e riferimenti normativi. Sono presenti anche manuali di uso e sicurezza.",
-      "priority": 500
+      "answer": "Cataloghi e schede tecniche sono disponibili nellarea download del sito Tecnaria con indicazioni di posa, dati meccanici, limiti dimpiego e riferimenti normativi. Sono presenti anche manuali di uso e sicurezza.",
+      "priority": 50
     },
     {
       "id": "certificazioni_eta",
@@ -2240,15 +2240,15 @@
       "mode": "override",
       "lang": "it",
       "answer": "I sistemi sono corredati da documentazione e valutazioni europee, con tracciabilità dei componenti. I riferimenti aggiornati sono riportati nelle schede prodotto e nelle certificazioni pubblicate sul sito.",
-      "priority": 500
+      "priority": 50
     },
     {
       "id": "contatti",
       "pattern": "(?i)contatt|telefono|mail|email|assistenza|supporto|sede|indirizzo|ufficio",
       "mode": "override",
       "lang": "it",
-      "answer": "TECNARIA S.p.A. â€“ Via Malaspina 2, 36061 Bassano del Grappa (VI). Telefono +39 0424 502029 â€“ Email info@tecnaria.com. Supporto tecnico e commerciale per progetti, capitolati, sopralluoghi e pianificazione forniture.",
-      "priority": 500
+      "answer": "TECNARIA S.p.A.  Via Malaspina 2, 36061 Bassano del Grappa (VI). Telefono +39 0424 502029  Email info@tecnaria.com. Supporto tecnico e commerciale per progetti, capitolati, sopralluoghi e pianificazione forniture.",
+      "priority": 50
     },
     {
       "id": "privacy_cookie",
@@ -2256,7 +2256,7 @@
       "mode": "override",
       "lang": "it",
       "answer": "Le informazioni fornite sono a carattere tecnico-informativo e riferite ai prodotti Tecnaria. Per il trattamento dei dati si rimanda a informativa privacy e cookie policy sul sito ufficiale.",
-      "priority": 500
+      "priority": 50
     },
     {
       "id": "language_note",
@@ -2264,7 +2264,7 @@
       "mode": "postscript",
       "lang": "it",
       "answer": "La risposta può essere fornita anche in inglese, tedesco, francese o spagnolo su richiesta.",
-      "priority": 500
+      "priority": 50
     }
   ]
 }
