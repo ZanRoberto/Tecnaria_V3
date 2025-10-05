@@ -1,60 +1,70 @@
 <!doctype html>
 <html lang="it">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Tecnaria QA Bot</title>
-  <style>
-    :root{--bg:#0f1115;--fg:#e6e6e6;--muted:#9aa0a6;--card:#151821;--accent:#28c1a5}
-    html,body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,Segoe UI,Roboto,Inter,Arial}
-    .wrap{max-width:980px;margin:0 auto;padding:32px 16px}
-    h1{font-size:1.6rem;margin:0 0 16px}
-    .card{background:var(--card);border-radius:16px;padding:20px;box-shadow:0 8px 20px rgba(0,0,0,.35)}
-    .row{display:flex;gap:10px;align-items:center}
-    .row input{flex:1;padding:12px 14px;border-radius:12px;border:1px solid #2a2f3b;background:#0c0f16;color:var(--fg)}
-    .row button{padding:12px 18px;border-radius:12px;border:0;background:var(--accent);color:#062b24;font-weight:600;cursor:pointer}
-    .tools{display:flex;gap:10px;margin-top:8px}
-    .pill{font-size:.82rem;color:var(--muted)}
-    .answer{margin-top:18px;padding:18px;background:#0c0f16;border:1px solid #2a2f3b;border-radius:12px}
-    .answer h3,.answer h4{margin:8px 0}
-    .answer p{margin:8px 0}
-    a{color:#3bd6ff;text-decoration:none}
-    a:hover{text-decoration:underline}
-    small{color:var(--muted)}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tecnaria QA Bot</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b1220;--card:#101a2d;--ink:#e6edf7;--muted:#97a3b6;--accent:#38bdf8;--chip:#1b2740;}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:960px;margin:40px auto;padding:0 20px}
+h1{font-size:22px;margin:0 0 12px;font-weight:600}
+.card{background:var(--card);border:1px solid #1f2a44;border-radius:14px;padding:20px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #1f2a44;background:#0d1526;color:var(--ink)}
+.toolbar{display:flex;gap:8px;margin-top:10px}
+button{background:var(--accent);color:#02101c;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
+button.secondary{background:#1e293b;color:#dbeafe}
+#ans > .card{margin-top:16px}
+.sources{margin-top:14px;background:#0d1526;border:1px solid #1f2a44;border-radius:10px;padding:12px}
+.src-title{font-weight:600;color:#8ab4f8;margin-bottom:6px}
+h2{font-size:18px;margin:0 0 6px}
+p,li{line-height:1.55;color:#d8e1f2}
+ul{margin:10px 0 0 18px}
+small.m{color:var(--muted)}
+</style>
 </head>
 <body>
-  <div class="wrap">
+<div class="wrap">
+  <div class="card">
     <h1>🇮🇹 Tecnaria QA Bot</h1>
-    <div class="card">
-      <div class="row">
-        <input id="q" placeholder="Scrivi la domanda… es. Devo usare P560 per CTF: serve patentino?"/>
-        <button id="go">Chiedi</button>
-      </div>
-      <div class="tools">
-        <label class="pill"><input type="checkbox" id="dbg"> usa GET (debug)</label>
-      </div>
-      <div id="out" class="answer"><small>Risposta qui…</small></div>
+    <input id="q" type="text" placeholder='Scrivi una domanda (es. "Differenza CTF e Diapason")'>
+    <div class="toolbar">
+      <button onclick="ask()">Chiedi</button>
+      <button class="secondary" onclick="clearA()">Pulisci</button>
+      <button class="secondary" onclick="copyA()">Copia risposta</button>
+    </div>
+    <div id="ans"></div>
+    <div style="margin-top:10px">
+      <small class="m">Domini consentiti: tecnaria.com • spit.eu • spitpaslode.com</small>
     </div>
   </div>
+</div>
 <script>
-const $ = (s)=>document.querySelector(s);
-$("#q").addEventListener("keydown",e=>{if(e.key==="Enter") ask()});
-$("#go").addEventListener("click", ask);
-
 async function ask(){
-  const q = $("#q").value.trim();
-  if(!q){ $("#out").innerHTML = "<p>OK — domanda vuota.</p>"; return; }
-  $("#out").innerHTML = "<small>Sto cercando…</small>";
-  const debug = $("#dbg").checked;
-  try{
-    // usa GET /ask che restituisce già HTML narrativo con link cliccabili
-    const url = "/ask?q=" + encodeURIComponent(q) + (debug ? "&debug=true": "");
-    const html = await fetch(url).then(r=>r.text());
-    $("#out").innerHTML = html;
-  }catch(e){
-    $("#out").innerHTML = "<p>Errore di rete.</p>";
-  }
+  const q = document.getElementById('q').value.trim();
+  const ans = document.getElementById('ans');
+  if(!q){ ans.innerHTML = "<small class='m'>Inserisci una domanda…</small>"; return; }
+  ans.innerHTML = "<small class='m'>Sto preparando la risposta…</small>";
+  const r = await fetch("/ask?q=" + encodeURIComponent(q));
+  const html = await r.text();
+  ans.innerHTML = html;
+}
+function clearA(){
+  document.getElementById('q').value = "";
+  document.getElementById('ans').innerHTML = "";
+}
+function copyA(){
+  const el = document.getElementById('ans');
+  const range = document.createRange();
+  range.selectNode(el);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  try{ document.execCommand('copy'); }catch(e){}
+  sel.removeAllRanges();
 }
 </script>
 </body>
