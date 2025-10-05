@@ -2,91 +2,188 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tecnaria QA Bot</title>
-  <meta name="color-scheme" content="light dark" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <meta name="description" content="Assistente Tecnaria: domande su CTF, P560, Diapason, CTL e documentazione ufficiale." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="/static/favicon.ico" />
   <style>
     :root{
-      /* === Palette ricavata dal logo Tecnaria (modifica se serve) === */
-      --brand:#0b6d3a;        /* verde principale */
-      --brand-700:#0a5c32;    /* verde scuro */
-      --brand-50:#e9f5ee;     /* verde molto chiaro per hover/bg */
-      --accent:#f7a600;       /* accento (se nel logo c’è un tono caldo) */
-      --bg:#f7f9fb;           /* sfondo pagina */
-      --card:#ffffff;         /* sfondo card */
-      --text:#132019;         /* testo primario */
-      --muted:#5b6b60;        /* testo secondario */
-      --border:#e6ece8;       /* bordi soft */
-      --ring:rgba(11,109,58,.25);
-      --shadow: 0 10px 30px rgba(0,0,0,.05);
-      --radius:16px;
+      /* Palette “on brand” (regolabile) */
+      --brand:#2e7d32;         /* verde principale */
+      --brand-600:#246428;     /* verde scuro */
+      --brand-50:#eaf4ec;      /* verde chiarissimo bg */
+      --accent:#f59f00;        /* ambra per highlight */
+      --ink:#111111;           /* testo */
+      --muted:#667085;         /* testo attenuato */
+      --border:#e6e7e8;        /* bordi leggeri */
+      --card:#ffffff;          /* card bg */
+      --canvas:#f7f7f7;        /* page bg */
+      --shadow:0 10px 30px rgba(0,0,0,.08);
     }
     @media (prefers-color-scheme: dark){
       :root{
-        --bg:#0e1411;
-        --card:#101914;
-        --text:#e7f2ec;
-        --muted:#a8b8af;
-        --border:#203229;
-        --shadow: 0 10px 30px rgba(0,0,0,.4);
-        --brand-50:#0f2218;
+        --ink:#f6f7f8;
+        --muted:#aeb3b8;
+        --border:#2a2d31;
+        --card:#151718;
+        --canvas:#0f1112;
+        --shadow:0 10px 30px rgba(0,0,0,.35);
+        --brand-50:#0d1a10;
       }
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0;
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif;
-      background:var(--bg);
-      color:var(--text);
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
+      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";
+      color:var(--ink); background:var(--canvas);
     }
-    .wrap{
-      max-width:960px;
-      margin:0 auto;
-      padding:28px 20px 60px;
-    }
+    .shell{max-width:960px; margin-inline:auto; padding:24px;}
     header{
-      display:flex; align-items:center; justify-content:space-between;
-      margin-bottom:22px;
+      position:sticky; top:0; z-index:10;
+      background:linear-gradient(180deg,var(--brand-50),transparent);
+      backdrop-filter:saturate(150%) blur(2px);
+      border-bottom:1px solid var(--border);
     }
-    .brand{
-      display:flex; align-items:center; gap:14px;
-    }
-    .brand img{
-      height:40px; width:auto; display:block;
-    }
-    .brand .title{
-      display:flex; flex-direction:column; line-height:1.15;
-    }
-    .brand .title b{
-      font-size:18px; color:var(--brand-700); letter-spacing:.2px;
-    }
-    .brand .title span{
-      font-size:12px; color:var(--muted);
-    }
-    .lang{
-      display:flex; align-items:center; gap:10px; color:var(--muted); font-size:12px;
-    }
-    .surface{
-      background:linear-gradient(180deg, var(--card), var(--card));
-      border:1px solid var(--border);
-      box-shadow: var(--shadow);
-      border-radius: var(--radius);
-      padding:18px;
-    }
-    .ask{
-      display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;
-    }
-    .row{
-      display:flex; gap:10px; align-items:stretch;
-    }
-    input[type="text"]{
-      width:100%;
-      background:var(--card);
-      border:1
+    .nav{display:flex; align-items:center; gap:14px; padding:14px 24px;}
+    .brand{display:flex; align-items:center; gap:10px; text-decoration:none}
+    .brand img{height:28px; width:auto; display:block;}
+    .brand .title{font-weight:700; letter-spacing:.2px; color:var(--brand-600);}
 
+    .grid{display:grid; grid-template-columns:1fr; gap:18px;}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow);}
+
+    .ask{padding:18px;}
+    .row{display:flex; gap:10px; align-items:center}
+    .input{flex:1; display:flex; align-items:center; gap:8px; background:#fff0; border:1px solid var(--border); border-radius:12px; padding:10px 12px}
+    .input input{flex:1; border:none; outline:none; background:transparent; color:var(--ink); font-size:16px}
+    .btn{border:none; outline:none; cursor:pointer; border-radius:12px; padding:12px 16px; font-weight:600;}
+    .btn-primary{background:var(--brand); color:white;}
+    .btn-primary[disabled]{opacity:.6; cursor:not-allowed}
+
+    .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+    .chip{border:1px solid var(--border); border-radius:999px; padding:8px 12px; font-size:14px; color:var(--muted); cursor:pointer; user-select:none}
+    .chip:hover{border-color:var(--brand); color:var(--brand)}
+
+    .surface{padding:18px}
+    .status{display:none; align-items:center; gap:8px; color:var(--muted); font-size:14px}
+    .status.show{display:flex}
+    .dot{width:8px; height:8px; border-radius:50%; background:var(--accent); animation:pulse 1s infinite ease-in-out}
+    @keyframes pulse{0%{opacity:.35} 50%{opacity:1} 100%{opacity:.35}}
+
+    .result{display:block;}
+    .card .toolbar{display:flex; gap:8px; justify-content:flex-end; border-top:1px solid var(--border); padding:12px 16px}
+    .tool{border:1px solid var(--border); background:transparent; color:var(--ink); border-radius:10px; padding:8px 12px; cursor:pointer}
+    .tool:hover{border-color:var(--brand); color:var(--brand)}
+
+    footer{opacity:.8; color:var(--muted); font-size:12px; text-align:center; padding:18px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav shell">
+      <a class="brand" href="#" aria-label="Tecnaria home">
+        <img src="/static/brand/tecnaria-logo.svg" alt="Tecnaria" onerror="this.replaceWith(Object.assign(document.createElement('strong'),{textContent:'TECNARIA'}))">
+        <span class="title">Tecnaria – Assistente Tecnico</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="shell grid">
+    <section class="card ask" aria-label="Invia domanda">
+      <div class="row">
+        <div class="input" role="search">
+          <input id="q" type="text" placeholder="Fai una domanda (es. Serve il patentino per la P560?)" autocomplete="off" autofocus>
+        </div>
+        <button id="go" class="btn btn-primary">Chiedi</button>
+      </div>
+      <div class="chips" aria-label="Esempi di domanda">
+        <span class="chip" data-q="Differenza CTF e Diapason">Differenza CTF e Diapason</span>
+        <span class="chip" data-q="Quanti CTF al m²">Quanti CTF al m²</span>
+        <span class="chip" data-q="Serve il patentino per la P560?">Serve il patentino per la P560?</span>
+      </div>
+    </section>
+
+    <section id="answerCard" class="card surface" aria-live="polite" aria-busy="false">
+      <div id="status" class="status"><span class="dot"></span><span>Elaborazione in corso…</span></div>
+      <div id="result" class="result"></div>
+      <div class="toolbar">
+        <button class="tool" id="copyBtn" title="Copia risposta">Copia</button>
+              </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">© <span id="year"></span> Tecnaria S.p.A. – Questo assistente sintetizza contenuti ufficiali e regole Sinapsi.</div>
+  </footer>
+
+  <script>
+    const qEl = document.getElementById('q');
+    const goEl = document.getElementById('go');
+    const resEl = document.getElementById('result');
+    const statusEl = document.getElementById('status');
+    const answerCardEl = document.getElementById('answerCard');
+    const copyBtn = document.getElementById('copyBtn');
+    const printBtn = document.getElementById('printBtn');
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    function setLoading(isLoading){
+      answerCardEl.setAttribute('aria-busy', String(isLoading));
+      statusEl.classList.toggle('show', isLoading);
+      goEl.disabled = isLoading;
+    }
+
+    async function ask(){
+      const q = (qEl.value || '').trim();
+      if(!q){ qEl.focus(); return; }
+      setLoading(true);
+      resEl.innerHTML = '';
+      try{
+        const r = await fetch('/api/ask',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({q})
+        });
+        if(!r.ok){ throw new Error('HTTP '+r.status); }
+        const data = await r.json();
+        if(!data.ok){ throw new Error(data.error || 'Errore'); }
+        resEl.innerHTML = data.html; // l'HTML è generato dal backend
+        // scroll alla risposta
+        answerCardEl.scrollIntoView({behavior:'smooth', block:'start'});
+      }catch(err){
+        resEl.innerHTML = `<div style="color:#b42318">Si è verificato un errore. Riprova più tardi. <small>${(err&&err.message)||''}</small></div>`;
+      }finally{
+        setLoading(false);
+      }
+    }
+
+    // invio con bottone o ENTER
+    goEl.addEventListener('click', ask);
+    qEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ ask(); }});
+
+    // chips di esempio
+    document.querySelectorAll('.chip').forEach(ch=>{
+      ch.addEventListener('click',()=>{
+        qEl.value = ch.getAttribute('data-q') || ch.textContent.trim();
+        ask();
+      });
+    });
+
+    // copia risposta (testo) — estrae innerText dal contenitore generato
+    copyBtn.addEventListener('click', async ()=>{
+      try{
+        const tmp = document.createElement('div');
+        tmp.innerHTML = resEl.innerHTML;
+        const text = tmp.innerText.trim();
+        await navigator.clipboard.writeText(text);
+        copyBtn.textContent = 'Copiato!';
+        setTimeout(()=> copyBtn.textContent = 'Copia', 1200);
+      }catch{}
+    });
+
+    // stampa / salva PDF
+    printBtn.addEventListener('click', ()=> window.print());
+  </script
