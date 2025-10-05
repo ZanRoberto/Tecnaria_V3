@@ -1,6 +1,8 @@
-# app.py — Tecnaria QA Bot (UNA SOLA RISPOSTA)
-# Pipeline: Web filtrato (Brave) -> Sinapsi refine -> testo unico "Risposta Tecnaria"
-# Allineato: SINAPSI_FILE default = static/data/sinapsi_rules.json
+# app.py — Tecnaria QA Bot (WEB → Sinapsi refine, risposta unica)
+# - Nessun KB locale
+# - SINAPSI_FILE default: static/data/sinapsi_rules.json
+# - /health pulito
+# - Pipeline: Web (Brave, domini ammessi) -> Sinapsi refine -> testo unico
 
 import os
 import re
@@ -16,6 +18,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 APP_TITLE = "Tecnaria QA Bot"
+MODE = "web_first_then_sinapsi_refine_single"  # visibile su /health
+
 app = FastAPI(title=APP_TITLE)
 
 # -----------------------------
@@ -25,22 +29,22 @@ STATIC_DIR = os.environ.get("STATIC_DIR", "static")
 SINAPSI_FILE = os.environ.get("SINAPSI_FILE", os.path.join(STATIC_DIR, "data", "sinapsi_rules.json"))
 BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
 ALLOWED_DOMAINS = json.loads(os.environ.get("ALLOWED_DOMAINS_JSON", '["tecnaria.com","spit.eu","spitpaslode.com"]'))
-MIN_WEB_SCORE = float(os.environ.get("MIN_WEB_SCORE", "0.35"))  # confermato
+MIN_WEB_SCORE = float(os.environ.get("MIN_WEB_SCORE", "0.35"))   # confermato
 MAX_WEB_RESULTS = int(os.environ.get("MAX_WEB_RESULTS", "5"))
-WEB_MIN_QUALITY = float(os.environ.get("WEB_MIN_QUALITY", "0.55"))  # quando < soglia, Sinapsi guida di più
-MODE = "web_first_then_sinapsi_refine_single"
+WEB_MIN_QUALITY = float(os.environ.get("WEB_MIN_QUALITY", "0.55"))
 
 # -----------------------------
-# Static mount
+# Static mount (se esiste)
 # -----------------------------
 if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # -----------------------------
-# Sinapsi loader & engine (regex deterministiche)
+# Sinapsi loader & engine
 # -----------------------------
 class Rule:
-    def __init__(self, rid: str, pattern: str, mode: str, lang: str, answer: str, sources: Optional[List[Dict[str, str]]] = None):
+    def __init__(self, rid: str, pattern: str, mode: str, lang: str, answer: str,
+                 sources: Optional[List[Dict[str, str]]] = None):
         self.id = rid
         self.pattern_str = pattern
         self.pattern = re.compile(pattern, re.IGNORECASE | re.DOTALL)
@@ -97,7 +101,7 @@ class SinapsiEngine:
         return {"override": ov, "augments": aug, "postscripts": ps, "sources": srcs}
 
 SINAPSI = SinapsiEngine(SINAPSI_FILE)
-SINAPSI.load()  # pre-warm all'avvio
+SINAPSI.load()  # ✅ precaricato all'avvio
 
 # -----------------------------
 # Utilità lingua & pulizia
@@ -145,7 +149,7 @@ def brave_search(query: str, lang: str = "it") -> List[Dict[str, Any]]:
             "country": "it",
             "source": "web",
             "count": 10,
-            "freshness": "month"  # puoi portare a "week"/"day" se vuoi più fresco
+            "freshness": "month"  # se vuoi più fresco: "week" o "day"
         }
         r = requests.get(url, headers=headers, params=params, timeout=8)
         r.raise_for_status()
@@ -170,7 +174,7 @@ def brave_search(query: str, lang: str = "it") -> List[Dict[str, Any]]:
         return []
 
 # -----------------------------
-# Scoring qualità della bozza web
+# Scoring qualità bozza web
 # -----------------------------
 def score_web_quality(web_hits: List[Dict[str, Any]]) -> float:
     if not web_hits:
@@ -179,14 +183,15 @@ def score_web_quality(web_hits: List[Dict[str, Any]]) -> float:
     total_len = sum(len(h.get("snippet", "")) for h in web_hits)
     uniq_hosts = len({urlparse(h.get("url","")).netloc for h in web_hits if h.get("url")})
     n_term = min(n / max(1, MAX_WEB_RESULTS), 1.0)
-    len_term = min(total_len / 900.0, 1.0)
-    host_term = min(uniq_hosts / 3.0, 1.0)
+    len_term = min(total_len / 900.0, 1.0)       # ~3 snippet medi
+    host_term = min(uniq_hosts / 3.0, 1.0)       # varietà 2-3 host
     return 0.45*n_term + 0.40*len_term + 0.15*host_term
 
 # -----------------------------
 # Composer — produce UN SOLO TESTO finale
 # -----------------------------
-def compose_single_answer(question: str, lang: str, sinapsi_pack: Dict[str, Any], web_hits: List[Dict[str, Any]]) -> Tuple[str, List[Dict[str, str]]]:
+def compose_single_answer(question: str, lang: str, sinapsi_pack: Dict[str, Any],
+                          web_hits: List[Dict[str, Any]]) -> Tuple[str, List[Dict[str, str]]]:
     """Ritorna (testo_unico, sources)."""
     sources: List[Dict[str, str]] = []
     override = sinapsi_pack.get("override")
@@ -195,39 +200,40 @@ def compose_single_answer(question: str, lang: str, sinapsi_pack: Dict[str, Any]
     sinapsi_sources = sinapsi_pack.get("sources", [])
     web_quality = score_web_quality(web_hits)
 
-    # 1) base: scegli tra web (se buono) o sinapsi override (se web scarso)
+    # 1) Base: web (se buono) altrimenti override Sinapsi
+    base_parts: List[str] = []
     if web_quality >= WEB_MIN_QUALITY and web_hits:
-        base = []
-        # sintetizza 2-3 snippet in una frase unica
         picked = [h for h in web_hits if h.get("snippet")]
         picked = picked[:3]
         if picked:
-            base.append(" ".join(h["snippet"] for h in picked))
+            base_parts.append(" ".join(h["snippet"] for h in picked))
         else:
-            base.append("Informazioni ufficiali reperite dai siti consentiti.")
-        # fonti
+            base_parts.append("Informazioni ufficiali reperite dai siti consentiti.")
         for h in web_hits:
             sources.append({"title": h.get("title") or h.get("url","Fonte"), "url": h.get("url","")})
+        # Se c'è un override, lo uso come "nota tecnica" fondendolo nel testo
+        if override:
+            base_parts.append(override.strip())
+            sources.extend(sinapsi_sources)
     else:
         if override:
-            base = [override.strip()]
+            base_parts.append(override.strip())
             sources.extend(sinapsi_sources)
         else:
-            # nessun web utile e nessun override -> prova con augment/postscript
-            base = []
-            sources.extend(sinapsi_sources)
+            # nessun web utile e nessun override -> provo con augment/postscript
+            pass
 
-    # 2) arricchisci con augment e postscript (in coda, compatti)
+    # 2) Arricchisco con augment e postscript (coda)
     if augments:
-        base.append(" ".join(a.strip() for a in augments if a and a.strip()))
+        base_parts.append(" ".join(a.strip() for a in augments if a and a.strip()))
     if postscripts:
-        base.append(" ".join(p.strip() for p in postscripts if p and p.strip()))
+        base_parts.append(" ".join(p.strip() for p in postscripts if p and p.strip()))
 
-    # 3) fallback se proprio vuoto
-    final_text = " ".join([b for b in base if b]).strip() or \
-                 "Non ho trovato elementi sufficienti. Raffina la domanda o aggiorna le regole Sinapsi."
+    # 3) Fallback
+    final_text = " ".join([b for b in base_parts if b]).strip() or \
+                 "Non ho trovato elementi sufficienti su domini autorizzati o nelle regole. Raffina la domanda o aggiorna le regole."
 
-    # compattazione spazi
+    # Compatta spazi
     final_text = re.sub(r"\s+", " ", final_text).strip()
     return final_text, sources
 
@@ -250,7 +256,8 @@ def render_sources_html(sources: List[Dict[str, str]]) -> str:
         return ""
     return "<div class='sources'><strong>Fonti</strong><br>" + "<br>".join(items) + "</div>"
 
-def render_card_html(body_text: str, sources: List[Dict[str,str]], elapsed_ms: int, subtitle: str = "Risposta Tecnaria") -> str:
+def render_card_html(body_text: str, sources: List[Dict[str,str]], elapsed_ms: int,
+                     subtitle: str = "Risposta Tecnaria") -> str:
     safe_body = html.escape(body_text).replace("\n\n", "</p><p>").replace("\n", "<br>")
     sources_html = render_sources_html(sources)
     return f"""
@@ -270,7 +277,9 @@ def home():
     index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path, media_type="text/html; charset=utf-8")
-    return HTMLResponse("<pre>{\"ok\":true,\"msg\":\"Use /ask or place static/index.html\"}</pre>", media_type="text/html; charset=utf-8")
+    # fallback minimo se manca l'index
+    return HTMLResponse("<pre>{\"ok\":true,\"msg\":\"Use /ask or place static/index.html\"}</pre>",
+                        media_type="text/html; charset=utf-8")
 
 @app.get("/health", response_class=JSONResponse)
 def health():
@@ -296,11 +305,12 @@ def ask_get(q: Optional[str] = None):
     started = time.time()
     question = (q or "").strip()
     if not question:
-        return HTMLResponse(render_card_html("Scrivi una domanda su prodotti e sistemi Tecnaria.", [], 0), media_type="text/html; charset=utf-8")
+        return HTMLResponse(render_card_html("Scrivi una domanda su prodotti e sistemi Tecnaria.", [], 0),
+                            media_type="text/html; charset=utf-8")
 
     lang = detect_lang(question)
-    web_hits = brave_search(question, lang=lang)  # WEB prima
-    pack = SINAPSI.apply(question, lang_hint=lang)  # poi Sinapsi refine
+    web_hits = brave_search(question, lang=lang)       # 1) WEB
+    pack = SINAPSI.apply(question, lang_hint=lang)     # 2) SINAPSI refine
     text, sources = compose_single_answer(question, lang, pack, web_hits)
     html_card = render_card_html(text, sources, int((time.time()-started)*1000))
     return HTMLResponse(html_card, media_type="text/html; charset=utf-8")
