@@ -14,7 +14,7 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,syste
 h1{font-size:22px;margin:0 0 12px;font-weight:600}
 .card{background:var(--card);border:1px solid #1f2a44;border-radius:14px;padding:20px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
 input[type=text]{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #1f2a44;background:#0d1526;color:var(--ink)}
-.toolbar{display:flex;gap:8px;margin-top:10px}
+.toolbar{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 button{background:var(--accent);color:#02101c;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
 button.secondary{background:#1e293b;color:#dbeafe}
 #ans > .card{margin-top:16px}
@@ -24,6 +24,8 @@ h2{font-size:18px;margin:0 0 6px}
 p,li{line-height:1.55;color:#d8e1f2}
 ul{margin:10px 0 0 18px}
 small.m{color:var(--muted)}
+.kv{margin-top:10px}
+.kv code{background:#0d1526;padding:2px 6px;border-radius:6px;border:1px solid #1f2a44}
 </style>
 </head>
 <body>
@@ -37,8 +39,8 @@ small.m{color:var(--muted)}
       <button class="secondary" onclick="copyA()">Copia risposta</button>
     </div>
     <div id="ans"></div>
-    <div style="margin-top:10px">
-      <small class="m">Domini consentiti: tecnaria.com • spit.eu • spitpaslode.com</small>
+    <div class="kv">
+      <small class="m">Domini consentiti: <code>tecnaria.com</code> • <code>spit.eu</code> • <code>spitpaslode.com</code></small>
     </div>
   </div>
 </div>
