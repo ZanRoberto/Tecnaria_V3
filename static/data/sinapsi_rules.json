@@ -78,3 +78,178 @@
     {
       "id": "ctf_posa_dall_alto",
       "priority": 800,
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(posa|fissagg\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "I CTF si fissano dall’alto su trave in acciaio con SPIT P560; per ogni connettore 2 chiodi HSBR14."
+    },
+    {
+      "id": "ctf_compatibilita_lamiera",
+      "priority": 750,
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(compatibilit\\w*|profil\\w*|lamiera|grecat\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTF progettati per lamiere grecate certificate; la compatibilità reale dipende da profilo, spessori e appoggi."
+    },
+    {
+      "id": "ctf_senza_lamiera",
+      "priority": 750,
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(senza\\s*lamiera|assenza\\s*lamiera)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTF sono pensati per sistemi con lamiera grecata; senza lamiera valutare sistemi alternativi Tecnaria."
+    },
+    {
+      "id": "ctf_rete_soletta",
+      "priority": 650,
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(rete|elettrosaldat\\w*|soletta)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La rete si dispone indicativamente a metà spessore della soletta collaborante (valore di progetto)."
+    },
+    {
+      "id": "ctf_appoggi_campata",
+      "priority": 650,
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(appoggi|campata|interasse|passo)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Tendenzialmente più fitti verso gli appoggi e più radi in campata, secondo verifica a scorrimento."
+    },
+    {
+      "id": "ctf_calcolo",
+      "priority": 650,
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(calcolo|dimensionament\\w*|progetto)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Numero e interasse dei CTF derivano dal calcolo su luci, carichi e profilo della lamiera."
+    },
+    {
+      "id": "diapason_descrizione",
+      "priority": 700,
+      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*|spiega\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Diapason è un sistema per rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall’alto."
+    },
+    {
+      "id": "diapason_casi_uso",
+      "priority": 650,
+      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(casi|quando|in\\s*che\\s*casi|impiegh\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Indicato su solai in laterocemento esistenti senza lamiera, con intervento dall’alto e ancoraggio ai travetti."
+    },
+    {
+      "id": "diapason_limiti",
+      "priority": 650,
+      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(limiti|evitar\\w*|non\\s*adatt\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Evitare se non è garantito l’ancoraggio ai travetti o le condizioni del solaio non lo consentono."
+    },
+    {
+      "id": "diapason_rete",
+      "priority": 600,
+      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(rete|elettrosaldat\\w*|soletta)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La rete elettrosaldata si posiziona indicativamente a metà spessore della nuova soletta collaborante."
+    },
+    {
+      "id": "diapason_travetti",
+      "priority": 600,
+      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(travett\\w*|sondagg\\w*|localizz\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "È necessario localizzare i travetti (sondaggi) per garantire corretto fissaggio e ancoraggio."
+    },
+    {
+      "id": "ctl_descrizione",
+      "priority": 700,
+      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legno–calcestruzzo con posa dall’alto."
+    },
+    {
+      "id": "ctl_maxi_base",
+      "priority": 650,
+      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(maxi|base|scelta|quando)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTL BASE e CTL MAXI coprono le esigenze tipiche; MAXI per altezze maggiori/interposti più spessi."
+    },
+    {
+      "id": "ctl_viti",
+      "priority": 600,
+      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(vit\\w*|fissagg\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Viti Ø10 in lunghezze 100/120/140 mm in funzione di assito/interposti e altezza connettore."
+    },
+    {
+      "id": "ctl_rete",
+      "priority": 600,
+      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(rete|elettrosaldat\\w*|soletta)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Rete posizionata indicativamente a metà spessore della soletta collaborante."
+    },
+    {
+      "id": "ctl_calcolo",
+      "priority": 600,
+      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(calcolo|interassi|dimensionament\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Interassi e dimensionamento derivano dal calcolo su luci e carichi."
+    },
+    {
+      "id": "vceme_descrizione",
+      "priority": 700,
+      "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e|cem\\s*-?e)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "V CEM-E è un connettore a vite per solai in laterocemento con fissaggio dall’alto nei travetti; MINI CEM-E è la versione compatta."
+    },
+    {
+      "id": "vceme_scelta_mini",
+      "priority": 650,
+      "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e)\\b)(?=.*\\b(scegli\\w*|quando|differenz\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La scelta tra V CEM-E e MINI dipende da spessori disponibili, interferenze e miglioramento richiesto."
+    },
+    {
+      "id": "vceme_posa",
+      "priority": 600,
+      "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e)\\b)(?=.*\\b(posa|avvit\\w*|getto|rete)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Posa dall’alto: avvitamento nel travetto e getto collaborante con rete a circa metà spessore."
+    },
+    {
+      "id": "vceme_travetti",
+      "priority": 600,
+      "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e)\\b)(?=.*\\b(travett\\w*|sondagg\\w*|localizz\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Prima della posa si localizzano i travetti con sondaggi per garantire il corretto ancoraggio."
+    },
+    {
+      "id": "dpi_generale_cantiere",
+      "priority": 500,
+      "pattern": "(?i)(?=.*\\b(dpi|sicurezz\\w*)\\b)(?=.*\\b(cantiere|posa|foratura|sparo|getto)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Occhiali, guanti e protezione acustica sono obbligatori nelle fasi di foratura/posa e getto."
+    },
+    {
+      "id": "supporto_tecnico",
+      "priority": 400,
+      "pattern": "(?i)(?=.*\\b(supporto|assistenza|aiuto)\\b)(?=.*\\b(dimensionament\\w*|progetto|calcolo)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Il team Tecnaria fornisce supporto tecnico per scelta dei sistemi e dimensionamento."
+    }
+  ]
+}
