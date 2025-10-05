@@ -1,32 +1,32 @@
 {
-  "rules": [
-    {
-      "id": "ctf_chiodatrice_qualsiasi_no",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(chiodatrice|sparachiod\\w*|pistola|sparo)\\b)(?=.*\\b(qualsiasi|qualunque|normale|usare|posare|fissare)\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "No: per i connettori CTF si usa esclusivamente la chiodatrice a sparo SPIT P560 con kit/adattatori Tecnaria."
-    },
-    {
-      "id": "p560_patentino",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(patentin\\w*|abilitazion\\w*|licenz\\w*|corso)\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Per la SPIT P560 non è richiesto un patentino dedicato: basta una breve formazione interna e l’uso dei DPI."
-    },
-    {
-      "id": "ctf_quanti_chiodi",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(chiodi|chiodo)\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560."
-    },
-    {
-      "id": "ctf_qta_m2",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(m2|m\\s*²|metro\\s*quadrato|al\\s*m2|al\\s*mq)\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La quantità dei CTF deriva dal calcolo (luci, carichi, profilo lamiera). Come ordine di grandezza: 6–8 connettori/m², più fitti agli appoggi."
-    }
-  ]
+  "id": "ctf_chiodatrice_generica_no_v2",
+  "priority": 999,
+  "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(chiodatric\\w*|spara?chiod\\w*|pistola(?:\\s*a)?\\s*sparo)\\b)(?=.*\\b(qualsiasi|qualunque|normale|generica)\\b).*",
+  "mode": "override",
+  "lang": "it",
+  "answer": "No: per i connettori CTF si usa esclusivamente la chiodatrice a sparo SPIT P560 con kit/adattatori Tecnaria."
+},
+{
+  "id": "p560_patentino_no_v2",
+  "priority": 999,
+  "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(patentin\\w*|abilitazion\\w*|licenz\\w*|certificat\\w*|corso)\\b).*",
+  "mode": "override",
+  "lang": "it",
+  "answer": "Per la SPIT P560 non è richiesto un patentino dedicato: è sufficiente una breve formazione interna e l’uso dei DPI."
+},
+{
+  "id": "ctf_quanti_chiodi_v2",
+  "priority": 999,
+  "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(chiodi|chiodo)\\b)(?=.*\\b(quanti|numero|per\\s*pezzo|per\\s*connettore)\\b).*",
+  "mode": "override",
+  "lang": "it",
+  "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560."
+},
+{
+  "id": "ctf_qta_m2_v2",
+  "priority": 999,
+  "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(m2|m\\s*²|mq|metro\\s*quadrato)\\b).*",
+  "mode": "override",
+  "lang": "it",
+  "answer": "La quantità dei CTF deriva dal calcolo (luci, carichi, profilo lamiera). Come ordine di grandezza: 6–8 connettori/m², più fitti agli appoggi."
 }
