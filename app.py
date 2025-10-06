@@ -1,11 +1,24 @@
-# app.py — Tecnaria QA Bot (WEB → fetch Tecnaria → Sinapsi augment → fallback)
-# - Risposta corposa (fino al limite caratteri), solo frasi in IT da tecnaria.com
-# - NIENTE titoli/link nel corpo; Fonti in fondo come soli link (senza snippet)
-# - Due pulsanti NAV chiarissimi: "⬅ Torna indietro" in alto e in basso + "Home"
-# - Ignora le regole Sinapsi "override": usa solo "augment" (1 frase max) + "postscript" soft
+# app.py — Tecnaria QA Bot (stile "Versione 3")
+# Requisiti:
+#   fastapi==0.115.0
+#   uvicorn[standard]==0.30.6
+#   gunicorn==21.2.0
+#   requests==2.32.3
+#   beautifulsoup4==4.12.3
+#   jinja2==3.1.4  (facoltativo; non usato direttamente qui)
 #
-# Requisiti: fastapi==0.115.0, uvicorn[standard]==0.30.6, gunicorn==21.2.0,
-#            requests==2.32.3, beautifulsoup4==4.12.3, jinja2==3.1.4
+# ENV consigliate:
+#   BRAVE_API_KEY=<chiave valida>
+#   PREFERRED_DOMAINS=tecnaria.com,www.tecnaria.com
+#   LANG_PREFERRED=it
+#   DISAMBIG_STRICT=true
+#   FETCH_TECNARIA=true
+#   ANSWER_MODE=full
+#   MAX_ANSWER_CHARS=1800
+#   ALLOW_SINAPSI_OVERRIDE=false
+#   SOURCES_SHOW_SNIPPETS=false
+#   SINAPSI_FILE=static/data/sinapsi_rules.json
+#   HTTP_TIMEOUT=8.0
 
 import os, re, json, time, html, unicodedata
 from pathlib import Path
@@ -24,7 +37,7 @@ app = FastAPI(title=APP_TITLE)
 STATIC_DIR   = os.environ.get("STATIC_DIR", "static")
 SINAPSI_FILE = os.environ.get("SINAPSI_FILE", os.path.join(STATIC_DIR, "data", "sinapsi_rules.json"))
 
-BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
+BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "").strip()
 PREFERRED_DOMAINS = [d.strip() for d in os.environ.get(
     "PREFERRED_DOMAINS", "tecnaria.com,www.tecnaria.com"
 ).split(",") if d.strip()]
@@ -33,22 +46,18 @@ WEB_RESULTS_COUNT_PREFERRED = int(os.environ.get("WEB_RESULTS_COUNT_PREFERRED", 
 WEB_RESULTS_COUNT_FALLBACK  = int(os.environ.get("WEB_RESULTS_COUNT_FALLBACK",  "0"))
 WEB_FRESHNESS_DAYS          = os.environ.get("WEB_FRESHNESS_DAYS", "365d")
 LANG_PREFERRED              = os.environ.get("LANG_PREFERRED", "it").strip().lower()
-DISAMBIG_STRICT             = (os.environ.get("DISAMBIG_STRICT", "true").strip().lower() in ("1","true","yes"))
+DISAMBIG_STRICT             = os.environ.get("DISAMBIG_STRICT", "true").strip().lower() in ("1","true","yes")
 
-# MODALITÀ RISPOSTA LUNGA
-ANSWER_MODE        = os.environ.get("ANSWER_MODE", "full").strip().lower()   # "full" | "standard"
-MAX_ANSWER_CHARS   = int(os.environ.get("MAX_ANSWER_CHARS", "1600"))         # lunghezza max narrativa
-FETCH_TECNARIA     = (os.environ.get("FETCH_TECNARIA", "true").strip().lower() in ("1","true","yes"))
+ANSWER_MODE        = os.environ.get("ANSWER_MODE", "full").strip().lower()  # "full"|"standard"
+MAX_ANSWER_CHARS   = int(os.environ.get("MAX_ANSWER_CHARS", "1800"))
+FETCH_TECNARIA     = os.environ.get("FETCH_TECNARIA", "true").strip().lower() in ("1","true","yes")
 HTTP_TIMEOUT       = float(os.environ.get("HTTP_TIMEOUT", "8.0"))
 
-# FONTI: NIENTE SNIPPET
-SOURCES_SHOW_SNIPPETS = (os.environ.get("SOURCES_SHOW_SNIPPETS", "false").strip().lower() in ("1","true","yes"))
+SOURCES_SHOW_SNIPPETS = os.environ.get("SOURCES_SHOW_SNIPPETS", "false").strip().lower() in ("1","true","yes")
+ALLOW_SINAPSI_OVERRIDE = os.environ.get("ALLOW_SINAPSI_OVERRIDE", "false").strip().lower() in ("1","true","yes")
+SINAPSI_FUSE       = True  # fonde al massimo una frase augment/postscript
 
-# SINAPSI: NON USARE OVERRIDE
-ALLOW_SINAPSI_OVERRIDE = (os.environ.get("ALLOW_SINAPSI_OVERRIDE", "false").strip().lower() in ("1","true","yes"))
-SINAPSI_FUSE           = True  # 1 frase al massimo
-
-ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "").strip()
 
 # ============================== STATO ==============================
 SINAPSI: Dict[str, Any] = {"rules": [], "exclude_any_q": [r"\bprezz\w*", r"\bcost\w*", r"\bpreventiv\w*", r"\boffert\w*"]}
@@ -57,7 +66,10 @@ SINAPSI_COMPILED: List[Dict[str, Any]] = []
 # ============================== UTILS ==============================
 def _safe_read(path: str) -> str:
     p = Path(path)
-    return p.read_text(encoding="utf-8", errors="ignore") if p.exists() else ""
+    try:
+        return p.read_text(encoding="utf-8", errors="ignore") if p.exists() else ""
+    except Exception:
+        return ""
 
 def _norm(s: str) -> str:
     s = (s or "").strip().lower()
@@ -75,7 +87,7 @@ def _content_words(s: str) -> List[str]:
 def _signature(s: str) -> str:
     toks = _content_words(s)
     if not toks: return _norm(s)
-    boost = {"p560","ctf","ctl","diapason","lamiera","grecata","hsbr14","legno","acciaio","calcestruzzo","solaio","tecnaria","chiod"}
+    boost = {"p560","ctf","ctl","diapason","lamiera","grecata","hsbr","legno","acciaio","calcestruzzo","solaio","tecnaria","chiod"}
     toks = sorted(toks, key=lambda w: (w not in boost, w))[:8]
     return " ".join(toks)
 
@@ -103,21 +115,29 @@ def _sentences(text: str) -> List[str]:
             out.append(s)
     return out
 
+def _guess_italian(text: str) -> bool:
+    anchors = [" il ", " la ", " dei ", " delle ", " con ", " senza ", " chiod", " lamiera ", " calcestruzzo ", " posa "]
+    t = " " + (_strip_html(text).lower()) + " "
+    return sum(1 for a in anchors if a in t) >= 2
+
 def _sanitize_brands(text: str) -> str:
+    # evita citazioni concorrenti indesiderate
     return re.sub(r"\b(hilti|dx\b|bx\b)\b", "altri utensili non supportati", text, flags=re.I)
 
 # ============================== SINAPSI ==============================
 def _compile_sinapsi() -> None:
     global SINAPSI_COMPILED
     SINAPSI_COMPILED = []
-    for r in (SINAPSI.get("rules") or []):
+    rules = (SINAPSI.get("rules") or [])
+    for r in rules:
         patt = (r.get("pattern") or "").strip()
         ans  = (r.get("answer")  or "").strip()
         mode = (r.get("mode") or "augment").lower().strip()
         if not patt or not ans:
             continue
         if (mode == "override") and (not ALLOW_SINAPSI_OVERRIDE):
-            continue  # IGNORO gli override
+            # ignoriamo gli override come richiesto
+            continue
         try:
             rx = re.compile(patt, re.I | re.S)
         except re.error:
@@ -129,7 +149,7 @@ def _compile_sinapsi() -> None:
             "rx": rx,
             "priority": int(r.get("priority", 0))
         })
-    # Augment prima, poi postscript (override già esclusi)
+    # ordine: augment (priorità alta per prima) poi postscript
     SINAPSI_COMPILED.sort(key=lambda x: (0 if x["mode"]=="augment" else 1, -x["priority"]))
 
 def _load_sinapsi() -> None:
@@ -180,13 +200,12 @@ def sinapsi_match(q: str) -> Tuple[str, str]:
     psc = _dedup_semantic(psc)
     return (aug[0] if aug else ""), (psc[0] if psc else "")
 
-# ============================== WEB (Brave) ==============================
+# ============================== BRAVE SEARCH ==============================
 def _build_query(q: str) -> str:
     if not DISAMBIG_STRICT:
         return q
     qn = _norm(q)
-    plus = []
-    minus = []
+    plus, minus = [], []
     plus.append('"Tecnaria S.p.A." OR Tecnaria')
     plus.append('"Bassano del Grappa"')
     plus.append('connettori OR connettore OR "solai misti" OR "acciaio calcestruzzo" OR lamiera')
@@ -204,6 +223,8 @@ def _build_query(q: str) -> str:
     return f"{q}{add}".strip()
 
 def _brave(q: str, preferred: bool, site: str = "", count: int = 5) -> List[Dict[str, Any]]:
+    if not BRAVE_API_KEY:
+        return []
     url = "https://api.search.brave.com/res/v1/web/search"
     headers = {"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY}
     q_built = _build_query(q)
@@ -240,7 +261,7 @@ def _rank_hits_lang(q: str, hits: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
         url = h.get("url",""); title = h.get("title",""); snip = h.get("snippet","")
         blob = _norm(" ".join([title, snip, url]))
         qscore = len(qkw & set(_content_words(blob)))
-        site_bonus = 5 if "tecnaria.com" in url else (1 if "spit" in url else 0)
+        site_bonus = 6 if "tecnaria.com" in url else (1 if "spit" in url else 0)
         lang = (h.get("language") or "").lower()
         it_bonus = 3 if lang == "it" or _is_it_url(url) else (-3 if "/en/" in url or lang == "en" else 0)
         return (qscore, site_bonus, it_bonus, -len(title))
@@ -268,8 +289,6 @@ def _split_by_lang(hits: List[Dict[str,Any]]) -> Tuple[List[Dict[str,Any]], List
     return it_hits, other
 
 def get_web_hits(q: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    if not BRAVE_API_KEY:
-        return [], []
     hits: List[Dict[str, Any]] = []
     for d in PREFERRED_DOMAINS:
         hits.extend(_brave(q, True, d, WEB_RESULTS_COUNT_PREFERRED))
@@ -281,11 +300,6 @@ def get_web_hits(q: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     return it_hits, other
 
 # ============================== FETCH & NARRATIVA ==============================
-def _guess_italian(text: str) -> bool:
-    anchors = [" il ", " la ", " dei ", " delle ", " con ", " senza ", " chiod", " lamiera ", " calcestruzzo ", " posa "]
-    t = " " + (_strip_html(text).lower()) + " "
-    return sum(1 for a in anchors if a in t) >= 2
-
 def _fetch_url(url: str) -> str:
     try:
         r = requests.get(url, timeout=HTTP_TIMEOUT, headers={"User-Agent": "Mozilla/5.0"})
@@ -298,7 +312,8 @@ def _fetch_url(url: str) -> str:
 def _extract_main_text(html_text: str) -> str:
     soup = BeautifulSoup(html_text, "html.parser")
     md = soup.find("meta", attrs={"name":"description"})
-    if md and md.get("content"): return md["content"]
+    if md and md.get("content"):
+        return md["content"]
     candidates = []
     for sel in ["article", ".entry-content", ".post-content", ".content", "main", "#content", ".wp-block-post-content"]:
         node = soup.select_one(sel)
@@ -314,7 +329,7 @@ def _extract_main_text(html_text: str) -> str:
 
 def _topic_keywords(q: str) -> List[str]:
     qn = _norm(q)
-    kw = ["solaio","solai","acciaio","calcestruzzo","lamiera","collaborante","spit","tecnaria","connettore","connettori","posa"]
+    kw = ["solaio","solai","acciaio","calcestruzzo","lamiera","collaborante","spit","tecnaria","connettore","connettori","posa","staffa","piolo"]
     if "p560" in qn or "spit" in qn: kw += ["p560","propuls","guidapunte","pistone","a freddo","chiod"]
     if "ctf" in qn: kw += ["ctf","piolo","piastra","lamiera","2 chiod"]
     if "diapason" in qn: kw += ["diapason","staffa","4 chiod","prestaz","travi"]
@@ -353,12 +368,15 @@ def _best_sentences_from_html(html_text: str, q: str, need: int) -> List[str]:
 def _collect_narrative(hits_it: List[Dict[str,Any]], hits_other: List[Dict[str,Any]], q: str) -> str:
     lines: List[str] = []
 
-    # Frase di confronto, se pertinente
+    # frase di confronto (se la domanda è un confronto)
     qn = _norm(q)
     if ("differenz" in qn) or (" vs " in f" {qn} ") or ("confront" in qn):
-        lines.append("CTF è un connettore a piolo su piastra per solai misti acciaio-calcestruzzo, tipicamente su lamiera grecata, con posa a freddo tramite SPIT P560 e due chiodi per connettore. Diapason è una staffa per travi in acciaio con o senza lamiera, indicata quando servono prestazioni più elevate; si posa a freddo con P560 e quattro chiodi.")
+        lines.append(
+            "CTF è un connettore a piolo su piastra per solai misti acciaio–calcestruzzo, tipicamente su lamiera grecata, con posa a freddo tramite SPIT P560 e due chiodi per connettore. "
+            "Diapason è una staffa per travi in acciaio con o senza lamiera, indicata quando servono prestazioni più elevate; si posa a freddo con P560 e quattro chiodi."
+        )
 
-    # Fetch diretto delle pagine tecnaria.com (IT) fino a saturare il limite caratteri
+    # fetch su tecnaria.com (IT) per estrarre frasi (fino a 4 URL)
     if FETCH_TECNARIA and hits_it:
         for h in hits_it[:4]:
             url = h.get("url","")
@@ -375,7 +393,7 @@ def _collect_narrative(hits_it: List[Dict[str,Any]], hits_other: List[Dict[str,A
             if len(" ".join(lines)) >= MAX_ANSWER_CHARS:
                 break
 
-    # Se ancora corto, completa con snippet Brave (IT → altre)
+    # se ancora corto, integra con snippet Brave (IT poi altre)
     if len(" ".join(lines)) < MAX_ANSWER_CHARS:
         web_for_snip = hits_it if hits_it else hits_other
         for h in web_for_snip[:3]:
@@ -387,12 +405,11 @@ def _collect_narrative(hits_it: List[Dict[str,Any]], hits_other: List[Dict[str,A
             if len(" ".join(lines)) >= MAX_ANSWER_CHARS:
                 break
 
-    # Pulizia e taglio a MAX_ANSWER_CHARS
+    # taglio
     narrative = " ".join(line.rstrip(" .") for line in lines)
     narrative = (narrative + ".").replace("..",".")
     if len(narrative) > MAX_ANSWER_CHARS:
         narrative = narrative[:MAX_ANSWER_CHARS].rsplit(" ", 1)[0] + "."
-
     return narrative if narrative.strip() else ""
 
 # ============================== HTML ==============================
@@ -413,30 +430,36 @@ def _compose_body(hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]
                   sin_aug_line: str, sin_psc_line: str, q: str) -> str:
     parts: List[str] = []
 
-    # NAV TOP ben visibile
+    # NAV TOP
     parts.append(_nav_bar())
 
     # Narrativa lunga
     narrative = _collect_narrative(hits_it, hits_other, q)
     if not narrative:
-        narrative = ("Sintesi tecnica ricavata da documentazione Tecnaria: la scelta dei sistemi dipende dal supporto "
-                     "(acciaio+lamiera → CTF; legno → CTL; assenza di lamiera → Diapason/V CEM-E), con posa a freddo e verifica a cura del progettista.")
+        narrative = (
+            "Sintesi tecnica ricavata da documentazione Tecnaria: la scelta dei sistemi dipende dal supporto "
+            "(acciaio+lamiera → CTF; legno → CTL; assenza di lamiera → Diapason/V CEM-E), con posa a freddo e verifica a cura del progettista."
+        )
     if SINAPSI_FUSE and sin_aug_line:
         narrative = narrative.rstrip(" ") + " " + sin_aug_line.rstrip(". ") + "."
     parts.append("<p>{}</p>".format(html.escape(narrative)))
 
-    # Postscript (soft, opzionale)
+    # Postscript (soft)
     if sin_psc_line:
         parts.append("<p><small>{}</small></p>".format(html.escape(sin_psc_line)))
 
-    # Fonti (solo link, senza snippet) + NAV BOTTOM
+    # Fonti (solo link) + NAV BOTTOM
     if hits_it or hits_other:
         lis = []
         def render_li(h, extra_label: str = ""):
             title = html.escape(h.get("title") or "Fonte")
             url   = html.escape(h.get("url") or "")
             label = f" <em>({extra_label})</em>" if extra_label else ""
-            return f"<li><a href=\"{url}\" target=\"_blank\" rel=\"noopener\">{title}</a>{label}</li>"
+            if SOURCES_SHOW_SNIPPETS:
+                snip = html.escape(h.get("snippet") or "")
+                return f"<li><a href=\"{url}\" target=\"_blank\" rel=\"noopener\">{title}</a>{label}" + (f"<br><small>{snip}</small>" if snip else "") + "</li>"
+            else:
+                return f"<li><a href=\"{url}\" target=\"_blank\" rel=\"noopener\">{title}</a>{label}</li>"
 
         if hits_it:
             for h in hits_it:
