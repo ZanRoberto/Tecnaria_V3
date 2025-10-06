@@ -1,9 +1,9 @@
 # app.py — Tecnaria QA Bot (WEB → SINAPSI → fallback)
-# - Query builder mirato a Tecnaria (brand/location), con filtri anti-rumore per CTF/Diapason
-# - Fonti: preferisci IT (language='it', URL /it/), penalizza /en/
-# - Narrativa: 2–3 frasi IT + 1 riga Sinapsi fusa (no elenchi)
-# - Pulsanti “⬅ Torna indietro” e “Home”
-# Requisiti: fastapi==0.115.0, uvicorn[standard]==0.30.6, gunicorn==21.2.0, requests==2.32.3, beautifulsoup4==4.12.3, jinja2==3.1.4
+# - Narrativa in IT (2–4 frasi), senza titoli/link nel corpo
+# - Fonti solo in fondo (IT prima), snippet puliti
+# - Disambiguazione mirata su Tecnaria (brand/location/termini), filtri anti-rumore
+# Requisiti: fastapi==0.115.0, uvicorn[standard]==0.30.6, gunicorn==21.2.0,
+#            requests==2.32.3, beautifulsoup4==4.12.3, jinja2==3.1.4
 
 import os, re, json, time, html, unicodedata
 from pathlib import Path
@@ -32,12 +32,12 @@ WEB_RESULTS_COUNT_PREFERRED = int(os.environ.get("WEB_RESULTS_COUNT_PREFERRED", 
 WEB_RESULTS_COUNT_FALLBACK  = int(os.environ.get("WEB_RESULTS_COUNT_FALLBACK",  "0"))
 WEB_FRESHNESS_DAYS          = os.environ.get("WEB_FRESHNESS_DAYS", "365d")
 LANG_PREFERRED              = os.environ.get("LANG_PREFERRED", "it").strip().lower()
+DISAMBIG_STRICT             = (os.environ.get("DISAMBIG_STRICT", "true").strip().lower() in ("1","true","yes"))
 
-# Disambiguazione aggressiva per CTF/Diapason/P560 (default ON)
-DISAMBIG_STRICT = (os.environ.get("DISAMBIG_STRICT", "true").strip().lower() in ("1","true","yes"))
-
-# Sinapsi: 1 riga max fusa nella narrativa
+# Sinapsi fusa (max 1 frase)
 SINAPSI_FUSE = True
+NARRATIVE_MIN = 2     # frasi minime nel corpo
+NARRATIVE_MAX = 4     # frasi massime nel corpo
 
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 
@@ -87,6 +87,7 @@ def _strip_html(s: str) -> str:
         return re.sub(r"<[^>]+>", " ", s)
 
 def _sanitize_brands(text: str) -> str:
+    # niente marchi concorrenti in risposte Sinapsi
     return re.sub(r"\b(hilti|dx\b|bx\b)\b", "altri utensili non supportati", text, flags=re.I)
 
 # ============================== SINAPSI ==============================
@@ -170,11 +171,8 @@ def _build_query(q: str) -> str:
     plus = []
     minus = []
 
-    # brand/location sempre
     plus.append('"Tecnaria S.p.A." OR Tecnaria')
     plus.append('"Bassano del Grappa"')
-
-    # contesto tecnico
     plus.append('connettori OR connettore OR "solai misti" OR "acciaio calcestruzzo" OR lamiera')
 
     if "ctf" in qn:
@@ -186,12 +184,9 @@ def _build_query(q: str) -> str:
     if "p560" in qn or "spit" in qn:
         plus.append('"SPIT P560" connettori CTF Tecnaria')
 
-    # costruisci stringa
     add = ""
-    if plus:
-        add += " " + " ".join(plus)
-    if minus:
-        add += " " + " ".join(f"-{m}" for m in minus)
+    if plus:  add += " " + " ".join(plus)
+    if minus: add += " " + " ".join(f"-{m}" for m in minus)
     return f"{q}{add}".strip()
 
 def _brave(q: str, preferred: bool, site: str = "", count: int = 3) -> List[Dict[str, Any]]:
@@ -281,25 +276,22 @@ def _sentences(text: str) -> List[str]:
             out.append(s)
     return out
 
-def _web_summary(q: str, hits: List[Dict[str,Any]], max_sent: int = 3) -> str:
+def _web_summary(q: str, hits: List[Dict[str,Any]], min_sent: int = 2, max_sent: int = 3) -> str:
+    """Costruisce frasi SOLO dagli snippet (mai dai titoli)."""
     qkw = set(_content_words(q))
     pool: List[Tuple[str,int]] = []
     for h in hits[:5]:
-        blob = " ".join([h.get("title",""), h.get("snippet","")])
-        for s in _sentences(blob):
+        snip = h.get("snippet","") or ""
+        for s in _sentences(snip):
             score = len(qkw & set(_content_words(s)))
             if score > 0:
                 pool.append((s, score))
-    if not pool:
-        for h in hits[:3]:
-            t = (h.get("title") or "").strip()
-            if t:
-                pool.append((t, 1))
     pool.sort(key=lambda t: (-t[1], len(t[0])))
     uniq = _dedup_semantic([(p, sc) for (p, sc) in pool])
+    if len(uniq) < min_sent:
+        # fallback minimale, ma sempre in IT e senza titoli
+        uniq.append("Sintesi tecnica ricavata da documentazione ufficiale Tecnaria.")
     pick = uniq[:max_sent]
-    if not pick:
-        return "Sintesi tecnica dalle fonti ufficiali."
     joined = " ".join(s.rstrip(" .") for s in pick)
     if not joined.endswith("."):
         joined += "."
@@ -324,21 +316,21 @@ def _compose_body(hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]
                   sin_ovr: List[str], sin_aug: List[str], sin_psc: List[str], q: str) -> str:
     parts: List[str] = []
 
-    # 1) Override Sinapsi → paragrafo principale
+    # 1) Override Sinapsi → frase principale (pulita)
     if sin_ovr:
         main = _merge_sentence(sin_ovr, limit=1)
         parts.append("<p>{}</p>".format(html.escape(main)))
 
-    # 2) Narrativa da WEB (IT prima), con una riga sinapsi fusa
+    # 2) Narrativa da WEB (IT prima) + 1 riga sinapsi fusa
     web_for_narrative = hits_it if hits_it else hits_other
     if web_for_narrative:
-        narrative = _web_summary(q, web_for_narrative, max_sent=3)
+        narrative = _web_summary(q, web_for_narrative, min_sent=NARRATIVE_MIN, max_sent=min(NARRATIVE_MAX, NARRATIVE_MIN+2))
         fused = ""
         if not sin_ovr and SINAPSI_FUSE and sin_aug:
             fused = " " + _merge_sentence(sin_aug, limit=1)
         parts.append("<p>{}{}</p>".format(html.escape(narrative), html.escape(fused)))
 
-    # 3) Fallback
+    # 3) Fallback elegante
     if not hits_it and not hits_other and not sin_ovr:
         generic = ("In generale, i sistemi Tecnaria si scelgono in base al supporto: "
                    "acciaio+lamiera → CTF (posa a sparo con P560 e chiodi HSBR14); "
@@ -347,7 +339,7 @@ def _compose_body(hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]
                    "La verifica finale resta a cura del progettista.")
         parts.append("<p>{}</p>".format(html.escape(generic)))
 
-    # 4) Fonti (IT prima). Se niente IT → mostra altre (max 3) etichettate (EN) e senza snippet
+    # 4) Fonti (IT prima). Se niente IT → altre (max 3) etichettate (EN/ALTRE) e senza snippet
     if hits_it or hits_other:
         parts.append("<div class='nav'><button onclick=\"try{history.back()}catch(e){}\">⬅ Torna indietro</button> <a class='btn' href='/'>Home</a></div>")
         lis = []
