@@ -1,7 +1,10 @@
-# app.py — Tecnaria QA Bot (WEB → SINAPSI → fallback)
-# - Corpo risposta: 2–4 frasi dagli snippet IT + 1 frase Sinapsi fusa
-# - Per domande di confronto: frase "CTF vs Diapason" dedicata all'inizio
-# - Fonti: solo in fondo, pannello collassabile (Chiudi fonti), IT prima
+# app.py — Tecnaria QA Bot (WEB → fetch Tecnaria → SINAPSI → fallback)
+# - Query mirata (Tecnaria/Bassano, termini tecnici, filtri anti-rumore)
+# - Prende i risultati Brave (IT), poi SCARICA le pagine tecnaria.com per estrarre frasi
+#   ricche (P560, chiodi, lamiera, staffa/piolo) senza usare titoli/URL nel corpo.
+# - Costruisce 2–4 frasi in italiano; fonde al massimo 1 frase da Sinapsi (invisibile).
+# - Fonti solo in coda dentro pannello collassabile (“Chiudi fonti”), IT prima.
+#
 # Requisiti: fastapi==0.115.0, uvicorn[standard]==0.30.6, gunicorn==21.2.0,
 #            requests==2.32.3, beautifulsoup4==4.12.3, jinja2==3.1.4
 
@@ -33,6 +36,10 @@ WEB_RESULTS_COUNT_FALLBACK  = int(os.environ.get("WEB_RESULTS_COUNT_FALLBACK",  
 WEB_FRESHNESS_DAYS          = os.environ.get("WEB_FRESHNESS_DAYS", "365d")
 LANG_PREFERRED              = os.environ.get("LANG_PREFERRED", "it").strip().lower()
 DISAMBIG_STRICT             = (os.environ.get("DISAMBIG_STRICT", "true").strip().lower() in ("1","true","yes"))
+
+# Abilita fetch diretto delle pagine Tecnaria (non consuma Brave, ma fa 1 GET sul sito)
+FETCH_TECNARIA = (os.environ.get("FETCH_TECNARIA", "true").strip().lower() in ("1","true","yes"))
+HTTP_TIMEOUT = float(os.environ.get("HTTP_TIMEOUT", "8.0"))
 
 # Sinapsi fusa (max 1 frase)
 SINAPSI_FUSE = True
@@ -66,7 +73,7 @@ def _content_words(s: str) -> List[str]:
 def _signature(s: str) -> str:
     toks = _content_words(s)
     if not toks: return _norm(s)
-    boost = {"p560","ctf","ctl","diapason","lamiera","grecata","hsbr14","legno","acciaio","calcestruzzo","solaio","tecnaria"}
+    boost = {"p560","ctf","ctl","diapason","lamiera","grecata","hsbr14","legno","acciaio","calcestruzzo","solaio","tecnaria","chiod"}
     toks = sorted(toks, key=lambda w: (w not in boost, w))[:8]
     return " ".join(toks)
 
@@ -200,7 +207,7 @@ def _brave(q: str, preferred: bool, site: str = "", count: int = 3) -> List[Dict
     q_built = _build_query(q)
     query = f"site:{site} {q_built}" if site else q_built
     try:
-        r = requests.get(url, headers=headers, params={"q": query, "count": count, "freshness": WEB_FRESHNESS_DAYS}, timeout=12)
+        r = requests.get(url, headers=headers, params={"q": query, "count": count, "freshness": WEB_FRESHNESS_DAYS}, timeout=HTTP_TIMEOUT)
         if not r.ok:
             return []
         items = (r.json().get("web", {}) or {}).get("results", []) or []
@@ -231,7 +238,7 @@ def _rank_hits_lang(q: str, hits: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
         url = h.get("url",""); title = h.get("title",""); snip = h.get("snippet","")
         blob = _norm(" ".join([title, snip, url]))
         qscore = len(qkw & set(_content_words(blob)))
-        site_bonus = 3 if "tecnaria.com" in url else (1 if "spit" in url else 0)
+        site_bonus = 4 if "tecnaria.com" in url else (1 if "spit" in url else 0)
         lang = (h.get("language") or "").lower()
         it_bonus = 3 if lang == "it" or _is_it_url(url) else (-3 if "/en/" in url or lang == "en" else 0)
         return (qscore, site_bonus, it_bonus, -len(title))
@@ -271,9 +278,96 @@ def get_web_hits(q: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     it_hits, other = _split_by_lang(hits)
     return it_hits, other
 
-# ============================== NARRATIVA ==============================
-def _web_summary_from_snippets(hits: List[Dict[str,Any]], need: int) -> List[str]:
-    """Raccoglie frasi dagli snippet (priorità IT). Se poche, prende le prime del migliore snippet."""
+# ============================== FETCH & NARRATIVA ==============================
+def _guess_italian(text: str) -> bool:
+    # se contiene molte parole-ancora italiane, lo considero IT
+    anchors = [" il ", " la ", " dei ", " delle ", " con ", " senza ", " chiod", " lamiera ", " calcestruzzo ", " posa "]
+    t = " " + (_strip_html(text).lower()) + " "
+    return sum(1 for a in anchors if a in t) >= 2
+
+def _fetch_url(url: str) -> str:
+    try:
+        r = requests.get(url, timeout=HTTP_TIMEOUT, headers={"User-Agent": "Mozilla/5.0"})
+        if r.ok and "text/html" in (r.headers.get("Content-Type","")):
+            return r.text
+    except Exception:
+        pass
+    return ""
+
+def _extract_main_text(html_text: str) -> str:
+    soup = BeautifulSoup(html_text, "html.parser")
+    # 1) meta description
+    md = soup.find("meta", attrs={"name":"description"})
+    if md and md.get("content"):
+        return md["content"]
+    # 2) aree probabili di contenuto
+    candidates = []
+    for sel in [
+        "article", ".entry-content", ".post-content", ".content", "main", "#content", ".wp-block-post-content"
+    ]:
+        node = soup.select_one(sel)
+        if node:
+            candidates.append(node.get_text(" ", strip=True))
+    # 3) fallback: tutti i <p> concatenati
+    if not candidates:
+        ps = " ".join(p.get_text(" ", strip=True) for p in soup.find_all("p"))
+        if ps:
+            candidates.append(ps)
+    # 4) ritorna il più lungo
+    for c in candidates:
+        if len(c.strip()) > 80:
+            return c.strip()
+    return " ".join(candidates).strip() if candidates else ""
+
+def _topic_keywords(q: str) -> List[str]:
+    qn = _norm(q)
+    kw = ["solaio", "solai", "acciaio", "calcestruzzo", "lamiera", "collaborante", "spit", "tecnaria", "connettore", "connettori"]
+    if "p560" in qn or "spit" in qn:
+        kw += ["p560", "propuls", "guidapunte", "pistone", "a freddo", "chiod"]
+    if "ctf" in qn:
+        kw += ["ctf", "piolo", "piastra", "lamiera", "2 chiod"]
+    if "diapason" in qn:
+        kw += ["diapason", "staffa", "4 chiod", "prestaz", "travi"]
+    if "ctl" in qn:
+        kw += ["ctl", "viti", "legno", "tavolato"]
+    return kw
+
+def _score_sentence(s: str, kw: List[str]) -> int:
+    s_l = " " + s.lower() + " "
+    score = 0
+    for k in kw:
+        if k in s_l:
+            score += 2 if len(k) > 4 else 1
+    # preferisci frasi con “chiod”, “p560”, “lamiera”
+    for bonus in [" chiod", " p560", " lamiera ", " staffa ", " piolo "]:
+        if bonus in s_l:
+            score += 2
+    # penalità per super corta/lunghissima
+    n = len(s)
+    if n < 30: score -= 1
+    if n > 220: score -= 1
+    return score
+
+def _best_sentences_from_html(html_text: str, q: str, need: int) -> List[str]:
+    text = _extract_main_text(html_text)
+    sents = _sentences(text)
+    kw = _topic_keywords(q)
+    scored = sorted(sents, key=lambda s: (_score_sentence(s, kw), -len(s)), reverse=True)
+    out: List[Tuple[str,int]] = []
+    for s in scored:
+        sc = _score_sentence(s, kw)
+        if sc <= 0:
+            continue
+        # dedup semantico leggero
+        sig = _signature(s)
+        if not any(_signature(a) == sig for a, _ in out):
+            out.append((s, sc))
+        if len(out) >= need:
+            break
+    return [a for a,_ in out]
+
+def _web_summary_from_snippets(hits: List[Dict[str,Any]], q: str, need: int) -> List[str]:
+    # Prende frasi solo dagli snippet Brave
     lines: List[str] = []
     for h in hits[:3]:
         snip = h.get("snippet","") or ""
@@ -284,23 +378,41 @@ def _web_summary_from_snippets(hits: List[Dict[str,Any]], need: int) -> List[str
                 break
         if len(lines) >= need:
             break
-    if len(lines) < need and hits:
-        # prendi comunque prime frasi del miglior snippet disponibile
-        sents = _sentences(hits[0].get("snippet","") or "")
-        for s in sents:
-            if s and s not in lines:
-                lines.append(s)
-            if len(lines) >= need:
-                break
     return lines[:need]
+
+def _upgrade_with_fetch(hits_it: List[Dict[str,Any]], q: str, need: int) -> List[str]:
+    """Prova a fetchare 1–2 pagine tecnaria.com (IT) e a estrarre frasi migliori."""
+    if not FETCH_TECNARIA:
+        return []
+    picked: List[str] = []
+    count = 0
+    for h in hits_it:
+        url = (h.get("url") or "")
+        if "tecnaria.com" not in url.lower():
+            continue
+        html_text = _fetch_url(url)
+        if not html_text:
+            continue
+        # estrai e filtra frasi in IT
+        best = _best_sentences_from_html(html_text, q, need=need)
+        best = [s for s in best if _guess_italian(s)]
+        for s in best:
+            if s not in picked:
+                picked.append(s)
+            if len(picked) >= need:
+                break
+        count += 1
+        if len(picked) >= need or count >= 2:
+            break
+    return picked[:need]
 
 def _build_diff_line(q: str) -> str:
     qn = _norm(q)
     if ("differenz" in qn) or (" vs " in f" {qn} ") or ("confront" in qn):
-        return ("CTF: connettore a piolo su piastra, per solai misti acciaio-calcestruzzo "
-                "su travi in acciaio con lamiera grecata (posa a sparo con SPIT P560). "
-                "Diapason: connettore a staffa, indicato per travi senza lamiera e per "
-                "sollecitazioni più elevate, fissato sempre a freddo con chiodi.")
+        return ("CTF: connettore a piolo su piastra per solai misti acciaio-calcestruzzo "
+                "tipicamente con lamiera grecata (posa a freddo con SPIT P560, 2 chiodi). "
+                "Diapason: connettore a staffa per travi in acciaio con o senza lamiera, "
+                "indicato quando servono prestazioni più elevate (posa a freddo con P560, 4 chiodi).")
     return ""
 
 # ============================== HTML ==============================
@@ -329,24 +441,30 @@ def _compose_body(hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]
     if diff:
         parts.append("<p>{}</p>".format(html.escape(diff)))
 
-    # 2) Frasi dagli snippet (IT → altre). Mai titoli nel corpo.
+    # 2) Costruzione narrativa: prima provo a fetchare le pagine Tecnaria (IT), poi snippet Brave
     web_for_narr = hits_it if hits_it else hits_other
+    lines: List[str] = []
     if web_for_narr:
-        needed = max(NARRATIVE_MIN, 2)
-        snippet_lines = _web_summary_from_snippets(web_for_narr, need=min(NARRATIVE_MAX, needed+2))
-        if snippet_lines:
-            body = " ".join(s.rstrip(" .") for s in snippet_lines)
-            if not body.endswith("."):
-                body += "."
-            # Fusione Sinapsi (una riga) senza intestazioni
-            if not sin_ovr and SINAPSI_FUSE and sin_aug:
-                body += " " + _merge_sentence(sin_aug, limit=1)
-            parts.append("<p>{}</p>".format(html.escape(body)))
+        lines = _upgrade_with_fetch(hits_it, q, need=NARRATIVE_MAX)  # fetch diretto (solo tecnaria.com)
+        # se poche frasi dal fetch, completa con snippet Brave
+        if len(lines) < NARRATIVE_MIN:
+            extra = _web_summary_from_snippets(web_for_narr, q, need=(NARRATIVE_MIN - len(lines)))
+            for s in extra:
+                if s not in lines:
+                    lines.append(s)
+    if lines:
+        body = " ".join(s.rstrip(" .") for s in lines[:NARRATIVE_MAX])
+        if not body.endswith("."):
+            body += "."
+        # Fusione Sinapsi (una riga) senza intestazioni
+        if not sin_ovr and SINAPSI_FUSE and sin_aug:
+            body += " " + _merge_sentence(sin_aug, limit=1)
+        parts.append("<p>{}</p>".format(html.escape(body)))
 
     # 3) Fallback elegante (se proprio nulla)
-    if not web_for_narr and not sin_ovr:
+    if not lines and not sin_ovr:
         generic = ("In generale, i sistemi Tecnaria si scelgono in base al supporto: "
-                   "acciaio+lamiera → CTF (posa a sparo con P560 e chiodi HSBR14); "
+                   "acciaio+lamiera → CTF (posa a freddo con P560 e chiodi); "
                    "legno → CTL (viti dall’alto); "
                    "laterocemento senza lamiera → Diapason o V CEM-E/MINI. "
                    "La verifica finale resta a cura del progettista.")
@@ -375,7 +493,6 @@ def _compose_body(hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]
                 tag = "EN" if "/en/" in (h.get("url","")).lower() or lang == "EN" else (lang or "ALTRE")
                 lis.append(render_li(h, show_snip=False, extra_label=tag))
 
-        # pannello collassabile
         parts.append(
             "<details open>"
             "<summary><strong>Fonti</strong></summary>"
@@ -400,7 +517,8 @@ def health() -> JSONResponse:
         "sinapsi_file": SINAPSI_FILE,
         "lang_preferred": LANG_PREFERRED,
         "disambig_strict": DISAMBIG_STRICT,
-        "app": "web->sinapsi->fallback"
+        "fetch_tecnaria": FETCH_TECNARIA,
+        "app": "web->fetch_tecnaria->sinapsi->fallback"
     })
 
 @app.get("/", response_class=HTMLResponse)
