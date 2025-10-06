@@ -17,6 +17,30 @@
       "priority": 999
     },
     {
+      "id": "diff_ctf_diapason",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(diapason)\\b)(?=.*\\b(differenz\\w*|vs|meglio|confront\\w*|divers\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTF: connettori per travi in acciaio con lamiera grecata e getto collaborante; posa a sparo con SPIT P560. Diapason: sistema per solai in laterocemento senza lamiera, con fissaggi nei travetti e getto collaborante dall’alto. Scelta in base alla tipologia di solaio/supporto.",
+      "priority": 970
+    },
+    {
+      "id": "diff_ctf_ctl",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(ctl)\\b)(?=.*\\b(differenz\\w*|vs|meglio|confront\\w*|divers\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTF: travi in acciaio con lamiera grecata e getto collaborante; posa a sparo con P560. CTL: connettori per solai legno–calcestruzzo con viti dall’alto. Si usano su supporti diversi (acciaio vs legno).",
+      "priority": 960
+    },
+    {
+      "id": "diff_ctf_vceme",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e|cem\\s*-?e)\\b)(?=.*\\b(differenz\\w*|vs|meglio|confront\\w*|divers\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTF: connettori per travi in acciaio + lamiera grecata. V CEM-E/MINI: connettori a vite per solai in laterocemento (senza lamiera), con avvitamento nei travetti e getto collaborante. Si scelgono in base al tipo di solaio.",
+      "priority": 955
+    },
+    {
       "id": "ctf_quanti_chiodi_v2",
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(chiodi|chiodo)\\b)(?=.*\\b(quanti|numero|per\\s*pezzo|per\\s*connettore)\\b).*",
       "mode": "override",
@@ -25,12 +49,132 @@
       "priority": 950
     },
     {
+      "id": "meta_p560_only_for_ctf",
+      "pattern": "(?i)(?=.*\\b(ctf)\\b)(?=.*\\b(chiodatric\\w*|sparachiod\\w*|pistola)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Per i CTF non si usa una chiodatrice qualsiasi: impiegare SPIT P560 con kit/adattatori Tecnaria.",
+      "priority": 940
+    },
+    {
+      "id": "meta_p560_patentino",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(patentin\\w*|abilitazion\\w*|licenz\\w*|certificat\\w*|corso)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Per la SPIT P560 non è richiesto un patentino dedicato: basta una breve formazione interna e l’uso dei DPI.",
+      "priority": 940
+    },
+    {
+      "id": "meta_ctf_ctf_vs_diapason_vs_ctl_vs_vceme",
+      "pattern": "(?i)(?=.*\\b(ctf|diapason|ctl|v\\s*c(e|é)m-?e)\\b)(?=.*\\b(differenz\\w*|quando|scegliere)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTF: solai su travi in acciaio con lamiera grecata (posa a sparo con P560). Diapason: laterocemento senza lamiera (ancoraggio ai travetti, getto dall’alto). CTL: solai legno‑calcestruzzo (viti dedicate, posa dall’alto). V CEM‑E/MINI: laterocemento con avvitamento nei travetti, getto collaborante dall’alto.",
+      "priority": 930
+    },
+    {
+      "id": "meta_ctf_quanti_m2_ordine",
+      "pattern": "(?i)(?=.*\\b(ctf)\\b)(?=.*\\b(m2|m\\s*²|mq|metri\\s*quadr\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
+      "priority": 920
+    },
+    {
+      "id": "diff_ctf_vs_diapason",
+      "pattern": "(?i)(?=.*\\bctf\\b)(?=.*\\bdiapason\\b)(?=.*\\b(differen\\w*|vs|confront\\w*|meglio|scegliere|quando)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTF ≠ Diapason.\n• CTF: connettore a sparo per travi in acciaio con lamiera grecata; posa dall’alto con SPIT P560, 2 chiodi/pezzo. Si usa su solai acciaio–calcestruzzo con lamiera aderente alla trave.\n• Diapason: sistema per solai in laterocemento SENZA lamiera; ancoraggio nei travetti e getto collaborante dall’alto.\nScelta rapida: acciaio+lamiera → CTF; laterocemento senza lamiera → Diapason.",
+      "priority": 920
+    },
+    {
+      "id": "ctf_quanti_al_m2_varianti_brevi",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(m2|m\\s*²|mq|metro\\s*quadrato|metri\\s*quadri|metri\\s*quadrati)\\b)(?=.*\\bquanti|q\\.?ta|quantità\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La quantità dei CTF deriva dal calcolo (luci, carichi, profilo lamiera). Ordine di grandezza: 6–8 connettori/m², più fitti agli appoggi.",
+      "priority": 905
+    },
+    {
       "id": "ctf_qta_m2_v2",
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(m2|m\\s*²|mq|metro\\s*quadrato|metri\\s*quadri|metri\\s*quadrati)\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "La quantità dei CTF deriva dal calcolo (luci, carichi, profilo lamiera). Ordine di grandezza: 6–8 connettori/m², più fitti agli appoggi.",
       "priority": 900
+    },
+    {
+      "id": "meta_ctf_chiodi_per_pezzo",
+      "pattern": "(?i)(?=.*\\b(ctf)\\b)(?=.*\\b(chiodi|chiodo)\\b)(?=.*\\b(per\\s*pezzo|per\\s*connettore|quanti|numero)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 tramite SPIT P560.",
+      "priority": 900
+    },
+    {
+      "id": "differenza_ctf_diapason_breve",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(diapason)\\b)(?=.*\\b(differenza|vs)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTF: acciaio+lamiera grecata. Diapason: laterocemento senza lamiera. Scelta in base al solaio.",
+      "priority": 900
+    },
+    {
+      "id": "meta_p560_lamiera_ok",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(lamiera|grecat\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La posa è dall’alto anche con lamiera grecata, purché ben aderente alla trave.",
+      "priority": 880
+    },
+    {
+      "id": "meta_diapason_descrizione",
+      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*|spiega\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Diapason è un sistema per rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall’alto.",
+      "priority": 880
+    },
+    {
+      "id": "meta_ctl_descrizione",
+      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legno‑calcestruzzo con posa dall’alto.",
+      "priority": 880
+    },
+    {
+      "id": "meta_vceme_descrizione",
+      "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m-?e|mini\\s*c(e|é)m-?e|cem-?e)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "V CEM‑E è un connettore a vite per solai in laterocemento con fissaggio dall’alto nei travetti; MINI CEM‑E è la versione compatta.",
+      "priority": 880
+    },
+    {
+      "id": "ctf_senza_lamiera_no",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(senza\\s*lamiera|assenza\\s*lamiera|no\\s*lamiera)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "I CTF sono pensati per sistemi con lamiera grecata. Se la lamiera non c’è, valutare sistemi alternativi Tecnaria (es. Diapason o V CEM-E secondo il solaio).",
+      "priority": 880
+    },
+    {
+      "id": "diff_ctl_vceme",
+      "pattern": "(?i)(?=.*\\b(differenz\\w*|confront\\w*|vs)\\b)(?=.*\\b(ctl)\\b)(?=.*\\b(cem-?e|mini\\s*cem-?e|v\\s*cem-?e)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTL: sistemi per legno-calcestruzzo. V CEM-E/MINI: connettori a vite per laterocemento (travetti) con posa dall’alto.",
+      "priority": 880
+    },
+    {
+      "id": "meta_ctf_posa_dall_alto",
+      "pattern": "(?i)(?=.*\\b(ctf)\\b)(?=.*\\b(posa|fissaggio)\\b)(?=.*\\b(dall|sopra)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "I CTF si fissano dall’alto sopra la trave; ogni pezzo richiede 2 chiodi HSBR14 con SPIT P560.",
+      "priority": 860
     },
     {
       "id": "p560_taratura",
@@ -49,28 +193,28 @@
       "priority": 850
     },
     {
-      "id": "p560_manutenzione",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(manutenzion\\w*|pulizi\\w*|usura)\\b).*",
+      "id": "ctf_ipn_ipe_heb_ok",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(ipe|heb|ipe\\s*\\d+|heb\\s*\\d+|upn|ipr|trave\\s*in\\s*acciaio)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Manutenzione di pistone, guidapunte e anello ammortizzatore secondo manuale.",
-      "priority": 700
+      "answer": "CTF su travi in acciaio: posa dall’alto con P560. Verificare spessori utili (indicativamente flange ≥ 6 mm) e lamiera ben aderente; sempre prova su campione.",
+      "priority": 850
     },
     {
-      "id": "p560_dpi",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(dpi|dispositivi\\s*protezione)\\b).*",
+      "id": "p560_solo_per_ctf_non_altro",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(usare|impiegare|va\\s*bene|ok)\\b)(?=.*\\b(altri|altro|diversi|qualsiasi)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Obbligatori occhiali, guanti e protezione acustica durante la posa.",
-      "priority": 700
+      "answer": "La P560 si impiega per la posa dei CTF con gli appositi kit/adattatori Tecnaria e chiodi HSBR14. Per altri sistemi attenersi alle relative istruzioni.",
+      "priority": 840
     },
     {
-      "id": "p560_noleggio",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(nolegg\\w*|affitt\\w*)\\b).*",
+      "id": "ctf_differenze_posa_appoggi_campata",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(appoggi|campata|campate)\\b)(?=.*\\b(differenz\\w*|passo|interasse)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Disponibile il noleggio della SPIT P560 e degli accessori dedicati.",
-      "priority": 600
+      "answer": "Distribuzione tipica: più fitti verso gli appoggi e più radi in campata, definita dal calcolo a scorrimento.",
+      "priority": 820
     },
     {
       "id": "ctf_posa_dall_alto",
@@ -79,6 +223,30 @@
       "lang": "it",
       "answer": "I CTF si fissano dall’alto su trave in acciaio con SPIT P560; per ogni connettore 2 chiodi HSBR14.",
       "priority": 800
+    },
+    {
+      "id": "diapason_vs_vceme",
+      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e|cem\\s*-?e)\\b)(?=.*\\b(differenz\\w*|vs|meglio|confront\\w*|divers\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Entrambi per laterocemento dall’alto: Diapason utilizza fissaggi dedicati nei travetti; V CEM-E/MINI impiega connettori a vite. La scelta dipende da spessori disponibili, interferenze e obiettivi di progetto.",
+      "priority": 800
+    },
+    {
+      "id": "differenza_ctl_vceme",
+      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e|cem\\s*-?e)\\b)(?=.*\\b(differenz\\w*|vs|meglio|confront\\w*|divers\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTL: legno–calcestruzzo con viti dall’alto. V CEM-E/MINI: laterocemento con avvitamento nei travetti. Scelta in base al tipo di solaio.",
+      "priority": 790
+    },
+    {
+      "id": "p560_dpi_richiami",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(dpi|sicurezza|occhiali|guanti|cuffie)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Durante la posa con P560 sono obbligatori: occhiali, guanti e protezione acustica. Eseguire prove su campione e operare secondo manuale.",
+      "priority": 780
     },
     {
       "id": "ctf_compatibilita_lamiera",
@@ -95,6 +263,54 @@
       "lang": "it",
       "answer": "CTF sono pensati per sistemi con lamiera grecata; senza lamiera valutare sistemi alternativi Tecnaria.",
       "priority": 750
+    },
+    {
+      "id": "p560_manutenzione",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(manutenzion\\w*|pulizi\\w*|usura)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Manutenzione di pistone, guidapunte e anello ammortizzatore secondo manuale.",
+      "priority": 700
+    },
+    {
+      "id": "p560_dpi",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(dpi|dispositivi\\s*protezione)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Obbligatori occhiali, guanti e protezione acustica durante la posa.",
+      "priority": 700
+    },
+    {
+      "id": "diapason_descrizione",
+      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*|spiega\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Diapason è un sistema per rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall’alto.",
+      "priority": 700
+    },
+    {
+      "id": "ctl_descrizione",
+      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "I connettori CTL rendono collaborante la soletta su solai legno-calcestruzzo con posa dall’alto.",
+      "priority": 700
+    },
+    {
+      "id": "vceme_descrizione",
+      "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e|cem\\s*-?e)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "V CEM-E è un connettore a vite per solai in laterocemento con fissaggio dall’alto nei travetti; MINI CEM-E è la versione compatta.",
+      "priority": 700
+    },
+    {
+      "id": "meta_dpi_generali",
+      "pattern": "(?i)(?=.*\\b(dpi|sicurezz\\w*)\\b)(?=.*\\b(cantiere|posa|foratura|sparo|getto)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Occhiali, guanti e protezione acustica sono obbligatori nelle fasi di foratura/posa e getto.",
+      "priority": 700
     },
     {
       "id": "ctf_rete_soletta",
@@ -121,14 +337,6 @@
       "priority": 650
     },
     {
-      "id": "diapason_descrizione",
-      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*|spiega\\w*)\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Diapason è un sistema per rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall’alto.",
-      "priority": 700
-    },
-    {
       "id": "diapason_casi_uso",
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(casi|quando|in\\s*che\\s*casi|impiegh\\w*)\\b).*",
       "mode": "override",
@@ -145,6 +353,30 @@
       "priority": 650
     },
     {
+      "id": "ctl_maxi_base",
+      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(maxi|base|scelta|quando)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTL BASE e CTL MAXI coprono le esigenze tipiche; MAXI per altezze maggiori/interposti più spessi.",
+      "priority": 650
+    },
+    {
+      "id": "vceme_scelta_mini",
+      "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e)\\b)(?=.*\\b(scegli\\w*|quando|differenz\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La scelta tra V CEM-E e MINI dipende da spessori disponibili, interferenze e miglioramento richiesto.",
+      "priority": 650
+    },
+    {
+      "id": "p560_noleggio",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(nolegg\\w*|affitt\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Disponibile il noleggio della SPIT P560 e degli accessori dedicati.",
+      "priority": 600
+    },
+    {
       "id": "diapason_rete",
       "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(rete|elettrosaldat\\w*|soletta)\\b).*",
       "mode": "override",
@@ -159,22 +391,6 @@
       "lang": "it",
       "answer": "necessario localizzare i travetti (sondaggi) per garantire corretto fissaggio e ancoraggio.",
       "priority": 600
-    },
-    {
-      "id": "ctl_descrizione",
-      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "I connettori CTL rendono collaborante la soletta su solai legno-calcestruzzo con posa dall’alto.",
-      "priority": 700
-    },
-    {
-      "id": "ctl_maxi_base",
-      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(maxi|base|scelta|quando)\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "CTL BASE e CTL MAXI coprono le esigenze tipiche; MAXI per altezze maggiori/interposti più spessi.",
-      "priority": 650
     },
     {
       "id": "ctl_viti",
@@ -199,22 +415,6 @@
       "lang": "it",
       "answer": "Interassi e dimensionamento derivano dal calcolo su luci e carichi.",
       "priority": 600
-    },
-    {
-      "id": "vceme_descrizione",
-      "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e|cem\\s*-?e)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "V CEM-E è un connettore a vite per solai in laterocemento con fissaggio dall’alto nei travetti; MINI CEM-E è la versione compatta.",
-      "priority": 700
-    },
-    {
-      "id": "vceme_scelta_mini",
-      "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e)\\b)(?=.*\\b(scegli\\w*|quando|differenz\\w*)\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La scelta tra V CEM-E e MINI dipende da spessori disponibili, interferenze e miglioramento richiesto.",
-      "priority": 650
     },
     {
       "id": "vceme_posa",
@@ -249,139 +449,12 @@
       "priority": 400
     },
     {
-      "id": "sugg_si_pu_usare_una_sparachiodi_qualunque_per_i_ctf",
-      "pattern": "(?i)(?=.*\\b(chiodatrice|sparachiod|sparo|pistola)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpu²\\b)(?=.*\\busare\\b)(?=.*\\bsparachiodi\\b)(?=.*\\bqualunque\\b).*",
+      "id": "meta_supporto_tecnico",
+      "pattern": "(?i)(?=.*\\b(supporto|assistenza|aiuto)\\b)(?=.*\\b(dimensionament\\w*|progetto|calcolo)\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Per i CTF non si usa una chiodatrice qualsiasi: va impiegata esclusivamente la chiodatrice a sparo SPIT P560 con kit/adattatori Tecnaria.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_quanti_chiodi_servono_per_fissare_un_connettore_ctf_con_p560",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bchiodi\\b)(?=.*\\bservono\\b)(?=.*\\bfissare\\b)(?=.*\\bconnettore\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_ctf_numero_chiodi_per_pezzo_con_p560",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bctf\\b)(?=.*\\bnumero\\b)(?=.*\\bchiodi\\b)(?=.*\\bpezzo\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_serve_un_patentino_per_usare_la_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bserve\\b)(?=.*\\bpatentino\\b)(?=.*\\busare\\b)(?=.*\\bp560\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Per la P560 non è richiesto un patentino dedicato: serve una breve formazione interna e l’uso dei DPI.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_p560_necessario_un_patentino_abilitazione",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bnecessario\\b)(?=.*\\bpatentino/abilitazione\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Per la P560 non è richiesto un patentino dedicato: serve una breve formazione interna e l’uso dei DPI.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_come_regolo_la_potenza_della_p560_in_cantiere",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bregolo\\b)(?=.*\\bpotenza\\b)(?=.*\\bp560\\b)(?=.*\\bcantiere\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_p560_come_tarare_propulsori_potenza",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\btarare\\b)(?=.*\\bpropulsori/potenza\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_la_p560_funziona_anche_con_lamiera_grecata_presente",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bfunziona\\b)(?=.*\\banche\\b)(?=.*\\blamiera\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La posa è dall’alto anche con lamiera grecata, purché ben aderente alla trave.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_p560_ok_con_lamiera_aderente",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\blamiera\\b)(?=.*\\baderente\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La posa è dall’alto anche con lamiera grecata, purché ben aderente alla trave.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_p560_manutenzione_periodica",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bmanutenzione\\b)(?=.*\\bperiodica\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La P560 richiede manutenzione di pistone, guidapunte e anello ammortizzatore secondo manuale.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_la_p560_disponibile_a_noleggio",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bdisponibile\\b)(?=.*\\bnoleggio\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_quali_dpi_servono_per_usare_la_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bservono\\b)(?=.*\\busare\\b)(?=.*\\bp560\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_dpi_obbligatori_con_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bobbligatori\\b)(?=.*\\bp560\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_che_spessore_minimo_di_trave_in_acciaio_per_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspessore\\b)(?=.*\\bminimo\\b)(?=.*\\btrave\\b)(?=.*\\bacciaio\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Indicativamente per le travi in acciaio si considera spessore ≥ 6 mm; con lamiera va verificata l’aderenza e gli spessori previsti.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_p560_spessore_acciaio_minimo",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bspessore\\b)(?=.*\\bacciaio\\b)(?=.*\\bminimo\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Indicativamente per le travi in acciaio si considera spessore ≥ 6 mm; con lamiera va verificata l’aderenza e gli spessori previsti.",
-      "sources": [],
-      "priority": 10
+      "answer": "Il team Tecnaria fornisce supporto tecnico per la scelta dei sistemi e il dimensionamento.",
+      "priority": 400
     },
     {
       "id": "sugg_cosa_sono_i_connettori_ctf",
@@ -429,15 +502,6 @@
       "priority": 60
     },
     {
-      "id": "sugg_quanti_ctf_al_metro_quadrato_servono_di_solito",
-      "pattern": "(?i)(?=.*\\b(m2|m²|metro|metri)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bmetro\\b)(?=.*\\bquadrato\\b)(?=.*\\bservono\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
-      "sources": [],
-      "priority": 20
-    },
-    {
       "id": "sugg_si_posano_i_ctf_anche_senza_lamiera",
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bposano\\b)(?=.*\\bctf\\b)(?=.*\\banche\\b)(?=.*\\bsenza\\b).*",
       "mode": "override",
@@ -481,15 +545,6 @@
       "answer": "Si tende a fittire i CTF verso gli appoggi e a diradare in campata, secondo verifica a scorrimento.",
       "sources": [],
       "priority": 60
-    },
-    {
-      "id": "sugg_passo_ctf_agli_appoggi_vs_campata",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpasso\\b)(?=.*\\bctf\\b)(?=.*\\bagli\\b)(?=.*\\bappoggi\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
-      "sources": [],
-      "priority": 20
     },
     {
       "id": "sugg_ctf_controlli_in_cantiere",
@@ -537,15 +592,6 @@
       "priority": 60
     },
     {
-      "id": "sugg_interasse_numero_ctf_come_si_calcola",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse/numero\\b)(?=.*\\bctf\\b)(?=.*\\bcalcola\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
-      "sources": [],
-      "priority": 20
-    },
-    {
       "id": "sugg_ctf_che_classe_di_calcestruzzo",
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bclasse\\b)(?=.*\\bcalcestruzzo\\b).*",
       "mode": "override",
@@ -580,24 +626,6 @@
       "answer": "In cantiere: prova su campione, verifica profondità/ancoraggio chiodi e tracciabilità dei pezzi posati.",
       "sources": [],
       "priority": 60
-    },
-    {
-      "id": "sugg_qual_l_interasse_tipico_dei_ctf",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse\\b)(?=.*\\btipico\\b)(?=.*\\bdei\\b)(?=.*\\bctf\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
-      "sources": [],
-      "priority": 20
-    },
-    {
-      "id": "sugg_qual_l_interasse_tipico_dei_connettori_ctf",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse\\b)(?=.*\\btipico\\b)(?=.*\\bdei\\b)(?=.*\\bconnettori\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
-      "sources": [],
-      "priority": 20
     },
     {
       "id": "sugg_ctf_compatibilit_con_profili_di_lamiera_diversi",
@@ -1095,15 +1123,6 @@
       "priority": 60
     },
     {
-      "id": "sugg_tecnaria_offre_noleggio_attrezzature",
-      "pattern": "(?i)(?=.*\\btecnaria\\b)(?=.*\\boffre\\b)(?=.*\\bnoleggio\\b)(?=.*\\battrezzature\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
-      "sources": [],
-      "priority": 25
-    },
-    {
       "id": "sugg_quali_dpi_sono_richiesti_in_cantiere",
       "pattern": "(?i)(?=.*\\bdpi\\b)(?=.*\\brichiesti\\b)(?=.*\\bcantiere\\b).*",
       "mode": "override",
@@ -1138,141 +1157,6 @@
       "answer": "Si verifica l’aderenza lamiera’trave con ispezione, fissaggi adeguati e prova su campione.",
       "sources": [],
       "priority": 60
-    },
-    {
-      "id": "sugg_si_pu_usare_una_sparachiodi_qualunque_per_i_connettori_ctf",
-      "pattern": "(?i)(?=.*\\b(chiodatrice|sparachiod|sparo|pistola)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpu²\\b)(?=.*\\busare\\b)(?=.*\\bsparachiodi\\b)(?=.*\\bqualunque\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Per i CTF non si usa una chiodatrice qualsiasi: va impiegata esclusivamente la chiodatrice a sparo SPIT P560 con kit/adattatori Tecnaria.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_quanti_chiodi_servono_per_fissare_un_connettore_connettori_ctf_con_spit_p560",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bchiodi\\b)(?=.*\\bservono\\b)(?=.*\\bfissare\\b)(?=.*\\bconnettore\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_connettori_ctf_numero_chiodi_per_pezzo_con_spit_p560",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bnumero\\b)(?=.*\\bchiodi\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_serve_un_patentino_per_usare_la_spit_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bserve\\b)(?=.*\\bpatentino\\b)(?=.*\\busare\\b)(?=.*\\bspit\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Per la P560 non è richiesto un patentino dedicato: serve una breve formazione interna e l’uso dei DPI.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_spit_p560_necessario_un_patentino_abilitazione",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bnecessario\\b)(?=.*\\bpatentino/abilitazione\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Per la P560 non è richiesto un patentino dedicato: serve una breve formazione interna e l’uso dei DPI.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_come_regolo_la_potenza_della_spit_p560_in_cantiere",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bregolo\\b)(?=.*\\bpotenza\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_spit_p560_come_tarare_propulsori_potenza",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\btarare\\b)(?=.*\\bpropulsori/potenza\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_la_spit_p560_funziona_anche_con_lamiera_grecata_presente",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bfunziona\\b)(?=.*\\banche\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La posa è dall’alto anche con lamiera grecata, purché ben aderente alla trave.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_spit_p560_ok_con_lamiera_aderente",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\blamiera\\b)(?=.*\\baderente\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La posa è dall’alto anche con lamiera grecata, purché ben aderente alla trave.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_spit_p560_manutenzione_periodica",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bmanutenzione\\b)(?=.*\\bperiodica\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La P560 richiede manutenzione di pistone, guidapunte e anello ammortizzatore secondo manuale.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_la_spit_p560_disponibile_a_noleggio",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bdisponibile\\b)(?=.*\\bnoleggio\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_quali_dpi_servono_per_usare_la_spit_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bservono\\b)(?=.*\\busare\\b)(?=.*\\bspit\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_dpi_obbligatori_con_spit_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bobbligatori\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_che_spessore_minimo_di_trave_in_acciaio_per_spit_p560",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspessore\\b)(?=.*\\bminimo\\b)(?=.*\\btrave\\b)(?=.*\\bacciaio\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Indicativamente per le travi in acciaio si considera spessore ≥ 6 mm; con lamiera va verificata l’aderenza e gli spessori previsti.",
-      "sources": [],
-      "priority": 10
-    },
-    {
-      "id": "sugg_spit_p560_spessore_acciaio_minimo",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bspessore\\b)(?=.*\\bacciaio\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Indicativamente per le travi in acciaio si considera spessore ≥ 6 mm; con lamiera va verificata l’aderenza e gli spessori previsti.",
-      "sources": [],
-      "priority": 10
     },
     {
       "id": "sugg_cosa_sono_i_connettori_connettori_ctf",
@@ -1320,15 +1204,6 @@
       "priority": 60
     },
     {
-      "id": "sugg_quanti_connettori_ctf_al_metro_quadrato_servono_di_solito",
-      "pattern": "(?i)(?=.*\\b(m2|m²|metro|metri)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bmetro\\b)(?=.*\\bquadrato\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
-      "sources": [],
-      "priority": 20
-    },
-    {
       "id": "sugg_si_posano_i_connettori_ctf_anche_senza_lamiera",
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bposano\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\banche\\b).*",
       "mode": "override",
@@ -1372,15 +1247,6 @@
       "answer": "Si tende a fittire i CTF verso gli appoggi e a diradare in campata, secondo verifica a scorrimento.",
       "sources": [],
       "priority": 60
-    },
-    {
-      "id": "sugg_passo_connettori_ctf_agli_appoggi_vs_campata",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpasso\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bagli\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
-      "sources": [],
-      "priority": 20
     },
     {
       "id": "sugg_connettori_ctf_controlli_in_cantiere",
@@ -1428,15 +1294,6 @@
       "priority": 60
     },
     {
-      "id": "sugg_interasse_numero_connettori_ctf_come_si_calcola",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse/numero\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bcalcola\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
-      "sources": [],
-      "priority": 20
-    },
-    {
       "id": "sugg_connettori_ctf_che_classe_di_calcestruzzo",
       "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bclasse\\b)(?=.*\\bcalcestruzzo\\b).*",
       "mode": "override",
@@ -1471,15 +1328,6 @@
       "answer": "In cantiere: prova su campione, verifica profondità/ancoraggio chiodi e tracciabilità dei pezzi posati.",
       "sources": [],
       "priority": 60
-    },
-    {
-      "id": "sugg_qual_l_interasse_tipico_dei_connettori_connettori_ctf",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse\\b)(?=.*\\btipico\\b)(?=.*\\bdei\\b)(?=.*\\bconnettori\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
-      "sources": [],
-      "priority": 20
     },
     {
       "id": "sugg_connettori_connettori_ctf_compatibilit_con_profili_di_lamiera_diversi",
@@ -1950,15 +1798,6 @@
       "priority": 60
     },
     {
-      "id": "sugg_tecnaria_offre_noleggio_attrezzature_spiega_in_breve",
-      "pattern": "(?i)(?=.*\\btecnaria\\b)(?=.*\\boffre\\b)(?=.*\\bnoleggio\\b)(?=.*\\battrezzature\\b).*",
-      "mode": "override",
-      "lang": "it",
-      "answer": "Disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
-      "sources": [],
-      "priority": 25
-    },
-    {
       "id": "sugg_quali_dpi_sono_richiesti_in_cantiere_spiega_in_breve",
       "pattern": "(?i)(?=.*\\bdpi\\b)(?=.*\\brichiesti\\b)(?=.*\\bcantiere\\b)(?=.*\\bspiega\\b).*",
       "mode": "override",
@@ -2267,204 +2106,373 @@
       "priority": 50
     },
     {
-      "id": "meta_ctf_ctf_vs_diapason_vs_ctl_vs_vceme",
-      "pattern": "(?i)(?=.*\\b(ctf|diapason|ctl|v\\s*c(e|é)m-?e)\\b)(?=.*\\b(differenz\\w*|quando|scegliere)\\b).*",
+      "id": "sugg_tecnaria_offre_noleggio_attrezzature",
+      "pattern": "(?i)(?=.*\\btecnaria\\b)(?=.*\\boffre\\b)(?=.*\\bnoleggio\\b)(?=.*\\battrezzature\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "CTF: solai su travi in acciaio con lamiera grecata (posa a sparo con P560). Diapason: laterocemento senza lamiera (ancoraggio ai travetti, getto dall’alto). CTL: solai legno‑calcestruzzo (viti dedicate, posa dall’alto). V CEM‑E/MINI: laterocemento con avvitamento nei travetti, getto collaborante dall’alto.",
-      "priority": 930
+      "answer": "Disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
+      "sources": [],
+      "priority": 25
     },
     {
-      "id": "meta_ctf_quanti_m2_ordine",
-      "pattern": "(?i)(?=.*\\b(ctf)\\b)(?=.*\\b(m2|m\\s*²|mq|metri\\s*quadr\\w*)\\b).*",
+      "id": "sugg_tecnaria_offre_noleggio_attrezzature_spiega_in_breve",
+      "pattern": "(?i)(?=.*\\btecnaria\\b)(?=.*\\boffre\\b)(?=.*\\bnoleggio\\b)(?=.*\\battrezzature\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
+      "sources": [],
+      "priority": 25
+    },
+    {
+      "id": "sugg_quanti_ctf_al_metro_quadrato_servono_di_solito",
+      "pattern": "(?i)(?=.*\\b(m2|m²|metro|metri)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bctf\\b)(?=.*\\bmetro\\b)(?=.*\\bquadrato\\b)(?=.*\\bservono\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
-      "priority": 920
+      "sources": [],
+      "priority": 20
     },
     {
-      "id": "meta_p560_only_for_ctf",
-      "pattern": "(?i)(?=.*\\b(ctf)\\b)(?=.*\\b(chiodatric\\w*|sparachiod\\w*|pistola)\\b).*",
+      "id": "sugg_passo_ctf_agli_appoggi_vs_campata",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpasso\\b)(?=.*\\bctf\\b)(?=.*\\bagli\\b)(?=.*\\bappoggi\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Per i CTF non si usa una chiodatrice qualsiasi: impiegare SPIT P560 con kit/adattatori Tecnaria.",
-      "priority": 940
+      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
+      "sources": [],
+      "priority": 20
     },
     {
-      "id": "meta_p560_patentino",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(patentin\\w*|abilitazion\\w*|licenz\\w*|certificat\\w*|corso)\\b).*",
+      "id": "sugg_interasse_numero_ctf_come_si_calcola",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse/numero\\b)(?=.*\\bctf\\b)(?=.*\\bcalcola\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Per la SPIT P560 non è richiesto un patentino dedicato: basta una breve formazione interna e l’uso dei DPI.",
-      "priority": 940
+      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
+      "sources": [],
+      "priority": 20
     },
     {
-      "id": "meta_ctf_chiodi_per_pezzo",
-      "pattern": "(?i)(?=.*\\b(ctf)\\b)(?=.*\\b(chiodi|chiodo)\\b)(?=.*\\b(per\\s*pezzo|per\\s*connettore|quanti|numero)\\b).*",
+      "id": "sugg_qual_l_interasse_tipico_dei_ctf",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse\\b)(?=.*\\btipico\\b)(?=.*\\bdei\\b)(?=.*\\bctf\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 tramite SPIT P560.",
-      "priority": 900
+      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
+      "sources": [],
+      "priority": 20
     },
     {
-      "id": "meta_p560_lamiera_ok",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(lamiera|grecat\\w*)\\b).*",
+      "id": "sugg_qual_l_interasse_tipico_dei_connettori_ctf",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse\\b)(?=.*\\btipico\\b)(?=.*\\bdei\\b)(?=.*\\bconnettori\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
+      "sources": [],
+      "priority": 20
+    },
+    {
+      "id": "sugg_quanti_connettori_ctf_al_metro_quadrato_servono_di_solito",
+      "pattern": "(?i)(?=.*\\b(m2|m²|metro|metri)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bmetro\\b)(?=.*\\bquadrato\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
+      "sources": [],
+      "priority": 20
+    },
+    {
+      "id": "sugg_passo_connettori_ctf_agli_appoggi_vs_campata",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpasso\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bagli\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
+      "sources": [],
+      "priority": 20
+    },
+    {
+      "id": "sugg_interasse_numero_connettori_ctf_come_si_calcola",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse/numero\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bcalcola\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
+      "sources": [],
+      "priority": 20
+    },
+    {
+      "id": "sugg_qual_l_interasse_tipico_dei_connettori_connettori_ctf",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\binterasse\\b)(?=.*\\btipico\\b)(?=.*\\bdei\\b)(?=.*\\bconnettori\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La quantità dei CTF deriva dal calcolo; come ordine di grandezza 6–8 connettori/m², più fitti agli appoggi.",
+      "sources": [],
+      "priority": 20
+    },
+    {
+      "id": "sugg_si_pu_usare_una_sparachiodi_qualunque_per_i_ctf",
+      "pattern": "(?i)(?=.*\\b(chiodatrice|sparachiod|sparo|pistola)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpu²\\b)(?=.*\\busare\\b)(?=.*\\bsparachiodi\\b)(?=.*\\bqualunque\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Per i CTF non si usa una chiodatrice qualsiasi: va impiegata esclusivamente la chiodatrice a sparo SPIT P560 con kit/adattatori Tecnaria.",
+      "sources": [],
+      "priority": 10
+    },
+    {
+      "id": "sugg_quanti_chiodi_servono_per_fissare_un_connettore_ctf_con_p560",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bchiodi\\b)(?=.*\\bservono\\b)(?=.*\\bfissare\\b)(?=.*\\bconnettore\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
+      "sources": [],
+      "priority": 10
+    },
+    {
+      "id": "sugg_ctf_numero_chiodi_per_pezzo_con_p560",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bctf\\b)(?=.*\\bnumero\\b)(?=.*\\bchiodi\\b)(?=.*\\bpezzo\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
+      "sources": [],
+      "priority": 10
+    },
+    {
+      "id": "sugg_serve_un_patentino_per_usare_la_p560",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bserve\\b)(?=.*\\bpatentino\\b)(?=.*\\busare\\b)(?=.*\\bp560\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Per la P560 non è richiesto un patentino dedicato: serve una breve formazione interna e l’uso dei DPI.",
+      "sources": [],
+      "priority": 10
+    },
+    {
+      "id": "sugg_p560_necessario_un_patentino_abilitazione",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bnecessario\\b)(?=.*\\bpatentino/abilitazione\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Per la P560 non è richiesto un patentino dedicato: serve una breve formazione interna e l’uso dei DPI.",
+      "sources": [],
+      "priority": 10
+    },
+    {
+      "id": "sugg_come_regolo_la_potenza_della_p560_in_cantiere",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bregolo\\b)(?=.*\\bpotenza\\b)(?=.*\\bp560\\b)(?=.*\\bcantiere\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
+      "sources": [],
+      "priority": 10
+    },
+    {
+      "id": "sugg_p560_come_tarare_propulsori_potenza",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\btarare\\b)(?=.*\\bpropulsori/potenza\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
+      "sources": [],
+      "priority": 10
+    },
+    {
+      "id": "sugg_la_p560_funziona_anche_con_lamiera_grecata_presente",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bfunziona\\b)(?=.*\\banche\\b)(?=.*\\blamiera\\b).*",
       "mode": "override",
       "lang": "it",
       "answer": "La posa è dall’alto anche con lamiera grecata, purché ben aderente alla trave.",
-      "priority": 880
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "meta_diapason_descrizione",
-      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*|spiega\\w*)\\b).*",
+      "id": "sugg_p560_ok_con_lamiera_aderente",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\blamiera\\b)(?=.*\\baderente\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Diapason è un sistema per rinforzo di solai in laterocemento senza lamiera: fissaggi nei travetti e getto collaborante dall’alto.",
-      "priority": 880
+      "answer": "La posa è dall’alto anche con lamiera grecata, purché ben aderente alla trave.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "meta_ctl_descrizione",
-      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
+      "id": "sugg_p560_manutenzione_periodica",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bmanutenzione\\b)(?=.*\\bperiodica\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I connettori CTL rendono collaborante la soletta su solai legno‑calcestruzzo con posa dall’alto.",
-      "priority": 880
+      "answer": "La P560 richiede manutenzione di pistone, guidapunte e anello ammortizzatore secondo manuale.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "meta_vceme_descrizione",
-      "pattern": "(?i)(?=.*\\b(v\\s*c(e|é)m-?e|mini\\s*c(e|é)m-?e|cem-?e)\\b)(?=.*\\b(cos\\w*|che\\s*è|descrizion\\w*)\\b).*",
+      "id": "sugg_la_p560_disponibile_a_noleggio",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bdisponibile\\b)(?=.*\\bnoleggio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "V CEM‑E è un connettore a vite per solai in laterocemento con fissaggio dall’alto nei travetti; MINI CEM‑E è la versione compatta.",
-      "priority": 880
+      "answer": "Disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "meta_dpi_generali",
-      "pattern": "(?i)(?=.*\\b(dpi|sicurezz\\w*)\\b)(?=.*\\b(cantiere|posa|foratura|sparo|getto)\\b).*",
+      "id": "sugg_quali_dpi_servono_per_usare_la_p560",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bservono\\b)(?=.*\\busare\\b)(?=.*\\bp560\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Occhiali, guanti e protezione acustica sono obbligatori nelle fasi di foratura/posa e getto.",
-      "priority": 700
+      "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "meta_supporto_tecnico",
-      "pattern": "(?i)(?=.*\\b(supporto|assistenza|aiuto)\\b)(?=.*\\b(dimensionament\\w*|progetto|calcolo)\\b).*",
+      "id": "sugg_dpi_obbligatori_con_p560",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bobbligatori\\b)(?=.*\\bp560\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Il team Tecnaria fornisce supporto tecnico per la scelta dei sistemi e il dimensionamento.",
-      "priority": 400
+      "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "meta_ctf_posa_dall_alto",
-      "pattern": "(?i)(?=.*\\b(ctf)\\b)(?=.*\\b(posa|fissaggio)\\b)(?=.*\\b(dall|sopra)\\b).*",
+      "id": "sugg_che_spessore_minimo_di_trave_in_acciaio_per_p560",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspessore\\b)(?=.*\\bminimo\\b)(?=.*\\btrave\\b)(?=.*\\bacciaio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF si fissano dall’alto sopra la trave; ogni pezzo richiede 2 chiodi HSBR14 con SPIT P560.",
-      "priority": 860
+      "answer": "Indicativamente per le travi in acciaio si considera spessore ≥ 6 mm; con lamiera va verificata l’aderenza e gli spessori previsti.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "diff_ctf_diapason",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(diapason)\\b)(?=.*\\b(differenz\\w*|vs|meglio|confront\\w*|divers\\w*)\\b).*",
+      "id": "sugg_p560_spessore_acciaio_minimo",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bp560\\b)(?=.*\\bspessore\\b)(?=.*\\bacciaio\\b)(?=.*\\bminimo\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "CTF: connettori per travi in acciaio con lamiera grecata e getto collaborante; posa a sparo con SPIT P560. Diapason: sistema per solai in laterocemento senza lamiera, con fissaggi nei travetti e getto collaborante dall’alto. Scelta in base alla tipologia di solaio/supporto.",
-      "priority": 970
+      "answer": "Indicativamente per le travi in acciaio si considera spessore ≥ 6 mm; con lamiera va verificata l’aderenza e gli spessori previsti.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "diff_ctf_ctl",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(ctl)\\b)(?=.*\\b(differenz\\w*|vs|meglio|confront\\w*|divers\\w*)\\b).*",
+      "id": "sugg_si_pu_usare_una_sparachiodi_qualunque_per_i_connettori_ctf",
+      "pattern": "(?i)(?=.*\\b(chiodatrice|sparachiod|sparo|pistola)\\b)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\bpu²\\b)(?=.*\\busare\\b)(?=.*\\bsparachiodi\\b)(?=.*\\bqualunque\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "CTF: travi in acciaio con lamiera grecata e getto collaborante; posa a sparo con P560. CTL: connettori per solai legno–calcestruzzo con viti dall’alto. Si usano su supporti diversi (acciaio vs legno).",
-      "priority": 960
+      "answer": "Per i CTF non si usa una chiodatrice qualsiasi: va impiegata esclusivamente la chiodatrice a sparo SPIT P560 con kit/adattatori Tecnaria.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "diff_ctf_vceme",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e|cem\\s*-?e)\\b)(?=.*\\b(differenz\\w*|vs|meglio|confront\\w*|divers\\w*)\\b).*",
+      "id": "sugg_quanti_chiodi_servono_per_fissare_un_connettore_connettori_ctf_con_spit_p560",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bchiodi\\b)(?=.*\\bservono\\b)(?=.*\\bfissare\\b)(?=.*\\bconnettore\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "CTF: connettori per travi in acciaio + lamiera grecata. V CEM-E/MINI: connettori a vite per solai in laterocemento (senza lamiera), con avvitamento nei travetti e getto collaborante. Si scelgono in base al tipo di solaio.",
-      "priority": 955
+      "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "ctf_quanti_al_m2_varianti_brevi",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(m2|m\\s*²|mq|metro\\s*quadrato|metri\\s*quadri|metri\\s*quadrati)\\b)(?=.*\\bquanti|q\\.?ta|quantità\\b).*",
+      "id": "sugg_connettori_ctf_numero_chiodi_per_pezzo_con_spit_p560",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bconnettori\\b)(?=.*\\bctf\\b)(?=.*\\bnumero\\b)(?=.*\\bchiodi\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La quantità dei CTF deriva dal calcolo (luci, carichi, profilo lamiera). Ordine di grandezza: 6–8 connettori/m², più fitti agli appoggi.",
-      "priority": 905
+      "answer": "Ogni connettore CTF si posa con 2 chiodi HSBR14 sparati con la SPIT P560.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "ctf_ipn_ipe_heb_ok",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(ipe|heb|ipe\\s*\\d+|heb\\s*\\d+|upn|ipr|trave\\s*in\\s*acciaio)\\b).*",
+      "id": "sugg_serve_un_patentino_per_usare_la_spit_p560",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bserve\\b)(?=.*\\bpatentino\\b)(?=.*\\busare\\b)(?=.*\\bspit\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "CTF su travi in acciaio: posa dall’alto con P560. Verificare spessori utili (indicativamente flange ≥ 6 mm) e lamiera ben aderente; sempre prova su campione.",
-      "priority": 850
+      "answer": "Per la P560 non è richiesto un patentino dedicato: serve una breve formazione interna e l’uso dei DPI.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "p560_solo_per_ctf_non_altro",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(usare|impiegare|va\\s*bene|ok)\\b)(?=.*\\b(altri|altro|diversi|qualsiasi)\\b).*",
+      "id": "sugg_spit_p560_necessario_un_patentino_abilitazione",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bnecessario\\b)(?=.*\\bpatentino/abilitazione\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "La P560 si impiega per la posa dei CTF con gli appositi kit/adattatori Tecnaria e chiodi HSBR14. Per altri sistemi attenersi alle relative istruzioni.",
-      "priority": 840
+      "answer": "Per la P560 non è richiesto un patentino dedicato: serve una breve formazione interna e l’uso dei DPI.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "ctf_differenze_posa_appoggi_campata",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(appoggi|campata|campate)\\b)(?=.*\\b(differenz\\w*|passo|interasse)\\b).*",
+      "id": "sugg_come_regolo_la_potenza_della_spit_p560_in_cantiere",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bregolo\\b)(?=.*\\bpotenza\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Distribuzione tipica: più fitti verso gli appoggi e più radi in campata, definita dal calcolo a scorrimento.",
-      "priority": 820
+      "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "diapason_vs_vceme",
-      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e|cem\\s*-?e)\\b)(?=.*\\b(differenz\\w*|vs|meglio|confront\\w*|divers\\w*)\\b).*",
+      "id": "sugg_spit_p560_come_tarare_propulsori_potenza",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\btarare\\b)(?=.*\\bpropulsori/potenza\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Entrambi per laterocemento dall’alto: Diapason utilizza fissaggi dedicati nei travetti; V CEM-E/MINI impiega connettori a vite. La scelta dipende da spessori disponibili, interferenze e obiettivi di progetto.",
-      "priority": 800
+      "answer": "Prima di iniziare si esegue una prova su campione e si tarano i propulsori/potenza in base agli spessori del supporto.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "p560_dpi_richiami",
-      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(dpi|sicurezza|occhiali|guanti|cuffie)\\b).*",
+      "id": "sugg_la_spit_p560_funziona_anche_con_lamiera_grecata_presente",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bfunziona\\b)(?=.*\\banche\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "Durante la posa con P560 sono obbligatori: occhiali, guanti e protezione acustica. Eseguire prove su campione e operare secondo manuale.",
-      "priority": 780
+      "answer": "La posa è dall’alto anche con lamiera grecata, purché ben aderente alla trave.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "ctf_senza_lamiera_no",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(senza\\s*lamiera|assenza\\s*lamiera|no\\s*lamiera)\\b).*",
+      "id": "sugg_spit_p560_ok_con_lamiera_aderente",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\blamiera\\b)(?=.*\\baderente\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "I CTF sono pensati per sistemi con lamiera grecata. Se la lamiera non c’è, valutare sistemi alternativi Tecnaria (es. Diapason o V CEM-E secondo il solaio).",
-      "priority": 880
+      "answer": "La posa è dall’alto anche con lamiera grecata, purché ben aderente alla trave.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "differenza_ctf_diapason_breve",
-      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(diapason)\\b)(?=.*\\b(differenza|vs)\\b).*",
+      "id": "sugg_spit_p560_manutenzione_periodica",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bmanutenzione\\b)(?=.*\\bperiodica\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "CTF: acciaio+lamiera grecata. Diapason: laterocemento senza lamiera. Scelta in base al solaio.",
-      "priority": 900
+      "answer": "La P560 richiede manutenzione di pistone, guidapunte e anello ammortizzatore secondo manuale.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "differenza_ctl_vceme",
-      "pattern": "(?i)(?=.*\\b(ctl)\\b)(?=.*\\b(v\\s*c(e|é)m\\s*-?e|mini\\s*c(e|é)m\\s*-?e|cem\\s*-?e)\\b)(?=.*\\b(differenz\\w*|vs|meglio|confront\\w*|divers\\w*)\\b).*",
+      "id": "sugg_la_spit_p560_disponibile_a_noleggio",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bdisponibile\\b)(?=.*\\bnoleggio\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "CTL: legno–calcestruzzo con viti dall’alto. V CEM-E/MINI: laterocemento con avvitamento nei travetti. Scelta in base al tipo di solaio.",
-      "priority": 790
+      "answer": "Disponibile il noleggio della chiodatrice SPIT P560 e degli accessori dedicati.",
+      "sources": [],
+      "priority": 10
     },
     {
-      "id": "diff_ctl_vceme",
-      "pattern": "(?i)(?=.*\\b(differenz\\w*|confront\\w*|vs)\\b)(?=.*\\b(ctl)\\b)(?=.*\\b(cem-?e|mini\\s*cem-?e|v\\s*cem-?e)\\b).*",
+      "id": "sugg_quali_dpi_servono_per_usare_la_spit_p560",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bservono\\b)(?=.*\\busare\\b)(?=.*\\bspit\\b).*",
       "mode": "override",
       "lang": "it",
-      "answer": "CTL: sistemi per legno-calcestruzzo. V CEM-E/MINI: connettori a vite per laterocemento (travetti) con posa dall’alto.",
-      "priority": 880
+      "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
+      "sources": [],
+      "priority": 10
+    },
+    {
+      "id": "sugg_dpi_obbligatori_con_spit_p560",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bdpi\\b)(?=.*\\bobbligatori\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Durante le operazioni sono obbligatori occhiali, guanti e protezione acustica.",
+      "sources": [],
+      "priority": 10
+    },
+    {
+      "id": "sugg_che_spessore_minimo_di_trave_in_acciaio_per_spit_p560",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspessore\\b)(?=.*\\bminimo\\b)(?=.*\\btrave\\b)(?=.*\\bacciaio\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Indicativamente per le travi in acciaio si considera spessore ≥ 6 mm; con lamiera va verificata l’aderenza e gli spessori previsti.",
+      "sources": [],
+      "priority": 10
+    },
+    {
+      "id": "sugg_spit_p560_spessore_acciaio_minimo",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\bspit\\b)(?=.*\\bp560\\b)(?=.*\\bspessore\\b)(?=.*\\bacciaio\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Indicativamente per le travi in acciaio si considera spessore ≥ 6 mm; con lamiera va verificata l’aderenza e gli spessori previsti.",
+      "sources": [],
+      "priority": 10
     }
   ]
 }
