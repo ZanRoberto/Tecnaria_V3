@@ -1,7 +1,8 @@
 # app.py — Tecnaria QA Bot (WEB → SINAPSI → fallback)
-# - Fonti filtrate: preferisce pagine IT (/it/), penalizza /en/, pulisce HTML
-# - Narrativa: 2–3 frasi + 1 completamento Sinapsi fuso (senza mostrare “Sinapsi”)
-# - Bottone "Torna indietro" + link Home sopra le Fonti
+# - Query builder mirato a Tecnaria (brand/location), con filtri anti-rumore per CTF/Diapason
+# - Fonti: preferisci IT (language='it', URL /it/), penalizza /en/
+# - Narrativa: 2–3 frasi IT + 1 riga Sinapsi fusa (no elenchi)
+# - Pulsanti “⬅ Torna indietro” e “Home”
 # Requisiti: fastapi==0.115.0, uvicorn[standard]==0.30.6, gunicorn==21.2.0, requests==2.32.3, beautifulsoup4==4.12.3, jinja2==3.1.4
 
 import os, re, json, time, html, unicodedata
@@ -28,10 +29,14 @@ PREFERRED_DOMAINS = [d.strip() for d in os.environ.get(
 ).split(",") if d.strip()]
 
 WEB_RESULTS_COUNT_PREFERRED = int(os.environ.get("WEB_RESULTS_COUNT_PREFERRED", "3"))
-WEB_RESULTS_COUNT_FALLBACK  = int(os.environ.get("WEB_RESULTS_COUNT_FALLBACK",  "0"))  # 0 = no open search extra
+WEB_RESULTS_COUNT_FALLBACK  = int(os.environ.get("WEB_RESULTS_COUNT_FALLBACK",  "0"))
 WEB_FRESHNESS_DAYS          = os.environ.get("WEB_FRESHNESS_DAYS", "365d")
+LANG_PREFERRED              = os.environ.get("LANG_PREFERRED", "it").strip().lower()
 
-# Sinapsi sempre NEL TESTO (senza intestazioni/listini): 1 frase max fusa nella narrativa
+# Disambiguazione aggressiva per CTF/Diapason/P560 (default ON)
+DISAMBIG_STRICT = (os.environ.get("DISAMBIG_STRICT", "true").strip().lower() in ("1","true","yes"))
+
+# Sinapsi: 1 riga max fusa nella narrativa
 SINAPSI_FUSE = True
 
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
@@ -61,7 +66,7 @@ def _content_words(s: str) -> List[str]:
 def _signature(s: str) -> str:
     toks = _content_words(s)
     if not toks: return _norm(s)
-    boost = {"p560","ctf","ctl","diapason","lamiera","grecata","hsbr14","patentino","legno","acciaio","m2","metro","lineare","quadrato"}
+    boost = {"p560","ctf","ctl","diapason","lamiera","grecata","hsbr14","patentino","legno","acciaio","m2","metro","lineare","quadrato","tecnaria"}
     toks = sorted(toks, key=lambda w: (w not in boost, w))[:8]
     return " ".join(toks)
 
@@ -82,7 +87,6 @@ def _strip_html(s: str) -> str:
         return re.sub(r"<[^>]+>", " ", s)
 
 def _sanitize_brands(text: str) -> str:
-    # niente marchi concorrenti nelle frasi Sinapsi
     return re.sub(r"\b(hilti|dx\b|bx\b)\b", "altri utensili non supportati", text, flags=re.I)
 
 # ============================== SINAPSI ==============================
@@ -158,10 +162,43 @@ def sinapsi_match_all(q: str) -> Tuple[List[str], List[str], List[str]]:
     return ovr, aug, psc
 
 # ============================== WEB (Brave) ==============================
+def _build_query(q: str) -> str:
+    """Aggiunge brand/location e filtri per evitare accezioni sbagliate."""
+    if not DISAMBIG_STRICT:
+        return q
+    qn = _norm(q)
+    plus = []
+    minus = []
+
+    # brand/location sempre
+    plus.append('"Tecnaria S.p.A." OR Tecnaria')
+    plus.append('"Bassano del Grappa"')
+
+    # contesto tecnico
+    plus.append('connettori OR connettore OR "solai misti" OR "acciaio calcestruzzo" OR lamiera')
+
+    if "ctf" in qn:
+        minus += ["chimica", "farmacia", "farmaceutic*"]
+        plus.append("CTF connettori")
+    if "diapason" in qn:
+        minus += ["musica", "strumento", "accordare", "tuning fork"]
+        plus.append("Diapason connettori")
+    if "p560" in qn or "spit" in qn:
+        plus.append('"SPIT P560" connettori CTF Tecnaria')
+
+    # costruisci stringa
+    add = ""
+    if plus:
+        add += " " + " ".join(plus)
+    if minus:
+        add += " " + " ".join(f"-{m}" for m in minus)
+    return f"{q}{add}".strip()
+
 def _brave(q: str, preferred: bool, site: str = "", count: int = 3) -> List[Dict[str, Any]]:
     url = "https://api.search.brave.com/res/v1/web/search"
     headers = {"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY}
-    query = f"site:{site} {q}" if site else q
+    q_built = _build_query(q)
+    query = f"site:{site} {q_built}" if site else q_built
     try:
         r = requests.get(url, headers=headers, params={"q": query, "count": count, "freshness": WEB_FRESHNESS_DAYS}, timeout=12)
         if not r.ok:
@@ -175,18 +212,28 @@ def _brave(q: str, preferred: bool, site: str = "", count: int = 3) -> List[Dict
             "title": _strip_html(it.get("title") or (site or "Fonte")),
             "url": it.get("url") or "",
             "snippet": _strip_html(it.get("description") or ""),
-            "preferred": preferred
+            "preferred": preferred,
+            "language": (it.get("language") or "").lower()
         })
     return out
 
-def _rank_hits_it(q: str, hits: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
+def _is_it_url(url: str) -> bool:
+    u = (url or "").lower()
+    if "/it/" in u: return True
+    if "/en/" in u: return False
+    if "tecnaria.com" in u and "/en" not in u:
+        return True
+    return False
+
+def _rank_hits_lang(q: str, hits: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
     qkw = set(_content_words(q))
     def score(h):
         url = h.get("url",""); title = h.get("title",""); snip = h.get("snippet","")
         blob = _norm(" ".join([title, snip, url]))
         qscore = len(qkw & set(_content_words(blob)))
-        site_bonus = 2 if "tecnaria.com" in url else (1 if "spit" in url else 0)
-        it_bonus   = 2 if "/it/" in url else (-1 if "/en/" in url else 0)
+        site_bonus = 3 if "tecnaria.com" in url else (1 if "spit" in url else 0)
+        lang = (h.get("language") or "").lower()
+        it_bonus = 3 if lang == "it" or _is_it_url(url) else (-3 if "/en/" in url or lang == "en" else 0)
         return (qscore, site_bonus, it_bonus, -len(title))
     return sorted(hits, key=score, reverse=True)
 
@@ -201,16 +248,28 @@ def _filter_hits_by_query(q: str, hits: List[Dict[str,Any]]) -> List[Dict[str,An
     filtered = [h for h in hits if ok(h)]
     return filtered or hits
 
-def get_web_hits(q: str) -> List[Dict[str, Any]]:
+def _split_by_lang(hits: List[Dict[str,Any]]) -> Tuple[List[Dict[str,Any]], List[Dict[str,Any]]]:
+    it_hits, other = [], []
+    for h in hits:
+        lang = (h.get("language") or "").lower()
+        if lang == LANG_PREFERRED or _is_it_url(h.get("url","")):
+            it_hits.append(h)
+        else:
+            other.append(h)
+    return it_hits, other
+
+def get_web_hits(q: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     if not BRAVE_API_KEY:
-        return []
+        return [], []
     hits: List[Dict[str, Any]] = []
     for d in PREFERRED_DOMAINS:
         hits.extend(_brave(q, True, d, WEB_RESULTS_COUNT_PREFERRED))
     if not hits and WEB_RESULTS_COUNT_FALLBACK > 0:
         hits = _brave(q, False, "", WEB_RESULTS_COUNT_FALLBACK)
     hits = _filter_hits_by_query(q, hits)
-    return _rank_hits_it(q, hits)
+    hits = _rank_hits_lang(q, hits)
+    it_hits, other = _split_by_lang(hits)
+    return it_hits, other
 
 # ============================== NARRATIVA ==============================
 def _sentences(text: str) -> List[str]:
@@ -261,24 +320,26 @@ def _merge_sentence(lines: List[str], limit: int = 1) -> str:
         s += "."
     return s
 
-def _compose_body(web_hits: List[Dict[str, Any]], sin_ovr: List[str], sin_aug: List[str], sin_psc: List[str], q: str) -> str:
+def _compose_body(hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]],
+                  sin_ovr: List[str], sin_aug: List[str], sin_psc: List[str], q: str) -> str:
     parts: List[str] = []
 
-    # 1) Override Sinapsi → paragrafo principale (pulito)
+    # 1) Override Sinapsi → paragrafo principale
     if sin_ovr:
         main = _merge_sentence(sin_ovr, limit=1)
         parts.append("<p>{}</p>".format(html.escape(main)))
 
-    # 2) Se ho WEB (o nessun override), creo narrativa e FONDO 1 riga di sinapsi (se presente)
-    if web_hits:
-        narrative = _web_summary(q, web_hits, max_sent=3)
+    # 2) Narrativa da WEB (IT prima), con una riga sinapsi fusa
+    web_for_narrative = hits_it if hits_it else hits_other
+    if web_for_narrative:
+        narrative = _web_summary(q, web_for_narrative, max_sent=3)
         fused = ""
         if not sin_ovr and SINAPSI_FUSE and sin_aug:
             fused = " " + _merge_sentence(sin_aug, limit=1)
         parts.append("<p>{}{}</p>".format(html.escape(narrative), html.escape(fused)))
 
-    # 3) Fallback elegante
-    if not web_hits and not sin_ovr:
+    # 3) Fallback
+    if not hits_it and not hits_other and not sin_ovr:
         generic = ("In generale, i sistemi Tecnaria si scelgono in base al supporto: "
                    "acciaio+lamiera → CTF (posa a sparo con P560 e chiodi HSBR14); "
                    "legno → CTL (viti dall’alto); "
@@ -286,20 +347,29 @@ def _compose_body(web_hits: List[Dict[str, Any]], sin_ovr: List[str], sin_aug: L
                    "La verifica finale resta a cura del progettista.")
         parts.append("<p>{}</p>".format(html.escape(generic)))
 
-    # 4) Fonti (italiane preferite), con pulsanti
-    if web_hits:
+    # 4) Fonti (IT prima). Se niente IT → mostra altre (max 3) etichettate (EN) e senza snippet
+    if hits_it or hits_other:
         parts.append("<div class='nav'><button onclick=\"try{history.back()}catch(e){}\">⬅ Torna indietro</button> <a class='btn' href='/'>Home</a></div>")
         lis = []
-        for h in web_hits:
-            lab = "" if h.get("preferred") else " <em>(fonte non preferita)</em>"
+        def render_li(h, show_snip: bool, extra_label: str = ""):
             title = html.escape(h.get("title") or "Fonte")
             url   = html.escape(h.get("url") or "")
             snip  = html.escape(h.get("snippet") or "")
-            lis.append("<li><a href=\"{}\" target=\"_blank\" rel=\"noopener\">{}</a>{}{}{}</li>".format(
-                url, title, lab,
-                "<br><small>{}</small>".format(snip) if snip else "",
-                ""
-            ))
+            label = f" <em>({extra_label})</em>" if extra_label else ""
+            li = f"<li><a href=\"{url}\" target=\"_blank\" rel=\"noopener\">{title}</a>{label}"
+            if show_snip and snip:
+                li += f"<br><small>{snip}</small>"
+            li += "</li>"
+            return li
+
+        for h in hits_it:
+            lis.append(render_li(h, show_snip=True, extra_label="IT"))
+        if not hits_it:
+            for h in hits_other[:3]:
+                lang = (h.get("language") or "").upper()
+                tag = "EN" if "/en/" in (h.get("url","")).lower() or lang == "EN" else (lang or "ALTRE")
+                lis.append(render_li(h, show_snip=False, extra_label=tag))
+
         parts.append("<h3>Fonti</h3>")
         parts.append("<ol class='list-decimal pl-5'>{}</ol>".format("".join(lis)))
 
@@ -315,6 +385,8 @@ def health() -> JSONResponse:
         "rules_loaded": len(SINAPSI.get("rules", [])),
         "exclude_any_q": SINAPSI.get("exclude_any_q", []),
         "sinapsi_file": SINAPSI_FILE,
+        "lang_preferred": LANG_PREFERRED,
+        "disambig_strict": DISAMBIG_STRICT,
         "app": "web->sinapsi->fallback"
     })
 
@@ -334,9 +406,9 @@ def api_ask(payload: Dict[str, Any] = Body(...)) -> JSONResponse:
         return JSONResponse({"ok": True, "html": _card("Risposta Tecnaria", "<p>Richiesta non ammessa (prezzi/costi/preventivi).</p>", 0)})
 
     t0 = time.perf_counter()
-    web_hits = get_web_hits(q)                    # 1) WEB
-    sin_ovr, sin_aug, sin_psc = sinapsi_match_all(q)  # 2) SINAPSI
-    body_html = _compose_body(web_hits, sin_ovr, sin_aug, sin_psc, q)
+    hits_it, hits_other = get_web_hits(q)
+    sin_ovr, sin_aug, sin_psc = sinapsi_match_all(q)
+    body_html = _compose_body(hits_it, hits_other, sin_ovr, sin_aug, sin_psc, q)
     ms = int((time.perf_counter() - t0) * 1000)
     return JSONResponse({"ok": True, "html": _card("Risposta Tecnaria", body_html, ms)})
 
