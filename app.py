@@ -1,13 +1,15 @@
-# app.py — Tecnaria QA Bot (stile "Versione 3")
+# app.py — Tecnaria QA Bot (WEB first, Sinapsi controllata)
+# Stile narrativa: "Versione 3" (ricca, IT), Fonti solo link, NAV chiara
+#
 # Requisiti:
 #   fastapi==0.115.0
 #   uvicorn[standard]==0.30.6
 #   gunicorn==21.2.0
 #   requests==2.32.3
 #   beautifulsoup4==4.12.3
-#   jinja2==3.1.4  (facoltativo; non usato direttamente qui)
+#   jinja2==3.1.4  (opzionale)
 #
-# ENV consigliate:
+# ENV principali:
 #   BRAVE_API_KEY=<chiave valida>
 #   PREFERRED_DOMAINS=tecnaria.com,www.tecnaria.com
 #   LANG_PREFERRED=it
@@ -19,6 +21,9 @@
 #   SOURCES_SHOW_SNIPPETS=false
 #   SINAPSI_FILE=static/data/sinapsi_rules.json
 #   HTTP_TIMEOUT=8.0
+#   SINAPSI_MODE=off|assist|fallback   (default: assist)
+#   MIN_WEB_OK_CHARS=400               (se web >= soglia → non si usa Sinapsi in assist)
+#   MIN_WEB_OK_SENTENCES=3
 
 import os, re, json, time, html, unicodedata
 from pathlib import Path
@@ -55,7 +60,10 @@ HTTP_TIMEOUT       = float(os.environ.get("HTTP_TIMEOUT", "8.0"))
 
 SOURCES_SHOW_SNIPPETS = os.environ.get("SOURCES_SHOW_SNIPPETS", "false").strip().lower() in ("1","true","yes")
 ALLOW_SINAPSI_OVERRIDE = os.environ.get("ALLOW_SINAPSI_OVERRIDE", "false").strip().lower() in ("1","true","yes")
-SINAPSI_FUSE       = True  # fonde al massimo una frase augment/postscript
+
+SINAPSI_MODE = os.environ.get("SINAPSI_MODE", "assist").strip().lower()  # off|assist|fallback
+MIN_WEB_OK_CHARS = int(os.environ.get("MIN_WEB_OK_CHARS", "400"))
+MIN_WEB_OK_SENTENCES = int(os.environ.get("MIN_WEB_OK_SENTENCES", "3"))
 
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "").strip()
 
@@ -121,7 +129,6 @@ def _guess_italian(text: str) -> bool:
     return sum(1 for a in anchors if a in t) >= 2
 
 def _sanitize_brands(text: str) -> str:
-    # evita citazioni concorrenti indesiderate
     return re.sub(r"\b(hilti|dx\b|bx\b)\b", "altri utensili non supportati", text, flags=re.I)
 
 # ============================== SINAPSI ==============================
@@ -136,7 +143,7 @@ def _compile_sinapsi() -> None:
         if not patt or not ans:
             continue
         if (mode == "override") and (not ALLOW_SINAPSI_OVERRIDE):
-            # ignoriamo gli override come richiesto
+            # ignoriamo gli override per sicurezza
             continue
         try:
             rx = re.compile(patt, re.I | re.S)
@@ -149,7 +156,7 @@ def _compile_sinapsi() -> None:
             "rx": rx,
             "priority": int(r.get("priority", 0))
         })
-    # ordine: augment (priorità alta per prima) poi postscript
+    # priorità: augment (desc) → postscript (desc)
     SINAPSI_COMPILED.sort(key=lambda x: (0 if x["mode"]=="augment" else 1, -x["priority"]))
 
 def _load_sinapsi() -> None:
@@ -300,15 +307,6 @@ def get_web_hits(q: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     return it_hits, other
 
 # ============================== FETCH & NARRATIVA ==============================
-def _fetch_url(url: str) -> str:
-    try:
-        r = requests.get(url, timeout=HTTP_TIMEOUT, headers={"User-Agent": "Mozilla/5.0"})
-        if r.ok and "text/html" in (r.headers.get("Content-Type","")):
-            return r.text
-    except Exception:
-        pass
-    return ""
-
 def _extract_main_text(html_text: str) -> str:
     soup = BeautifulSoup(html_text, "html.parser")
     md = soup.find("meta", attrs={"name":"description"})
@@ -322,10 +320,29 @@ def _extract_main_text(html_text: str) -> str:
     if not candidates:
         ps = " ".join(p.get_text(" ", strip=True) for p in soup.find_all("p"))
         if ps: candidates.append(ps)
+    # accettiamo anche blocchi >=40 caratteri per ridurre i "vuoti"
     for c in candidates:
-        if len(c.strip()) > 80:
+        if len(c.strip()) >= 40:
             return c.strip()
     return " ".join(candidates).strip() if candidates else ""
+
+def _fetch_url(url: str) -> str:
+    try:
+        r = requests.get(url, timeout=HTTP_TIMEOUT, headers={"User-Agent": "Mozilla/5.0"})
+        if r.ok and "text/html" in (r.headers.get("Content-Type","")):
+            return r.text
+    except Exception:
+        pass
+    return ""
+
+def _sentences(text: str) -> List[str]:
+    parts = re.split(r"(?<=[.!?])\s+|[\n\r]+|;\s+", text or "")
+    out = []
+    for p in parts:
+        s = _strip_html(p.strip())
+        if 8 <= len(s) <= 260:
+            out.append(s)
+    return out
 
 def _topic_keywords(q: str) -> List[str]:
     qn = _norm(q)
@@ -365,10 +382,10 @@ def _best_sentences_from_html(html_text: str, q: str, need: int) -> List[str]:
         if len(out) >= need: break
     return out
 
-def _collect_narrative(hits_it: List[Dict[str,Any]], hits_other: List[Dict[str,Any]], q: str) -> str:
+def _collect_narrative_from_web(hits_it: List[Dict[str,Any]], hits_other: List[Dict[str,Any]], q: str, max_chars: int) -> str:
     lines: List[str] = []
 
-    # frase di confronto (se la domanda è un confronto)
+    # Confronti espliciti
     qn = _norm(q)
     if ("differenz" in qn) or (" vs " in f" {qn} ") or ("confront" in qn):
         lines.append(
@@ -376,7 +393,7 @@ def _collect_narrative(hits_it: List[Dict[str,Any]], hits_other: List[Dict[str,A
             "Diapason è una staffa per travi in acciaio con o senza lamiera, indicata quando servono prestazioni più elevate; si posa a freddo con P560 e quattro chiodi."
         )
 
-    # fetch su tecnaria.com (IT) per estrarre frasi (fino a 4 URL)
+    # Fetch su tecnaria.com (max 4 URL)
     if FETCH_TECNARIA and hits_it:
         for h in hits_it[:4]:
             url = h.get("url","")
@@ -388,29 +405,31 @@ def _collect_narrative(hits_it: List[Dict[str,Any]], hits_other: List[Dict[str,A
             for s in best:
                 if _signature(s) not in [_signature(x) for x in lines]:
                     lines.append(s)
-                if len(" ".join(lines)) >= MAX_ANSWER_CHARS:
+                if len(" ".join(lines)) >= max_chars:
                     break
-            if len(" ".join(lines)) >= MAX_ANSWER_CHARS:
+            if len(" ".join(lines)) >= max_chars:
                 break
 
-    # se ancora corto, integra con snippet Brave (IT poi altre)
-    if len(" ".join(lines)) < MAX_ANSWER_CHARS:
+    # Se ancora corto, integra con snippet Brave (IT → altre)
+    if len(" ".join(lines)) < max_chars:
         web_for_snip = hits_it if hits_it else hits_other
         for h in web_for_snip[:3]:
             for s in _sentences(h.get("snippet","") or ""):
                 if _guess_italian(s) and _signature(s) not in [_signature(x) for x in lines]:
                     lines.append(s)
-                if len(" ".join(lines)) >= MAX_ANSWER_CHARS:
+                if len(" ".join(lines)) >= max_chars:
                     break
-            if len(" ".join(lines)) >= MAX_ANSWER_CHARS:
+            if len(" ".join(lines)) >= max_chars:
                 break
 
-    # taglio
-    narrative = " ".join(line.rstrip(" .") for line in lines)
+    narrative = " ".join(line.rstrip(" .") for line in lines).strip()
+    # FIX: se vuota → restituisco "" per attivare fallback
+    if not narrative:
+        return ""
     narrative = (narrative + ".").replace("..",".")
-    if len(narrative) > MAX_ANSWER_CHARS:
-        narrative = narrative[:MAX_ANSWER_CHARS].rsplit(" ", 1)[0] + "."
-    return narrative if narrative.strip() else ""
+    if len(narrative) > max_chars:
+        narrative = narrative[:max_chars].rsplit(" ", 1)[0] + "."
+    return narrative
 
 # ============================== HTML ==============================
 def _nav_bar() -> str:
@@ -426,29 +445,12 @@ def _card(title: str, body_html: str, ms: int) -> str:
         html.escape(title), body_html, ms
     )
 
-def _compose_body(hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]],
-                  sin_aug_line: str, sin_psc_line: str, q: str) -> str:
+def _render_body(narrative: str, hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]]) -> str:
     parts: List[str] = []
-
-    # NAV TOP
     parts.append(_nav_bar())
-
-    # Narrativa lunga
-    narrative = _collect_narrative(hits_it, hits_other, q)
-    if not narrative:
-        narrative = (
-            "Sintesi tecnica ricavata da documentazione Tecnaria: la scelta dei sistemi dipende dal supporto "
-            "(acciaio+lamiera → CTF; legno → CTL; assenza di lamiera → Diapason/V CEM-E), con posa a freddo e verifica a cura del progettista."
-        )
-    if SINAPSI_FUSE and sin_aug_line:
-        narrative = narrative.rstrip(" ") + " " + sin_aug_line.rstrip(". ") + "."
     parts.append("<p>{}</p>".format(html.escape(narrative)))
 
-    # Postscript (soft)
-    if sin_psc_line:
-        parts.append("<p><small>{}</small></p>".format(html.escape(sin_psc_line)))
-
-    # Fonti (solo link) + NAV BOTTOM
+    # Fonti
     if hits_it or hits_other:
         lis = []
         def render_li(h, extra_label: str = ""):
@@ -480,7 +482,6 @@ def _compose_body(hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]
             "</details>"
         )
 
-    # NAV BOTTOM
     parts.append(_nav_bar())
     return "\n".join(parts)
 
@@ -501,7 +502,10 @@ def health() -> JSONResponse:
         "fetch_tecnaria": FETCH_TECNARIA,
         "allow_sinapsi_override": ALLOW_SINAPSI_OVERRIDE,
         "sources_show_snippets": SOURCES_SHOW_SNIPPETS,
-        "app": "web->fetch_tecnaria->sinapsi(augment)->fallback"
+        "sinapsi_mode": SINAPSI_MODE,
+        "min_web_ok_chars": MIN_WEB_OK_CHARS,
+        "min_web_ok_sentences": MIN_WEB_OK_SENTENCES,
+        "app": "web->fetch_tecnaria->(sinapsi mode) -> render"
     })
 
 @app.get("/", response_class=HTMLResponse)
@@ -510,6 +514,13 @@ def root():
     return HTMLResponse(_safe_read(str(idx))) if idx.exists() else HTMLResponse(
         "<!doctype html><meta charset='utf-8'><title>{}</title><pre>POST /api/ask</pre>".format(html.escape(APP_TITLE))
     )
+
+def _web_quality_ok(narrative: str) -> bool:
+    if not narrative:
+        return False
+    chars = len(narrative.strip())
+    sents = len(_sentences(narrative))
+    return (chars >= MIN_WEB_OK_CHARS) and (sents >= MIN_WEB_OK_SENTENCES)
 
 @app.post("/api/ask")
 def api_ask(payload: Dict[str, Any] = Body(...)) -> JSONResponse:
@@ -520,9 +531,48 @@ def api_ask(payload: Dict[str, Any] = Body(...)) -> JSONResponse:
         return JSONResponse({"ok": True, "html": _card("Risposta Tecnaria", "<p>Richiesta non ammessa (prezzi/costi/preventivi).</p>", 0)})
 
     t0 = time.perf_counter()
+
+    # 1) WEB
     hits_it, hits_other = get_web_hits(q)
-    sin_aug_line, sin_psc_line = sinapsi_match(q)
-    body_html = _compose_body(hits_it, hits_other, sin_aug_line, sin_psc_line, q)
+    narrative_web = _collect_narrative_from_web(hits_it, hits_other, q, MAX_ANSWER_CHARS)
+
+    # 2) SINAPSI — controllata dal MODE
+    sin_aug, sin_psc = ("","")
+    if SINAPSI_MODE in ("assist","fallback"):
+        # carico i match solo se potrei usarli
+        sin_aug, sin_psc = sinapsi_match(q)
+
+    narrative_final = narrative_web
+
+    if SINAPSI_MODE == "off":
+        # non tocco niente
+        pass
+
+    elif SINAPSI_MODE == "assist":
+        # uso Sinapsi SOLO se il web è debole
+        if not _web_quality_ok(narrative_web):
+            if sin_aug:
+                narrative_final = (narrative_web + " " + sin_aug).strip() if narrative_web else sin_aug
+            elif not narrative_web and sin_psc:
+                narrative_final = sin_psc  # extrema ratio
+        # se web è ok → ignoro Sinapsi
+
+    elif SINAPSI_MODE == "fallback":
+        # uso Sinapsi SOLO se il web è vuoto
+        if not narrative_web:
+            if sin_aug:
+                narrative_final = sin_aug
+            elif sin_psc:
+                narrative_final = sin_psc
+
+    # 3) Fallback assoluto se ancora vuota
+    if not narrative_final:
+        narrative_final = (
+            "Sintesi tecnica ricavata da documentazione Tecnaria: la scelta dei sistemi dipende dal supporto "
+            "(acciaio+lamiera → CTF; legno → CTL; assenza di lamiera → Diapason/V CEM-E), con posa a freddo e verifica a cura del progettista."
+        )
+
+    body_html = _render_body(narrative_final, hits_it, hits_other)
     ms = int((time.perf_counter() - t0) * 1000)
     return JSONResponse({"ok": True, "html": _card("Risposta Tecnaria", body_html, ms)})
 
