@@ -2457,6 +2457,14 @@
       "lang": "it",
       "answer": "CTL: legno–calcestruzzo con viti dall’alto. V CEM-E/MINI: laterocemento con avvitamento nei travetti. Scelta in base al tipo di solaio.",
       "priority": 790
+    },
+    {
+      "id": "diff_ctl_vceme",
+      "pattern": "(?i)(?=.*\\b(differenz\\w*|confront\\w*|vs)\\b)(?=.*\\b(ctl)\\b)(?=.*\\b(cem-?e|mini\\s*cem-?e|v\\s*cem-?e)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTL: sistemi per legno-calcestruzzo. V CEM-E/MINI: connettori a vite per laterocemento (travetti) con posa dall’alto.",
+      "priority": 880
     }
   ]
 }
