@@ -2537,6 +2537,110 @@
       "lang": "it",
       "answer": "La quantità dei CTF deriva dal calcolo (luci, carichi, profilo lamiera). Indicativamente 6–8 connettori/m², più fitti agli appoggi.",
       "sources": []
+    },
+    {
+      "id": "ctf_no_hilti_dx",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(hilti|dx\\s*\\d{2}|bx\\s*3|bx3)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "No: per i CTF non si usano chiodatrici Hilti/DX/BX. È richiesta la SPIT P560 con kit/adattatori Tecnaria.",
+      "priority": 970
+    },
+    {
+      "id": "ctf_no_gas_o_batteria",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(gas|a\\s*batteria|cordless)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "No: per i CTF non si impiegano chiodatrici a gas o a batteria. Si usa la SPIT P560 (a sparo) con kit Tecnaria.",
+      "priority": 965
+    },
+    {
+      "id": "ctf_tipo_chiodi_hsbr14",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(chiodi|tipo\\s*chiodi|codice\\s*chiodi)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Per ogni connettore CTF si impiegano 2 chiodi HSBR14 con posa a sparo tramite SPIT P560.",
+      "priority": 940
+    },
+    {
+      "id": "ctf_kit_adattatore_obbligatorio",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(kit|adattator\\w*|accessor\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Per la posa dei CTF è necessario il kit/adattatore Tecnaria dedicato alla SPIT P560.",
+      "priority": 880
+    },
+    {
+      "id": "ctf_lamiera_non_aderente_no",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(lamiera|grecat\\w*)\\b)(?=.*\\b(non|poco)\\s*aderent\\w*\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La lamiera deve essere ben aderente alla trave; in caso contrario non si procede alla posa a sparo finché non è ripristinata l’aderenza.",
+      "priority": 880
+    },
+    {
+      "id": "ctf_no_preforatura_trave",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(preforat\\w*|trapano|forare)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Per i CTF non si prefora la trave: il fissaggio è a sparo con SPIT P560 e chiodi HSBR14.",
+      "priority": 860
+    },
+    {
+      "id": "p560_accessori_compatibili",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(kit|adattator\\w*|accessor\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Utilizzare kit/adattatori Tecnaria dedicati per guida e posizionamento corretto del CTF.",
+      "priority": 860
+    },
+    {
+      "id": "diff_vceme_vs_diapason",
+      "pattern": "(?i)(?=.*\\b(differenz\\w*|vs)\\b)(?=.*\\b(v\\s*c(?:e|é)m-?e|mini\\s*c(?:e|é)m-?e)\\b)(?=.*\\b(diapason)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "V CEM-E/MINI: connettori a vite per laterocemento con posa dall’alto nei travetti. Diapason: sistema per laterocemento senza lamiera, con ancoraggi nei travetti e getto dall’alto. Si sceglie in base a spessori, interferenze e tipologia di solaio.",
+      "priority": 820
+    },
+    {
+      "id": "ctf_profili_hibond_note",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(hi[-\\s]*bond|hibond|hb\\s*55|hb\\s*60|hb\\s*80)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "I CTF sono compatibili con famiglie di lamiere grecate certificate (es. Hi‑Bond 55/60/80); la verifica effettiva dipende da profilo e spessori impiegati.",
+      "priority": 780
+    },
+    {
+      "id": "p560_prova_su_campione_ripresa",
+      "pattern": "(?i)(?=.*\\b(p560|spit\\s*p560)\\b)(?=.*\\b(prova|campione|test)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Prima della posa in opera eseguire prova su campione per tarare propulsori/potenza in funzione di spessori e supporti.",
+      "priority": 780
+    },
+    {
+      "id": "diapason_vs_ctf_domanda_generica",
+      "pattern": "(?i)(?=.*\\b(diapason)\\b)(?=.*\\b(ctf)\\b)(?=.*\\b(differenz\\w*|scelta|quando)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "CTF: travi in acciaio con lamiera grecata; posa a sparo. Diapason: solai in laterocemento senza lamiera, ancoraggi nei travetti e getto dall’alto.",
+      "priority": 820
+    },
+    {
+      "id": "ctf_condizioni_superficie_trave",
+      "pattern": "(?i)(?=.*\\b(ctf|connettori\\s*ctf)\\b)(?=.*\\b(superficie|verniciat\\w*|zincat\\w*|ruggin\\w*)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "La superficie della trave deve essere idonea alla posa a sparo (pulita, senza ruggine sfogliata); verificare l’aderenza della lamiera.",
+      "priority": 700
+    },
+    {
+      "id": "contatti_supporto_tecnico_tecnaria",
+      "pattern": "(?i)(?=.*\\b(contatt\\w*|telefono|email|supporto|assistenza)\\b)(?=.*\\b(tecnaria)\\b).*",
+      "mode": "override",
+      "lang": "it",
+      "answer": "Per casi non standard o verifiche, contatta l’assistenza tecnica Tecnaria con i dati del solaio e del profilo lamiera.",
+      "priority": 400
     }
   ]
 }
