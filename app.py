@@ -1,7 +1,7 @@
 # app.py — Tecnaria QA Bot (WEB → SINAPSI → fallback)
-# - Narrativa in IT (2–4 frasi), senza titoli/link nel corpo
-# - Fonti solo in fondo (IT prima), snippet puliti
-# - Disambiguazione mirata su Tecnaria (brand/location/termini), filtri anti-rumore
+# - Corpo risposta: 2–4 frasi dagli snippet IT + 1 frase Sinapsi fusa
+# - Per domande di confronto: frase "CTF vs Diapason" dedicata all'inizio
+# - Fonti: solo in fondo, pannello collassabile (Chiudi fonti), IT prima
 # Requisiti: fastapi==0.115.0, uvicorn[standard]==0.30.6, gunicorn==21.2.0,
 #            requests==2.32.3, beautifulsoup4==4.12.3, jinja2==3.1.4
 
@@ -36,8 +36,8 @@ DISAMBIG_STRICT             = (os.environ.get("DISAMBIG_STRICT", "true").strip()
 
 # Sinapsi fusa (max 1 frase)
 SINAPSI_FUSE = True
-NARRATIVE_MIN = 2     # frasi minime nel corpo
-NARRATIVE_MAX = 4     # frasi massime nel corpo
+NARRATIVE_MIN = 2
+NARRATIVE_MAX = 4
 
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 
@@ -66,7 +66,7 @@ def _content_words(s: str) -> List[str]:
 def _signature(s: str) -> str:
     toks = _content_words(s)
     if not toks: return _norm(s)
-    boost = {"p560","ctf","ctl","diapason","lamiera","grecata","hsbr14","patentino","legno","acciaio","m2","metro","lineare","quadrato","tecnaria"}
+    boost = {"p560","ctf","ctl","diapason","lamiera","grecata","hsbr14","legno","acciaio","calcestruzzo","solaio","tecnaria"}
     toks = sorted(toks, key=lambda w: (w not in boost, w))[:8]
     return " ".join(toks)
 
@@ -86,8 +86,17 @@ def _strip_html(s: str) -> str:
     except Exception:
         return re.sub(r"<[^>]+>", " ", s)
 
+def _sentences(text: str) -> List[str]:
+    parts = re.split(r"(?<=[.!?])\s+|[\n\r]+|;\s+", text or "")
+    out = []
+    for p in parts:
+        s = _strip_html(p.strip())
+        if 8 <= len(s) <= 240:
+            out.append(s)
+    return out
+
 def _sanitize_brands(text: str) -> str:
-    # niente marchi concorrenti in risposte Sinapsi
+    # niente nomi di utensili concorrenti nelle frasi Sinapsi
     return re.sub(r"\b(hilti|dx\b|bx\b)\b", "altri utensili non supportati", text, flags=re.I)
 
 # ============================== SINAPSI ==============================
@@ -164,17 +173,14 @@ def sinapsi_match_all(q: str) -> Tuple[List[str], List[str], List[str]]:
 
 # ============================== WEB (Brave) ==============================
 def _build_query(q: str) -> str:
-    """Aggiunge brand/location e filtri per evitare accezioni sbagliate."""
     if not DISAMBIG_STRICT:
         return q
     qn = _norm(q)
     plus = []
     minus = []
-
     plus.append('"Tecnaria S.p.A." OR Tecnaria')
     plus.append('"Bassano del Grappa"')
     plus.append('connettori OR connettore OR "solai misti" OR "acciaio calcestruzzo" OR lamiera')
-
     if "ctf" in qn:
         minus += ["chimica", "farmacia", "farmaceutic*"]
         plus.append("CTF connettori")
@@ -183,7 +189,6 @@ def _build_query(q: str) -> str:
         plus.append("Diapason connettori")
     if "p560" in qn or "spit" in qn:
         plus.append('"SPIT P560" connettori CTF Tecnaria')
-
     add = ""
     if plus:  add += " " + " ".join(plus)
     if minus: add += " " + " ".join(f"-{m}" for m in minus)
@@ -267,35 +272,36 @@ def get_web_hits(q: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     return it_hits, other
 
 # ============================== NARRATIVA ==============================
-def _sentences(text: str) -> List[str]:
-    parts = re.split(r"(?<=[.!?])\s+|[\n\r]+|;\s+", text or "")
-    out = []
-    for p in parts:
-        s = _strip_html(p.strip())
-        if 8 <= len(s) <= 220:
-            out.append(s)
-    return out
-
-def _web_summary(q: str, hits: List[Dict[str,Any]], min_sent: int = 2, max_sent: int = 3) -> str:
-    """Costruisce frasi SOLO dagli snippet (mai dai titoli)."""
-    qkw = set(_content_words(q))
-    pool: List[Tuple[str,int]] = []
-    for h in hits[:5]:
+def _web_summary_from_snippets(hits: List[Dict[str,Any]], need: int) -> List[str]:
+    """Raccoglie frasi dagli snippet (priorità IT). Se poche, prende le prime del migliore snippet."""
+    lines: List[str] = []
+    for h in hits[:3]:
         snip = h.get("snippet","") or ""
         for s in _sentences(snip):
-            score = len(qkw & set(_content_words(s)))
-            if score > 0:
-                pool.append((s, score))
-    pool.sort(key=lambda t: (-t[1], len(t[0])))
-    uniq = _dedup_semantic([(p, sc) for (p, sc) in pool])
-    if len(uniq) < min_sent:
-        # fallback minimale, ma sempre in IT e senza titoli
-        uniq.append("Sintesi tecnica ricavata da documentazione ufficiale Tecnaria.")
-    pick = uniq[:max_sent]
-    joined = " ".join(s.rstrip(" .") for s in pick)
-    if not joined.endswith("."):
-        joined += "."
-    return joined
+            if s and s not in lines:
+                lines.append(s)
+            if len(lines) >= need:
+                break
+        if len(lines) >= need:
+            break
+    if len(lines) < need and hits:
+        # prendi comunque prime frasi del miglior snippet disponibile
+        sents = _sentences(hits[0].get("snippet","") or "")
+        for s in sents:
+            if s and s not in lines:
+                lines.append(s)
+            if len(lines) >= need:
+                break
+    return lines[:need]
+
+def _build_diff_line(q: str) -> str:
+    qn = _norm(q)
+    if ("differenz" in qn) or (" vs " in f" {qn} ") or ("confront" in qn):
+        return ("CTF: connettore a piolo su piastra, per solai misti acciaio-calcestruzzo "
+                "su travi in acciaio con lamiera grecata (posa a sparo con SPIT P560). "
+                "Diapason: connettore a staffa, indicato per travi senza lamiera e per "
+                "sollecitazioni più elevate, fissato sempre a freddo con chiodi.")
+    return ""
 
 # ============================== HTML ==============================
 def _card(title: str, body_html: str, ms: int) -> str:
@@ -316,22 +322,29 @@ def _compose_body(hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]
                   sin_ovr: List[str], sin_aug: List[str], sin_psc: List[str], q: str) -> str:
     parts: List[str] = []
 
-    # 1) Override Sinapsi → frase principale (pulita)
+    # 1) Frase di confronto (se pertinente) o override Sinapsi
+    diff = _build_diff_line(q)
     if sin_ovr:
-        main = _merge_sentence(sin_ovr, limit=1)
-        parts.append("<p>{}</p>".format(html.escape(main)))
+        diff = _merge_sentence(sin_ovr, limit=1)
+    if diff:
+        parts.append("<p>{}</p>".format(html.escape(diff)))
 
-    # 2) Narrativa da WEB (IT prima) + 1 riga sinapsi fusa
-    web_for_narrative = hits_it if hits_it else hits_other
-    if web_for_narrative:
-        narrative = _web_summary(q, web_for_narrative, min_sent=NARRATIVE_MIN, max_sent=min(NARRATIVE_MAX, NARRATIVE_MIN+2))
-        fused = ""
-        if not sin_ovr and SINAPSI_FUSE and sin_aug:
-            fused = " " + _merge_sentence(sin_aug, limit=1)
-        parts.append("<p>{}{}</p>".format(html.escape(narrative), html.escape(fused)))
+    # 2) Frasi dagli snippet (IT → altre). Mai titoli nel corpo.
+    web_for_narr = hits_it if hits_it else hits_other
+    if web_for_narr:
+        needed = max(NARRATIVE_MIN, 2)
+        snippet_lines = _web_summary_from_snippets(web_for_narr, need=min(NARRATIVE_MAX, needed+2))
+        if snippet_lines:
+            body = " ".join(s.rstrip(" .") for s in snippet_lines)
+            if not body.endswith("."):
+                body += "."
+            # Fusione Sinapsi (una riga) senza intestazioni
+            if not sin_ovr and SINAPSI_FUSE and sin_aug:
+                body += " " + _merge_sentence(sin_aug, limit=1)
+            parts.append("<p>{}</p>".format(html.escape(body)))
 
-    # 3) Fallback elegante
-    if not hits_it and not hits_other and not sin_ovr:
+    # 3) Fallback elegante (se proprio nulla)
+    if not web_for_narr and not sin_ovr:
         generic = ("In generale, i sistemi Tecnaria si scelgono in base al supporto: "
                    "acciaio+lamiera → CTF (posa a sparo con P560 e chiodi HSBR14); "
                    "legno → CTL (viti dall’alto); "
@@ -339,7 +352,7 @@ def _compose_body(hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]
                    "La verifica finale resta a cura del progettista.")
         parts.append("<p>{}</p>".format(html.escape(generic)))
 
-    # 4) Fonti (IT prima). Se niente IT → altre (max 3) etichettate (EN/ALTRE) e senza snippet
+    # 4) Fonti (collassabili) — IT prima; se niente IT, massimo 3 altre etichettate
     if hits_it or hits_other:
         parts.append("<div class='nav'><button onclick=\"try{history.back()}catch(e){}\">⬅ Torna indietro</button> <a class='btn' href='/'>Home</a></div>")
         lis = []
@@ -362,8 +375,16 @@ def _compose_body(hits_it: List[Dict[str, Any]], hits_other: List[Dict[str, Any]
                 tag = "EN" if "/en/" in (h.get("url","")).lower() or lang == "EN" else (lang or "ALTRE")
                 lis.append(render_li(h, show_snip=False, extra_label=tag))
 
-        parts.append("<h3>Fonti</h3>")
-        parts.append("<ol class='list-decimal pl-5'>{}</ol>".format("".join(lis)))
+        # pannello collassabile
+        parts.append(
+            "<details open>"
+            "<summary><strong>Fonti</strong></summary>"
+            "<div style='margin:.5rem 0'>"
+            "<button type='button' onclick=\"this.closest('details').removeAttribute('open')\">Chiudi fonti</button>"
+            "</div>"
+            f"<ol class='list-decimal pl-5'>{''.join(lis)}</ol>"
+            "</details>"
+        )
 
     return "\n".join(parts)
 
