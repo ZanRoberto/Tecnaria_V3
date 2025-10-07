@@ -1,22 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Tecnaria Sinapsi – app.py
-- Legge regole (/static/data/sinapsi_rules.json)
-- Instrada con /static/data/tecnaria_router_index.json
-- Cerca nelle Q&A per famiglia (tecnaria_<code>_qa500.json)
-- Fallback su /static/data/tecnaria_catalogo_unico.json
-- Dati aziendali /static/data/contatti.json
-- API FastAPI: /, /health, /ask?q=..., /company
-- UI embedded (Tailwind) su /ui
+Tecnaria Sinapsi – app.py (ALL-IN-ONE)
+- API: /, /health, /ask?q=..., /company
+- UI embedded su /ui (nero+arancione, logo da contatti.json)
+- Routing: rules -> router -> QA famiglia -> fallback catalogo
 """
-
 import json, math, re
 from pathlib import Path
 from collections import Counter, defaultdict
 
-# =========================
-# CONFIG PATH
-# =========================
+# ========== PATH ==========
 BASE_PATH    = Path("static/data")
 RULES_FILE   = BASE_PATH / "sinapsi_rules.json"
 ROUTER_FILE  = BASE_PATH / "tecnaria_router_index.json"
@@ -26,9 +19,7 @@ CONTACTS_FILE= BASE_PATH / "contatti.json"
 def dataset_path_for_family(code: str) -> Path:
     return BASE_PATH / f"tecnaria_{code.lower()}_qa500.json"
 
-# =========================
-# IO / UTIL
-# =========================
+# ========== IO / UTIL ==========
 def load_json(path: Path):
     if not path.exists():
         return {}
@@ -45,9 +36,7 @@ WORD_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9\-\_]+")
 def tokenize(text: str):
     return [t for t in WORD_RE.findall(norm(text)) if t]
 
-# =========================
-# REGOLE (override)
-# =========================
+# ========== REGOLE ==========
 def match_rules(query: str):
     data = load_json(RULES_FILE)
     rules = sorted(data.get("rules", []), key=lambda r: r.get("priority", 0), reverse=True)
@@ -67,9 +56,7 @@ def match_rules(query: str):
                 continue
     return None
 
-# =========================
-# ROUTING (famiglia)
-# =========================
+# ========== ROUTER ==========
 def route_family(query: str) -> str:
     router = load_json(ROUTER_FILE)
     q = norm(query)
@@ -86,9 +73,7 @@ def route_family(query: str) -> str:
     if any(k in q for k in ["ctf","connettore","solaio collaborante"]):      return "CTF"
     return ""
 
-# =========================
-# SEMANTICO LITE (BM25)
-# =========================
+# ========== SEMANTICO LITE (BM25) ==========
 class TinySearch:
     def __init__(self, docs, text_fn):
         self.docs = docs
@@ -137,29 +122,17 @@ def semantic_pick(query: str, qa_list: list[dict]):
     best, score = ts.top1(query)
     return best if score and score > 0.5 else None
 
-# =========================
-# NARRATIVA
-# =========================
+# ========== NARRATIVA ==========
 def compose_answer(hit: dict) -> str:
     a = (hit or {}).get("a","").strip()
     if not a: return ""
     if not a.endswith((".", "!", "?")): a += "."
     return a + " — Tecnaria S.p.A., Bassano del Grappa. Per i dettagli operativi: consultare schede e manuali ufficiali."
 
-# =========================
-# PIPELINE
-# =========================
-# metriche super-semplici in memoria (facoltative)
-METRICS = {"total": 0, "by_family": {}}
-def _bump(family: str):
-    METRICS["total"] += 1
-    k = family or "fallback"
-    METRICS["by_family"][k] = METRICS["by_family"].get(k, 0) + 1
-
+# ========== PIPELINE ==========
 def ask(query: str) -> str:
     ans = match_rules(query)
     if ans:
-        _bump("rules")
         return compose_answer({"a": ans})
 
     fam = route_family(query)
@@ -167,7 +140,6 @@ def ask(query: str) -> str:
         data = load_json(dataset_path_for_family(fam))
         hit = semantic_pick(query, data.get("qa", []))
         if hit:
-            _bump(fam)
             return compose_answer(hit)
 
     catalog = load_json(CATALOG_FILE)
@@ -176,14 +148,11 @@ def ask(query: str) -> str:
         all_qa.extend(it.get("qa", []))
     hit = semantic_pick(query, all_qa)
     if hit:
-        _bump("catalogo")
         return compose_answer(hit)
 
     return "Non ho trovato la risposta nei contenuti Tecnaria. Dimmi esattamente cosa ti serve e la aggiungo subito alla base."
 
-# =========================
-# FASTAPI
-# =========================
+# ========== FASTAPI ==========
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -204,8 +173,7 @@ def health():
         "rules": RULES_FILE.exists(),
         "router": ROUTER_FILE.exists(),
         "catalog": CATALOG_FILE.exists(),
-        "contacts": CONTACTS_FILE.exists(),
-        "metrics": METRICS
+        "contacts": CONTACTS_FILE.exists()
     }
 
 @app.get("/ask")
@@ -217,9 +185,7 @@ def company():
     data = load_json(CONTACTS_FILE)
     return data if data else {"error": "contatti.json non trovato"}
 
-# =========================
-# UI EMBEDDED (/ui)
-# =========================
+# ========== UI /ui (nero+arancione, logo da contatti.json) ==========
 UI_HTML = r"""<!doctype html>
 <html lang="it">
 <head>
@@ -234,11 +200,20 @@ UI_HTML = r"""<!doctype html>
 <body class="bg-[var(--tec-white)] text-neutral-900">
 <header class="sticky top-0 z-30 border-b border-neutral-200 bg-white/90 backdrop-blur">
   <div class="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
-    <div class="w-9 h-9 rounded bg-[var(--tec-black)] grid place-items-center"><span class="text-white font-black text-xl">T</span></div>
-    <div><h1 class="text-xl font-semibold">Tecnaria Sinapsi</h1><p class="text-xs text-neutral-500">Risposte tecniche · Voce ufficiale Tecnaria</p></div>
+    <div class="h-9 flex items-center">
+      <img id="logoImg" alt="Tecnaria" class="h-9 hidden" />
+      <div id="logoFallback" class="w-9 h-9 rounded bg-[var(--tec-black)] grid place-items-center">
+        <span class="text-white font-black text-xl">T</span>
+      </div>
+    </div>
+    <div>
+      <h1 class="text-xl font-semibold leading-tight text-neutral-900">Tecnaria Sinapsi</h1>
+      <p class="text-xs text-neutral-500">Risposte tecniche. Voce ufficiale Tecnaria.</p>
+    </div>
     <div class="ml-auto flex items-center gap-3">
       <span id="badge" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-200 text-neutral-700">
-        <span id="dot" class="h-2.5 w-2.5 rounded-full bg-neutral-400"></span><span id="state">Checking…</span>
+        <span id="dot" class="h-2.5 w-2.5 rounded-full bg-neutral-400"></span>
+        <span id="state">Checking…</span>
       </span>
       <a id="docsLink" target="_blank" class="text-sm text-neutral-600 hover:text-neutral-900 underline">API Docs</a>
     </div>
@@ -307,7 +282,10 @@ UI_HTML = r"""<!doctype html>
 <footer class="mt-10 border-t border-neutral-200 bg-white">
   <div class="mx-auto max-w-6xl px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
     <div class="flex items-center gap-3">
-      <div class="w-7 h-7 rounded bg-[var(--tec-black)] grid place-items-center"><span class="text-white font-black">T</span></div>
+      <img id="logoImgFooter" alt="Tecnaria" class="h-7 hidden" />
+      <div id="logoFallbackFooter" class="w-7 h-7 rounded bg-[var(--tec-black)] grid place-items-center">
+        <span class="text-white font-black">T</span>
+      </div>
       <span class="text-sm text-neutral-600">Tecnaria S.p.A. — Bassano del Grappa (VI)</span>
     </div>
     <div class="text-xs text-neutral-500">API: <code id="urlShow"></code></div>
@@ -348,7 +326,26 @@ async function healthPing(){
     const res = await fetch(baseUrlInput.value + "/health");
     const j = await res.json();
     setStatus(j.status==="ok", j);
-  }catch{ setStatus(false); }
+  }catch{ setStatus(false, {}); }
+}
+
+async function loadLogo(){
+  try{
+    const res = await fetch(baseUrlInput.value + "/company");
+    const c = await res.json();
+    const logo = c?.company?.logo_url;
+    if(!logo) return;
+    const headerImg = document.getElementById("logoImg");
+    const headerFallback = document.getElementById("logoFallback");
+    const footerImg = document.getElementById("logoImgFooter");
+    const footerFallback = document.getElementById("logoFallbackFooter");
+    const test = new Image();
+    test.onload = () => {
+      headerImg.src = logo; headerImg.classList.remove("hidden"); headerFallback.classList.add("hidden");
+      footerImg.src = logo; footerImg.classList.remove("hidden"); footerFallback.classList.add("hidden");
+    };
+    test.src = logo;
+  }catch{}
 }
 
 async function loadCompany(){
@@ -397,10 +394,10 @@ async function ask(q){
 $("#form").addEventListener("submit", (ev)=>{ ev.preventDefault(); const q = $("#q").value.trim(); if(q) ask(q); });
 $$("[data-preset]").forEach(b=> b.addEventListener("click", ()=>{ $("#q").value = b.dataset.preset; ask(b.dataset.preset); }));
 $("#copy").addEventListener("click", async ()=>{ try{ await navigator.clipboard.writeText($("#ans").textContent); alert("Risposta copiata"); }catch{ alert("Impossibile copiare"); }});
-baseUrlInput.addEventListener("change", ()=>{ $("#urlShow").textContent = baseUrlInput.value; $("#docsLink").href = baseUrlInput.value + "/docs"; healthPing(); loadCompany(); });
+baseUrlInput.addEventListener("change", ()=>{ $("#urlShow").textContent = baseUrlInput.value; $("#docsLink").href = baseUrlInput.value + "/docs"; healthPing(); loadCompany(); loadLogo(); });
 quickQs.forEach(q=>{ const btn=document.createElement("button"); btn.className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 hover:bg-neutral-100"; btn.textContent=q; btn.onclick=()=>{ $("#q").value=q; ask(q); }; $("#quick").appendChild(btn); });
 
-healthPing(); loadCompany();
+healthPing(); loadCompany(); loadLogo();
 </script>
 </body></html>
 """
