@@ -1,19 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Tecnaria Sinapsi – app.py (router-only, robust, con selfcheck)
-- API: /, /health, /ask?q=..., /company, /debug?q=..., /selfcheck
-- UI su /ui (nero+arancio, logo da static/data/contatti.json)
-- Motore: Router -> dataset famiglia (risoluzione robusta) -> fallback catalogo
-Dati attesi in: static/data/
-  - sinapsi_rules.json  (NON usato)
+Tecnaria Sinapsi – app.py (router-only, robust + overview-first ranking)
+API: /, /health, /ask?q=..., /company, /debug?q=..., /selfcheck, /ui
+Dati attesi in static/data/:
   - tecnaria_router_index.json
   - tecnaria_catalogo_unico.json
   - tecnaria_ctf_qa500.json
   - tecnaria_gts_qa500.json
   - tecnaria_diapason_qa500.json
-  - tecnaria_mini-cem-e_qa500.json  (o mini_cem_e / minicem)
+  - tecnaria_mini-cem-e_qa500.json  (accetta anche mini_cem_e / minicem / miniceme)
   - tecnaria_ctl_qa500.json
-  - tecnaria_spit-p560_qa500.json   (o spit_p560 / spitp560)
+  - tecnaria_spit-p560_qa500.json   (accetta anche spit_p560 / spitp560)
   - contatti.json
 """
 
@@ -28,16 +25,6 @@ BASE_PATH     = Path("static/data")
 ROUTER_FILE   = BASE_PATH / "tecnaria_router_index.json"
 CATALOG_FILE  = BASE_PATH / "tecnaria_catalogo_unico.json"
 CONTACTS_FILE = BASE_PATH / "contatti.json"
-
-# Mappa famiglie -> canonical code usato dal router
-FAMILIES = {
-    "CTF": "ctf",
-    "GTS": "gts",
-    "DIAPASON": "diapason",
-    "MINI-CEM-E": "mini-cem-e",
-    "CTL": "ctl",
-    "SPIT-P560": "spit-p560",
-}
 
 def norm(s: str) -> str:
     return (s or "").lower().strip()
@@ -86,11 +73,6 @@ def route_family(query: str) -> str:
 # DATASET RESOLUTION (robusto)
 # =========================
 def dataset_candidates_for_code(code: str):
-    """
-    Genera tutte le combinazioni più comuni di filename per il dataset:
-    - tecnaria_{code}_qa500.json
-    - varianti underscore <-> trattino e versione senza prefisso
-    """
     if not code:
         return []
     c = norm(code)
@@ -111,7 +93,7 @@ def dataset_candidates_for_code(code: str):
     for f in forms:
         candidates.append(BASE_PATH / f"tecnaria_{f}_qa500.json")
         candidates.append(BASE_PATH / f"{f}_qa500.json")  # legacy
-    # de-dup mantenendo l'ordine
+    # de-dup
     seen, ordered = set(), []
     for p in candidates:
         s = str(p)
@@ -147,7 +129,7 @@ def load_family_dataset(code: str):
     return [], None
 
 # =========================
-# SEMANTICO (BM25 con pesi + boost overview)
+# SEMANTICO (BM25 con pesi + overview-first)
 # =========================
 class TinySearch:
     def __init__(self, docs, text_fn):
@@ -180,9 +162,10 @@ class TinySearch:
 def semantic_pick(query: str, qa_list: list[dict]):
     """
     Rank ibrido:
-    - Pesi maggiori alla 'q' (3x), poi 'a' (1x), poi category/tags (1x)
-    - Boost categoria 'prodotto_base' quando la query è da overview (parlami/cos'è/che cos)
-    - Penalizza risposte duplicate (stessa 'a' ripetuta)
+    - Se la query è da overview, prova PRIMA a selezionare tra le voci 'prodotto_base' (o tag 'overview').
+      Se non presenti, torna all'intero dataset.
+    - BM25 con pesi (q 3x, a 1x, category/tags 1x)
+    - Boost 'prodotto_base' su overview, penalità duplicati su 'a'
     """
     if not qa_list:
         return None
@@ -200,33 +183,44 @@ def semantic_pick(query: str, qa_list: list[dict]):
         atxt = safe_get(d, "a", "")
         cat  = safe_get(d, "category", "")
         tags = " ".join(safe_get(d, "tags", []))
-        # pesi: q 3x, a 1x, category/tags 1x
+        # pesi: domanda 3x, risposta 1x, category/tags 1x
         return (" " + qtxt + " ") * 3 + " " + atxt + " " + (" " + cat + " ") + " " + (" " + tags + " ")
 
-    ts = TinySearch(qa_list, doc_text)
-    qtok = tokenize(query)
+    # --- PREFILTRO OVERVIEW ---
     q_is_overview = is_overview(query)
+    pool = qa_list
+    if q_is_overview:
+        pool_over = []
+        for d in qa_list:
+            cat = norm(d.get("category",""))
+            tags = [norm(t) for t in (d.get("tags") or [])]
+            if cat == "prodotto_base" or "overview" in tags:
+                pool_over.append(d)
+        if pool_over:  # usa solo overview se esistono
+            pool = pool_over
+
+    # Rank BM25 con pesi + boost/punizioni
+    ts = TinySearch(pool, doc_text)
+    qtok = tokenize(query)
+    a_clean_counts = Counter(clean(d.get("a","")) for d in pool)
 
     best_idx, best_sc = None, -1.0
-    # precompute duplicate counts on 'a'
-    a_clean_counts = Counter(clean(d.get("a","")) for d in qa_list)
-    for i, d in enumerate(qa_list):
+    for i, d in enumerate(pool):
         base_sc = ts.score(qtok, i)
         sc = base_sc
 
         # boost categoria 'prodotto_base' sulle overview
         if q_is_overview and norm(d.get("category","")) == "prodotto_base":
-            sc *= 1.25
+            sc *= 1.35  # determinismo più alto
 
         # penalità per risposte duplicate (stessa 'a' ripetuta)
-        dup_count = a_clean_counts[clean(d.get("a",""))]
-        if dup_count >= 3:
+        if a_clean_counts[clean(d.get("a",""))] >= 3:
             sc *= 0.85
 
         if sc > best_sc:
             best_sc, best_idx = sc, i
 
-    return qa_list[best_idx] if best_idx is not None else None
+    return pool[best_idx] if best_idx is not None else None
 
 # =========================
 # NARRATIVA
@@ -277,7 +271,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
-app = FastAPI(title="Tecnaria Sinapsi", version="1.2.0")
+app = FastAPI(title="Tecnaria Sinapsi", version="1.3.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
 
@@ -352,7 +346,7 @@ def selfcheck():
         })
     return {"status":"ok","checks": out}
 
-# ---------- UI su /ui (identica a prima) ----------
+# ---------- UI su /ui ----------
 UI_HTML = r"""<!doctype html>
 <html lang="it">
 <head>
@@ -537,7 +531,7 @@ document.getElementById("form").addEventListener("submit", (ev)=>{ ev.preventDef
 $$("[data-preset]").forEach(b=> b.addEventListener("click", ()=>{ document.getElementById("q").value = b.dataset.preset; ask(b.dataset.preset); }));
 document.getElementById("copy").addEventListener("click", async ()=>{ try{ await navigator.clipboard.writeText(document.getElementById("ans").textContent); alert("Risposta copiata"); }catch{ alert("Impossibile copiare"); }});
 baseUrlInput.addEventListener("change", ()=>{ document.getElementById("docsLink").href = baseUrlInput.value + "/docs"; loadCompany(); });
-quickQs.forEach(q=>{ const btn=document.createElement("button"); btn.className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 hover:bg-neutral-100"; btn.textContent=q; btn.onclick=()=>{ document.getElementById("q").value=q; ask(q); }; document.getElementById("quick").appendChild(btn); });
+["CTF: quanti chiodi per connettore?","CTL: spessore minimo soletta collaborante?","GTS: controlli di compressione in camicia?","Diapason: stratigrafia tipica?","Mini-Cem-E: posa su cls vecchio?","P560: quali propulsori usare su IPE?"].forEach(q=>{ const btn=document.createElement("button"); btn.className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 hover:bg-neutral-100"; btn.textContent=q; btn.onclick=()=>{ document.getElementById("q").value=q; ask(q); }; document.getElementById("quick").appendChild(btn); });
 
 loadCompany();
 </script>
