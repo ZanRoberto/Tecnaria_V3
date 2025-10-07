@@ -1,1 +1,15 @@
-
+{
+  "version": "1.0.0",
+  "generated_at": "ISO-8601 UTC",
+  "products": [
+    {
+      "code": "CTF",
+      "name": "Connettore per solai collaboranti acciaio–calcestruzzo",
+      "family": "Connettori solai",
+      "file": "tecnaria_ctf_qa500.json",
+      "qa_count": 500,
+      "categories": ["..."]
+    },
+    ...
+  ]
+}
