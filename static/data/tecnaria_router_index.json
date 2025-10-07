@@ -1,15 +1,22 @@
 {
-  "version": "1.0.0",
-  "generated_at": "ISO-8601 UTC",
-  "products": [
-    {
-      "code": "CTF",
-      "name": "Connettore per solai collaboranti acciaio–calcestruzzo",
-      "family": "Connettori solai",
-      "file": "tecnaria_ctf_qa500.json",
-      "qa_count": 500,
-      "categories": ["..."]
-    },
-    ...
+  "code": "CTL",
+  "name": "Connettore CTL per solai collaboranti legno–calcestruzzo",
+  "family": "Connettori legno–calcestruzzo",
+  "file": "tecnaria_ctl_qa500.json",
+  "qa_count": 500,
+  "categories": [
+    "prodotto_base",
+    "posa_legno",
+    "compatibilita_supporti_legno",
+    "calcestruzzo_getto",
+    "progetto_dimensionamento",
+    "controllo_qualita",
+    "sicurezza_cantiere",
+    "manutenzione_logistica",
+    "confronto_alternative",
+    "convenienza_benefici",
+    "norme_documentazione",
+    "casi_particolari",
+    "troubleshooting"
   ]
 }
