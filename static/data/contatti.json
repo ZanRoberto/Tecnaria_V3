@@ -1,24 +1,28 @@
 {
-  "ragione_sociale": "TECNARIA S.p.A.",
-  "piva": "01277680243",
-  "sdi": "J6URRTW",
-  "indirizzo": {
-    "via": "Viale Pecori Giraldi, 55",
-    "cap": "36061",
-    "citta": "Bassano del Grappa",
-    "provincia": "VI",
-    "stato": "Italia"
-    },
-  "telefono": "+39 0424 502029",
-  "email": "info@tecnaria.com",
-  "pec": null
-}
-{
-  "iban": "IT12A0123456789012345678901",
-  "intestatario": "TECNARIA S.p.A.",
-  "banca": "Banca Esempio S.p.A.",
-  "bic": "BANCIT22XXX",
-  "note": "Usare per bonifici SEPA. Inserire causale ordine/numero documento."
+  "version": "1.0.0",
+  "updated_at": "2025-10-07T00:00:00Z",
+  "company": {
+    "legal_name": "TECNARIA S.p.A.",
+    "vat_number": "01277680243",
+    "sdi": "J6URRTW",
+    "pec": null,
+    "hq": {
+      "address": "Viale Pecori Giraldi, 55",
+      "zip": "36061",
+      "city": "Bassano del Grappa",
+      "province": "VI",
+      "country": "Italia",
+      "phone": "+39 0424 502029",
+      "email": "info@tecnaria.com"
+    }
+  },
+  "banking": {
+    "beneficiary": "TECNARIA S.p.A.",
+    "bank_name": "Banca Esempio S.p.A.",
+    "bic_swift": "BANCIT22XXX",
+    "iban": "IT12A0123456789012345678901",
+    "notes": "Usare per bonifici SEPA. Inserire causale ordine/numero documento."
+  }
 }
 
 
