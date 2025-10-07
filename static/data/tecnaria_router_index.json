@@ -1,22 +1,137 @@
 {
-  "code": "CTL",
-  "name": "Connettore CTL per solai collaboranti legno–calcestruzzo",
-  "family": "Connettori legno–calcestruzzo",
-  "file": "tecnaria_ctl_qa500.json",
-  "qa_count": 500,
-  "categories": [
-    "prodotto_base",
-    "posa_legno",
-    "compatibilita_supporti_legno",
-    "calcestruzzo_getto",
-    "progetto_dimensionamento",
-    "controllo_qualita",
-    "sicurezza_cantiere",
-    "manutenzione_logistica",
-    "confronto_alternative",
-    "convenienza_benefici",
-    "norme_documentazione",
-    "casi_particolari",
-    "troubleshooting"
+  "version": "1.0.0",
+  "generated_at": "2025-10-07T17:35:18Z",
+  "products": [
+    {
+      "code": "CTF",
+      "name": "Connettore per solai collaboranti acciaio–calcestruzzo",
+      "family": "Connettori solai",
+      "file": "tecnaria_ctf_qa500.json",
+      "qa_count": 500,
+      "categories": [
+        "prodotto_base",
+        "posa_attrezzature",
+        "compatibilita_supporti",
+        "lamiera_grecata",
+        "travi_acciaio",
+        "calcestruzzo_getto",
+        "progetto_dimensionamento",
+        "controllo_qualita",
+        "sicurezza_cantiere",
+        "manutenzione_logistica",
+        "confronti_alternative",
+        "convenienza_benefici",
+        "problemi_risoluzione",
+        "norme_certificazioni",
+        "faq_commerciali"
+      ]
+    },
+    {
+      "code": "GTS",
+      "name": "Giunzione meccanica per barre d’armatura (manicotto)",
+      "family": "GTS",
+      "file": "tecnaria_gts_qa500.json",
+      "qa_count": 500,
+      "categories": [
+        "prodotto_base",
+        "varianti_dimensioni",
+        "posa_attrezzature",
+        "incamiciatura_pilastri_nodi",
+        "progetto_dimensionamento",
+        "controllo_qualita",
+        "sicurezza_cantiere",
+        "manutenzione_logistica",
+        "confronti_alternative",
+        "convenienza_benefici",
+        "norme_certificazioni",
+        "casi_particolari",
+        "troubleshooting"
+      ]
+    },
+    {
+      "code": "DIAPASON",
+      "name": "Sistema Diapason per rinforzo solai in laterocemento",
+      "family": "Rinforzo solai",
+      "file": "tecnaria_diapason_qa500.json",
+      "qa_count": 500,
+      "categories": [
+        "prodotto_base",
+        "componenti_sistema",
+        "posa_getto",
+        "compatibilita_solai",
+        "progetto_dimensionamento",
+        "controllo_qualita",
+        "sicurezza_cantiere",
+        "manutenzione_post_intervento",
+        "confronto_alternative",
+        "convenienza_benefici",
+        "norme_certificazioni",
+        "casi_particolari",
+        "troubleshooting"
+      ]
+    },
+    {
+      "code": "MINI-CEM-E",
+      "name": "Connettore MINI CEM-E per collaborazione calcestruzzo–calcestruzzo",
+      "family": "Connettori calcestruzzo–calcestruzzo",
+      "file": "tecnaria_minicemE_qa500.json",
+      "qa_count": 500,
+      "categories": [
+        "prodotto_base",
+        "posa_fissaggio",
+        "compatibilita_supporti",
+        "progetto_dimensionamento",
+        "controllo_qualita",
+        "sicurezza_cantiere",
+        "manutenzione_logistica",
+        "confronto_alternative",
+        "convenienza_benefici",
+        "norme_documentazione",
+        "casi_particolari",
+        "troubleshooting"
+      ]
+    },
+    {
+      "code": "SPIT-P560",
+      "name": "Chiodatrice SPIT P560 (per posa connettori CTF Tecnaria)",
+      "family": "Attrezzature di posa",
+      "file": "tecnaria_spit-p560_qa500.json",
+      "qa_count": 500,
+      "categories": [
+        "prodotto_base",
+        "compatibilita_ctf",
+        "propulsori_tarature",
+        "posa_operativa",
+        "controllo_qualita",
+        "sicurezza_cantiere",
+        "manutenzione",
+        "logistica_noleggio",
+        "confronti_alternative",
+        "troubleshooting",
+        "norme_formazione"
+      ]
+    },
+    {
+      "code": "CTL",
+      "name": "Connettore CTL per solai collaboranti legno–calcestruzzo",
+      "family": "Connettori legno–calcestruzzo",
+      "file": "tecnaria_ctl_qa500.json",
+      "qa_count": 500,
+      "categories": [
+        "prodotto_base",
+        "posa_legno",
+        "compatibilita_supporti_legno",
+        "calcestruzzo_getto",
+        "progetto_dimensionamento",
+        "controllo_qualita",
+        "sicurezza_cantiere",
+        "manutenzione_logistica",
+        "confronto_alternative",
+        "convenienza_benefici",
+        "norme_documentazione",
+        "casi_particolari",
+        "troubleshooting"
+      ]
+    }
   ]
 }
