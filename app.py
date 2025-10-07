@@ -1,10 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Tecnaria Sinapsi – app.py (rules DISATTIVATE)
-- API: /, /health, /ask?q=..., /company
-- UI elegante su /ui (nero+arancio, logo da static/data/contatti.json)
-- Motore: Router -> dataset famiglia -> fallback catalogo (niente rules)
-Dati in: static/data/
+Tecnaria Sinapsi – app.py (router-only, robust, con selfcheck)
+- API: /, /health, /ask?q=..., /company, /debug?q=..., /selfcheck
+- UI su /ui (nero+arancio, logo da static/data/contatti.json)
+- Motore: Router -> dataset famiglia (risoluzione robusta) -> fallback catalogo
+Dati attesi in: static/data/
+  - sinapsi_rules.json  (NON usato)
+  - tecnaria_router_index.json
+  - tecnaria_catalogo_unico.json
+  - tecnaria_ctf_qa500.json
+  - tecnaria_gts_qa500.json
+  - tecnaria_diapason_qa500.json
+  - tecnaria_mini-cem-e_qa500.json  (o mini_cem_e / minicem)
+  - tecnaria_ctl_qa500.json
+  - tecnaria_spit-p560_qa500.json   (o spit_p560 / spitp560)
+  - contatti.json
 """
 
 import json, math, re
@@ -19,14 +29,24 @@ ROUTER_FILE   = BASE_PATH / "tecnaria_router_index.json"
 CATALOG_FILE  = BASE_PATH / "tecnaria_catalogo_unico.json"
 CONTACTS_FILE = BASE_PATH / "contatti.json"
 
-def dataset_path_for_family(code: str) -> Path:
-    return BASE_PATH / f"tecnaria_{code.lower()}_qa500.json"
+# Mappa famiglie -> canonical code usato dal router
+FAMILIES = {
+    "CTF": "ctf",
+    "GTS": "gts",
+    "DIAPASON": "diapason",
+    "MINI-CEM-E": "mini-cem-e",
+    "CTL": "ctl",
+    "SPIT-P560": "spit-p560",
+}
+
+def norm(s: str) -> str:
+    return (s or "").lower().strip()
 
 # =========================
 # IO / UTIL
 # =========================
 def load_json(path: Path):
-    if not path.exists():
+    if not path or not path.exists():
         return {}
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -34,35 +54,100 @@ def load_json(path: Path):
 def safe_get(d, k, default=None):
     return d[k] if isinstance(d, dict) and k in d else default
 
-def norm(s: str) -> str:
-    return (s or "").lower().strip()
-
 WORD_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9\-\_]+")
 def tokenize(text: str):
     return [t for t in WORD_RE.findall(norm(text)) if t]
 
 # =========================
-# ROUTER -> FAMIGLIA
+# ROUTER -> FAMIGLIA (robusto)
 # =========================
 def route_family(query: str) -> str:
-    router = load_json(ROUTER_FILE)
     q = norm(query)
-    # matching diretto su code / name / family
+    router = load_json(ROUTER_FILE)
+
+    # 1) match su router (code/name/family)
     for p in router.get("products", []):
         for key in (norm(p.get("code","")), norm(p.get("name","")), norm(p.get("family",""))):
             if key and key in q:
-                return p.get("code","")
-    # euristiche utili
-    if any(k in q for k in ["p560","chiodatrice","propulsori","propulsore"]): return "SPIT-P560"
-    if any(k in q for k in ["gts","manicotto","giunzione meccanica"]):       return "GTS"
-    if any(k in q for k in ["diapason","laterocemento","rinforzo solaio"]):  return "DIAPASON"
-    if any(k in q for k in ["mini-cem-e","minicem","calcestruzzo-calcestruzzo"]): return "MINI-CEM-E"
-    if any(k in q for k in ["ctl","legno-calcestruzzo","legno"]):            return "CTL"
-    if any(k in q for k in ["ctf","connettore","solaio collaborante"]):      return "CTF"
+                code = norm(p.get("code",""))
+                return code or norm(p.get("family",""))
+
+    # 2) euristiche robuste (spazi/segni)
+    qc = q.replace(" ", "").replace("_", "").replace("-", "")
+    if "p560" in qc or "chiodatrice" in q or "propulsor" in q or "spit" in q:  return "spit-p560"
+    if "gts" in qc or "manicotto" in q or "giunzionemeccanica" in qc:         return "gts"
+    if "diapason" in qc or "laterocemento" in qc:                               return "diapason"
+    if "minicem" in qc or "miniceme" in qc or "minicem-e" in qc:                return "mini-cem-e"
+    if "ctl" in qc or "legno-calcestruzzo" in qc or "legno" in q:               return "ctl"
+    if "ctf" in qc or "connettore" in q or "solaio collaborante" in q:          return "ctf"
     return ""
 
 # =========================
-# SEMANTICO LITE (BM25)
+# DATASET RESOLUTION (robusto)
+# =========================
+def dataset_candidates_for_code(code: str):
+    """
+    Genera tutte le combinazioni più comuni di filename per il dataset:
+    - tecnaria_{code}_qa500.json
+    - varianti underscore <-> trattino e versione senza prefisso
+    """
+    if not code:
+        return []
+    c = norm(code)
+    forms = {
+        c,
+        c.replace("-", "_"),
+        c.replace("_", "-"),
+        c.replace("-", ""),
+        c.replace("_", ""),
+        c.replace(" ", ""),
+    }
+    if c == "spit-p560":
+        forms.update({"spit_p560","spitp560"})
+    if c == "mini-cem-e":
+        forms.update({"mini_cem_e","minicem","miniceme"})
+
+    candidates = []
+    for f in forms:
+        candidates.append(BASE_PATH / f"tecnaria_{f}_qa500.json")
+        candidates.append(BASE_PATH / f"{f}_qa500.json")  # legacy
+    # de-dup mantenendo l'ordine
+    seen, ordered = set(), []
+    for p in candidates:
+        s = str(p)
+        if s not in seen:
+            ordered.append(p); seen.add(s)
+    return ordered
+
+def extract_qa(payload):
+    """Estrae QA da varie strutture."""
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        return []
+    if isinstance(payload.get("qa"), list):
+        return payload["qa"]
+    acc = []
+    for key in ("items","dataset","data","entries"):
+        arr = payload.get(key)
+        if isinstance(arr, list):
+            for it in arr:
+                qa = it.get("qa") if isinstance(it, dict) else None
+                if isinstance(qa, list): acc.extend(qa)
+    return acc
+
+def load_family_dataset(code: str):
+    """Ritorna (qa_list, used_path) scegliendo il primo file esistente che contenga QA."""
+    for p in dataset_candidates_for_code(code):
+        if p.exists():
+            data = load_json(p)
+            qa = extract_qa(data)
+            if qa:
+                return qa, p
+    return [], None
+
+# =========================
+# SEMANTICO (BM25 con pesi + boost overview)
 # =========================
 class TinySearch:
     def __init__(self, docs, text_fn):
@@ -92,25 +177,56 @@ class TinySearch:
             s += idf * (tf[t]*(k1+1)) / (denom if denom else 1.0)
         return s
 
-    def top1(self, query: str):
-        qtok = tokenize(query)
-        best_doc, best_score = None, -1.0
-        for i, d in enumerate(self.docs):
-            sc = self.score(qtok, i)
-            if sc > best_score:
-                best_score, best_doc = sc, d
-        return best_doc, best_score
-
 def semantic_pick(query: str, qa_list: list[dict]):
-    if not qa_list: return None
-    def text_fn(d):
-        return " ".join([
-            safe_get(d,"q",""), safe_get(d,"a",""),
-            safe_get(d,"category",""), " ".join(safe_get(d,"tags",[]))
-        ])
-    ts = TinySearch(qa_list, text_fn)
-    best, score = ts.top1(query)
-    return best if score and score > 0.5 else None
+    """
+    Rank ibrido:
+    - Pesi maggiori alla 'q' (3x), poi 'a' (1x), poi category/tags (1x)
+    - Boost categoria 'prodotto_base' quando la query è da overview (parlami/cos'è/che cos)
+    - Penalizza risposte duplicate (stessa 'a' ripetuta)
+    """
+    if not qa_list:
+        return None
+
+    def is_overview(q: str) -> bool:
+        qn = norm(q)
+        keys = ["parlami", "parla di", "cos'è", "che cos", "informazioni", "overview", "presentazione", "scheda"]
+        return any(k in qn for k in keys)
+
+    def clean(txt: str) -> str:
+        return re.sub(r"\s+", " ", norm(txt or ""))
+
+    def doc_text(d: dict):
+        qtxt = safe_get(d, "q", "")
+        atxt = safe_get(d, "a", "")
+        cat  = safe_get(d, "category", "")
+        tags = " ".join(safe_get(d, "tags", []))
+        # pesi: q 3x, a 1x, category/tags 1x
+        return (" " + qtxt + " ") * 3 + " " + atxt + " " + (" " + cat + " ") + " " + (" " + tags + " ")
+
+    ts = TinySearch(qa_list, doc_text)
+    qtok = tokenize(query)
+    q_is_overview = is_overview(query)
+
+    best_idx, best_sc = None, -1.0
+    # precompute duplicate counts on 'a'
+    a_clean_counts = Counter(clean(d.get("a","")) for d in qa_list)
+    for i, d in enumerate(qa_list):
+        base_sc = ts.score(qtok, i)
+        sc = base_sc
+
+        # boost categoria 'prodotto_base' sulle overview
+        if q_is_overview and norm(d.get("category","")) == "prodotto_base":
+            sc *= 1.25
+
+        # penalità per risposte duplicate (stessa 'a' ripetuta)
+        dup_count = a_clean_counts[clean(d.get("a",""))]
+        if dup_count >= 3:
+            sc *= 0.85
+
+        if sc > best_sc:
+            best_sc, best_idx = sc, i
+
+    return qa_list[best_idx] if best_idx is not None else None
 
 # =========================
 # NARRATIVA
@@ -133,26 +249,25 @@ def _bump(family: str):
 def ask(query: str) -> str:
     q = (query or "").strip()
 
-    # 1) routing -> dataset famiglia
+    # 1) routing -> dataset famiglia (robusto)
     fam = route_family(q)
     if fam:
-        data = load_json(dataset_path_for_family(fam))
-        hit = semantic_pick(q, data.get("qa", []))
-        if hit:
-            _bump(fam)
-            return compose_answer(hit)
+        qa, used_path = load_family_dataset(fam)
+        if qa:
+            hit = semantic_pick(q, qa)
+            if hit:
+                _bump(fam)
+                return compose_answer(hit)
 
     # 2) fallback sul catalogo unico
     catalog = load_json(CATALOG_FILE)
-    all_qa = []
-    for it in catalog.get("items", []):
-        all_qa.extend(it.get("qa", []))
+    all_qa = extract_qa(catalog)
     hit = semantic_pick(q, all_qa)
     if hit:
         _bump("catalogo")
         return compose_answer(hit)
 
-    # 3) miss finale
+    # 3) miss
     return "Non ho trovato la risposta nei contenuti Tecnaria. Dimmi esattamente cosa ti serve e la aggiungo subito alla base."
 
 # =========================
@@ -162,14 +277,14 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
-app = FastAPI(title="Tecnaria Sinapsi", version="1.0.0")
+app = FastAPI(title="Tecnaria Sinapsi", version="1.2.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
 
 @app.get("/")
 def root():
     return {"name":"Tecnaria Sinapsi","status":"ok",
-            "endpoints":{"health":"/health","ask":"/ask?q=...","company":"/company","docs":"/docs","ui":"/ui"}}
+            "endpoints":{"health":"/health","ask":"/ask?q=...","company":"/company","docs":"/docs","ui":"/ui","debug":"/debug?q=...","selfcheck":"/selfcheck"}}
 
 @app.get("/health")
 def health():
@@ -193,7 +308,51 @@ def company():
     data = load_json(CONTACTS_FILE)
     return data if data else {"error":"contatti.json non trovato"}
 
-# ---------- UI su /ui (nero+arancio, logo automatico) ----------
+# ---------- DEBUG di una singola query ----------
+@app.get("/debug")
+def debug(q: str = Query(..., description="Domanda per il debug")):
+    fam = route_family(q)
+    candidates = [str(p) for p in dataset_candidates_for_code(fam)] if fam else []
+    existing   = [str(p) for p in dataset_candidates_for_code(fam) if p.exists()] if fam else []
+    qa, used   = load_family_dataset(fam) if fam else ([], None)
+    hit        = semantic_pick(q, qa) if qa else None
+    return {
+        "query": q,
+        "family": fam,
+        "used_path": str(used) if used else None,
+        "qa_count": len(qa),
+        "candidates": candidates[:8],
+        "existing": existing[:8],
+        "hit_q": (hit or {}).get("q"),
+        "preview_a": ((hit or {}).get("a","")[:200] + ("…" if (hit and len(hit.get('a',""))>200) else "")) if hit else None
+    }
+
+# ---------- SELFCHECK (testa tutte le famiglie con query campione) ----------
+@app.get("/selfcheck")
+def selfcheck():
+    probes = [
+        ("ctf", "Parlami dei connettori CTF"),
+        ("gts", "Parlami del manicotto GTS"),
+        ("diapason", "Parlami del sistema Diapason"),
+        ("mini-cem-e", "Parlami del Mini-Cem-E"),
+        ("ctl", "Parlami del sistema CTL"),
+        ("spit-p560", "Parlami della SPIT P560"),
+    ]
+    out = []
+    for code, probe_q in probes:
+        qa, used = load_family_dataset(code)
+        hit = semantic_pick(probe_q, qa) if qa else None
+        out.append({
+            "family": code,
+            "used_path": str(used) if used else None,
+            "qa_count": len(qa),
+            "probe_q": probe_q,
+            "hit_q": (hit or {}).get("q"),
+            "preview_a": ((hit or {}).get("a","")[:200] + ("…" if (hit and len(hit.get('a',""))>200) else "")) if hit else None
+        })
+    return {"status":"ok","checks": out}
+
+# ---------- UI su /ui (identica a prima) ----------
 UI_HTML = r"""<!doctype html>
 <html lang="it">
 <head>
@@ -309,14 +468,14 @@ const quickQs = [
 
 const baseUrlInput = $("#baseUrl");
 baseUrlInput.value = DEFAULT_BASE_URL;
-$("#urlShow").textContent = DEFAULT_BASE_URL;
-$("#docsLink").href = DEFAULT_BASE_URL + "/docs";
+document.getElementById("urlShow")?.textContent = DEFAULT_BASE_URL;
+document.getElementById("docsLink").href = DEFAULT_BASE_URL + "/docs";
 
 async function loadCompany(){
   try{
     const res = await fetch(baseUrlInput.value + "/company");
     const c = await res.json();
-    const box = $("#companyBox");
+    const box = document.getElementById("companyBox");
     if(c.error){ box.innerHTML = `<div class="text-red-600">${c.error}</div>`; return; }
     const depTech = (c.departments||[]).find(d => (d.name||'').toLowerCase().includes('tecnica'));
     const phone   = c.company?.hq?.phone || c.hq?.phone || "";
@@ -337,9 +496,8 @@ async function loadCompany(){
       <div class="mt-1 text-neutral-600">${c.banking?.notes||c.banking?.payment_notes||''}</div>
     `;
 
-    // link rapidi e logo
-    $("#mailtoTech").href = depTech?.email ? `mailto:${depTech.email}` : (email?`mailto:${email}`:"#");
-    $("#telMain").href    = phone ? `tel:${phone.replace(/\\s+/g,'')}` : "#";
+    if(depTech?.email) document.getElementById("mailtoTech").href = `mailto:${depTech.email}`;
+    if(phone) document.getElementById("telMain").href = `tel:${phone.replace(/\\s+/g,'')}`;
 
     if(logo){
       const test = new Image();
@@ -354,27 +512,32 @@ async function loadCompany(){
       test.src = logo;
     }
   }catch(e){
-    $("#companyBox").innerHTML = `<div class="text-red-600">Impossibile leggere i dati aziendali</div>`;
+    document.getElementById("companyBox").innerHTML = `<div class="text-red-600">Impossibile leggere i dati aziendali</div>`;
   }
 }
 
 async function ask(q){
-  $("#err").classList.add("hidden"); $("#ans").textContent = "";
+  document.getElementById("err").classList.add("hidden");
+  document.getElementById("ans").textContent = "";
   const t0 = performance.now();
   try{
     const res = await fetch(baseUrlInput.value + "/ask?q=" + encodeURIComponent(q));
     if(!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();
-    $("#lat").textContent = Math.round(performance.now() - t0) + " ms";
-    $("#ans").textContent = data.answer || "";
-  }catch(e){ $("#err").textContent = "Errore: " + (e.message||"imprevisto"); $("#err").classList.remove("hidden"); }
+    document.getElementById("lat").textContent = Math.round(performance.now() - t0) + " ms";
+    document.getElementById("ans").textContent = data.answer || "";
+  }catch(e){
+    const box = document.getElementById("err");
+    box.textContent = "Errore: " + (e.message||"imprevisto");
+    box.classList.remove("hidden");
+  }
 }
 
-$("#form").addEventListener("submit", (ev)=>{ ev.preventDefault(); const q = $("#q").value.trim(); if(q) ask(q); });
-$$("[data-preset]").forEach(b=> b.addEventListener("click", ()=>{ $("#q").value = b.dataset.preset; ask(b.dataset.preset); }));
-$("#copy").addEventListener("click", async ()=>{ try{ await navigator.clipboard.writeText($("#ans").textContent); alert("Risposta copiata"); }catch{ alert("Impossibile copiare"); }});
-baseUrlInput.addEventListener("change", ()=>{ $("#urlShow").textContent = baseUrlInput.value; $("#docsLink").href = baseUrlInput.value + "/docs"; loadCompany(); });
-quickQs.forEach(q=>{ const btn=document.createElement("button"); btn.className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 hover:bg-neutral-100"; btn.textContent=q; btn.onclick=()=>{ $("#q").value=q; ask(q); }; $("#quick").appendChild(btn); });
+document.getElementById("form").addEventListener("submit", (ev)=>{ ev.preventDefault(); const q = document.getElementById("q").value.trim(); if(q) ask(q); });
+$$("[data-preset]").forEach(b=> b.addEventListener("click", ()=>{ document.getElementById("q").value = b.dataset.preset; ask(b.dataset.preset); }));
+document.getElementById("copy").addEventListener("click", async ()=>{ try{ await navigator.clipboard.writeText(document.getElementById("ans").textContent); alert("Risposta copiata"); }catch{ alert("Impossibile copiare"); }});
+baseUrlInput.addEventListener("change", ()=>{ document.getElementById("docsLink").href = baseUrlInput.value + "/docs"; loadCompany(); });
+quickQs.forEach(q=>{ const btn=document.createElement("button"); btn.className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 hover:bg-neutral-100"; btn.textContent=q; btn.onclick=()=>{ document.getElementById("q").value=q; ask(q); }; document.getElementById("quick").appendChild(btn); });
 
 loadCompany();
 </script>
