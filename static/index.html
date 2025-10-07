@@ -1,289 +1,194 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+# === UI embedded (single-file) su /ui ===
+from fastapi.responses import HTMLResponse
 
-/**
- * Tecnaria Sinapsi — Interfaccia Cliente
- * Single-file React component (TailwindCSS) che chiama le API FastAPI esposte da app.py
- * Endpoint richiesti: /health, /ask?q=...
- *
- * ✅ Tutti i pulsanti sono funzionanti
- * ✅ Colori Tecnaria (nero / arancio / bianco) — modificabili via CSS vars
- * ✅ Ricerca con invio/Enter o click
- * ✅ Preset famiglie e domande rapide
- * ✅ Stato servizio (health), tempo di risposta e conteggio ricerche sessione
- * ✅ Copia risposta negli appunti
- * ✅ Gestione errori, loader, suggerimenti
- *
- * ISTRUZIONI
- * - Assicurati di avere Tailwind attivo nel progetto (o includi CDN in un index.html)
- * - Inserisci il LOGO nella variabile logoSrc (PNG/SVG) oppure aggiorna il path statico
- * - Se vuoi cambiare il backend, modifica BASE_URL qui sotto oppure tramite il campo impostazioni
- */
-
-// === CONFIG DI DEFAULT ===
-const DEFAULT_BASE_URL = "https://tecnaria-v3.onrender.com"; // Cambiabile da UI
-const LOGO_SRC = "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/terraria.svg"; // Sostituisci con il logo Tecnaria (PNG/SVG) se disponibile
-
-export default function TecnariaSinapsiApp() {
-  // Stato base
-  const [baseUrl, setBaseUrl] = useState<string>(DEFAULT_BASE_URL);
-  const [query, setQuery] = useState<string>("");
-  const [answer, setAnswer] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>("");
-  const [health, setHealth] = useState<{ status?: string; rules?: boolean; router?: boolean; catalog?: boolean } | null>(null);
-  const [latencyMs, setLatencyMs] = useState<number | null>(null);
-  const [count, setCount] = useState<number>(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Colori Tecnaria come CSS variables (nero/arancio/bianco)
-  const theme = useMemo(() => ({
-    orange: "#F26622", // regola se vuoi un match più preciso al brand
-    black: "#000000",
-    white: "#FFFFFF",
-  }), []);
-
-  useEffect(() => {
-    document.documentElement.style.setProperty("--tec-orange", theme.orange);
-    document.documentElement.style.setProperty("--tec-black", theme.black);
-    document.documentElement.style.setProperty("--tec-white", theme.white);
-  }, [theme]);
-
-  // Health check all'avvio
-  useEffect(() => {
-    const fetchHealth = async () => {
-      try {
-        const res = await fetch(`${baseUrl}/health`);
-        const json = await res.json();
-        setHealth(json);
-      } catch (e: any) {
-        setHealth({ status: "down" });
-      }
-    };
-    fetchHealth();
-  }, [baseUrl]);
-
-  const presets: { label: string; q: string }[] = [
-    { label: "CTF · Chiodatrice", q: "Si può usare una qualsiasi chiodatrice per i CTF?" },
-    { label: "CTL · Preforo abete", q: "CTL: serve il preforo su abete antico?" },
-    { label: "Diapason · Confronto", q: "Diapason vs soletta collaborante tradizionale?" },
-    { label: "P560 · Taratura IPE 300", q: "Taratura P560 su IPE 300 con lamiera 6/10" },
-    { label: "GTS · Controllo compressione", q: "GTS: come verifico la corretta compressione delle spine nel manicotto?" },
-    { label: "Mini-Cem-E · Interassi", q: "Mini-Cem-E: interassi consigliati in camicia sottile?" },
-  ];
-
-  const families: { code: string; color?: string; sampleQs: string[] }[] = [
-    { code: "CTF", sampleQs: ["CTF: quanti chiodi per connettore?", "CTF su lamiera grecata: cosa cambia?"] },
-    { code: "CTL", sampleQs: ["CTL: verifiche su legni antichi?", "CTL: spessore minimo soletta?"] },
-    { code: "GTS", sampleQs: ["GTS: giunzione in camicia su pilastro?", "GTS: coppie di serraggio consigliate?"] },
-    { code: "DIAPASON", sampleQs: ["Diapason: dove conviene?", "Diapason: stratigrafia tipica?"] },
-    { code: "MINI-CEM-E", sampleQs: ["Mini-Cem-E: posa su cls vecchio?", "Mini-Cem-E: verifiche a campione?"] },
-    { code: "SPIT-P560", sampleQs: ["P560: quali propulsori?", "P560: controlli di infissione?"] },
-  ];
-
-  const ask = async (q: string) => {
-    if (!q || !q.trim()) return;
-    setError("");
-    setLoading(true);
-    setAnswer("");
-    setLatencyMs(null);
-    const t0 = performance.now();
-    try {
-      const res = await fetch(`${baseUrl}/ask?q=${encodeURIComponent(q)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const t1 = performance.now();
-      setLatencyMs(Math.round(t1 - t0));
-      setAnswer(data?.answer || "");
-      setCount((c) => c + 1);
-    } catch (e: any) {
-      setError(e?.message || "Errore imprevisto");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    ask(query);
-  };
-
-  const copyAnswer = async () => {
-    try {
-      if (answer) {
-        await navigator.clipboard.writeText(answer);
-        alert("Risposta copiata negli appunti ");
-      }
-    } catch (e) {
-      alert("Impossibile copiare negli appunti");
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-[var(--tec-white)]" style={{ fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'" }}>
-      {/* HEADER */}
-      <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded bg-[var(--tec-black)] grid place-items-center">
-              <span className="text-white font-black text-xl">T</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold leading-tight text-neutral-900">Tecnaria Sinapsi</h1>
-              <p className="text-xs text-neutral-500">Risposte tecniche. Voce ufficiale Tecnaria.</p>
-            </div>
-          </div>
-          <div className="ml-auto flex items-center gap-3">
-            <span className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium ${health?.status === 'ok' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-              <span className={`h-2.5 w-2.5 rounded-full ${health?.status === 'ok' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-              {health?.status === 'ok' ? 'Online' : 'Offline'}
-            </span>
-            <a href={`${baseUrl}/docs`} target="_blank" className="text-sm text-neutral-600 hover:text-neutral-900 underline">API Docs</a>
-          </div>
-        </div>
-      </header>
-
-      {/* HERO / SEARCH */}
-      <section className="bg-gradient-to-b from-[var(--tec-black)] to-[var(--tec-orange)]">
-        <div className="mx-auto max-w-6xl px-4 py-10 text-white">
-          <h2 className="text-3xl md:text-4xl font-semibold">Trova la soluzione, in linguaggio Tecnaria.</h2>
-          <p className="mt-2 text-white/80">Domande su CTF, GTS, Diapason, Mini‑Cem‑E, SPIT P560, CTL? Scrivi e ottieni la risposta completa.</p>
-
-          <form onSubmit={onSubmit} className="mt-6 flex flex-col md:flex-row gap-3">
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Scrivi la tua domanda…"
-              className="flex-1 rounded-xl border border-white/20 bg-white/95 px-4 py-3 text-neutral-900 placeholder-neutral-500 focus:outline-none focus:ring-4 focus:ring-white/30"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-xl bg-[var(--tec-black)] px-5 py-3 font-medium text-white shadow hover:opacity-90 disabled:opacity-60"
-            >
-              {loading ? "Sto cercando…" : "Chiedi a Sinapsi"}
-            </button>
-          </form>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {presets.map((p) => (
-              <button key={p.label} onClick={() => { setQuery(p.q); ask(p.q); }}
-                className="rounded-full bg-white/15 px-3 py-1.5 text-sm text-white hover:bg-white/25">
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* BODY */}
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        {/* PANNELLO SINISTRA: Famiglie & Impostazioni */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <aside className="lg:col-span-1 space-y-6">
-            {/* Famiglie */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-              <h3 className="font-semibold text-neutral-900">Famiglie</h3>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {families.map((f) => (
-                  <div key={f.code} className="rounded-xl border border-neutral-200 p-3 hover:border-neutral-400">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{f.code}</span>
-                      <button onClick={() => {
-                        const q = f.sampleQs[0]; setQuery(q); ask(q);
-                      }} className="text-xs underline hover:opacity-80">Chiedi</button>
-                    </div>
-                    <ul className="mt-2 list-disc pl-4 text-xs text-neutral-600">
-                      {f.sampleQs.map((q) => (
-                        <li key={q} className="mb-1">
-                          <button onClick={() => { setQuery(q); ask(q); }} className="hover:text-neutral-900 underline decoration-dotted">
-                            {q}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Impostazioni backend */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-              <h3 className="font-semibold text-neutral-900">Impostazioni</h3>
-              <label className="mt-2 block text-xs text-neutral-600">Base URL servizio</label>
-              <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm" />
-              <div className="mt-3 flex items-center gap-2 text-xs text-neutral-600">
-                <span className={`h-2.5 w-2.5 rounded-full ${health?.status === 'ok' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                <span>Stato: {health?.status || "n/d"}</span>
-              </div>
-              <div className="mt-2 text-xs text-neutral-600">Rules: {String(health?.rules)} · Router: {String(health?.router)} · Catalog: {String(health?.catalog)}</div>
-            </div>
-          </aside>
-
-          {/* PANNELLO DESTRA: Risultato */}
-          <section className="lg:col-span-2 space-y-6">
-            <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm min-h-[260px]">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-neutral-900">Risposta</h3>
-                <div className="flex items-center gap-3 text-xs text-neutral-500">
-                  <span>Query: <strong className="text-neutral-700">{count}</strong></span>
-                  <span>Latency: <strong className="text-neutral-700">{latencyMs ? `${latencyMs} ms` : "—"}</strong></span>
-                  <button onClick={copyAnswer} className="rounded-lg border border-neutral-300 px-2 py-1 hover:bg-neutral-50">Copia</button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  Errore: {error}
-                </div>
-              )}
-
-              {!error && !loading && !answer && (
-                <p className="mt-6 text-neutral-500 text-sm">Fai una domanda oppure usa un preset qui sopra. La risposta apparirà in questo riquadro con la narrativa “Tecnaria”.</p>
-              )}
-
-              {loading && (
-                <div className="mt-8 flex items-center gap-3 text-neutral-600">
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-300 border-t-[var(--tec-orange)]"></div>
-                  Elaboro la risposta…
-                </div>
-              )}
-
-              {!loading && answer && (
-                <article className="prose prose-neutral max-w-none mt-4">
-                  <p className="whitespace-pre-wrap leading-relaxed">{answer}</p>
-                </article>
-              )}
-            </div>
-
-            {/* Domande rapide */}
-            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-              <h3 className="font-semibold text-neutral-900">Domande rapide</h3>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {presets.map((p) => (
-                  <button key={p.label} onClick={() => { setQuery(p.q); ask(p.q); }}
-                    className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-sm hover:bg-neutral-100">
-                    {p.q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
-        </div>
-      </main>
-
-      {/* FOOTER */}
-      <footer className="mt-10 border-t border-neutral-200 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded bg-[var(--tec-black)] grid place-items-center">
-              <span className="text-white font-black">T</span>
-            </div>
-            <span className="text-sm text-neutral-600">Tecnaria S.p.A. — Bassano del Grappa (VI)</span>
-          </div>
-          <div className="text-xs text-neutral-500">API: <code>{baseUrl}</code></div>
-        </div>
-      </footer>
+UI_HTML = r"""
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Tecnaria Sinapsi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{ --tec-orange:#F26622; --tec-black:#000000; --tec-white:#FFFFFF; }
+    .brand-grad{ background: linear-gradient(180deg,var(--tec-black),var(--tec-orange)); }
+  </style>
+</head>
+<body class="bg-[var(--tec-white)] text-neutral-900">
+  <!-- HEADER -->
+  <header class="sticky top-0 z-30 border-b border-neutral-200 bg-white/90 backdrop-blur">
+    <div class="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
+      <div class="w-9 h-9 rounded bg-[var(--tec-black)] grid place-items-center">
+        <span class="text-white font-black text-xl">T</span>
+      </div>
+      <div>
+        <h1 class="text-xl font-semibold">Tecnaria Sinapsi</h1>
+        <p class="text-xs text-neutral-500">Risposte tecniche · Voce ufficiale Tecnaria</p>
+      </div>
+      <div class="ml-auto flex items-center gap-3">
+        <span id="badge" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-200 text-neutral-700">
+          <span id="dot" class="h-2.5 w-2.5 rounded-full bg-neutral-400"></span><span id="state">Checking…</span>
+        </span>
+        <a id="docsLink" target="_blank" class="text-sm text-neutral-600 hover:text-neutral-900 underline">API Docs</a>
+      </div>
     </div>
-  );
-}
+  </header>
+
+  <!-- HERO -->
+  <section class="brand-grad text-white">
+    <div class="mx-auto max-w-6xl px-4 py-10">
+      <h2 class="text-3xl md:text-4xl font-semibold">Trova la soluzione, in linguaggio Tecnaria.</h2>
+      <p class="mt-2 text-white/80">CTF, GTS, Diapason, Mini-Cem-E, SPIT P560, CTL.</p>
+
+      <form id="form" class="mt-6 flex flex-col md:flex-row gap-3">
+        <input id="q" placeholder="Scrivi la tua domanda…" class="flex-1 rounded-xl border border-white/20 bg-white/95 px-4 py-3 text-neutral-900 placeholder-neutral-500 focus:outline-none focus:ring-4 focus:ring-white/30"/>
+        <button id="askBtn" class="rounded-xl bg-[var(--tec-black)] px-5 py-3 font-medium text-white shadow hover:opacity-90">Chiedi a Sinapsi</button>
+      </form>
+
+      <div class="mt-4 flex flex-wrap gap-2 text-sm">
+        <button data-preset="Si può usare una qualsiasi chiodatrice per i CTF?" class="rounded-full bg-white/15 px-3 py-1.5 hover:bg-white/25">CTF · Chiodatrice</button>
+        <button data-preset="CTL: serve il preforo su abete antico?" class="rounded-full bg-white/15 px-3 py-1.5 hover:bg-white/25">CTL · Preforo abete</button>
+        <button data-preset="Diapason vs soletta collaborante tradizionale?" class="rounded-full bg-white/15 px-3 py-1.5 hover:bg-white/25">Diapason · Confronto</button>
+        <button data-preset="Taratura P560 su IPE 300 con lamiera 6/10" class="rounded-full bg-white/15 px-3 py-1.5 hover:bg-white/25">P560 · Taratura IPE 300</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- BODY -->
+  <main class="mx-auto max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <aside class="lg:col-span-1 space-y-6">
+      <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <h3 class="font-semibold">Impostazioni</h3>
+        <label class="mt-2 block text-xs text-neutral-600">Base URL servizio</label>
+        <input id="baseUrl" class="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"/>
+        <div class="mt-2 text-xs text-neutral-600">Rules: <span id="rul">n/d</span> · Router: <span id="rou">n/d</span> · Catalog: <span id="cat">n/d</span></div>
+      </div>
+      <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <h3 class="font-semibold">Domande rapide</h3>
+        <div id="quick" class="mt-3 flex flex-wrap gap-2 text-sm"></div>
+      </div>
+    </aside>
+
+    <section class="lg:col-span-2 space-y-6">
+      <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm min-h-[260px]">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Risposta</h3>
+          <div class="flex items-center gap-3 text-xs text-neutral-500">
+            <span>Latency: <strong id="lat">—</strong></span>
+            <button id="copy" class="rounded-lg border border-neutral-300 px-2 py-1 hover:bg-neutral-50">Copia</button>
+          </div>
+        </div>
+        <div id="err" class="hidden mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+        <article id="ans" class="prose prose-neutral max-w-none mt-4 whitespace-pre-wrap"></article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mt-10 border-t border-neutral-200 bg-white">
+    <div class="mx-auto max-w-6xl px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded bg-[var(--tec-black)] grid place-items-center"><span class="text-white font-black">T</span></div>
+        <span class="text-sm text-neutral-600">Tecnaria S.p.A. — Bassano del Grappa (VI)</span>
+      </div>
+      <div class="text-xs text-neutral-500">API: <code id="urlShow"></code></div>
+    </div>
+  </footer>
+
+  <script>
+    const $ = (s)=>document.querySelector(s);
+    const $$ = (s)=>Array.from(document.querySelectorAll(s));
+
+    // default API
+    const DEFAULT_BASE_URL = "https://tecnaria-v3.onrender.com";
+    const baseUrlInput = $("#baseUrl");
+    baseUrlInput.value = DEFAULT_BASE_URL;
+    $("#urlShow").textContent = DEFAULT_BASE_URL;
+    $("#docsLink").href = DEFAULT_BASE_URL + "/docs";
+
+    async function healthPing(){
+      try{
+        const res = await fetch(baseUrlInput.value + "/health");
+        const j = await res.json();
+        $("#state").textContent = j.status === "ok" ? "Online" : "Offline";
+        $("#badge").className = "inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium " + (j.status==="ok"?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700");
+        $("#dot").className = "h-2.5 w-2.5 rounded-full " + (j.status==="ok"?"bg-emerald-500":"bg-red-500");
+        $("#rul").textContent = String(j.rules);
+        $("#rou").textContent = String(j.router);
+        $("#cat").textContent = String(j.catalog);
+      }catch(e){
+        $("#state").textContent = "Offline";
+      }
+    }
+
+    async function ask(q){
+      $("#err").classList.add("hidden");
+      $("#ans").textContent = "";
+      const t0 = performance.now();
+      try{
+        const res = await fetch(baseUrlInput.value + "/ask?q=" + encodeURIComponent(q));
+        if(!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        const t1 = performance.now();
+        $("#lat").textContent = Math.round(t1 - t0) + " ms";
+        $("#ans").textContent = data.answer || "";
+      }catch(e){
+        $("#err").textContent = "Errore: " + (e.message || "imprevisto");
+        $("#err").classList.remove("hidden");
+      }
+    }
+
+    // form
+    $("#form").addEventListener("submit", (ev)=>{
+      ev.preventDefault();
+      const q = $("#q").value.trim();
+      if(q) ask(q);
+    });
+
+    // presets
+    $$(\"[data-preset]\").forEach(b=>{
+      b.addEventListener(\"click\", ()=>{ $("#q").value = b.dataset.preset; ask(b.dataset.preset); });
+    });
+
+    // quick list replicata
+    const quickQs = [
+      "CTF: quanti chiodi per connettore?",
+      "CTL: spessore minimo soletta collaborante?",
+      "GTS: controlli di compressione in camicia?",
+      "Diapason: stratigrafia tipica?",
+      "Mini-Cem-E: posa su cls vecchio?",
+      "P560: quali propulsori usare su IPE?"
+    ];
+    const quick = $("#quick");
+    quickQs.forEach(q=>{
+      const btn = document.createElement("button");
+      btn.className = "rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 hover:bg-neutral-100";
+      btn.textContent = q;
+      btn.onclick = ()=>{ $("#q").value = q; ask(q); };
+      quick.appendChild(btn);
+    });
+
+    // copy
+    $("#copy").addEventListener("click", async ()=>{
+      try{
+        await navigator.clipboard.writeText($("#ans").textContent);
+        alert("Risposta copiata negli appunti");
+      }catch(e){ alert("Impossibile copiare"); }
+    });
+
+    // reagisci a cambio baseUrl
+    baseUrlInput.addEventListener("change", ()=>{
+      $("#urlShow").textContent = baseUrlInput.value;
+      $("#docsLink").href = baseUrlInput.value + "/docs";
+      healthPing();
+    });
+
+    // avvio
+    healthPing();
+  </script>
+</body>
+</html>
+"""
+
+@app.get("/ui", response_class=HTMLResponse)
+def ui():
+    return HTMLResponse(UI_HTML, status_code=200)
