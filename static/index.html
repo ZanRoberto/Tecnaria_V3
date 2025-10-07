@@ -1,189 +1,289 @@
-<!doctype html>
-<html lang="it">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tecnaria QA Bot</title>
-  <meta name="description" content="Assistente Tecnaria: domande su CTF, P560, Diapason, CTL e documentazione ufficiale." />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="icon" href="/static/favicon.ico" />
-  <style>
-    :root{
-      /* Palette “on brand” (regolabile) */
-      --brand:#2e7d32;         /* verde principale */
-      --brand-600:#246428;     /* verde scuro */
-      --brand-50:#eaf4ec;      /* verde chiarissimo bg */
-      --accent:#f59f00;        /* ambra per highlight */
-      --ink:#111111;           /* testo */
-      --muted:#667085;         /* testo attenuato */
-      --border:#e6e7e8;        /* bordi leggeri */
-      --card:#ffffff;          /* card bg */
-      --canvas:#f7f7f7;        /* page bg */
-      --shadow:0 10px 30px rgba(0,0,0,.08);
-    }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --ink:#f6f7f8;
-        --muted:#aeb3b8;
-        --border:#2a2d31;
-        --card:#151718;
-        --canvas:#0f1112;
-        --shadow:0 10px 30px rgba(0,0,0,.35);
-        --brand-50:#0d1a10;
+import React, { useEffect, useMemo, useRef, useState } from "react";
+
+/**
+ * Tecnaria Sinapsi — Interfaccia Cliente
+ * Single-file React component (TailwindCSS) che chiama le API FastAPI esposte da app.py
+ * Endpoint richiesti: /health, /ask?q=...
+ *
+ * ✅ Tutti i pulsanti sono funzionanti
+ * ✅ Colori Tecnaria (nero / arancio / bianco) — modificabili via CSS vars
+ * ✅ Ricerca con invio/Enter o click
+ * ✅ Preset famiglie e domande rapide
+ * ✅ Stato servizio (health), tempo di risposta e conteggio ricerche sessione
+ * ✅ Copia risposta negli appunti
+ * ✅ Gestione errori, loader, suggerimenti
+ *
+ * ISTRUZIONI
+ * - Assicurati di avere Tailwind attivo nel progetto (o includi CDN in un index.html)
+ * - Inserisci il LOGO nella variabile logoSrc (PNG/SVG) oppure aggiorna il path statico
+ * - Se vuoi cambiare il backend, modifica BASE_URL qui sotto oppure tramite il campo impostazioni
+ */
+
+// === CONFIG DI DEFAULT ===
+const DEFAULT_BASE_URL = "https://tecnaria-v3.onrender.com"; // Cambiabile da UI
+const LOGO_SRC = "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/terraria.svg"; // Sostituisci con il logo Tecnaria (PNG/SVG) se disponibile
+
+export default function TecnariaSinapsiApp() {
+  // Stato base
+  const [baseUrl, setBaseUrl] = useState<string>(DEFAULT_BASE_URL);
+  const [query, setQuery] = useState<string>("");
+  const [answer, setAnswer] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const [health, setHealth] = useState<{ status?: string; rules?: boolean; router?: boolean; catalog?: boolean } | null>(null);
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [count, setCount] = useState<number>(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Colori Tecnaria come CSS variables (nero/arancio/bianco)
+  const theme = useMemo(() => ({
+    orange: "#F26622", // regola se vuoi un match più preciso al brand
+    black: "#000000",
+    white: "#FFFFFF",
+  }), []);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--tec-orange", theme.orange);
+    document.documentElement.style.setProperty("--tec-black", theme.black);
+    document.documentElement.style.setProperty("--tec-white", theme.white);
+  }, [theme]);
+
+  // Health check all'avvio
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        const res = await fetch(`${baseUrl}/health`);
+        const json = await res.json();
+        setHealth(json);
+      } catch (e: any) {
+        setHealth({ status: "down" });
       }
+    };
+    fetchHealth();
+  }, [baseUrl]);
+
+  const presets: { label: string; q: string }[] = [
+    { label: "CTF · Chiodatrice", q: "Si può usare una qualsiasi chiodatrice per i CTF?" },
+    { label: "CTL · Preforo abete", q: "CTL: serve il preforo su abete antico?" },
+    { label: "Diapason · Confronto", q: "Diapason vs soletta collaborante tradizionale?" },
+    { label: "P560 · Taratura IPE 300", q: "Taratura P560 su IPE 300 con lamiera 6/10" },
+    { label: "GTS · Controllo compressione", q: "GTS: come verifico la corretta compressione delle spine nel manicotto?" },
+    { label: "Mini-Cem-E · Interassi", q: "Mini-Cem-E: interassi consigliati in camicia sottile?" },
+  ];
+
+  const families: { code: string; color?: string; sampleQs: string[] }[] = [
+    { code: "CTF", sampleQs: ["CTF: quanti chiodi per connettore?", "CTF su lamiera grecata: cosa cambia?"] },
+    { code: "CTL", sampleQs: ["CTL: verifiche su legni antichi?", "CTL: spessore minimo soletta?"] },
+    { code: "GTS", sampleQs: ["GTS: giunzione in camicia su pilastro?", "GTS: coppie di serraggio consigliate?"] },
+    { code: "DIAPASON", sampleQs: ["Diapason: dove conviene?", "Diapason: stratigrafia tipica?"] },
+    { code: "MINI-CEM-E", sampleQs: ["Mini-Cem-E: posa su cls vecchio?", "Mini-Cem-E: verifiche a campione?"] },
+    { code: "SPIT-P560", sampleQs: ["P560: quali propulsori?", "P560: controlli di infissione?"] },
+  ];
+
+  const ask = async (q: string) => {
+    if (!q || !q.trim()) return;
+    setError("");
+    setLoading(true);
+    setAnswer("");
+    setLatencyMs(null);
+    const t0 = performance.now();
+    try {
+      const res = await fetch(`${baseUrl}/ask?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const t1 = performance.now();
+      setLatencyMs(Math.round(t1 - t0));
+      setAnswer(data?.answer || "");
+      setCount((c) => c + 1);
+    } catch (e: any) {
+      setError(e?.message || "Errore imprevisto");
+    } finally {
+      setLoading(false);
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";
-      color:var(--ink); background:var(--canvas);
+  };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    ask(query);
+  };
+
+  const copyAnswer = async () => {
+    try {
+      if (answer) {
+        await navigator.clipboard.writeText(answer);
+        alert("Risposta copiata negli appunti ");
+      }
+    } catch (e) {
+      alert("Impossibile copiare negli appunti");
     }
-    .shell{max-width:960px; margin-inline:auto; padding:24px;}
-    header{
-      position:sticky; top:0; z-index:10;
-      background:linear-gradient(180deg,var(--brand-50),transparent);
-      backdrop-filter:saturate(150%) blur(2px);
-      border-bottom:1px solid var(--border);
-    }
-    .nav{display:flex; align-items:center; gap:14px; padding:14px 24px;}
-    .brand{display:flex; align-items:center; gap:10px; text-decoration:none}
-    .brand img{height:28px; width:auto; display:block;}
-    .brand .title{font-weight:700; letter-spacing:.2px; color:var(--brand-600);}
+  };
 
-    .grid{display:grid; grid-template-columns:1fr; gap:18px;}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow);}
-
-    .ask{padding:18px;}
-    .row{display:flex; gap:10px; align-items:center}
-    .input{flex:1; display:flex; align-items:center; gap:8px; background:#fff0; border:1px solid var(--border); border-radius:12px; padding:10px 12px}
-    .input input{flex:1; border:none; outline:none; background:transparent; color:var(--ink); font-size:16px}
-    .btn{border:none; outline:none; cursor:pointer; border-radius:12px; padding:12px 16px; font-weight:600;}
-    .btn-primary{background:var(--brand); color:white;}
-    .btn-primary[disabled]{opacity:.6; cursor:not-allowed}
-
-    .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
-    .chip{border:1px solid var(--border); border-radius:999px; padding:8px 12px; font-size:14px; color:var(--muted); cursor:pointer; user-select:none}
-    .chip:hover{border-color:var(--brand); color:var(--brand)}
-
-    .surface{padding:18px}
-    .status{display:none; align-items:center; gap:8px; color:var(--muted); font-size:14px}
-    .status.show{display:flex}
-    .dot{width:8px; height:8px; border-radius:50%; background:var(--accent); animation:pulse 1s infinite ease-in-out}
-    @keyframes pulse{0%{opacity:.35} 50%{opacity:1} 100%{opacity:.35}}
-
-    .result{display:block;}
-    .card .toolbar{display:flex; gap:8px; justify-content:flex-end; border-top:1px solid var(--border); padding:12px 16px}
-    .tool{border:1px solid var(--border); background:transparent; color:var(--ink); border-radius:10px; padding:8px 12px; cursor:pointer}
-    .tool:hover{border-color:var(--brand); color:var(--brand)}
-
-    footer{opacity:.8; color:var(--muted); font-size:12px; text-align:center; padding:18px}
-  </style>
-</head>
-<body>
-  <header>
-    <div class="nav shell">
-      <a class="brand" href="#" aria-label="Tecnaria home">
-        <img src="/static/brand/tecnaria-logo.svg" alt="Tecnaria" onerror="this.replaceWith(Object.assign(document.createElement('strong'),{textContent:'TECNARIA'}))">
-        <span class="title">Tecnaria – Assistente Tecnico</span>
-      </a>
-    </div>
-  </header>
-
-  <main class="shell grid">
-    <section class="card ask" aria-label="Invia domanda">
-      <div class="row">
-        <div class="input" role="search">
-          <input id="q" type="text" placeholder="Fai una domanda (es. Serve il patentino per la P560?)" autocomplete="off" autofocus>
+  return (
+    <div className="min-h-screen bg-[var(--tec-white)]" style={{ fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'" }}>
+      {/* HEADER */}
+      <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded bg-[var(--tec-black)] grid place-items-center">
+              <span className="text-white font-black text-xl">T</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold leading-tight text-neutral-900">Tecnaria Sinapsi</h1>
+              <p className="text-xs text-neutral-500">Risposte tecniche. Voce ufficiale Tecnaria.</p>
+            </div>
+          </div>
+          <div className="ml-auto flex items-center gap-3">
+            <span className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium ${health?.status === 'ok' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+              <span className={`h-2.5 w-2.5 rounded-full ${health?.status === 'ok' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+              {health?.status === 'ok' ? 'Online' : 'Offline'}
+            </span>
+            <a href={`${baseUrl}/docs`} target="_blank" className="text-sm text-neutral-600 hover:text-neutral-900 underline">API Docs</a>
+          </div>
         </div>
-        <!-- type='button' evita submit del form -->
-        <button id="go" type="button" class="btn btn-primary">Chiedi</button>
-      </div>
-      <div class="chips" aria-label="Esempi di domanda">
-        <span class="chip" data-q="Differenza CTF e Diapason">Differenza CTF e Diapason</span>
-        <span class="chip" data-q="Quanti CTF al m²">Quanti CTF al m²</span>
-        <span class="chip" data-q="Serve il patentino per la P560?">Serve il patentino per la P560?</span>
-      </div>
-    </section>
+      </header>
 
-    <section id="answerCard" class="card surface" aria-live="polite" aria-busy="false">
-      <div id="status" class="status"><span class="dot"></span><span>Elaborazione in corso…</span></div>
-      <div id="result" class="result"></div>
-      <div class="toolbar">
-        <button class="tool" id="copyBtn" title="Copia risposta">Copia</button>
-      </div>
-    </section>
-  </main>
+      {/* HERO / SEARCH */}
+      <section className="bg-gradient-to-b from-[var(--tec-black)] to-[var(--tec-orange)]">
+        <div className="mx-auto max-w-6xl px-4 py-10 text-white">
+          <h2 className="text-3xl md:text-4xl font-semibold">Trova la soluzione, in linguaggio Tecnaria.</h2>
+          <p className="mt-2 text-white/80">Domande su CTF, GTS, Diapason, Mini‑Cem‑E, SPIT P560, CTL? Scrivi e ottieni la risposta completa.</p>
 
-  <footer>
-    <div class="shell">© <span id="year"></span> Tecnaria S.p.A. – Questo assistente sintetizza contenuti ufficiali e regole Sinapsi.</div>
-  </footer>
+          <form onSubmit={onSubmit} className="mt-6 flex flex-col md:flex-row gap-3">
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Scrivi la tua domanda…"
+              className="flex-1 rounded-xl border border-white/20 bg-white/95 px-4 py-3 text-neutral-900 placeholder-neutral-500 focus:outline-none focus:ring-4 focus:ring-white/30"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-xl bg-[var(--tec-black)] px-5 py-3 font-medium text-white shadow hover:opacity-90 disabled:opacity-60"
+            >
+              {loading ? "Sto cercando…" : "Chiedi a Sinapsi"}
+            </button>
+          </form>
 
-  <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const qEl = document.getElementById('q');
-    const goEl = document.getElementById('go');
-    const resEl = document.getElementById('result');
-    const statusEl = document.getElementById('status');
-    const answerCardEl = document.getElementById('answerCard');
-    const copyBtn = document.getElementById('copyBtn');
+          <div className="mt-4 flex flex-wrap gap-2">
+            {presets.map((p) => (
+              <button key={p.label} onClick={() => { setQuery(p.q); ask(p.q); }}
+                className="rounded-full bg-white/15 px-3 py-1.5 text-sm text-white hover:bg-white/25">
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
-    document.getElementById('year').textContent = new Date().getFullYear();
+      {/* BODY */}
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        {/* PANNELLO SINISTRA: Famiglie & Impostazioni */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <aside className="lg:col-span-1 space-y-6">
+            {/* Famiglie */}
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+              <h3 className="font-semibold text-neutral-900">Famiglie</h3>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {families.map((f) => (
+                  <div key={f.code} className="rounded-xl border border-neutral-200 p-3 hover:border-neutral-400">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{f.code}</span>
+                      <button onClick={() => {
+                        const q = f.sampleQs[0]; setQuery(q); ask(q);
+                      }} className="text-xs underline hover:opacity-80">Chiedi</button>
+                    </div>
+                    <ul className="mt-2 list-disc pl-4 text-xs text-neutral-600">
+                      {f.sampleQs.map((q) => (
+                        <li key={q} className="mb-1">
+                          <button onClick={() => { setQuery(q); ask(q); }} className="hover:text-neutral-900 underline decoration-dotted">
+                            {q}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-    function setLoading(isLoading){
-      answerCardEl.setAttribute('aria-busy', String(isLoading));
-      statusEl.classList.toggle('show', isLoading);
-      goEl.disabled = isLoading;
-    }
+            {/* Impostazioni backend */}
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+              <h3 className="font-semibold text-neutral-900">Impostazioni</h3>
+              <label className="mt-2 block text-xs text-neutral-600">Base URL servizio</label>
+              <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm" />
+              <div className="mt-3 flex items-center gap-2 text-xs text-neutral-600">
+                <span className={`h-2.5 w-2.5 rounded-full ${health?.status === 'ok' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                <span>Stato: {health?.status || "n/d"}</span>
+              </div>
+              <div className="mt-2 text-xs text-neutral-600">Rules: {String(health?.rules)} · Router: {String(health?.router)} · Catalog: {String(health?.catalog)}</div>
+            </div>
+          </aside>
 
-    async function ask(){
-      const q = (qEl.value || '').trim();
-      if(!q){ qEl.focus(); return; }
-      setLoading(true);
-      resEl.innerHTML = '';
-      try{
-        const r = await fetch('/api/ask',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({q})
-        });
-        if(!r.ok){ throw new Error('HTTP '+r.status); }
-        const data = await r.json();
-        if(!data.ok){ throw new Error(data.error || 'Errore'); }
-        resEl.innerHTML = data.html; // l'HTML è generato dal backend
-        answerCardEl.scrollIntoView({behavior:'smooth', block:'start'});
-      }catch(err){
-        resEl.innerHTML = `<div style="color:#b42318">Si è verificato un errore. Riprova più tardi. <small>${(err&&err.message)||''}</small></div>`;
-      }finally{
-        setLoading(false);
-      }
-    }
+          {/* PANNELLO DESTRA: Risultato */}
+          <section className="lg:col-span-2 space-y-6">
+            <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm min-h-[260px]">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-neutral-900">Risposta</h3>
+                <div className="flex items-center gap-3 text-xs text-neutral-500">
+                  <span>Query: <strong className="text-neutral-700">{count}</strong></span>
+                  <span>Latency: <strong className="text-neutral-700">{latencyMs ? `${latencyMs} ms` : "—"}</strong></span>
+                  <button onClick={copyAnswer} className="rounded-lg border border-neutral-300 px-2 py-1 hover:bg-neutral-50">Copia</button>
+                </div>
+              </div>
 
-    // invio con bottone o ENTER
-    goEl.addEventListener('click', ask);
-    qEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ ask(); }});
+              {error && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  Errore: {error}
+                </div>
+              )}
 
-    // chips di esempio
-    document.querySelectorAll('.chip').forEach(ch=>{
-      ch.addEventListener('click',()=>{
-        qEl.value = ch.getAttribute('data-q') || ch.textContent.trim();
-        ask();
-      });
-    });
+              {!error && !loading && !answer && (
+                <p className="mt-6 text-neutral-500 text-sm">Fai una domanda oppure usa un preset qui sopra. La risposta apparirà in questo riquadro con la narrativa “Tecnaria”.</p>
+              )}
 
-    // copia risposta (testo) — estrae innerText dal contenitore generato
-    copyBtn.addEventListener('click', async ()=>{
-      try{
-        const tmp = document.createElement('div');
-        tmp.innerHTML = resEl.innerHTML;
-        const text = tmp.innerText.trim();
-        await navigator.clipboard.writeText(text);
-        copyBtn.textContent = 'Copiato!';
-        setTimeout(()=> copyBtn.textContent = 'Copia', 1200);
-      }catch{}
-    });
-  });
-  </script>
-</body>
-</html>
+              {loading && (
+                <div className="mt-8 flex items-center gap-3 text-neutral-600">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-300 border-t-[var(--tec-orange)]"></div>
+                  Elaboro la risposta…
+                </div>
+              )}
+
+              {!loading && answer && (
+                <article className="prose prose-neutral max-w-none mt-4">
+                  <p className="whitespace-pre-wrap leading-relaxed">{answer}</p>
+                </article>
+              )}
+            </div>
+
+            {/* Domande rapide */}
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+              <h3 className="font-semibold text-neutral-900">Domande rapide</h3>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {presets.map((p) => (
+                  <button key={p.label} onClick={() => { setQuery(p.q); ask(p.q); }}
+                    className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-sm hover:bg-neutral-100">
+                    {p.q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      {/* FOOTER */}
+      <footer className="mt-10 border-t border-neutral-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded bg-[var(--tec-black)] grid place-items-center">
+              <span className="text-white font-black">T</span>
+            </div>
+            <span className="text-sm text-neutral-600">Tecnaria S.p.A. — Bassano del Grappa (VI)</span>
+          </div>
+          <div className="text-xs text-neutral-500">API: <code>{baseUrl}</code></div>
+        </div>
+      </footer>
+    </div>
+  );
+}
