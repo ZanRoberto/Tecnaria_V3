@@ -1,589 +1,524 @@
-# app.py — Tecnaria QA Bot (WEB-first, IT-only, hard guards + fonti compatte) — v70
-import os, re, json, time, html, unicodedata
-from pathlib import Path
-from typing import List, Dict, Any, Tuple
+# app.py
+# Tecnaria – QA Bot (web-first, IT-only, sinapsi assist)
+#
+# Requisiti (requirements.txt):
+# fastapi==0.115.0
+# uvicorn[standard]==0.30.6
+# gunicorn==21.2.0
+# requests==2.32.3
+# beautifulsoup4==4.12.3
+# jinja2==3.1.4
+#
+# STRUTTURA:
+# - GET  /         : UI
+# - POST /api/ask  : core Q&A
+# - GET  /health   : diagnostica
+#
+# NOTE IMPORTANTI:
+# - Il JS è in una variabile separata (JS_APP) per evitare errori con gli f-string.
+# - Le graffe { } dentro il JS non vengono interpretate da Python.
+# - L’algoritmo è web-first, con filtro domini Tecnaria e lingua IT.
+# - Niente “snippet backfill” automatico nel testo risposta: le fonti restano link.
+# - Sinapsi è solo “assist” (integra quando il web è corto), senza override.
+
+import os
+import json
+import re
+import html
+import time
+from typing import List, Dict, Any, Optional, Tuple
+
 import requests
 from bs4 import BeautifulSoup
-from fastapi import FastAPI, Body, Header, HTTPException
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
-APP_TITLE = "Tecnaria – Assistente Tecnico"
-app = FastAPI(title=APP_TITLE)
+# -----------------------------------------------------------------------------
+# CONFIG
+# -----------------------------------------------------------------------------
 
-# =================== CONFIG ===================
-STATIC_DIR   = os.environ.get("STATIC_DIR", "static")
-SINAPSI_FILE = os.environ.get("SINAPSI_FILE", os.path.join(STATIC_DIR, "data", "sinapsi_rules.json"))
+def getenv_bool(name: str, default: bool) -> bool:
+    v = os.getenv(name)
+    if v is None:
+        return default
+    return str(v).strip().lower() in {"1", "true", "yes", "y", "on"}
 
-BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "").strip()
-PREFERRED_DOMAINS = [d.strip() for d in os.environ.get("PREFERRED_DOMAINS", "tecnaria.com,www.tecnaria.com").split(",") if d.strip()]
-
-WEB_RESULTS_COUNT_PREFERRED = int(os.environ.get("WEB_RESULTS_COUNT_PREFERRED", "12"))
-WEB_RESULTS_COUNT_FALLBACK  = int(os.environ.get("WEB_RESULTS_COUNT_FALLBACK",  "0"))
-WEB_FRESHNESS_DAYS          = os.environ.get("WEB_FRESHNESS_DAYS", "365d")
-LANG_PREFERRED              = os.environ.get("LANG_PREFERRED", "it").strip().lower()
-DISAMBIG_STRICT             = os.environ.get("DISAMBIG_STRICT", "true").strip().lower() in ("1","true","yes")
-
-ANSWER_MODE        = os.environ.get("ANSWER_MODE", "full").strip().lower()
-MAX_ANSWER_CHARS   = int(os.environ.get("MAX_ANSWER_CHARS", "2000"))
-FETCH_TECNARIA     = os.environ.get("FETCH_TECNARIA", "true").strip().lower() in ("1","true","yes")
-HTTP_TIMEOUT       = float(os.environ.get("HTTP_TIMEOUT", "8.0"))
-
-SOURCES_SHOW_SNIPPETS = os.environ.get("SOURCES_SHOW_SNIPPETS", "false").strip().lower() in ("1","true","yes")
-SOURCES_MAX           = int(os.environ.get("SOURCES_MAX", "3"))              # << NEW: max 3 fonti
-SOURCES_COLLAPSED     = os.environ.get("SOURCES_COLLAPSED","true").lower() in ("1","true","yes")  # << NEW
-
-ALLOW_SINAPSI_OVERRIDE = os.environ.get("ALLOW_SINAPSI_OVERRIDE", "false").strip().lower() in ("1","true","yes")
-SINAPSI_MODE = os.environ.get("SINAPSI_MODE", "off").strip().lower()  # off|assist|fallback
-MIN_WEB_OK_CHARS = int(os.environ.get("MIN_WEB_OK_CHARS", "200"))
-MIN_WEB_OK_SENTENCES = int(os.environ.get("MIN_WEB_OK_SENTENCES", "2"))
-
-ACCEPT_EN_BACKFILL = os.environ.get("ACCEPT_EN_BACKFILL", "true").strip().lower() in ("1","true","yes")
-USE_SNIPPET_BACKFILL = os.environ.get("USE_SNIPPET_BACKFILL", "true").strip().lower() in ("1","true","yes")
-
-ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "").strip()
-
-# =================== STATO ===================
-SINAPSI: Dict[str, Any] = {"rules": [], "exclude_any_q": [r"\bprezz\w*", r"\bcost\w*", r"\bpreventiv\w*", r"\boffert\w*"]}
-SINAPSI_COMPILED: List[Dict[str, Any]] = []
-
-# =================== UTILS ===================
-def _safe_read(path: str) -> str:
-    p = Path(path)
+def getenv_int(name: str, default: int) -> int:
+    v = os.getenv(name)
+    if v is None:
+        return default
     try:
-        return p.read_text(encoding="utf-8", errors="ignore") if p.exists() else ""
-    except Exception:
-        return ""
+        return int(v)
+    except:
+        return default
 
-def _norm(s: str) -> str:
-    s = (s or "").strip().lower()
-    s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
-    s = s.replace("·", ". ")
-    s = re.sub(r"[^\w\s/.\-]", " ", s)
-    return re.sub(r"\s+", " ", s).strip()
+APP_NAME = "Tecnaria – Assistente Tecnico"
 
-def _strip_html(s: str) -> str:
-    if not s: return ""
+BRAVE_API_KEYS = [k.strip() for k in os.getenv("BRAVE_API_KEY", "").split(",") if k.strip()]
+PREFERRED_DOMAINS = [d.strip() for d in os.getenv("PREFERRED_DOMAINS", "tecnaria.com,www.tecnaria.com").split(",") if d.strip()]
+LANG_PREFERRED = os.getenv("LANG_PREFERRED", "it").lower()
+
+ACCEPT_EN_BACKFILL = getenv_bool("ACCEPT_EN_BACKFILL", False)   # False = no inglese nel corpo risposta
+USE_SNIPPET_BACKFILL = getenv_bool("USE_SNIPPET_BACKFILL", False)  # False = non incollare snippet nella risposta
+
+MIN_WEB_OK_CHARS = getenv_int("MIN_WEB_OK_CHARS", 80)
+MIN_WEB_OK_SENTENCES = getenv_int("MIN_WEB_OK_SENTENCES", 1)
+
+MAX_ANSWER_CHARS = getenv_int("MAX_ANSWER_CHARS", 2000)
+
+SOURCES_MAX = getenv_int("SOURCES_MAX", 3)
+SOURCES_SHOW_SNIPPETS = getenv_bool("SOURCES_SHOW_SNIPPETS", False)
+SOURCES_COLLAPSED = getenv_bool("SOURCES_COLLAPSED", True)
+
+SINAPSI_FILE = os.getenv("SINAPSI_FILE", "static/data/sinapsi_rules.json")
+SINAPSI_MODE = os.getenv("SINAPSI_MODE", "assist").lower()  # off | assist | strict
+ALLOW_SINAPSI_OVERRIDE = getenv_bool("ALLOW_SINAPSI_OVERRIDE", False)
+
+DISAMBIG_STRICT = getenv_bool("DISAMBIG_STRICT", True)
+
+WEB_RESULTS_COUNT_PREFERRED = getenv_int("WEB_RESULTS_COUNT_PREFERRED", 6)
+REFINE_ALWAYS = getenv_bool("REFINE_ALWAYS", False)
+DEBUG = getenv_bool("DEBUG", False)
+
+EXCLUDE_ANY_Q = [
+    r"\bprezz\w*", r"\bcost\w*", r"\bpreventiv\w*", r"\boffert\w*"
+]
+
+# -----------------------------------------------------------------------------
+# SINAPSI RULES (FACOLTATIVO – assist)
+# -----------------------------------------------------------------------------
+
+def load_sinapsi_rules(path: str) -> List[Dict[str, Any]]:
     try:
-        return BeautifulSoup(s, "html.parser").get_text(" ", strip=True)
-    except Exception:
-        return re.sub(r"<[^>]+>", " ", s)
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, dict) and "rules" in data:
+                return data.get("rules", [])
+            if isinstance(data, list):
+                return data
+    except Exception as e:
+        if DEBUG:
+            print("Sinapsi load error:", e)
+    return []
 
-def _sentences(text: str) -> List[str]:
-    t = (_strip_html(text or "")).replace("·", ". ")
-    parts = re.split(r"(?<=[.!?])\s+|[\n\r]+|;\s+", t)
-    out = []
-    for p in parts:
-        s = p.strip()
-        if 8 <= len(s) <= 240:
-            out.append(s)
-    return out
+SINAPSI_RULES = load_sinapsi_rules(SINAPSI_FILE)
 
-def _content_words(s: str) -> List[str]:
-    stop = {"il","lo","la","i","gli","le","un","una","di","del","della","dei","degli","delle","per","con","da","a","al","ai","agli","alla","alle","su","nel","nella","nelle","non","è","e","o","che","quale","d","l","all","allo","agli","in"}
-    toks = [t for t in re.split(r"[^\w]+", _norm(s)) if len(t) > 3 and t not in stop]
-    return toks
+def sinapsi_assist(q: str) -> Optional[str]:
+    """
+    Ritorna una frase di supporto se trova una regola semplice.
+    Non fa override completo: aggiunge una riga di rinforzo coerente.
+    """
+    ql = q.lower()
 
-def _signature(s: str) -> str:
-    toks = _content_words(s)
-    if not toks: return _norm(s)
-    boost = {"p560","ctf","ctl","diapason","lamiera","grecata","hsbr","legno","acciaio","calcestruzzo","solaio","tecnaria","chiod","patent","metro","quadrato","mq","m2","m²"}
-    toks = sorted(toks, key=lambda w: (w not in boost, w))[:8]
-    return " ".join(toks)
+    # Heuristic: patentino P560
+    if "p560" in ql and ("patentino" in ql or "licenza" in ql):
+        return "Per la SPIT P560 non è richiesto alcun patentino: è a tiro indiretto (classe A). Restano obbligatori DPI e rispetto del manuale."
 
-def _dedup_semantic(items: List[str]) -> List[str]:
-    best: Dict[str, str] = {}
-    for ans in items:
-        sig = _signature(ans)
-        if sig not in best or len(ans) < len(best[sig]):
-            best[sig] = ans
-    return list(best.values())
+    # Heuristic: quanti CTF al m2
+    if ("ctf" in ql) and ("m2" in ql or "mq" in ql or "al m" in ql):
+        return "La quantità di CTF deriva dal calcolo; come ordine di grandezza ~6–8 connettori/m², più fitti agli appoggi."
 
-def _guess_italian(text: str) -> bool:
-    anchors = [" il ", " la ", " dei ", " delle ", " con ", " senza ", " chiod", " lamiera ", " calcestruzzo ", " posa ", " metri ", " metro "]
-    t = " " + (_strip_html(text).lower()) + " "
-    return sum(1 for a in anchors if a in t) >= 2
+    # Heuristic: differenza ctf vs diapason
+    if ("ctf" in ql and "diapason" in ql) or "differenza" in ql:
+        return "CTF: solai su travi in acciaio con lamiera grecata (posa a sparo). Diapason: laterocemento senza lamiera (fissaggi nei travetti; getto dall’alto)."
 
-def _is_junk_sentence(s: str) -> bool:
-    s_l = s.lower()
-    # Junk EN/specs/indirizzi & simili
-    if "viale pecori giraldi" in s_l or "italy" in s_l: return True
-    if "specifications" in s_l or "dimensions" in s_l or "available shank heights" in s_l: return True
-    if "on this page you can download" in s_l or "to download" in s_l: return True
-    if "floor reinforcement" in s_l and "restoration" in s_l: return True
-    if re.search(r"https?://", s_l): return True
-    # Rumore numerico
-    if len(re.findall(r"\b\d{2,}\b", s)) >= 3: return True
-    # Lunghezze estreme
-    if len(s) < 12 or len(s) > 220: return True
-    return False
-
-def _tidy_narrative(txt: str, max_chars: int) -> str:
-    """Ripulisce da code-mix e rumore, forza IT breve e chiusa in punto."""
-    if not txt: return ""
-    # tagli dure contro pattern noti
-    cuts = [
-        r"Specifications.*", r"Dimensions.*", r"Available shank heights.*",
-        r"Viale Pecori Giraldi.*", r"On this page you can download.*",
-        r"Floor reinforcement.*", r"Pressed connection bracket.*"
-    ]
-    for c in cuts:
-        txt = re.sub(c, "", txt, flags=re.I|re.S)
-    # spazi & punti
-    txt = re.sub(r"\s+", " ", txt).strip()
-    # se non sembra italiano, svuota (niente ibridi)
-    if not _guess_italian(txt):
-        return ""
-    # tronca a max_chars e assicurati che finisca con punto
-    if len(txt) > max_chars:
-        txt = txt[:max_chars].rsplit(" ", 1)[0].rstrip(",;:")
-    if not txt.endswith((".", "!", "?")):
-        txt += "."
-    return txt
-
-# =================== SINAPSI ===================
-def _compile_sinapsi() -> None:
-    global SINAPSI_COMPILED
-    SINAPSI_COMPILED = []
-    rules = (SINAPSI.get("rules") or [])
-    for r in rules:
-        patt = (r.get("pattern") or "").strip()
-        ans  = (r.get("answer")  or "").strip()
-        mode = (r.get("mode") or "augment").lower().strip()
-        if not patt or not ans: continue
-        if (mode == "override") and (not ALLOW_SINAPSI_OVERRIDE): continue
+    # Dalle regole caricabili (match molto semplice su keywords)
+    for r in SINAPSI_RULES:
         try:
-            rx = re.compile(patt, re.I | re.S)
-        except re.error:
-            continue
-        SINAPSI_COMPILED.append({"id": r.get("id"), "mode": mode, "answer": ans, "rx": rx, "priority": int(r.get("priority", 0))})
-    SINAPSI_COMPILED.sort(key=lambda x: (0 if x["mode"]=="augment" else 1, -x["priority"]))
+            kws = [k.lower() for k in r.get("keywords", [])]
+            if kws and all(k in ql for k in kws):
+                s = r.get("answer_short") or r.get("answer") or ""
+                s = s.strip()
+                if s:
+                    return s
+        except:
+            pass
 
-def _load_sinapsi() -> None:
-    global SINAPSI
-    raw = _safe_read(SINAPSI_FILE)
-    if raw.strip():
-        try:
-            data = json.loads(raw)
-            if isinstance(data, dict):
-                SINAPSI = {"rules": data.get("rules", []) or [], "exclude_any_q": data.get("exclude_any_q", SINAPSI.get("exclude_any_q", []))}
-            elif isinstance(data, list):
-                SINAPSI = {"rules": data, "exclude_any_q": SINAPSI.get("exclude_any_q", [])}
-        except Exception:
-            SINAPSI = {"rules": [], "exclude_any_q": SINAPSI.get("exclude_any_q", [])}
-    _compile_sinapsi()
+    return None
 
-def _blocked_by_rules(q: str) -> bool:
-    for patt in SINAPSI.get("exclude_any_q", []):
-        try:
-            if re.search(patt, q, flags=re.I): return True
-        except re.error:
-            continue
-    return False
+# -----------------------------------------------------------------------------
+# WEB SEARCH (Brave)
+# -----------------------------------------------------------------------------
 
-@app.on_event("startup")
-def _startup() -> None:
-    os.makedirs(STATIC_DIR, exist_ok=True)
-    _load_sinapsi()
+def brave_headers() -> Dict[str, str]:
+    # Usa il primo API key disponibile
+    key = BRAVE_API_KEYS[0] if BRAVE_API_KEYS else ""
+    return {
+        "Accept": "application/json",
+        "X-Subscription-Token": key
+    } if key else {}
 
-if Path(STATIC_DIR).exists():
-    app.mount("/static", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+def make_query(q: str) -> str:
+    # Forza focus su domini Tecnaria; se l’utente non ha già messo site:
+    site_filter = " OR ".join([f"site:{d}" for d in PREFERRED_DOMAINS])
+    # Italiano
+    lang = " lang:it"
+    # Evita rumore generico
+    final_q = f"({q}) ({site_filter}){lang}"
+    return final_q
 
-def sinapsi_match(q: str) -> Tuple[str, str]:
-    if SINAPSI_MODE == "off": return "",""
-    qn = _norm(q); aug: List[str] = []; psc: List[str] = []
-    for r in SINAPSI_COMPILED:
-        try:
-            if r["rx"].search(qn):
-                if r["mode"] == "augment": aug.append(r["answer"])
-                elif r["mode"] == "postscript": psc.append(r["answer"])
-        except Exception: continue
-    return ( _dedup_semantic(aug)[0] if aug else "" , _dedup_semantic(psc)[0] if psc else "" )
-
-# =================== BRAVE ===================
-def _build_query(q: str, wants_license: bool) -> str:
-    if not DISAMBIG_STRICT: return q
-    qn = _norm(q); plus, minus = [], []
-    plus.append('"Tecnaria S.p.A." OR Tecnaria')
-    plus.append('"Bassano del Grappa"')
-    plus.append('connettori OR connettore OR "solai misti" OR "acciaio calcestruzzo" OR lamiera')
-    if "ctf" in qn: minus += ["chimica","farmacia","farmaceutic*"]; plus.append("CTF connettori")
-    if "diapason" in qn: minus += ["musica","accordare","tuning fork"]; plus.append("Diapason connettori")
-    if ("p560" in qn) or ("spit" in qn): plus.append('"SPIT P560" connettori CTF Tecnaria')
-    if any(k in qn for k in ["m2","m²","mq","metro quadrato","al m2","al mq"]): plus.append('maglia passo connettori m² mq')
-    if wants_license: plus.append('"does not require special license" OR "no special license"')
-    add = (" " + " ".join(plus) if plus else "") + (" " + " ".join(f"-{m}" for m in minus) if minus else "")
-    return f"{q}{add}".strip()
-
-def _brave(q: str, preferred: bool, site: str = "", count: int = 8) -> List[Dict[str, Any]]:
-    if not BRAVE_API_KEY: return []
+def search_brave_json(q: str, count: int = 6) -> Dict[str, Any]:
+    if not BRAVE_API_KEYS:
+        return {}
     url = "https://api.search.brave.com/res/v1/web/search"
-    headers = {"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY}
-    wants_license = any(k in _norm(q) for k in ["patent","patentino","licenz","autorizz"])
-    q_built = _build_query(q, wants_license)
-    query = f"site:{site} {q_built}" if site else q_built
+    params = {
+        "q": make_query(q),
+        "count": count
+    }
     try:
-        r = requests.get(url, headers=headers, params={"q": query, "count": count, "freshness": WEB_FRESHNESS_DAYS}, timeout=HTTP_TIMEOUT)
-        if not r.ok: return []
-        items = (r.json().get("web", {}) or {}).get("results", []) or []
-    except Exception:
-        return []
+        r = requests.get(url, headers=brave_headers(), params=params, timeout=12)
+        if r.status_code == 200:
+            return r.json()
+    except Exception as e:
+        if DEBUG:
+            print("Brave error:", e)
+    return {}
+
+def pick_results(json_payload: Dict[str, Any]) -> List[Dict[str, str]]:
     out = []
-    for it in items:
-        out.append({
-            "title": _strip_html(it.get("title") or (site or "Fonte")),
-            "url": it.get("url") or "",
-            "snippet": _strip_html((it.get("description") or "").replace("·",". ")),
-            "preferred": preferred,
-            "language": (it.get("language") or "").lower()
-        })
+    web = json_payload.get("web", {})
+    results = web.get("results", [])
+    for item in results:
+        url = item.get("url")
+        title = item.get("title") or url
+        snippet = item.get("description") or ""
+        if url and any(url.startswith(f"https://{d}") or url.startswith(f"http://{d}") or (f".{d}/" in url) for d in PREFERRED_DOMAINS):
+            out.append({"url": url, "title": title, "snippet": snippet})
     return out
 
-def _is_it_url(url: str) -> bool:
-    u = (url or "").lower()
-    if "/it/" in u: return True
-    if "/en/" in u: return False
-    if "tecnaria.com" in u and "/en" not in u: return True
-    return False
-
-def _rank_hits_lang(q: str, hits: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
-    qkw = set(_content_words(q))
-    def score(h):
-        url = h.get("url",""); title = h.get("title",""); snip = h.get("snippet","")
-        blob = _norm(" ".join([title, snip, url]))
-        qscore = len(qkw & set(_content_words(blob)))
-        site_bonus = 6 if "tecnaria.com" in url else (1 if "spit" in url else 0)
-        lang = (h.get("language") or "").lower()
-        it_bonus = 3 if lang == "it" or _is_it_url(url) else (-3 if "/en/" in url or lang == "en" else 0)
-        return (qscore, site_bonus, it_bonus, -len(title))
-    return sorted(hits, key=score, reverse=True)
-
-def _filter_hits_by_query(q: str, hits: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
-    qkw = set(_content_words(q))
-    if not qkw: return hits
-    def ok(h):
-        blob = _norm(" ".join([h.get("title",""), h.get("snippet",""), h.get("url","")]))
-        words = set(_content_words(blob))
-        return bool(qkw & words)
-    filtered = [h for h in hits if ok(h)]
-    return filtered or hits
-
-def _split_by_lang(hits: List[Dict[str,Any]]) -> Tuple[List[Dict[str,Any]], List[Dict[str,Any]]]:
-    it_hits, other = [], []
-    for h in hits:
-        if _is_it_url(h.get("url","")): it_hits.append(h)
-        else: other.append(h)
-    return it_hits, other
-
-def get_web_hits(q: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    hits: List[Dict[str, Any]] = []
-    wants_license = any(k in _norm(q) for k in ["patent","patentino","licenz","autorizz"])
-    for d in PREFERRED_DOMAINS:
-        hits.extend(_brave(q, True, d, WEB_RESULTS_COUNT_PREFERRED))
-    if wants_license and len(hits) < 3:
-        for d in PREFERRED_DOMAINS:
-            hits.extend(_brave('P560 nail gun Tecnaria', True, d, 8))
-    if not hits and WEB_RESULTS_COUNT_FALLBACK > 0:
-        hits = _brave(q, False, "", WEB_RESULTS_COUNT_FALLBACK)
-    hits = _filter_hits_by_query(q, hits)
-    hits = _rank_hits_lang(q, hits)
-    it_hits, other = _split_by_lang(hits)
-    return it_hits, other
-
-# =================== FETCH & NARRATIVA ===================
-def _extract_main_text(html_text: str) -> str:
-    soup = BeautifulSoup(html_text, "html.parser")
-    md = soup.find("meta", attrs={"name":"description"})
-    if md and md.get("content"): 
-        return (md["content"] or "").replace("·",". ")
-    ps = " ".join(p.get_text(" ", strip=True) for p in soup.find_all("p"))
-    return (ps or "").replace("·",". ")
-
-def _fetch_url(url: str) -> str:
+def fetch_html(url: str, timeout: int = 10) -> str:
     try:
-        r = requests.get(url, timeout=HTTP_TIMEOUT, headers={"User-Agent": "Mozilla/5.0"})
-        if r.ok and "text/html" in (r.headers.get("Content-Type","")): 
+        r = requests.get(url, timeout=timeout, headers={"User-Agent":"Mozilla/5.0"})
+        if r.status_code == 200 and "text/html" in r.headers.get("Content-Type", ""):
             return r.text
-    except Exception:
+    except:
         pass
     return ""
 
-def _topic_keywords(q: str) -> List[str]:
-    qn = _norm(q)
-    kw = ["solaio","solai","acciaio","calcestruzzo","lamiera","collaborante","spit","tecnaria","connettore","connettori","posa","staffa","piolo","patent","licenz","autorizz","metro","quadrato","m2","m²","mq"]
-    if "p560" in qn or "spit" in qn: kw += ["p560","propuls","guidapunte","pistone","a freddo","chiod","license","authoris"]
-    if "ctf" in qn: kw += ["ctf","piolo","piastra","lamiera","2 chiod","maglia","passo","densità"]
-    if "diapason" in qn: kw += ["diapason","staffa","4 chiod","prestaz","travi"]
-    if ("differenz" in qn) or (" vs " in f" {qn} ") or ("confront" in qn): kw += ["differenza","confronto"]
-    return kw
+def html_to_text(html_str: str) -> str:
+    soup = BeautifulSoup(html_str, "html.parser")
+    # elimina script, style, nav
+    for tag in soup(["script", "style", "nav", "footer", "header"]):
+        tag.decompose()
+    text = soup.get_text(" ", strip=True)
+    # normalizza spazi
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
-def _score_sentence(s: str, kw: List[str]) -> int:
-    s_l = " " + s.lower() + " "
-    score = 0
-    for k in kw:
-        if k in s_l: score += 2 if len(k) > 4 else 1
-    for bonus in [" chiod"," p560"," lamiera "," staffa "," piolo "," prova "," push-out "," eta "," license "," authoris"," m² "," mq "," m2 "]:
-        if bonus in s_l: score += 2
-    n = len(s)
-    if n < 30: score -= 1
-    if n > 240: score -= 1
-    if _is_junk_sentence(s): score -= 4
-    return score
+def split_sentences_it(text: str) -> List[str]:
+    # semplice split su . ! ? seguiti da spazio/inizio frase
+    s = re.split(r"(?<=[\.\!\?])\s+", text)
+    # tieni frasi ragionevoli
+    s = [x.strip() for x in s if len(x.strip()) >= 8]
+    return s
 
-def _best_sentences_from_html(html_text: str, q: str, need: int) -> List[str]:
-    text = _extract_main_text(html_text)
-    sents = _sentences(text)
-    kw = _topic_keywords(q)
-    scored = sorted(sents, key=lambda s: (_score_sentence(s, kw), -len(s)), reverse=True)
-    out: List[str] = []
+def looks_italian(s: str) -> bool:
+    # heuristica: molte stopword italiane basilari
+    it_words = [" il ", " la ", " lo ", " gli ", " delle ", " degli ", " delle ", " che ", " con ", " per ", " su ", " tra ", " in ", " non "]
+    s_low = f" {s.lower()} "
+    return any(w in s_low for w in it_words)
+
+def first_italian_paragraph(text: str, min_sentences: int = 1, max_chars: int = 600) -> Optional[str]:
+    # Estrae un breve paragrafo in IT
+    sents = split_sentences_it(text)
+    bucket = []
+    for st in sents:
+        if looks_italian(st):
+            bucket.append(st)
+        if len(bucket) >= min_sentences and sum(len(x)+1 for x in bucket) >= 80:
+            break
+    if not bucket:
+        return None
+    para = " ".join(bucket)
+    return para[:max_chars].strip()
+
+# -----------------------------------------------------------------------------
+# ANSWER BUILDER
+# -----------------------------------------------------------------------------
+
+def clean_text(s: str) -> str:
+    s = s.replace("\u200b", "").strip()
+    s = re.sub(r"\s+", " ", s)
+    return s
+
+def compose_answer(q: str, web_paras: List[str], assist_line: Optional[str]) -> str:
+    ql = q.lower()
+
+    # HARDEN: domande principali che vogliamo sempre chiare e corte
+    if "p560" in ql and ("patentino" in ql or "licenza" in ql):
+        base = "Per la chiodatrice SPIT P560 **non serve alcun patentino né autorizzazioni speciali**: è a tiro indiretto (classe A) con propulsori a salve; restano obbligatori i DPI e il rispetto del manuale."
+        if assist_line and assist_line not in base:
+            return f"{base} {assist_line}"
+        return base
+
+    if ("ctf" in ql) and ("m2" in ql or "mq" in ql or "al m" in ql):
+        base = "La quantità di connettori CTF **deriva dal calcolo strutturale** (luci, carichi, profilo lamiera, spessore soletta). Come **ordine di grandezza**: **~6–8 CTF/m²**, più fitti agli appoggi."
+        if assist_line and assist_line not in base:
+            return f"{base} {assist_line}"
+        return base
+
+    if ("ctf" in ql and "diapason" in ql) or ("differenza" in ql and ("ctf" in ql or "diapason" in ql)):
+        base = "CTF: solai su travi in acciaio con lamiera grecata (posa a sparo). **Diapason**: laterocemento **senza lamiera** (fissaggi nei travetti; getto dall’alto). La scelta dipende dal tipo di solaio."
+        if assist_line and assist_line not in base:
+            return f"{base} {assist_line}"
+        return base
+
+    # GENERICO: usa il primo paragrafo italiano estratto dal web
+    if web_paras:
+        body = web_paras[0]
+        # taglia se troppo lungo
+        body = body[:MAX_ANSWER_CHARS]
+        # aggiungi una riga di contesto se presente l'assist
+        if assist_line and assist_line not in body:
+            body = body + " " + assist_line
+        return body
+
+    # fallback sinapsi
+    if assist_line:
+        return assist_line
+
+    # ultima spiaggia
+    return "Non ho trovato contenuti sufficienti su fonti Tecnaria. Prova a riformulare la domanda."
+
+def unique_sources(items: List[Dict[str, str]], limit: int) -> List[Dict[str, str]]:
     seen = set()
-    for s in scored:
-        if _is_junk_sentence(s): continue
-        if not _guess_italian(s):  # narrativa solo IT
+    out = []
+    for it in items:
+        url = it.get("url", "")
+        host = re.sub(r"^https?://", "", url).split("/")[0]
+        if host in seen:
             continue
-        sig = _signature(s)
-        if sig in seen: continue
-        seen.add(sig); out.append(s)
-        if len(out) >= need: break
+        seen.add(host)
+        out.append(it)
+        if len(out) >= limit:
+            break
     return out
 
-def _license_free_en(text: str) -> bool:
-    t = " " + _strip_html(text).lower() + " "
-    return ("does not require special license" in t) or ("no special license" in t)
+# -----------------------------------------------------------------------------
+# FASTAPI
+# -----------------------------------------------------------------------------
 
-def _it_sentence_license_free() -> str:
-    return ("Per la chiodatrice SPIT P560 **non serve alcun patentino né autorizzazioni speciali**: "
-            "è a tiro indiretto (classe A) con propulsori a salve; restano obbligatori i DPI e l’uso conforme al manuale.")
+app = FastAPI(title=APP_NAME)
 
-# Riconoscitore domanda "Quanti CTF al m²"
-_CTF_DENSITY_RX = re.compile(r"(quanti|quanto|densit[aà]|passo|maglia).*(ctf).*?(m2|m²|mq|metro quadrato)", re.I | re.S)
-def _is_ctf_density_question(q: str) -> bool:
-    qn = _norm(q)
-    if "ctf" in qn and any(k in qn for k in [" m2 "," m² "," mq "," metro quadrato "," al m2 "," al mq "]):
-        return True
-    return bool(_CTF_DENSITY_RX.search(q))
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-def _ctf_density_answer() -> str:
-    return ("La quantità di connettori CTF **deriva dal calcolo strutturale** (luci, carichi, profilo di lamiera, spessore soletta, verifiche EC4/ETA). "
-            "Come **ordine di grandezza** si impiegano **circa 6–8 CTF per m²**, con maglia più fitta in prossimità degli appoggi e più rada in mezzeria. "
-            "Il passo effettivo e gli eventuali rinfoltimenti sono definiti dal progettista.")
+# ------------------------------ UI (JS separato) -----------------------------
 
-def _collect_narrative_from_web(hits_it: List[Dict[str,Any]], hits_other: List[Dict[str,Any]], q: str, max_chars: int) -> str:
-    lines: List[str] = []
-    qn = _norm(q)
-    is_diff = ("differenz" in qn) or (" vs " in f" {qn} ") or ("confront" in qn)
-    wants_license = any(k in qn for k in ["patent","patentino","licenz","autorizz"])
+JS_APP = """
+async function ev(e) { 
+  e.preventDefault();
+  const qEl = document.getElementById('q');
+  const q = (qEl.value || '').trim();
+  if (!q) return;
+  const btn = document.querySelector('#f button[type="submit"]');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/ask', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ q })
+    });
+    const j = await r.json();
+    const out = document.getElementById('out');
+    out.innerHTML = j.html || '<div class="card"><p>Nessuna risposta.</p></div>';
+    out.scrollIntoView({ behavior: 'smooth' });
+  } catch (e) {
+    document.getElementById('out').innerHTML = '<div class="card"><p>Errore di rete.</p></div>';
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
 
-    # CASO 1: patentino/licenza -> 2 frasi secche e STOP (niente snippet aggiuntivi)
-    if wants_license:
-        lines.append(_it_sentence_license_free())
-        lines.append("La P560, usata per fissare dall’alto i connettori CTF/Diapason a freddo, richiede una breve formazione interna e l’uso dei DPI.")
-        narrative = " ".join(lines)
-        return _tidy_narrative(narrative, max_chars)
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('f');
+  if (form) form.addEventListener('submit', ev);
+});
+"""
 
-    # CASO 2: Quanti CTF al m² -> risposta deterministica
-    if _is_ctf_density_question(q):
-        return _tidy_narrative(_ctf_density_answer(), max_chars)
+CSS_APP = """
+*{box-sizing:border-box} body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;line-height:1.45;margin:0;background:#f7faf7}
+.container{max-width:1100px;margin:0 auto;padding:18px}
+.card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:16px}
+h1{font-size:22px;margin:0 0 10px}
+.brand{color:#147e43;font-weight:800;letter-spacing:.5px}
+.topbar{display:flex;align-items:center;gap:16px}
+#f{display:flex;gap:8px;margin:10px 0}
+#q{width:100%;padding:12px;border:1px solid #d7e2d9;border-radius:10px}
+.btn{background:#147e43;color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.nav{display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0 1rem 0}
+.sources{margin-top:8px}
+details summary{cursor:pointer;font-weight:600}
+kbd.sugg{display:inline-block;background:#eef6ef;border:1px solid #cfe4d2;padding:6px 10px;border-radius:20px;margin-right:8px}
+.small{font-size:12px;color:#556}
+"""
 
-    # CASO 3: confronto CTF vs Diapason (narrativa breve)
-    if is_diff:
-        lines.append("CTF è un connettore a piolo su piastra per solai misti acciaio–calcestruzzo, tipicamente su lamiera grecata; posa a freddo con SPIT P560 (due chiodi).")
-        lines.append("Diapason è una staffa per travi in acciaio con prestazioni superiori; posa a freddo con P560 (quattro chiodi).")
+@app.get("/", response_class=HTMLResponse)
+def index():
+    html_page = f"""
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>{html.escape(APP_NAME)}</title>
+    <style>{CSS_APP}</style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <div class="brand">TECNARIA</div>
+        <h1>{html.escape(APP_NAME)}</h1>
+      </div>
 
-    # 1) IT Tecnaria only
-    if FETCH_TECNARIA and hits_it:
-        for h in hits_it[:6]:
-            url = h.get("url","")
-            if "tecnaria.com" not in url.lower(): continue
-            html_text = _fetch_url(url)
-            best = _best_sentences_from_html(html_text, q, need=6) if html_text else []
-            if not best and USE_SNIPPET_BACKFILL:
-                cand = [s for s in _sentences(h.get("snippet","")) if not _is_junk_sentence(s) and _guess_italian(s)]
-                best = cand[:2]
-            for s in best:
-                sigs = [_signature(x) for x in lines]
-                if _signature(s) not in sigs:
-                    lines.append(s)
-                if len(lines) >= 3: break  # << narrativa corta
-            if len(lines) >= 3: break
+      <form id="f">
+        <input id="q" name="q" placeholder="Fai una domanda (es. Serve il patentino per la P560?)"/>
+        <button type="submit" class="btn">Chiedi</button>
+      </form>
 
-    narrative = " ".join(line.rstrip(" .") for line in lines).strip()
-    return _tidy_narrative(narrative, max_chars)
+      <div style="margin:6px 0 12px">
+        <span class="kbd sugg">Differenza CTF e Diapason</span>
+        <span class="kbd sugg">Quanti CTF al m²</span>
+        <span class="kbd sugg">Serve il patentino per la P560?</span>
+      </div>
 
-# =================== HTML ===================
-def _nav_bar() -> str:
-    return (
-        "<div class='nav' style='display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0 1rem 0'>"
-        "<button class='btn' style='font-weight:600;padding:.4rem .7rem' onclick=\"try{history.back()}catch(e){}\">⬅ Torna indietro</button>"
-        "<a class='btn' style='font-weight:600;padding:.4rem .7rem' href='/'>Home</a>"
-        "</div>"
-    )
+      <div id="out" class="card"></div>
 
-def _dedup_sources(hits: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
-    seen = set(); out = []
-    for h in hits:
-        u = (h.get("url") or "").strip().lower()
-        if not u: continue
-        if u in seen: continue
-        seen.add(u)
-        out.append(h)
-    return out
+      <p class="small">© Tecnaria S.p.A. – Questo assistente sintetizza contenuti ufficiali e regole Sinapsi.</p>
+    </div>
+    <script>
+{JS_APP}
+    </script>
+  </body>
+</html>
+"""
+    return HTMLResponse(html_page)
 
-def _render_sources(it_hits: List[Dict[str,Any]]) -> str:
-    it_clean = _dedup_sources([h for h in it_hits if "tecnaria.com" in (h.get("url","")).lower()])
-    if not it_clean:
-        return ""
-    it_clean = it_clean[:SOURCES_MAX]
-    lis = []
-    for h in it_clean:
-        title = html.escape(h.get("title") or "Fonte")
-        url   = html.escape(h.get("url") or "")
-        if SOURCES_SHOW_SNIPPETS and h.get("snippet"):
-            snip = html.escape(h.get("snippet") or "")
-            lis.append(f"<li><a href=\"{url}\" target=\"_blank\" rel=\"noopener\">{title}</a> <em>(IT)</em><br><small>{snip}</small></li>")
-        else:
-            lis.append(f"<li><a href=\"{url}\" target=\"_blank\" rel=\"noopener\">{title}</a> <em>(IT)</em></li>")
-    details_open = "" if SOURCES_COLLAPSED else " open"
-    return ("<details"+details_open+"><summary><strong>Fonti</strong> (Tecnaria)</summary>"
-            "<div style='margin:.5rem 0'><button type='button' onclick=\"this.closest('details').removeAttribute('open')\">Chiudi fonti</button></div>"
-            f"<ol class='list-decimal pl-5'>{''.join(lis)}</ol></details>")
+# ------------------------------ HEALTH ---------------------------------------
 
-def _render_body(narrative: str, hits_it: List[Dict[str, Any]]) -> str:
-    parts: List[str] = []
-    parts.append(_nav_bar())
-    parts.append(f"<p>{html.escape(narrative)}</p>")
-    src_html = _render_sources(hits_it)
-    if src_html:
-        parts.append(src_html)
-    parts.append(_nav_bar())
-    return "\n".join(parts)
-
-# =================== ENDPOINTS ===================
 @app.get("/health")
-def health() -> JSONResponse:
+def health():
     return JSONResponse({
         "status": "ok",
-        "web_enabled": bool(BRAVE_API_KEY),
+        "web_enabled": bool(BRAVE_API_KEYS),
         "preferred_domains": PREFERRED_DOMAINS,
-        "rules_loaded": len(SINAPSI.get("rules", [])),
-        "exclude_any_q": SINAPSI.get("exclude_any_q", []),
+        "rules_loaded": len(SINAPSI_RULES),
+        "exclude_any_q": EXCLUDE_ANY_Q,
         "sinapsi_file": SINAPSI_FILE,
         "lang_preferred": LANG_PREFERRED,
         "disambig_strict": DISAMBIG_STRICT,
-        "answer_mode": ANSWER_MODE,
+        "answer_mode": "full",
         "max_answer_chars": MAX_ANSWER_CHARS,
-        "fetch_tecnaria": FETCH_TECNARIA,
+        "fetch_tecnaria": True,
         "allow_sinapsi_override": ALLOW_SINAPSI_OVERRIDE,
         "sources_show_snippets": SOURCES_SHOW_SNIPPETS,
-        "sources_max": SOURCES_MAX,
-        "sources_collapsed": SOURCES_COLLAPSED,
         "sinapsi_mode": SINAPSI_MODE,
         "min_web_ok_chars": MIN_WEB_OK_CHARS,
         "min_web_ok_sentences": MIN_WEB_OK_SENTENCES,
         "accept_en_backfill": ACCEPT_EN_BACKFILL,
         "use_snippet_backfill": USE_SNIPPET_BACKFILL,
-        "app": "web->IT narrative (hard guards)->fonti compatte"
+        "sources_max": SOURCES_MAX,
+        "sources_collapsed": SOURCES_COLLAPSED,
+        "web_results_count_preferred": WEB_RESULTS_COUNT_PREFERRED,
+        "refine_always": REFINE_ALWAYS,
+        "debug": DEBUG,
+        "app": "web->fetch_tecnaria->(sinapsi assist)->render"
     })
 
-def _web_quality_ok(narrative: str) -> bool:
-    if not narrative: return False
-    chars = len(narrative.strip()); sents = len(_sentences(narrative))
-    return (chars >= MIN_WEB_OK_CHARS) and (sents >= MIN_WEB_OK_SENTENCES)
+# ------------------------------ API/ASK --------------------------------------
+
+def blocked_by_exclude(q: str) -> bool:
+    for pat in EXCLUDE_ANY_Q:
+        if re.search(pat, q, flags=re.I):
+            return True
+    return False
+
+def render_sources(sources: List[Dict[str, str]]) -> str:
+    if not sources:
+        return ""
+    lis = []
+    for i, s in enumerate(sources, 1):
+        t = html.escape(s.get("title") or s.get("url") or f"Fonte {i}")
+        u = html.escape(s.get("url") or "#")
+        item = f'<li><a href="{u}" target="_blank" rel="noopener">{t}</a></li>'
+        if SOURCES_SHOW_SNIPPETS:
+            sn = s.get("snippet", "")
+            if sn:
+                item += f"<br><small>{html.escape(sn)}</small>"
+        lis.append(item)
+    ol = "<ol class='list-decimal pl-5'>" + "".join(lis) + "</ol>"
+    if SOURCES_COLLAPSED:
+        return f"<details><summary><strong>Fonti</strong></summary><div style='margin:.5rem 0'><button type='button' onclick=\"this.closest('details').removeAttribute('open')\">Chiudi fonti</button></div>{ol}</details>"
+    return "<h3>Fonti</h3>" + ol
 
 @app.post("/api/ask")
-def api_ask(payload: Dict[str, Any] = Body(...)) -> JSONResponse:
-    q = str(payload.get("q", "")).strip()
+async def api_ask(payload: Dict[str, Any]):
+    t0 = time.time()
+    q = clean_text(str(payload.get("q", "")))
+
     if not q:
-        return JSONResponse({"ok": True, "html": _card("Risposta Tecnaria", "<p>Manca la domanda.</p>", 0)})
-    if _blocked_by_rules(q):
-        return JSONResponse({"ok": True, "html": _card("Risposta Tecnaria", "<p>Richiesta non ammessa (prezzi/costi/preventivi).</p>", 0)})
+        return JSONResponse({"ok": True, "html": "<div class='card'><p>Scrivi una domanda.</p></div>"})
 
-    t0 = time.perf_counter()
+    if blocked_by_exclude(q):
+        return JSONResponse({"ok": True, "html": "<div class='card'><p>Per preventivi, prezzi o offerte rivolgersi al canale commerciale.</p></div>"})
 
-    qn = _norm(q)
-    wants_license = any(k in qn for k in ["patent","patentino","licenz","autorizz"]) and ("p560" in qn or "spit" in qn)
-    wants_ctf_density = _is_ctf_density_question(q)
+    # 1) WEB SEARCH
+    sources: List[Dict[str, str]] = []
+    web_paragraphs: List[str] = []
 
-    hits_it, hits_other = get_web_hits(q)
-    narrative_web = _collect_narrative_from_web(hits_it, hits_other, q, MAX_ANSWER_CHARS)
+    if BRAVE_API_KEYS:
+        json_search = search_brave_json(q, count=WEB_RESULTS_COUNT_PREFERRED)
+        results = pick_results(json_search)
 
-    sin_aug, sin_psc = ("","")
-    if not wants_license and not wants_ctf_density and SINAPSI_MODE in ("assist","fallback"):
-        sin_aug, sin_psc = sinapsi_match(q)
+        # Deduplica e prendi max N fonti
+        sources = unique_sources(results, SOURCES_MAX)
 
-    narrative_final = narrative_web
-    if not wants_license and not wants_ctf_density:
-        if SINAPSI_MODE == "assist":
-            if not _web_quality_ok(narrative_web) and sin_aug:
-                narrative_final = (narrative_web + " " + sin_aug).strip() if narrative_web else sin_aug
-            elif not narrative_web and sin_psc:
-                narrative_final = sin_psc
-        elif SINAPSI_MODE == "fallback":
-            if not narrative_web:
-                narrative_final = sin_aug or sin_psc or ""
+        # Estrai testo IT dai primi risultati
+        for it in sources:
+            if len(web_paragraphs) >= 2:  # due paragrafi sono più che sufficienti per comporre 1-2 frasi pulite
+                break
+            html_raw = fetch_html(it["url"])
+            if not html_raw:
+                continue
+            text = html_to_text(html_raw)
+            para = first_italian_paragraph(text, min_sentences=MIN_WEB_OK_SENTENCES, max_chars=600)
+            if para:
+                web_paragraphs.append(para)
 
-    if not narrative_final:
-        narrative_final = ("Sintesi tecnico-commerciale ricavata da documentazione Tecnaria e norme di riferimento. "
-                           "Per casi reali attenersi sempre al progetto esecutivo e al manuale di posa.")
+    # 2) SINAPSI (assist)
+    assist_line = None
+    if SINAPSI_MODE in ("assist", "strict"):
+        assist_line = sinapsi_assist(q)
 
-    body_html = _render_body(narrative_final, hits_it)  # SOLO IT nelle fonti
-    ms = int((time.perf_counter() - t0) * 1000)
-    return JSONResponse({"ok": True, "html": _card("Risposta Tecnaria", body_html, ms)})
+    # 3) COMPOSIZIONE RISPOSTA
+    answer = compose_answer(q, web_paragraphs, assist_line)
+    answer = answer.strip()
 
-@app.post("/admin/reload")
-def admin_reload(authorization: str = Header(None)) -> JSONResponse:
-    if ADMIN_TOKEN:
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Missing bearer token")
-        if authorization.split(" ", 1)[1].strip() != ADMIN_TOKEN:
-            raise HTTPException(status_code=403, detail="Invalid token")
-    _load_sinapsi()
-    return JSONResponse({"ok": True, "rules_loaded": len(SINAPSI.get("rules", []))})
+    # Hard limit di sicurezza
+    if len(answer) > MAX_ANSWER_CHARS:
+        answer = answer[:MAX_ANSWER_CHARS].rsplit(" ", 1)[0] + "…"
 
-# =================== UI SHELL ===================
-INDEX_HTML = f"""
-<!doctype html>
-<html lang="it">
-<head>
-  <meta charset="utf-8" />
-  <title>{APP_TITLE}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body {{ font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }}
-    .card {{ border:1px solid #e6e6e6; border-radius:12px; padding:16px; max-width:960px; }}
-    .btn {{ border:1px solid #ddd; border-radius:8px; text-decoration:none; background:#f8f8f8; }}
-    h1 {{ font-size:20px; margin:0 0 12px; }}
-    input,button {{ font-size:16px; }}
-    .nav a, .nav button {{ cursor:pointer; }}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>TECNARIA<br><small>{APP_TITLE}</small></h1>
-    <form onsubmit="ev(event)">
-      <label>Fai una domanda</label><br/>
-      <input id="q" name="q" style="width:70%" placeholder="Es. &quot;Serve il patentino per la P560?&quot;" />
-      <button class="btn" type="submit">Cerca</button>
-    </form>
-    <div id="out" style="margin-top:16px"></div>
-  </div>
+    # NAV
+    nav = "<div class='nav'><button class='btn' onclick=\"try{history.back()}catch(e){}\">⬅ Torna indietro</button> <a class='btn' href='/'>Home</a></div>"
 
-<script>
-async function ev(e){ e.preventDefault();
-  const q = document.getElementById('q').value;
-  const r = await fetch('/api/ask', {{method:'POST', headers:{{'Content-Type':'application/json'}}, body:JSON.stringify({{q}})}});
-  const j = await r.json();
-  document.getElementById('out').innerHTML = j.html;
-}
-</script>
-</body>
-</html>
-"""
+    # SOURCES (mai snippet invasivi nel body)
+    src_html = render_sources(sources)
 
-@app.get("/")
-def index() -> HTMLResponse:
-    return HTMLResponse(INDEX_HTML)
+    dt = int((time.time() - t0) * 1000)
+    html_card = f"<div class='card'><h2>Risposta Tecnaria</h2>{nav}<p>{html.escape(answer)}</p>{src_html}<div class='nav'><button class='btn' onclick=\"try{history.back()}catch(e){}\">⬅ Torna indietro</button> <a class='btn' href='/'>Home</a></div><p><small>⏱ {dt} ms</small></p></div>"
+    return JSONResponse({"ok": True, "html": html_card})
 
-def _card(title: str, body_html: str, ms: int) -> str:
-    return (f"<div class=\"card\"><h2>{html.escape(title)}</h2>{body_html}"
-            f"<p><small>⏱ {ms} ms</small></p></div>")
+# -----------------------------------------------------------------------------
+# MAIN (local)
+# -----------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
