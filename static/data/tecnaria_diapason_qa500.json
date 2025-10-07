@@ -1,1 +1,494 @@
-
+{
+  "meta": {
+    "schema_version": "tecnaria.product.v1",
+    "generated_at": "2025-10-07T15:29:55.786674Z",
+    "locale": "it-IT",
+    "brand": {
+      "company": "Tecnaria S.p.A.",
+      "hq_city": "Bassano del Grappa (VI)",
+      "country": "Italia",
+      "website_whitelist": [
+        "https://www.tecnaria.com",
+        "https://tecnaria.com"
+      ]
+    },
+    "product": {
+      "code": "DIAPASON",
+      "name": "DIAPASON – Sistema per solai laterocemento (rinforzo collaborante)",
+      "family": "Sistemi per solai esistenti",
+      "summary": "DIAPASON – Sistema per solai laterocemento (rinforzo collaborante): schede ULTRA FULL-SPEC per uso tecnico-commerciale.",
+      "notes": [
+        "Versione ULTRA FULL-SPEC: risposte strutturate con condizioni tecniche, indicazioni operative, sicurezza, controlli e referenze alla documentazione Tecnaria.",
+        "Le risposte non sostituiscono il progetto strutturale né le schede ufficiali Tecnaria."
+      ],
+      "certifications": {
+        "ETA": [],
+        "EAD": []
+      }
+    },
+    "narrative": {
+      "tone": "Tecnico, chiaro, autorevole, orientato al cantiere",
+      "structure": [
+        "Risposta breve e diretta",
+        "Condizioni tecniche e numeriche",
+        "Indicazioni operative e sicurezza",
+        "Riferimento a documentazione/certificazione Tecnaria",
+        "Sintesi di convenienza"
+      ]
+    }
+  },
+  "categories": [
+    "prodotto_base",
+    "posa_attrezzature",
+    "compatibilita_supporti",
+    "progetto_dimensionamento",
+    "controllo_qualita",
+    "sicurezza_cantiere",
+    "manutenzione_logistica",
+    "norme_certificazioni",
+    "convenienza_benefici",
+    "problemi_risoluzione",
+    "faq_commerciali"
+  ],
+  "qa": [
+    {
+      "id": "DIAPASON-QA-0001",
+      "category": "prodotto_base",
+      "q": "Che cos’è il sistema DIAPASON Tecnaria?",
+      "a": "È un sistema Tecnaria per il rinforzo di solai in laterocemento esistenti attraverso connessioni e cappa collaborante in calcestruzzo, con dettagli costruttivi e schemi di posa dedicati. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "laterocemento",
+        "prodotto_base",
+        "rinforzo"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0002",
+      "category": "posa_attrezzature",
+      "q": "Quali sono le fasi principali di un intervento con DIAPASON? (step 1)",
+      "a": "La fase riguarda: rimozione pavimentazione/allettamenti ove previsti. Eseguire verifiche preliminari del solaio, controllo geometrie, e coordinarsi con il progetto strutturale. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "fasi",
+        "procedura"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0003",
+      "category": "posa_attrezzature",
+      "q": "Quali sono le fasi principali di un intervento con DIAPASON? (step 2)",
+      "a": "La fase riguarda: pulizia e preparazione intradosso/estradosso interessati. Eseguire verifiche preliminari del solaio, controllo geometrie, e coordinarsi con il progetto strutturale. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "fasi",
+        "procedura"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0004",
+      "category": "posa_attrezzature",
+      "q": "Quali sono le fasi principali di un intervento con DIAPASON? (step 3)",
+      "a": "La fase riguarda: predisposizione connessioni/elementi meccanici secondo disegni. Eseguire verifiche preliminari del solaio, controllo geometrie, e coordinarsi con il progetto strutturale. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "fasi",
+        "procedura"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0005",
+      "category": "posa_attrezzature",
+      "q": "Quali sono le fasi principali di un intervento con DIAPASON? (step 4)",
+      "a": "La fase riguarda: posa rete/armature e getto cappa collaborante. Eseguire verifiche preliminari del solaio, controllo geometrie, e coordinarsi con il progetto strutturale. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "fasi",
+        "procedura"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0006",
+      "category": "posa_attrezzature",
+      "q": "Quali sono le fasi principali di un intervento con DIAPASON? (step 5)",
+      "a": "La fase riguarda: stagionatura e ripristini. Eseguire verifiche preliminari del solaio, controllo geometrie, e coordinarsi con il progetto strutturale. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "fasi",
+        "procedura"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0007",
+      "category": "compatibilita_supporti",
+      "q": "DIAPASON è idoneo per travetti c.a. in interni residenziali?",
+      "a": "L’idoneità è definita dal progetto dopo verifica dello stato di fatto; il sistema prevede dettagli specifici per ciascun supporto. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "compatibilita",
+        "interni residenziali",
+        "travetti c.a."
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0008",
+      "category": "compatibilita_supporti",
+      "q": "DIAPASON è idoneo per travetti c.a. in edifici storici?",
+      "a": "L’idoneità è definita dal progetto dopo verifica dello stato di fatto; il sistema prevede dettagli specifici per ciascun supporto. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "compatibilita",
+        "edifici storici",
+        "travetti c.a."
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0009",
+      "category": "compatibilita_supporti",
+      "q": "DIAPASON è idoneo per travetti c.a. in ambienti industriali?",
+      "a": "L’idoneità è definita dal progetto dopo verifica dello stato di fatto; il sistema prevede dettagli specifici per ciascun supporto. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "ambienti industriali",
+        "compatibilita",
+        "travetti c.a."
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0010",
+      "category": "compatibilita_supporti",
+      "q": "DIAPASON è idoneo per pignatte laterizio in interni residenziali?",
+      "a": "L’idoneità è definita dal progetto dopo verifica dello stato di fatto; il sistema prevede dettagli specifici per ciascun supporto. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "compatibilita",
+        "interni residenziali",
+        "pignatte laterizio"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0011",
+      "category": "compatibilita_supporti",
+      "q": "DIAPASON è idoneo per pignatte laterizio in edifici storici?",
+      "a": "L’idoneità è definita dal progetto dopo verifica dello stato di fatto; il sistema prevede dettagli specifici per ciascun supporto. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "compatibilita",
+        "edifici storici",
+        "pignatte laterizio"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0012",
+      "category": "compatibilita_supporti",
+      "q": "DIAPASON è idoneo per pignatte laterizio in ambienti industriali?",
+      "a": "L’idoneità è definita dal progetto dopo verifica dello stato di fatto; il sistema prevede dettagli specifici per ciascun supporto. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "ambienti industriali",
+        "compatibilita",
+        "pignatte laterizio"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0013",
+      "category": "compatibilita_supporti",
+      "q": "DIAPASON è idoneo per soletta esistente in calcestruzzo in interni residenziali?",
+      "a": "L’idoneità è definita dal progetto dopo verifica dello stato di fatto; il sistema prevede dettagli specifici per ciascun supporto. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "compatibilita",
+        "interni residenziali",
+        "soletta esistente in calcestruzzo"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0014",
+      "category": "compatibilita_supporti",
+      "q": "DIAPASON è idoneo per soletta esistente in calcestruzzo in edifici storici?",
+      "a": "L’idoneità è definita dal progetto dopo verifica dello stato di fatto; il sistema prevede dettagli specifici per ciascun supporto. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "compatibilita",
+        "edifici storici",
+        "soletta esistente in calcestruzzo"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0015",
+      "category": "compatibilita_supporti",
+      "q": "DIAPASON è idoneo per soletta esistente in calcestruzzo in ambienti industriali?",
+      "a": "L’idoneità è definita dal progetto dopo verifica dello stato di fatto; il sistema prevede dettagli specifici per ciascun supporto. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "ambienti industriali",
+        "compatibilita",
+        "soletta esistente in calcestruzzo"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0016",
+      "category": "progetto_dimensionamento",
+      "q": "Come si definiscono spessori cappa in un intervento DIAPASON?",
+      "a": "Sono determinati dal progettista secondo normativa strutturale vigente e schede Tecnaria del sistema DIAPASON. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "progetto",
+        "spessori cappa"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0017",
+      "category": "progetto_dimensionamento",
+      "q": "Come si definiscono armatura in un intervento DIAPASON?",
+      "a": "Sono determinati dal progettista secondo normativa strutturale vigente e schede Tecnaria del sistema DIAPASON. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "armatura",
+        "progetto"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0018",
+      "category": "progetto_dimensionamento",
+      "q": "Come si definiscono passo connessioni in un intervento DIAPASON?",
+      "a": "Sono determinati dal progettista secondo normativa strutturale vigente e schede Tecnaria del sistema DIAPASON. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "passo connessioni",
+        "progetto"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0019",
+      "category": "progetto_dimensionamento",
+      "q": "Come si definiscono verifiche deformative in un intervento DIAPASON?",
+      "a": "Sono determinati dal progettista secondo normativa strutturale vigente e schede Tecnaria del sistema DIAPASON. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "progetto",
+        "verifiche deformative"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0020",
+      "category": "controllo_qualita",
+      "q": "Quali controlli sono richiesti durante i lavori con DIAPASON?",
+      "a": "Verifiche preliminari del solaio, controlli su connessioni/ancoraggi, posa armature, qualità del getto e maturazione. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "documentazione",
+        "procedure"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0021",
+      "category": "sicurezza_cantiere",
+      "q": "Quali misure di sicurezza adottare per DIAPASON?",
+      "a": "Piani di sicurezza, DPI, gestione polveri/rumore, delimitazione aree, uso attrezzature idonee. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "documentazione",
+        "procedure"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0022",
+      "category": "manutenzione_logistica",
+      "q": "Come organizzare logistica e stoccaggio materiali per DIAPASON?",
+      "a": "Proteggere armature e componenti dalla corrosione, coordinare approvvigionamenti con le fasi di cantiere. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "documentazione",
+        "procedure"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0023",
+      "category": "norme_certificazioni",
+      "q": "Quali documenti guidano il sistema DIAPASON?",
+      "a": "Documentazione Tecnaria dedicata, dettagli costruttivi e normativa strutturale nazionale. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "documentazione",
+        "procedure"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0024",
+      "category": "convenienza_benefici",
+      "q": "Quali benefici offre DIAPASON rispetto a sostituzione del solaio?",
+      "a": "Riduzione interventi invasivi, tempi contenuti, incremento rigidezza/resistenza con conservazione dell’esistente. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "documentazione",
+        "procedure"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0025",
+      "category": "problemi_risoluzione",
+      "q": "Come gestire imprevisti come fessurazioni locali o supporti degradati?",
+      "a": "Attivare varianti di progetto, consolidamenti localizzati, e verifiche aggiuntive prima del getto. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "documentazione",
+        "procedure"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0026",
+      "category": "faq_commerciali",
+      "q": "Qual è la disponibilità componenti DIAPASON?",
+      "a": "Dipende dalla pianificazione; contattare il commerciale Tecnaria con computi e tempi. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "documentazione",
+        "procedure"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0027",
+      "category": "problemi_risoluzione",
+      "q": "Come trattare irregolarità geometriche su travetti c.a. in interni residenziali?",
+      "a": "Eseguire rilievo, regolarizzare dove necessario, adeguare i dettagli di connessione, e documentare le correzioni. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "interni residenziali",
+        "irregolarita",
+        "travetti c.a."
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0028",
+      "category": "problemi_risoluzione",
+      "q": "Come trattare irregolarità geometriche su pignatte laterizio in interni residenziali?",
+      "a": "Eseguire rilievo, regolarizzare dove necessario, adeguare i dettagli di connessione, e documentare le correzioni. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "interni residenziali",
+        "irregolarita",
+        "pignatte laterizio"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0029",
+      "category": "problemi_risoluzione",
+      "q": "Come trattare irregolarità geometriche su soletta esistente in calcestruzzo in interni residenziali?",
+      "a": "Eseguire rilievo, regolarizzare dove necessario, adeguare i dettagli di connessione, e documentare le correzioni. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "interni residenziali",
+        "irregolarita",
+        "soletta esistente in calcestruzzo"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0030",
+      "category": "problemi_risoluzione",
+      "q": "Come trattare irregolarità geometriche su travetti c.a. in edifici storici?",
+      "a": "Eseguire rilievo, regolarizzare dove necessario, adeguare i dettagli di connessione, e documentare le correzioni. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "edifici storici",
+        "irregolarita",
+        "travetti c.a."
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0031",
+      "category": "problemi_risoluzione",
+      "q": "Come trattare irregolarità geometriche su pignatte laterizio in edifici storici?",
+      "a": "Eseguire rilievo, regolarizzare dove necessario, adeguare i dettagli di connessione, e documentare le correzioni. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "edifici storici",
+        "irregolarita",
+        "pignatte laterizio"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0032",
+      "category": "problemi_risoluzione",
+      "q": "Come trattare irregolarità geometriche su soletta esistente in calcestruzzo in edifici storici?",
+      "a": "Eseguire rilievo, regolarizzare dove necessario, adeguare i dettagli di connessione, e documentare le correzioni. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "edifici storici",
+        "irregolarita",
+        "soletta esistente in calcestruzzo"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0033",
+      "category": "problemi_risoluzione",
+      "q": "Come trattare irregolarità geometriche su travetti c.a. in ambienti industriali?",
+      "a": "Eseguire rilievo, regolarizzare dove necessario, adeguare i dettagli di connessione, e documentare le correzioni. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "ambienti industriali",
+        "irregolarita",
+        "travetti c.a."
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0034",
+      "category": "problemi_risoluzione",
+      "q": "Come trattare irregolarità geometriche su pignatte laterizio in ambienti industriali?",
+      "a": "Eseguire rilievo, regolarizzare dove necessario, adeguare i dettagli di connessione, e documentare le correzioni. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "ambienti industriali",
+        "irregolarita",
+        "pignatte laterizio"
+      ]
+    },
+    {
+      "id": "DIAPASON-QA-0035",
+      "category": "problemi_risoluzione",
+      "q": "Come trattare irregolarità geometriche su soletta esistente in calcestruzzo in ambienti industriali?",
+      "a": "Eseguire rilievo, regolarizzare dove necessario, adeguare i dettagli di connessione, e documentare le correzioni. Fare sempre riferimento alle schede tecniche e ai manuali ufficiali Tecnaria.",
+      "tags": [
+        "DIAPASON",
+        "Tecnaria",
+        "ambienti industriali",
+        "irregolarita",
+        "soletta esistente in calcestruzzo"
+      ]
+    }
+  ]
+}
