@@ -1,1 +1,285 @@
+{
+  "product": {
+    "code": "GTS",
+    "family": "GTS",
+    "name": "Manicotto Tecnaria GTS per giunzioni meccaniche e consolidamenti",
+    "brand": "Tecnaria S.p.A.",
+    "hq": "Bassano del Grappa (VI)",
+    "purpose": "Giunzioni meccaniche a secco (acciaio–acciaio / acciaio–legno / legno–legno) e consolidamenti con camicie in acciaio.",
+    "notes": "Dataset rigenerato pulito. Linguaggio tecnico coerente allo stile Tecnaria.",
+    "version": "v1.0"
+  },
+  "qa": [
+    {
+      "q": "Che cos'è il manicotto GTS e per cosa si usa?",
+      "a": "Il GTS è un manicotto metallico filettato per giunzioni meccaniche a secco e per consolidamenti strutturali. Consente di collegare elementi (acciaio–acciaio, acciaio–legno, legno–legno) tramite spine/tiranti e bulloneria, trasferendo sforzi di trazione e taglio senza getti o saldature in opera. È impiegato anche nelle camicie in acciaio per il ripristino di nodi o pilastri.",
+      "category": "prodotto_base",
+      "tags": ["overview","giunzione meccanica","consolidamento"]
+    },
+    {
+      "q": "Parlami del manicotto GTS",
+      "a": "Il GTS è il manicotto metallico filettato di Tecnaria per giunzioni meccaniche a secco e consolidamenti. Consente collegamenti acciaio–acciaio, acciaio–legno e legno–legno con spine/tiranti e piastre di ripartizione, trasferendo trazione e taglio senza getti in opera. L’installazione prevede prefori, accoppiamenti controllati e serraggio con chiave dinamometrica; sono richiesti controlli dimensionali e registrazione delle coppie. La progettazione deve verificare resistenze del collegamento, pressioni locali e stabilità degli elementi. Documentazione: schede tecniche e manuali Tecnaria; sicurezza: DPI e procedure di cantiere.",
+      "category": "prodotto_base",
+      "tags": ["overview","alias"]
+    },
+    {
+      "q": "Quali sono i componenti principali del sistema GTS?",
+      "a": "Manicotto filettato, spine o tiranti compatibili, rondelle, dadi, eventuali bussole/adattatori e piastre di ripartizione. Nei consolidamenti con camicia metallica si aggiungono lamiere, profili e sistemi di serraggio.",
+      "category": "prodotto_base",
+      "tags": ["componenti","overview"]
+    },
+    {
+      "q": "In quali materiali può essere applicato il GTS?",
+      "a": "Su elementi in acciaio (profili, piatti), legno (massiccio o lamellare) mediante idonee bussole/inserti, e come nodo in sistemi misti. La compatibilità dipende da resistenze locali e corretta progettazione di fori e ripartizioni.",
+      "category": "prodotto_base",
+      "tags": ["materiali","compatibilità"]
+    },
+
+    /* =================== PROGETTAZIONE =================== */
+    {
+      "q": "Quali verifiche di progetto sono richieste per l'impiego del GTS?",
+      "a": "Verifiche del collegamento a trazione/taglio, verifica dei bulloni e delle filettature, pressioni locali e punzonamento, stabilità/imbosso degli elementi collegati, oltre alla verifica dei supporti (acciaio/legno) e delle piastre di ripartizione.",
+      "category": "progettazione",
+      "tags": ["verifiche","resistenza","pressioni locali"]
+    },
+    {
+      "q": "Come si definisce il diametro delle spine o dei tiranti per il GTS?",
+      "a": "In funzione delle azioni di progetto, della classe d’acciaio, della lunghezza di impegno filettato nel manicotto e delle verifiche locali sui supporti. Va garantita la resistenza del tirante e della filettatura con i coefficienti parziali prescritti.",
+      "category": "progettazione",
+      "tags": ["dimensionamento","tiranti","filettatura"]
+    },
+    {
+      "q": "Qual è la lunghezza minima di impegno filettato nel manicotto GTS?",
+      "a": "In assenza di prescrizioni del progetto, considerare un impegno non inferiore a 1×d (d = diametro del tirante), incrementabile a 1,5–2×d per carichi elevati, verificando la resistenza della filettatura.",
+      "category": "progettazione",
+      "tags": ["filettatura","impegno","criteri"]
+    },
+    {
+      "q": "È possibile usare il GTS in zone sismiche?",
+      "a": "Sì, con progetto strutturale specifico che verifichi duttilità e capacità del nodo, dettagli costruttivi adeguati e ancoraggi conformi alle normative vigenti.",
+      "category": "progettazione",
+      "tags": ["sismica","normativa"]
+    },
+    {
+      "q": "È ammesso un minimo gioco nel collegamento GTS?",
+      "a": "Solo entro le tolleranze di progetto. Giochi eccessivi riducono la rigidezza e incrementano gli spostamenti; correggere con piastre/spessori appropriati.",
+      "category": "progettazione",
+      "tags": ["tolleranze","gioco"]
+    },
+    {
+      "q": "Quali criteri per scegliere piastre di ripartizione con GTS?",
+      "a": "Area e spessore sufficienti a limitare le pressioni locali sotto i limiti del materiale base; bordi smussati e fori correttamente dimensionati per evitare concentrazioni.",
+      "category": "progettazione",
+      "tags": ["piastre","pressioni locali","ripartizione"]
+    },
+
+    /* =================== POSA / INSTALLAZIONE =================== */
+    {
+      "q": "Quali sono le fasi essenziali di posa del GTS?",
+      "a": "Tracciamento e prefori; pulizia e controllo tolleranze; inserimento del manicotto e degli elementi di collegamento; serraggio graduale e controllato con chiave dinamometrica; verifica planarità delle piastre; controlli finali di coppia e allineamento.",
+      "category": "posa",
+      "tags": ["installazione","coppia di serraggio","tolleranze"]
+    },
+    {
+      "q": "Serve il preforo nel legno per l'uso del GTS?",
+      "a": "Sì: riduce fessurazioni e assicura tolleranze. Diametro/profondità sono definiti dal progetto in funzione della bussola/spina e della qualità del legno. Eseguire prove a campione su legno antico o fessurato.",
+      "category": "posa",
+      "tags": ["legno","preforo","prove a campione"]
+    },
+    {
+      "q": "Come si controlla la coppia di serraggio sul GTS?",
+      "a": "Con chiave dinamometrica tarata, secondo i valori di progetto; annotare i valori e ripetere campionature durante il montaggio.",
+      "category": "posa",
+      "tags": ["coppia","chiave dinamometrica","controlli"]
+    },
+    {
+      "q": "Quali tolleranze sono ammissibili sui fori per il GTS?",
+      "a": "Quelle previste dal progetto. Fori troppo grandi introducono gioco e perdita di rigidezza; fori troppo stretti ostacolano l’accoppiamento.",
+      "category": "posa",
+      "tags": ["tolleranze","foratura"]
+    },
+    {
+      "q": "Come si controlla l'allineamento prima del serraggio finale?",
+      "a": "Con dime o righe metalliche sulle superfici da collegare; serrare gradualmente monitorando scorrimenti e planarità.",
+      "category": "posa",
+      "tags": ["allineamento","planarità","dime"]
+    },
+    {
+      "q": "Come gestire differenze di quota tra elementi collegati con GTS?",
+      "a": "Usare spessori o piastre di livellamento progettate; evitare serraggi che inducano eccentricità incontrollate.",
+      "category": "posa",
+      "tags": ["spessori","piastre","eccentricità"]
+    },
+
+    /* =================== VERIFICHE / CONTROLLI =================== */
+    {
+      "q": "Quali controlli in accettazione vanno eseguiti sul GTS?",
+      "a": "Verifica dimensionale e visiva dei manicotti, controllo marcatura/lotto, verifica bulloneria e rondelle, compatibilità con le specifiche di progetto. Rifiutare pezzi deformati, filettature danneggiate o ossidazione visibile.",
+      "category": "verifiche",
+      "tags": ["accettazione","controllo qualità"]
+    },
+    {
+      "q": "Come documentare i controlli di cantiere sul GTS?",
+      "a": "Registrare fori e accoppiamenti, coppie di serraggio, allineamenti, non conformità e correzioni; allegare fotografie e firme responsabili.",
+      "category": "verifiche",
+      "tags": ["tracciabilità","registro cantiere","fotografie"]
+    },
+    {
+      "q": "Quali misure di controllo sono consigliate durante la posa del GTS?",
+      "a": "Campionature sulla coppia di serraggio, verifica allineamenti, controllo visivo dei filetti, pulizia fori e registrazione fotografica delle fasi chiave.",
+      "category": "verifiche",
+      "tags": ["controlli","coppia","allineamento","qualità"]
+    },
+
+    /* =================== COMPATIBILITÀ / MATERIALI =================== */
+    {
+      "q": "Il GTS può collegare acciaio a legno?",
+      "a": "Sì. Con bussole/inserti idonei nel legno e piastre di ripartizione. Verificare pressioni locali, resistenze a strappo/spacco e adottare prefori e serraggi coerenti con la specie legnosa e l’umidità.",
+      "category": "compatibilità",
+      "tags": ["acciaio-legno","bussole","ripartizione"]
+    },
+    {
+      "q": "Quali acciai sono compatibili con il GTS?",
+      "a": "Acciai strutturali usuali (S235–S355). Verificare spessori e rigidezza locale per evitare imbozzamenti; usare piastre di rinforzo quando necessario.",
+      "category": "compatibilità",
+      "tags": ["acciaio strutturale","spessori minimi","rinforzi"]
+    },
+    {
+      "q": "Il GTS è adatto a ambienti aggressivi?",
+      "a": "Sì, con protezioni superficiali idonee (zincatura/vernici) e piano di manutenzione. La scelta del trattamento rientra nel progetto.",
+      "category": "compatibilità",
+      "tags": ["corrosione","protezione","manutenzione"]
+    },
+
+    /* =================== PRESTAZIONI =================== */
+    {
+      "q": "Che tipo di azioni può trasferire un collegamento con GTS?",
+      "a": "Principalmente trazione e taglio nel piano della giunzione; la rigidezza flessionale dipende dalla configurazione e dall’uso di piastre di ripartizione.",
+      "category": "prestazioni",
+      "tags": ["trazione","taglio","rigidezza"]
+    },
+    {
+      "q": "Il GTS è adatto a carichi ciclici?",
+      "a": "Sì, se il progetto considera fatica, dettagli costruttivi, serraggi e controlli coerenti. Per cicli importanti sono raccomandate verifiche aggiuntive e piani di ispezione.",
+      "category": "prestazioni",
+      "tags": ["fatica","ciclico","ispezioni"]
+    },
+
+    /* =================== MANUTENZIONE =================== */
+    {
+      "q": "È richiesta manutenzione sul GTS?",
+      "a": "Ispezioni periodiche di integrità della bulloneria, protezione superficiale e ossidazioni; retensioni a campione se previste. In ambienti aggressivi adottare cicli di manutenzione programmata.",
+      "category": "manutenzione",
+      "tags": ["ispezioni","protezione superficiale","retensioni"]
+    },
+
+    /* =================== DOCUMENTAZIONE =================== */
+    {
+      "q": "Quali documenti devo consultare per l’uso del GTS?",
+      "a": "Progetto strutturale, specifiche del collegamento, schede tecniche del sistema GTS, manuali di posa e indicazioni della direzione lavori. La progettazione deve rispettare le normative vigenti ed eurocodici applicabili.",
+      "category": "documentazione",
+      "tags": ["schede tecniche","manuali","progetto"]
+    },
+    {
+      "q": "Qual è la documentazione minima da consegnare a fine lavori per GTS?",
+      "a": "Registro delle coppie, check-list di montaggio, certificazioni dei materiali, eventuali disegni as-built e corredo fotografico dei nodi.",
+      "category": "documentazione",
+      "tags": ["as built","registro","certificazioni"]
+    },
+
+    /* =================== SICUREZZA =================== */
+    {
+      "q": "Quali DPI e regole di sicurezza adottare durante l’installazione del GTS?",
+      "a": "Casco, guanti, occhiali, scarpe antinfortunistiche; protezioni per foratura/taglio; messa in sicurezza dell’area di lavoro e rispetto di PSC/POS.",
+      "category": "sicurezza",
+      "tags": ["DPI","cantiere","sicurezza"]
+    },
+
+    /* =================== ERRORI COMUNI / TROUBLESHOOTING =================== */
+    {
+      "q": "Quali sono gli errori più comuni nell’uso del GTS?",
+      "a": "Prefori non conformi, coppie non controllate, mancanza di piastre di ripartizione dove necessarie, tolleranze errate, fori non puliti, accoppiamenti con gioco eccessivo, tracciabilità insufficiente.",
+      "category": "errori_comuni",
+      "tags": ["preforo","coppia","ripartizione","tolleranze","tracciabilità"]
+    },
+    {
+      "q": "Come intervenire se un dado tende a svitarsi in esercizio?",
+      "a": "Usare dispositivi di sicurezza (dadi autobloccanti/rondelle anti-svitamento) o ripristinare la coppia; indagare eventuali vibrazioni.",
+      "category": "troubleshooting",
+      "tags": ["autobloccanti","vibrazioni","coppia"]
+    },
+    {
+      "q": "Cosa fare se la filettatura impegna poche spire?",
+      "a": "Aumentare la lunghezza di impegno (manicotto più lungo o tirante adeguato) o rivedere il diametro; il progetto deve garantire la resistenza della filettatura con margine.",
+      "category": "troubleshooting",
+      "tags": ["filettatura","impegno"]
+    },
+    {
+      "q": "Come si trattano fori ovalizzati o danneggiati?",
+      "a": "Non riutilizzare fori non conformi: ripristinare con bussole/piastre secondo indicazioni del progettista o riposizionare la foratura.",
+      "category": "troubleshooting",
+      "tags": ["fori","ripristino","bussole"]
+    },
+
+    /* =================== CONFRONTI / SCELTA =================== */
+    {
+      "q": "GTS vs saldatura in opera: quando preferire il GTS?",
+      "a": "Quando serve giunzione a secco senza apporto termico, montaggio controllabile e reversibile, riducendo interferenze in cantiere e rischi di saldatura in situ.",
+      "category": "confronto",
+      "tags": ["saldatura","a secco","reversibilità"]
+    },
+    {
+      "q": "GTS vs bullonatura tradizionale?",
+      "a": "Integra il principio della bullonatura con manicotto filettato che facilita allineamento e ripartizione; utile dove l’accesso è limitato o servono giunzioni preassemblabili.",
+      "category": "confronto",
+      "tags": ["bullonatura","manicotto","preassemblaggio"]
+    },
+
+    /* =================== COMPUTO / CANTIERE =================== */
+    {
+      "q": "Quali informazioni servono per un’offerta sul GTS?",
+      "a": "Schema della giunzione, azioni di progetto, materiali, dimensioni e spessori, accessibilità, quantità e tempi. Indicare eventuali trattamenti superficiali richiesti.",
+      "category": "computo",
+      "tags": ["offerta","quantitativi","tempi"]
+    },
+    {
+      "q": "È possibile preassemblare il GTS in officina?",
+      "a": "Sì, se geometria e tolleranze lo consentono: riduce tempi in cantiere e migliora la qualità del montaggio. Le verifiche in opera restano obbligatorie.",
+      "category": "cantiere",
+      "tags": ["preassemblaggio","qualità","tempi"]
+    },
+
+    /* =================== CAMPIONATURE (SERIE) =================== */
+    {
+      "q": "In quali casi è opportuno prevedere campionature aggiuntive GTS in cantiere? (1)",
+      "a": "Quando i supporti sono eterogenei, emergono differenze di coppia o accoppiamenti difficoltosi, o su nodi critici indicati dal progettista.",
+      "category": "verifiche",
+      "tags": ["campionature","qualità","cantiere"]
+    },
+    {
+      "q": "In quali casi è opportuno prevedere campionature aggiuntive GTS in cantiere? (2)",
+      "a": "All’avvio delle lavorazioni, in presenza di tolleranze strette o dove la ripartizione degli sforzi è delicata; aumentare la frequenza se emergono non conformità.",
+      "category": "verifiche",
+      "tags": ["campionature","avviamento","non conformità"]
+    },
+    {
+      "q": "In quali casi è opportuno prevedere campionature aggiuntive GTS in cantiere? (3)",
+      "a": "Quando cambiano le condizioni ambientali (umidità/temperatura) o la squadra di posa, e in caso di modifiche geometriche non previste.",
+      "category": "verifiche",
+      "tags": ["campionature","ambiente","variazioni"]
+    },
+    {
+      "q": "In quali casi è opportuno prevedere campionature aggiuntive GTS in cantiere? (4)",
+      "a": "Su elementi storici/legno antico con variabilità elevata, su spessori limite o in prossimità di vincoli geometrici complessi.",
+      "category": "verifiche",
+      "tags": ["campionature","legno antico","variabilità"]
+    },
+    {
+      "q": "In quali casi è opportuno prevedere campionature aggiuntive GTS in cantiere? (5)",
+      "a": "Quando si riscontrano disallineamenti ricorrenti, fori da ripassare o coppie fuori range; aggiornare la check-list con le azioni correttive.",
+      "category": "verifiche",
+      "tags": ["campionature","disallineamenti","check-list"]
+    }
+  ]
+}
 
