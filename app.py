@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Tecnaria Sinapsi – app.py (v4.2)
+Tecnaria Sinapsi – app.py (v4.3)
 - Classifier semantico (ruolo entità + intento) + router pesato
 - Regole cross: CTF↔P560; incompatibilità CTF/P560 su legno -> CTL
-- Boost semantico per GTS (preforo) e P560 (taratura/lamiera 1,5)
+- Boost: GTS (preforo), P560 (taratura/lamiera 1,5)
 - Picker: preferenza overview + tag-matching operativo
 - Narrativa: formatter Tecnaria + ENRICH_NARRATIVE=1 per tono più "umano" (locale, no GPT)
+- UI nera/arancione, bottone “Chiedi”, disclaimer stile ChatGPT
 - Endpoints: /health, /selfcheck, /debug, /ask, /company, /ui
 """
 import json, re, os
@@ -21,7 +22,7 @@ BANK_FILE = BASE_PATH / "bancari.json"
 
 FAMILIES = ["ctf", "gts", "diapason", "ctl", "mini-cem-e", "spit-p560"]
 
-# Parole chiave per scoring router (rafforzate)
+# Parole chiave router
 KEYWORDS: Dict[str, List[str]] = {
     "ctf": [
         "ctf","connettore","solaio","collaborante","acciaio","calcestruzzo",
@@ -41,7 +42,7 @@ KEYWORDS: Dict[str, List[str]] = {
     ],
 }
 
-# Dizionario semantico per riconoscere ruolo delle entità
+# Dizionario semantico
 ENTITY_DICT = {
     "tool": ["p560", "spit", "chiodatrice", "sparachiodi", "propulsore", "propulsori"],
     "component": ["ctf", "connettore", "gts", "manicotto", "diapason", "ctl", "mini-cem-e", "minicem"],
@@ -120,7 +121,7 @@ def load_family_dataset(code: Optional[str]) -> Tuple[List[Dict[str, Any]], Opti
             return qa, p, err
     return [], None, None
 
-# ====== Classifier semantico ======
+# ====== Classifier ======
 def detect_entities(question: str) -> Dict[str, List[str]]:
     t = norm(question)
     found = {"tool": [], "component": [], "material": [], "action": []}
@@ -166,7 +167,6 @@ def route_insight(question: str) -> Dict[str, Any]:
     mentions_tool      = len(entities.get("tool", [])) > 0
     mentions_component = entities.get("component", [])
     mentions_materials = entities.get("material", [])
-    # mentions_action    = len(entities.get("action", [])) > 0  # non usato ora
 
     # Priorità per componenti esplicite
     primary = None
@@ -226,7 +226,7 @@ def score_item(q: str, item: Dict[str, Any]) -> float:
     if "parlami" in norm(q) and (cat == "prodotto_base" or "overview" in tags):
         bonus += 0.2
 
-    # Se i tag matchano parole della domanda (taratura, preforo, lamiera 1,5 …)
+    # Se i tag matchano termini domanda (taratura, preforo, lamiera 1,5 …)
     if any(t in tq for t in tags):
         bonus += 0.25
 
@@ -248,7 +248,7 @@ def semantic_pick(q: str, qa: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
             return max(overviews, key=lambda it: len(it.get("a","")))
     return max(qa, key=lambda it: score_item(q, it))
 
-# ====== Narrativa (formatter) ======
+# ====== Narrativa ======
 FAMILY_TITLES = {
     "ctf": "CTF – Connettori acciaio–calcestruzzo",
     "gts": "GTS – Manicotti filettati",
@@ -259,7 +259,7 @@ FAMILY_TITLES = {
 }
 
 def narrativize(answer: str, primary: str, intent: str) -> str:
-    """Rende la risposta meno 'glaciale' con una breve intro e chiusura Tecnaria, senza inventare contenuti."""
+    """Intro+outro Tecnaria (senza inventare)."""
     answer = (answer or "").strip()
     if not answer:
         return answer
@@ -277,36 +277,64 @@ def narrativize(answer: str, primary: str, intent: str) -> str:
         outro = ""
     return f"{intro}\n\n{answer}{outro}"
 
+# Patch “smart” per l’arricchimento locale
+SPLIT_SENT_RE = re.compile(r'(?<=[\.\!\?])\s+')
 def enrich_narrative(answer: str, primary: str, intent: str) -> str:
     """
     Arricchimento narrativo locale (deterministico, compatibile Render).
-    Aggiunge piccole transizioni e una microrisintesi finale, senza alterare il contenuto tecnico.
-    Attivo solo se ENRICH_NARRATIVE=1.
+    - Niente "Inoltre," sulla prima frase o subito dopo "No."
+    - Evita doppioni; normalizza "Inoltre, per..." minuscolo
+    - Inserisce "in pratica," una volta dopo ';' se utile
     """
     if not answer or len(answer) < 80:
         return answer
-    # micro-transizioni non aggressive
-    txt = answer
-    # Evita di toccare blocchi markdown tipo **titoli**
-    parts = txt.split("\n\n")
-    new_parts = []
-    for i, p in enumerate(parts):
-        s = p.strip()
-        if not s or s.startswith("**"):
-            new_parts.append(s)
-            continue
-        # piccole sostituzioni morbide
-        s = s.replace("; ", "; in pratica, ")
-        s = s.replace(". ", ". Inoltre, ")
-        # limita espansione eccessiva
-        new_parts.append(s)
-    txt = "\n\n".join(new_parts)
 
-    # coda sintetica
+    def tidy_spaces(s: str) -> str:
+        s = re.sub(r'\s{2,}', ' ', s)
+        s = re.sub(r'\s+([;:,])', r'\1', s)
+        return s.strip()
+
+    paragraphs = answer.split("\n\n")
+    new_paragraphs = []
+    for p in paragraphs:
+        p = p.strip()
+        if not p or p.startswith("**"):
+            new_paragraphs.append(p)
+            continue
+
+        if "; " in p and "in pratica" not in p.lower():
+            p = p.replace("; ", "; in pratica, ", 1)
+
+        sentences = SPLIT_SENT_RE.split(p)
+        if len(sentences) <= 1:
+            new_paragraphs.append(tidy_spaces(p))
+            continue
+
+        rebuilt = []
+        for i, s in enumerate(sentences):
+            s_stripped = s.strip()
+            if i == 0:
+                rebuilt.append(s_stripped)
+                continue
+
+            prev = sentences[i-1].strip().lower()
+            starts_bad = s_stripped.lower().startswith(("inoltre,", "in pratica,"))
+
+            if not starts_bad:
+                if not (prev in ("no.", "no", "non.") or len(prev) <= 3):
+                    s_stripped = "Inoltre, " + s_stripped
+
+            s_stripped = re.sub(r'Inoltre,\s+Per\b', 'Inoltre, per', s_stripped)
+            rebuilt.append(s_stripped)
+
+        np = " ".join(rebuilt)
+        new_paragraphs.append(tidy_spaces(np))
+
+    txt = "\n\n".join(new_paragraphs)
     tail = "\n\n_In sintesi, questa è la linea operativa coerente con le indicazioni Tecnaria._"
-    if tail.lower() in txt.lower():
-        return txt
-    return txt + tail
+    if "linea operativa coerente" not in txt.lower():
+        txt += tail
+    return txt
 
 def apply_narrative(answer: str, primary: str, intent: str) -> str:
     base = narrativize(answer, primary, intent)
@@ -315,13 +343,12 @@ def apply_narrative(answer: str, primary: str, intent: str) -> str:
     return base
 
 # ====== APP ======
-app = FastAPI(title="Tecnaria Sinapsi", version="4.2")
+app = FastAPI(title="Tecnaria Sinapsi", version="4.3")
 
 @app.get("/health")
 def health():
     datasets = {}
     for code in FAMILIES:
-        paths = [str(p) for p in dataset_candidates_for_code(code)]
         existing = [str(p) for p in dataset_candidates_for_code(code) if p.exists()]
         raw = load_json(Path(existing[0])) if existing else {}
         err = raw.get("__error__") if isinstance(raw, dict) else None
@@ -396,7 +423,7 @@ def ask(q: str):
     insight = route_insight(q)
     intent = insight["intent"]
 
-    # Caso speciale: legno + CTF/P560 => negazione e pivot a CTL
+    # Legno + CTF/P560 => negazione e pivot a CTL
     if insight.get("incompatible_ctf_on_wood"):
         qa_ctl, used_ctl, err_ctl = load_family_dataset("ctl")
         hit_ctl = semantic_pick("overview ctl legno calcestruzzo", qa_ctl) if qa_ctl else None
@@ -409,7 +436,7 @@ def ask(q: str):
         )
         return {"answer": apply_narrative(answer, "ctl", "usage")}
 
-    # Intent di confronto (sintesi doppia)
+    # Confronto (due famiglie)
     if intent == "compare" and insight.get("compare_candidates"):
         candidates = insight["compare_candidates"][:2]
         qa_a, used_a, err_a = load_family_dataset(candidates[0]) if len(candidates) > 0 else ([], None, None)
@@ -463,7 +490,7 @@ def company():
         bank = {}
     return {"contacts": contacts, "bank": bank if isinstance(bank, dict) else {}}
 
-# ====== UI minimal (nera/arancione) ======
+# ====== UI (nera/arancione, bottone "Chiedi", disclaimer) ======
 UI_HTML = """<!doctype html>
 <html lang="it"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -491,6 +518,7 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-se
 .footer{color:#eee;padding:24px 0;text-align:center;font-size:12px}
 .section{margin-top:14px}
 .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+.disclaimer{margin-top:8px;color:#555;font-size:12px}
 </style>
 </head>
 <body>
@@ -506,8 +534,9 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-se
   <div class="card">
     <div class="row">
       <input id="q" class="input" placeholder="Scrivi qui la tua domanda (es. “Si può usare una qualsiasi chiodatrice per i CTF?”)"/>
-      <button id="ask" class="btn">Chiedi a Sinapsi</button>
+      <button id="ask" class="btn">Chiedi</button>
     </div>
+    <div class="disclaimer">Le risposte possono contenere inesattezze. Verifica informazioni importanti nelle schede ufficiali e con il progettista.</div>
     <div class="badges">
       <div class="badge">CTF</div><div class="badge">GTS</div><div class="badge">Diapason</div>
       <div class="badge">CTL</div><div class="badge">Mini-Cem-E</div><div class="badge">SPIT P560</div>
