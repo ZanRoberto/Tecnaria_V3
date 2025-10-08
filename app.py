@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Tecnaria Sinapsi – app.py (v4.1)
+Tecnaria Sinapsi – app.py (v4.2)
 - Classifier semantico (ruolo entità + intento) + router pesato
 - Regole cross: CTF↔P560; incompatibilità CTF/P560 su legno -> CTL
 - Boost semantico per GTS (preforo) e P560 (taratura/lamiera 1,5)
 - Picker: preferenza overview + tag-matching operativo
-- Narrativa: risposta formattata con voce Tecnaria (intro + chiusura)
+- Narrativa: formatter Tecnaria + ENRICH_NARRATIVE=1 per tono più "umano" (locale, no GPT)
 - Endpoints: /health, /selfcheck, /debug, /ask, /company, /ui
 """
-import json, re
+import json, re, os
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from fastapi import FastAPI, Query
@@ -166,7 +166,7 @@ def route_insight(question: str) -> Dict[str, Any]:
     mentions_tool      = len(entities.get("tool", [])) > 0
     mentions_component = entities.get("component", [])
     mentions_materials = entities.get("material", [])
-    mentions_action    = len(entities.get("action", [])) > 0
+    # mentions_action    = len(entities.get("action", [])) > 0  # non usato ora
 
     # Priorità per componenti esplicite
     primary = None
@@ -273,13 +273,49 @@ def narrativize(answer: str, primary: str, intent: str) -> str:
     }
     intro = intro_map.get(intent, f"**{title}** — indicazioni Tecnaria:")
     outro = "\n\n*Riferimento: documentazione e schede ufficiali Tecnaria. In caso di dubbio, attenersi alle indicazioni del progettista strutturale.*"
-    # Non duplicare chiusure se già presenti
     if "schede" in answer.lower() and "tecnaria" in answer.lower():
         outro = ""
     return f"{intro}\n\n{answer}{outro}"
 
+def enrich_narrative(answer: str, primary: str, intent: str) -> str:
+    """
+    Arricchimento narrativo locale (deterministico, compatibile Render).
+    Aggiunge piccole transizioni e una microrisintesi finale, senza alterare il contenuto tecnico.
+    Attivo solo se ENRICH_NARRATIVE=1.
+    """
+    if not answer or len(answer) < 80:
+        return answer
+    # micro-transizioni non aggressive
+    txt = answer
+    # Evita di toccare blocchi markdown tipo **titoli**
+    parts = txt.split("\n\n")
+    new_parts = []
+    for i, p in enumerate(parts):
+        s = p.strip()
+        if not s or s.startswith("**"):
+            new_parts.append(s)
+            continue
+        # piccole sostituzioni morbide
+        s = s.replace("; ", "; in pratica, ")
+        s = s.replace(". ", ". Inoltre, ")
+        # limita espansione eccessiva
+        new_parts.append(s)
+    txt = "\n\n".join(new_parts)
+
+    # coda sintetica
+    tail = "\n\n_In sintesi, questa è la linea operativa coerente con le indicazioni Tecnaria._"
+    if tail.lower() in txt.lower():
+        return txt
+    return txt + tail
+
+def apply_narrative(answer: str, primary: str, intent: str) -> str:
+    base = narrativize(answer, primary, intent)
+    if os.getenv("ENRICH_NARRATIVE", "0") == "1":
+        return enrich_narrative(base, primary, intent)
+    return base
+
 # ====== APP ======
-app = FastAPI(title="Tecnaria Sinapsi", version="4.1")
+app = FastAPI(title="Tecnaria Sinapsi", version="4.2")
 
 @app.get("/health")
 def health():
@@ -371,7 +407,7 @@ def ask(q: str):
             "Per solai lignei si utilizza il sistema CTL con viti strutturali e soletta collaborante."
             + ctl_line
         )
-        return {"answer": narrativize(answer, "ctl", "usage")}
+        return {"answer": apply_narrative(answer, "ctl", "usage")}
 
     # Intent di confronto (sintesi doppia)
     if intent == "compare" and insight.get("compare_candidates"):
@@ -387,7 +423,7 @@ def ask(q: str):
         if hit_b:
             parts.append(f"**{candidates[1].upper()} — Sintesi:**\n{hit_b.get('a','').strip()}")
         compare_note = "\n\n**Confronto sintetico:** valuta azioni, costi di posa, attrezzature e vincoli; preferire la tecnologia che soddisfa i vincoli geometrici e di accesso in cantiere."
-        return {"answer": narrativize("\n\n".join(parts) + compare_note, candidates[0], "compare")}
+        return {"answer": apply_narrative("\n\n".join(parts) + compare_note, candidates[0], "compare")}
 
     # Flusso single-family
     primary = insight["primary"]
@@ -417,7 +453,7 @@ def ask(q: str):
                         + p560_txt
                     )
 
-    return {"answer": narrativize(answer, primary, intent)}
+    return {"answer": apply_narrative(answer, primary, intent)}
 
 @app.get("/company")
 def company():
