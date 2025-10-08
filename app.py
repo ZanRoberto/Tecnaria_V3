@@ -1,31 +1,31 @@
 # -*- coding: utf-8 -*-
 """
-Tecnaria Sinapsi – app.py (router pesato + cross-answer CTF↔P560)
-- Router robusto (punteggi per famiglia + priorità a keyword forti)
-- Cross-answer: se la domanda è su CTF ma parla di chiodatrice/P560,
-  la risposta include in modo deterministico una nota dalla famiglia P560.
-- Endpoint di diagnostica: /health, /selfcheck, /debug
-- UI minimale nera/arancione con logo "T" testuale
+Tecnaria Sinapsi – app.py (v4.0)
+- Router pesato per famiglia
+- Classifier semantico leggero per: ruolo(entità) + intento
+- Priorità e regole cross migliorate (CTF <-> P560)
+- Picker ottimizzato per "parlami..." (overview)
+- Endpoints: /health, /selfcheck, /debug, /ask, /company, /ui
 """
-import json, re
+import json
+import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from fastapi import FastAPI, Query
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 
 # ====== CONFIG ======
 BASE_PATH = Path("static/data")
-ROUTER_FILE = BASE_PATH / "tecnaria_router_index.json"
 CONTACTS_FILE = BASE_PATH / "contatti.json"
 BANK_FILE = BASE_PATH / "bancari.json"
 
 FAMILIES = ["ctf", "gts", "diapason", "ctl", "mini-cem-e", "spit-p560"]
 
-# Parole chiave per scoring router
+# KEYWORDS base (spostati "chiodo/chiodi" su P560)
 KEYWORDS: Dict[str, List[str]] = {
     "ctf": [
         "ctf","connettore","solaio","collaborante","acciaio","calcestruzzo",
-        "lamiera", "lamiera grecata","trave","sparare","chiodo","chiodi"
+        "lamiera","lamiera grecata","trave"
     ],
     "gts": ["gts","manicotto","giunzione","spine","tiranti","camicia"],
     "diapason": ["diapason","soletta leggera","cappa","rinforzo laterocemento"],
@@ -33,9 +33,35 @@ KEYWORDS: Dict[str, List[str]] = {
     "mini-cem-e": ["mini-cem-e","minicem","camicia","consolidamento","iniezione","boiacca"],
     "spit-p560": [
         "p560","spit","chiodatrice","sparachiodi","propulsore","propulsori",
-        "taratura","potenza","hsbr14","hsbr 14","hsb r14"
+        "taratura","potenza","hsbr14","hsbr 14","hsb r14","chiodo","chiodi"
     ],
 }
+
+# Diccionari semantici estesi (entity role detector)
+ENTITY_DICT = {
+    "tool": ["p560", "spit", "chiodatrice", "sparachiodi", "propulsore", "propulsori", "avvitatore", "trapano"],
+    "component": ["ctf", "connettore", "gts", "manicotto", "diapason", "ctl", "minicem", "mini-cem-e"],
+    "material": ["legno", "acciaio", "calcestruzzo", "lamiera", "lamiera grecata", "laterocemento"],
+    "action": ["posa", "fissare", "infissione", "tarare", "taratura", "regolare", "montare", "saldare", "iniezione"],
+}
+
+# Intent patterns
+INTENT_PATTERNS = {
+    "explain": ["parlami", "che cos", "cos'è", "cos e", "descrivi", "spiegami"],
+    "usage": ["posso", "come si", "come va", "si può", "si puo", "serve", "necessario", "obbligatorio"],
+    "compare": ["vs", "contro", "meglio", "convenienza", "conviene", "o ", "oppure"],
+    "verify": ["come verifico", "come controllo", "controllo", "verifica", "taratura", "tarare"],
+    "safety": ["sicurezza", "dpi", "protezione", "occhiali", "guanti", "cuffie"],
+}
+
+# Regex helper
+WORD_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]+", re.UNICODE)
+def norm(text: str) -> str:
+    return " ".join(w.lower() for w in WORD_RE.findall(text or ""))
+
+def contains_any_norm(text: str, kws: List[str]) -> bool:
+    t = norm(text)
+    return any(k in t for k in kws)
 
 # ====== IO sicuro ======
 def load_json(path: Path) -> Any:
@@ -65,68 +91,6 @@ def extract_qa(payload: Any) -> List[Dict[str, Any]]:
                     acc.extend(it["qa"])
     return acc
 
-# ====== Normalizzazione + util ======
-WORD_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]+", re.UNICODE)
-def norm(text: str) -> str:
-    return " ".join(w.lower() for w in WORD_RE.findall(text or ""))
-
-def contains_any(text: str, kws: List[str]) -> bool:
-    t = norm(text)
-    return any(k in t for k in kws)
-
-# ====== Router: punteggi + priorità + cross-intent ======
-def route_insight(question: str) -> Dict[str, Any]:
-    """
-    Calcola:
-      - score per famiglia
-      - primary (massimo score, con priorità a hit 'forti')
-      - secondary (le altre non nulle)
-      - flag cross: needs_p560_for_ctf quando domanda cita chiodatrice/P560 + CTF
-    """
-    t = norm(question)
-
-    # punteggio grezzo: numero di keyword contenute
-    scores: Dict[str, float] = {fam: 0.0 for fam in FAMILIES}
-    for fam, kws in KEYWORDS.items():
-        for k in kws:
-            if k in t:
-                scores[fam] += 1.0
-
-    # bonus per keyword "forti"
-    if contains_any(t, KEYWORDS["spit-p560"]):
-        scores["spit-p560"] += 1.5
-    if contains_any(t, ["overview","parlami","che cos","cos e","cos'è","cos'e"]):
-        # preferisci famiglie con overview robuste; non forzi scelta,
-        # ma alza i pesi di tutti per non tornare None
-        for fam in FAMILIES:
-            scores[fam] += 0.1
-
-    # primary/secondary
-    primary = max(scores, key=lambda k: scores[k]) if any(scores.values()) else None
-    secondary = [fam for fam in FAMILIES if fam != primary and scores[fam] > 0]
-
-    # cross rule CTF ↔ P560:
-    mentions_ctf = contains_any(t, KEYWORDS["ctf"])
-    mentions_p560 = contains_any(t, KEYWORDS["spit-p560"])
-    mentions_tool = contains_any(t, ["chiodatrice","sparachiodi","propulsore","propulsori","taratura","potenza","chiodi"])
-
-    needs_p560_for_ctf = (mentions_ctf and (mentions_p560 or mentions_tool))
-    # Nota: se la domanda è solo “P560” senza CTF, primary resterà spit's score.
-    # Ma se primary = ctf e needs_p560_for_ctf = True → risposta ibrida.
-
-    return {
-        "primary": primary,
-        "secondary": secondary,
-        "scores": scores,
-        "mentions": {
-            "ctf": mentions_ctf,
-            "p560": mentions_p560,
-            "tool": mentions_tool
-        },
-        "needs_p560_for_ctf": needs_p560_for_ctf
-    }
-
-# ====== dataset paths tolleranti ======
 def dataset_candidates_for_code(code: Optional[str]) -> List[Path]:
     if not code:
         return []
@@ -152,7 +116,106 @@ def load_family_dataset(code: Optional[str]) -> Tuple[List[Dict[str, Any]], Opti
             return qa, p, err
     return [], None, None
 
-# ====== Ranker semplice ======
+# ====== Classifier leggero: entities + intent ======
+def detect_entities(question: str) -> Dict[str, List[str]]:
+    t = norm(question)
+    found = {"tool": [], "component": [], "material": [], "action": []}
+    for role, kws in ENTITY_DICT.items():
+        for k in kws:
+            if k in t:
+                found[role].append(k)
+    return found
+
+def detect_intent(question: str) -> str:
+    t = norm(question)
+    # compare first (explicit tokens)
+    if any(x in t for x in (" vs ", " vs.", " vs,", " vs:", " vs?")) or contains_any_norm(question, [" vs", " vs "]) or contains_any_norm(question, ["contro", "meglio", "conviene", "convenienza", "oppure"]):
+        return "compare"
+    for intent, pats in INTENT_PATTERNS.items():
+        if contains_any_norm(question, pats):
+            return intent
+    # default heuristics
+    if any(a in t for a in ("come","posso","si puo","si può","serve","necessario")):
+        return "usage"
+    return "explain"
+
+# ====== Scoring and insight (router + classifier integration) ======
+def base_scores_from_keywords(question: str) -> Dict[str, float]:
+    t = norm(question)
+    scores = {fam: 0.0 for fam in FAMILIES}
+    for fam, kws in KEYWORDS.items():
+        for k in kws:
+            if k in t:
+                scores[fam] += 1.0
+    # P560 strong bonus
+    if contains_any_norm(question, KEYWORDS["spit-p560"]):
+        scores["spit-p560"] += 1.5
+    # slight boost for general "parlami"
+    if contains_any_norm(question, ["parlami", "che cos", "cos e", "cos'è", "cos'e"]):
+        for fam in FAMILIES:
+            scores[fam] += 0.05
+    return scores
+
+def route_insight(question: str) -> Dict[str, Any]:
+    t = norm(question)
+    intent = detect_intent(question)
+    entities = detect_entities(question)
+    base_scores = base_scores_from_keywords(question)
+
+    # primary decision rules with classifier:
+    # 1) if question explicitly mentions a tool and not a component -> choose tool family (P560)
+    mentions_tool = len(entities.get("tool", [])) > 0
+    mentions_component = len(entities.get("component", [])) > 0
+    mentions_material = len(entities.get("material", [])) > 0
+    mentions_action = len(entities.get("action", [])) > 0
+
+    primary = None
+    # Rule A: explicit tool and no component => tool primary
+    if mentions_tool and not mentions_component:
+        primary = "spit-p560"
+    else:
+        # Rule B: choose max score
+        primary = max(base_scores, key=lambda k: base_scores[k]) if any(base_scores.values()) else None
+
+    # Special cross detection: if primary is ctf but question mentions tool or tool-like actions -> mark augmentation
+    needs_p560_for_ctf = False
+    if primary == "ctf":
+        # if mentions tool, or wording is "posso usare" + mentions tool-like word -> augment
+        if mentions_tool or contains_any_norm(question, ["posso usare", "si può usare", "si puo usare", "chiodatrice", "chiodi", "propulsore", "propulsori", "taratura", "potenza"]):
+            needs_p560_for_ctf = True
+
+    # If intent is compare, try to detect which two families are compared
+    compare_candidates = []
+    if intent == "compare":
+        # pick top2 by score or by explicit entities
+        sorted_by_score = sorted(base_scores.items(), key=lambda x: x[1], reverse=True)
+        compare_candidates = [k for k,v in sorted_by_score if v>0][:2]
+        # if explicit component mentions exist, map them to families
+        for comp in entities.get("component",[]):
+            comp_lower = comp.lower()
+            if comp_lower in ("ctf","connettore"):
+                if "ctf" not in compare_candidates: compare_candidates.insert(0,"ctf")
+            if comp_lower in ("gts","manicotto"):
+                if "gts" not in compare_candidates: compare_candidates.insert(0,"gts")
+            if comp_lower in ("ctl",):
+                if "ctl" not in compare_candidates: compare_candidates.insert(0,"ctl")
+            if comp_lower in ("diapason",):
+                if "diapason" not in compare_candidates: compare_candidates.insert(0,"diapason")
+            if comp_lower in ("mini-cem-e","minicem"):
+                if "mini-cem-e" not in compare_candidates: compare_candidates.insert(0,"mini-cem-e")
+    # Build insight
+    insight = {
+        "intent": intent,
+        "entities": entities,
+        "base_scores": base_scores,
+        "primary": primary,
+        "secondary": sorted([fam for fam in FAMILIES if fam != primary and base_scores[fam] > 0], key=lambda x: base_scores[x], reverse=True),
+        "needs_p560_for_ctf": needs_p560_for_ctf,
+        "compare_candidates": compare_candidates
+    }
+    return insight
+
+# ====== Ranker + picker ======
 def score_item(q: str, item: Dict[str, Any]) -> float:
     tq = set(norm(q).split())
     iq = set(norm(item.get("q","")).split())
@@ -172,10 +235,20 @@ def score_item(q: str, item: Dict[str, Any]) -> float:
 def semantic_pick(q: str, qa: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if not qa:
         return None
+    t = norm(q)
+    if any(x in t for x in ("parlami","overview","che cos","cos e","cos'è","cos'e")):
+        overviews = [it for it in qa if (it.get("category","").lower() in ("prodotto_base","overview")
+                                         or "overview" in [str(tt).lower() for tt in it.get("tags",[] )])]
+        if overviews:
+            return max(overviews, key=lambda it: len(it.get("a","")))
     return max(qa, key=lambda it: score_item(q, it))
 
-# ====== App ======
-app = FastAPI(title="Tecnaria Sinapsi", version="3.1")
+# ====== App helpers ======
+def load_family_by_code(code: Optional[str]) -> Tuple[List[Dict[str, Any]], Optional[Path], Optional[str]]:
+    return load_family_dataset(code)
+
+# ====== APP ======
+app = FastAPI(title="Tecnaria Sinapsi", version="4.0")
 
 @app.get("/health")
 def health():
@@ -202,23 +275,22 @@ def health():
 @app.get("/selfcheck")
 def selfcheck():
     checks = []
+    probes = {
+        "ctf": "Parlami dei connettori CTF",
+        "gts": "Parlami del manicotto GTS",
+        "diapason": "Parlami del sistema Diapason",
+        "ctl": "Parlami del sistema CTL",
+        "mini-cem-e": "Parlami del Mini-Cem-E",
+        "spit-p560": "Parlami della SPIT P560",
+    }
     for code in FAMILIES:
-        qa, path, err = load_family_dataset(code)
-        # probe di qualità: una domanda tipica per ogni famiglia
-        probe = {
-            "ctf": "Parlami dei connettori CTF",
-            "gts": "Parlami del manicotto GTS",
-            "diapason": "Parlami del sistema Diapason",
-            "ctl": "Parlami del sistema CTL",
-            "mini-cem-e": "Parlami del Mini-Cem-E",
-            "spit-p560": "Parlami della SPIT P560",
-        }[code]
-        hit = semantic_pick(probe, qa) if qa else None
+        qa, path, err = load_family_by_code(code)
+        hit = semantic_pick(probes[code], qa) if qa else None
         checks.append({
             "family": code,
             "used_path": str(path) if path else None,
             "qa_count": len(qa),
-            "probe_q": probe,
+            "probe_q": probes[code],
             "hit_q": (hit or {}).get("q"),
             "preview_a": ((hit or {}).get("a","")[:200] + ("…" if (hit and len(hit.get('a',''))>200) else "")) if hit else None
         })
@@ -228,13 +300,12 @@ def selfcheck():
 def debug(q: str = Query(..., description="Domanda per il debug")):
     insight = route_insight(q)
     primary = insight["primary"]
-    qa, used, err = load_family_dataset(primary)
+    qa, used, err = load_family_by_code(primary)
     hit = semantic_pick(q, qa) if qa else None
 
-    # eventuale integrazione P560
     p560_note = None
     if insight["needs_p560_for_ctf"]:
-        qa_p, used_p, err_p = load_family_dataset("spit-p560")
+        qa_p, used_p, err_p = load_family_by_code("spit-p560")
         hit_p = semantic_pick(q, qa_p) if qa_p else None
         p560_note = {
             "used_path": str(used_p) if used_p else None,
@@ -256,9 +327,29 @@ def debug(q: str = Query(..., description="Domanda per il debug")):
 @app.get("/ask")
 def ask(q: str):
     insight = route_insight(q)
-    primary = insight["primary"]
-    qa, used, err = load_family_dataset(primary)
+    intent = insight["intent"]
 
+    # Compare intent handling: produce synthesized compare answer if possible
+    if intent == "compare" and insight.get("compare_candidates"):
+        candidates = insight["compare_candidates"][:2]
+        # load both families
+        qa_a, used_a, err_a = load_family_by_code(candidates[0]) if len(candidates) > 0 else ([], None, None)
+        qa_b, used_b, err_b = load_family_by_code(candidates[1]) if len(candidates) > 1 else ([], None, None)
+        hit_a = semantic_pick(q, qa_a) if qa_a else None
+        hit_b = semantic_pick(q, qa_b) if qa_b else None
+
+        parts = []
+        if hit_a:
+            parts.append(f"**{candidates[0].upper()} — Sintesi:**\n{hit_a.get('a')}")
+        if hit_b:
+            parts.append(f"**{candidates[1].upper()} — Sintesi:**\n{hit_b.get('a')}")
+        # generic compare block (if compare.json present, would be used — for now use heuristics)
+        compare_note = "\n\n**Confronto sintetico:** valuta azioni, costi di posa, attrezzature e vincoli; preferire la tecnologia che soddisfa i vincoli geometrici e di accesso in cantiere."
+        return {"answer": "\n\n".join(parts) + compare_note}
+
+    # Single-family flow
+    primary = insight["primary"]
+    qa, used, err = load_family_by_code(primary)
     if err:
         return {"answer": f"Dataset non disponibile per {primary}. Errore file: {err}"}
     if not qa:
@@ -270,15 +361,13 @@ def ask(q: str):
 
     answer = hit.get("a","").strip()
 
-    # Cross-answer CTF ↔ P560: se la domanda è su CTF e parla di chiodatrice/P560,
-    # aggiungi la nota operativa dalla famiglia P560.
+    # Cross-note: se è CTF e si parla di macchina/propulsori -> aggiungi nota P560
     if primary == "ctf" and insight["needs_p560_for_ctf"]:
-        qa_p, used_p, err_p = load_family_dataset("spit-p560")
+        qa_p, used_p, err_p = load_family_by_code("spit-p560")
         if qa_p and not err_p:
             hit_p = semantic_pick(q, qa_p) or semantic_pick("P560 chiodatrice per CTF", qa_p)
             if hit_p and isinstance(hit_p.get("a"), str):
                 p560_txt = hit_p["a"].strip()
-                # evita ripetizioni banali
                 if p560_txt and p560_txt not in answer:
                     answer = (
                         answer
@@ -296,7 +385,7 @@ def company():
         bank = {}
     return {"contacts": contacts, "bank": bank if isinstance(bank, dict) else {}}
 
-# ====== UI (nera/arancione) ======
+# ====== UI minimal (nera/arancione) ======
 UI_HTML = """<!doctype html>
 <html lang="it"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -386,8 +475,7 @@ async function ask(){
   const r = await fetch(BASE + "/ask?q=" + encodeURIComponent(q));
   const j = await r.json();
   const ms = Math.round(performance.now()-t0);
-  document.getElementById('out').innerHTML = (j.answer||"—")
-     .replaceAll("\\n","<br/>");
+  document.getElementById('out').innerHTML = (j.answer||"—").replaceAll("\\n","<br/>");
   document.getElementById('out').innerHTML += "<br/><br/><span class='small'>⏱ "+ms+" ms</span>";
 }
 document.getElementById('ask').onclick = ask;
