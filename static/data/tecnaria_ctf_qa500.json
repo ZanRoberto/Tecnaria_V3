@@ -108,6 +108,12 @@
       "a": "Solo SPIT P560 con kit Tecnaria; 2 chiodi HSBR14 per connettore; verificare lamiera aderente (1×1,5 mm o 2×1,0 mm) e spessore trave ≥ 6 mm; tarare propulsori con prove; DPI obbligatori. Tenere registro controlli. Fare sempre riferimento a schede Tecnaria e ETA 18/0447."
     },
     {
+      "id": "CTF-POSA-0002",
+      "category": "posa_attrezzature",
+      "q": "Connettori CTF: si può usare una chiodatrice qualsiasi?",
+      "a": "No. Per i CTF Tecnaria è ammessa esclusivamente la SPIT P560 con kit/adattatori Tecnaria. Ogni connettore si posa con 2 chiodi HSBR14; selezionare i propulsori P560 in base al supporto/spessore. Verificare lamiera aderente (1×1,5 mm oppure 2×1,0 mm) e spessore trave ≥ 6 mm. Riferimento: schede Tecnaria e ETA 18/0447."
+    },
+    {
       "id": "CTF-CONSUMI-0001",
       "category": "faq_codici_consumi",
       "q": "Quanti connettori al metro quadro e che produttività posso aspettarmi?",
