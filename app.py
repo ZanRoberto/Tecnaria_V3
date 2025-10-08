@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Tecnaria Sinapsi – app.py (v4.5)
+Tecnaria Sinapsi – app.py (v4.5.1)
 - Motore di verità deterministico basato su JSON Tecnaria
 - Router semantico + regole: CTF↔P560, pivot legno→CTL, confronti
 - Picker: preferenza overview + tag operativi (taratura, preforo, lamiera 1,5…)
 - Narrativa locale (no GPT): ENRICH_NARRATIVE=1
-- NUOVO: Parametric Hints (opzionale) – suggerimenti pratici non vincolanti
-  · Abilita con PARAM_HINTS=1
-  · Implementazione iniziale: CTL MAXI (scelta indicativa 12/040 vs 12/030 da domanda)
+- Parametric Hints (opzionale) – suggerimenti pratici non vincolanti (PARAM_HINTS=1)
+- FIX: intent-aware picking per “parlami/overview” (no risposte che iniziano con NO)
+- Guardrail: sostituzione mini-overview se intent=explain pescasse una negazione
 - Endpoints: /health /selfcheck /debug /ask /company /ui
 """
 import json, re, os
@@ -34,7 +34,7 @@ KEYWORDS: Dict[str, List[str]] = {
         "tiranti","camicia","preforo","preforare","coppia","chiave dinamometrica","filettato","filettati"
     ],
     "diapason": ["diapason","soletta leggera","cappa","rinforzo laterocemento","laterocemento"],
-    "ctl": ["ctl","vite","viti","legno calcestruzzo","tavolato","tetto","travi in legno","solaio in legno","trave in legno","legno","maxi"],
+    "ctl": ["ctl","vite","viti","legno calcestruzzo","tavolato","assito","tetto","travi in legno","solaio in legno","trave in legno","legno","maxi"],
     "mini-cem-e": ["mini-cem-e","minicem","camicia","consolidamento","iniezione","boiacca"],
     "spit-p560": [
         "p560","spit","chiodatrice","sparachiodi","propulsore","propulsori",
@@ -53,7 +53,7 @@ ENTITY_DICT = {
 
 # Intents
 INTENT_PATTERNS = {
-    "explain": ["parlami", "che cos", "cos'è", "cos e", "descrivi", "spiegami"],
+    "explain": ["parlami", "che cos", "cos'è", "cos e", "descrivi", "spiegami", "overview"],
     "usage": ["posso", "come si", "come va", "si può", "si puo", "serve", "necessario", "obbligatorio"],
     "compare": [" vs ", "contro", "meglio", "convenienza", "conviene", "oppure", "differenza", "differenze"],
     "verify": ["come verifico", "come controllo", "controllo", "verifica", "taratura", "tarare"],
@@ -71,21 +71,14 @@ def contains_any_norm(text: str, kws: List[str]) -> bool:
     return any(k in t for k in kws)
 
 def extract_numbers_cm(text: str) -> Dict[str, float]:
-    """
-    Estrae numeri seguiti da 'cm' (o soli numeri dove chiaro dal contesto) per tavolato/soletta.
-    Esempi in domanda: 'tavolato di 2 cm', 'soletta da 5 cm'
-    """
     t = norm(text)
     out = {"tavolato_cm": None, "soletta_cm": None}
-    # tavolato
     m_tav = re.search(r"(tavolato|assito)[^\d]{0,8}(\d+(?:[\,\.]\d+)?)\s*cm", t)
     if m_tav:
         out["tavolato_cm"] = float(m_tav.group(2).replace(",","."))
-    # soletta
     m_sol = re.search(r"(soletta)[^\d]{0,8}(\d+(?:[\,\.]\d+)?)\s*cm", t)
     if m_sol:
         out["soletta_cm"] = float(m_sol.group(2).replace(",","."))
-    # fallback: se compaiono 1–2 numeri sciolti, tenta mappatura
     if out["tavolato_cm"] is None or out["soletta_cm"] is None:
         nums = re.findall(r"(\d+(?:[\,\.]\d+)?)\s*cm", t)
         nums = [float(x.replace(",", ".")) for x in nums]
@@ -181,7 +174,7 @@ def base_scores_from_keywords(question: str) -> Dict[str, float]:
                 scores[fam] += 1.0
     if contains_any_norm(question, KEYWORDS["spit-p560"]):
         scores["spit-p560"] += 1.5
-    if contains_any_norm(question, ["parlami", "che cos", "cos e", "cos'è", "cos'e"]):
+    if contains_any_norm(question, ["parlami", "che cos", "cos e", "cos'è", "cos'e", "overview"]):
         for fam in FAMILIES:
             scores[fam] += 0.05
     return scores
@@ -196,7 +189,6 @@ def route_insight(question: str) -> Dict[str, Any]:
     mentions_component = entities.get("component", [])
     mentions_materials = entities.get("material", [])
 
-    # Priorità per componenti esplicite
     primary = None
     explicit_comp = None
     for comp in ("gts","ctl","ctf","diapason","mini-cem-e"):
@@ -217,7 +209,6 @@ def route_insight(question: str) -> Dict[str, Any]:
 
     incompatible_ctf_on_wood = ("legno" in [m.lower() for m in mentions_materials]) and (primary in ("ctf","spit-p560"))
 
-    # Compare: top2 famiglie
     sorted_by_score = sorted(base_scores.items(), key=lambda x: x[1], reverse=True)
     compare_candidates = [k for k,v in sorted_by_score if v>0][:2]
     explicit_components = [c for c in ("ctf","ctl","gts","diapason","mini-cem-e") if c in [cc.lower() for cc in mentions_component]]
@@ -246,35 +237,41 @@ def score_item(q: str, item: Dict[str, Any]) -> float:
     cat = (item.get("category") or "").lower()
     tags = [str(t).lower() for t in item.get("tags", []) if isinstance(t, (str,int,float))]
 
-    # Preferisci overview
     if cat in ("prodotto_base","overview"):
         bonus += 0.15
     if any(t in ("overview","alias") for t in tags):
         bonus += 0.15
     if "parlami" in norm(q) and (cat == "prodotto_base" or "overview" in tags):
         bonus += 0.2
-
-    # Se i tag matchano termini domanda (taratura, preforo, lamiera 1,5 …)
     if any(t in tq for t in tags):
         bonus += 0.25
-
-    # Micro-boost per contenuti operativi
     if any(k in tq for k in ["taratura","regolazione","preforo","verifica","potenza","propulsori","coppia","modello","scegliere"]):
         if cat in ("procedura","posa","uso","sicurezza"):
             bonus += 0.2
 
     return overlap + bonus
 
-def semantic_pick(q: str, qa: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def semantic_pick(q: str, qa: List[Dict[str, Any]], intent: Optional[str] = None) -> Optional[Dict[str, Any]]:
     if not qa:
         return None
     t = norm(q)
-    if any(x in t for x in ("parlami","overview","che cos","cos e","cos'è","cos'e")):
+    # 1) preferisci overview se intent=explain/parlami
+    if any(x in t for x in ("parlami","overview","che cos","cos e","cos'è","cos'e")) or intent == "explain":
         overviews = [it for it in qa if (it.get("category","").lower() in ("prodotto_base","overview")
                                          or "overview" in [str(tt).lower() for tt in it.get("tags",[] )])]
         if overviews:
             return max(overviews, key=lambda it: len(it.get("a","")))
-    return max(qa, key=lambda it: score_item(q, it))
+    # 2) ranking classico + penalità se intent=explain e answer parte con negazione
+    def neg_penalty(a: str) -> float:
+        s = a.strip().lower()
+        return -0.35 if (intent == "explain" and (s.startswith("no") or s.startswith("non ") or s.startswith("è vietato"))) else 0.0
+    best = None
+    best_score = -1e9
+    for it in qa:
+        sc = score_item(q, it) + neg_penalty(it.get("a",""))
+        if sc > best_score:
+            best, best_score = it, sc
+    return best
 
 # ====== Narrativa ======
 FAMILY_TITLES = {
@@ -287,7 +284,6 @@ FAMILY_TITLES = {
 }
 
 def narrativize(answer: str, primary: str, intent: str) -> str:
-    """Intro+outro Tecnaria (senza inventare)."""
     answer = (answer or "").strip()
     if not answer:
         return answer
@@ -306,7 +302,6 @@ def narrativize(answer: str, primary: str, intent: str) -> str:
         outro = ""
     return f"{intro}\n\n{answer}{outro}"
 
-# Arricchimento narrativo "soft"
 SPLIT_SENT_RE = re.compile(r'(?<=[\.\!\?])\s+')
 def enrich_narrative(answer: str, primary: str, intent: str) -> str:
     """Versione soft: massimo un 'Inoltre,' ogni 3 frasi; niente ripetizioni."""
@@ -343,12 +338,6 @@ def wants_model_selection(question: str, intent: str) -> bool:
     return intent == "select" or any(k in t for k in ["modello","che modello","quale modello","consigli","dimensioni"])
 
 def ctl_maxi_param_hint(question: str) -> Optional[str]:
-    """
-    Regola euristica sicura per CTL MAXI:
-    - Se soletta >= 5 cm e tavolato ~ 2 cm → suggerisci 12/040 (testa ben annegata)
-    - Se interferenze/armature presunte o soletta < 5 → suggerisci 12/030 come alternativa
-    Output sempre marcato come 'Suggerimento parametrico (non vincolante)'
-    """
     t = norm(question)
     if "maxi" not in t and "ctl" not in t and "legno" not in t:
         return None
@@ -383,11 +372,10 @@ def parametric_hints(primary: str, question: str, intent: str) -> Optional[str]:
         return None
     if primary == "ctl":
         return ctl_maxi_param_hint(question)
-    # base per future estensioni (es. GTS, CTF, P560…)
     return None
 
 # ====== APP ======
-app = FastAPI(title="Tecnaria Sinapsi", version="4.5")
+app = FastAPI(title="Tecnaria Sinapsi", version="4.5.1")
 
 @app.get("/health")
 def health():
@@ -423,7 +411,7 @@ def selfcheck():
     }
     for code in FAMILIES:
         qa, path, err = load_family_dataset(code)
-        hit = semantic_pick(probes[code], qa) if qa else None
+        hit = semantic_pick(probes[code], qa, "explain") if qa else None
         checks.append({
             "family": code,
             "used_path": str(path) if path else None,
@@ -439,12 +427,12 @@ def debug(q: str = Query(..., description="Domanda per il debug")):
     insight = route_insight(q)
     primary = insight["primary"]
     qa, used, err = load_family_dataset(primary)
-    hit = semantic_pick(q, qa) if qa else None
+    hit = semantic_pick(q, qa, insight["intent"]) if qa else None
 
     p560_note = None
     if insight["needs_p560_for_ctf"]:
         qa_p, used_p, err_p = load_family_dataset("spit-p560")
-        hit_p = semantic_pick(q, qa_p) if qa_p else None
+        hit_p = semantic_pick(q, qa_p, insight["intent"]) if qa_p else None
         p560_note = {
             "used_path": str(used_p) if used_p else None,
             "hit_q": (hit_p or {}).get("q"),
@@ -470,7 +458,7 @@ def ask(q: str):
     # Legno + CTF/P560 => negazione e pivot a CTL
     if insight.get("incompatible_ctf_on_wood"):
         qa_ctl, used_ctl, err_ctl = load_family_dataset("ctl")
-        hit_ctl = semantic_pick("overview ctl legno calcestruzzo", qa_ctl) if qa_ctl else None
+        hit_ctl = semantic_pick("overview ctl legno calcestruzzo", qa_ctl, "explain") if qa_ctl else None
         ctl_line = ("\n\n**Alternativa corretta (CTL):**\n" + hit_ctl.get("a","")) if hit_ctl else ""
         answer = (
             "No. I connettori CTF e la chiodatrice SPIT P560 sono sistemi per acciaio–calcestruzzo; "
@@ -485,8 +473,8 @@ def ask(q: str):
         candidates = insight["compare_candidates"][:2]
         qa_a, used_a, err_a = load_family_dataset(candidates[0]) if len(candidates) > 0 else ([], None, None)
         qa_b, used_b, err_b = load_family_dataset(candidates[1]) if len(candidates) > 1 else ([], None, None)
-        hit_a = semantic_pick(q, qa_a) if qa_a else None
-        hit_b = semantic_pick(q, qa_b) if qa_b else None
+        hit_a = semantic_pick(q, qa_a, intent) if qa_a else None
+        hit_b = semantic_pick(q, qa_b, intent) if qa_b else None
 
         parts = []
         if hit_a:
@@ -504,17 +492,29 @@ def ask(q: str):
     if not qa:
         return {"answer": f"Nessuna base dati per {primary} (file: {used})."}
 
-    hit = semantic_pick(q, qa)
+    hit = semantic_pick(q, qa, intent)
     if not hit:
         return {"answer": "Non trovo una risposta precisa nei dati. Consulta le schede ufficiali Tecnaria."}
 
     answer = hit.get("a","").strip()
 
+    # Guardrail: se explain e risposta inizia con negazione, sostituisci con mini-overview
+    if intent == "explain" and answer[:6].strip().lower().startswith(("no","non","è vietato","e vietato")):
+        if primary == "spit-p560":
+            answer = ("La **SPIT P560** è la chiodatrice a sparo dedicata alla posa dei **connettori CTF Tecnaria** "
+                      "su travi in acciaio e lamiere grecate. Utilizza **chiodi HSBR14** e **propulsori SPIT** con taratura "
+                      "verificata tramite prove di infissione sul supporto reale, controllando aderenza e profondità.")
+        elif primary == "ctf":
+            answer = ("Il **CTF** è il connettore Tecnaria per solai collaboranti acciaio–calcestruzzo. Si posa a freddo con "
+                      "chiodatrice **SPIT P560** e chiodi **HSBR14**; il getto ingloba il connettore generando la collaborazione "
+                      "tra struttura e soletta.")
+        # per le altre famiglie, si potrebbe aggiungere una mini-overview se necessario
+
     # Cross-note: se è CTF e si parla di macchina/propulsori -> aggiungi nota P560
     if primary == "ctf" and insight["needs_p560_for_ctf"]:
         qa_p, used_p, err_p = load_family_dataset("spit-p560")
         if qa_p and not err_p:
-            hit_p = semantic_pick(q, qa_p) or semantic_pick("P560 chiodatrice per CTF", qa_p)
+            hit_p = semantic_pick(q, qa_p, intent) or semantic_pick("P560 chiodatrice per CTF", qa_p, "explain")
             if hit_p and isinstance(hit_p.get("a"), str):
                 p560_txt = hit_p["a"].strip()
                 if p560_txt and p560_txt not in answer:
