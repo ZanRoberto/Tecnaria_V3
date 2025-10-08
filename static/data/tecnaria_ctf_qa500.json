@@ -60,7 +60,6 @@
           "status": "validare con ufficio tecnico"
         }
       ]
-      /* Nessuna sezione media/immagini per ora, come richiesto */
     },
     "ops": {
       "consumi_pose": {
@@ -92,7 +91,8 @@
     "sicurezza_cantiere",
     "manutenzione_logistica",
     "faq_commerciali",
-    "faq_codici_consumi"
+    "faq_codici_consumi",
+    "troubleshooting"
   ],
   "qa": [
     {
