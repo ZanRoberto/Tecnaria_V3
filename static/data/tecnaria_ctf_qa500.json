@@ -1,8 +1,7 @@
 {
   "meta": {
-    "dataset_label": "TECNARIA • CTF • Connettore acciaio–calcestruzzo",
     "schema_version": "tecnaria.product.v2",
-    "generated_at": "2025-10-08T00:00:00Z",
+    "generated_at": "2025-10-08T18:00:00Z",
     "locale": "it-IT",
     "brand": {
       "company": "Tecnaria S.p.A.",
@@ -15,7 +14,7 @@
     },
     "product": {
       "code": "CTF",
-      "name": "CTF – Connettore per solai collaboranti acciaio–calcestruzzo",
+      "name": "Connettore per solai collaboranti acciaio–calcestruzzo",
       "family": "Connettori solai",
       "summary": "Connettore fissato a freddo con SPIT P560 (kit/adattatori Tecnaria) per collaborazione trave/lamiera–soletta.",
       "notes": [
@@ -30,49 +29,59 @@
         {
           "sku": "CTF-STD-50",
           "label": "Connettore CTF standard",
-          "packaging": "Scatola 100 pz",
+          "packaging": "scatola 100 pz",
           "notes": "Posa con SPIT P560 + kit Tecnaria; 2 chiodi HSBR14/conn.",
-          "eta_ref": "ETA 18/0447 (verificare tabella vigente)",
+          "eta_ref": "ETA 18/0447 – tabella prestazioni",
           "status": "validare con ufficio tecnico"
         },
         {
           "sku": "CTF-LAM-50",
           "label": "Connettore CTF per lamiera grecata",
-          "packaging": "Scatola 100 pz",
-          "notes": "Lamiera ammessa 1×1,5 mm oppure 2×1,0 mm ben aderente alla trave",
-          "eta_ref": "ETA 18/0447",
+          "packaging": "scatola 100 pz",
+          "notes": "Lamiera ammessa 1×1,5 mm oppure 2×1,0 mm ben aderente alla trave; posa con SPIT P560 + kit Tecnaria; 2 chiodi HSBR14/conn.",
+          "eta_ref": "ETA 18/0447 – tabella prestazioni",
           "status": "validare con ufficio tecnico"
         },
         {
           "sku": "HSBR14-NAILS-1000",
           "label": "Chiodi HSBR14",
-          "packaging": "Fascio 1000 pz",
+          "packaging": "fascio 1000 pz",
           "notes": "Per fissaggio CTF; abbinare propulsori idonei",
-          "eta_ref": "Scheda consumabili",
+          "eta_ref": "rif. scheda consumabili SPIT/Tecnaria",
           "status": "validare con ufficio tecnico"
         },
         {
-          "sku": "P560-PROP-MIX",
-          "label": "Propulsori P560 (mix cariche)",
-          "packaging": "Confezioni varie",
-          "notes": "Selezione in base a supporto/spessore",
-          "eta_ref": "Tabelle SPIT/Tecnaria",
+          "sku": "PROPULSORI-P560-MIX",
+          "label": "Propulsori P560 (mix)",
+          "packaging": "confezioni varie",
+          "notes": "Selezione in base a supporto/spessore (prove preliminari in cantiere)",
+          "eta_ref": "tabelle SPIT/Tecnaria",
           "status": "validare con ufficio tecnico"
         }
-      ]
+      ],
+      "media": {
+        "images": [
+          {
+            "id": "ctf-hero-1",
+            "path": "/mnt/data/CONNETTORE_CTF_SOLAIO.webp",
+            "alt": "Posa connettore CTF Tecnaria con SPIT P560 su trave e lamiera grecata",
+            "usage": "hero, risposta-posa, scheda-prodotto"
+          }
+        ]
+      }
     },
     "ops": {
       "consumi_pose": {
-        "pezzi_al_mq_tipici": "da progetto; ordine di grandezza 4–10 pz/m² (indicativo, validare)",
+        "pezzi_al_mq_tipici": "da progetto; range di cantiere 4–10 pz/m² (indicativo, validare)",
         "consumo_chiodi_per_pezzo": 2,
-        "propulsori_note": "Selezionare secondo tabelle SPIT/Tecnaria in base a tipo supporto e spessore; fare prove preliminari.",
+        "propulsori_note": "Selezionare secondo tabelle SPIT/Tecnaria in base a tipo supporto e spessore.",
         "tempi_pose_note": "Stima indicativa: 60–120 connettori/ora/operatore con flusso organizzato; validare su cantiere."
       }
     },
     "intents": {
-      "codici": ["codice", "codici", "codici prodotto", "codici articoli", "articolo", "catalogo", "part number", "sku"],
+      "codici": ["codice", "codici", "sku", "articolo", "part number", "codici ricambio", "listino"],
       "posa": ["posa", "come si posa", "attrezzatura", "propulsori", "chiodi", "taratura", "dpi", "sicurezza"],
-      "quantita": ["quanti al mq", "pezzi al metro quadro", "consumi", "tempi di posa", "produttività", "passo", "interasse"]
+      "quantita": ["quanti al mq", "pezzi al metro quadro", "consumi", "tempi di posa", "produttività"]
     },
     "narrative": {
       "tone": "Tecnico, chiaro, orientato al cantiere",
@@ -91,15 +100,14 @@
     "sicurezza_cantiere",
     "manutenzione_logistica",
     "faq_commerciali",
-    "faq_codici_consumi",
-    "troubleshooting"
+    "faq_codici_consumi"
   ],
   "qa": [
     {
       "id": "CTF-CODICI-0001",
       "category": "faq_codici_consumi",
       "q": "Mi puoi dare i codici degli articoli per CTF e relativi consumabili?",
-      "a": "Ecco i principali (validare con listino/schede ufficiali): • CTF-STD-50 — Connettore CTF standard (scatola 100 pz). • CTF-LAM-50 — Connettore CTF per lamiera grecata (scatola 100 pz). • Chiodi HSBR14 — confezioni dedicate. • Propulsori P560 — cariche da selezionare in base a supporto/spessori. Posa: esclusivamente con SPIT P560 (kit/adattatori Tecnaria), 2 chiodi HSBR14 per connettore."
+      "a": "Ecco i principali: • Connettore CTF standard — SKU: CTF-STD-50 (scatola 100 pz). • Connettore CTF per lamiera grecata — SKU: CTF-LAM-50 (scatola 100 pz). • Chiodi HSBR14 — SKU: HSBR14-NAILS-1000. • Propulsori P560 — SKU: PROPULSORI-P560-MIX (scegliere la carica in base al supporto). Verificare sempre con listino/ufficio tecnico la versione aggiornata e l’idoneità al cantiere. Riferimenti: schede ufficiali Tecnaria/SPIT e ETA 18/0447."
     },
     {
       "id": "CTF-POSA-0001",
@@ -114,16 +122,10 @@
       "a": "Il passo è di progetto; in pratica molti cantieri rientrano in 4–10 pz/m² (indicativo). Produttività orientativa con flusso organizzato: 60–120 connettori/ora per operatore. Dati da validare sul tuo cantiere; registra prove e controlli."
     },
     {
-      "id": "CTF-TROUBLE-0001",
-      "category": "troubleshooting",
-      "q": "Il chiodo non entra bene o si spana: come risolvo?",
-      "a": "Fermati e verifica: potenza P560, corretto propulsore per spessore/supporto, aderenza lamiera–trave, distanze minime e interferenze. Ripeti prove di infissione e documenta. Se persiste, contatta assistenza Tecnaria/SPIT e il progettista."
-    },
-    {
-      "id": "CTF-QUALITA-0001",
-      "category": "controllo_qualita",
-      "q": "Quali controlli registro in cantiere durante la posa dei CTF?",
-      "a": "Registro di: settaggi P560, tipo propulsore, risultati prove su campione, profondità/aderenza, eventuali ripetizioni di fissaggio, foto campione, lotti consumabili. Usa check-list e conserva i documenti come da schede Tecnaria/SPIT e capitolato."
+      "id": "CTF-MEDIA-0001",
+      "category": "posa_attrezzature",
+      "q": "Hai un’immagine di riferimento della posa?",
+      "a": "Sì, vedi immagine collegata (ctf-hero-1) che mostra posa CTF con P560 su lamiera grecata e trave. Usare come supporto illustrativo; attenersi sempre alle istruzioni ufficiali."
     }
   ]
 }
