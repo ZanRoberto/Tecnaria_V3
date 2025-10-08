@@ -6,280 +6,5004 @@
     "brand": "Tecnaria S.p.A.",
     "hq": "Bassano del Grappa (VI)",
     "purpose": "Giunzioni meccaniche a secco (acciaio–acciaio / acciaio–legno / legno–legno) e consolidamenti con camicie in acciaio.",
-    "notes": "Dataset rigenerato pulito. Linguaggio tecnico coerente allo stile Tecnaria.",
-    "version": "v1.0"
+    "notes": "Dataset esteso a 500 Q&A, narrativa tecnica nello stile Tecnaria.",
+    "version": "v2.0"
   },
   "qa": [
     {
       "q": "Che cos'è il manicotto GTS e per cosa si usa?",
-      "a": "Il GTS è un manicotto metallico filettato per giunzioni meccaniche a secco e per consolidamenti strutturali. Consente di collegare elementi (acciaio–acciaio, acciaio–legno, legno–legno) tramite spine/tiranti e bulloneria, trasferendo sforzi di trazione e taglio senza getti o saldature in opera. È impiegato anche nelle camicie in acciaio per il ripristino di nodi o pilastri.",
+      "a": "Il GTS è un manicotto metallico filettato per giunzioni meccaniche a secco e consolidamenti strutturali. Consente collegamenti acciaio–acciaio, acciaio–legno e legno–legno tramite spine/tiranti e bulloneria, trasferendo trazione e taglio senza getti o saldature in opera. È impiegato anche nelle camicie metalliche per il ripristino di nodi o pilastri.",
       "category": "prodotto_base",
-      "tags": ["overview","giunzione meccanica","consolidamento"]
+      "tags": [
+        "overview",
+        "giunzione meccanica",
+        "consolidamento"
+      ]
     },
     {
       "q": "Parlami del manicotto GTS",
-      "a": "Il GTS è il manicotto metallico filettato di Tecnaria per giunzioni meccaniche a secco e consolidamenti. Consente collegamenti acciaio–acciaio, acciaio–legno e legno–legno con spine/tiranti e piastre di ripartizione, trasferendo trazione e taglio senza getti in opera. L’installazione prevede prefori, accoppiamenti controllati e serraggio con chiave dinamometrica; sono richiesti controlli dimensionali e registrazione delle coppie. La progettazione deve verificare resistenze del collegamento, pressioni locali e stabilità degli elementi. Documentazione: schede tecniche e manuali Tecnaria; sicurezza: DPI e procedure di cantiere.",
+      "a": "Il GTS è il manicotto filettato Tecnaria per giunzioni a secco e consolidamenti. Consente montaggi controllabili e reversibili, con prefori, accoppiamenti e serraggi verificati a chiave dinamometrica. Il progetto verifica resistenze, pressioni locali e stabilità del nodo; la posa registra coppie e controlli. Riferimento: schede e manuali Tecnaria.",
       "category": "prodotto_base",
-      "tags": ["overview","alias"]
+      "tags": [
+        "overview",
+        "alias"
+      ]
     },
     {
       "q": "Quali sono i componenti principali del sistema GTS?",
-      "a": "Manicotto filettato, spine o tiranti compatibili, rondelle, dadi, eventuali bussole/adattatori e piastre di ripartizione. Nei consolidamenti con camicia metallica si aggiungono lamiere, profili e sistemi di serraggio.",
+      "a": "Manicotto filettato, spine/tiranti, dadi, rondelle, eventuali bussole/inserti e piastre di ripartizione; nei consolidamenti con camicia, lamiere e profili di serraggio.",
       "category": "prodotto_base",
-      "tags": ["componenti","overview"]
+      "tags": [
+        "componenti"
+      ]
     },
     {
       "q": "In quali materiali può essere applicato il GTS?",
-      "a": "Su elementi in acciaio (profili, piatti), legno (massiccio o lamellare) mediante idonee bussole/inserti, e come nodo in sistemi misti. La compatibilità dipende da resistenze locali e corretta progettazione di fori e ripartizioni.",
+      "a": "Acciaio, legno (massiccio o lamellare con bussole idonee) e nodi misti. La compatibilità dipende da resistenze locali e dal corretto dimensionamento di fori e ripartizioni.",
       "category": "prodotto_base",
-      "tags": ["materiali","compatibilità"]
+      "tags": [
+        "materiali",
+        "compatibilità"
+      ]
     },
-
-    /* =================== PROGETTAZIONE =================== */
     {
       "q": "Quali verifiche di progetto sono richieste per l'impiego del GTS?",
-      "a": "Verifiche del collegamento a trazione/taglio, verifica dei bulloni e delle filettature, pressioni locali e punzonamento, stabilità/imbosso degli elementi collegati, oltre alla verifica dei supporti (acciaio/legno) e delle piastre di ripartizione.",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
       "category": "progettazione",
-      "tags": ["verifiche","resistenza","pressioni locali"]
+      "tags": [
+        "verifiche",
+        "resistenza",
+        "pressioni locali"
+      ]
     },
-    {
-      "q": "Come si definisce il diametro delle spine o dei tiranti per il GTS?",
-      "a": "In funzione delle azioni di progetto, della classe d’acciaio, della lunghezza di impegno filettato nel manicotto e delle verifiche locali sui supporti. Va garantita la resistenza del tirante e della filettatura con i coefficienti parziali prescritti.",
-      "category": "progettazione",
-      "tags": ["dimensionamento","tiranti","filettatura"]
-    },
-    {
-      "q": "Qual è la lunghezza minima di impegno filettato nel manicotto GTS?",
-      "a": "In assenza di prescrizioni del progetto, considerare un impegno non inferiore a 1×d (d = diametro del tirante), incrementabile a 1,5–2×d per carichi elevati, verificando la resistenza della filettatura.",
-      "category": "progettazione",
-      "tags": ["filettatura","impegno","criteri"]
-    },
-    {
-      "q": "È possibile usare il GTS in zone sismiche?",
-      "a": "Sì, con progetto strutturale specifico che verifichi duttilità e capacità del nodo, dettagli costruttivi adeguati e ancoraggi conformi alle normative vigenti.",
-      "category": "progettazione",
-      "tags": ["sismica","normativa"]
-    },
-    {
-      "q": "È ammesso un minimo gioco nel collegamento GTS?",
-      "a": "Solo entro le tolleranze di progetto. Giochi eccessivi riducono la rigidezza e incrementano gli spostamenti; correggere con piastre/spessori appropriati.",
-      "category": "progettazione",
-      "tags": ["tolleranze","gioco"]
-    },
-    {
-      "q": "Quali criteri per scegliere piastre di ripartizione con GTS?",
-      "a": "Area e spessore sufficienti a limitare le pressioni locali sotto i limiti del materiale base; bordi smussati e fori correttamente dimensionati per evitare concentrazioni.",
-      "category": "progettazione",
-      "tags": ["piastre","pressioni locali","ripartizione"]
-    },
-
-    /* =================== POSA / INSTALLAZIONE =================== */
     {
       "q": "Quali sono le fasi essenziali di posa del GTS?",
-      "a": "Tracciamento e prefori; pulizia e controllo tolleranze; inserimento del manicotto e degli elementi di collegamento; serraggio graduale e controllato con chiave dinamometrica; verifica planarità delle piastre; controlli finali di coppia e allineamento.",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
       "category": "posa",
-      "tags": ["installazione","coppia di serraggio","tolleranze"]
+      "tags": [
+        "installazione",
+        "coppia di serraggio",
+        "tolleranze"
+      ]
     },
     {
       "q": "Serve il preforo nel legno per l'uso del GTS?",
-      "a": "Sì: riduce fessurazioni e assicura tolleranze. Diametro/profondità sono definiti dal progetto in funzione della bussola/spina e della qualità del legno. Eseguire prove a campione su legno antico o fessurato.",
+      "a": "Sì: riduce fessurazioni e assicura tolleranze. Diametro e profondità dipendono da bussola/spina e qualità del legno; eseguire prove a campione su legni antichi.",
       "category": "posa",
-      "tags": ["legno","preforo","prove a campione"]
+      "tags": [
+        "legno",
+        "preforo",
+        "prove a campione"
+      ]
     },
     {
       "q": "Come si controlla la coppia di serraggio sul GTS?",
-      "a": "Con chiave dinamometrica tarata, secondo i valori di progetto; annotare i valori e ripetere campionature durante il montaggio.",
+      "a": "Con chiave dinamometrica tarata ai valori di progetto; registrare le misure ed eseguire campionature nel corso delle lavorazioni.",
       "category": "posa",
-      "tags": ["coppia","chiave dinamometrica","controlli"]
+      "tags": [
+        "coppia",
+        "controlli",
+        "chiave dinamometrica"
+      ]
     },
     {
       "q": "Quali tolleranze sono ammissibili sui fori per il GTS?",
-      "a": "Quelle previste dal progetto. Fori troppo grandi introducono gioco e perdita di rigidezza; fori troppo stretti ostacolano l’accoppiamento.",
+      "a": "Solo quelle previste dal progetto: fori sovradimensionati incrementano il gioco e riducono la rigidezza; fori stretti ostacolano il montaggio.",
       "category": "posa",
-      "tags": ["tolleranze","foratura"]
+      "tags": [
+        "tolleranze",
+        "foratura"
+      ]
     },
-    {
-      "q": "Come si controlla l'allineamento prima del serraggio finale?",
-      "a": "Con dime o righe metalliche sulle superfici da collegare; serrare gradualmente monitorando scorrimenti e planarità.",
-      "category": "posa",
-      "tags": ["allineamento","planarità","dime"]
-    },
-    {
-      "q": "Come gestire differenze di quota tra elementi collegati con GTS?",
-      "a": "Usare spessori o piastre di livellamento progettate; evitare serraggi che inducano eccentricità incontrollate.",
-      "category": "posa",
-      "tags": ["spessori","piastre","eccentricità"]
-    },
-
-    /* =================== VERIFICHE / CONTROLLI =================== */
     {
       "q": "Quali controlli in accettazione vanno eseguiti sul GTS?",
-      "a": "Verifica dimensionale e visiva dei manicotti, controllo marcatura/lotto, verifica bulloneria e rondelle, compatibilità con le specifiche di progetto. Rifiutare pezzi deformati, filettature danneggiate o ossidazione visibile.",
+      "a": "Controllo dimensionale e visivo dei manicotti, marcature/lotto, bulloneria/rondelle e conformità alla specifica. Scartare pezzi deformati o con filetti danneggiati.",
       "category": "verifiche",
-      "tags": ["accettazione","controllo qualità"]
+      "tags": [
+        "accettazione",
+        "qualità"
+      ]
     },
     {
-      "q": "Come documentare i controlli di cantiere sul GTS?",
-      "a": "Registrare fori e accoppiamenti, coppie di serraggio, allineamenti, non conformità e correzioni; allegare fotografie e firme responsabili.",
-      "category": "verifiche",
-      "tags": ["tracciabilità","registro cantiere","fotografie"]
+      "q": "Quale documentazione consultare per il GTS?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "schede tecniche",
+        "manuali",
+        "progetto"
+      ]
     },
     {
-      "q": "Quali misure di controllo sono consigliate durante la posa del GTS?",
-      "a": "Campionature sulla coppia di serraggio, verifica allineamenti, controllo visivo dei filetti, pulizia fori e registrazione fotografica delle fasi chiave.",
-      "category": "verifiche",
-      "tags": ["controlli","coppia","allineamento","qualità"]
+      "q": "Quali DPI adottare durante l’installazione del GTS?",
+      "a": "DPI obbligatori (casco, guanti, occhiali, calzature), protezioni per foratura/taglio, area di lavoro in sicurezza, rispetto PSC/POS.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere"
+      ]
     },
-
-    /* =================== COMPATIBILITÀ / MATERIALI =================== */
-    {
-      "q": "Il GTS può collegare acciaio a legno?",
-      "a": "Sì. Con bussole/inserti idonei nel legno e piastre di ripartizione. Verificare pressioni locali, resistenze a strappo/spacco e adottare prefori e serraggi coerenti con la specie legnosa e l’umidità.",
-      "category": "compatibilità",
-      "tags": ["acciaio-legno","bussole","ripartizione"]
-    },
-    {
-      "q": "Quali acciai sono compatibili con il GTS?",
-      "a": "Acciai strutturali usuali (S235–S355). Verificare spessori e rigidezza locale per evitare imbozzamenti; usare piastre di rinforzo quando necessario.",
-      "category": "compatibilità",
-      "tags": ["acciaio strutturale","spessori minimi","rinforzi"]
-    },
-    {
-      "q": "Il GTS è adatto a ambienti aggressivi?",
-      "a": "Sì, con protezioni superficiali idonee (zincatura/vernici) e piano di manutenzione. La scelta del trattamento rientra nel progetto.",
-      "category": "compatibilità",
-      "tags": ["corrosione","protezione","manutenzione"]
-    },
-
-    /* =================== PRESTAZIONI =================== */
-    {
-      "q": "Che tipo di azioni può trasferire un collegamento con GTS?",
-      "a": "Principalmente trazione e taglio nel piano della giunzione; la rigidezza flessionale dipende dalla configurazione e dall’uso di piastre di ripartizione.",
-      "category": "prestazioni",
-      "tags": ["trazione","taglio","rigidezza"]
-    },
-    {
-      "q": "Il GTS è adatto a carichi ciclici?",
-      "a": "Sì, se il progetto considera fatica, dettagli costruttivi, serraggi e controlli coerenti. Per cicli importanti sono raccomandate verifiche aggiuntive e piani di ispezione.",
-      "category": "prestazioni",
-      "tags": ["fatica","ciclico","ispezioni"]
-    },
-
-    /* =================== MANUTENZIONE =================== */
     {
       "q": "È richiesta manutenzione sul GTS?",
-      "a": "Ispezioni periodiche di integrità della bulloneria, protezione superficiale e ossidazioni; retensioni a campione se previste. In ambienti aggressivi adottare cicli di manutenzione programmata.",
+      "a": "Ispezioni periodiche su bulloneria e protezioni superficiali; retensioni a campione ove previste; piani specifici in ambienti aggressivi.",
       "category": "manutenzione",
-      "tags": ["ispezioni","protezione superficiale","retensioni"]
+      "tags": [
+        "ispezioni",
+        "protezione",
+        "retensioni"
+      ]
     },
-
-    /* =================== DOCUMENTAZIONE =================== */
-    {
-      "q": "Quali documenti devo consultare per l’uso del GTS?",
-      "a": "Progetto strutturale, specifiche del collegamento, schede tecniche del sistema GTS, manuali di posa e indicazioni della direzione lavori. La progettazione deve rispettare le normative vigenti ed eurocodici applicabili.",
-      "category": "documentazione",
-      "tags": ["schede tecniche","manuali","progetto"]
-    },
-    {
-      "q": "Qual è la documentazione minima da consegnare a fine lavori per GTS?",
-      "a": "Registro delle coppie, check-list di montaggio, certificazioni dei materiali, eventuali disegni as-built e corredo fotografico dei nodi.",
-      "category": "documentazione",
-      "tags": ["as built","registro","certificazioni"]
-    },
-
-    /* =================== SICUREZZA =================== */
-    {
-      "q": "Quali DPI e regole di sicurezza adottare durante l’installazione del GTS?",
-      "a": "Casco, guanti, occhiali, scarpe antinfortunistiche; protezioni per foratura/taglio; messa in sicurezza dell’area di lavoro e rispetto di PSC/POS.",
-      "category": "sicurezza",
-      "tags": ["DPI","cantiere","sicurezza"]
-    },
-
-    /* =================== ERRORI COMUNI / TROUBLESHOOTING =================== */
     {
       "q": "Quali sono gli errori più comuni nell’uso del GTS?",
-      "a": "Prefori non conformi, coppie non controllate, mancanza di piastre di ripartizione dove necessarie, tolleranze errate, fori non puliti, accoppiamenti con gioco eccessivo, tracciabilità insufficiente.",
+      "a": "Prefori non conformi, coppie non controllate, assenza di piastre dove necessarie, tolleranze errate, fori non puliti, documentazione insufficiente.",
       "category": "errori_comuni",
-      "tags": ["preforo","coppia","ripartizione","tolleranze","tracciabilità"]
+      "tags": [
+        "preforo",
+        "coppia",
+        "ripartizione",
+        "tolleranze",
+        "tracciabilità"
+      ]
     },
-    {
-      "q": "Come intervenire se un dado tende a svitarsi in esercizio?",
-      "a": "Usare dispositivi di sicurezza (dadi autobloccanti/rondelle anti-svitamento) o ripristinare la coppia; indagare eventuali vibrazioni.",
-      "category": "troubleshooting",
-      "tags": ["autobloccanti","vibrazioni","coppia"]
-    },
-    {
-      "q": "Cosa fare se la filettatura impegna poche spire?",
-      "a": "Aumentare la lunghezza di impegno (manicotto più lungo o tirante adeguato) o rivedere il diametro; il progetto deve garantire la resistenza della filettatura con margine.",
-      "category": "troubleshooting",
-      "tags": ["filettatura","impegno"]
-    },
-    {
-      "q": "Come si trattano fori ovalizzati o danneggiati?",
-      "a": "Non riutilizzare fori non conformi: ripristinare con bussole/piastre secondo indicazioni del progettista o riposizionare la foratura.",
-      "category": "troubleshooting",
-      "tags": ["fori","ripristino","bussole"]
-    },
-
-    /* =================== CONFRONTI / SCELTA =================== */
     {
       "q": "GTS vs saldatura in opera: quando preferire il GTS?",
-      "a": "Quando serve giunzione a secco senza apporto termico, montaggio controllabile e reversibile, riducendo interferenze in cantiere e rischi di saldatura in situ.",
+      "a": "Quando serve giunzione a secco senza apporto termico, con montaggio controllabile e reversibile e minori interferenze in cantiere.",
       "category": "confronto",
-      "tags": ["saldatura","a secco","reversibilità"]
+      "tags": [
+        "saldatura",
+        "a secco",
+        "reversibilità"
+      ]
     },
     {
       "q": "GTS vs bullonatura tradizionale?",
-      "a": "Integra il principio della bullonatura con manicotto filettato che facilita allineamento e ripartizione; utile dove l’accesso è limitato o servono giunzioni preassemblabili.",
+      "a": "Il manicotto facilita allineamento e ripartizione, utile con accessi limitati o per giunzioni preassemblabili; resta obbligatoria la verifica di progetto.",
       "category": "confronto",
-      "tags": ["bullonatura","manicotto","preassemblaggio"]
+      "tags": [
+        "bullonatura",
+        "manicotto",
+        "preassemblaggio"
+      ]
     },
-
-    /* =================== COMPUTO / CANTIERE =================== */
     {
-      "q": "Quali informazioni servono per un’offerta sul GTS?",
-      "a": "Schema della giunzione, azioni di progetto, materiali, dimensioni e spessori, accessibilità, quantità e tempi. Indicare eventuali trattamenti superficiali richiesti.",
+      "q": "Quali criteri progettuali applicare al GTS (caso 17: stabilità)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "stabilità",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 18: pulizia fori)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "pulizia fori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 19: tracciabilità)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "tracciabilità",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 20: acciaio-acciaio)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "acciaio-acciaio",
+        "acciaio-legno",
+        "legno-legno"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 21: imbosso)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "imbosso",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 22: retensioni)?",
+      "a": "Ispezioni periodiche su bulloneria e protezioni superficiali; retensioni a campione ove previste; piani specifici in ambienti aggressivi.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 23: as built)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "as built",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 24: cantiere)?",
+      "a": "DPI obbligatori (casco, guanti, occhiali, calzature), protezioni per foratura/taglio, area di lavoro in sicurezza, rispetto PSC/POS.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 25: svitamento)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 26: offerta)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
       "category": "computo",
-      "tags": ["offerta","quantitativi","tempi"]
+      "tags": [
+        "offerta",
+        "quantitativi",
+        "tempi"
+      ]
     },
     {
-      "q": "È possibile preassemblare il GTS in officina?",
-      "a": "Sì, se geometria e tolleranze lo consentono: riduce tempi in cantiere e migliora la qualità del montaggio. Le verifiche in opera restano obbligatorie.",
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 27: avviamento)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
       "category": "cantiere",
-      "tags": ["preassemblaggio","qualità","tempi"]
-    },
-
-    /* =================== CAMPIONATURE (SERIE) =================== */
-    {
-      "q": "In quali casi è opportuno prevedere campionature aggiuntive GTS in cantiere? (1)",
-      "a": "Quando i supporti sono eterogenei, emergono differenze di coppia o accoppiamenti difficoltosi, o su nodi critici indicati dal progettista.",
-      "category": "verifiche",
-      "tags": ["campionature","qualità","cantiere"]
+      "tags": [
+        "avviamento",
+        "preassemblaggio",
+        "qualità"
+      ]
     },
     {
-      "q": "In quali casi è opportuno prevedere campionature aggiuntive GTS in cantiere? (2)",
-      "a": "All’avvio delle lavorazioni, in presenza di tolleranze strette o dove la ripartizione degli sforzi è delicata; aumentare la frequenza se emergono non conformità.",
-      "category": "verifiche",
-      "tags": ["campionature","avviamento","non conformità"]
+      "q": "Quali criteri progettuali applicare al GTS (caso 28: filettatura)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "filettatura",
+        "dimensionamento",
+        "verifiche"
+      ]
     },
     {
-      "q": "In quali casi è opportuno prevedere campionature aggiuntive GTS in cantiere? (3)",
-      "a": "Quando cambiano le condizioni ambientali (umidità/temperatura) o la squadra di posa, e in caso di modifiche geometriche non previste.",
-      "category": "verifiche",
-      "tags": ["campionature","ambiente","variazioni"]
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 29: preforo)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "preforo",
+        "coppia",
+        "tolleranze"
+      ]
     },
     {
-      "q": "In quali casi è opportuno prevedere campionature aggiuntive GTS in cantiere? (4)",
-      "a": "Su elementi storici/legno antico con variabilità elevata, su spessori limite o in prossimità di vincoli geometrici complessi.",
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 30: accettazione)?",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
       "category": "verifiche",
-      "tags": ["campionature","legno antico","variabilità"]
+      "tags": [
+        "accettazione",
+        "campionature",
+        "registro"
+      ]
     },
     {
-      "q": "In quali casi è opportuno prevedere campionature aggiuntive GTS in cantiere? (5)",
-      "a": "Quando si riscontrano disallineamenti ricorrenti, fori da ripassare o coppie fuori range; aggiornare la check-list con le azioni correttive.",
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 31: acciaio-legno)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "acciaio-legno",
+        "acciaio-acciaio",
+        "legno-legno"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 32: taglio)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "taglio",
+        "trazione",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 33: ispezioni)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 34: progetto)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "progetto",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 35: cantiere)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 36: filettatura)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "filettatura",
+        "fori",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 37: tempi)?",
+      "a": "Indicare trattamenti superficiali richiesti e eventuali preassemblaggi in officina.",
+      "category": "computo",
+      "tags": [
+        "tempi",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 38: preassemblaggio)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "preassemblaggio",
+        "qualità",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 39: verifiche)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "verifiche",
+        "dimensionamento",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 40: planarità)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "planarità",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 41: tracciabilità)?",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
       "category": "verifiche",
-      "tags": ["campionature","disallineamenti","check-list"]
+      "tags": [
+        "tracciabilità",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 42: ambiente aggressivo)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "ambiente aggressivo",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 43: rigidezza)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "rigidezza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 44: protezione superficiale)?",
+      "a": "Ispezioni periodiche su bulloneria e protezioni superficiali; retensioni a campione ove previste; piani specifici in ambienti aggressivi.",
+      "category": "manutenzione",
+      "tags": [
+        "protezione superficiale",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 45: schede tecniche)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "schede tecniche",
+        "manuali",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 46: DPI)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 47: fori)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "fori",
+        "filettatura",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 48: logistica)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 49: preassemblaggio)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "preassemblaggio",
+        "qualità",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 50: dimensionamento)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "dimensionamento",
+        "verifiche",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 51: allineamento)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "allineamento",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 52: fotografie)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "fotografie",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 53: ambiente aggressivo)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "ambiente aggressivo",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 54: ciclico)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "ciclico",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 55: retensioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 56: progetto)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "progetto",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 57: DPI)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 58: disallineamenti)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "disallineamenti",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 59: logistica)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 60: qualità)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 61: verifiche)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "verifiche",
+        "dimensionamento",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 62: preforo)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "preforo",
+        "coppia",
+        "tolleranze"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 63: fotografie)?",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
+      "category": "verifiche",
+      "tags": [
+        "fotografie",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 64: ambiente aggressivo)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "ambiente aggressivo",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 65: taglio)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "taglio",
+        "trazione",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 66: retensioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 67: manuali)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "manuali",
+        "schede tecniche",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 68: formazione)?",
+      "a": "DPI obbligatori (casco, guanti, occhiali, calzature), protezioni per foratura/taglio, area di lavoro in sicurezza, rispetto PSC/POS.",
+      "category": "sicurezza",
+      "tags": [
+        "formazione",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 69: vibrazioni)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 70: quantitativi)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "quantitativi",
+        "offerta",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 71: controlli)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 72: sismica)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "sismica",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 73: allineamento)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "allineamento",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 74: fotografie)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "fotografie",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 75: ambiente aggressivo)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "ambiente aggressivo",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 76: trazione)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "trazione",
+        "taglio",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 77: retensioni)?",
+      "a": "Ispezioni periodiche su bulloneria e protezioni superficiali; retensioni a campione ove previste; piani specifici in ambienti aggressivi.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 78: as built)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "as built",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 79: DPI)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 80: disallineamenti)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "disallineamenti",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 81: logistica)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 82: preassemblaggio)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "preassemblaggio",
+        "qualità",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 83: pressioni locali)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "pressioni locali",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 84: allineamento)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "allineamento",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 85: tracciabilità)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "tracciabilità",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 86: legno-legno)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "legno-legno",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 87: ciclico)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "ciclico",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 88: piano manutentivo)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "piano manutentivo",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 89: manuali)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "manuali",
+        "schede tecniche",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 90: cantiere)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 91: filettatura)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "filettatura",
+        "fori",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 92: quantitativi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "quantitativi",
+        "offerta",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 93: qualità)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 94: pressioni locali)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "pressioni locali",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 95: allineamento)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "allineamento",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 96: fotografie)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "fotografie",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 97: protezione)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 98: ciclico)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "ciclico",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 99: ispezioni)?",
+      "a": "Ispezioni periodiche su bulloneria e protezioni superficiali; retensioni a campione ove previste; piani specifici in ambienti aggressivi.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 100: schede tecniche)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "schede tecniche",
+        "manuali",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 101: procedure)?",
+      "a": "DPI obbligatori (casco, guanti, occhiali, calzature), protezioni per foratura/taglio, area di lavoro in sicurezza, rispetto PSC/POS.",
+      "category": "sicurezza",
+      "tags": [
+        "procedure",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 102: vibrazioni)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 103: logistica)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 104: avviamento)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "avviamento",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 105: filettatura)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "filettatura",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 106: coppia)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "coppia",
+        "preforo",
+        "tolleranze"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 107: campionature)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "campionature",
+        "accettazione",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 108: protezione)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 109: imbosso)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "imbosso",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 110: ispezioni)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 111: manuali)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "manuali",
+        "schede tecniche",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 112: DPI)?",
+      "a": "DPI obbligatori (casco, guanti, occhiali, calzature), protezioni per foratura/taglio, area di lavoro in sicurezza, rispetto PSC/POS.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 113: disallineamenti)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "disallineamenti",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 114: logistica)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 115: preassemblaggio)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "preassemblaggio",
+        "qualità",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 116: filettatura)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "filettatura",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 117: spessori)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "spessori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 118: tracciabilità)?",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
+      "category": "verifiche",
+      "tags": [
+        "tracciabilità",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 119: acciaio-legno)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "acciaio-legno",
+        "acciaio-acciaio",
+        "legno-legno"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 120: taglio)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "taglio",
+        "trazione",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 121: protezione superficiale)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "protezione superficiale",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 122: DL)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "DL",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 123: cantiere)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 124: fori)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "fori",
+        "filettatura",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 125: logistica)?",
+      "a": "Indicare trattamenti superficiali richiesti e eventuali preassemblaggi in officina.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 126: controlli)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 127: dimensionamento)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "dimensionamento",
+        "verifiche",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 128: coppia)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "coppia",
+        "preforo",
+        "tolleranze"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 129: accettazione)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "accettazione",
+        "campionature",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 130: legno-legno)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "legno-legno",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 131: taglio)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "taglio",
+        "trazione",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 132: ispezioni)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 133: DL)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "DL",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 134: DPI)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 135: filettatura)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "filettatura",
+        "fori",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 136: tempi)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "tempi",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 137: avviamento)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "avviamento",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 138: eccentricità)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "eccentricità",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 139: pulizia fori)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "pulizia fori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 140: accettazione)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "accettazione",
+        "campionature",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 141: ambiente aggressivo)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "ambiente aggressivo",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 142: ciclico)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "ciclico",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 143: ispezioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 144: schede tecniche)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "schede tecniche",
+        "manuali",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 145: DPI)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 146: fori)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "fori",
+        "filettatura",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 147: logistica)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 148: controlli)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 149: stabilità)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "stabilità",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 150: pulizia fori)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "pulizia fori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 151: accettazione)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "accettazione",
+        "campionature",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 152: protezione)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 153: rigidezza)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "rigidezza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 154: ispezioni)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 155: schede tecniche)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "schede tecniche",
+        "manuali",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 156: DPI)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 157: svitamento)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 158: logistica)?",
+      "a": "Indicare trattamenti superficiali richiesti e eventuali preassemblaggi in officina.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 159: preassemblaggio)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "preassemblaggio",
+        "qualità",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 160: sismica)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "sismica",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 161: allineamento)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "allineamento",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 162: campionature)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "campionature",
+        "accettazione",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 163: ambiente aggressivo)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "ambiente aggressivo",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 164: ciclico)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "ciclico",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 165: protezione superficiale)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "protezione superficiale",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 166: progetto)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "progetto",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 167: formazione)?",
+      "a": "DPI obbligatori (casco, guanti, occhiali, calzature), protezioni per foratura/taglio, area di lavoro in sicurezza, rispetto PSC/POS.",
+      "category": "sicurezza",
+      "tags": [
+        "formazione",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 168: filettatura)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "filettatura",
+        "fori",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 169: quantitativi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "quantitativi",
+        "offerta",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 170: controlli)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 171: filettatura)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "filettatura",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 172: pulizia fori)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "pulizia fori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 173: accettazione)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "accettazione",
+        "campionature",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 174: acciaio-legno)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "acciaio-legno",
+        "acciaio-acciaio",
+        "legno-legno"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 175: taglio)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "taglio",
+        "trazione",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 176: piano manutentivo)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "piano manutentivo",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 177: progetto)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "progetto",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 178: formazione)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "formazione",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 179: svitamento)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 180: tempi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "tempi",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 181: step avanzamento)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "step avanzamento",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 182: fatica)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "fatica",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 183: preforo)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "preforo",
+        "coppia",
+        "tolleranze"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 184: tracciabilità)?",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
+      "category": "verifiche",
+      "tags": [
+        "tracciabilità",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 185: ambiente aggressivo)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "ambiente aggressivo",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 186: rigidezza)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "rigidezza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 187: protezione superficiale)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "protezione superficiale",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 188: DL)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "DL",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 189: cantiere)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 190: vibrazioni)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 191: offerta)?",
+      "a": "Indicare trattamenti superficiali richiesti e eventuali preassemblaggi in officina.",
+      "category": "computo",
+      "tags": [
+        "offerta",
+        "quantitativi",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 192: qualità)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 193: dimensionamento)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "dimensionamento",
+        "verifiche",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 194: coppia)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "coppia",
+        "preforo",
+        "tolleranze"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 195: accettazione)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "accettazione",
+        "campionature",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 196: protezione)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 197: resilienza)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "resilienza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 198: ispezioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 199: manuali)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "manuali",
+        "schede tecniche",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 200: formazione)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "formazione",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 201: filettatura)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "filettatura",
+        "fori",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 202: offerta)?",
+      "a": "Indicare trattamenti superficiali richiesti e eventuali preassemblaggi in officina.",
+      "category": "computo",
+      "tags": [
+        "offerta",
+        "quantitativi",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 203: step avanzamento)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "step avanzamento",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 204: dimensionamento)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "dimensionamento",
+        "verifiche",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 205: allineamento)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "allineamento",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 206: registro)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "registro",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 207: ambiente aggressivo)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "ambiente aggressivo",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 208: imbosso)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "imbosso",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 209: retensioni)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 210: manuali)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "manuali",
+        "schede tecniche",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 211: formazione)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "formazione",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 212: vibrazioni)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 213: logistica)?",
+      "a": "Indicare trattamenti superficiali richiesti e eventuali preassemblaggi in officina.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 214: qualità)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 215: dimensionamento)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "dimensionamento",
+        "verifiche",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 216: spessori)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "spessori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 217: registro)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "registro",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 218: acciaio-acciaio)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "acciaio-acciaio",
+        "acciaio-legno",
+        "legno-legno"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 219: resilienza)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "resilienza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 220: ispezioni)?",
+      "a": "Ispezioni periodiche su bulloneria e protezioni superficiali; retensioni a campione ove previste; piani specifici in ambienti aggressivi.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 221: manuali)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "manuali",
+        "schede tecniche",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 222: DPI)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 223: svitamento)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 224: tempi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "tempi",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 225: preassemblaggio)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "preassemblaggio",
+        "qualità",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 226: verifiche)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "verifiche",
+        "dimensionamento",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 227: pulizia fori)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "pulizia fori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 228: tracciabilità)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "tracciabilità",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 229: legno-legno)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "legno-legno",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 230: trazione)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "trazione",
+        "taglio",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 231: ispezioni)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 232: schede tecniche)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "schede tecniche",
+        "manuali",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 233: procedure)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "procedure",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 234: filettatura)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "filettatura",
+        "fori",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 235: quantitativi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "quantitativi",
+        "offerta",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 236: step avanzamento)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "step avanzamento",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 237: stabilità)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "stabilità",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 238: coppia)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "coppia",
+        "preforo",
+        "tolleranze"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 239: fotografie)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "fotografie",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 240: protezione)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 241: resilienza)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "resilienza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 242: retensioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 243: DL)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "DL",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 244: procedure)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "procedure",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 245: vibrazioni)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 246: quantitativi)?",
+      "a": "Indicare trattamenti superficiali richiesti e eventuali preassemblaggi in officina.",
+      "category": "computo",
+      "tags": [
+        "quantitativi",
+        "offerta",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 247: qualità)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 248: sismica)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "sismica",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 249: pulizia fori)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "pulizia fori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 250: fotografie)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "fotografie",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 251: acciaio-legno)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "acciaio-legno",
+        "acciaio-acciaio",
+        "legno-legno"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 252: trazione)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "trazione",
+        "taglio",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 253: piano manutentivo)?",
+      "a": "Ispezioni periodiche su bulloneria e protezioni superficiali; retensioni a campione ove previste; piani specifici in ambienti aggressivi.",
+      "category": "manutenzione",
+      "tags": [
+        "piano manutentivo",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 254: DL)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "DL",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 255: formazione)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "formazione",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 256: svitamento)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 257: logistica)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 258: qualità)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 259: stabilità)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "stabilità",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 260: sequenza)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "sequenza",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 261: campionature)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "campionature",
+        "accettazione",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 262: corrosione)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "corrosione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 263: rigidezza)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "rigidezza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 264: piano manutentivo)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "piano manutentivo",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 265: progetto)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "progetto",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 266: cantiere)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 267: svitamento)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 268: tempi)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "tempi",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 269: preassemblaggio)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "preassemblaggio",
+        "qualità",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 270: pressioni locali)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "pressioni locali",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 271: allineamento)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "allineamento",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 272: as built)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "as built",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 273: legno-legno)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "legno-legno",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 274: rigidezza)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "rigidezza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 275: piano manutentivo)?",
+      "a": "Ispezioni periodiche su bulloneria e protezioni superficiali; retensioni a campione ove previste; piani specifici in ambienti aggressivi.",
+      "category": "manutenzione",
+      "tags": [
+        "piano manutentivo",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 276: as built)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "as built",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 277: DPI)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 278: svitamento)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 279: quantitativi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "quantitativi",
+        "offerta",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 280: step avanzamento)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "step avanzamento",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 281: dimensionamento)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "dimensionamento",
+        "verifiche",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 282: sequenza)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "sequenza",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 283: tracciabilità)?",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
+      "category": "verifiche",
+      "tags": [
+        "tracciabilità",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 284: protezione)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 285: resilienza)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "resilienza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 286: retensioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 287: manuali)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "manuali",
+        "schede tecniche",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 288: cantiere)?",
+      "a": "DPI obbligatori (casco, guanti, occhiali, calzature), protezioni per foratura/taglio, area di lavoro in sicurezza, rispetto PSC/POS.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 289: disallineamenti)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "disallineamenti",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 290: tempi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "tempi",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 291: controlli)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 292: pressioni locali)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "pressioni locali",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 293: coppia)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "coppia",
+        "preforo",
+        "tolleranze"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 294: campionature)?",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
+      "category": "verifiche",
+      "tags": [
+        "campionature",
+        "accettazione",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 295: ambiente aggressivo)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "ambiente aggressivo",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 296: rigidezza)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "rigidezza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 297: ispezioni)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 298: as built)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "as built",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 299: cantiere)?",
+      "a": "DPI obbligatori (casco, guanti, occhiali, calzature), protezioni per foratura/taglio, area di lavoro in sicurezza, rispetto PSC/POS.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 300: vibrazioni)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 301: offerta)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "offerta",
+        "quantitativi",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 302: qualità)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 303: fatica)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "fatica",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 304: coppia)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "coppia",
+        "preforo",
+        "tolleranze"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 305: tracciabilità)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "tracciabilità",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 306: legno-legno)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "legno-legno",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 307: resilienza)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "resilienza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 308: ispezioni)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 309: schede tecniche)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "schede tecniche",
+        "manuali",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 310: DPI)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 311: svitamento)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 312: preassemblaggio)?",
+      "a": "Indicare trattamenti superficiali richiesti e eventuali preassemblaggi in officina.",
+      "category": "computo",
+      "tags": [
+        "preassemblaggio",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 313: qualità)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 314: filettatura)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "filettatura",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 315: allineamento)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "allineamento",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 316: campionature)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "campionature",
+        "accettazione",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 317: ambiente aggressivo)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "ambiente aggressivo",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 318: imbosso)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "imbosso",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 319: retensioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 320: as built)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "as built",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 321: DPI)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 322: vibrazioni)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 323: logistica)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 324: controlli)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 325: pressioni locali)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "pressioni locali",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 326: spessori)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "spessori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 327: as built)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "as built",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 328: acciaio-legno)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "acciaio-legno",
+        "acciaio-acciaio",
+        "legno-legno"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 329: taglio)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "taglio",
+        "trazione",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 330: piano manutentivo)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "piano manutentivo",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 331: progetto)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "progetto",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 332: cantiere)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 333: filettatura)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "filettatura",
+        "fori",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 334: preassemblaggio)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "preassemblaggio",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 335: controlli)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 336: eccentricità)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "eccentricità",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 337: allineamento)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "allineamento",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 338: tracciabilità)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "tracciabilità",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 339: legno-legno)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "legno-legno",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 340: trazione)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "trazione",
+        "taglio",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 341: retensioni)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 342: manuali)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "manuali",
+        "schede tecniche",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 343: procedure)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "procedure",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 344: filettatura)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "filettatura",
+        "fori",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 345: quantitativi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "quantitativi",
+        "offerta",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 346: qualità)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 347: fatica)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "fatica",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 348: pulizia fori)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "pulizia fori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 349: accettazione)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "accettazione",
+        "campionature",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 350: ambiente aggressivo)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "ambiente aggressivo",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 351: trazione)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "trazione",
+        "taglio",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 352: protezione superficiale)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "protezione superficiale",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 353: progetto)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "progetto",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 354: cantiere)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 355: vibrazioni)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 356: quantitativi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "quantitativi",
+        "offerta",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 357: preassemblaggio)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "preassemblaggio",
+        "qualità",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 358: stabilità)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "stabilità",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 359: allineamento)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "allineamento",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 360: accettazione)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "accettazione",
+        "campionature",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 361: protezione)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 362: trazione)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "trazione",
+        "taglio",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 363: ispezioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 364: manuali)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "manuali",
+        "schede tecniche",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 365: formazione)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "formazione",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 366: svitamento)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 367: quantitativi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "quantitativi",
+        "offerta",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 368: avviamento)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "avviamento",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 369: verifiche)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "verifiche",
+        "dimensionamento",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 370: planarità)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "planarità",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 371: registro)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "registro",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 372: protezione)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 373: ciclico)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "ciclico",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 374: ispezioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 375: as built)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "as built",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 376: DPI)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 377: svitamento)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 378: offerta)?",
+      "a": "Indicare trattamenti superficiali richiesti e eventuali preassemblaggi in officina.",
+      "category": "computo",
+      "tags": [
+        "offerta",
+        "quantitativi",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 379: qualità)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 380: stabilità)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "stabilità",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 381: pulizia fori)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "pulizia fori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 382: tracciabilità)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "tracciabilità",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 383: acciaio-legno)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "acciaio-legno",
+        "acciaio-acciaio",
+        "legno-legno"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 384: ciclico)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "ciclico",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 385: protezione superficiale)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "protezione superficiale",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 386: as built)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "as built",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 387: procedure)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "procedure",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 388: svitamento)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 389: logistica)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 390: controlli)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 391: sismica)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "sismica",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 392: planarità)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "planarità",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 393: accettazione)?",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
+      "category": "verifiche",
+      "tags": [
+        "accettazione",
+        "campionature",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 394: protezione)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 395: resilienza)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "resilienza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 396: piano manutentivo)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "piano manutentivo",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 397: as built)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "as built",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 398: procedure)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "procedure",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 399: vibrazioni)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 400: preassemblaggio)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "preassemblaggio",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 401: controlli)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 402: pressioni locali)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "pressioni locali",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 403: pulizia fori)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "pulizia fori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 404: campionature)?",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
+      "category": "verifiche",
+      "tags": [
+        "campionature",
+        "accettazione",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 405: protezione)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 406: resilienza)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "resilienza",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 407: retensioni)?",
+      "a": "Ispezioni periodiche su bulloneria e protezioni superficiali; retensioni a campione ove previste; piani specifici in ambienti aggressivi.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 408: DL)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "DL",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 409: DPI)?",
+      "a": "DPI obbligatori (casco, guanti, occhiali, calzature), protezioni per foratura/taglio, area di lavoro in sicurezza, rispetto PSC/POS.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 410: svitamento)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 411: logistica)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "logistica",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 412: qualità)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 413: fatica)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "fatica",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 414: tolleranze)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "tolleranze",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 415: registro)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "registro",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 416: acciaio-acciaio)?",
+      "a": "Su acciaio–acciaio verificare spessori minimi e imbozzamento; usare piastre se necessario.",
+      "category": "compatibilità",
+      "tags": [
+        "acciaio-acciaio",
+        "acciaio-legno",
+        "legno-legno"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 417: ciclico)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "ciclico",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 418: protezione superficiale)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "protezione superficiale",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 419: DL)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "DL",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 420: formazione)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "formazione",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 421: svitamento)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 422: tempi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "tempi",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 423: qualità)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "qualità",
+        "preassemblaggio",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 424: stabilità)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "stabilità",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 425: planarità)?",
+      "a": "Eseguire prefori nel legno e pulizia accurata; controllare i filetti prima del montaggio.",
+      "category": "posa",
+      "tags": [
+        "planarità",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 426: tracciabilità)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "tracciabilità",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 427: legno-legno)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "legno-legno",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 428: imbosso)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "imbosso",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 429: retensioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 430: progetto)?",
+      "a": "Consultare progetto strutturale, schede Tecnaria GTS e manuali di posa; attenersi alle indicazioni della DL.",
+      "category": "documentazione",
+      "tags": [
+        "progetto",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 431: cantiere)?",
+      "a": "DPI obbligatori (casco, guanti, occhiali, calzature), protezioni per foratura/taglio, area di lavoro in sicurezza, rispetto PSC/POS.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 432: svitamento)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "svitamento",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 433: quantitativi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "quantitativi",
+        "offerta",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 434: preassemblaggio)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "preassemblaggio",
+        "qualità",
+        "controlli"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 435: dimensionamento)?",
+      "a": "Definire diametri e lunghezze d’impegno dei tiranti in base alle azioni e alla resistenza della filettatura; includere coefficienti parziali e verifiche locali.",
+      "category": "progettazione",
+      "tags": [
+        "dimensionamento",
+        "verifiche",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 436: planarità)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "planarità",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 437: fotografie)?",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
+      "category": "verifiche",
+      "tags": [
+        "fotografie",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 438: protezione)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 439: trazione)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "trazione",
+        "taglio",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 440: protezione superficiale)?",
+      "a": "Ispezioni periodiche su bulloneria e protezioni superficiali; retensioni a campione ove previste; piani specifici in ambienti aggressivi.",
+      "category": "manutenzione",
+      "tags": [
+        "protezione superficiale",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 441: schede tecniche)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "schede tecniche",
+        "manuali",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 442: cantiere)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "cantiere",
+        "DPI",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 443: filettatura)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "filettatura",
+        "fori",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 444: tempi)?",
+      "a": "Indicare trattamenti superficiali richiesti e eventuali preassemblaggi in officina.",
+      "category": "computo",
+      "tags": [
+        "tempi",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 445: avviamento)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "avviamento",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 446: pressioni locali)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "pressioni locali",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 447: spessori)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "spessori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 448: as built)?",
+      "a": "Verifica collegamento a trazione/taglio, pressioni locali/punzonamento, resistenza bulloneria e filettature, stabilità degli elementi e ripartizione degli sforzi.",
+      "category": "verifiche",
+      "tags": [
+        "as built",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 449: acciaio-legno)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "acciaio-legno",
+        "acciaio-acciaio",
+        "legno-legno"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 450: ciclico)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "ciclico",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 451: retensioni)?",
+      "a": "Pulire e ripristinare protezioni superficiali; controllare dadi e rondelle contro allentamenti.",
+      "category": "manutenzione",
+      "tags": [
+        "retensioni",
+        "ispezioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 452: as built)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "as built",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 453: procedure)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "procedure",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 454: filettatura)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "filettatura",
+        "fori",
+        "disallineamenti"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 455: quantitativi)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "quantitativi",
+        "offerta",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 456: step avanzamento)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "step avanzamento",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 457: sismica)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "sismica",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 458: tolleranze)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "tolleranze",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 459: as built)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "as built",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 460: protezione)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 461: ciclico)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "ciclico",
+        "trazione",
+        "taglio"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 462: ispezioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 463: schede tecniche)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "schede tecniche",
+        "manuali",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 464: formazione)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "formazione",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 465: vibrazioni)?",
+      "a": "Impegno filettato insufficiente: aumentare lunghezza o rivedere diametri secondo verifica.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 466: offerta)?",
+      "a": "Per l’offerta: schemi di giunzione, azioni, materiali, spessori, accessibilità, quantità e tempi.",
+      "category": "computo",
+      "tags": [
+        "offerta",
+        "quantitativi",
+        "tempi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 467: controlli)?",
+      "a": "Preassemblaggio in officina quando le tolleranze lo consentono: riduce tempi e migliora qualità.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 468: verifiche)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "verifiche",
+        "dimensionamento",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 469: planarità)?",
+      "a": "Allineare con dime, serrare in sequenza incrociata e verificare la planarità; evitare eccentricità non previste.",
+      "category": "posa",
+      "tags": [
+        "planarità",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 470: as built)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "as built",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 471: legno-legno)?",
+      "a": "Su ambienti aggressivi scegliere protezioni superficiali adeguate e prevedere ispezioni più frequenti.",
+      "category": "compatibilità",
+      "tags": [
+        "legno-legno",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 472: taglio)?",
+      "a": "Il collegamento trasferisce trazione/taglio; la rigidezza dipende da configurazione e ripartizioni.",
+      "category": "prestazioni",
+      "tags": [
+        "taglio",
+        "trazione",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 473: protezione superficiale)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "protezione superficiale",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 474: progetto)?",
+      "a": "A fine lavori consegnare registro coppie, certificazioni materiali e fotografie dei nodi (as-built).",
+      "category": "documentazione",
+      "tags": [
+        "progetto",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 475: DPI)?",
+      "a": "Formare la squadra sulle attrezzature di foratura/taglio; delimitare l’area e gestire gli sfridi.",
+      "category": "sicurezza",
+      "tags": [
+        "DPI",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 476: vibrazioni)?",
+      "a": "Dadi che si allentano: usare autobloccanti/rondelle anti-svitamento e controllare vibrazioni.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 477: preassemblaggio)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "preassemblaggio",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 478: controlli)?",
+      "a": "Eseguire check di avvio e a step di avanzamento; aumentare controlli su nodi critici.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 479: sismica)?",
+      "a": "Valutare pressioni locali e punzonamento con piastre di ripartizione; controllare stabilità ed eccentricità del nodo.",
+      "category": "progettazione",
+      "tags": [
+        "sismica",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 480: spessori)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "spessori",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 481: fotografie)?",
+      "a": "Controllare marcature e lotti; scartare componenti danneggiati o ossidati.",
+      "category": "verifiche",
+      "tags": [
+        "fotografie",
+        "accettazione",
+        "campionature"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 482: protezione)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "protezione",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 483: trazione)?",
+      "a": "Per carichi ciclici considerare fatica e predisporre piani di ispezione.",
+      "category": "prestazioni",
+      "tags": [
+        "trazione",
+        "taglio",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 484: protezione superficiale)?",
+      "a": "Ispezioni periodiche su bulloneria e protezioni superficiali; retensioni a campione ove previste; piani specifici in ambienti aggressivi.",
+      "category": "manutenzione",
+      "tags": [
+        "protezione superficiale",
+        "ispezioni",
+        "retensioni"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 485: progetto)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "progetto",
+        "schede tecniche",
+        "manuali"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 486: formazione)?",
+      "a": "Applicare procedure di sollevamento e movimentazione sicure dei componenti.",
+      "category": "sicurezza",
+      "tags": [
+        "formazione",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 487: vibrazioni)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 488: preassemblaggio)?",
+      "a": "Indicare trattamenti superficiali richiesti e eventuali preassemblaggi in officina.",
+      "category": "computo",
+      "tags": [
+        "preassemblaggio",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 489: avviamento)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "avviamento",
+        "preassemblaggio",
+        "qualità"
+      ]
+    },
+    {
+      "q": "Quali criteri progettuali applicare al GTS (caso 490: filettatura)?",
+      "a": "In zona sismica, curare dettagli, gerarchia delle resistenze e duttilità secondo normativa.",
+      "category": "progettazione",
+      "tags": [
+        "filettatura",
+        "dimensionamento",
+        "verifiche"
+      ]
+    },
+    {
+      "q": "Qual è la sequenza corretta di posa del GTS (caso 491: tolleranze)?",
+      "a": "Tracciamento e prefori secondo progetto; pulizia fori; montaggio controllato del manicotto; serraggio graduale con chiave dinamometrica; verifica planarità/piastre; registrazione coppie ed esiti di controllo.",
+      "category": "posa",
+      "tags": [
+        "tolleranze",
+        "preforo",
+        "coppia"
+      ]
+    },
+    {
+      "q": "Quali controlli e campionature sono raccomandati per il GTS (caso 492: accettazione)?",
+      "a": "Programmare campionature su coppie e accoppiamenti; registrare risultati con foto e check-list firmate.",
+      "category": "verifiche",
+      "tags": [
+        "accettazione",
+        "campionature",
+        "registro"
+      ]
+    },
+    {
+      "q": "Come verificare la compatibilità del GTS con i materiali in opera (caso 493: legno-legno)?",
+      "a": "Per acciaio–legno usare bussole idonee e piastre; verificare spacco/strappo del legno e pressioni ammissibili.",
+      "category": "compatibilità",
+      "tags": [
+        "legno-legno",
+        "acciaio-legno",
+        "acciaio-acciaio"
+      ]
+    },
+    {
+      "q": "Quali prestazioni sono attese da un nodo con GTS (caso 494: taglio)?",
+      "a": "Evitare giochi e concentrazioni di tensione: mantenere tolleranze entro i limiti di progetto.",
+      "category": "prestazioni",
+      "tags": [
+        "taglio",
+        "trazione",
+        "rigidezza"
+      ]
+    },
+    {
+      "q": "Qual è il piano minimo di manutenzione per GTS (caso 495: ispezioni)?",
+      "a": "In presenza di vibrazioni, pianificare controlli ravvicinati e dispositivi anti-svitamento.",
+      "category": "manutenzione",
+      "tags": [
+        "ispezioni",
+        "retensioni",
+        "protezione superficiale"
+      ]
+    },
+    {
+      "q": "Quale documentazione va mantenuta per l’uso del GTS (caso 496: manuali)?",
+      "a": "Le istruzioni di posa devono rimanere in cantiere per tutta la durata delle lavorazioni.",
+      "category": "documentazione",
+      "tags": [
+        "manuali",
+        "schede tecniche",
+        "progetto"
+      ]
+    },
+    {
+      "q": "Quali misure di sicurezza sono obbligatorie durante l’uso del GTS (caso 497: procedure)?",
+      "a": "DPI obbligatori (casco, guanti, occhiali, calzature), protezioni per foratura/taglio, area di lavoro in sicurezza, rispetto PSC/POS.",
+      "category": "sicurezza",
+      "tags": [
+        "procedure",
+        "DPI",
+        "cantiere"
+      ]
+    },
+    {
+      "q": "Come intervenire in caso di problemi di montaggio con GTS (caso 498: vibrazioni)?",
+      "a": "Fori ovalizzati: ripristinare con bussole/piastre o riposizionare; evitare riutilizzi non conformi.",
+      "category": "troubleshooting",
+      "tags": [
+        "vibrazioni",
+        "fori",
+        "filettatura"
+      ]
+    },
+    {
+      "q": "Quali dati servono per computo/offerta del sistema GTS (caso 499: preassemblaggio)?",
+      "a": "Specifica vincoli di cantiere e logistica per pianificare tempi e campionature.",
+      "category": "computo",
+      "tags": [
+        "preassemblaggio",
+        "offerta",
+        "quantitativi"
+      ]
+    },
+    {
+      "q": "Quali buone pratiche di cantiere adottare con GTS (caso 500: controlli)?",
+      "a": "Registrare non conformità e azioni correttive con evidenze fotografiche.",
+      "category": "cantiere",
+      "tags": [
+        "controlli",
+        "preassemblaggio",
+        "qualità"
+      ]
     }
   ]
 }
-
