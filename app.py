@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Tecnaria Sinapsi – app.py (v4.3)
-- Classifier semantico (ruolo entità + intento) + router pesato
-- Regole cross: CTF↔P560; incompatibilità CTF/P560 su legno -> CTL
-- Boost: GTS (preforo), P560 (taratura/lamiera 1,5)
-- Picker: preferenza overview + tag-matching operativo
-- Narrativa: formatter Tecnaria + ENRICH_NARRATIVE=1 per tono più "umano" (locale, no GPT)
-- UI nera/arancione, bottone “Chiedi”, disclaimer stile ChatGPT
-- Endpoints: /health, /selfcheck, /debug, /ask, /company, /ui
+Tecnaria Sinapsi – app.py (v4.5)
+- Motore di verità deterministico basato su JSON Tecnaria
+- Router semantico + regole: CTF↔P560, pivot legno→CTL, confronti
+- Picker: preferenza overview + tag operativi (taratura, preforo, lamiera 1,5…)
+- Narrativa locale (no GPT): ENRICH_NARRATIVE=1
+- NUOVO: Parametric Hints (opzionale) – suggerimenti pratici non vincolanti
+  · Abilita con PARAM_HINTS=1
+  · Implementazione iniziale: CTL MAXI (scelta indicativa 12/040 vs 12/030 da domanda)
+- Endpoints: /health /selfcheck /debug /ask /company /ui
 """
 import json, re, os
 from pathlib import Path
@@ -33,7 +34,7 @@ KEYWORDS: Dict[str, List[str]] = {
         "tiranti","camicia","preforo","preforare","coppia","chiave dinamometrica","filettato","filettati"
     ],
     "diapason": ["diapason","soletta leggera","cappa","rinforzo laterocemento","laterocemento"],
-    "ctl": ["ctl","vite","viti","legno calcestruzzo","tavolato","tetto","travi in legno","solaio in legno","trave in legno","legno"],
+    "ctl": ["ctl","vite","viti","legno calcestruzzo","tavolato","tetto","travi in legno","solaio in legno","trave in legno","legno","maxi"],
     "mini-cem-e": ["mini-cem-e","minicem","camicia","consolidamento","iniezione","boiacca"],
     "spit-p560": [
         "p560","spit","chiodatrice","sparachiodi","propulsore","propulsori",
@@ -45,9 +46,9 @@ KEYWORDS: Dict[str, List[str]] = {
 # Dizionario semantico
 ENTITY_DICT = {
     "tool": ["p560", "spit", "chiodatrice", "sparachiodi", "propulsore", "propulsori"],
-    "component": ["ctf", "connettore", "gts", "manicotto", "diapason", "ctl", "mini-cem-e", "minicem"],
-    "material": ["legno", "acciaio", "calcestruzzo", "lamiera", "lamiera grecata", "laterocemento"],
-    "action": ["posa", "fissare", "infissione", "tarare", "taratura", "regolare", "montare", "iniezione", "preforo", "preforare"],
+    "component": ["ctf", "connettore", "gts", "manicotto", "diapason", "ctl", "mini-cem-e", "minicem", "maxi"],
+    "material": ["legno", "acciaio", "calcestruzzo", "lamiera", "lamiera grecata", "laterocemento", "tavolato", "assito"],
+    "action": ["posa", "fissare", "infissione", "tarare", "taratura", "regolare", "montare", "iniezione", "preforo", "preforare","scegliere","modello","che modello"],
 }
 
 # Intents
@@ -57,6 +58,7 @@ INTENT_PATTERNS = {
     "compare": [" vs ", "contro", "meglio", "convenienza", "conviene", "oppure", "differenza", "differenze"],
     "verify": ["come verifico", "come controllo", "controllo", "verifica", "taratura", "tarare"],
     "safety": ["sicurezza", "dpi", "protezione", "occhiali", "guanti", "cuffie"],
+    "select": ["che modello", "quale modello", "modello devo usare", "modello consigliato", "quale scegliere", "scelgo", "scegliere"]
 }
 
 # ====== Utils ======
@@ -67,6 +69,30 @@ def norm(text: str) -> str:
 def contains_any_norm(text: str, kws: List[str]) -> bool:
     t = norm(text)
     return any(k in t for k in kws)
+
+def extract_numbers_cm(text: str) -> Dict[str, float]:
+    """
+    Estrae numeri seguiti da 'cm' (o soli numeri dove chiaro dal contesto) per tavolato/soletta.
+    Esempi in domanda: 'tavolato di 2 cm', 'soletta da 5 cm'
+    """
+    t = norm(text)
+    out = {"tavolato_cm": None, "soletta_cm": None}
+    # tavolato
+    m_tav = re.search(r"(tavolato|assito)[^\d]{0,8}(\d+(?:[\,\.]\d+)?)\s*cm", t)
+    if m_tav:
+        out["tavolato_cm"] = float(m_tav.group(2).replace(",","."))
+    # soletta
+    m_sol = re.search(r"(soletta)[^\d]{0,8}(\d+(?:[\,\.]\d+)?)\s*cm", t)
+    if m_sol:
+        out["soletta_cm"] = float(m_sol.group(2).replace(",","."))
+    # fallback: se compaiono 1–2 numeri sciolti, tenta mappatura
+    if out["tavolato_cm"] is None or out["soletta_cm"] is None:
+        nums = re.findall(r"(\d+(?:[\,\.]\d+)?)\s*cm", t)
+        nums = [float(x.replace(",", ".")) for x in nums]
+        if len(nums) == 2:
+            if out["tavolato_cm"] is None: out["tavolato_cm"] = min(nums)
+            if out["soletta_cm"] is None: out["soletta_cm"] = max(nums)
+    return out
 
 # ====== IO ======
 def load_json(path: Path) -> Any:
@@ -140,6 +166,8 @@ def detect_intent(question: str) -> str:
             continue
         if contains_any_norm(t, pats):
             return intent
+    if contains_any_norm(t, INTENT_PATTERNS["select"]):
+        return "select"
     if any(a in t for a in ("come","posso","si puo","si può","serve","necessario")):
         return "usage"
     return "explain"
@@ -231,7 +259,7 @@ def score_item(q: str, item: Dict[str, Any]) -> float:
         bonus += 0.25
 
     # Micro-boost per contenuti operativi
-    if any(k in tq for k in ["taratura","regolazione","preforo","verifica","potenza","propulsori","coppia"]):
+    if any(k in tq for k in ["taratura","regolazione","preforo","verifica","potenza","propulsori","coppia","modello","scegliere"]):
         if cat in ("procedura","posa","uso","sicurezza"):
             bonus += 0.2
 
@@ -270,6 +298,7 @@ def narrativize(answer: str, primary: str, intent: str) -> str:
         "compare": f"**{title}** — confronto sintetico:",
         "verify": f"**{title}** — controlli e verifiche:",
         "safety": f"**{title}** — sicurezza e DPI:",
+        "select": f"**{title}** — scelta modello:"
     }
     intro = intro_map.get(intent, f"**{title}** — indicazioni Tecnaria:")
     outro = "\n\n*Riferimento: documentazione e schede ufficiali Tecnaria. In caso di dubbio, attenersi alle indicazioni del progettista strutturale.*"
@@ -277,63 +306,29 @@ def narrativize(answer: str, primary: str, intent: str) -> str:
         outro = ""
     return f"{intro}\n\n{answer}{outro}"
 
-# Patch “smart” per l’arricchimento locale
+# Arricchimento narrativo "soft"
 SPLIT_SENT_RE = re.compile(r'(?<=[\.\!\?])\s+')
 def enrich_narrative(answer: str, primary: str, intent: str) -> str:
-    """
-    Arricchimento narrativo locale (deterministico, compatibile Render).
-    - Niente "Inoltre," sulla prima frase o subito dopo "No."
-    - Evita doppioni; normalizza "Inoltre, per..." minuscolo
-    - Inserisce "in pratica," una volta dopo ';' se utile
-    """
+    """Versione soft: massimo un 'Inoltre,' ogni 3 frasi; niente ripetizioni."""
     if not answer or len(answer) < 80:
         return answer
-
-    def tidy_spaces(s: str) -> str:
-        s = re.sub(r'\s{2,}', ' ', s)
-        s = re.sub(r'\s+([;:,])', r'\1', s)
-        return s.strip()
-
-    paragraphs = answer.split("\n\n")
-    new_paragraphs = []
-    for p in paragraphs:
-        p = p.strip()
-        if not p or p.startswith("**"):
-            new_paragraphs.append(p)
+    sentences = SPLIT_SENT_RE.split(answer)
+    rebuilt = []
+    count = 0
+    for i, s in enumerate(sentences):
+        s = s.strip()
+        if not s:
             continue
-
-        if "; " in p and "in pratica" not in p.lower():
-            p = p.replace("; ", "; in pratica, ", 1)
-
-        sentences = SPLIT_SENT_RE.split(p)
-        if len(sentences) <= 1:
-            new_paragraphs.append(tidy_spaces(p))
-            continue
-
-        rebuilt = []
-        for i, s in enumerate(sentences):
-            s_stripped = s.strip()
-            if i == 0:
-                rebuilt.append(s_stripped)
-                continue
-
-            prev = sentences[i-1].strip().lower()
-            starts_bad = s_stripped.lower().startswith(("inoltre,", "in pratica,"))
-
-            if not starts_bad:
-                if not (prev in ("no.", "no", "non.") or len(prev) <= 3):
-                    s_stripped = "Inoltre, " + s_stripped
-
-            s_stripped = re.sub(r'Inoltre,\s+Per\b', 'Inoltre, per', s_stripped)
-            rebuilt.append(s_stripped)
-
-        np = " ".join(rebuilt)
-        new_paragraphs.append(tidy_spaces(np))
-
-    txt = "\n\n".join(new_paragraphs)
-    tail = "\n\n_In sintesi, questa è la linea operativa coerente con le indicazioni Tecnaria._"
+        if i > 0 and count == 0 and not s.lower().startswith(("inoltre", "in pratica")):
+            s = "Inoltre, " + s
+            count = 2
+        elif count > 0:
+            count -= 1
+        rebuilt.append(s)
+    txt = " ".join(rebuilt)
+    txt = re.sub(r'\s{2,}', ' ', txt).strip()
     if "linea operativa coerente" not in txt.lower():
-        txt += tail
+        txt += "\n\n_In sintesi, questa è la linea operativa coerente con le indicazioni Tecnaria._"
     return txt
 
 def apply_narrative(answer: str, primary: str, intent: str) -> str:
@@ -342,8 +337,57 @@ def apply_narrative(answer: str, primary: str, intent: str) -> str:
         return enrich_narrative(base, primary, intent)
     return base
 
+# ====== Parametric Hints (non vincolanti) ======
+def wants_model_selection(question: str, intent: str) -> bool:
+    t = norm(question)
+    return intent == "select" or any(k in t for k in ["modello","che modello","quale modello","consigli","dimensioni"])
+
+def ctl_maxi_param_hint(question: str) -> Optional[str]:
+    """
+    Regola euristica sicura per CTL MAXI:
+    - Se soletta >= 5 cm e tavolato ~ 2 cm → suggerisci 12/040 (testa ben annegata)
+    - Se interferenze/armature presunte o soletta < 5 → suggerisci 12/030 come alternativa
+    Output sempre marcato come 'Suggerimento parametrico (non vincolante)'
+    """
+    t = norm(question)
+    if "maxi" not in t and "ctl" not in t and "legno" not in t:
+        return None
+    dims = extract_numbers_cm(question)
+    tav = dims.get("tavolato_cm")
+    sol = dims.get("soletta_cm")
+
+    pick = None
+    reason = []
+    if sol is not None and sol >= 5.0:
+        pick = "CTL MAXI 12/040"
+        reason.append("soletta ≈ ≥ 5 cm → gambo 40 mm ben annegato")
+    else:
+        pick = "CTL MAXI 12/030"
+        reason.append("soletta < 5 cm o interferenze → gambo 30 mm")
+
+    if tav is not None:
+        if tav > 2.5:
+            reason.append(f"tavolato ≈ {tav:.0f} cm → verifica lunghezza viti (Ø10 × 120 mm)")
+        else:
+            reason.append(f"tavolato ≈ {tav:.0f} cm → viti Ø10 × 100 mm tipiche")
+
+    hint = f"**Suggerimento parametrico (non vincolante):** {pick}.\n"
+    hint += "Motivi: " + "; ".join(reason) + ".\n"
+    hint += "Verifica sempre in progetto spessori, rete a metà spessore e interferenze locali; attenersi alle schede Tecnaria."
+    return hint
+
+def parametric_hints(primary: str, question: str, intent: str) -> Optional[str]:
+    if os.getenv("PARAM_HINTS","0") != "1":
+        return None
+    if not wants_model_selection(question, intent):
+        return None
+    if primary == "ctl":
+        return ctl_maxi_param_hint(question)
+    # base per future estensioni (es. GTS, CTF, P560…)
+    return None
+
 # ====== APP ======
-app = FastAPI(title="Tecnaria Sinapsi", version="4.3")
+app = FastAPI(title="Tecnaria Sinapsi", version="4.5")
 
 @app.get("/health")
 def health():
@@ -479,6 +523,11 @@ def ask(q: str):
                         + "\n\n— **Nota P560 (obbligatoria per CTF)** —\n"
                         + p560_txt
                     )
+
+    # Parametric Hints (non vincolanti)
+    extra = parametric_hints(primary, q, intent)
+    if extra:
+        answer = answer + "\n\n" + extra
 
     return {"answer": apply_narrative(answer, primary, intent)}
 
