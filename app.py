@@ -13,24 +13,18 @@ from fastapi.middleware.cors import CORSMiddleware
 # CONFIGURAZIONE DI BASE
 # =========================
 
-# Percorso assoluto forzato (indipendente da Render o cartelle esterne)
 BASE_DIR = os.path.dirname(__file__)
 DATA_PATH = os.path.join(BASE_DIR, "static", "data", "SINAPSI_GLOBAL_TECNARIA_EXT.json")
 
 I18N_DIR = os.path.join(BASE_DIR, "static", "i18n")
-I18N_CACHE_DIR = os.getenv("I18N_CACHE_DIR", os.path.join(BASE_DIR, "static", "i18n-cache"))  # su Render: /tmp/i18n-cache
+I18N_CACHE_DIR = os.getenv("I18N_CACHE_DIR", os.path.join(BASE_DIR, "static", "i18n-cache"))
 
 ALLOWED_LANGS = {"it", "en", "fr", "de", "es"}
-DO_NOT_TRANSLATE = [
-    "Tecnaria", "CTF", "CTL", "Diapason", "GTS",
-    "SPIT P560", "HSBR14", "ETA 18/0447", "ETA 13/0786",
-    "mm", "µm"
-]
 
 _lock = threading.Lock()
 
 # =========================
-# UTILS: FILESYSTEM & JSON
+# UTILS
 # =========================
 
 def load_json(path: str) -> dict:
@@ -41,6 +35,54 @@ def load_json(path: str) -> dict:
         print(f"[ERRORE] Impossibile leggere {path}: {e}")
         return {}
 
+# Mappa frasi tipiche EN/ES/FR/DE -> forma IT presente nel KB
+CANON = {
+    # CTF - codici
+    r"\bcan you (tell|list).*\bctf code": "mi puoi dire i codici dei ctf?",
+    r"puedes.*c[oó]digos.*ctf": "mi puoi dire i codici dei ctf?",
+    r"peux[- ]tu.*codes.*ctf": "mi puoi dire i codici dei ctf?",
+    r"kannst du.*ctf.*codes": "mi puoi dire i codici dei ctf?",
+    # CTF - posa/chiodatrice
+    r"\bhow to install\b.*ctf|tools and constraints": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"peux[- ]tu.*poser.*ctf|outils.*contraintes": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"wie.*montiert.*ctf|werkzeuge|vorgaben": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"como.*instala.*ctf|herramientas.*l[ií]mites": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    # CEM-E - resine
+    r"\bdo.*ctcem.*(use|using).*resin": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    r"los conectores.*ctcem.*resinas": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    r"les connecteurs.*ctcem.*r[eé]sines": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    r"ctcem.*harz|harze": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    # CEM-E - famiglie
+    r"which connectors.*(hollow|hollow[- ]block).*slab": "quali connettori tecnaria ci sono per solai in laterocemento?",
+    r"qu[eé]\s+conectores.*(bovedillas|forjados)": "quali connettori tecnaria ci sono per solai in laterocemento?",
+    r"quels connecteurs.*(hourdis|planchers)": "quali connettori tecnaria ci sono per solai in laterocemento?",
+    r"welche verbind(er|ungen).*hohlstein(decken)?": "quali connettori tecnaria ci sono per solai in laterocemento?",
+    # Guard-rail CTC
+    r"\bare ctc (codes|from) tecnaria": "i ctc sono un codice tecnaria?",
+    r"ctc.*c[oó]digo.*tecnaria": "i ctc sono un codice tecnaria?",
+    r"ctc.*code.*tecnaria": "i ctc sono un codice tecnaria?",
+    r"sind ctc.*tecnaria": "i ctc sono un codice tecnaria?",
+}
+
+def normalize_query_to_it(q: str) -> str:
+    ql = q.lower().strip()
+    # se già italiano, tienilo com’è
+    if "ctf" in ql and "codici" in ql: 
+        return ql
+    if "connettori ctf" in ql or "chiodatrice" in ql:
+        return ql
+    if "ctcem" in ql and "resine" in ql:
+        return ql
+    if "solai in laterocemento" in ql:
+        return ql
+    if re.search(r"\bi ctc\b|\bctc\b.*tecnaria", ql):
+        return ql
+    # altrimenti prova le mappe
+    for pat, canon in CANON.items():
+        if re.search(pat, ql):
+            return canon
+    return ql  # fallback: non mappata, resta com’è
+
 # =========================
 # INIZIALIZZAZIONE APP
 # =========================
@@ -49,17 +91,15 @@ app = FastAPI(title="Tecnaria BOT", version="3.5")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"], allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"],
 )
 
 # =========================
 # CARICAMENTO KNOWLEDGE BASE
 # =========================
 
-KB = {}
+KB: Dict[str, dict] = {}
 _meta = {}
 
 def load_kb() -> Tuple[int, dict]:
@@ -76,9 +116,8 @@ def load_kb() -> Tuple[int, dict]:
         print(f"[ERRORE] KB non caricata: {e}")
         return 0, {}
 
-# Precarica all’avvio
-n, _ = load_kb()
-print(f"[INIT] Caricate {n} voci KB da {DATA_PATH}")
+count, _ = load_kb()
+print(f"[INIT] Caricate {count} voci KB da {DATA_PATH}")
 
 # =========================
 # ENDPOINTS DI SERVIZIO
@@ -117,31 +156,34 @@ def kb_item(id: str):
 
 @app.get("/kb/search")
 def kb_search(q: str = "", k: int = 10):
-    q = q.lower().strip()
-    if not q:
+    ql = q.lower().strip()
+    if not ql:
         return {"ok": True, "count": len(KB), "items": []}
     matches = []
     for item in KB.values():
-        if q in item["q"].lower() or q in item["a"].lower():
+        if ql in item["q"].lower() or ql in item["a"].lower():
             matches.append(item)
         if len(matches) >= k:
             break
     return {"ok": True, "count": len(matches), "items": matches}
 
 # =========================
-# ENDPOINT PRINCIPALE: /api/ask
+# ENDPOINT PRINCIPALE
 # =========================
 
 @app.post("/api/ask")
 async def api_ask(req: Request):
     try:
         body = await req.json()
-        q = body.get("q", "").strip().lower()
-        if not q:
+        q_raw = body.get("q", "")
+        if not q_raw or not q_raw.strip():
             return JSONResponse({"error": "Domanda vuota"}, status_code=400)
 
+        q_it = normalize_query_to_it(q_raw)
+
+        # match semplice: se la domanda canonica è substring del campo "q" della KB
         for item in KB.values():
-            if q in item["q"].lower():
+            if q_it in item["q"].lower():
                 html = f"""
                 <div class="card" style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
                     <h2 style="margin:0 0 8px 0;font-size:18px;color:#111827;">Risposta Tecnaria</h2>
@@ -151,6 +193,7 @@ async def api_ask(req: Request):
                 """
                 return {"ok": True, "html": html}
 
+        # fallback: stessa logica di prima
         return {
             "ok": True,
             "html": """
