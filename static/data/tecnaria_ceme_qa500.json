@@ -18,8 +18,39 @@
       "name": "CEM-E – Connettori calcestruzzo–calcestruzzo (solai in laterocemento)",
       "family": "Connettori solai",
       "summary": "Linea CEM-E per riprese di getto su calcestruzzo nei solai in laterocemento. Fissaggio meccanico, senza resine.",
-      "sku_table": [],
-      "article_codes": []
+      "sku_table": [
+        {
+          "code": "CT CEM-E",
+          "label": "Connettore CT CEM-E (piastra dentata)",
+          "packaging": "",
+          "notes": "Fissaggio meccanico (NO resine)"
+        },
+        {
+          "code": "V CEM-E",
+          "label": "Connettore V CEM-E (vite, senza piastra)",
+          "packaging": "",
+          "notes": "Fissaggio meccanico (NO resine)"
+        },
+        {
+          "code": "MINI CEM-E",
+          "label": "Connettore MINI CEM-E",
+          "packaging": "",
+          "notes": "Fissaggio meccanico (NO resine)"
+        },
+        {
+          "code": "NANO CEM-E",
+          "label": "Connettore NANO CEM-E",
+          "packaging": "",
+          "notes": "Fissaggio meccanico (NO resine)"
+        }
+      ],
+      "article_codes": [
+        {
+          "code": "CT CEM 14/040",
+          "height_mm": 40,
+          "note": "Esempio dalla scheda; completare da listino ufficiale"
+        }
+      ]
     },
     "ops": {
       "consumi_pose": {
