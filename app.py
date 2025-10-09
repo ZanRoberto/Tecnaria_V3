@@ -14,7 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 # =========================
 DATA_PATH = "static/data/SINAPSI_GLOBAL_TECNARIA_EXT.json"
 I18N_DIR = "static/i18n"
-I18N_CACHE_DIR = "static/i18n-cache"
+# << MODIFICA 2: cache directory configurabile da env >>
+I18N_CACHE_DIR = os.getenv("I18N_CACHE_DIR", "static/i18n-cache")
 
 # Lingue abilitate (puoi aggiungerne altre)
 ALLOWED_LANGS = {"it", "en", "fr", "de", "es"}
@@ -75,8 +76,7 @@ def safe_load_json(path: str) -> Dict:
 ensure_dirs()
 try:
     KB: List[Dict] = load_json_lenient(DATA_PATH)   # lista di {id, category, q, a}
-except Exception as e:
-    # Fallback a lista vuota se il file non è ancora pronto
+except Exception:
     KB = []
 KB_BY_ID: Dict[str, Dict] = {r["id"]: r for r in KB if isinstance(r, dict) and "id" in r}
 
@@ -111,7 +111,6 @@ def _sim_ratio(a: str, b: str) -> float:
     inter = len(ta & tb)
     union = len(ta | tb)
     jacc = inter / union
-    # Bonus se stringa a è substring di b
     sub_bonus = 0.15 if _norm(a) in _norm(b) and len(_norm(a)) >= 8 else 0.0
     return min(1.0, jacc + sub_bonus)
 
@@ -119,7 +118,6 @@ def retrieve_best_entry(query: str) -> Optional[Dict]:
     if not KB_BY_ID:
         return None
     qn = _norm(query)
-    # Filtri leggeri per famiglia (facoltativo)
     fam = None
     if "ctf" in qn:
         fam = "ctf"
@@ -135,12 +133,10 @@ def retrieve_best_entry(query: str) -> Optional[Dict]:
         text = f"{r.get('q','')} || {r.get('a','')} || {r.get('id','')} || {r.get('category','')}"
         score = _sim_ratio(query, text)
 
-        # Boost se famiglia corrisponde
         rid = (r.get("id") or "").lower()
         if fam and rid.startswith(fam):
             score += 0.15
 
-        # Boost se la query contiene 'codici' e la category è 'codici_prodotti'
         if ("codici" in qn or "codes" in qn) and r.get("category") == "codici_prodotti":
             score += 0.15
 
@@ -148,7 +144,6 @@ def retrieve_best_entry(query: str) -> Optional[Dict]:
 
     scored.sort(key=lambda x: x[0], reverse=True)
     best_score, best = scored[0]
-    # Soglia di confidenza minima
     return best if best_score >= 0.18 else None
 
 # =========================
@@ -173,11 +168,9 @@ def translate_with_llm(text_it: str, target_lang: str) -> str:
     Integra la tua traduzione qui (OpenAI o altro).
     Se non configurata, restituisce il testo IT (funziona comunque).
     """
-    # Esempio opzionale (non obbligatorio): tenta openai se disponibile
     try:
         api_key = os.getenv("OPENAI_API_KEY", "")
         if api_key:
-            # Import lazy per evitare dipendenza obbligatoria
             import openai  # type: ignore
             openai.api_key = api_key
             system = (
@@ -186,7 +179,6 @@ def translate_with_llm(text_it: str, target_lang: str) -> str:
                 f"Do NOT translate these terms: {', '.join(DO_NOT_TRANSLATE)}."
             )
             user = f"Translate to {target_lang}. Text:\n{text_it}"
-            # API compatibile v1 (adatta se usi client ufficiale diverso)
             resp = openai.ChatCompletion.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "system", "content": system},
@@ -200,7 +192,8 @@ def translate_with_llm(text_it: str, target_lang: str) -> str:
     return text_it
 
 def translate_cached(answer_it: str, id_key: str, lang: str) -> str:
-    if lang == "it":
+    # << MODIFICA 1: evita cache su id mancante >>
+    if lang == "it" or not id_key:
         return answer_it
 
     # 1) dizionario ufficiale (manutenzione manuale)
@@ -235,9 +228,8 @@ def render_card(answer_text: str, ms: int) -> str:
 # =========================
 # FASTAPI APP
 # =========================
-app = FastAPI(title="Tecnaria BOT", version="3.0")
+app = FastAPI(title="Tecnaria BOT", version="3.1")
 
-# CORS permissivo (adatta ai tuoi domini)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True,
@@ -247,6 +239,18 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"ok": True, "kb_items": len(KB_BY_ID), "langs": sorted(list(ALLOWED_LANGS))}
+
+# << MODIFICA 3: endpoint per ricaricare il KB senza riavvio >>
+@app.post("/reload-kb")
+def reload_kb():
+    global KB, KB_BY_ID
+    try:
+        new_kb = load_json_lenient(DATA_PATH)
+        KB = new_kb
+        KB_BY_ID = {r["id"]: r for r in KB if isinstance(r, dict) and "id" in r}
+        return {"ok": True, "kb_items": len(KB_BY_ID)}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 @app.post("/api/ask")
 async def api_ask(request: Request):
