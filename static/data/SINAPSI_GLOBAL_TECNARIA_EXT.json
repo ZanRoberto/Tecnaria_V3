@@ -1,1 +1,206 @@
+[
+  {
+    "id": "SCOPE-BRAND-0001",
+    "category": "policy_fonti",
+    "q": "Le risposte includono prodotti non Tecnaria?",
+    "a": "No. Tutti i contenuti si riferiscono esclusivamente a prodotti e documenti ufficiali Tecnaria S.p.A. (Bassano del Grappa). Sono esclusi prodotti similari o di terzi."
+  },
 
+  /* =========================
+     CTF — ACCIAIO–CALCESTRUZZO
+     ========================= */
+  {
+    "id": "CTF-CODICI-0001",
+    "category": "codici_prodotti",
+    "q": "Mi dai i codici disponibili per i connettori CTF e le relative altezze?",
+    "a": "CTF020 (20 mm), CTF025 (25 mm), CTF030 (30 mm), CTF040 (40 mm), CTF060 (60 mm), CTF070 (70 mm), CTF080 (80 mm), CTF090 (90 mm), CTF105 (105 mm), CTF125 (125 mm), CTF135 (135 mm). Fonte: schede/pagine ufficiali Tecnaria CTF."
+  },
+  {
+    "id": "CTF-CARATT-0002",
+    "category": "caratteristiche_prodotti",
+    "q": "Quali sono le caratteristiche costruttive principali del CTF?",
+    "a": "Gambo in acciaio Ø nominale 12 mm con testa; piastra 38×54 mm sp. ~4 mm; due chiodi passanti (HSBR14) attraverso i fori piastra; zincatura elettrolitica con protezione tipica indicata in scheda. Riferimento: scheda Tecnaria CTF."
+  },
+  {
+    "id": "CTF-POSA-0003",
+    "category": "posa_attrezzature",
+    "q": "Con che attrezzatura si posano i CTF?",
+    "a": "Esclusivamente con chiodatrice a sparo SPIT P560 dotata di kit/adattatori Tecnaria. Ogni CTF richiede 2 chiodi HSBR14 e propulsori adeguati al supporto. Riferimento: istruzioni Tecnaria CTF/P560."
+  },
+  {
+    "id": "CTF-LAMIERA-0004",
+    "category": "compatibilità",
+    "q": "CTF su lamiera grecata: quali condizioni minime?",
+    "a": "Lamiera ben aderente alla trave; configurazioni tipiche 1×1,5 mm oppure 2×1,0 mm; rispetto degli schemi di posa Tecnaria; spessore trave acciaio ≥ ~6 mm. Riferimento: schede Tecnaria."
+  },
+  {
+    "id": "CTF-DIM-0005",
+    "category": "dimensionamento",
+    "q": "Come si determina numero e passo dei CTF per nervatura?",
+    "a": "Seguendo le tabelle e i criteri di verifica riportati da Tecnaria (schede e software dedicato). In generale si impiega il connettore più alto compatibile con le geometrie. Riferimento: scheda Tecnaria CTF."
+  },
+  {
+    "id": "CTF-CONTROLLI-0006",
+    "category": "controlli_cantiere",
+    "q": "Quali controlli fare in cantiere dopo la posa dei CTF?",
+    "a": "Verificare infissione corretta dei chiodi, assenza di rifiuti, planarità della piastra, aderenza lamiera; registrare settaggio P560/propulsori; controlli a campione secondo indicazioni Tecnaria."
+  },
+  {
+    "id": "CTF-CERT-0007",
+    "category": "certificazioni_norme",
+    "q": "Quali certificazioni hanno i CTF?",
+    "a": "Valutazioni Tecniche Europee (ETA) e DoP disponibili nella sezione download Tecnaria. Riferimento: ETA/DoP CTF Tecnaria."
+  },
+
+  /* =========================
+     CTL — LEGNO–CALCESTRUZZO
+     ========================= */
+  {
+    "id": "CTL-TIPI-0001",
+    "category": "caratteristiche_prodotti",
+    "q": "Quali varianti CTL esistono?",
+    "a": "CTL BASE (piastra 50×50 mm, viti Ø8), CTL MAXI (piastra 75×50 mm, viti Ø10) e CTL OMEGA (piastra sagomata a Ω con vite Ø10). Riferimento: pagine/schede Tecnaria CTL."
+  },
+  {
+    "id": "CTL-CODICI-0002",
+    "category": "codici_prodotti",
+    "q": "Ci sono altezze/codici standard per i CTL a piolo (BASE e MAXI)?",
+    "a": "Per i CTL a piolo (BASE e MAXI) sono disponibili altezze gambo tipiche: 20, 30, 40, 60, 70, 80, 105, 125, 150, 175, 200 mm. Le viti sono specificate per variante (BASE Ø8, MAXI/OMEGA Ø10) con lunghezze riportate in scheda. Riferimento: pagine Tecnaria CTL."
+  },
+  {
+    "id": "CTL-POSA-0003",
+    "category": "posa_attrezzature",
+    "q": "Come si posano i CTL?",
+    "a": "Fissaggio con viti indicate da Tecnaria (tirafondo specifici per legno), rispetto di prefori/distanze, controllo del supporto ligneo; disposizione/passo secondo progetto e schede Tecnaria."
+  },
+  {
+    "id": "CTL-IMPIEGHI-0004",
+    "category": "impieghi",
+    "q": "Quando scelgo CTL BASE, CTL MAXI o CTL OMEGA?",
+    "a": "In funzione di geometria del solaio/legno e prestazioni richieste. CTL MAXI offre piastra con impronta maggiore; OMEGA per configurazioni specifiche. Riferimento: pagine prodotto Tecnaria."
+  },
+  {
+    "id": "CTL-CERT-0005",
+    "category": "certificazioni_norme",
+    "q": "Quali certificazioni sono disponibili per i CTL?",
+    "a": "Documentazione Tecnaria con ETA/DoP e capitolati dedicati nella sezione download; consultare sempre l’ultima revisione per CTL BASE, MAXI e OMEGA."
+  },
+
+  /* =====================
+     DIAPASON — LATEROCEMENTO
+     ===================== */
+  {
+    "id": "DIAPASON-INTRO-0001",
+    "category": "impieghi",
+    "q": "Cos’è Diapason e quando si usa?",
+    "a": "È il sistema Tecnaria per rinforzo e riqualificazione dei solai in laterocemento, con connettori e ciclo di posa dedicato (preparazione, armature/rete, getto). Distinto da CTF (acciaio–cls) e CTL (legno–cls). Riferimento: documentazione Tecnaria Diapason."
+  },
+  {
+    "id": "DIAPASON-POSA-0002",
+    "category": "posa_attrezzature",
+    "q": "Indicazioni di posa per Diapason?",
+    "a": "Seguire lo schema Tecnaria: preparazione solaio, posizionamento connettori/armature, rete e getto secondo schede. Verifiche su aderenza/pulizia del supporto, passi e controlli operativi previsti da Tecnaria."
+  },
+  {
+    "id": "DIAPASON-COMPAT-0003",
+    "category": "compatibilità",
+    "q": "Diapason si usa anche su lamiera grecata?",
+    "a": "No. La lamiera grecata rientra nell’ambito CTF (acciaio–calcestruzzo). Diapason è specifico per laterocemento. Riferimento: documentazione Tecnaria Diapason."
+  },
+  {
+    "id": "DIAPASON-CERT-0004",
+    "category": "certificazioni_norme",
+    "q": "Quali certificazioni ha Diapason?",
+    "a": "Consultare la sezione download Tecnaria per ETA/DoP e schede tecniche aggiornate del sistema Diapason."
+  },
+
+  /* ============================
+     ACCESSORI — P560 / HSBR14 / PROPULSORI
+     ============================ */
+  {
+    "id": "ACC-P560-0001",
+    "category": "posa_attrezzature",
+    "q": "Per i CTF posso usare una chiodatrice qualsiasi?",
+    "a": "No. Tecnaria ammette esclusivamente SPIT P560 con kit/adattatori Tecnaria. Ogni CTF richiede 2 chiodi HSBR14; selezionare i propulsori in base al supporto. Riferimento: istruzioni Tecnaria CTF/P560."
+  },
+  {
+    "id": "ACC-HSBR14-0002",
+    "category": "accessori",
+    "q": "Quanti chiodi HSBR14 servono per ciascun CTF?",
+    "a": "Due per connettore. Controllare corretta infissione, eventuali rifiuti e registrare i settaggi usati. Riferimento: schede Tecnaria CTF."
+  },
+  {
+    "id": "ACC-PROP-0003",
+    "category": "accessori",
+    "q": "Come scelgo i propulsori P560?",
+    "a": "In funzione di supporto/spessori (lamiera, trave, zincature/vernici) e prove in cantiere secondo Tecnaria/SPIT; annotare la carica utilizzata. Riferimento: istruzioni Tecnaria/P560."
+  },
+  {
+    "id": "ACC-SIC-0004",
+    "category": "sicurezza",
+    "q": "Indicazioni di sicurezza in posa con P560?",
+    "a": "Usare DPI e messa in sicurezza dell’area; appoggiare la P560 in verticale, a contatto pieno sulla piastra; per ogni connettore applicare 2 chiodi come da schema. Riferimento: manuale posa Tecnaria/P560."
+  },
+
+  /* ============================
+     GTS / MANICOTTI — GIUNZIONI BARRE
+     ============================ */
+  {
+    "id": "GTS-INTRO-0001",
+    "category": "giunti_meccanici",
+    "q": "Che cos’è il sistema GTS di Tecnaria?",
+    "a": "Sistema di giunzione meccanica a manicotto per barre d’armatura. Corpo zincato, spine radiali in acciaio inserite con pinza idraulica, foro ispettivo e marcatura Tecnaria. Impieghi tipici: jacketing, continuità barre, interventi antisismici."
+  },
+  {
+    "id": "GTS-CODICI-0002",
+    "category": "codici_prodotti",
+    "q": "Quali codici sono previsti per i manicotti GTS?",
+    "a": "Esempi di codici/diametri: GTS-08-C20 (Ø8 mm), GTS-10-C25 (Ø10 mm), GTS-12-C25 (Ø12 mm). Per dimensioni complete, spine e coppie/sequence d’infissione fare riferimento alla scheda ufficiale Tecnaria GTS."
+  },
+  {
+    "id": "GTS-POSA-0003",
+    "category": "posa_attrezzature",
+    "q": "Qual è la procedura di posa dei manicotti GTS?",
+    "a": "Preparare le estremità delle barre; accoppiare nel manicotto; inserire le spine con pinza idraulica secondo la sequenza Tecnaria; verificare tramite foro ispettivo; controlli a campione come da istruzioni Tecnaria GTS."
+  },
+  {
+    "id": "GTS-CERT-0004",
+    "category": "certificazioni_norme",
+    "q": "Quali norme/certificazioni valgono per i GTS?",
+    "a": "Conformità e attestazioni sono riportate nella documentazione ufficiale Tecnaria (sezione download). Fare sempre riferimento all’ultima revisione di schede/istruzioni."
+  },
+  {
+    "id": "GTS-APPLIC-0005",
+    "category": "impieghi",
+    "q": "Quando conviene usare GTS in un intervento di jacketing?",
+    "a": "Quando serve continuità strutturale di barre/staffe nelle camicie in c.a., dove sovrapposizioni o saldature non sono ammesse/consigliate. Riferimento: documentazione Tecnaria GTS."
+  },
+
+  /* ============================
+     Q/A TRASVERSALI — METADATI UTILI
+     ============================ */
+  {
+    "id": "GEN-RISORSE-0001",
+    "category": "download_ufficiali",
+    "q": "Dove trovo schede, ETA e manuali Tecnaria?",
+    "a": "Nella sezione Download del sito Tecnaria sono disponibili schede tecniche, manuali di posa, cataloghi, software e documenti ETA/DoP per CTF, CTL, DIAPASON e GTS. Usare sempre l’ultima revisione."
+  },
+  {
+    "id": "GEN-PROGETTO-0002",
+    "category": "dimensionamento",
+    "q": "Posso usare valori a forfait per numero/passo connettori?",
+    "a": "No. Il dimensionamento segue le indicazioni e tabelle Tecnaria (o software dedicato) in base a carichi, geometrie e supporti. Evitare approcci generici."
+  },
+  {
+    "id": "GEN-ESCLUSIONI-0003",
+    "category": "compatibilità",
+    "q": "Posso sostituire componenti o strumenti con equivalenti?",
+    "a": "No, salvo espressa indicazione Tecnaria. Per CTF è ammessa solo SPIT P560 con kit Tecnaria e chiodi/propulsori indicati; per GTS usare esclusivamente componenti/procedure Tecnaria."
+  },
+  {
+    "id": "GEN-REVISIONE-0004",
+    "category": "qualita_documenti",
+    "q": "Come gestire versioni e aggiornamenti delle schede?",
+    "a": "Utilizzare sempre l’ultima revisione ufficiale. In caso di dubbio, scaricare nuovamente dal sito Tecnaria la scheda/ETA/DoP aggiornata e riportare la data di revisione nei documenti di progetto."
+  }
+]
