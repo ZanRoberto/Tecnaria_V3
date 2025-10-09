@@ -5,7 +5,7 @@ import time
 import threading
 from typing import Dict, List, Optional, Tuple
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,13 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 # =========================
 DATA_PATH = "static/data/SINAPSI_GLOBAL_TECNARIA_EXT.json"
 I18N_DIR = "static/i18n"
-# << MODIFICA 2: cache directory configurabile da env >>
-I18N_CACHE_DIR = os.getenv("I18N_CACHE_DIR", "static/i18n-cache")
+I18N_CACHE_DIR = os.getenv("I18N_CACHE_DIR", "static/i18n-cache")  # su Render: /tmp/i18n-cache
 
-# Lingue abilitate (puoi aggiungerne altre)
-ALLOWED_LANGS = {"it", "en", "fr", "de", "es"}
-
-# Glossario: termini da NON tradurre
+ALLOWED_LANGS = {"it", "en", "fr", "de", "es"}  # puoi aggiungerne altre
 DO_NOT_TRANSLATE = [
     "Tecnaria", "CTF", "CTL", "Diapason", "GTS",
     "SPIT P560", "HSBR14", "ETA 18/0447", "ETA 13/0786",
@@ -34,8 +30,18 @@ _lock = threading.Lock()
 # =========================
 def ensure_dirs():
     os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+
+    # i18n (se per sbaglio fosse un file, rimuovilo e ricrea come dir)
+    if os.path.isfile(I18N_DIR):
+        os.remove(I18N_DIR)
     os.makedirs(I18N_DIR, exist_ok=True)
+
+    # i18n-cache (gestisce il caso "file al posto di cartella")
+    if os.path.isfile(I18N_CACHE_DIR):
+        os.remove(I18N_CACHE_DIR)
     os.makedirs(I18N_CACHE_DIR, exist_ok=True)
+
+    # seed file lingue (possono restare vuoti)
     for lang in ALLOWED_LANGS - {"it"}:
         p = os.path.join(I18N_DIR, f"{lang}.json")
         if not os.path.exists(p):
@@ -46,7 +52,7 @@ def _strip_json_comments_and_trailing_commas(text: str) -> str:
     # Rimuovi /* ... */ e // ...
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     text = re.sub(r"(?m)//.*?$", "", text)
-    # Rimuovi virgole finali prima di ] o }
+    # Rimuovi virgole finali superflue
     text = re.sub(r",\s*([}\]])", r"\1", text)
     # BOM
     text = text.lstrip("\ufeff")
@@ -104,7 +110,6 @@ def _token_set(q: str) -> set:
     return set(re.findall(r"[a-z0-9\-\_/\.]+", _norm(q)))
 
 def _sim_ratio(a: str, b: str) -> float:
-    # Similarità semplice basata su overlap di token + bonus
     ta, tb = _token_set(a), _token_set(b)
     if not ta or not tb:
         return 0.0
@@ -136,7 +141,6 @@ def retrieve_best_entry(query: str) -> Optional[Dict]:
         rid = (r.get("id") or "").lower()
         if fam and rid.startswith(fam):
             score += 0.15
-
         if ("codici" in qn or "codes" in qn) and r.get("category") == "codici_prodotti":
             score += 0.15
 
@@ -145,6 +149,18 @@ def retrieve_best_entry(query: str) -> Optional[Dict]:
     scored.sort(key=lambda x: x[0], reverse=True)
     best_score, best = scored[0]
     return best if best_score >= 0.18 else None
+
+def search_entries(q: str, top_k: int = 10) -> List[Dict]:
+    """Ricerca multi-campo semplice, ordinata per punteggio."""
+    qn = _norm(q)
+    results: List[Tuple[float, Dict]] = []
+    for r in KB:
+        text = f"{r.get('q','')} || {r.get('a','')} || {r.get('id','')} || {r.get('category','')}"
+        score = _sim_ratio(qn, text)
+        if score > 0:
+            results.append((score, r))
+    results.sort(key=lambda x: x[0], reverse=True)
+    return [dict(item[1], _score=round(item[0], 3)) for item in results[:top_k]]
 
 # =========================
 # MULTILINGUA
@@ -165,7 +181,7 @@ def get_lang_from_request(req: Request) -> str:
 
 def translate_with_llm(text_it: str, target_lang: str) -> str:
     """
-    Integra la tua traduzione qui (OpenAI o altro).
+    Integra qui la tua traduzione (OpenAI o altro).
     Se non configurata, restituisce il testo IT (funziona comunque).
     """
     try:
@@ -192,7 +208,7 @@ def translate_with_llm(text_it: str, target_lang: str) -> str:
     return text_it
 
 def translate_cached(answer_it: str, id_key: str, lang: str) -> str:
-    # << MODIFICA 1: evita cache su id mancante >>
+    # evita cache su id mancante; IT esce diretto
     if lang == "it" or not id_key:
         return answer_it
 
@@ -228,7 +244,7 @@ def render_card(answer_text: str, ms: int) -> str:
 # =========================
 # FASTAPI APP
 # =========================
-app = FastAPI(title="Tecnaria BOT", version="3.1")
+app = FastAPI(title="Tecnaria BOT", version="3.3")
 
 app.add_middleware(
     CORSMiddleware,
@@ -240,7 +256,16 @@ app.add_middleware(
 def health():
     return {"ok": True, "kb_items": len(KB_BY_ID), "langs": sorted(list(ALLOWED_LANGS))}
 
-# << MODIFICA 3: endpoint per ricaricare il KB senza riavvio >>
+@app.get("/debug-paths")
+def debug_paths():
+    def typ(p): return "dir" if os.path.isdir(p) else ("file" if os.path.isfile(p) else "missing")
+    return {
+        "DATA_PATH": DATA_PATH, "DATA_PATH_type": typ(DATA_PATH),
+        "I18N_DIR": I18N_DIR, "I18N_DIR_type": typ(I18N_DIR),
+        "I18N_CACHE_DIR": I18N_CACHE_DIR, "I18N_CACHE_DIR_type": typ(I18N_CACHE_DIR),
+        "ALLOWED_LANGS": sorted(list(ALLOWED_LANGS))
+    }
+
 @app.post("/reload-kb")
 def reload_kb():
     global KB, KB_BY_ID
@@ -251,6 +276,31 @@ def reload_kb():
         return {"ok": True, "kb_items": len(KB_BY_ID)}
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+@app.get("/kb/ids")
+def kb_ids():
+    """Elenco sintetico delle voci del KB (id e categoria)."""
+    out = [{"id": r.get("id", ""), "category": r.get("category", "")} for r in KB]
+    return {"count": len(out), "items": out[:50]}  # prime 50 per non esagerare
+
+@app.get("/kb/search")
+def kb_search(q: str = Query("", description="Testo da cercare nel KB"), k: int = 10):
+    """Ricerca veloce nel KB; ritorna i migliori k match con punteggio."""
+    if not q.strip():
+        return {"ok": True, "count": 0, "items": []}
+    k = max(1, min(50, k))
+    items = search_entries(q, top_k=k)
+    # riduci i campi dell'answer per non inviare testi lunghi in debug
+    slim = []
+    for r in items:
+        slim.append({
+            "id": r.get("id", ""),
+            "category": r.get("category", ""),
+            "_score": r.get("_score", 0.0),
+            "q": r.get("q", "")[:200],
+            "a": r.get("a", "")[:200] + ("…" if len(r.get("a","")) > 200 else "")
+        })
+    return {"ok": True, "count": len(slim), "items": slim}
 
 @app.post("/api/ask")
 async def api_ask(request: Request):
