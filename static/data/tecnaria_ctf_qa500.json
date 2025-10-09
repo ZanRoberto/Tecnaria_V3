@@ -123,6 +123,18 @@
       "a": "Ci sono due modi di indicare i codici per CTF: • SKU commerciali (pack/uso) → CTF-STD-50 (standard, scatola 100 pz), CTF-LAM-50 (lamiera grecata, scatola 100 pz). • Codici articolo per altezza (mm) → CTF020 (20 mm), CTF025 (25 mm), CTF030 (30 mm), CTF040 (40 mm), CTF060 (60 mm), CTF070 (70 mm), CTF080 (80 mm), CTF090 (90 mm), CTF105 (105 mm), CTF125 (125 mm), CTF135 (135 mm). (Validare con listino/schede ufficiali Tecnaria)."
     },
     {
+      "id": "CTF-CODICI-ALL-0001",
+      "category": "faq_codici_consumi",
+      "q": "Mi puoi dire i codici dei CTF? (codici CTF, codici articolo CTF, SKU CTF, CTF-STD-50, CTF-LAM-50, CTF020, CTF135)",
+      "a": "Per la famiglia CTF ci sono due insiemi di codici: • SKU commerciali (pack/uso): CTF-STD-50 (standard, scatola 100 pz) e CTF-LAM-50 (lamiera grecata, scatola 100 pz). • Codici articolo per altezza (mm): CTF020 (20 mm), CTF025 (25 mm), CTF030 (30 mm), CTF040 (40 mm), CTF060 (60 mm), CTF070 (70 mm), CTF080 (80 mm), CTF090 (90 mm), CTF105 (105 mm), CTF125 (125 mm), CTF135 (135 mm). Posa CTF: SPIT P560 + 2 chiodi HSBR14 per connettore (rif. ETA 18/0447)."
+    },
+    {
+      "id": "CTF-CODICI-ALL-0002",
+      "category": "faq_codici_consumi",
+      "q": "Dammi i codici CTF (SKU e codici articolo)",
+      "a": "SKU: CTF-STD-50 (standard, scatola 100 pz), CTF-LAM-50 (lamiera grecata, scatola 100 pz). Codici articolo (altezze mm): CTF020, CTF025, CTF030, CTF040, CTF060, CTF070, CTF080, CTF090, CTF105, CTF125, CTF135. (Tecnaria S.p.A., famiglia CTF)."
+    },
+    {
       "id": "CTF-POSA-0001",
       "category": "posa_attrezzature",
       "q": "Quali sono le indicazioni operative sintetiche di posa?",
