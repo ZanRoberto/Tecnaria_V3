@@ -78,7 +78,7 @@ def safe_load_json(path: str) -> Dict:
 # =========================
 ensure_dirs()
 try:
-    KB: List[Dict] = load_json_lenient(DATA_PATH)
+    KB: List[Dict] = load_json_lenient(DATA_PATH)   # lista di {id, category, q, a}
 except Exception:
     KB = []
 KB_BY_ID: Dict[str, Dict] = {r["id"]: r for r in KB if isinstance(r, dict) and "id" in r}
@@ -173,6 +173,10 @@ def get_lang_from_request(req: Request) -> str:
     return lang
 
 def translate_with_llm(text_it: str, target_lang: str) -> str:
+    """
+    Integra qui la tua traduzione (OpenAI o altro).
+    Se non configurata, restituisce il testo IT (funziona comunque).
+    """
     try:
         api_key = os.getenv("OPENAI_API_KEY", "")
         if api_key:
@@ -226,7 +230,7 @@ def render_card(answer_text: str, ms: int) -> str:
 # =========================
 # FASTAPI APP
 # =========================
-app = FastAPI(title="Tecnaria BOT", version="3.4")
+app = FastAPI(title="Tecnaria BOT", version="3.5")
 
 app.add_middleware(
     CORSMiddleware,
@@ -234,6 +238,7 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
+# ---- System/Debug ----
 @app.get("/health")
 def health():
     return {"ok": True, "kb_items": len(KB_BY_ID), "langs": sorted(list(ALLOWED_LANGS))}
@@ -259,6 +264,7 @@ def reload_kb():
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
+# ---- KB Inspect ----
 @app.get("/kb/ids")
 def kb_ids():
     out = [{"id": r.get("id",""), "category": r.get("category","")} for r in KB]
@@ -281,6 +287,15 @@ def kb_search(q: str = Query("", description="Testo da cercare nel KB"), k: int 
         })
     return {"ok": True, "count": len(slim), "items": slim}
 
+@app.get("/kb/item")
+def kb_item(id: str = Query(..., description="ID esatto della voce (es. CTF-CODICI-0001)")):
+    """Ritorna il record completo (id, category, q, a) per un ID del KB."""
+    r = KB_BY_ID.get(id)
+    if not r:
+        return JSONResponse({"ok": False, "error": f"ID non trovato: {id}"}, status_code=404)
+    return {"ok": True, "item": r}
+
+# ---- Q/A ----
 @app.post("/api/ask")
 async def api_ask(request: Request):
     t0 = time.time()
@@ -311,5 +326,6 @@ async def api_ask(request: Request):
 # AVVIO LOCALE
 # =========================
 if __name__ == "__main__":
+    # Avvio rapido:  uvicorn app:app --reload --host 0.0.0.0 --port 8000
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", "8000")), reload=True)
