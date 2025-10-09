@@ -86,7 +86,8 @@
       "codici": ["codice", "codici", "codici prodotto", "codici articoli", "articolo", "catalogo", "part number", "sku"],
       "codici_articolo": ["codici articolo", "codici altezze", "CTF020", "CTF025", "CTF030", "CTF040", "CTF060", "CTF070", "CTF080", "CTF090", "CTF105", "CTF125", "CTF135"],
       "posa": ["posa", "come si posa", "attrezzatura", "propulsori", "chiodi", "taratura", "dpi", "sicurezza"],
-      "quantita": ["quanti al mq", "pezzi al metro quadro", "consumi", "tempi di posa", "produttività", "interasse", "passo"]
+      "quantita": ["quanti al mq", "pezzi al metro quadro", "consumi", "tempi di posa", "produttività", "interasse", "passo"],
+      "invalid_codes": ["CTC", "CTCEM"]
     },
     "narrative": {
       "tone": "Tecnico, chiaro, orientato al cantiere",
@@ -150,6 +151,18 @@
       "category": "controllo_qualita",
       "q": "Quali controlli registro in cantiere durante la posa dei CTF?",
       "a": "Registro di: settaggi P560, tipo propulsore, risultati prove su campione, profondità/aderenza, eventuali ripetizioni di fissaggio, foto campione, lotti consumabili. Usa check-list e conserva i documenti come da schede Tecnaria/SPIT e capitolato."
+    },
+    {
+      "id": "CTF-CTCEM-0001",
+      "category": "faq_commerciali",
+      "q": "CTCEM è un prodotto Tecnaria?",
+      "a": "No. “CTCEM” non risulta tra i codici ufficiali Tecnaria nel perimetro attivo. Se stai cercando i connettori acciaio–calcestruzzo Tecnaria, i codici corretti sono: SKU CTF-STD-50 / CTF-LAM-50 e i codici articolo CTF020–CTF135 (altezze mm)."
+    },
+    {
+      "id": "CTF-CTCEM-0002",
+      "category": "faq_commerciali",
+      "q": "CTCEM",
+      "a": "Non è un codice Tecnaria valido nel dataset attivo. Per i CTF: CTF-STD-50, CTF-LAM-50 e CTF020–CTF135. Se intendevi un’altra famiglia Tecnaria, specifica quale."
     }
   ]
 }
