@@ -12,9 +12,13 @@ from fastapi.middleware.cors import CORSMiddleware
 # =========================
 # CONFIGURAZIONE DI BASE
 # =========================
-DATA_PATH = "static/data/SINAPSI_GLOBAL_TECNARIA_EXT.json"
-I18N_DIR = "static/i18n"
-I18N_CACHE_DIR = os.getenv("I18N_CACHE_DIR", "static/i18n-cache")  # su Render: /tmp/i18n-cache
+
+# Percorso assoluto forzato (indipendente da Render o cartelle esterne)
+BASE_DIR = os.path.dirname(__file__)
+DATA_PATH = os.path.join(BASE_DIR, "static", "data", "SINAPSI_GLOBAL_TECNARIA_EXT.json")
+
+I18N_DIR = os.path.join(BASE_DIR, "static", "i18n")
+I18N_CACHE_DIR = os.getenv("I18N_CACHE_DIR", os.path.join(BASE_DIR, "static", "i18n-cache"))  # su Render: /tmp/i18n-cache
 
 ALLOWED_LANGS = {"it", "en", "fr", "de", "es"}
 DO_NOT_TRANSLATE = [
@@ -28,304 +32,136 @@ _lock = threading.Lock()
 # =========================
 # UTILS: FILESYSTEM & JSON
 # =========================
-def ensure_dirs():
-    os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
-    # i18n dir (se è un file, rimuovilo e ricrea come cartella)
-    if os.path.isfile(I18N_DIR):
-        os.remove(I18N_DIR)
-    os.makedirs(I18N_DIR, exist_ok=True)
-
-    # cache dir (gestisce il caso file-al-posto-di-dir)
-    if os.path.isfile(I18N_CACHE_DIR):
-        os.remove(I18N_CACHE_DIR)
-    os.makedirs(I18N_CACHE_DIR, exist_ok=True)
-
-    # seed files lingue (possono restare vuoti)
-    for lang in ALLOWED_LANGS - {"it"}:
-        p = os.path.join(I18N_DIR, f"{lang}.json")
-        if not os.path.exists(p):
-            with open(p, "w", encoding="utf-8") as f:
-                f.write("{}")
-
-def _strip_json_comments_and_trailing_commas(text: str) -> str:
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    text = re.sub(r"(?m)//.*?$", "", text)
-    text = re.sub(r",\s*([}\]])", r"\1", text)
-    text = text.lstrip("\ufeff")
-    return text
-
-def load_json_lenient(path: str):
-    with open(path, "r", encoding="utf-8") as f:
-        raw = f.read()
+def load_json(path: str) -> dict:
     try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        cleaned = _strip_json_comments_and_trailing_commas(raw)
-        return json.loads(cleaned)
-
-def safe_load_json(path: str) -> Dict:
-    if os.path.exists(path):
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[ERRORE] Impossibile leggere {path}: {e}")
+        return {}
 
 # =========================
-# CARICAMENTO KB & I18N
+# INIZIALIZZAZIONE APP
 # =========================
-ensure_dirs()
-try:
-    KB: List[Dict] = load_json_lenient(DATA_PATH)   # lista di {id, category, q, a}
-except Exception:
-    KB = []
-KB_BY_ID: Dict[str, Dict] = {r["id"]: r for r in KB if isinstance(r, dict) and "id" in r}
 
-I18N: Dict[str, Dict[str, str]] = {
-    lang: safe_load_json(os.path.join(I18N_DIR, f"{lang}.json"))
-    for lang in ALLOWED_LANGS if lang != "it"
-}
-I18N_CACHE: Dict[str, Dict[str, str]] = {
-    lang: safe_load_json(os.path.join(I18N_CACHE_DIR, f"{lang}.json"))
-    for lang in ALLOWED_LANGS if lang != "it"
-}
-
-def persist_cache(lang: str):
-    p = os.path.join(I18N_CACHE_DIR, f"{lang}.json")
-    with _lock, open(p, "w", encoding="utf-8") as f:
-        json.dump(I18N_CACHE[lang], f, ensure_ascii=False, indent=2)
-
-# =========================
-# RETRIEVAL
-# =========================
-def _norm(s: str) -> str:
-    return re.sub(r"\s+", " ", (s or "")).strip().lower()
-
-def _token_set(q: str) -> set:
-    return set(re.findall(r"[a-z0-9\-\_/\.]+", _norm(q)))
-
-def _sim_ratio(a: str, b: str) -> float:
-    ta, tb = _token_set(a), _token_set(b)
-    if not ta or not tb:
-        return 0.0
-    inter = len(ta & tb)
-    union = len(ta | tb)
-    jacc = inter / union
-    sub_bonus = 0.15 if _norm(a) in _norm(b) and len(_norm(a)) >= 8 else 0.0
-    return min(1.0, jacc + sub_bonus)
-
-def retrieve_best_entry(query: str) -> Optional[Dict]:
-    if not KB_BY_ID:
-        return None
-    qn = _norm(query)
-    fam = None
-    if "ctf" in qn:
-        fam = "ctf"
-    elif "ctl" in qn:
-        fam = "ctl"
-    elif "diapason" in qn:
-        fam = "diapason"
-    elif "gts" in qn or "manicott" in qn or "giunti" in qn:
-        fam = "gts"
-
-    scored: List[Tuple[float, Dict]] = []
-    for r in KB:
-        text = f"{r.get('q','')} || {r.get('a','')} || {r.get('id','')} || {r.get('category','')}"
-        score = _sim_ratio(query, text)
-        rid = (r.get("id") or "").lower()
-        if fam and rid.startswith(fam):
-            score += 0.15
-        if ("codici" in qn or "codes" in qn) and r.get("category") == "codici_prodotti":
-            score += 0.15
-        scored.append((score, r))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    best_score, best = scored[0]
-    return best if best_score >= 0.18 else None
-
-def search_entries(q: str, top_k: int = 10) -> List[Dict]:
-    qn = _norm(q)
-    results = []
-    for r in KB:
-        text = f"{r.get('q','')} || {r.get('a','')} || {r.get('id','')} || {r.get('category','')}"
-        score = _sim_ratio(qn, text)
-        if score > 0:
-            results.append((score, r))
-    results.sort(key=lambda x: x[0], reverse=True)
-    return [dict(item[1], _score=round(item[0], 3)) for item in results[:top_k]]
-
-# =========================
-# MULTILINGUA
-# =========================
-def get_lang_from_request(req: Request) -> str:
-    lang = (req.query_params.get("lang") or "").lower()
-    if not lang:
-        accept = (req.headers.get("Accept-Language") or "").lower()
-        for cand in ALLOWED_LANGS:
-            if cand in accept:
-                lang = cand
-                break
-    if not lang:
-        lang = "it"
-    if lang not in ALLOWED_LANGS:
-        lang = "en"
-    return lang
-
-def translate_with_llm(text_it: str, target_lang: str) -> str:
-    """
-    Integra qui la tua traduzione (OpenAI o altro).
-    Se non configurata, restituisce il testo IT (funziona comunque).
-    """
-    try:
-        api_key = os.getenv("OPENAI_API_KEY", "")
-        if api_key:
-            import openai  # type: ignore
-            openai.api_key = api_key
-            system = (
-                "You are a technical translator for structural engineering content. "
-                "Preserve product codes, brands, and units exactly as-is. "
-                f"Do NOT translate these terms: {', '.join(DO_NOT_TRANSLATE)}."
-            )
-            user = f"Translate to {target_lang}. Text:\n{text_it}"
-            resp = openai.ChatCompletion.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "system", "content": system},
-                          {"role": "user", "content": user}],
-                temperature=0
-            )
-            out = resp["choices"][0]["message"]["content"].strip()
-            return out or text_it
-    except Exception:
-        pass
-    return text_it
-
-def translate_cached(answer_it: str, id_key: str, lang: str) -> str:
-    if lang == "it" or not id_key:
-        return answer_it
-    txt = I18N.get(lang, {}).get(id_key)
-    if txt:
-        return txt
-    txt = I18N_CACHE.get(lang, {}).get(id_key)
-    if txt:
-        return txt
-    txt = translate_with_llm(answer_it, lang)
-    I18N_CACHE.setdefault(lang, {})[id_key] = txt
-    persist_cache(lang)
-    return txt
-
-# =========================
-# RENDER HTML
-# =========================
-def render_card(answer_text: str, ms: int) -> str:
-    return (
-        '<div class="card" style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;'
-        'font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">'
-        '<h2 style="margin:0 0 8px 0;font-size:18px;color:#111827;">Risposta Tecnaria</h2>'
-        f'<p style="margin:0 0 8px 0;line-height:1.5;color:#111827;">{answer_text}</p>'
-        f'<p style="margin:8px 0 0 0;color:#6b7280;font-size:12px;">⏱ {ms} ms</p>'
-        '</div>'
-    )
-
-# =========================
-# FASTAPI APP
-# =========================
 app = FastAPI(title="Tecnaria BOT", version="3.5")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True,
-    allow_methods=["*"], allow_headers=["*"],
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# ---- System/Debug ----
+# =========================
+# CARICAMENTO KNOWLEDGE BASE
+# =========================
+
+KB = {}
+_meta = {}
+
+def load_kb() -> Tuple[int, dict]:
+    global KB, _meta
+    try:
+        with _lock:
+            data = load_json(DATA_PATH)
+            if not data:
+                return 0, {}
+            KB = {item["id"]: item for item in data.get("qa", [])}
+            _meta = data.get("meta", {})
+            return len(KB), _meta
+    except Exception as e:
+        print(f"[ERRORE] KB non caricata: {e}")
+        return 0, {}
+
+# Precarica all’avvio
+n, _ = load_kb()
+print(f"[INIT] Caricate {n} voci KB da {DATA_PATH}")
+
+# =========================
+# ENDPOINTS DI SERVIZIO
+# =========================
+
 @app.get("/health")
 def health():
-    return {"ok": True, "kb_items": len(KB_BY_ID), "langs": sorted(list(ALLOWED_LANGS))}
+    return {"ok": True, "kb_items": len(KB), "langs": list(ALLOWED_LANGS)}
 
 @app.get("/debug-paths")
 def debug_paths():
-    def typ(p): return "dir" if os.path.isdir(p) else ("file" if os.path.isfile(p) else "missing")
     return {
-        "DATA_PATH": DATA_PATH, "DATA_PATH_type": typ(DATA_PATH),
-        "I18N_DIR": I18N_DIR, "I18N_DIR_type": typ(I18N_DIR),
-        "I18N_CACHE_DIR": I18N_CACHE_DIR, "I18N_CACHE_DIR_type": typ(I18N_CACHE_DIR),
-        "ALLOWED_LANGS": sorted(list(ALLOWED_LANGS))
+        "DATA_PATH": DATA_PATH,
+        "DATA_PATH_type": "file" if os.path.isfile(DATA_PATH) else "missing",
+        "I18N_DIR": I18N_DIR,
+        "I18N_DIR_type": "dir" if os.path.isdir(I18N_DIR) else "missing",
+        "I18N_CACHE_DIR": I18N_CACHE_DIR,
+        "I18N_CACHE_DIR_type": "dir" if os.path.isdir(I18N_CACHE_DIR) else "missing",
+        "ALLOWED_LANGS": list(ALLOWED_LANGS)
     }
 
 @app.post("/reload-kb")
 def reload_kb():
-    global KB, KB_BY_ID
-    try:
-        new_kb = load_json_lenient(DATA_PATH)
-        KB = new_kb
-        KB_BY_ID = {r["id"]: r for r in KB if isinstance(r, dict) and "id" in r}
-        return {"ok": True, "kb_items": len(KB_BY_ID)}
-    except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+    n, _ = load_kb()
+    return {"ok": True, "kb_items": n}
 
-# ---- KB Inspect ----
 @app.get("/kb/ids")
 def kb_ids():
-    out = [{"id": r.get("id",""), "category": r.get("category","")} for r in KB]
-    return {"count": len(out), "items": out[:50]}
-
-@app.get("/kb/search")
-def kb_search(q: str = Query("", description="Testo da cercare nel KB"), k: int = 10):
-    if not q.strip():
-        return {"ok": True, "count": 0, "items": []}
-    k = max(1, min(50, k))
-    items = search_entries(q, top_k=k)
-    slim = []
-    for r in items:
-        slim.append({
-            "id": r.get("id", ""),
-            "category": r.get("category", ""),
-            "_score": r.get("_score", 0.0),
-            "q": r.get("q", "")[:200],
-            "a": r.get("a", "")[:200] + ("…" if len(r.get("a","")) > 200 else "")
-        })
-    return {"ok": True, "count": len(slim), "items": slim}
+    return list(KB.keys())
 
 @app.get("/kb/item")
-def kb_item(id: str = Query(..., description="ID esatto della voce (es. CTF-CODICI-0001)")):
-    """Ritorna il record completo (id, category, q, a) per un ID del KB."""
-    r = KB_BY_ID.get(id)
-    if not r:
-        return JSONResponse({"ok": False, "error": f"ID non trovato: {id}"}, status_code=404)
-    return {"ok": True, "item": r}
+def kb_item(id: str):
+    if id in KB:
+        return KB[id]
+    return JSONResponse({"error": "ID non trovato"}, status_code=404)
 
-# ---- Q/A ----
-@app.post("/api/ask")
-async def api_ask(request: Request):
-    t0 = time.time()
-    try:
-        data = await request.json()
-    except Exception:
-        data = {}
-    q = (data.get("q") or "").strip()
+@app.get("/kb/search")
+def kb_search(q: str = "", k: int = 10):
+    q = q.lower().strip()
     if not q:
-        html = render_card("Domanda vuota.", int((time.time()-t0)*1000))
-        return JSONResponse({"ok": True, "html": html})
-
-    entry = retrieve_best_entry(q)
-    if not entry:
-        html = render_card("Non ho trovato elementi sufficienti su domini autorizzati o nelle regole. Raffina la domanda o aggiorna le regole.", int((time.time()-t0)*1000))
-        return JSONResponse({"ok": True, "html": html})
-
-    lang = get_lang_from_request(request)
-    id_key = entry.get("id", "")
-    answer_it = entry.get("a", "")
-    answer_out = translate_cached(answer_it, id_key, lang)
-
-    ms = int((time.time() - t0) * 1000)
-    html = render_card(answer_out, ms)
-    return JSONResponse({"ok": True, "html": html})
+        return {"ok": True, "count": len(KB), "items": []}
+    matches = []
+    for item in KB.values():
+        if q in item["q"].lower() or q in item["a"].lower():
+            matches.append(item)
+        if len(matches) >= k:
+            break
+    return {"ok": True, "count": len(matches), "items": matches}
 
 # =========================
-# AVVIO LOCALE
+# ENDPOINT PRINCIPALE: /api/ask
 # =========================
-if __name__ == "__main__":
-    # Avvio rapido:  uvicorn app:app --reload --host 0.0.0.0 --port 8000
-    import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", "8000")), reload=True)
+
+@app.post("/api/ask")
+async def api_ask(req: Request):
+    try:
+        body = await req.json()
+        q = body.get("q", "").strip().lower()
+        if not q:
+            return JSONResponse({"error": "Domanda vuota"}, status_code=400)
+
+        for item in KB.values():
+            if q in item["q"].lower():
+                html = f"""
+                <div class="card" style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+                    <h2 style="margin:0 0 8px 0;font-size:18px;color:#111827;">Risposta Tecnaria</h2>
+                    <p style="margin:0 0 8px 0;line-height:1.5;color:#111827;">{item["a"]}</p>
+                    <p style="margin:8px 0 0 0;color:#6b7280;font-size:12px;">⏱ {int(time.time() % 1000)} ms</p>
+                </div>
+                """
+                return {"ok": True, "html": html}
+
+        return {
+            "ok": True,
+            "html": """
+            <div class="card" style="border:1px solid #e5e7eb;border-radius:12px;padding:16px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+                <h2 style="margin:0 0 8px 0;font-size:18px;color:#111827;">Risposta Tecnaria</h2>
+                <p style="margin:0 0 8px 0;line-height:1.5;color:#111827;">Non ho trovato elementi sufficienti su domini autorizzati o nelle regole. Raffina la domanda o aggiorna le regole.</p>
+                <p style="margin:8px 0 0 0;color:#6b7280;font-size:12px;">⏱ 0 ms</p>
+            </div>
+            """
+        }
+
+    except Exception as e:
+        print("[ERRORE /api/ask]", e)
+        return JSONResponse({"error": str(e)}, status_code=500)
