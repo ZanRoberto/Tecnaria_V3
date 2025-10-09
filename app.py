@@ -6,7 +6,7 @@ import threading
 from typing import Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, Request, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # =========================
@@ -193,7 +193,7 @@ async def api_ask(req: Request):
                 """
                 return {"ok": True, "html": html}
 
-        # fallback: stessa logica di prima
+        # fallback
         return {
             "ok": True,
             "html": """
@@ -208,3 +208,45 @@ async def api_ask(req: Request):
     except Exception as e:
         print("[ERRORE /api/ask]", e)
         return JSONResponse({"error": str(e)}, status_code=500)
+
+# =========================
+# INTERFACCIA WEB /ui
+# =========================
+
+@app.get("/ui", response_class=HTMLResponse)
+def ui():
+    return """
+    <!DOCTYPE html>
+    <html lang="it">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Tecnaria BOT</title>
+      <style>
+        body { font-family: system-ui, sans-serif; background: #111; color: #eee; text-align: center; padding: 40px; }
+        input { width: 60%; padding: 10px; font-size: 16px; border-radius: 8px; border: none; }
+        button { padding: 10px 20px; margin-left: 10px; border: none; background: orange; color: #000; font-weight: bold; border-radius: 8px; cursor: pointer; }
+        #res { margin-top: 30px; text-align: left; background: #222; padding: 20px; border-radius: 12px; width: 70%; margin: 30px auto; }
+      </style>
+    </head>
+    <body>
+      <h1>🤖 Tecnaria BOT – Interfaccia</h1>
+      <input id="q" placeholder="Scrivi una domanda (es. Mi puoi dire i codici dei CTF?)" />
+      <button onclick="ask()">Chiedi</button>
+      <div id="res"></div>
+      <script>
+        async function ask() {
+          const q = document.getElementById('q').value;
+          const resBox = document.getElementById('res');
+          resBox.innerHTML = "⏳ Attendi risposta...";
+          const r = await fetch('/api/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ q })
+          });
+          const j = await r.json();
+          resBox.innerHTML = j.html || "❌ Nessuna risposta trovata.";
+        }
+      </script>
+    </body>
+    </html>
+    """
