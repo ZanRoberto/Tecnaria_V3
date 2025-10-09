@@ -1,5 +1,5 @@
 import os, re, json, time, threading
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,47 +21,72 @@ def load_json(path: str) -> dict:
         print(f"[ERRORE] Impossibile leggere {path}: {e}")
         return {}
 
-# Mappe multi-lingua → domanda canonica IT presente nel KB
+def tokenize(s: str) -> List[str]:
+    return re.findall(r"[a-z0-9]+", s.lower())
+
+def jaccard(a: List[str], b: List[str]) -> float:
+    sa, sb = set(a), set(b)
+    if not sa or not sb:
+        return 0.0
+    return len(sa & sb) / len(sa | sb)
+
+# Sinonimi / trigger multilingua -> domanda canonica (IT) già presente nel KB
 CANON = {
-    # CTF — codici
-    r"\bcan you (tell|list).*\bctf code": "mi puoi dire i codici dei ctf?",
-    r"puedes.*c[oó]digos.*ctf": "mi puoi dire i codici dei ctf?",
-    r"peux[- ]tu.*codes.*ctf": "mi puoi dire i codici dei ctf?",
-    r"kannst du.*ctf.*codes": "mi puoi dire i codici dei ctf?",
-    # CTF — posa/chiodatrice (P560)
-    r"\bhow to install\b.*ctf|tools and constraints": "connettori ctf: si può usare una chiodatrice qualsiasi?",
-    r"peux[- ]tu.*poser.*ctf|outils.*contraintes": "connettori ctf: si può usare una chiodatrice qualsiasi?",
-    r"wie.*montiert.*ctf|werkzeuge|vorgaben": "connettori ctf: si può usare una chiodatrice qualsiasi?",
-    r"como.*instala.*ctf|herramientas.*l[ií]mites": "connettori ctf: si può usare una chiodatrice qualsiasi?",
-    # P560 catch-all
+    # === CTF: codici ===
+    r"\b(can you (tell|list)|what are)\b.*\bctf\b.*\bcodes?\b": "mi puoi dire i codici dei ctf?",
+    r"\bpued(es|e)\b.*c[oó]digos?.*\bctf\b": "mi puoi dire i codici dei ctf?",
+    r"\bpeux[- ]tu\b.*codes?.*\bctf\b": "mi puoi dire i codici dei ctf?",
+    r"\bkannst du\b.*\bctf\b.*codes?": "mi puoi dire i codici dei ctf?",
+    r"\bcodici.*ctf\b": "mi puoi dire i codici dei ctf?",
+    r"\bsku.*ctf\b": "mi puoi dire i codici dei ctf?",
+    # === CTF: posa / chiodatrice (P560) ===
     r"\bspit\s*p560\b": "connettori ctf: si può usare una chiodatrice qualsiasi?",
     r"\bp560\b": "connettori ctf: si può usare una chiodatrice qualsiasi?",
-    r"chiodatrice\s*p560": "connettori ctf: si può usare una chiodatrice qualsiasi?",
-    r"mi (parli|spieghi).*(p560|chiodatrice)": "connettori ctf: si può usare una chiodatrice qualsiasi?",
-    # CEM-E — resine
-    r"\bdo.*ctcem.*(use|using).*resin": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
-    r"los conectores.*ctcem.*resinas": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
-    r"les connecteurs.*ctcem.*r[eé]sines": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
-    r"ctcem.*harz|harze": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
-    # CEM-E — famiglie
+    r"\bchiodatrice\b": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"\bgun\b.*(nail|pin)|\bnailer\b": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"como.*instala.*ctf|herramientas|l[ií]mites": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"peux[- ]tu.*poser.*ctf|outils|contraintes": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"wie.*montiert.*ctf|werkzeuge|vorgaben": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    # === CEM-E (CTCEM / VCEM): resine ===
+    r"\bdo.*ctcem.*(use|using).*resins?\b": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    r"\blos conectores\b.*ctcem.*resinas": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    r"\bles connecteurs\b.*ctcem.*r[eé]sines": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    r"\bctcem\b.*harz|harze": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    r"\bvcem\b.*(resine|resins?|r[eé]sines|harz|harze)": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    # === CEM-E: famiglie laterocemento ===
     r"which connectors.*(hollow|hollow[- ]block).*slab": "quali connettori tecnaria ci sono per solai in laterocemento?",
     r"qu[eé]\s+conectores.*(bovedillas|forjados)": "quali connettori tecnaria ci sono per solai in laterocemento?",
     r"quels connecteurs.*(hourdis|planchers)": "quali connettori tecnaria ci sono per solai in laterocemento?",
     r"welche verbind(er|ungen).*hohlstein(decken)?": "quali connettori tecnaria ci sono per solai in laterocemento?",
-    # Guard-rail — CTC
+    r"\b(laterocemento|hourdis|bovedillas|hollow)\b": "quali connettori tecnaria ci sono per solai in laterocemento?",
+    # === Guard-rail – CTC NON Tecnaria ===
     r"\bare ctc (codes|from) tecnaria": "i ctc sono un codice tecnaria?",
-    r"ctc.*c[oó]digo.*tecnaria": "i ctc sono un codice tecnaria?",
-    r"ctc.*code.*tecnaria": "i ctc sono un codice tecnaria?",
-    r"sind ctc.*tecnaria": "i ctc sono un codice tecnaria?",
+    r"\bctc\b.*c[oó]digo.*tecnaria": "i ctc sono un codice tecnaria?",
+    r"\bctc\b.*codes?.*tecnaria": "i ctc sono un codice tecnaria?",
+    r"\bsind\b.*\bctc\b.*tecnaria": "i ctc sono un codice tecnaria?",
+    # === CTL / DIAPASON / GTS (aggancio generico verso famiglie) ===
+    r"\bctl\b": "ctl tecnaria: informazioni",
+    r"\bdiapason\b": "diapason tecnaria: informazioni",
+    r"\bgts\b": "gts tecnaria: informazioni",
+}
+
+IT_EXACT = {
+    # Canoniche presenti nel KB
+    "mi puoi dire i codici dei ctf?",
+    "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    "quali connettori tecnaria ci sono per solai in laterocemento?",
+    "i ctc sono un codice tecnaria?",
+    # Alias italiani frequenti
+    "mi spieghi la chiodatrice p560?",
+    "mi puoi dire gli sku dei ctf?",
+    "ctcem usano resine?",
 }
 
 def normalize_query_to_it(q: str) -> str:
+    """Normalizza una query libera (qualsiasi lingua) in una domanda IT canonica."""
     ql = q.lower().strip()
-    # già IT?
-    if ("ctf" in ql and "codici" in ql) or \
-       ("connettori ctf" in ql) or ("chiodatrice" in ql) or \
-       ("ctcem" in ql and "resine" in ql) or ("solai in laterocemento" in ql) or \
-       re.search(r"\bi ctc\b|\bctc\b.*tecnaria", ql):
+    if ql in IT_EXACT:
         return ql
     for pat, canon in CANON.items():
         if re.search(pat, ql):
@@ -69,7 +94,7 @@ def normalize_query_to_it(q: str) -> str:
     return ql
 
 # ================ APP ================
-app = FastAPI(title="Tecnaria BOT", version="3.5")
+app = FastAPI(title="Tecnaria BOT", version="3.6")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True,
@@ -79,6 +104,12 @@ app.add_middleware(
 # ================ KB ================
 KB: Dict[str, dict] = {}
 _meta = {}
+_keywords_bonus = [
+    ("ctf", 0.15), ("p560", 0.20), ("spit", 0.10), ("hsbr14", 0.10),
+    ("ctcem", 0.20), ("vcem", 0.20), ("laterocemento", 0.15),
+    ("ctl", 0.10), ("diapason", 0.10), ("gts", 0.10),
+    ("sku", 0.10), ("codici", 0.10), ("resine", 0.10), ("chiodatrice", 0.12)
+]
 
 def load_kb() -> Tuple[int, dict]:
     global KB, _meta
@@ -97,9 +128,58 @@ def load_kb() -> Tuple[int, dict]:
 count, _ = load_kb()
 print(f"[INIT] Caricate {count} voci KB da {DATA_PATH}")
 
+# ================ MATCHING ================
+def best_match_item(q_it: str) -> dict:
+    """
+    Fuzzy match robusto:
+      - substring nei campi Q/A
+      - Jaccard tokens
+      - bonus parole-chiave famiglie / attrezzature
+    Ritorna il dict item meglio classificato o {}.
+    """
+    if not KB:
+        return {}
+
+    tokens_q = tokenize(q_it)
+    best = (0.0, None)
+
+    for item in KB.values():
+        tq = tokenize(item["q"])
+        ta = tokenize(item["a"])
+        score = 0.0
+
+        # substring boost
+        ql = q_it.lower()
+        if ql in item["q"].lower():
+            score += 0.60
+        if ql in item["a"].lower():
+            score += 0.40
+
+        # jaccard su Q e A
+        score += 0.50 * jaccard(tokens_q, tq)
+        score += 0.30 * jaccard(tokens_q, ta)
+
+        # keyword bonus (famiglie/attrezzi)
+        for kw, bonus in _keywords_bonus:
+            if kw in ql:
+                if kw in item["q"].lower() or kw in item["a"].lower():
+                    score += bonus
+
+        # guard-rail: se query contiene 'ctc ' e item è INVALID/guardrail → bonus
+        if re.search(r"\bctc\b", ql) and item["id"].lower().startswith("ctc-"):
+            score += 0.25
+
+        if score > best[0]:
+            best = (score, item)
+
+    # soglia minima
+    if best[0] >= 0.20:   # abbastanza permissivo per “domande libere”
+        return best[1]
+    return {}
+
 # ================ SERVICE ================
 @app.get("/")
-def root():  # redirect comodo alla UI
+def root():
     return RedirectResponse("/ui", status_code=307)
 
 @app.get("/health")
@@ -129,9 +209,7 @@ def kb_ids():
 
 @app.get("/kb/item")
 def kb_item(id: str):
-    if id in KB:
-        return KB[id]
-    return JSONResponse({"error": "ID non trovato"}, status_code=404)
+    return KB.get(id) or JSONResponse({"error": "ID non trovato"}, status_code=404)
 
 @app.get("/kb/search")
 def kb_search(q: str = "", k: int = 10):
@@ -156,18 +234,19 @@ async def api_ask(req: Request):
             return JSONResponse({"error": "Domanda vuota"}, status_code=400)
 
         q_it = normalize_query_to_it(q_raw)
+        item = best_match_item(q_it)
 
-        for item in KB.values():
-            if q_it in item["q"].lower():
-                html = f"""
-                <div class="card" style="border:1px solid #30343a;border-radius:14px;padding:16px;background:#111;border-color:#2b2f36">
-                    <h2 style="margin:0 0 10px 0;font-size:18px;color:#ff7a00;">Risposta Tecnaria</h2>
-                    <p style="margin:0 0 8px 0;line-height:1.6;color:#f5f7fa;">{item["a"]}</p>
-                    <p style="margin:8px 0 0 0;color:#a6adbb;font-size:12px;">⏱ {int(time.time() % 1000)} ms</p>
-                </div>
-                """
-                return {"ok": True, "html": html}
+        if item:
+            html = f"""
+            <div class="card" style="border:1px solid #30343a;border-radius:14px;padding:16px;background:#111;border-color:#2b2f36">
+                <h2 style="margin:0 0 10px 0;font-size:18px;color:#ff7a00;">Risposta Tecnaria</h2>
+                <p style="margin:0 0 8px 0;line-height:1.6;color:#f5f7fa;">{item["a"]}</p>
+                <p style="margin:8px 0 0 0;color:#a6adbb;font-size:12px;">⏱ {int(time.time() % 1000)} ms</p>
+            </div>
+            """
+            return {"ok": True, "html": html}
 
+        # fallback
         return {
             "ok": True,
             "html": """
@@ -193,32 +272,22 @@ def ui():
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tecnaria Sinapsi — BOT</title>
   <style>
-    :root{
-      --bg:#0f0f10; --card:#191a1c; --brand:#ff7a00; --text:#f5f7fa;
-      --muted:#a6adbb; --line:#2b2f36;
-    }
+    :root{ --bg:#0f0f10; --card:#191a1c; --brand:#ff7a00; --text:#f5f7fa; --muted:#a6adbb; --line:#2b2f36; }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);
-         font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-    header{padding:32px 20px;background:linear-gradient(180deg,#1b1c1f 0%,#111214 80%);
-           border-bottom:1px solid var(--line)}
+    body{margin:0;background:var(--bg);color:var(--text);font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    header{padding:32px 20px;background:linear-gradient(180deg,#1b1c1f 0%,#111214 80%);border-bottom:1px solid var(--line)}
     .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
     .brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-    .logo{width:36px;height:36px;border-radius:10px;background:var(--brand);color:#000;
-          display:grid;place-items:center;font-weight:900;box-shadow:0 6px 20px rgba(255,122,0,.35)}
+    .logo{width:36px;height:36px;border-radius:10px;background:var(--brand);color:#000;display:grid;place-items:center;font-weight:900;box-shadow:0 6px 20px rgba(255,122,0,.35)}
     h1{margin:0;font-size:28px}
     .tagline{color:var(--muted);margin-top:4px;font-size:14px}
     .row{display:flex;gap:10px;margin-top:16px}
-    input{flex:1;padding:16px 14px;font-size:16px;border-radius:12px;border:1px solid var(--line);
-          background:#0c0d0f;color:var(--text);outline:none}
-    button{padding:0 18px;height:48px;border:none;border-radius:12px;background:var(--brand);
-           color:#000;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(255,122,0,.35)}
+    input{flex:1;padding:16px 14px;font-size:16px;border-radius:12px;border:1px solid var(--line);background:#0c0d0f;color:var(--text);outline:none}
+    button{padding:0 18px;height:48px;border:none;border-radius:12px;background:var(--brand);color:#000;font-weight:800;cursor:pointer;box-shadow:0 10px 24px rgba(255,122,0,.35)}
     main{padding:28px 20px}
     .chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px}
-    .chip{background:#121316;border:1px solid var(--line);color:var(--muted);
-          padding:8px 12px;border-radius:999px;cursor:pointer;font-size:13px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;
-          box-shadow:0 10px 32px rgba(0,0,0,.35)}
+    .chip{background:#121316;border:1px solid var(--line);color:var(--muted);padding:8px 12px;border-radius:999px;cursor:pointer;font-size:13px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 10px 32px rgba(0,0,0,.35)}
     .title{font-size:18px;font-weight:800;margin:0 0 6px}
     .latency{color:var(--muted);font-size:12px;float:right}
     .answer{line-height:1.6;font-size:16px;white-space:pre-wrap}
@@ -256,7 +325,7 @@ def ui():
       <div id="res" class="card">
         <div class="title">Risposta Tecnaria <span id="lat" class="latency"></span></div>
         <div id="html" class="answer">Scrivi una domanda per iniziare.</div>
-        <div class="hint">Suggerimento: usa le pillole sopra per esempi pronti. Premere Enter invia la domanda.</div>
+        <div class="hint">Suggerimento: usa le pillole sopra per esempi pronti. Premi Enter per inviare.</div>
       </div>
       <div class="footer">© Tecnaria S.p.A. • Interfaccia dimostrativa Sinapsi</div>
     </div>
