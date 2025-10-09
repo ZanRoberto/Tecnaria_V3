@@ -16,7 +16,7 @@ DATA_PATH = "static/data/SINAPSI_GLOBAL_TECNARIA_EXT.json"
 I18N_DIR = "static/i18n"
 I18N_CACHE_DIR = os.getenv("I18N_CACHE_DIR", "static/i18n-cache")  # su Render: /tmp/i18n-cache
 
-ALLOWED_LANGS = {"it", "en", "fr", "de", "es"}  # puoi aggiungerne altre
+ALLOWED_LANGS = {"it", "en", "fr", "de", "es"}
 DO_NOT_TRANSLATE = [
     "Tecnaria", "CTF", "CTL", "Diapason", "GTS",
     "SPIT P560", "HSBR14", "ETA 18/0447", "ETA 13/0786",
@@ -31,17 +31,17 @@ _lock = threading.Lock()
 def ensure_dirs():
     os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
-    # i18n (se per sbaglio fosse un file, rimuovilo e ricrea come dir)
+    # i18n dir (se è un file, rimuovilo e ricrea come cartella)
     if os.path.isfile(I18N_DIR):
         os.remove(I18N_DIR)
     os.makedirs(I18N_DIR, exist_ok=True)
 
-    # i18n-cache (gestisce il caso "file al posto di cartella")
+    # cache dir (gestisce il caso file-al-posto-di-dir)
     if os.path.isfile(I18N_CACHE_DIR):
         os.remove(I18N_CACHE_DIR)
     os.makedirs(I18N_CACHE_DIR, exist_ok=True)
 
-    # seed file lingue (possono restare vuoti)
+    # seed files lingue (possono restare vuoti)
     for lang in ALLOWED_LANGS - {"it"}:
         p = os.path.join(I18N_DIR, f"{lang}.json")
         if not os.path.exists(p):
@@ -49,12 +49,9 @@ def ensure_dirs():
                 f.write("{}")
 
 def _strip_json_comments_and_trailing_commas(text: str) -> str:
-    # Rimuovi /* ... */ e // ...
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     text = re.sub(r"(?m)//.*?$", "", text)
-    # Rimuovi virgole finali superflue
     text = re.sub(r",\s*([}\]])", r"\1", text)
-    # BOM
     text = text.lstrip("\ufeff")
     return text
 
@@ -81,7 +78,7 @@ def safe_load_json(path: str) -> Dict:
 # =========================
 ensure_dirs()
 try:
-    KB: List[Dict] = load_json_lenient(DATA_PATH)   # lista di {id, category, q, a}
+    KB: List[Dict] = load_json_lenient(DATA_PATH)
 except Exception:
     KB = []
 KB_BY_ID: Dict[str, Dict] = {r["id"]: r for r in KB if isinstance(r, dict) and "id" in r}
@@ -101,7 +98,7 @@ def persist_cache(lang: str):
         json.dump(I18N_CACHE[lang], f, ensure_ascii=False, indent=2)
 
 # =========================
-# RETRIEVAL SEMPLICE
+# RETRIEVAL
 # =========================
 def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "")).strip().lower()
@@ -137,23 +134,19 @@ def retrieve_best_entry(query: str) -> Optional[Dict]:
     for r in KB:
         text = f"{r.get('q','')} || {r.get('a','')} || {r.get('id','')} || {r.get('category','')}"
         score = _sim_ratio(query, text)
-
         rid = (r.get("id") or "").lower()
         if fam and rid.startswith(fam):
             score += 0.15
         if ("codici" in qn or "codes" in qn) and r.get("category") == "codici_prodotti":
             score += 0.15
-
         scored.append((score, r))
-
     scored.sort(key=lambda x: x[0], reverse=True)
     best_score, best = scored[0]
     return best if best_score >= 0.18 else None
 
 def search_entries(q: str, top_k: int = 10) -> List[Dict]:
-    """Ricerca multi-campo semplice, ordinata per punteggio."""
     qn = _norm(q)
-    results: List[Tuple[float, Dict]] = []
+    results = []
     for r in KB:
         text = f"{r.get('q','')} || {r.get('a','')} || {r.get('id','')} || {r.get('category','')}"
         score = _sim_ratio(qn, text)
@@ -180,10 +173,6 @@ def get_lang_from_request(req: Request) -> str:
     return lang
 
 def translate_with_llm(text_it: str, target_lang: str) -> str:
-    """
-    Integra qui la tua traduzione (OpenAI o altro).
-    Se non configurata, restituisce il testo IT (funziona comunque).
-    """
     try:
         api_key = os.getenv("OPENAI_API_KEY", "")
         if api_key:
@@ -208,21 +197,14 @@ def translate_with_llm(text_it: str, target_lang: str) -> str:
     return text_it
 
 def translate_cached(answer_it: str, id_key: str, lang: str) -> str:
-    # evita cache su id mancante; IT esce diretto
     if lang == "it" or not id_key:
         return answer_it
-
-    # 1) dizionario ufficiale (manutenzione manuale)
     txt = I18N.get(lang, {}).get(id_key)
     if txt:
         return txt
-
-    # 2) cache runtime
     txt = I18N_CACHE.get(lang, {}).get(id_key)
     if txt:
         return txt
-
-    # 3) traduzione on-the-fly + salva cache
     txt = translate_with_llm(answer_it, lang)
     I18N_CACHE.setdefault(lang, {})[id_key] = txt
     persist_cache(lang)
@@ -244,7 +226,7 @@ def render_card(answer_text: str, ms: int) -> str:
 # =========================
 # FASTAPI APP
 # =========================
-app = FastAPI(title="Tecnaria BOT", version="3.3")
+app = FastAPI(title="Tecnaria BOT", version="3.4")
 
 app.add_middleware(
     CORSMiddleware,
@@ -279,18 +261,15 @@ def reload_kb():
 
 @app.get("/kb/ids")
 def kb_ids():
-    """Elenco sintetico delle voci del KB (id e categoria)."""
-    out = [{"id": r.get("id", ""), "category": r.get("category", "")} for r in KB]
-    return {"count": len(out), "items": out[:50]}  # prime 50 per non esagerare
+    out = [{"id": r.get("id",""), "category": r.get("category","")} for r in KB]
+    return {"count": len(out), "items": out[:50]}
 
 @app.get("/kb/search")
 def kb_search(q: str = Query("", description="Testo da cercare nel KB"), k: int = 10):
-    """Ricerca veloce nel KB; ritorna i migliori k match con punteggio."""
     if not q.strip():
         return {"ok": True, "count": 0, "items": []}
     k = max(1, min(50, k))
     items = search_entries(q, top_k=k)
-    # riduci i campi dell'answer per non inviare testi lunghi in debug
     slim = []
     for r in items:
         slim.append({
@@ -322,7 +301,6 @@ async def api_ask(request: Request):
     lang = get_lang_from_request(request)
     id_key = entry.get("id", "")
     answer_it = entry.get("a", "")
-
     answer_out = translate_cached(answer_it, id_key, lang)
 
     ms = int((time.time() - t0) * 1000)
@@ -333,6 +311,5 @@ async def api_ask(request: Request):
 # AVVIO LOCALE
 # =========================
 if __name__ == "__main__":
-    # Avvio rapido:  uvicorn app:app --reload --host 0.0.0.0 --port 8000
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", "8000")), reload=True)
