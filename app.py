@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import re
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
@@ -9,11 +10,14 @@ from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# ==============================
-# TECNARIA app.py — versione sicura (no HTML/JS inline, no CORS *)
-# Carica SOLO i file QA ufficiali elencati nel router o per pattern tecnaria_*_qa*.json
-# Nessun uso di static/data/critici per famiglie.
-# ==============================
+# =========================================
+# TECNARIA app.py — versione sicura e pulita
+# - Carica SOLO i file QA ufficiali (router o pattern tecnaria_*_qa*.json)
+# - Nessuna UI HTML/JS alla root (solo testo)
+# - Header di sicurezza severi
+# - Nessun uso di static/data/critici per famiglie (niente duplicati)
+# =========================================
+
 UI_TITLE = os.getenv("UI_TITLE", "Tecnaria – QA Bot")
 DATA_DIR = Path(os.getenv("DATA_DIR", ".")).resolve()
 ROUTER_FILE = DATA_DIR / os.getenv("ROUTER_FILE", "tecnaria_router_index.json")
@@ -21,24 +25,25 @@ ROUTER_FILE = DATA_DIR / os.getenv("ROUTER_FILE", "tecnaria_router_index.json")
 KB: List[Dict[str, Any]] = []
 KB_FILES: List[Path] = []
 
-
+# ---------- Security middleware ----------
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         resp = await call_next(request)
+        # blocca embedding, XSS e sniffing
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["X-Frame-Options"] = "DENY"
         resp.headers["Referrer-Policy"] = "no-referrer"
         resp.headers["Permissions-Policy"] = "geolocation=()"
+        # CSP molto restrittiva: nessuna risorsa attiva permessa
         resp.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
         return resp
 
-
+# ---------- Helpers JSON/estrazione QA ----------
 def _read_json(p: Path) -> Any:
     try:
         return json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return None
-
 
 def _as_iter(obj: Any):
     if obj is None:
@@ -46,10 +51,12 @@ def _as_iter(obj: Any):
     if isinstance(obj, list):
         return obj
     if isinstance(obj, dict):
+        # supporta varie forme note nei tuoi dataset
         for key in ("items", "qa", "data", "rows"):
             val = obj.get(key)
             if isinstance(val, list):
                 return val
+        # fallback: singolo record
         return [obj]
     return []
 
@@ -58,7 +65,6 @@ _A_KEYS: Tuple[str, ...] = ("a", "answer", "risposta")
 _CAT_KEYS: Tuple[str, ...] = ("category", "categoria", "section")
 _ID_KEYS: Tuple[str, ...] = ("id", "code", "_id")
 
-
 def _get_first(d: Dict[str, Any], keys: Tuple[str, ...], default: str = "") -> str:
     for k in keys:
         v = d.get(k)
@@ -66,16 +72,8 @@ def _get_first(d: Dict[str, Any], keys: Tuple[str, ...], default: str = "") -> s
             return v.strip()
     return default
 
-
-def _normalize_text(s: str) -> List[str]:
-    buf = []
-    for ch in s.lower():
-        if ch.isalnum() or ch.isspace():
-            buf.append(ch)
-        else:
-            buf.append(" ")
-    return [t for t in "".join(buf).split() if t]
-
+def _normalize_spaces(s: str) -> str:
+    return re.sub(r"\s+", " ", s).strip()
 
 def extract_qa_entries(data: Any) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
@@ -89,12 +87,12 @@ def extract_qa_entries(data: Any) -> List[Dict[str, Any]]:
         out.append({
             "id": _get_first(row, _ID_KEYS, ""),
             "category": _get_first(row, _CAT_KEYS, ""),
-            "q": " ".join(q.split()),
+            "q": _normalize_spaces(q),
             "a": a.strip(),
         })
     return out
 
-
+# ---------- Scoperta file QA (router first, poi pattern) ----------
 def _discover_qa_files() -> List[Path]:
     files: List[Path] = []
     if ROUTER_FILE.exists():
@@ -107,6 +105,7 @@ def _discover_qa_files() -> List[Path]:
                     if p.exists():
                         files.append(p)
     if not files:
+        # fallback conservativo: tutti i dataset QA standard
         for p in DATA_DIR.glob("tecnaria_*_qa*.json"):
             files.append(p)
     # dedup preservando ordine
@@ -117,7 +116,6 @@ def _discover_qa_files() -> List[Path]:
             unique.append(p)
             seen.add(p)
     return unique
-
 
 def _load_kb() -> Tuple[List[Dict[str, Any]], List[Path]]:
     files = _discover_qa_files()
@@ -131,6 +129,7 @@ def _load_kb() -> Tuple[List[Dict[str, Any]], List[Path]]:
         for r in rows:
             rid = r.get("id")
             if not rid:
+                # genera id stabile per riga senza id
                 rid = f"{p.name}::{abs(hash(r.get('q','')))}"
             if rid in seen_ids:
                 continue
@@ -139,6 +138,15 @@ def _load_kb() -> Tuple[List[Dict[str, Any]], List[Path]]:
             seen_ids.add(rid)
     return items, files
 
+# ---------- Scoring semplice (deterministico) ----------
+def _normalize_text(s: str) -> List[str]:
+    buf = []
+    for ch in s.lower():
+        if ch.isalnum() or ch.isspace():
+            buf.append(ch)
+        else:
+            buf.append(" ")
+    return [t for t in "".join(buf).split() if t]
 
 def _score(query: str, candidate_q: str, candidate_a: str) -> float:
     qt = set(_normalize_text(query))
@@ -150,7 +158,6 @@ def _score(query: str, candidate_q: str, candidate_a: str) -> float:
     overlap = len(qt & ct)
     return overlap / max(1, len(qt))
 
-
 def kb_search(query: str, k: int = 5) -> List[Dict[str, Any]]:
     scored: List[Tuple[float, Dict[str, Any]]] = []
     for it in KB:
@@ -160,40 +167,34 @@ def kb_search(query: str, k: int = 5) -> List[Dict[str, Any]]:
     scored.sort(key=lambda x: x[0], reverse=True)
     return [it for _, it in scored[:k]]
 
-
+# ---------- FastAPI ----------
 app = FastAPI(title=UI_TITLE)
 app.add_middleware(SecurityHeadersMiddleware)
 
-
 class AskIn(BaseModel):
     q: str
-
 
 @app.on_event("startup")
 async def startup_event():
     global KB, KB_FILES
     KB, KB_FILES = _load_kb()
 
+@app.get("/")
+async def root():
+    # Nessuna UI HTML: solo testo semplice.
+    return PlainTextResponse(f"{UI_TITLE} — pronto")
 
 @app.get("/health")
 async def health():
     return {"ok": True, "items_loaded": len(KB), "files": [p.name for p in KB_FILES]}
 
-
-@app.get("/")
-async def root():
-    return PlainTextResponse(f"{UI_TITLE} — pronto")
-
-
 @app.get("/kb/ids")
 async def kb_ids():
     return [it.get("id") for it in KB]
 
-
 @app.get("/kb/files")
 async def kb_files():
     return {"ok": True, "files": [str(p) for p in KB_FILES]}
-
 
 @app.get("/kb/search")
 async def kb_search_endpoint(q: str = Query(""), k: int = Query(5, ge=1, le=20)):
@@ -201,7 +202,6 @@ async def kb_search_endpoint(q: str = Query(""), k: int = Query(5, ge=1, le=20))
         return {"ok": True, "count": 0, "items": []}
     items = kb_search(q, k=k)
     return {"ok": True, "count": len(items), "items": items}
-
 
 @app.post("/api/ask")
 async def api_ask(payload: AskIn = Body(...)):
@@ -214,14 +214,31 @@ async def api_ask(payload: AskIn = Body(...)):
 
     if hits:
         best = hits[0]
-        html = "<div><h2>Risposta Tecnaria</h2><p>" + best.get("a", "") + "</p><p>Fonte: " + best.get("id", "") + "</p></div>"
+        # Mantengo 'html' per compatibilità con il tuo frontend esistente,
+        # ma è una stringa innocua (niente script).
+        html = (
+            "<div><h2>Risposta Tecnaria</h2>"
+            f"<p>{best.get('a','')}</p>"
+            f"<p><small>Fonte: <b>{best.get('id','')}</b>"
+            f"{' — cat: '+best.get('category','') if best.get('category') else ''}</small></p>"
+            "</div>"
+        )
         dt = int((time.perf_counter() - t0) * 1000)
-        return JSONResponse({"ok": True, "html": html, "ms": dt, "match_id": best.get("id")})
+        return JSONResponse({
+            "ok": True,
+            "text": best.get("a", ""),
+            "html": html,
+            "ms": dt,
+            "match_id": best.get("id")
+        })
 
-    html = "<div><h2>Risposta Tecnaria</h2><p>Nessuna corrispondenza nei dataset QA ufficiali caricati. Aggiorna il router o il file di famiglia corretto.</p></div>"
+    html = (
+        "<div><h2>Risposta Tecnaria</h2>"
+        "<p>Nessuna corrispondenza nei dataset QA ufficiali caricati. "
+        "Aggiorna il router o il file di famiglia corretto.</p></div>"
+    )
     dt = int((time.perf_counter() - t0) * 1000)
-    return JSONResponse({"ok": True, "html": html, "ms": dt, "match_id": None})
-
+    return JSONResponse({"ok": True, "text": "", "html": html, "ms": dt, "match_id": None})
 
 if __name__ == "__main__":
     import uvicorn
