@@ -2,105 +2,142 @@ import os
 import json
 import time
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
-from fastapi import FastAPI, HTTPException, Query, Body
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Query, Body, Request
 from pydantic import BaseModel
-from starlette.responses import HTMLResponse, JSONResponse
+from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
-# ------------------------------
-# Config
-# ------------------------------
+# ==============================
+# TECNARIA app.py — versione sicura (no HTML/JS inline, no CORS *)
+# Carica SOLO i file QA ufficiali elencati nel router o per pattern tecnaria_*_qa*.json
+# Nessun uso di static/data/critici per famiglie.
+# ==============================
 UI_TITLE = os.getenv("UI_TITLE", "Tecnaria – QA Bot")
-KB_DIR = Path(os.getenv("KB_DIR", "./static/data/critici"))
-ALLOWED_DOMAINS = set((os.getenv("ALLOWED_DOMAINS", "tecnaria.com, spit.eu, spitpaslode.com").replace(" ", "").split(",")))
-FETCH_WEB_FIRST = os.getenv("FETCH_WEB_FIRST", "0") == "1"  # lasciato per compatibilità futura
-
-# ------------------------------
-# Minimal, deterministic KB loader + fallback entries
-# ------------------------------
-DEFAULT_KB: List[Dict[str, Any]] = [
-    {
-        "id": "CTCEM-DATI-0001",
-        "category": "scheda_tecnica",
-        "q": "Che cos'è il connettore CTCEM Tecnaria?",
-        "a": (
-            "Il connettore CTCEM è un dispositivo Tecnaria per il consolidamento di solai in calcestruzzo esistente. "
-            "È un connettore meccanico, a fissaggio completamente a secco, che consente di migliorare la collaborazione "
-            "tra la soletta nuova e la struttura sottostante senza impiegare resine o ancoranti chimici. "
-            "Installazione: preforo Ø 11 mm (~75 mm), pulizia foro e avvitatura del piolo con avvitatore fino a battuta."
-        ),
-    },
-    {
-        "id": "CTCEM-DATI-0002",
-        "category": "posa_installazione",
-        "q": "Come si posa un connettore CTCEM Tecnaria?",
-        "a": (
-            "Posa meccanica a secco: 1) incisione/fresata per la piastra dentata; 2) preforo Ø 11 mm prof. ~75 mm; "
-            "3) pulizia accurata; 4) avvitatura del piolo con avvitatore a percussione/frizione fino a battuta. "
-            "Nessuna resina, nessun tempo di indurimento."
-        ),
-    },
-    {
-        "id": "CTCEM-DATI-0003",
-        "category": "caratteristiche",
-        "q": "Quali sono le caratteristiche principali del sistema CTCEM?",
-        "a": (
-            "• Fissaggio meccanico a secco (senza resine)\n"
-            "• Preforo Ø 11 mm, profondità ~75 mm\n"
-            "• Avvitatura con avvitatore a percussione/frizione\n"
-            "• Piastra dentata in acciaio\n"
-            "• Nessun tempo di presa\n"
-            "• Alternativa alle barre incollate\n"
-            "• Rapidità e pulizia in cantiere"
-        ),
-    },
-    {
-        "id": "CTCEM-DATI-0004",
-        "category": "varianti_modelli",
-        "q": "Esistono varianti del connettore CTCEM?",
-        "a": (
-            "Sì: CTCEM (calcestruzzo) e VCEM (legno-calcestruzzo, piastra più ampia). Entrambi sono connettori meccanici a secco."
-        ),
-    },
-    {
-        "id": "CTCEM-DATI-0005",
-        "category": "certificazioni_norme",
-        "q": "Quali certificazioni ha il sistema CTCEM?",
-        "a": (
-            "Sistema oggetto di prove presso laboratori accreditati (es. SOCOTEC) e allineato alla documentazione Tecnaria. "
-            "Fare sempre riferimento alle schede ufficiali aggiornate."
-        ),
-    },
-]
+DATA_DIR = Path(os.getenv("DATA_DIR", ".")).resolve()
+ROUTER_FILE = DATA_DIR / os.getenv("ROUTER_FILE", "tecnaria_router_index.json")
 
 KB: List[Dict[str, Any]] = []
+KB_FILES: List[Path] = []
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        resp = await call_next(request)
+        resp.headers["X-Content-Type-Options"] = "nosniff"
+        resp.headers["X-Frame-Options"] = "DENY"
+        resp.headers["Referrer-Policy"] = "no-referrer"
+        resp.headers["Permissions-Policy"] = "geolocation=()"
+        resp.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+        return resp
+
+
+def _read_json(p: Path) -> Any:
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _as_iter(obj: Any):
+    if obj is None:
+        return []
+    if isinstance(obj, list):
+        return obj
+    if isinstance(obj, dict):
+        for key in ("items", "qa", "data", "rows"):
+            val = obj.get(key)
+            if isinstance(val, list):
+                return val
+        return [obj]
+    return []
+
+_Q_KEYS: Tuple[str, ...] = ("q", "question", "prompt", "domanda")
+_A_KEYS: Tuple[str, ...] = ("a", "answer", "risposta")
+_CAT_KEYS: Tuple[str, ...] = ("category", "categoria", "section")
+_ID_KEYS: Tuple[str, ...] = ("id", "code", "_id")
+
+
+def _get_first(d: Dict[str, Any], keys: Tuple[str, ...], default: str = "") -> str:
+    for k in keys:
+        v = d.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return default
 
 
 def _normalize_text(s: str) -> List[str]:
-    return [t for t in ''.join(ch.lower() if ch.isalnum() or ch.isspace() else ' ' for ch in s).split() if t]
+    buf = []
+    for ch in s.lower():
+        if ch.isalnum() or ch.isspace():
+            buf.append(ch)
+        else:
+            buf.append(" ")
+    return [t for t in "".join(buf).split() if t]
 
 
-def _load_kb_from_disk() -> List[Dict[str, Any]]:
+def extract_qa_entries(data: Any) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for row in _as_iter(data):
+        if not isinstance(row, dict):
+            continue
+        q = _get_first(row, _Q_KEYS)
+        a = _get_first(row, _A_KEYS)
+        if not q or not a:
+            continue
+        out.append({
+            "id": _get_first(row, _ID_KEYS, ""),
+            "category": _get_first(row, _CAT_KEYS, ""),
+            "q": " ".join(q.split()),
+            "a": a.strip(),
+        })
+    return out
+
+
+def _discover_qa_files() -> List[Path]:
+    files: List[Path] = []
+    if ROUTER_FILE.exists():
+        router = _read_json(ROUTER_FILE)
+        if isinstance(router, dict):
+            qa_list = router.get("qa_files") or router.get("files") or router.get("datasets")
+            if isinstance(qa_list, list):
+                for name in qa_list:
+                    p = DATA_DIR / str(name)
+                    if p.exists():
+                        files.append(p)
+    if not files:
+        for p in DATA_DIR.glob("tecnaria_*_qa*.json"):
+            files.append(p)
+    # dedup preservando ordine
+    seen = set()
+    unique: List[Path] = []
+    for p in files:
+        if p not in seen:
+            unique.append(p)
+            seen.add(p)
+    return unique
+
+
+def _load_kb() -> Tuple[List[Dict[str, Any]], List[Path]]:
+    files = _discover_qa_files()
     items: List[Dict[str, Any]] = []
-    if KB_DIR.exists():
-        for p in KB_DIR.glob("*.json"):
-            try:
-                data = json.loads(p.read_text(encoding="utf-8"))
-                if isinstance(data, list):
-                    items.extend(data)
-                elif isinstance(data, dict):
-                    items.append(data)
-            except Exception:
-                # ignora file malformati, continua
-                pass
-    # merge con DEFAULT_KB (senza duplicare stessi id)
-    seen = {it.get("id") for it in items}
-    for it in DEFAULT_KB:
-        if it.get("id") not in seen:
-            items.append(it)
-    return items
+    seen_ids = set()
+    for p in files:
+        data = _read_json(p)
+        if data is None:
+            continue
+        rows = extract_qa_entries(data)
+        for r in rows:
+            rid = r.get("id")
+            if not rid:
+                rid = f"{p.name}::{abs(hash(r.get('q','')))}"
+            if rid in seen_ids:
+                continue
+            r["id"] = rid
+            items.append(r)
+            seen_ids.add(rid)
+    return items, files
 
 
 def _score(query: str, candidate_q: str, candidate_a: str) -> float:
@@ -115,7 +152,7 @@ def _score(query: str, candidate_q: str, candidate_a: str) -> float:
 
 
 def kb_search(query: str, k: int = 5) -> List[Dict[str, Any]]:
-    scored = []
+    scored: List[Tuple[float, Dict[str, Any]]] = []
     for it in KB:
         s = _score(query, it.get("q", ""), it.get("a", ""))
         if s > 0:
@@ -124,17 +161,8 @@ def kb_search(query: str, k: int = 5) -> List[Dict[str, Any]]:
     return [it for _, it in scored[:k]]
 
 
-# ------------------------------
-# FastAPI app
-# ------------------------------
 app = FastAPI(title=UI_TITLE)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 class AskIn(BaseModel):
@@ -143,65 +171,28 @@ class AskIn(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
-    global KB
-    KB_DIR.mkdir(parents=True, exist_ok=True)
-    KB = _load_kb_from_disk()
+    global KB, KB_FILES
+    KB, KB_FILES = _load_kb()
 
 
 @app.get("/health")
 async def health():
-    return {"ok": True, "items_loaded": len(KB)}
+    return {"ok": True, "items_loaded": len(KB), "files": [p.name for p in KB_FILES]}
 
 
 @app.get("/")
-async def root_ui() -> HTMLResponse:
-    html = f"""
-    <!doctype html>
-    <html lang=it>
-    <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>{UI_TITLE}</title>
-      <style>
-        body {{ font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; margin: 24px; }}
-        .card {{ border: 1px solid #ddd; border-radius: 12px; padding: 16px; box-shadow: 0 2px 12px rgba(0,0,0,.05); max-width: 900px; }}
-        .row {{ display:flex; gap:8px; margin-bottom: 12px; }}
-        input[type=text] {{ flex:1; padding:12px; border-radius:10px; border:1px solid #bbb; }}
-        button {{ padding:12px 16px; border-radius:10px; border:0; background:#ff7a00; color:white; font-weight:600; cursor:pointer; }}
-        .muted {{ color:#666; font-size:12px; }}
-        .answer {{ line-height:1.5; }}
-      </style>
-    </head>
-    <body>
-      <h1>{UI_TITLE}</h1>
-      <div class="card">
-        <div class="row">
-          <input id="q" type="text" placeholder="Fai una domanda (es. ‘CTCEM usa resine?’)" />
-          <button onclick="ask()">Chiedi</button>
-        </div>
-        <div id="out" class="answer"></div>
-      </div>
-      <p class="muted">Domini consentiti: {', '.join(sorted(ALLOWED_DOMAINS))} — Modalità: domanda libera (KB locale → nessun web fetch).</p>
-      <script>
-        async function ask() {{
-          const q = document.getElementById('q').value;
-          const t0 = performance.now();
-          const res = await fetch('/api/ask', {{ method:'POST', headers: {{'Content-Type':'application/json'}}, body: JSON.stringify({{q}}) }});
-          const json = await res.json();
-          const dt = Math.max(1, Math.round(performance.now()-t0));
-          if (!json.ok) {{ document.getElementById('out').innerHTML = `<p>Errore: ${'{'}json.error{'}'}</p>`; return; }}
-          document.getElementById('out').innerHTML = json.html.replace('</div>', `<p class=\"muted\">⏱ ${'{'}dt{'}'} ms</p></div>`);
-        }}
-      </script>
-    </body>
-    </html>
-    """
-    return HTMLResponse(html)
+async def root():
+    return PlainTextResponse(f"{UI_TITLE} — pronto")
 
 
 @app.get("/kb/ids")
 async def kb_ids():
     return [it.get("id") for it in KB]
+
+
+@app.get("/kb/files")
+async def kb_files():
+    return {"ok": True, "files": [str(p) for p in KB_FILES]}
 
 
 @app.get("/kb/search")
@@ -223,32 +214,15 @@ async def api_ask(payload: AskIn = Body(...)):
 
     if hits:
         best = hits[0]
-        html = f"""
-        <div class=card>
-          <h2>Risposta Tecnaria</h2>
-          <p class=answer>{best.get('a')}</p>
-          <p class=muted>Fonte KB: <b>{best.get('id')}</b> — categoria: {best.get('category','')}</p>
-        </div>
-        """
+        html = "<div><h2>Risposta Tecnaria</h2><p>" + best.get("a", "") + "</p><p>Fonte: " + best.get("id", "") + "</p></div>"
         dt = int((time.perf_counter() - t0) * 1000)
         return JSONResponse({"ok": True, "html": html, "ms": dt, "match_id": best.get("id")})
 
-    # Nessun match locale → niente web fetch (modalità richiesta: no prove, no browsing).
-    html = (
-        "<div class=card>"
-        "<h2>Risposta Tecnaria</h2>"
-        "<p>Non ho trovato elementi sufficienti nel KB locale per rispondere con certezza. "
-        "Raffina la domanda oppure aggiungi la scheda corrispondente in <code>static/data/critici</code>.</p>"
-        "</div>"
-    )
+    html = "<div><h2>Risposta Tecnaria</h2><p>Nessuna corrispondenza nei dataset QA ufficiali caricati. Aggiorna il router o il file di famiglia corretto.</p></div>"
     dt = int((time.perf_counter() - t0) * 1000)
     return JSONResponse({"ok": True, "html": html, "ms": dt, "match_id": None})
 
 
-# ------------------------------
-# Run helper (only for local dev):
-#   uvicorn app:app --reload --port 8000
-# ------------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", "8000")), reload=False)
+    uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", "8010")), reload=False)
