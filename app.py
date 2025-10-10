@@ -5,17 +5,18 @@ import re
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
-from fastapi import FastAPI, HTTPException, Query, Body, Request
+from fastapi import FastAPI, HTTPException, Query, Body
 from pydantic import BaseModel
-from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.staticfiles import StaticFiles
 
 # =========================================
-# TECNARIA app.py — versione sicura e pulita
-# - Carica SOLO i file QA ufficiali (router o pattern tecnaria_*_qa*.json)
-# - Nessuna UI HTML/JS alla root (solo testo)
-# - Header di sicurezza severi
-# - Nessun uso di static/data/critici per famiglie (niente duplicati)
+# TECNARIA app.py — versione "pulita e definitiva"
+# - /static montata (serve la tua UI)
+# - "/" -> redirect a /static/ui/index_bolle.html se presente, altrimenti 404
+# - /api/ask SOLO POST
+# - CSP: solo locale, permette inline CSS/JS per la tua UI
 # =========================================
 
 UI_TITLE = os.getenv("UI_TITLE", "Tecnaria – QA Bot")
@@ -27,15 +28,23 @@ KB_FILES: List[Path] = []
 
 # ---------- Security middleware ----------
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request, call_next):
         resp = await call_next(request)
-        # blocca embedding, XSS e sniffing
+        # Header sicurezza base
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["X-Frame-Options"] = "DENY"
         resp.headers["Referrer-Policy"] = "no-referrer"
         resp.headers["Permissions-Policy"] = "geolocation=()"
-        # CSP molto restrittiva: nessuna risorsa attiva permessa
-        resp.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+        # CSP: solo locale; consenti inline per UI statica
+        resp.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "img-src 'self' data:; "
+            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'; "
+            "base-uri 'none'"
+        )
         return resp
 
 # ---------- Helpers JSON/estrazione QA ----------
@@ -51,12 +60,10 @@ def _as_iter(obj: Any):
     if isinstance(obj, list):
         return obj
     if isinstance(obj, dict):
-        # supporta varie forme note nei tuoi dataset
         for key in ("items", "qa", "data", "rows"):
             val = obj.get(key)
             if isinstance(val, list):
                 return val
-        # fallback: singolo record
         return [obj]
     return []
 
@@ -105,10 +112,8 @@ def _discover_qa_files() -> List[Path]:
                     if p.exists():
                         files.append(p)
     if not files:
-        # fallback conservativo: tutti i dataset QA standard
         for p in DATA_DIR.glob("tecnaria_*_qa*.json"):
             files.append(p)
-    # dedup preservando ordine
     seen = set()
     unique: List[Path] = []
     for p in files:
@@ -129,7 +134,6 @@ def _load_kb() -> Tuple[List[Dict[str, Any]], List[Path]]:
         for r in rows:
             rid = r.get("id")
             if not rid:
-                # genera id stabile per riga senza id
                 rid = f"{p.name}::{abs(hash(r.get('q','')))}"
             if rid in seen_ids:
                 continue
@@ -171,6 +175,11 @@ def kb_search(query: str, k: int = 5) -> List[Dict[str, Any]]:
 app = FastAPI(title=UI_TITLE)
 app.add_middleware(SecurityHeadersMiddleware)
 
+# Monta /static per servire la UI
+STATIC_DIR = Path(os.path.join(os.path.dirname(__file__), "static")).resolve()
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
 class AskIn(BaseModel):
     q: str
 
@@ -179,10 +188,13 @@ async def startup_event():
     global KB, KB_FILES
     KB, KB_FILES = _load_kb()
 
+# "/" -> redirect se la UI esiste, altrimenti 404 (NESSUN FALLBACK)
 @app.get("/")
 async def root():
-    # Nessuna UI HTML: solo testo semplice.
-    return PlainTextResponse(f"{UI_TITLE} — pronto")
+    ui_file = STATIC_DIR / "ui" / "index_bolle.html"
+    if ui_file.exists():
+        return RedirectResponse(url="/static/ui/index_bolle.html")
+    raise HTTPException(status_code=404, detail="UI non trovata: static/ui/index_bolle.html mancante")
 
 @app.get("/health")
 async def health():
@@ -203,6 +215,7 @@ async def kb_search_endpoint(q: str = Query(""), k: int = Query(5, ge=1, le=20))
     items = kb_search(q, k=k)
     return {"ok": True, "count": len(items), "items": items}
 
+# SOLO POST
 @app.post("/api/ask")
 async def api_ask(payload: AskIn = Body(...)):
     q = (payload.q or "").strip()
@@ -214,8 +227,6 @@ async def api_ask(payload: AskIn = Body(...)):
 
     if hits:
         best = hits[0]
-        # Mantengo 'html' per compatibilità con il tuo frontend esistente,
-        # ma è una stringa innocua (niente script).
         html = (
             "<div><h2>Risposta Tecnaria</h2>"
             f"<p>{best.get('a','')}</p>"
