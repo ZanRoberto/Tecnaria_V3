@@ -3,11 +3,11 @@ from typing import Dict, Tuple, List, Optional
 from pathlib import Path
 
 import numpy as np
-from fastapi import FastAPI, Request, Body
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-# ========== PERCORSI ========== #
+# ========= PERCORSI / CONFIG =========
 BASE_DIR = os.path.dirname(__file__)
 DATA_PATH = os.path.join(BASE_DIR, "static", "data", "SINAPSI_GLOBAL_TECNARIA_EXT.json")
 I18N_DIR = os.path.join(BASE_DIR, "static", "i18n")
@@ -15,15 +15,20 @@ I18N_CACHE_DIR = os.getenv("I18N_CACHE_DIR", os.path.join(BASE_DIR, "static", "i
 ALLOWED_LANGS = {"it", "en", "fr", "de", "es"}
 _lock = threading.Lock()
 
-# ========== APP ========== #
-app = FastAPI(title="Tecnaria BOT", version="4.1 (semantic-fast)")
+# Semantica (puoi disabilitarla via env SEMANTIC_ON=0)
+SEMANTIC_ON = os.getenv("SEMANTIC_ON", "1") != "0"
+SEM_MODEL_NAME = os.getenv("SEM_MODEL_NAME", "BAAI/bge-m3")  # supportato da fastembed
+SEM_THRESHOLD = float(os.getenv("SEM_THRESHOLD", "0.40"))
+
+# ========= APP =========
+app = FastAPI(title="Tecnaria BOT", version="4.2 (semantic-fallback)")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],
 )
 
-# ========== UTILS ========== #
+# ========= UTILS =========
 def load_json(path: str) -> dict:
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -40,7 +45,7 @@ def jaccard(a: List[str], b: List[str]) -> float:
     if not sa or not sb: return 0.0
     return len(sa & sb) / len(sa | sb)
 
-# ========== KB ========== #
+# ========= KB =========
 KB: Dict[str, dict] = {}
 _meta = {}
 
@@ -58,28 +63,81 @@ def load_kb_only() -> Tuple[int, dict]:
         KB, _meta = {}, {}
         return 0, {}
 
-# ========== SEMANTICA (FASTEMBED) ========== #
-from fastembed import TextEmbedding  # leggero, no torch/cuda
+# ========= NORMALIZZAZIONE MULTILINGUA (regole leggere) =========
+CANON = {
+    # === CTF: codici ===
+    r"\b(can you (tell|list)|what are)\b.*\bctf\b.*\bcodes?\b": "mi puoi dire i codici dei ctf?",
+    r"\bpued(es|e)\b.*c[oó]digos?.*\bctf\b": "mi puoi dire i codici dei ctf?",
+    r"\bpeux[- ]tu\b.*codes?.*\bctf\b": "mi puoi dire i codici dei ctf?",
+    r"\bkannst du\b.*\bctf\b.*codes?": "mi puoi dire i codici dei ctf?",
+    r"\bcodici.*ctf\b": "mi puoi dire i codici dei ctf?",
+    r"\bsku.*ctf\b": "mi puoi dire i codici dei ctf?",
+    # === CTF: posa / chiodatrice (P560) ===
+    r"\bspit\s*p560\b": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"\bp560\b": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"\bchiodatrice\b": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"\bgun\b.*(nail|pin)|\bnailer\b": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"como.*instala.*ctf|herramientas|l[ií]mites": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"peux[- ]tu.*poser.*ctf|outils|contraintes": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    r"wie.*montiert.*ctf|werkzeuge|vorgaben": "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    # === CEM-E (CTCEM / VCEM): resine ===
+    r"\bdo.*ctcem.*(use|using).*resins?\b": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    r"\blos conectores\b.*ctcem.*resinas": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    r"\bles connecteurs\b.*ctcem.*r[eé]sines": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    r"\bctcem\b.*harz|harze": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    r"\bvcem\b.*(resine|resins?|r[eé]sines|harz|harze)": "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    # === CEM-E: famiglie laterocemento ===
+    r"which connectors.*(hollow|hollow[- ]block).*slab": "quali connettori tecnaria ci sono per solai in laterocemento?",
+    r"qu[eé]\s+conectores.*(bovedillas|forjados)": "quali connettori tecnaria ci sono per solai in laterocemento?",
+    r"quels connecteurs.*(hourdis|planchers)": "quali connettori tecnaria ci sono per solai in laterocemento?",
+    r"welche verbind(er|ungen).*hohlstein(decken)?": "quali connettori tecnaria ci sono per solai in laterocemento?",
+    r"\b(laterocemento|hourdis|bovedillas|hollow)\b": "quali connettori tecnaria ci sono per solai in laterocemento?",
+    # === Guard-rail – CTC NON Tecnaria ===
+    r"\bare ctc (codes|from) tecnaria": "i ctc sono un codice tecnaria?",
+    r"\bctc\b.*c[oó]digo.*tecnaria": "i ctc sono un codice tecnaria?",
+    r"\bctc\b.*codes?.*tecnaria": "i ctc sono un codice tecnaria?",
+    r"\bsind\b.*\bctc\b.*tecnaria": "i ctc sono un codice tecnaria?",
+}
 
-SEM_MODEL_NAME = os.getenv("SEM_MODEL_NAME", "intfloat/multilingual-e5-small")  # multilingua
-SEM_THRESHOLD = float(os.getenv("SEM_THRESHOLD", "0.40"))
+IT_EXACT = {
+    "mi puoi dire i codici dei ctf?",
+    "connettori ctf: si può usare una chiodatrice qualsiasi?",
+    "i connettori tecnaria ctcem per solai in laterocemento si posano con resine?",
+    "quali connettori tecnaria ci sono per solai in laterocemento?",
+    "i ctc sono un codice tecnaria?",
+    "mi spieghi la chiodatrice p560?",
+    "mi puoi dire gli sku dei ctf?",
+    "ctcem usano resine?",
+}
 
-_sem_model: Optional[TextEmbedding] = None
+def normalize_query_to_it(q: str) -> str:
+    ql = q.lower().strip()
+    if ql in IT_EXACT:
+        return ql
+    for pat, canon in CANON.items():
+        if re.search(pat, ql):
+            return canon
+    return ql
+
+# ========= SEMANTICA (con fallback automatico) =========
+_sem_ready = False
+_sem_error = None
+_sem_model = None
 _sem_matrix: Optional[np.ndarray] = None
 _sem_ids: List[str] = []
 
 def _semantic_corpus_from_item(item: dict) -> str:
     q = item.get("q", "")
-    aliases = item.get("aliases", [])  # se non ci sono, OK
+    aliases = item.get("aliases", [])
     a = item.get("a", "")
     a_short = a.strip().replace("\n", " ")
     if len(a_short) > 400: a_short = a_short[:400] + "…"
-    # E5-style: aiuta il matching query/passage
     parts = [q] + aliases + [a_short]
     return "passage: " + " | ".join([p for p in parts if p])
 
 def _embed_texts(texts: List[str]) -> np.ndarray:
     global _sem_model
+    from fastembed import TextEmbedding  # leggero, CPU
     if _sem_model is None:
         _sem_model = TextEmbedding(model_name=SEM_MODEL_NAME)
     vecs = list(_sem_model.embed(texts))
@@ -88,27 +146,36 @@ def _embed_texts(texts: List[str]) -> np.ndarray:
     return arr / norms
 
 def build_semantic_index() -> None:
-    """Crea/ricrea l’indice semantico in RAM."""
-    global _sem_matrix, _sem_ids
-    corpus_texts, sem_ids = [], []
-    for _id, item in KB.items():
-        doc = _semantic_corpus_from_item(item)
-        if not doc: continue
-        corpus_texts.append(doc)
-        sem_ids.append(_id)
-    if not corpus_texts:
-        _sem_matrix, _sem_ids = None, []
+    global _sem_ready, _sem_error, _sem_matrix, _sem_ids
+    _sem_ready, _sem_error = False, None
+    if not SEMANTIC_ON:
+        _sem_error = "SEMANTIC_ON=0"
         return
-    _sem_matrix = _embed_texts(corpus_texts)
-    _sem_ids = sem_ids
-    print(f"[SEM] Indice costruito: {len(_sem_ids)} voci — {SEM_MODEL_NAME}")
+    try:
+        corpus_texts, sem_ids = [], []
+        for _id, item in KB.items():
+            doc = _semantic_corpus_from_item(item)
+            if not doc: continue
+            corpus_texts.append(doc)
+            sem_ids.append(_id)
+        if not corpus_texts:
+            _sem_matrix, _sem_ids = None, []
+            _sem_ready = True
+            return
+        _sem_matrix = _embed_texts(corpus_texts)
+        _sem_ids = sem_ids
+        _sem_ready = True
+        print(f"[SEM] OK: {len(_sem_ids)} voci — modello {SEM_MODEL_NAME}")
+    except Exception as e:
+        _sem_error = str(e)
+        _sem_matrix, _sem_ids = None, []
+        print(f"[SEM] DISABILITATO (fallback fuzzy). Motivo: {e}")
 
 def semantic_search(query: str) -> Tuple[Optional[str], float]:
-    """Ritorna (best_id, score_cosine)."""
-    if not query or _sem_matrix is None or _sem_matrix.size == 0:
+    if not _sem_ready or _sem_matrix is None or _sem_matrix.size == 0:
         return None, 0.0
     qv = _embed_texts([f"query: {query}"])[0]
-    scores = _sem_matrix @ qv  # cosine (vettori normalizzati)
+    scores = _sem_matrix @ qv
     top = int(np.argmax(scores))
     best_score = float(scores[top])
     best_id = _sem_ids[top]
@@ -116,16 +183,7 @@ def semantic_search(query: str) -> Tuple[Optional[str], float]:
         return best_id, best_score
     return None, best_score
 
-def load_kb_and_indexes() -> int:
-    n, _ = load_kb_only()
-    build_semantic_index()
-    return n
-
-# all’avvio
-n_init = load_kb_and_indexes()
-print(f"[INIT] Caricate {n_init} voci KB da {DATA_PATH}")
-
-# ========== BACKUP MATCHING LEGGERO (fuzzy) ========== #
+# ========= MATCHING FUZZY (backup) =========
 _keywords_bonus = [
     ("ctf", 0.15), ("p560", 0.20), ("spit", 0.10), ("hsbr14", 0.10),
     ("ctcem", 0.20), ("vcem", 0.20), ("laterocemento", 0.15),
@@ -149,18 +207,31 @@ def best_match_item_fuzzy(q: str) -> dict:
         for kw, bonus in _keywords_bonus:
             if kw in ql and (kw in item["q"].lower() or kw in item["a"].lower()):
                 score += bonus
+        # guard-rail CTC
+        if re.search(r"\bctc\b", ql) and item["id"].lower().startswith("ctc-"):
+            score += 0.25
         if score > best[0]:
             best = (score, item)
     return best[1] if best[0] >= 0.20 else {}
 
-# ========== SERVICE ==========
+# ========= BOOT =========
+def load_kb_and_indexes() -> int:
+    n, _ = load_kb_only()
+    # costruiamo l'indice semantico SENZA bloccare l’avvio (thread)
+    threading.Thread(target=build_semantic_index, daemon=True).start()
+    return n
+
+n_init = load_kb_and_indexes()
+print(f"[INIT] Caricate {n_init} voci KB da {DATA_PATH}")
+
+# ========= SERVICE =========
 @app.get("/")
 def root():
     return RedirectResponse("/ui", status_code=307)
 
 @app.get("/health")
 def health():
-    return {"ok": True, "kb_items": len(KB), "langs": list(ALLOWED_LANGS)}
+    return {"ok": True, "kb_items": len(KB), "langs": list(ALLOWED_LANGS), "semantic_ready": _sem_ready, "semantic_err": _sem_error}
 
 @app.get("/debug-paths")
 def debug_paths():
@@ -199,7 +270,7 @@ def kb_search(q: str = "", k: int = 10):
         if len(out) >= k: break
     return {"ok": True, "count": len(out), "items": out}
 
-# ========== RENDER HTML ==========
+# ========= RENDER CARD =========
 def render_card(body_html: str, ms: int) -> str:
     return f"""
     <div class="card" style="border:1px solid #30343a;border-radius:14px;padding:16px;background:#111;border-color:#2b2f36">
@@ -209,35 +280,42 @@ def render_card(body_html: str, ms: int) -> str:
     </div>
     """
 
-# ========== Q&A ==========
+# ========= Q&A =========
 @app.post("/api/ask")
 async def api_ask(req: Request):
     t0 = time.time()
     try:
         body = await req.json()
-        q = (body.get("q") or "").strip()
-        if not q:
+        q_raw = (body.get("q") or "").strip()
+        if not q_raw:
             return {"ok": True, "html": render_card("Scrivi una domanda.", 0)}
-        # 1) semantico
-        best_id, score = semantic_search(q)
+
+        # normalizza multilingua → IT
+        q_it = normalize_query_to_it(q_raw)
+
+        # 1) semantico (se pronto)
+        best_id, score = semantic_search(q_it)
         if best_id and best_id in KB:
             ms = max(1, int((time.time() - t0) * 1000))
             return {"ok": True, "html": render_card(KB[best_id]["a"], ms)}
-        # 2) backup fuzzy
-        item = best_match_item_fuzzy(q)
+
+        # 2) fuzzy (backup)
+        item = best_match_item_fuzzy(q_it)
         if item:
             ms = max(1, int((time.time() - t0) * 1000))
             return {"ok": True, "html": render_card(item["a"], ms)}
-        # 3) fallback
+
+        # 3) fallback gentile
         ms = max(1, int((time.time() - t0) * 1000))
         msg = ("Non riconosco questa formulazione. Prova: “La P560 come lavora?”, "
                "“Mi puoi parlare dei connettori CTF?”, oppure usa i pulsanti rapidi.")
         return {"ok": True, "html": render_card(msg, ms)}
+
     except Exception as e:
         print("[ERRORE /api/ask]", e)
         return JSONResponse({"error": str(e)}, status_code=500)
 
-# ========== UI ==========
+# ========= UI =========
 @app.get("/ui", response_class=HTMLResponse)
 def ui():
     return """
