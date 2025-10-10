@@ -37,4 +37,10 @@
       "a": "I codici principali per la famiglia CEM-E sono CTCEM e VCEM, in funzione del tipo di solaio. I valori geometrici e di resistenza sono riportati nelle schede tecniche Tecnaria e nell’ETA 18/0447."
     },
     {
-      "id":
+      "id": "CTC-INVALID-0001",
+      "category": "invalid",
+      "q": "I CTC sono un codice Tecnaria?",
+      "a": "No. Il servizio risponde solo per prodotti e codici appartenenti a Tecnaria S.p.A. Le sigle CTC o simili non fanno parte del catalogo ufficiale."
+    }
+  ]
+}
