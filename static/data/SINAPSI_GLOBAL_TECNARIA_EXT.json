@@ -1,71 +1,46 @@
 {
-  "meta": {
-    "dataset_label": "SINAPSI GLOBAL TECNARIA EXT",
-    "schema_version": "tecnaria.product.v2",
-    "generated_at": "2025-10-09T00:00:00Z",
-    "locale": "it-IT",
-    "brand": {
-      "company": "Tecnaria S.p.A.",
-      "hq_city": "Bassano del Grappa (VI)",
-      "country": "Italia",
-      "website_whitelist": [
-        "https://www.tecnaria.com",
-        "https://tecnaria.com"
-      ]
-    },
-    "product": {
-      "code": "GLOBAL",
-      "name": "Catalogo esteso Tecnaria (CTF + CEM-E)",
-      "family": "Multi",
-      "summary": "Dataset unificato che contiene tutte le famiglie di connettori Tecnaria: CTF (acciaio–calcestruzzo) e CEM-E (laterocemento)."
-    },
-    "intents": {
-      "codici": ["codici", "codice", "sku", "catalogo", "articolo", "codici prodotto"],
-      "posa": ["posa", "chiodatrice", "propulsori", "HSBR14", "P560", "resine", "fissaggio"],
-      "invalid_codes": ["CTC"]
-    }
-  },
-  "categories": [
-    "faq_codici_consumi",
-    "posa_attrezzature",
-    "faq_commerciali"
-  ],
   "qa": [
     {
       "id": "CTF-CODICI-ALL-0001",
-      "category": "faq_codici_consumi",
-      "q": "Mi puoi dire i codici dei CTF?",
+      "category": "prodotti_ctf",
+      "q": "Quali sono i codici dei connettori CTF?",
       "a": "Per la famiglia CTF ci sono due insiemi di codici: • SKU commerciali (pack/uso): CTF-STD-50 (standard, scatola 100 pz) e CTF-LAM-50 (lamiera grecata, scatola 100 pz). • Codici articolo per altezza (mm): CTF020 (20 mm), CTF025 (25 mm), CTF030 (30 mm), CTF040 (40 mm), CTF060 (60 mm), CTF070 (70 mm), CTF080 (80 mm), CTF090 (90 mm), CTF105 (105 mm), CTF125 (125 mm), CTF135 (135 mm). Posa CTF: SPIT P560 + 2 chiodi HSBR14 per connettore (rif. ETA 18/0447)."
     },
     {
       "id": "CTF-POSA-0002",
-      "category": "posa_attrezzature",
+      "category": "posa_ctf",
       "q": "Connettori CTF: si può usare una chiodatrice qualsiasi?",
       "a": "No. Per i CTF Tecnaria è ammessa esclusivamente la SPIT P560 con kit/adattatori Tecnaria. Ogni connettore si posa con 2 chiodi HSBR14; selezionare i propulsori P560 in base al supporto/spessore. Verificare lamiera aderente (1×1,5 mm oppure 2×1,0 mm) e spessore trave ≥ 6 mm. Riferimento: schede Tecnaria e ETA 18/0447."
     },
     {
-      "id": "CTC-INVALID-0001",
-      "category": "faq_commerciali",
-      "q": "I CTC sono un codice Tecnaria?",
-      "a": "No. Il servizio risponde solo per prodotti e codici appartenenti a Tecnaria S.p.A. Le sigle CTC o simili non fanno parte del catalogo ufficiale."
-    },
-    {
       "id": "CEME-RESINE-0001",
-      "category": "posa_attrezzature",
+      "category": "posa_ctcem",
       "q": "I connettori Tecnaria CTCEM per solai in laterocemento si posano con resine?",
       "a": "No, senza resine. Il fissaggio è completamente meccanico ('a secco'): si pratica una piccola incisione (~4×5 mm) per alloggiare la piastra dentata, si esegue un preforo Ø 11 mm prof. ~75 mm, si pulisce la polvere e si avvita il piolo con avvitatore a percussione/frizione fino a battuta. È l’alternativa alle soluzioni con barre + resina tipiche dei laterocemento."
     },
     {
       "id": "CEME-FAM-0001",
-      "category": "faq_codici_consumi",
-      "q": "Quali connettori Tecnaria ci sono per solai in laterocemento?",
-      "a": "Famiglia CEM-E: CT CEM-E (piastra dentata), V CEM-E (vite senza piastra), MINI CEM-E, NANO CEM-E. La scelta dipende dal tipo di solaio e dalle specifiche del progettista."
+      "category": "famiglie_ctcem",
+      "q": "Quali famiglie comprende la linea CEM-E?",
+      "a": "La gamma CEM-E comprende i connettori CTCEM per solai in laterocemento e i VCEM per solai in laterizio con trave in calcestruzzo. Entrambi si fissano meccanicamente (senza resine) mediante piolo e piastra dentata. Riferimento: schede Tecnaria e manuale di posa CEM-E."
     },
     {
       "id": "CEME-CODICI-0001",
-      "category": "faq_codici_consumi",
-      "q": "Dammi un esempio di codice CTCEM.",
-      "a": "Esempio: CT CEM 14/040 (40 mm). Le varianti dipendono da diametro e altezza; per l’ordine verificare sempre il listino e il progetto strutturale."
+      "category": "codici_ctcem",
+      "q": "Quali sono i codici dei connettori CEM-E?",
+      "a": "I codici principali per la famiglia CEM-E sono CTCEM e VCEM, in funzione del tipo di solaio. I valori geometrici e di resistenza sono riportati nelle schede tecniche Tecnaria e nell’ETA 18/0447."
+    },
+    {
+      "id": "CTC-INVALID-0001",
+      "category": "invalid",
+      "q": "I CTC sono un codice Tecnaria?",
+      "a": "No. Il servizio risponde solo per prodotti e codici appartenenti a Tecnaria S.p.A. Le sigle CTC o simili non fanno parte del catalogo ufficiale."
+    },
+    {
+      "id": "P560-INFO-0001",
+      "category": "posa_attrezzature",
+      "q": "SPIT P560: panoramica e uso con connettori CTF?",
+      "a": "SPIT P560 — panoramica operativa per connettori Tecnaria CTF: usare esclusivamente kit/adattatori Tecnaria. Ogni connettore si posa con 2 chiodi HSBR14; selezionare i propulsori P560 in base a supporto e spessore, effettuando sempre prove di infissione e documentazione. Verificare lamiera aderente (1×1,5 mm oppure 2×1,0 mm) e spessore trave ≥ 6 mm. DPI obbligatori (occhiali, cuffie, guanti, calzature). Manutenzione/uso secondo manuale SPIT e indicazioni Tecnaria. Riferimenti: schede Tecnaria ed ETA 18/0447."
     }
   ]
 }
