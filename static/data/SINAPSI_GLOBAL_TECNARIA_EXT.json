@@ -13,6 +13,12 @@
       "a": "No. Per i CTF Tecnaria è ammessa esclusivamente la SPIT P560 con kit/adattatori Tecnaria. Ogni connettore si posa con 2 chiodi HSBR14; selezionare i propulsori P560 in base al supporto/spessore. Verificare lamiera aderente (1×1,5 mm oppure 2×1,0 mm) e spessore trave ≥ 6 mm. Riferimento: schede Tecnaria e ETA 18/0447."
     },
     {
+      "id": "P560-INFO-0001",
+      "category": "posa_ctf",
+      "q": "SPIT P560: panoramica e uso con connettori CTF?",
+      "a": "SPIT P560 — panoramica operativa per connettori Tecnaria CTF: usare esclusivamente kit/adattatori Tecnaria. Ogni connettore si posa con 2 chiodi HSBR14; selezionare i propulsori P560 in base a supporto e spessore, effettuando sempre prove di infissione e documentazione. Verificare lamiera aderente (1×1,5 mm oppure 2×1,0 mm) e spessore trave ≥ 6 mm. DPI obbligatori (occhiali, cuffie, guanti, calzature). Manutenzione/uso secondo manuale SPIT e indicazioni Tecnaria. Riferimenti: schede Tecnaria ed ETA 18/0447."
+    },
+    {
       "id": "CEME-RESINE-0001",
       "category": "posa_ctcem",
       "q": "I connettori Tecnaria CTCEM per solai in laterocemento si posano con resine?",
@@ -31,16 +37,4 @@
       "a": "I codici principali per la famiglia CEM-E sono CTCEM e VCEM, in funzione del tipo di solaio. I valori geometrici e di resistenza sono riportati nelle schede tecniche Tecnaria e nell’ETA 18/0447."
     },
     {
-      "id": "CTC-INVALID-0001",
-      "category": "invalid",
-      "q": "I CTC sono un codice Tecnaria?",
-      "a": "No. Il servizio risponde solo per prodotti e codici appartenenti a Tecnaria S.p.A. Le sigle CTC o simili non fanno parte del catalogo ufficiale."
-    },
-    {
-      "id": "P560-INFO-0001",
-      "category": "posa_attrezzature",
-      "q": "SPIT P560: panoramica e uso con connettori CTF?",
-      "a": "SPIT P560 — panoramica operativa per connettori Tecnaria CTF: usare esclusivamente kit/adattatori Tecnaria. Ogni connettore si posa con 2 chiodi HSBR14; selezionare i propulsori P560 in base a supporto e spessore, effettuando sempre prove di infissione e documentazione. Verificare lamiera aderente (1×1,5 mm oppure 2×1,0 mm) e spessore trave ≥ 6 mm. DPI obbligatori (occhiali, cuffie, guanti, calzature). Manutenzione/uso secondo manuale SPIT e indicazioni Tecnaria. Riferimenti: schede Tecnaria ed ETA 18/0447."
-    }
-  ]
-}
+      "id":
