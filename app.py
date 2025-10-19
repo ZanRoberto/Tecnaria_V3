@@ -12,20 +12,18 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.staticfiles import StaticFiles
 
 # =========================================
-# TECNARIA app.py — precision mode
-# - /static montata (serve la tua UI)
-# - "/" -> redirect a /static/ui/index_bolle.html se presente, altrimenti 404
-# - /api/ask SOLO POST
-# - /kb/diag diagnostica ranking
+# TECNARIA app.py — precision mode (PATCH)
+# - Path fix per Render/Windows
+# - Famiglie & sinonimi corretti (VCEM separato, GTS pulito)
+# - Confronto a due colonne + filtro "overview"
 # =========================================
 
 UI_TITLE = os.getenv("UI_TITLE", "Tecnaria – QA Bot")
 
-# --- PATCH corretta per Render / locale ---
+# --- Base path portabile ---
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR / "static" / "data"))).resolve()
 ROUTER_FILE = DATA_DIR / os.getenv("ROUTER_FILE", "tecnaria_router_index.json")
-# ------------------------------------------
 
 KB: List[Dict[str, Any]] = []
 KB_FILES: List[Path] = []
@@ -101,7 +99,7 @@ def extract_qa_entries(data: Any) -> List[Dict[str, Any]]:
         })
     return out
 
-# ---------- Scoperta file QA (router first, poi pattern) ----------
+# ---------- Scoperta file QA ----------
 def _discover_qa_files() -> List[Path]:
     files: List[Path] = []
     if ROUTER_FILE.exists():
@@ -159,30 +157,35 @@ def _load_kb() -> Tuple[List[Dict[str, Any]], List[Path]]:
 def _normalize_text(s: str) -> List[str]:
     buf = []
     s = (s or "").lower()
-    # normalizza caratteri speciali/segni
     for ch in s:
         if ch.isalnum() or ch.isspace():
             buf.append(ch)
         else:
             buf.append(" ")
     tokens = [t for t in "".join(buf).split() if t]
-    # rimozione stopword semplici italiane (minima, non distruttiva)
     STOP = {"il","lo","la","i","gli","le","un","una","uno","di","a","da","in","con","su","per","tra","fra","e","o","ed","oppure","del","della","dello","dei","degli","delle"}
     return [t for t in tokens if t not in STOP]
 
 def _bigrams(tokens: List[str]) -> List[str]:
     return [tokens[i] + " " + tokens[i+1] for i in range(len(tokens)-1)]
 
+# =======================
+# 🩹 PATCH: sinonimi puliti
+# =======================
 FAMILY_SYNONYMS = {
     "CTF": {"CTF"},
     "CTL": {"CTL"},
-    "CEME": {"CEME", "CEM-E", "CTCEM", "VCEM"},
+    # CEM-E generico (NO VCEM qui)
+    "CEME": {"CEME", "CEM-E", "CTCEM"},
+    # VCEM separato per evitare risposte generiche su "CEM-E"
+    "VCEM": {"VCEM"},
     "DIAPASON": {"DIAPASON", "DIA"},
+    # GTS senza termini non-prodotto
     "GTS": {"GTS"},
     "MINI-CEM-E": {"MINI-CEM-E", "MINICEME", "MINI", "MINI CEM-E"},
 }
 
-COMPARE_HINTS = {" vs ", "vs", "contro", "differenza", "differenze", "meglio", "oppure", "o "}
+COMPARE_HINTS = {" vs ", "vs", "contro", "differenza", "differenze", "meglio", "oppure", " o "}
 
 def _detect_families(q: str) -> List[str]:
     qU = q.upper()
@@ -190,7 +193,6 @@ def _detect_families(q: str) -> List[str]:
     for fam, syns in FAMILY_SYNONYMS.items():
         if any((" " + s + " ") in (" " + qU + " ") for s in syns) or any(s in qU for s in syns):
             found.append(fam)
-    # preserva ordine di apparizione
     out = []
     for f in found:
         if f not in out:
@@ -214,26 +216,20 @@ def _score(query: str, candidate_q: str, candidate_a: str,
     if not (cq or ca):
         return 0.0
 
-    # filtro hard: se query cita famiglie, il candidato deve contenere almeno uno dei token richiesti
     if require_tokens:
         req = {t.lower() for t in require_tokens}
         cand = set(cq) | set(ca)
         if not (req & cand):
             return 0.0
 
-    # feature overlap unigrams
     qt = set(qtok)
     ct = set(cq) | set(ca)
     unigram = len(qt & ct) / max(1, len(qt))
 
-    # feature overlap bigrammi
     qb = set(_bigrams(qtok))
     cb = set(_bigrams(cq)) | set(_bigrams(ca))
-    bigram = 0.0
-    if qb and cb:
-        bigram = len(qb & cb) / max(1, len(qb))
+    bigram = len(qb & cb) / max(1, len(qb)) if qb else 0.0
 
-    # boost se compaiono token "famiglia"
     bonus = 0.0
     if boost_tokens:
         bt = {t.lower() for t in boost_tokens}
@@ -242,7 +238,6 @@ def _score(query: str, candidate_q: str, candidate_a: str,
         if bt & set(ca):
             bonus += 0.10
 
-    # combinazione pesata
     score = 0.65 * unigram + 0.35 * bigram + bonus
     return min(1.0, score)
 
@@ -304,26 +299,6 @@ async def kb_search_endpoint(q: str = Query(""), k: int = Query(5, ge=1, le=20))
     items = kb_search(q, k=k)
     return {"ok": True, "count": len(items), "items": items}
 
-# 🔎 Endpoint diagnostico: spiega come è stato scelto il match
-@app.get("/kb/diag")
-async def kb_diag(q: str = Query(...), k: int = Query(5, ge=1, le=20)):
-    fams = _detect_families(q)
-    require = None
-    boost = None
-    if fams:
-        # richiedi almeno un token di una delle famiglie citate
-        require = sorted({t for f in fams for t in FAMILY_SYNONYMS.get(f, {f})})
-        boost = require
-    items = kb_search(q, k=k, boost_tokens=boost, require_tokens=require, with_scores=True)
-    return {
-        "ok": True,
-        "query": q,
-        "families_detected": fams,
-        "require_tokens": require or [],
-        "boost_tokens": boost or [],
-        "items": items
-    }
-
 # SOLO POST
 @app.post("/api/ask")
 async def api_ask(payload: AskIn = Body(...)):
@@ -333,15 +308,26 @@ async def api_ask(payload: AskIn = Body(...)):
 
     fams = _detect_families(q)
 
-    # Modalità comparativa: es. "CTF vs CTL", "differenze CTF e CTL", "meglio CTL o CTF"
+    # ============================
+    # MODALITÀ COMPARATIVA (PATCH)
+    # ============================
     if _is_comparative(q, fams):
         fams = list(dict.fromkeys(fams))[:2]
         left_fam, right_fam = fams[0], fams[1]
-        left_tokens = sorted(FAMILY_SYNONYMS.get(left_fam, {left_fam}))
-        right_tokens = sorted(FAMILY_SYNONYMS.get(right_fam, {right_fam}))
+
+        left_tokens  = list(FAMILY_SYNONYMS.get(left_fam, {left_fam}))
+        right_tokens = list(FAMILY_SYNONYMS.get(right_fam, {right_fam}))
 
         left_hits = kb_search(q, k=3, boost_tokens=left_tokens, require_tokens=left_tokens)
         right_hits = kb_search(q, k=3, boost_tokens=right_tokens, require_tokens=right_tokens)
+
+        # 🩹 evita che vincano voci "overview" nei confronti
+        def _drop_overview(hits: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
+            filtered = [h for h in hits if "overview" not in (h.get("category","").lower())]
+            return filtered or hits
+
+        left_hits  = _drop_overview(left_hits)
+        right_hits = _drop_overview(right_hits)
 
         if left_hits or right_hits:
             def _fmt_side(title: str, hits: List[Dict[str,Any]]) -> str:
@@ -371,7 +357,7 @@ async def api_ask(payload: AskIn = Body(...)):
                 "ms": 0,
                 "match_id": f"COMPARE::{left_fam}_VS_{right_fam}"
             })
-        # se non trova nulla, continua con ricerca normale
+        # Se nulla, prosegue con ricerca normale
 
     # Ricerca normale con filtro semantico se la domanda cita famiglie
     require = None
