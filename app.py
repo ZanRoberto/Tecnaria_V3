@@ -12,10 +12,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.staticfiles import StaticFiles
 
 # =========================================
-# TECNARIA app.py — precision mode (PATCH)
-# - Path fix per Render/Windows
-# - Famiglie & sinonimi corretti (VCEM separato, GTS pulito)
+# TECNARIA app.py — precision mode (FINAL PATCH)
+# - Path fix portabile
+# - Famiglie & sinonimi corretti (VCEM separato da CEM-E, GTS pulito)
 # - Confronto a due colonne + filtro "overview"
+# - Boost per match esatto/quasi-esatto (fa vincere VCEM-Q-HARDWOOD-PREFORO)
 # =========================================
 
 UI_TITLE = os.getenv("UI_TITLE", "Tecnaria – QA Bot")
@@ -170,7 +171,7 @@ def _bigrams(tokens: List[str]) -> List[str]:
     return [tokens[i] + " " + tokens[i+1] for i in range(len(tokens)-1)]
 
 # =======================
-# 🩹 PATCH: sinonimi puliti
+# Sinonimi famiglie (VCEM separato, GTS pulito)
 # =======================
 FAMILY_SYNONYMS = {
     "CTF": {"CTF"},
@@ -204,7 +205,7 @@ def _is_comparative(q: str, fams: List[str]) -> bool:
     hint = any(h in qL for h in COMPARE_HINTS)
     return hint and len(set(fams)) >= 2
 
-# ---------- Scoring migliorato ----------
+# ---------- Scoring con boost per match esatto/quasi-esatto ----------
 def _score(query: str, candidate_q: str, candidate_a: str,
            boost_tokens: List[str] | None = None,
            require_tokens: List[str] | None = None) -> float:
@@ -237,6 +238,14 @@ def _score(query: str, candidate_q: str, candidate_a: str,
             bonus += 0.15
         if bt & set(ca):
             bonus += 0.10
+
+    # 🩹 Boost se il testo domanda combacia (esatto o quasi) con la Q candidate
+    q_lower = query.lower().strip()
+    cq_lower = (candidate_q or "").lower().strip()
+    if cq_lower == q_lower:
+        bonus += 0.25
+    elif q_lower in cq_lower:
+        bonus += 0.15
 
     score = 0.65 * unigram + 0.35 * bigram + bonus
     return min(1.0, score)
@@ -309,7 +318,7 @@ async def api_ask(payload: AskIn = Body(...)):
     fams = _detect_families(q)
 
     # ============================
-    # MODALITÀ COMPARATIVA (PATCH)
+    # MODALITÀ COMPARATIVA (con filtro overview)
     # ============================
     if _is_comparative(q, fams):
         fams = list(dict.fromkeys(fams))[:2]
@@ -321,7 +330,7 @@ async def api_ask(payload: AskIn = Body(...)):
         left_hits = kb_search(q, k=3, boost_tokens=left_tokens, require_tokens=left_tokens)
         right_hits = kb_search(q, k=3, boost_tokens=right_tokens, require_tokens=right_tokens)
 
-        # 🩹 evita che vincano voci "overview" nei confronti
+        # evita che vincano voci "overview" nei confronti
         def _drop_overview(hits: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
             filtered = [h for h in hits if "overview" not in (h.get("category","").lower())]
             return filtered or hits
