@@ -20,8 +20,12 @@ from fastapi.staticfiles import StaticFiles
 # =========================================
 
 UI_TITLE = os.getenv("UI_TITLE", "Tecnaria – QA Bot")
-DATA_DIR = Path(os.getenv("DATA_DIR", Path(__file__).replace("app.py",""))).joinpath("static","data").resolve()
+
+# --- PATCH corretta per Render / locale ---
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR / "static" / "data"))).resolve()
 ROUTER_FILE = DATA_DIR / os.getenv("ROUTER_FILE", "tecnaria_router_index.json")
+# ------------------------------------------
 
 KB: List[Dict[str, Any]] = []
 KB_FILES: List[Path] = []
@@ -138,6 +142,7 @@ def _discover_qa_files() -> List[Path]:
             unique.append(p)
             seen.add(p)
     return unique
+
 def _load_kb() -> Tuple[List[Dict[str, Any]], List[Path]]:
     files = _discover_qa_files()
     items: List[Dict[str, Any]] = []
