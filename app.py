@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 # =========================================
 
 UI_TITLE = os.getenv("UI_TITLE", "Tecnaria – QA Bot")
-DATA_DIR = Path(os.getenv("DATA_DIR", ".")).resolve()
+DATA_DIR = Path(os.getenv("DATA_DIR", Path(__file__).replace("app.py",""))).joinpath("static","data").resolve()
 ROUTER_FILE = DATA_DIR / os.getenv("ROUTER_FILE", "tecnaria_router_index.json")
 
 KB: List[Dict[str, Any]] = []
@@ -100,20 +100,37 @@ def extract_qa_entries(data: Any) -> List[Dict[str, Any]]:
     return out
 
 # ---------- Scoperta file QA (router first, poi pattern) ----------
+
 def _discover_qa_files() -> List[Path]:
     files: List[Path] = []
     if ROUTER_FILE.exists():
         router = _read_json(ROUTER_FILE)
         if isinstance(router, dict):
+            # Prefer explicit list
             qa_list = router.get("qa_files") or router.get("files") or router.get("datasets")
             if isinstance(qa_list, list):
                 for name in qa_list:
                     p = DATA_DIR / str(name)
                     if p.exists():
                         files.append(p)
+            # Fallback: parse "products": [{"file": "..."}]
+            if not files and isinstance(router.get("products"), list):
+                for prod in router["products"]:
+                    if isinstance(prod, dict) and prod.get("file"):
+                        p = DATA_DIR / str(prod["file"])
+                        if p.exists():
+                            files.append(p)
+    # Pattern discovery
     if not files:
         for p in DATA_DIR.glob("tecnaria_*_qa*.json"):
             files.append(p)
+
+    # Always try to include global knowledge if present
+    global_file = DATA_DIR / "SINAPSI_GLOBAL_TECNARIA_EXT.json"
+    if global_file.exists():
+        files.append(global_file)
+
+    # unique order-preserving
     seen = set()
     unique: List[Path] = []
     for p in files:
@@ -121,7 +138,6 @@ def _discover_qa_files() -> List[Path]:
             unique.append(p)
             seen.add(p)
     return unique
-
 def _load_kb() -> Tuple[List[Dict[str, Any]], List[Path]]:
     files = _discover_qa_files()
     items: List[Dict[str, Any]] = []
