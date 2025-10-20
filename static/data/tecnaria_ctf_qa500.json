@@ -1,115 +1,41 @@
 {
-  "meta": {
-    "dataset_label": "TECNARIA • CTF • Connettore acciaio–calcestruzzo",
-    "schema_version": "tecnaria.product.v2",
-    "generated_at": "2025-10-08T18:00:00Z",
-    "locale": "it-IT",
-    "brand": {
-      "company": "Tecnaria S.p.A.",
-      "hq_city": "Bassano del Grappa (VI)",
-      "country": "Italia",
-      "website_whitelist": [
-        "https://www.tecnaria.com",
-        "https://tecnaria.com"
-      ]
-    },
-    "product": {
-      "code": "CTF",
-      "name": "CTF – Connettore per solai collaboranti acciaio–calcestruzzo",
-      "family": "Connettori solai",
-      "summary": "Connettore fissato a freddo con SPIT P560 (kit/adattatori Tecnaria) per collaborazione trave/lamiera–soletta.",
-      "notes": [
-        "Posa esclusivamente con SPIT P560 e chiodi HSBR14; propulsori selezionati per supporto/spessore.",
-        "Rispettare progetto e schede Tecnaria; tipicamente 2 chiodi per connettore."
-      ],
-      "certifications": {
-        "ETA": ["ETA 18/0447 (verifica versione vigente)"],
-        "EAD": ["EAD pertinente ai connettori fissati a sparo"]
-      },
-      "sku_table": [
-        {
-          "code": "CTF-STD-50",
-          "label": "Connettore CTF standard",
-          "packaging": "scatola 100 pz",
-          "notes": "Posa con SPIT P560 + kit Tecnaria; 2 chiodi HSBR14/conn.",
-          "eta_ref": "ETA 18/0447 – tabella prestazioni",
-          "status": "validare con ufficio tecnico"
-        },
-        {
-          "code": "CTF-LAM-50",
-          "label": "Connettore CTF per lamiera grecata",
-          "packaging": "scatola 100 pz",
-          "notes": "Lamiera ammessa 1×1,5 mm oppure 2×1,0 mm ben aderente alla trave; posa con SPIT P560 + kit Tecnaria; 2 chiodi HSBR14/conn.",
-          "eta_ref": "ETA 18/0447 – tabella prestazioni",
-          "status": "validare con ufficio tecnico"
-        },
-        {
-          "code": "HSBR14-NAILS-1000",
-          "label": "Chiodi HSBR14",
-          "packaging": "fascio 1000 pz",
-          "notes": "Per fissaggio CTF; abbinare propulsori idonei",
-          "eta_ref": "scheda consumabili SPIT/Tecnaria",
-          "status": "validare con ufficio tecnico"
-        },
-        {
-          "code": "PROPULSORI-P560-MIX",
-          "label": "Propulsori P560 (mix)",
-          "packaging": "confezioni varie",
-          "notes": "Selezione in base a supporto/spessore (prove preliminari in cantiere)",
-          "eta_ref": "tabelle SPIT/Tecnaria",
-          "status": "validare con ufficio tecnico"
-        }
-      ],
-      "article_codes": [
-        { "code": "CTF020", "height_mm": 20 },
-        { "code": "CTF025", "height_mm": 25 },
-        { "code": "CTF030", "height_mm": 30 },
-        { "code": "CTF040", "height_mm": 40 },
-        { "code": "CTF060", "height_mm": 60 },
-        { "code": "CTF070", "height_mm": 70 },
-        { "code": "CTF080", "height_mm": 80 },
-        { "code": "CTF090", "height_mm": 90 },
-        { "code": "CTF105", "height_mm": 105 },
-        { "code": "CTF125", "height_mm": 125 },
-        { "code": "CTF135", "height_mm": 135 }
-      ]
-    },
-    "ops": {
-      "consumi_pose": {
-        "pezzi_al_mq_tipici": "da progetto; range di cantiere 4–10 pz/m² (indicativo, validare)",
-        "consumo_chiodi_per_pezzo": 2,
-        "propulsori_note": "Selezionare secondo tabelle SPIT/Tecnaria in base a tipo supporto e spessore; fare prove preliminari.",
-        "tempi_pose_note": "Stima indicativa: 60–120 connettori/ora/operatore con flusso organizzato; validare su cantiere."
-      }
-    },
-    "intents": {
-      "codici": ["codice", "codici", "codici prodotto", "codici articoli", "articolo", "catalogo", "part number", "sku"],
-      "codici_articolo": ["codici articolo", "codici altezze", "CTF020", "CTF025", "CTF030", "CTF040", "CTF060", "CTF070", "CTF080", "CTF090", "CTF105", "CTF125", "CTF135"],
-      "posa": ["posa", "come si posa", "attrezzatura", "propulsori", "chiodi", "taratura", "dpi", "sicurezza"],
-      "quantita": ["quanti al mq", "pezzi al metro quadro", "consumi", "tempi di posa", "produttività", "interasse", "passo"],
-      "invalid_codes": ["CTC", "CTCEM"]
-    },
-    "narrative": {
-      "tone": "Tecnico, chiaro, orientato al cantiere",
-      "structure": ["Sintesi diretta", "Dettagli operativi", "Rinvio a schede ufficiali"]
-    }
-  },
-  "categories": [
-    "prodotto_base",
-    "posa_attrezzature",
-    "compatibilita_supporti",
-    "lamiera_grecata",
-    "travi_acciaio",
-    "calcestruzzo_getto",
-    "progetto_dimensionamento",
-    "controllo_qualita",
-    "sicurezza_cantiere",
-    "manutenzione_logistica",
-    "faq_commerciali",
-    "faq_codici_consumi",
-    "troubleshooting"
-  ],
   "qa": [
+    {
+      "id": "CTF-OVERVIEW-0001",
+      "cat": "overview",
+      "q": [
+        "Parlami dei connettori CTF",
+        "Che cosa sono i connettori CTF?",
+        "CTF: panoramica",
+        "CTF overview",
+        "Descrizione connettori CTF",
+        "A cosa servono i CTF?",
+        "CTF su lamiera: spiegazione",
+        "Connettori CTF Tecnaria: che cosa sono",
+        "Mi spieghi i CTF",
+        "Informazioni generali sui CTF",
+        "CTF • panoramica completa",
+        "Spiegami CTF",
+        "CTF per lamiera grecata",
+        "CTF con SPIT P560 – cosa sono",
+        "Famiglia CTF",
+        "parlami dei ctf",
+        "parlami dei connettori ctf",
+        "mi parli dei ctf",
+        "mi parli dei connettori ctf",
+        "cos'è ctf",
+        "che cos'è ctf",
+        "informazioni sui ctf",
+        "ctf descrizione",
+        "ctf spiegazione",
+        "presentazione ctf",
+        "ctf lamiera grecata",
+        "ctf tecnaria",
+        "famiglia ctf tecnaria",
+        "overview ctf"
+      ],
+      "text": "I connettori CTF Tecnaria sono connettori puntuali per collegare lamiere grecate o travi d’acciaio alla soletta in calcestruzzo nelle solette miste acciaio‑calcestruzzo. Consentono la trasmissione degli sforzi di taglio/compressione, incrementando rigidezza e portanza del sistema.\n\nImpiego tipico: solai su lamiera grecata collaborante, rinforzi di impalcati in acciaio, adeguamenti e miglioramenti di strutture esistenti.\n\nPosa: esclusivamente con chiodatrice SPIT P560 equipaggiata con kit/adattatori Tecnaria. Ogni connettore si fissa con 2 chiodi HSBR14. La selezione dei propulsori P560 dipende dal supporto/spessore; eseguire prove di taratura in cantiere e verificare l’aderenza della lamiera (configurazioni tipiche: 1×1,5 mm o 2×1,0 mm) e spessore minimo trave ≥ 6 mm. Seguire le istruzioni di posa Tecnaria.\n\nVerifiche e documenti: fare riferimento alle schede Tecnaria e all’ETA di riferimento (es. ETA 18/0447) per prestazioni, distanze minime, limiti e prove. Per casi non standard, contattare l’assistenza Tecnaria."
+    },
     {
       "id": "CTF-CODICI-0001",
       "category": "faq_codici_consumi",
@@ -122,7 +48,6 @@
       "q": "Mi puoi dire i codici dei CTF?",
       "a": "Ci sono due modi di indicare i codici per CTF: • SKU commerciali (pack/uso) → CTF-STD-50 (standard, scatola 100 pz), CTF-LAM-50 (lamiera grecata, scatola 100 pz). • Codici articolo per altezza (mm) → CTF020 (20 mm), CTF025 (25 mm), CTF030 (30 mm), CTF040 (40 mm), CTF060 (60 mm), CTF070 (70 mm), CTF080 (80 mm), CTF090 (90 mm), CTF105 (105 mm), CTF125 (125 mm), CTF135 (135 mm). (Validare con listino/schede ufficiali Tecnaria)."
     },
-
     {
       "id": "CTF-CODICI-ALL-0001",
       "category": "faq_codici_consumi",
@@ -135,7 +60,6 @@
       "q": "Dammi i codici CTF (SKU e codici articolo)",
       "a": "SKU: CTF-STD-50 (standard, scatola 100 pz), CTF-LAM-50 (lamiera grecata, scatola 100 pz). Codici articolo (altezze mm): CTF020, CTF025, CTF030, CTF040, CTF060, CTF070, CTF080, CTF090, CTF105, CTF125, CTF135. (Tecnaria S.p.A., famiglia CTF)."
     },
-
     {
       "id": "CTF-POSA-0001",
       "category": "posa_attrezzature",
