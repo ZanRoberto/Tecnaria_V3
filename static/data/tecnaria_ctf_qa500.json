@@ -1,106 +1,81 @@
-{
-  "qa": [
-    {
-      "id": "CTF-OVERVIEW-0001",
-      "cat": "overview",
-      "q": [
-        "Parlami dei connettori CTF",
-        "Che cosa sono i connettori CTF?",
-        "CTF: panoramica",
-        "CTF overview",
-        "Descrizione connettori CTF",
-        "A cosa servono i CTF?",
-        "CTF su lamiera: spiegazione",
-        "Connettori CTF Tecnaria: che cosa sono",
-        "Mi spieghi i CTF",
-        "Informazioni generali sui CTF",
-        "CTF • panoramica completa",
-        "Spiegami CTF",
-        "CTF per lamiera grecata",
-        "CTF con SPIT P560 – cosa sono",
-        "Famiglia CTF",
-        "parlami dei ctf",
-        "parlami dei connettori ctf",
-        "mi parli dei ctf",
-        "mi parli dei connettori ctf",
-        "cos'è ctf",
-        "che cos'è ctf",
-        "informazioni sui ctf",
-        "ctf descrizione",
-        "ctf spiegazione",
-        "presentazione ctf",
-        "ctf lamiera grecata",
-        "ctf tecnaria",
-        "famiglia ctf tecnaria",
-        "overview ctf"
-      ],
-      "text": "I connettori CTF Tecnaria sono connettori puntuali per collegare lamiere grecate o travi d’acciaio alla soletta in calcestruzzo nelle solette miste acciaio‑calcestruzzo. Consentono la trasmissione degli sforzi di taglio/compressione, incrementando rigidezza e portanza del sistema.\n\nImpiego tipico: solai su lamiera grecata collaborante, rinforzi di impalcati in acciaio, adeguamenti e miglioramenti di strutture esistenti.\n\nPosa: esclusivamente con chiodatrice SPIT P560 equipaggiata con kit/adattatori Tecnaria. Ogni connettore si fissa con 2 chiodi HSBR14. La selezione dei propulsori P560 dipende dal supporto/spessore; eseguire prove di taratura in cantiere e verificare l’aderenza della lamiera (configurazioni tipiche: 1×1,5 mm o 2×1,0 mm) e spessore minimo trave ≥ 6 mm. Seguire le istruzioni di posa Tecnaria.\n\nVerifiche e documenti: fare riferimento alle schede Tecnaria e all’ETA di riferimento (es. ETA 18/0447) per prestazioni, distanze minime, limiti e prove. Per casi non standard, contattare l’assistenza Tecnaria."
-    },
-    {
-      "id": "CTF-CODICI-0001",
-      "category": "faq_codici_consumi",
-      "q": "Mi puoi dare i codici degli articoli per CTF e relativi consumabili?",
-      "a": "Ecco i principali (validare con listino/schede ufficiali): • CTF-STD-50 — Connettore CTF standard (scatola 100 pz). • CTF-LAM-50 — Connettore CTF per lamiera grecata (scatola 100 pz). • HSBR14-NAILS-1000 — Chiodi HSBR14. • PROPULSORI-P560-MIX — Propulsori P560 (scegli la carica in base al supporto/spessore). Posa: esclusivamente con SPIT P560 (kit/adattatori Tecnaria), 2 chiodi HSBR14 per connettore."
-    },
-    {
-      "id": "CTF-CODICI-ARTICOLO-0001",
-      "category": "faq_codici_consumi",
-      "q": "Mi puoi dire i codici dei CTF?",
-      "a": "Ci sono due modi di indicare i codici per CTF: • SKU commerciali (pack/uso) → CTF-STD-50 (standard, scatola 100 pz), CTF-LAM-50 (lamiera grecata, scatola 100 pz). • Codici articolo per altezza (mm) → CTF020 (20 mm), CTF025 (25 mm), CTF030 (30 mm), CTF040 (40 mm), CTF060 (60 mm), CTF070 (70 mm), CTF080 (80 mm), CTF090 (90 mm), CTF105 (105 mm), CTF125 (125 mm), CTF135 (135 mm). (Validare con listino/schede ufficiali Tecnaria)."
-    },
-    {
-      "id": "CTF-CODICI-ALL-0001",
-      "category": "faq_codici_consumi",
-      "q": "Mi puoi dire i codici dei CTF? (codici CTF, codici articolo CTF, SKU CTF, CTF-STD-50, CTF-LAM-50, CTF020, CTF135)",
-      "a": "Per la famiglia CTF ci sono due insiemi di codici: • SKU commerciali (pack/uso): CTF-STD-50 (standard, scatola 100 pz) e CTF-LAM-50 (lamiera grecata, scatola 100 pz). • Codici articolo per altezza (mm): CTF020 (20 mm), CTF025 (25 mm), CTF030 (30 mm), CTF040 (40 mm), CTF060 (60 mm), CTF070 (70 mm), CTF080 (80 mm), CTF090 (90 mm), CTF105 (105 mm), CTF125 (125 mm), CTF135 (135 mm). Posa CTF: SPIT P560 + 2 chiodi HSBR14 per connettore (rif. ETA 18/0447)."
-    },
-    {
-      "id": "CTF-CODICI-ALL-0002",
-      "category": "faq_codici_consumi",
-      "q": "Dammi i codici CTF (SKU e codici articolo)",
-      "a": "SKU: CTF-STD-50 (standard, scatola 100 pz), CTF-LAM-50 (lamiera grecata, scatola 100 pz). Codici articolo (altezze mm): CTF020, CTF025, CTF030, CTF040, CTF060, CTF070, CTF080, CTF090, CTF105, CTF125, CTF135. (Tecnaria S.p.A., famiglia CTF)."
-    },
-    {
-      "id": "CTF-POSA-0001",
-      "category": "posa_attrezzature",
-      "q": "Quali sono le indicazioni operative sintetiche di posa?",
-      "a": "Solo SPIT P560 con kit Tecnaria; 2 chiodi HSBR14 per connettore; verificare lamiera aderente (1×1,5 mm o 2×1,0 mm) e spessore trave ≥ 6 mm; tarare propulsori con prove; DPI obbligatori. Tenere registro controlli. Fare sempre riferimento a schede Tecnaria e ETA 18/0447."
-    },
-    {
-      "id": "CTF-POSA-0002",
-      "category": "posa_attrezzature",
-      "q": "Connettori CTF: si può usare una chiodatrice qualsiasi?",
-      "a": "No. Per i CTF Tecnaria è ammessa esclusivamente la SPIT P560 con kit/adattatori Tecnaria. Ogni connettore si posa con 2 chiodi HSBR14; selezionare i propulsori P560 in base al supporto/spessore. Verificare lamiera aderente (1×1,5 mm oppure 2×1,0 mm) e spessore trave ≥ 6 mm. Riferimento: schede Tecnaria e ETA 18/0447."
-    },
-    {
-      "id": "CTF-CONSUMI-0001",
-      "category": "faq_codici_consumi",
-      "q": "Quanti connettori al metro quadro e che produttività posso aspettarmi?",
-      "a": "Il passo è di progetto; in pratica molti cantieri rientrano in 4–10 pz/m² (indicativo). Produttività orientativa con flusso organizzato: 60–120 connettori/ora per operatore. Dati da validare sul tuo cantiere; registra prove e controlli."
-    },
-    {
-      "id": "CTF-TROUBLE-0001",
-      "category": "troubleshooting",
-      "q": "Il chiodo non entra bene o si spana: come risolvo?",
-      "a": "Fermati e verifica: potenza P560, corretto propulsore per spessore/supporto, aderenza lamiera–trave, distanze minime e interferenze. Ripeti prove di infissione e documenta. Se persiste, contatta assistenza Tecnaria/SPIT e il progettista."
-    },
-    {
-      "id": "CTF-QUALITA-0001",
-      "category": "controllo_qualita",
-      "q": "Quali controlli registro in cantiere durante la posa dei CTF?",
-      "a": "Registro di: settaggi P560, tipo propulsore, risultati prove su campione, profondità/aderenza, eventuali ripetizioni di fissaggio, foto campione, lotti consumabili. Usa check-list e conserva i documenti come da schede Tecnaria/SPIT e capitolato."
-    },
-    {
-      "id": "CTF-CTCEM-0001",
-      "category": "faq_commerciali",
-      "q": "CTCEM è un prodotto Tecnaria?",
-      "a": "No. “CTCEM” non risulta tra i codici ufficiali Tecnaria nel perimetro attivo. Se stai cercando i connettori acciaio–calcestruzzo Tecnaria, i codici corretti sono: SKU CTF-STD-50 / CTF-LAM-50 e i codici articolo CTF020–CTF135 (altezze mm)."
-    },
-    {
-      "id": "CTF-CTCEM-0002",
-      "category": "faq_commerciali",
-      "q": "CTCEM",
-      "a": "Non è un codice Tecnaria valido nel dataset attivo. Per i CTF: CTF-STD-50, CTF-LAM-50 e CTF020–CTF135. Se intendevi un’altra famiglia Tecnaria, specifica quale."
-    }
-  ]
+#!/usr/bin/env python3
+# apply_tecnaria_patch_full.py
+# Patcher unico: aggiorna JSON (overview) + patch app.py (overview helpers + UTF-8 JSONResponse)
+import os, re, json, sys, io
+from datetime import datetime
+
+FAMS = ["CTF","CTL","VCEM","CEME","CTCEM","GTS","P560"]
+
+Q_OVERVIEW = {
+ "CTF":  ["Parlami dei connettori CTF","CTF: overview","Che cosa sono i CTF","Descrizione CTF","CTF: posa e attrezzatura","CTF su lamiera grecata","Spiega CTF","CTF: introduzione","ctf overview","ctf"],
+ "CTL":  ["Parlami dei CTL","CTL: overview","Che cosa sono i CTL","Descrizione CTL","Spiega CTL","CTL: introduzione","ctl overview","ctl"],
+ "VCEM": ["Parlami di VCEM","VCEM: overview","Che cosa è VCEM","VCEM su essenze dure","Spiega VCEM","VCEM: introduzione","vcem overview","vcem"],
+ "CEME": ["Parlami di CEM-E","CEM-E: overview","Che cosa è CEM-E","CEM-E posa a secco","Spiega CEM-E","CEM-E: introduzione","ceme overview","ceme"],
+ "CTCEM":["Parlami di CTCEM","CTCEM: overview","Che cosa è CTCEM","CTCEM usa resine","Spiega CTCEM","CTCEM: introduzione","ctcem overview","ctcem"],
+ "GTS":  ["Parlami di GTS","GTS: overview","Che cos'è GTS","Descrizione GTS","Spiega GTS","GTS: introduzione","gts overview","gts"],
+ "P560": ["Parlami della P560","P560: overview","Che cos'è la P560","Descrizione P560","Spiega P560","P560: chiodatrice per CTF","p560 overview","p560"]
 }
+
+TEXT_OVERVIEW = {
+ "CTF":  "I connettori CTF Tecnaria sono pensati per collegamenti su lamiera grecata e travi in acciaio, con posa a sparo tramite SPIT P560 (kit Tecnaria) e 2 chiodi HSBR14 per connettore. Vantaggi: rapidità, ripetibilità, affidabilità. Verificare lamiera/supporto e scegliere i propulsori corretti. Riferimenti: schede Tecnaria/ETA.",
+ "CTL":  "I connettori CTL coprono casi d'uso diversi rispetto ai CTF. La scelta CTF vs CTL dipende da supporto, portata/rigidezza richiesta, accessibilità e attrezzatura. Riferimenti: manuali Tecnaria/ETA.",
+ "VCEM": "VCEM è la famiglia Tecnaria per collegamenti su legno; su essenze dure è consigliato un preforo ~70–80% del diametro della vite per evitare fessurazioni e garantire la corretta coppia. Seguire schede Tecnaria.",
+ "CEME": "La famiglia CEM-E (CTCEM/VCEM per laterocemento) prevede posa meccanica a secco. Verificare codici/consumi e condizioni operative secondo indicazioni Tecnaria.",
+ "CTCEM":"CTCEM è alternativa alle soluzioni barre+resina nel laterocemento: posa meccanica (a secco). Incisione, preforo, pulizia foro, avvitatura fino a battuta.",
+ "GTS":  "GTS è una famiglia per collegamenti/irrobustimenti acciaio–calcestruzzo. Per la scelta consultare schede Tecnaria e assistenza tecnica.",
+ "P560": "SPIT P560 (con kit Tecnaria) è la chiodatrice ammessa per la posa dei CTF su lamiera/travi. Selezionare i propulsori in base a supporto/spessori; per ciascun connettore CTF usare 2 chiodi HSBR14."
+}
+
+def ensure_overview(qa, fam):
+    # se esiste 'overview', rinforza Q e testo; altrimenti crea blocco overview in testa
+    for item in qa:
+        if isinstance(item, dict) and item.get("cat") == "overview":
+            qs = set(item.get("q") or [])
+            for v in Q_OVERVIEW.get(fam, []):
+                qs.add(v); qs.add(v.lower()); qs.add(v.replace("?",""))
+            item["q"] = sorted(qs)
+            if not item.get("id"): item["id"] = f"{fam}-OVERVIEW-0001"
+            if not item.get("text"): item["text"] = TEXT_OVERVIEW.get(fam,"")
+            return True
+    new = {
+        "id": f"{fam}-OVERVIEW-0001",
+        "cat": "overview",
+        "q": sorted(set(Q_OVERVIEW.get(fam, []) + [q.lower() for q in Q_OVERVIEW.get(fam,[])] + [q.replace("?","") for q in Q_OVERVIEW.get(fam,[])])),
+        "text": TEXT_OVERVIEW.get(fam,"")
+    }
+    qa.insert(0, new)
+    return True
+
+def patch_json_file(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return False, "READ_FAIL"
+    if isinstance(data, dict) and isinstance(data.get("qa"), list):
+        qa = data["qa"]
+    elif isinstance(data, list):
+        qa = data; data = {"qa": qa}
+    else:
+        return False, "SCHEMA"
+
+    fam = None
+    base = os.path.basename(path).lower()
+    for f in FAMS:
+        if f.lower() in base:
+            fam = f; break
+    if not fam:
+        blob = json.dumps(data, ensure_ascii=False).lower()
+        for f in FAMS:
+            if re.search(rf"\\b{re.escape(f.lower())}\\b", blob):
+                fam = f; break
+    if not fam:
+        return False, "NOFAM"
+
+    changed = ensure_overview(qa, fam)
+    if changed:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    return changed, fam
+
+INJECT_HELPERS = r
