@@ -5561,6 +5561,18 @@
         "CTL",
         "Tecnaria"
       ]
+    },
+    {
+      "id": "COMPARE::CTF_VS_CTL",
+      "cat": "confronti",
+      "q": [
+        "Differenze tra CTF e CTL?",
+        "Confronto CTF vs CTL",
+        "Meglio CTF o CTL?",
+        "Quando usare CTF e quando CTL?",
+        "CTF/CTL: differenze principali"
+      ],
+      "text": "In sintesi: CTF è la famiglia Tecnaria per fissaggi su lamiera grecata/travi, con posa tramite chiodatrice (SPIT P560 con kit Tecnaria) e chiodi HSBR14. CTL è la famiglia per XXXXXX (ambito/uso specifico) con fissaggi YYYYYY e criteri di posa ZZZZZZ. La scelta dipende da: (1) tipo di supporto e stratigrafia, (2) requisiti di portata/rigidezza, (3) vincoli di posa (accessibilità, spessori, attrezzatura). Per progetti e verifiche: seguire le schede Tecnaria ed ETA di riferimento e contattare l’assistenza per il caso specifico."
     }
   ]
 }
