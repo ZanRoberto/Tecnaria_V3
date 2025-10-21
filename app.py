@@ -3,7 +3,7 @@ import json
 import time
 import re
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 from fastapi import FastAPI, HTTPException, Query, Body
 from pydantic import BaseModel
@@ -12,19 +12,22 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.staticfiles import StaticFiles
 
 # =========================================
-# TECNARIA app.py — precision mode (FINAL PATCH)
+# TECNARIA app.py — precision mode + OVERVIEWS
 # - Path fix portabile
-# - Famiglie & sinonimi corretti (VCEM separato da CEM-E, GTS pulito)
+# - Famiglie & sinonimi (VCEM separato da CEM-E, GTS pulito)
 # - Confronto a due colonne + filtro "overview"
-# - Boost per match esatto/quasi-esatto (fa vincere VCEM-Q-HARDWOOD-PREFORO)
+# - Boost per match esatto/quasi-esatto
+# - NUOVO: carico tecnaria_overviews.json e preferenza overview
 # =========================================
 
 UI_TITLE = os.getenv("UI_TITLE", "Tecnaria – QA Bot")
 
 # --- Base path portabile ---
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR / "static" / "data"))).resolve()
+STATIC_DIR = (BASE_DIR / "static").resolve()
+DATA_DIR = Path(os.getenv("DATA_DIR", str(STATIC_DIR / "data"))).resolve()
 ROUTER_FILE = DATA_DIR / os.getenv("ROUTER_FILE", "tecnaria_router_index.json")
+OVERVIEWS_FILE = DATA_DIR / "tecnaria_overviews.json"
 
 KB: List[Dict[str, Any]] = []
 KB_FILES: List[Path] = []
@@ -68,10 +71,10 @@ def _as_iter(obj: Any):
         return [obj]
     return []
 
-_Q_KEYS: Tuple[str, ...] = ("q", "question", "prompt", "domanda")
-_A_KEYS: Tuple[str, ...] = ("a", "answer", "risposta")
-_CAT_KEYS: Tuple[str, ...] = ("category", "categoria", "section")
-_ID_KEYS: Tuple[str, ...] = ("id", "code", "_id")
+_Q_KEYS: Tuple[str, ...]     = ("q", "question", "prompt", "domanda")
+_A_KEYS: Tuple[str, ...]     = ("a", "answer", "risposta", "text")
+_CAT_KEYS: Tuple[str, ...]   = ("category", "categoria", "section", "cat")
+_ID_KEYS: Tuple[str, ...]    = ("id", "code", "_id", "match_id")
 
 def _get_first(d: Dict[str, Any], keys: Tuple[str, ...], default: str = "") -> str:
     for k in keys:
@@ -81,7 +84,7 @@ def _get_first(d: Dict[str, Any], keys: Tuple[str, ...], default: str = "") -> s
     return default
 
 def _normalize_spaces(s: str) -> str:
-    return re.sub(r"\s+", " ", s).strip()
+    return re.sub(r"\s+", " ", s or "").strip()
 
 def extract_qa_entries(data: Any) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
@@ -134,6 +137,28 @@ def _discover_qa_files() -> List[Path]:
             seen.add(p)
     return unique
 
+# ---------- Overviews loader ----------
+def _load_overviews() -> List[Dict[str, Any]]:
+    """
+    Formati accettati:
+    - lista di {id?, q, a, category?="overview"}
+    - oppure { items: [...] } / { qa: [...] } ecc.
+    """
+    if not OVERVIEWS_FILE.exists():
+        return []
+    data = _read_json(OVERVIEWS_FILE)
+    rows = extract_qa_entries(data)
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        r = dict(r)
+        if not r.get("category"):
+            r["category"] = "overview"
+        r["is_overview"] = True
+        if not r.get("id"):
+            r["id"] = f"OVERVIEW::{abs(hash(r.get('q','')))}"
+        out.append(r)
+    return out
+
 def _load_kb() -> Tuple[List[Dict[str, Any]], List[Path]]:
     files = _discover_qa_files()
     items: List[Dict[str, Any]] = []
@@ -144,15 +169,26 @@ def _load_kb() -> Tuple[List[Dict[str, Any]], List[Path]]:
             continue
         rows = extract_qa_entries(data)
         for r in rows:
-            rid = r.get("id")
-            if not rid:
-                rid = f"{p.name}::{abs(hash(r.get('q','')))}"
+            rid = r.get("id") or f"{p.name}::{abs(hash(r.get('q','')))}"
             if rid in seen_ids:
                 continue
             r["id"] = rid
+            r["is_overview"] = bool(r.get("category","").lower() == "overview")
             items.append(r)
             seen_ids.add(rid)
-    return items, files
+
+    # Append curated overviews (se presenti)
+    ov = _load_overviews()
+    for r in ov:
+        if r["id"] not in seen_ids:
+            items.append(r)
+            seen_ids.add(r["id"])
+
+    # Traccia file sorgenti (aggiungo overviews “virtuale” se esiste)
+    files_out = list(files)
+    if OVERVIEWS_FILE.exists():
+        files_out.append(OVERVIEWS_FILE)
+    return items, files_out
 
 # ---------- Normalizzazione & intent ----------
 def _normalize_text(s: str) -> List[str]:
@@ -171,21 +207,17 @@ def _bigrams(tokens: List[str]) -> List[str]:
     return [tokens[i] + " " + tokens[i+1] for i in range(len(tokens)-1)]
 
 # =======================
-# Sinonimi famiglie (VCEM separato, GTS pulito)
+# Sinonimi famiglie
 # =======================
 FAMILY_SYNONYMS = {
     "CTF": {"CTF"},
     "CTL": {"CTL"},
-    # CEM-E generico (NO VCEM qui)
     "CEME": {"CEME", "CEM-E", "CTCEM"},
-    # VCEM separato per evitare risposte generiche su "CEM-E"
     "VCEM": {"VCEM"},
     "DIAPASON": {"DIAPASON", "DIA"},
-    # GTS senza termini non-prodotto
     "GTS": {"GTS"},
     "MINI-CEM-E": {"MINI-CEM-E", "MINICEME", "MINI", "MINI CEM-E"},
 }
-
 COMPARE_HINTS = {" vs ", "vs", "contro", "differenza", "differenze", "meglio", "oppure", " o "}
 
 def _detect_families(q: str) -> List[str]:
@@ -205,10 +237,26 @@ def _is_comparative(q: str, fams: List[str]) -> bool:
     hint = any(h in qL for h in COMPARE_HINTS)
     return hint and len(set(fams)) >= 2
 
-# ---------- Scoring con boost per match esatto/quasi-esatto ----------
-def _score(query: str, candidate_q: str, candidate_a: str,
-           boost_tokens: List[str] | None = None,
-           require_tokens: List[str] | None = None) -> float:
+# Query “overview”?
+_GENERIC_OV = re.compile(r"\b(parlami|overview|descrizione|spiega|che\s+cos[’']?e|cos[’']?e|introduzione)\b", re.I)
+_BLOCK_SPEC = ("codici","consumi","prezzo","eta","tabella","dimensioni","resine","preforo","propulsori","hsbr14","p560")
+
+def _is_overview_query(q: str) -> bool:
+    ql = (q or "").lower()
+    if _GENERIC_OV.search(ql):
+        if any(k in ql for k in _BLOCK_SPEC):
+            return False
+        return True
+    return False
+
+# ---------- Scoring (con bonus overview opzionale) ----------
+def _score(query: str,
+           candidate_q: str,
+           candidate_a: str,
+           boost_tokens: Optional[List[str]] = None,
+           require_tokens: Optional[List[str]] = None,
+           is_overview_candidate: bool = False,
+           prefer_overview: bool = False) -> float:
     qtok = _normalize_text(query)
     if not qtok:
         return 0.0
@@ -239,7 +287,7 @@ def _score(query: str, candidate_q: str, candidate_a: str,
         if bt & set(ca):
             bonus += 0.10
 
-    # 🩹 Boost se il testo domanda combacia (esatto o quasi) con la Q candidate
+    # Boost domanda≈Q candidate
     q_lower = query.lower().strip()
     cq_lower = (candidate_q or "").lower().strip()
     if cq_lower == q_lower:
@@ -247,17 +295,27 @@ def _score(query: str, candidate_q: str, candidate_a: str,
     elif q_lower in cq_lower:
         bonus += 0.15
 
+    # Boost se la query è “overview” e la candidata è “overview”
+    if prefer_overview and is_overview_candidate:
+        bonus += 0.20  # spinge le sintetiche curate
+
     score = 0.65 * unigram + 0.35 * bigram + bonus
     return min(1.0, score)
 
 def kb_search(query: str, k: int = 5,
-              boost_tokens: List[str] | None = None,
-              require_tokens: List[str] | None = None,
+              boost_tokens: Optional[List[str]] = None,
+              require_tokens: Optional[List[str]] = None,
+              prefer_overview: bool = False,
               with_scores: bool = False) -> List[Dict[str, Any]]:
     scored: List[Tuple[float, Dict[str, Any]]] = []
     for it in KB:
-        s = _score(query, it.get("q", ""), it.get("a", ""),
-                   boost_tokens=boost_tokens, require_tokens=require_tokens)
+        s = _score(query,
+                   it.get("q", ""),
+                   it.get("a", ""),
+                   boost_tokens=boost_tokens,
+                   require_tokens=require_tokens,
+                   is_overview_candidate=bool(it.get("is_overview")),
+                   prefer_overview=prefer_overview)
         if s > 0:
             scored.append((s, it))
     scored.sort(key=lambda x: x[0], reverse=True)
@@ -270,7 +328,6 @@ def kb_search(query: str, k: int = 5,
 app = FastAPI(title=UI_TITLE)
 app.add_middleware(SecurityHeadersMiddleware)
 
-STATIC_DIR = Path(os.path.join(os.path.dirname(__file__), "static")).resolve()
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -291,7 +348,7 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"ok": True, "items_loaded": len(KB), "files": [p.name for p in KB_FILES]}
+    return {"ok": True, "items_loaded": len(KB), "files": [p.name if isinstance(p, Path) else str(p) for p in KB_FILES]}
 
 @app.get("/kb/ids")
 async def kb_ids():
@@ -305,7 +362,7 @@ async def kb_files():
 async def kb_search_endpoint(q: str = Query(""), k: int = Query(5, ge=1, le=20)):
     if not q:
         return {"ok": True, "count": 0, "items": []}
-    items = kb_search(q, k=k)
+    items = kb_search(q, k=k, prefer_overview=_is_overview_query(q))
     return {"ok": True, "count": len(items), "items": items}
 
 # SOLO POST
@@ -316,6 +373,7 @@ async def api_ask(payload: AskIn = Body(...)):
         raise HTTPException(status_code=400, detail={"error": "Campo 'q' mancante o vuoto"})
 
     fams = _detect_families(q)
+    is_overview = _is_overview_query(q)
 
     # ============================
     # MODALITÀ COMPARATIVA (con filtro overview)
@@ -327,12 +385,12 @@ async def api_ask(payload: AskIn = Body(...)):
         left_tokens  = list(FAMILY_SYNONYMS.get(left_fam, {left_fam}))
         right_tokens = list(FAMILY_SYNONYMS.get(right_fam, {right_fam}))
 
-        left_hits = kb_search(q, k=3, boost_tokens=left_tokens, require_tokens=left_tokens)
-        right_hits = kb_search(q, k=3, boost_tokens=right_tokens, require_tokens=right_tokens)
+        left_hits = kb_search(q, k=3, boost_tokens=left_tokens, require_tokens=left_tokens, prefer_overview=False)
+        right_hits = kb_search(q, k=3, boost_tokens=right_tokens, require_tokens=right_tokens, prefer_overview=False)
 
-        # evita che vincano voci "overview" nei confronti
+        # evita overview nei confronti
         def _drop_overview(hits: List[Dict[str,Any]]) -> List[Dict[str,Any]]:
-            filtered = [h for h in hits if "overview" not in (h.get("category","").lower())]
+            filtered = [h for h in hits if not bool(h.get("is_overview")) and "overview" not in (h.get("category","").lower())]
             return filtered or hits
 
         left_hits  = _drop_overview(left_hits)
@@ -366,9 +424,8 @@ async def api_ask(payload: AskIn = Body(...)):
                 "ms": 0,
                 "match_id": f"COMPARE::{left_fam}_VS_{right_fam}"
             })
-        # Se nulla, prosegue con ricerca normale
 
-    # Ricerca normale con filtro semantico se la domanda cita famiglie
+    # Ricerca normale (richiede tokens se famiglie presenti)
     require = None
     boost = None
     if fams:
@@ -376,7 +433,7 @@ async def api_ask(payload: AskIn = Body(...)):
         boost = require
 
     t0 = time.perf_counter()
-    hits = kb_search(q, k=5, boost_tokens=boost, require_tokens=require)
+    hits = kb_search(q, k=5, boost_tokens=boost, require_tokens=require, prefer_overview=is_overview)
 
     if hits:
         best = hits[0]
