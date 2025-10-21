@@ -40,3 +40,40 @@
     "text": "GTS: overview in cantiere con accessibilità limitata — Manicotto metallico filettato per giunzioni a secco (gts, manicotto, filettato, giunzioni, secco). Cura prefori, tolleranze e accessi agli spigoli per serraggio; usa rondelle/antislittamento e controlla coppie."
   }
 ]
+[
+  {
+    "family": "CTF",
+    "overview": "Connettore a sparo per collaborazione legno–calcestruzzo su trave metallica/lamiera grecata. Posa esclusiva con SPIT P560 + adattatori Tecnaria, 2 chiodi HSBR14 per connettore, propulsori P560 calibrati al supporto.",
+    "when_use": "Velocità in cantiere, ripetibilità elevata, posa su lamiera grecata o trave acciaio con accesso frontale."
+  },
+  {
+    "family": "CTL",
+    "overview": "Connettore a vite per collaborazione legno–calcestruzzo con soletta in c.a. Aumenta rigidezza/portanza del solaio, riduce frecce e vibrazioni. Posa meccanica, senza resine.",
+    "when_use": "Sistemi L–C dove servono prestazioni e ispezionabilità; cantieri con attrezzaggi standard."
+  },
+  {
+    "family": "VCEM",
+    "overview": "Vite per elementi in legno nell’ambito CEM-E (laterocemento). Posa meccanica, raccomandato preforo su essenze dure.",
+    "when_use": "Ancoraggi su legno/laterocemento quando si desidera soluzione a secco, senza resine."
+  },
+  {
+    "family": "CEM-E",
+    "overview": "Famiglia per laterocemento (CTCEM, VCEM) con posa meccanica a secco: niente resine, montaggio controllabile.",
+    "when_use": "Interventi su laterocemento dove evitare chimici è un vantaggio (tempi, sicurezza, pulizia)."
+  },
+  {
+    "family": "CTCEM",
+    "overview": "Connettore CEM-E per laterocemento con posa totalmente a secco (senza resine).",
+    "when_use": "Consolidamento laterocemento con controllo meccanico della posa e tempi rapidi."
+  },
+  {
+    "family": "GTS",
+    "overview": "Manicotto metallico filettato per giunzioni meccaniche a secco (acciaio–acciaio, acciaio–legno, legno–legno). Montaggio controllabile e reversibile.",
+    "when_use": "Giunzioni a secco senza apporto termico, dove servono smontabilità, controllo coppie e documentazione."
+  },
+  {
+    "family": "P560",
+    "overview": "Chiodatrice a sparo SPIT P560 ammessa per CTF Tecnaria, con kit/adattatori dedicati e chiodi HSBR14.",
+    "when_use": "Posa rapida dei CTF su trave metallica/lamiera grecata con elevata ripetibilità."
+  }
+]
