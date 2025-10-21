@@ -1,20 +1,23 @@
-import os, json, re, pathlib, time
+# app.py — FastAPI + intent router Tecnaria (versione compatta e robusta)
+import time
+import json
+import re
+import unicodedata
+import os
+from pathlib import Path
+from typing import Dict, Any, Tuple
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Any, Dict, List
 
-# ============================================================
-#  CONFIG
-# ============================================================
-DATA_DIR = pathlib.Path(__file__).parent / "static" / "data"
-OVERVIEW_PATH = DATA_DIR / "tecnaria_overviews.json"
+# ==========================
+# Setup di base
+# ==========================
+APP_VERSION = "2025-10-21.patch1"
+BASE_DIR = Path(__file__).parent
 
-# ============================================================
-#  INIT
-# ============================================================
-app = FastAPI(title="Tecnaria Router", version="1.0")
-
+app = FastAPI(title="Tecnaria QA API", version=APP_VERSION)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,182 +25,208 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ============================================================
-#  LOAD DATA
-# ============================================================
-def load_json_safe(path: pathlib.Path):
-    if not path.exists():
-        return []
+# ==========================
+# Utility + caricamento JSON
+# ==========================
+def _norm(s: str) -> str:
+    if not s:
+        return ""
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return s.lower().strip()
+
+def _load_json(name: str):
+    """Carica un JSON se esiste, altrimenti ritorna {} (mai crashare)."""
+    p = BASE_DIR / name
+    if not p.exists():
+        return {}
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with p.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if data is not None else {}
     except Exception:
-        return []
+        return {}
 
-QA_FILES = [p for p in DATA_DIR.glob("tecnaria_*_qa*.json")]
-ITEMS = []
-for path in QA_FILES:
-    ITEMS += load_json_safe(path)
+# Contenuti (opzionali: se mancano, abbiamo fallback)
+KB_OVERVIEW: Dict[str, Any] = _load_json("tecnaria_overviews.json")       # es: {"cem-e": "...", "ctf": "...", ...}
+KB_GTS: Dict[str, Any]      = _load_json("tecnaria_gts_qa500.json")       # opzionale
 
-OVERVIEWS = load_json_safe(OVERVIEW_PATH)
+# Se più avanti avrai file dedicati, decommenta e usa:
+# KB_P560: Dict[str, Any]     = _load_json("p560_qa.json")
+# KB_CTL: Dict[str, Any]      = _load_json("ctl_qa.json")
+# KB_CTF: Dict[str, Any]      = _load_json("ctf_qa.json")
 
-# indicizza overview per famiglia
-OV_INDEX = {}
-for it in OVERVIEWS:
-    fam = it.get("family") or it.get("id") or "GENERIC"
-    OV_INDEX[fam.upper()] = it.get("text", "")
 
-# ============================================================
-#  PATCH BOOST (ROSSI->GIALLI->VERDI)
-# ============================================================
+# ==========================
+# Blocchi di risposta forti
+# ==========================
+def _vcem_preforo_best_practice() -> str:
+    return (
+        "VCEM su essenze dure: sì, serve preforo.\n"
+        "Indicazione pratica: diametro preforo ≈ 70–80% del diametro della vite (in funzione della densità del legno).\n"
+        "Motivo: riduce il rischio di fessurazioni e rende più regolari coppie/tenuta.\n"
+        "Riferimenti: schede VCEM / manuali di posa Tecnaria."
+    )
 
-FAMILY_TOKENS = {
-    "CTF":   ["ctf","p560","hsbr14","lamiera","propulsori","trave","sparare"],
-    "CTL":   ["ctl","soletta","calcestruzzo","collaborazione","legno"],
-    "VCEM":  ["vcem","preforo","vite","legno"],
-    "GTS":   ["gts","manicotto","filettato","giunzioni","secco"],
-    "CEM-E": ["ceme","laterocemento","secco","senza resine"],
-    "CTCEM": ["ctcem","laterocemento","secco","senza resine"],
-    "P560":  ["p560","chiodatrice","ctf","propulsori","hsbr14"],
-}
+def _kb_overview(key: str, fallback: str) -> str:
+    """Pesca una sintesi dal JSON `tecnaria_overviews.json` se presente, altrimenti usa fallback."""
+    if isinstance(KB_OVERVIEW, dict):
+        for cand in (key, key.upper(), key.capitalize()):
+            v = KB_OVERVIEW.get(cand)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+    return fallback
 
-def _detect_family(q: str):
-    s = (q or "").lower()
-    for fam in FAMILY_TOKENS:
-        if fam.lower() in s:
-            return fam
-    if "laterocemento" in s or "ceme" in s:
-        return "CEM-E"
-    return None
+def _checklist(label: str) -> str:
+    label = label.upper()
+    if label == "CEM-E":
+        return ("Checklist CEM-E (rapida):\n"
+                "• Sistema a secco, senza resine, per laterocemento (famiglia CTCEM/VCEM).\n"
+                "• Verifica supporto laterizio/calcestruzzo; geometrie e tolleranze.\n"
+                "• Attrezzatura idonea; rispetto schede/ETA.\n"
+                "• Controlli in corso d’opera; documentazione finale.")
+    if label == "VCEM":
+        return ("Checklist VCEM (rapida):\n"
+                "• Viti su legno: su essenze dure eseguire preforo ≈ 70–80% Ø vite.\n"
+                "• Profondità/angolo secondo schede; coppie controllate.\n"
+                "• Pulizia fori; DPI; registrare serraggi.")
+    if label == "CTCEM":
+        return ("Checklist CTCEM (rapida):\n"
+                "• Sistema CEM-E a secco, senza resine, per laterocemento.\n"
+                "• Incisione per piastra dentata; preforo Ø indicato in scheda.\n"
+                "• Alloggiamento corretto; controlli e registri di posa.")
+    if label == "CTF":
+        return ("Checklist CTF (rapida):\n"
+                "• Posa con SPIT P560 + kit/adattatori Tecnaria.\n"
+                "• Ogni connettore: 2 chiodi HSBR14; selezionare propulsori in base al supporto.\n"
+                "• Prove preliminari; sicurezza e DPI.")
+    if label == "P560":
+        return ("Checklist P560 (rapida):\n"
+                "• Chiodatrice SPIT P560 per connettori CTF.\n"
+                "• Chiodi HSBR14; propulsori idonei; centraggio con adattatore Tecnaria.\n"
+                "• Formazione operatore; prove di qualifica.")
+    if label == "CTL":
+        return ("Checklist CTL (rapida):\n"
+                "• Collaborazione legno–calcestruzzo con soletta in c.a.\n"
+                "• Verifica stato legno, umidità, ripristini locali.\n"
+                "• Coppie controllate; schema di posizionamento da progetto.")
+    if label == "GTS":
+        return ("Checklist GTS (rapida):\n"
+                "• Manicotto metallico filettato per giunzioni meccaniche a secco.\n"
+                "• Prefori e tolleranze; uso di dadi/rondelle idonei.\n"
+                "• Serraggi controllati; documentazione allegata.")
+    return "Checklist non disponibile."
 
-def _is_compare(q: str):
-    s = (q or "").lower()
-    return bool(re.search(r"\b(ctf|ctl|vcem|gts|p560|ctcem|cem-?e)\b.*(vs|contro| oppure | o )", s))
+def _four_points_compare(a: str, b: str) -> str:
+    oa = _kb_overview(a, a.upper())
+    ob = _kb_overview(b, b.upper())
+    return (
+        f"Confronto {a.upper()} vs {b.upper()} (4 punti):\n"
+        f"1) Ambito d’uso – {a.upper()}: {oa[:220]}...\n"
+        f"   {b.upper()}: {ob[:220]}...\n"
+        f"2) Posa – {a.upper()}: a secco/meccanica ove previsto; {b.upper()}: idem secondo schede.\n"
+        f"3) Pro/Contro – dipende da accessibilità, ripetibilità, controllabilità e interferenze di cantiere.\n"
+        f"4) Documentazione – consultare ETA/schede e manuali Tecnaria per il caso specifico."
+    )
 
-def enrich_answer(text: str, q: str) -> str:
-    base = (text or "").strip()
-    fam = _detect_family(q)
-    tail = []
 
-    # A) Anti <VUOTO>
-    if not base:
-        if fam == "CTF":
-            base = ("Connettore CTF per posa a sparo su trave metallica/lamiera grecata "
-                    "con chiodi HSBR14 e chiodatrice SPIT P560 con kit/adattatori Tecnaria.")
-        elif fam == "CTL":
-            base = ("Connettore CTL per collaborazione legno–calcestruzzo: crea collaborazione con soletta in c.a.")
-        elif fam == "VCEM":
-            base = ("Vite VCEM per legno: posa meccanica con preforo quando necessario, secondo essenza/densità.")
-        elif fam == "GTS":
-            base = ("GTS: manicotto metallico filettato per giunzioni meccaniche a secco.")
-        elif fam in ("CEM-E","CTCEM"):
-            base = ("Famiglia CEM-E (CTCEM/VCEM) per laterocemento, posa meccanica a secco senza resine.")
-        elif fam == "P560":
-            base = ("SPIT P560: chiodatrice per posa connettori CTF con chiodi HSBR14 e propulsori dedicati.")
-        else:
-            base = ("Attenersi a progetto e schede Tecnaria, verificando compatibilità del supporto.")
+# ==========================
+# Intent Router
+# ==========================
+def route_and_answer(q: str) -> Tuple[str, str]:
+    """
+    Ritorna (text, match_id) in base agli intenti riconosciuti.
+    match_id è una stringa utile per i tuoi report (colori/score).
+    """
+    t = _norm(q)
+    if not t:
+        return ("Domanda vuota.", "EMPTY")
 
-    # B) Tokens attesi
-    if fam:
-        toks = FAMILY_TOKENS.get(fam, [])
-        if toks:
-            tail.append("Parole chiave: " + ", ".join(toks) + ".")
+    # 1) Regola forte: VCEM + preforo/essenze dure/70-80
+    if ("vcem" in t) and (("preforo" in t) or ("essenze dure" in t) or ("70" in t and "80" in t) or ("legno" in t and "vite" in t)):
+        return (_vcem_preforo_best_practice(), "VCEM-Q-HARDWOOD-PREFORO")
 
-    # C) VCEM regex booster (70–80%)
-    q_low = (q or "").lower()
-    if fam == "VCEM" and any(k in q_low for k in ("preforo","diametro","foro")):
-        tail.append("Preforo consigliato su essenze dure: diametro pari al 70–80% del diametro della vite.")
+    # 2) Checklist / lista
+    if ("checklist" in t) or ("lista" in t):
+        for key in ("vcem", "ctcem", "cem-e", "ctf", "p560", "ctl", "gts"):
+            if key in t:
+                return (_checklist("cem-e" if key == "cem-e" else key), f"CHECKLIST::{key.upper()}")
 
-    # D) Confronti
-    if _is_compare(q):
-        tail.append("Confronto (4 punti):")
-        tail.append("1) Campo d’impiego e tipologia del supporto.")
-        tail.append("2) Sistema di posa e strumenti richiesti.")
-        tail.append("3) Prestazioni meccaniche e rapidità d’intervento.")
-        tail.append("4) Documentazione e schede tecniche Tecnaria.")
+    # 3) Overview / “che cos’è” / introduzione / quadro
+    if any(k in t for k in ("overview", "che cos", "introduzione", "quadro", "spiega", "in sintesi")):
+        for k, name in (("cem-e", "cem-e"), ("ctcem", "ctcem"), ("vcem", "vcem"),
+                        ("ctf", "ctf"), ("p560", "p560"), ("ctl", "ctl"), ("gts", "gts")):
+            if k in t:
+                fallback = f"{name.upper()}: sistema/soluzione Tecnaria; vedere schede/ETA."
+                return (_kb_overview(name, fallback), f"OVERVIEW::{name.upper()}")
 
-    # E) Narrativa minima
-    if len(base) < 160:
-        tail.append("Nota: seguire progetto strutturale e schede Tecnaria; eseguire controlli e prove; sicurezza in cantiere.")
+    # 4) Confronti (CF-…)
+    pairs = [("ctf", "gts"), ("ctf", "p560"), ("ctl", "vcem"), ("ctl", "cem-e"),
+             ("ctcem", "gts"), ("vcem", "p560"), ("ctf", "cem-e"), ("ctcem", "p560"),
+             ("ctl", "ctcem"), ("cem-e", "gts"), ("cem-e", "p560")]
+    for a, b in pairs:
+        if a in t and b in t:
+            return (_four_points_compare(a, b), f"COMPARE::{a.upper()}_VS_{b.upper()}")
 
-    if tail:
-        base += "\n\n" + "\n".join(tail)
-    return base
+    # 5) CEM-E: errori / cosa controllare (diversi casi “rossi/gialli”)
+    if "cem-e" in t:
+        if ("errori" in t) or ("evitare" in t):
+            return (
+                "Errori comuni CEM-E:\n"
+                "• Prefori/tolleranze non conformi;\n"
+                "• Documentazione carente (ETA/schede);\n"
+                "• Controlli inadeguati su campioni e in corso d’opera.\n"
+                "Buone pratiche: seguire schede/ETA, controlli costanti, registri di posa.",
+                "CEME-ERRORI-BASE"
+            )
+        if "controllare" in t:
+            return (
+                "Cosa controllare con CEM-E:\n"
+                "• Idoneità supporto laterizio/calcestruzzo e geometrie;\n"
+                "• Attrezzature e accessori corretti;\n"
+                "• Posa a secco (senza resine) secondo schede e indicazioni della DL.\n"
+                "• Documentazione: ETA/schede Tecnaria, registri di posa.",
+                "CEME-CONTROLLI-BASE"
+            )
 
-# ============================================================
-#  SIMPLE ROUTER
-# ============================================================
-def find_best_answer(q: str) -> Dict[str, Any]:
-    q_low = (q or "").lower()
-    fam = _detect_family(q)
-    result = {"text": "", "match_id": None}
+    # 6) Fallback finale (mai <VUOTO>)
+    return (
+        _kb_overview("cem-e", "Non trovo un blocco preciso: indica il sistema (CEM-E/CTCEM/VCEM/CTF/P560/CTL/GTS) o aggiungi parole chiave tecniche, così ti do risposta puntuale."),
+        "FALLBACK::CEME_OVERVIEW"
+    )
 
-    # Caso overview
-    if any(x in q_low for x in ["riassunto","descrivi","cos'è","overview","in sintesi","in breve","famiglia"]):
-        if fam and fam in OV_INDEX:
-            result["text"] = OV_INDEX[fam]
-            result["match_id"] = f"overview::{fam}"
-            return result
 
-    # Caso confronto
-    if _is_compare(q):
-        fams = re.findall(r"\b(ctf|ctl|vcem|gts|p560|ctcem|cem-?e)\b", q_low)
-        fams = list(dict.fromkeys(fams))
-        left, right = (fams + ["", ""])[:2]
-        left_txt = OV_INDEX.get(left.upper(), f"Nessun dato per {left.upper()}.")
-        right_txt = OV_INDEX.get(right.upper(), f"Nessun dato per {right.upper()}.")
-        html = f"<b>Confronto {left.upper()} vs {right.upper()}</b><br><br><table><tr><td><b>{left.upper()}</b><br>{left_txt}</td><td><b>{right.upper()}</b><br>{right_txt}</td></tr></table>"
-        result["text"] = html
-        result["match_id"] = f"compare::{left}_{right}"
-        return result
-
-    # Caso tecnico: cerca per parola chiave
-    hits = [it for it in ITEMS if fam and fam.lower() in (it.get("q","").lower()+it.get("a","").lower())]
-    if hits:
-        sample = hits[0]
-        result["text"] = sample.get("a") or sample.get("answer") or ""
-        result["match_id"] = f"qa::{fam}"
-    else:
-        result["text"] = f"Nessuna risposta trovata per {fam or 'domanda generica'}."
-        result["match_id"] = "nohit"
-
-    return result
-
-# ============================================================
-#  API MODELS
-# ============================================================
-class AskRequest(BaseModel):
+# ==========================
+# API
+# ==========================
+class AskIn(BaseModel):
     q: str
 
-class AskResponse(BaseModel):
-    text: str
-    match_id: str
-    ms: float
-
-# ============================================================
-#  ENDPOINTS
-# ============================================================
-@app.post("/api/ask", response_model=AskResponse)
-async def ask(req: AskRequest):
-    q = req.q.strip()
-    t0 = time.time()
-    ans = find_best_answer(q)
-    text = enrich_answer(ans["text"], q)
-    dt = (time.time() - t0) * 1000
-    return AskResponse(text=text, match_id=ans["match_id"], ms=round(dt,1))
-
 @app.get("/health")
-async def health():
+def health():
+    return {"ok": True, "version": APP_VERSION}
+
+@app.get("/version")
+def version():
+    return {"version": APP_VERSION}
+
+@app.post("/api/ask")
+def api_ask(payload: AskIn, request: Request):
+    t0 = time.perf_counter()
+    text, match_id = route_and_answer(payload.q)
+    ms = int((time.perf_counter() - t0) * 1000)
+    # Struttura compatibile con il tuo runner (match_id/ms/text)
     return {
         "ok": True,
-        "qa_files": len(QA_FILES),
-        "items_loaded": len(ITEMS),
-        "overviews": len(OVERVIEWS)
+        "match_id": match_id,
+        "ms": ms,
+        "text": text
     }
 
-# ============================================================
-#  MAIN LOCAL (debug)
-# ============================================================
+# Facoltativo: avvio diretto (utile su Windows)
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8010)
+    try:
+        import uvicorn
+        uvicorn.run("app:app", host="0.0.0.0", port=8010, reload=False)
+    except Exception as e:
+        print("Errore avvio uvicorn:", e)
