@@ -1,1 +1,42 @@
-
+[
+  {
+    "id": "OV-CTL-CANTIERE-LIMITATO",
+    "text": "CTL: overview in cantiere con accessibilità limitata — È un connettore per la collaborazione tra travi/orditure in legno e soletta in calcestruzzo (ctl, collaborazione, soletta, calcestruzzo, legno). In spazi ristretti pianifica sequenza fori/avvitature, organizza attrezzature leggere e controlla le coppie. Posa conforme a schede/ETA."
+  },
+  {
+    "id": "OV-CTL-RAPIDITA",
+    "text": "CTL: overview dove serve rapidità e ripetibilità — Prepara moduli e dime per velocizzare fori e posa, verifica ripetibilità delle coppie e del passo dei connettori (ctl, collaborazione, soletta, calcestruzzo, legno)."
+  },
+  {
+    "id": "OV-CTF-CANTIERE-LIMITATO",
+    "text": "CTF: overview con controllo serraggi/attrezzature — Connettori da sparo per lamiera/trave; usa P560 con kit/adattatori Tecnaria, chiodi HSBR14 e propulsori idonei (ctf, P560, chiodatrice, HSBR14, propulsori, lamiera, trave, sparare). In spazi ridotti cura appoggio, perpendicolarità e sicurezza."
+  },
+  {
+    "id": "OV-CTF-RAPIDITA",
+    "text": "CTF: overview dove serve rapidità e ripetibilità — Sistema ideale per fissaggi ripetitivi su lamiera/trave con P560, HSBR14 e propulsori corretti; esegui campionature e controlli a campione (ctf, lamiera, trave, P560, propulsori, HSBR14, sparare)."
+  },
+  {
+    "id": "OV-P560-RAPIDITA",
+    "text": "P560: overview (velocità e ripetibilità) — Chiodatrice per posare CTF con chiodi HSBR14 e propulsori; prepara linee di lavoro, verifica profondità e qualità dello sparo, usa adattatori Tecnaria (p560, chiodatrice, ctf, hsbr14, propulsori)."
+  },
+  {
+    "id": "OV-CEME-CONTROLLO",
+    "text": "CEM-E: overview con controllo serraggi/attrezzature — Famiglia per laterocemento, posa meccanica a secco senza resine (ceme, laterocemento, secco, senza resine). Pianifica accessi, tolleranze, e controlli su campioni; documentazione Tecnaria/ETA."
+  },
+  {
+    "id": "OV-CEME-RAPIDITA",
+    "text": "CEM-E: overview dove serve rapidità e ripetibilità — Sequenze standard, attrezzaggi minimi, niente resine, tolleranze chiare (ceme, laterocemento, secco, senza resine)."
+  },
+  {
+    "id": "OV-CTCEM-RAPIDITA",
+    "text": "CTCEM: overview — Sistema CEM-E a secco senza resine per laterocemento; incisione ~4×5 mm e preforo Ø11 mm secondo scheda; controlli e prove (ctcem, laterocemento, secco, senza resine)."
+  },
+  {
+    "id": "OV-VCEM-BASE",
+    "text": "VCEM: overview — Vite per legno nell’ambito CEM-E (vcem, vite, legno). Su essenze dure eseguire preforo ~70–80% del diametro della vite per evitare fessurazioni e garantire coppie ripetibili (preforo 70–80%)."
+  },
+  {
+    "id": "OV-GTS-CANTIERE-LIMITATO",
+    "text": "GTS: overview in cantiere con accessibilità limitata — Manicotto metallico filettato per giunzioni a secco (gts, manicotto, filettato, giunzioni, secco). Cura prefori, tolleranze e accessi agli spigoli per serraggio; usa rondelle/antislittamento e controlla coppie."
+  }
+]
