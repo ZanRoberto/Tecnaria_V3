@@ -1,3 +1,11 @@
+from fastapi import FastAPI
+
+# --- FIX CRITICO: istanzia sempre l'app all'import ---
+try:
+    app  # se già definita, non fare nulla
+except NameError:
+    app = FastAPI(title="Tecnaria_V3")
+# ------------------------------------------------------
 # app.py  — Tecnaria_V3 (local-only, MICROPATCH)
 # FastAPI backend per /api/ask che risponde usando i metadati in static/data/
 # Patch: famiglie con sinonimi + comparativi (A vs B) + filtro semantico morbido
