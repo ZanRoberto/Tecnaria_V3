@@ -1,3 +1,176 @@
+# --- TECNARIA: DATA LOADER + INTENT ROUTER (drop-in, per Render /static/data) ---
+from typing import List, Dict, Any
+from pathlib import Path
+import time, re, csv, json
+
+# === Percorsi dati (Render mostra /opt/render/project/src/static/data) ===
+BASE_DIR = Path(__file__).parent
+DATA_DIR = BASE_DIR / "static" / "data"
+OV_JSON = DATA_DIR / "tecnaria_overviews.json"   # panoramiche famiglie
+CMP_JSON = DATA_DIR / "tecnaria_compare.json"    # confronti A vs B
+FAQ_CSV = DATA_DIR / "faq.csv"                   # domande/risposte brevi multi-lingua
+
+# === Loader robusti ===
+def load_json(path: Path, fallback: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    try:
+        if path.exists():
+            with path.open("r", encoding="utf-8") as f:
+                data = json.load(f) or []
+                if isinstance(data, list):
+                    return data
+    except Exception:
+        pass
+    return fallback or []
+
+def load_faq_csv(path: Path) -> List[Dict[str, str]]:
+    rows: List[Dict[str, str]] = []
+    if not path.exists():
+        return rows
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
+        rdr = csv.DictReader(f)
+        for r in rdr:
+            rows.append({
+                "id": (r.get("id") or "").strip(),
+                "lang": (r.get("lang") or "").strip().lower() or "it",
+                "question": (r.get("question") or "").strip(),
+                "answer": (r.get("answer") or "").strip(),
+                "tags": (r.get("tags") or "").strip().lower(),
+            })
+    return rows
+
+OV_ITEMS: List[Dict[str, Any]] = load_json(OV_JSON, [])
+CMP_ITEMS: List[Dict[str, Any]] = load_json(CMP_JSON, [])
+FAQ_ITEMS: List[Dict[str, str]] = load_faq_csv(FAQ_CSV)
+
+# Espongo contatori usati da tecnaria_api.py (shim)
+JSON_BAG = {
+    "overviews": OV_ITEMS,
+    "compare": CMP_ITEMS,
+    "faq": FAQ_ITEMS,
+}
+FAQ_ROWS = len(FAQ_ITEMS)
+
+# Indice FAQ per lingua
+FAQ_BY_LANG: Dict[str, List[Dict[str, str]]] = {}
+for r in FAQ_ITEMS:
+    FAQ_BY_LANG.setdefault(r["lang"], []).append(r)
+
+# === euristica lingua ===
+def detect_lang(q: str) -> str:
+    s = (q or "").lower()
+    if any(w in s for w in [" the ", " what ", " how ", " can ", " shall ", " should "]): return "en"
+    if any(w in s for w in [" el ", " los ", " las ", "¿", "qué", "como", "cómo"]): return "es"
+    if any(w in s for w in [" le ", " la ", " les ", " quelle", " comment"]): return "fr"
+    if any(w in s for w in [" der ", " die ", " das ", " wie ", " was "]): return "de"
+    return "it"
+
+# === token famiglie (niente 'traliccio' / 'tralicciati') ===
+FAM_TOKENS: Dict[str, List[str]] = {
+    "CTF":   ["ctf","lamiera","p560","hsbr14","trave","chiodatrice","sparo"],
+    "CTL":   ["ctl","soletta","calcestruzzo","collaborazione","legno"],
+    "VCEM":  ["vcem","preforo","vite","legno","essenze","durezza"],
+    "CEM-E": ["ceme","laterocemento","secco","senza resine","cappello"],
+    "CTCEM": ["ctcem","laterocemento","secco","senza resine","cappa"],
+    "GTS":   ["gts","manicotto","filettato","giunzioni","secco"],
+    "P560":  ["p560","chiodatrice","propulsori","hsbr14"],
+}
+
+def _score_tokens(text: str, tokens: List[str]) -> float:
+    t = (" " + (text or "").lower() + " ")
+    hits = sum(1 for tok in tokens if tok in t)
+    return hits / max(1, len(tokens))
+
+def _find_overview(fam: str) -> str:
+    fam = (fam or "").upper()
+    for it in OV_ITEMS:
+        if (it.get("family") or "").upper() == fam:
+            return (it.get("answer") or "").strip()
+    return f"{fam}: descrizione, ambiti applicativi, posa, controlli e riferimenti."
+
+def _compare_html(famA: str, famB: str, ansA: str, ansB: str) -> str:
+    # layout due colonne responsive
+    return (
+        "<div><h2>Confronto</h2>"
+        "<div style='display:flex;gap:24px;flex-wrap:wrap'>"
+        f"<div class='side' style='flex:1;min-width:320px'><h3>{famA}</h3><p>{ansA}</p>"
+        f"<p><small>Fonte: <b>OVERVIEW::{famA}</b></small></p></div>"
+        f"<div class='side' style='flex:1;min-width:320px'><h3>{famB}</h3><p>{ansB}</p>"
+        f"<p><small>Fonte: <b>OVERVIEW::{famB}</b></small></p></div>"
+        "</div></div>"
+    )
+
+# === INTENT ROUTER principale ===
+def intent_route(q: str) -> Dict[str, Any]:
+    ql = (q or "").lower().strip()
+    lang = detect_lang(ql)
+
+    # 1) Confronti A vs B se contiene due famiglie
+    fams = list(FAM_TOKENS.keys())
+    for a in fams:
+        for b in fams:
+            if a >= b:
+                continue
+            if a.lower() in ql and b.lower() in ql:
+                # cerca risposta pronta in tecnaria_compare.json
+                found = None
+                for it in CMP_ITEMS:
+                    fa = (it.get("famA") or "").upper()
+                    fb = (it.get("famB") or "").upper()
+                    if {fa, fb} == {a, b}:
+                        found = it
+                        break
+                if found:
+                    html = found.get("html") or ""
+                    text = found.get("answer") or ""
+                else:
+                    # crea confronto sintetico da overview
+                    ansA = _find_overview(a)
+                    ansB = _find_overview(b)
+                    html = _compare_html(a, b, ansA, ansB)
+                    text = ""
+                return {
+                    "ok": True,
+                    "match_id": f"COMPARE::{a}_VS_{b}",
+                    "lang": lang,
+                    "family": f"{a}+{b}",
+                    "intent": "compare",
+                    "source": "compare" if found else "synthetic",
+                    "score": 92.0,
+                    "text": text,
+                    "html": html,
+                }
+
+    # 2) Famiglia singola più probabile
+    scored = [(fam, _score_tokens(ql, toks)) for fam, toks in FAM_TOKENS.items()]
+    scored.sort(key=lambda x: x[1], reverse=True)
+    fam, s = scored[0]
+    if s >= 0.2:
+        # 2a) FAQ dirette (matching su question+tags)
+        for r in FAQ_BY_LANG.get(lang, []):
+            keys = (r["tags"] or "") + " " + r["question"]
+            if _score_tokens(ql, re.split(r"[,\s;/\-]+", keys.lower())) >= 0.25:
+                return {
+                    "ok": True, "match_id": r["id"] or f"FAQ::{fam}", "lang": lang,
+                    "family": fam, "intent": "faq", "source": "faq", "score": 88.0,
+                    "text": r["answer"], "html": ""
+                }
+        # 2b) overview famiglia
+        ov = _find_overview(fam)
+        return {
+            "ok": True, "match_id": f"OVERVIEW::{fam}", "lang": lang,
+            "family": fam, "intent": "overview", "source": "overview", "score": 75.0,
+            "text": ov, "html": ""
+        }
+
+    # 3) fallback totale
+    return {
+        "ok": True, "match_id": "<NULL>", "lang": lang,
+        "family": "", "intent": "fallback", "source": "fallback", "score": 0,
+        "text": "Non ho trovato una risposta diretta nei metadati locali. Specifica meglio la famiglia/prodotto.",
+        "html": ""
+    }
+# --- FINE BLOCCO TECNARIA ---
+
 from fastapi import FastAPI
 
 # --- FIX CRITICO: istanzia sempre l'app all'import ---
