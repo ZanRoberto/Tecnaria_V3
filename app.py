@@ -259,3 +259,29 @@ def pick_faq_entry(faq: List[Dict[str,str]], q: str, fam: str, intent: str, lang
         qx = lower_noacc(r.get("q",""))
         famx = r.get("fam","").upper().strip()
         intent
+# --- FIX DI SICUREZZA: / e /health sempre disponibili ---
+try:
+    from fastapi import FastAPI as _F
+    if isinstance(app, _F):
+        @app.get("/")
+        def _root():
+            # prova a mostrare contatori se esistono; altrimenti ok True
+            try:
+                return {"app": "Tecnaria_V3 (online)", "status": "ok",
+                        "data_dir": str(DATA_DIR),
+                        "json_loaded": list(JSON_BAG.keys()) if 'JSON_BAG' in globals() else [],
+                        "faq_rows": len(FAQ_ROWS) if 'FAQ_ROWS' in globals() else 0}
+            except Exception:
+                return {"app": "Tecnaria_V3 (online)", "status": "ok"}
+
+        @app.get("/health")
+        def _health():
+            try:
+                return {"ok": True,
+                        "json_loaded": list(JSON_BAG.keys()) if 'JSON_BAG' in globals() else [],
+                        "faq_rows": len(FAQ_ROWS) if 'FAQ_ROWS' in globals() else 0}
+            except Exception:
+                return {"ok": True}
+except Exception:
+    pass
+# -------------------------------------------------------
