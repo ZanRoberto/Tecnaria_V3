@@ -31,27 +31,52 @@ def load_json(path: Path, fallback: List[Dict[str, Any]] = None) -> List[Dict[st
         pass
     return fallback or []
 
+# === CSV robusto (UTF-8/CP1252 + fix mojibake) ===
 def load_faq_csv(path: Path) -> List[Dict[str, str]]:
     rows: List[Dict[str, str]] = []
     if not path.exists():
         return rows
-    with path.open("r", encoding="utf-8-sig", newline="") as f:
-        rdr = csv.DictReader(f)
-        for r in rdr:
-            rows.append({
-                "id": (r.get("id") or "").strip(),
-                "lang": (r.get("lang") or "").strip().lower() or "it",
-                "question": (r.get("question") or "").strip(),
-                "answer": (r.get("answer") or "").strip(),
-                "tags": (r.get("tags") or "").strip().lower(),
-            })
+
+    def _read(encoding: str):
+        with path.open("r", encoding=encoding, newline="") as f:
+            rdr = csv.DictReader(f)
+            for r in rdr:
+                rows.append({
+                    "id": (r.get("id") or "").strip(),
+                    "lang": (r.get("lang") or "").strip().lower() or "it",
+                    "question": (r.get("question") or "").strip(),
+                    "answer": (r.get("answer") or "").strip(),
+                    "tags": (r.get("tags") or "").strip().lower(),
+                })
+
+    try:
+        _read("utf-8-sig")      # preferito (gestisce anche BOM)
+    except Exception:
+        try:
+            _read("cp1252")     # fallback per file salvati in Windows
+        except Exception:
+            return rows
+
+    # normalizza artefatti comuni (— ’ … accenti, euro, ecc.)
+    fixes = {
+        "â€™": "’", "â€œ": "“", "â€\x9d": "”", "â€“": "–", "â€”": "—",
+        "Ã ": "à", "Ã¨": "è", "Ã©": "é", "Ã¬": "ì", "Ã²": "ò", "Ã¹": "ù",
+        "Â°": "°", "Â§": "§", "Â±": "±", "Â€": "€",
+    }
+    for r in rows:
+        for k in ("question", "answer", "tags"):
+            t = r[k]
+            for bad, good in fixes.items():
+                t = t.replace(bad, good)
+            r[k] = t
+
     return rows
 
 OV_ITEMS: List[Dict[str, Any]] = load_json(OV_JSON, [])
 CMP_ITEMS: List[Dict[str, Any]] = load_json(CMP_JSON, [])
 FAQ_ITEMS: List[Dict[str, str]] = load_faq_csv(FAQ_CSV)
 
-# Contatori esposti (utili anche allo shim tecnaria_api.py)
+# Contatori esposti
 JSON_BAG = {
     "overviews": OV_ITEMS,
     "compare": CMP_ITEMS,
@@ -109,13 +134,13 @@ def _compare_html(famA: str, famB: str, ansA: str, ansB: str) -> str:
     )
 
 # -------------------------------------------------
-# Intent router principale (usato anche dallo shim)
+# Intent router
 # -------------------------------------------------
 def intent_route(q: str) -> Dict[str, Any]:
     ql = (q or "").lower().strip()
     lang = detect_lang(ql)
 
-    # 1) Confronti A vs B (se la query contiene due famiglie)
+    # 1) Confronti A vs B
     fams = list(FAM_TOKENS.keys())
     for a in fams:
         for b in fams:
@@ -149,12 +174,12 @@ def intent_route(q: str) -> Dict[str, Any]:
                     "html": html,
                 }
 
-    # 2) Famiglia singola più probabile
+    # 2) Famiglia singola
     scored = [(fam, _score_tokens(ql, toks)) for fam, toks in FAM_TOKENS.items()]
     scored.sort(key=lambda x: x[1], reverse=True)
     fam, s = scored[0]
     if s >= 0.2:
-        # 2a) FAQ dirette (matching semplice su question+tags)
+        # 2a) FAQ
         for r in FAQ_BY_LANG.get(lang, []):
             keys = (r["tags"] or "") + " " + r["question"]
             if _score_tokens(ql, re.split(r"[,\s;/\-]+", keys.lower())) >= 0.25:
@@ -163,7 +188,7 @@ def intent_route(q: str) -> Dict[str, Any]:
                     "family": fam, "intent": "faq", "source": "faq", "score": 88.0,
                     "text": r["answer"], "html": ""
                 }
-        # 2b) overview famiglia
+        # 2b) overview
         ov = _find_overview(fam)
         return {
             "ok": True, "match_id": f"OVERVIEW::{fam}", "lang": lang,
@@ -171,7 +196,7 @@ def intent_route(q: str) -> Dict[str, Any]:
             "text": ov, "html": ""
         }
 
-    # 3) Fallback totale
+    # 3) Fallback
     return {
         "ok": True, "match_id": "<NULL>", "lang": lang,
         "family": "", "intent": "fallback", "source": "fallback", "score": 0,
@@ -180,7 +205,7 @@ def intent_route(q: str) -> Dict[str, Any]:
     }
 
 # -------------------------------------------------
-# Endpoint di servizio (sempre disponibili)
+# Endpoint di servizio
 # -------------------------------------------------
 @app.get("/")
 def _root():
@@ -207,8 +232,7 @@ def _health():
         return {"ok": True}
 
 # -------------------------------------------------
-# (Opzionale) /api/ask locale — NON usata da Render se avvii tecnaria_api:app,
-# ma utile se avvii localmente `uvicorn app:app`
+# /api/ask locale (utile anche su Render)
 # -------------------------------------------------
 class AskIn(BaseModel):
     q: str
@@ -233,7 +257,7 @@ def api_ask_local(body: AskIn) -> AskOut:
     return AskOut(
         ok=True,
         match_id=str(routed.get("match_id") or "<NULL>"),
-        ms=ms,
+        ms=ms if ms > 0 else 1,
         text=str(routed.get("text") or ""),
         html=str(routed.get("html") or ""),
         lang=routed.get("lang"),
