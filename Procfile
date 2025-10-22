@@ -1,1 +1,2 @@
-web: gunicorn -w 1 -k gthread -b 0.0.0.0:$PORT app:app
+
+web: uvicorn tecnaria_api:app --host 0.0.0.0 --port $PORT
