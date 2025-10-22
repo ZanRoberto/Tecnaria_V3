@@ -1,53 +1,54 @@
-# tecnaria_api.py — ENTRYPOINT SHIM: avvia sempre l'API anche se app.py non espone 'app'
+# tecnaria_api.py — SHIM SEMPLICE: espone sempre /, /health, /api/ask (GET+POST)
 from importlib import import_module
 from typing import Any, Dict
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from pydantic import BaseModel
 import time
 
-mod = import_module("app")  # importa il tuo app.py (non serve che esponga 'app')
-_json_bag = getattr(mod, "JSON_BAG", {}) or {}
-_faq_rows = 0
-for cand in ("FAQ_ROWS", "FAQ_ITEMS", "FAQ"):
-    v = getattr(mod, cand, None)
-    if v is not None:
-        try:
-            _faq_rows = len(v)
-            break
-        except Exception:
-            pass
-_data_dir = getattr(mod, "DATA_DIR", None)
+# 1) App sicura
+app = FastAPI(title="Tecnaria_V3 (shim)")
 
-# 1) Usa 'app' se esiste ed è una FastAPI
-app: Any = getattr(mod, "app", None)
-if not isinstance(app, FastAPI):
-    app = FastAPI(title="Tecnaria_V3 (shim)")
+# 2) Importa il tuo app.py (se serve per intent_route e contatori)
+try:
+    mod = import_module("app")
+except Exception:
+    mod = None
 
-# 2) Root & health sempre disponibili
+JSON_BAG = {}
+FAQ_ROWS = 0
+DATA_DIR = None
+intent_route = None
+
+if mod:
+    JSON_BAG = getattr(mod, "JSON_BAG", {}) or {}
+    DATA_DIR = getattr(mod, "DATA_DIR", None)
+    # conta FAQ se presenti con vari nomi
+    for name in ("FAQ_ROWS", "FAQ_ITEMS", "FAQ"):
+        v = getattr(mod, name, None)
+        if v is not None:
+            try:
+                FAQ_ROWS = len(v)
+                break
+            except Exception:
+                pass
+    intent_route = getattr(mod, "intent_route", None)
+
+# 3) Root e health sempre disponibili
 @app.get("/")
 def _root():
-    try:
-        return {
-            "app": "Tecnaria_V3",
-            "status": "ok",
-            "data_dir": str(_data_dir) if _data_dir else None,
-            "json_loaded": list(_json_bag.keys()),
-            "faq_rows": _faq_rows,
-            "shim": True
-        }
-    except Exception:
-        return {"app": "Tecnaria_V3", "status": "ok", "shim": True}
+    return {
+        "app": "Tecnaria_V3 (online)",
+        "status": "ok",
+        "data_dir": str(DATA_DIR) if DATA_DIR else None,
+        "json_loaded": list(JSON_BAG.keys()),
+        "faq_rows": FAQ_ROWS
+    }
 
 @app.get("/health")
 def _health():
-    return {
-        "ok": True,
-        "json_loaded": list(_json_bag.keys()),
-        "faq_rows": _faq_rows,
-        "shim": True
-    }
+    return {"ok": True, "json_loaded": list(JSON_BAG.keys()), "faq_rows": FAQ_ROWS}
 
-# 3) /api/ask — se in app.py c'è 'intent_route', lo usiamo; altrimenti messaggio chiaro
+# 4) Modelli I/O per /api/ask
 class AskIn(BaseModel):
     q: str
 
@@ -63,35 +64,38 @@ class AskOut(BaseModel):
     source: str | None = "shim"
     score: float | int | None = None
 
-_intent_route = getattr(mod, "intent_route", None)
-
-@app.post("/api/ask", response_model=AskOut)
-def api_ask(body: AskIn) -> AskOut:
+def _answer(q: str) -> Dict[str, Any]:
     t0 = time.time()
-    if callable(_intent_route):
-        try:
-            routed: Dict[str, Any] = _intent_route(body.q or "")
-            ms = int((time.time() - t0) * 1000)
-            return AskOut(
-                ok=True,
-                match_id=str(routed.get("match_id") or routed.get("id") or "<NULL>"),
-                ms=ms,
-                text=str(routed.get("text") or ""),
-                html=str(routed.get("html") or ""),
-                lang=routed.get("lang"),
-                family=routed.get("family"),
-                intent=routed.get("intent"),
-                source=str(routed.get("source") or "shim"),
-                score=routed.get("score"),
-            )
-        except Exception as e:
-            ms = int((time.time() - t0) * 1000)
-            return AskOut(ok=False, match_id="<ERROR>", ms=ms, text=f"Shim error: {e}")
+    if callable(intent_route):
+        routed = intent_route(q or "")
+        ms = int((time.time() - t0) * 1000)
+        return {
+            "ok": True,
+            "match_id": str(routed.get("match_id") or routed.get("id") or "<NULL>"),
+            "ms": ms,
+            "text": str(routed.get("text") or ""),
+            "html": str(routed.get("html") or ""),
+            "lang": routed.get("lang"),
+            "family": routed.get("family"),
+            "intent": routed.get("intent"),
+            "source": str(routed.get("source") or "shim"),
+            "score": routed.get("score"),
+        }
     # fallback se manca intent_route
     ms = int((time.time() - t0) * 1000)
-    return AskOut(
-        ok=False,
-        match_id="<MISSING_INTENT_ROUTE>",
-        ms=ms,
-        text="In app.py non trovo 'intent_route(q)'. Aggiungilo o esporta 'app'."
-    )
+    return {
+        "ok": False,
+        "match_id": "<MISSING_INTENT_ROUTE>",
+        "ms": ms,
+        "text": "In app.py non trovo 'intent_route(q)'. Aggiungilo o usa il blocco router che ti ho dato.",
+        "html": ""
+    }
+
+# 5) /api/ask disponibile sia in POST che in GET (per test rapidi)
+@app.post("/api/ask", response_model=AskOut)
+def api_ask_post(body: AskIn):
+    return _answer(body.q)
+
+@app.get("/api/ask", response_model=AskOut)
+def api_ask_get(q: str = Query("", description="Query test veloce via GET")):
+    return _answer(q)
