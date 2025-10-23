@@ -129,7 +129,23 @@ FAM_TOKENS: Dict[str, List[str]] = {
     "CEM-E": ["ceme","cem-e","laterocemento","dry","secco","senza","resine","cappello","posa a secco"],
     "CTCEM": ["ctcem","laterocemento","dry","secco","senza","resine","cappa","malta"],
     "GTS": ["gts","manicotto","filettato","giunzioni","secco","threaded","sleeve","joint","barra"],
-    "P560": ["p560","chiodatrice","propulsori","hsbr14","nailer","powder","cartridges","tool","gerät","outil","herramienta","spit"],
+    "P560": [
+        # sigle / marchio / varianti
+        "p560","spit","spit p560","spit-p560",
+        # IT: utensile & concetti
+        "chiodatrice","pistola","utensile","attrezzatura","propulsori","propulsore",
+        "cartucce","cartuccia","gialle","verdi","rosse","dosaggio","regolazione potenza",
+        "chiodi","chiodo","hsbr14","hsbr 14","adattatore","kit adattatore",
+        "spari","sparo","colpo","tiro","sicura","marcatura","marcatura ce",
+        # EN: termini comuni
+        "powder","powder-actuated","powder actuated","pat","nailer","nailgun",
+        "cartridge","cartridges","mag","magazine","trigger","safety","tool",
+        # DE/FR/ES: sinonimi base
+        "gerät","nagler","werkzeug","outil","cloueur","outil à poudre","herramienta","clavos",
+        # contesto tipico di utilizzo
+        "acciaio","trave","lamiera","lamiera grecata","deck","beam","steel",
+        "supporto","supporti","spessori minimi","eta"
+    ],
 }
 
 # Conteggio hit con boost acronimo
