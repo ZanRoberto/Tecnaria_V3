@@ -1,25 +1,18 @@
-# app.py — Tecnaria_V3 con UI integrata e redirect dal root a /ui
+# app.py — Tecnaria_V3 (router fix + UI già pronta)
 
 from typing import List, Dict, Any
 from pathlib import Path
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, PlainTextResponse
+from fastapi import FastAPI, Response
 from pydantic import BaseModel
 import time, re, csv, json
 
-# -------------------------------------------------
-# FastAPI
-# -------------------------------------------------
 app = FastAPI(title="Tecnaria_V3")
 
-# -------------------------------------------------
-# Dati (cartella: static/data)
-# -------------------------------------------------
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "static" / "data"
-OV_JSON = DATA_DIR / "tecnaria_overviews.json"   # panoramiche famiglie
-CMP_JSON = DATA_DIR / "tecnaria_compare.json"    # confronti A vs B
-FAQ_CSV = DATA_DIR / "faq.csv"                   # domande/risposte brevi multi-lingua
+OV_JSON = DATA_DIR / "tecnaria_overviews.json"
+CMP_JSON = DATA_DIR / "tecnaria_compare.json"
+FAQ_CSV = DATA_DIR / "faq.csv"
 
 def load_json(path: Path, fallback: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     try:
@@ -32,7 +25,6 @@ def load_json(path: Path, fallback: List[Dict[str, Any]] = None) -> List[Dict[st
         pass
     return fallback or []
 
-# === CSV robusto (UTF-8/CP1252 + fix mojibake) ===
 def load_faq_csv(path: Path) -> List[Dict[str, str]]:
     rows: List[Dict[str, str]] = []
     if not path.exists():
@@ -51,14 +43,13 @@ def load_faq_csv(path: Path) -> List[Dict[str, str]]:
                 })
 
     try:
-        _read("utf-8-sig")      # preferito (gestisce anche BOM)
+        _read("utf-8-sig")
     except Exception:
         try:
-            _read("cp1252")     # fallback per file salvati in Windows
+            _read("cp1252")
         except Exception:
             return rows
 
-    # normalizza artefatti comuni
     fixes = {
         "â€™": "’", "â€œ": "“", "â€\x9d": "”", "â€“": "–", "â€”": "—",
         "Ã ": "à", "Ã¨": "è", "Ã©": "é", "Ã¬": "ì", "Ã²": "ò", "Ã¹": "ù",
@@ -77,42 +68,36 @@ OV_ITEMS: List[Dict[str, Any]] = load_json(OV_JSON, [])
 CMP_ITEMS: List[Dict[str, Any]] = load_json(CMP_JSON, [])
 FAQ_ITEMS: List[Dict[str, str]] = load_faq_csv(FAQ_CSV)
 
-JSON_BAG = {
-    "overviews": OV_ITEMS,
-    "compare": CMP_ITEMS,
-    "faq": FAQ_ITEMS,
-}
+JSON_BAG = {"overviews": OV_ITEMS, "compare": CMP_ITEMS, "faq": FAQ_ITEMS}
 FAQ_ROWS = len(FAQ_ITEMS)
 
-# -------------------------------------------------
-# Indici + euristiche
-# -------------------------------------------------
 FAQ_BY_LANG: Dict[str, List[Dict[str, str]]] = {}
 for r in FAQ_ITEMS:
     FAQ_BY_LANG.setdefault(r["lang"], []).append(r)
 
 def detect_lang(q: str) -> str:
     s = (q or "").lower()
-    if any(w in s for w in [" the ", " what ", " how ", " can ", " shall ", " should "]): return "en"
+    if any(w in s for w in [" the ", " what ", " how ", " can ", " shall ", " should ", "hardwood", "predrill"]): return "en"
     if any(w in s for w in [" el ", " los ", " las ", "¿", "qué", "como", "cómo"]): return "es"
     if any(w in s for w in [" le ", " la ", " les ", " quelle", " comment"]): return "fr"
     if any(w in s for w in [" der ", " die ", " das ", " wie ", " was "]): return "de"
     return "it"
 
-# Token famiglie
+# === Tokens (estesi) ===
 FAM_TOKENS: Dict[str, List[str]] = {
-    "CTF":   ["ctf","lamiera","p560","hsbr14","trave","chiodatrice","sparo"],
-    "CTL":   ["ctl","soletta","calcestruzzo","collaborazione","legno"],
-    "VCEM":  ["vcem","preforo","vite","legno","essenze","durezza","hardwood","predrill","pre-drill","pilot","70","80"],
-    "CEM-E": ["ceme","laterocemento","secco","senza resine","cappello","resin-free","dry"],
-    "CTCEM": ["ctcem","laterocemento","secco","senza resine","cappa"],
-    "GTS":   ["gts","manicotto","filettato","giunzioni","secco","threaded"],
-    "P560":  ["p560","chiodatrice","propulsori","hsbr14","nailer","tool"],
+    "CTF":   ["ctf","lamiera","p560","hsbr14","trave","chiodatrice","sparo","grecata","grecate"],
+    "CTL":   ["ctl","soletta","calcestruzzo","collaborazione","legno","topping","timber"],
+    "VCEM":  ["vcem","preforo","vite","legno","essenze","durezza","hardwood","predrill","pilot"],
+    "CEM-E": ["cem-e","ceme","laterocemento","secco","senza resine","resin-free"],
+    "CTCEM": ["ctcem","ct-cem","laterocemento","secco","senza resine"],
+    "GTS":   ["gts","manicotto","filettato","giunzioni","secco","sleeve","threaded"],
+    "P560":  ["p560","chiodatrice","propulsori","hsbr14","nailer","cartridges","cartucce","attrezzatura","tool"],
 }
 
+# === Helper: punteggio tokens ===
 def _score_tokens(text: str, tokens: List[str]) -> float:
     t = (" " + (text or "").lower() + " ")
-    hits = sum(1 for tok in tokens if tok in t)
+    hits = sum(1 for tok in tokens if tok and tok in t)
     return hits / max(1, len(tokens))
 
 def _find_overview(fam: str) -> str:
@@ -133,20 +118,35 @@ def _compare_html(famA: str, famB: str, ansA: str, ansB: str) -> str:
         "</div></div>"
     )
 
-# -------------------------------------------------
-# Intent router
-# -------------------------------------------------
+# === Intent router (fix: boost letterali + FAQ matcher più “morbido”) ===
 def intent_route(q: str) -> Dict[str, Any]:
     ql = (q or "").lower().strip()
     lang = detect_lang(ql)
 
-    # — regola esplicita: domanda EN su VCEM/hardwoods -> FAQ::VCEM
-    if "vcem" in ql and any(k in ql for k in ["hardwood","hardwoods","predrill","pre-drill","pilot","70","80"]):
-        # trova la prima FAQ VCEM in EN, altrimenti usa qualsiasi VCEM
-        for r in FAQ_BY_LANG.get("en", []):
-            if "vcem" in (r.get("tags","") + " " + r.get("question","")).lower():
-                return {"ok": True,"match_id": r.get("id") or "FAQ::VCEM","lang":"en","family":"VCEM","intent":"faq",
-                        "source":"faq","score": 90.0,"text": r.get("answer",""),"html": ""}
+    # 0) scorciatoie letterali (vincono sempre)
+    literals = {
+        "p560": "P560", " gts": "GTS", "gts ": "GTS", " gts?": "GTS",
+        "cem-e": "CEM-E", "ctcem": "CTCEM", "ctf": "CTF", "ctl": "CTL", "vcem": "VCEM"
+    }
+    for needle, fam_hit in literals.items():
+        if needle in (" " + ql + " "):
+            fam = fam_hit
+            # prova FAQ diretta con soglia morbida
+            for r in FAQ_BY_LANG.get(lang, []):
+                keys = f"{r['tags']} {r['question']} {r['answer'][:200]}".lower()
+                if _score_tokens(ql, re.split(r"[,\s;/\-]+", keys)) >= 0.15:
+                    return {
+                        "ok": True, "match_id": r["id"] or f"FAQ::{fam}", "lang": lang,
+                        "family": fam, "intent": "faq", "source": "faq", "score": 90.0,
+                        "text": r["answer"], "html": ""
+                    }
+            # se non trova FAQ, rimanda a overview della famiglia
+            ov = _find_overview(fam)
+            return {
+                "ok": True, "match_id": f"OVERVIEW::{fam}", "lang": lang,
+                "family": fam, "intent": "overview", "source": "overview", "score": 80.0,
+                "text": ov, "html": ""
+            }
 
     # 1) Confronti A vs B
     fams = list(FAM_TOKENS.keys())
@@ -182,24 +182,35 @@ def intent_route(q: str) -> Dict[str, Any]:
                     "html": html,
                 }
 
-    # 2) Famiglia singola (faq -> overview)
+    # 2) Famiglia singola via punteggio
     scored = [(fam, _score_tokens(ql, toks)) for fam, toks in FAM_TOKENS.items()]
     scored.sort(key=lambda x: x[1], reverse=True)
     fam, s = scored[0]
-    if s >= 0.2:
+    if s >= 0.20:
+        # 2a) FAQ — soglia più permissiva e chiavi più ricche
         for r in FAQ_BY_LANG.get(lang, []):
-            keys = (r["tags"] or "") + " " + r["question"]
-            if _score_tokens(ql, re.split(r"[,\s;/\-]+", keys.lower())) >= 0.25:
+            keys = f"{r['tags']} {r['question']} {r['answer'][:200]}".lower()
+            if _score_tokens(ql, re.split(r"[,\s;/\-]+", keys)) >= 0.15:
                 return {
                     "ok": True, "match_id": r["id"] or f"FAQ::{fam}", "lang": lang,
                     "family": fam, "intent": "faq", "source": "faq", "score": 88.0,
                     "text": r["answer"], "html": ""
                 }
+        # 2b) overview
         ov = _find_overview(fam)
         return {
             "ok": True, "match_id": f"OVERVIEW::{fam}", "lang": lang,
             "family": fam, "intent": "overview", "source": "overview", "score": 75.0,
             "text": ov, "html": ""
+        }
+
+    # 2c) caso speciale EN VCEM hardwoods → FAQ::VCEM
+    if "vcem" in ql and any(k in ql for k in ["hardwood", "hardwoods", "predrill", "pre-drill", "pilot", "70", "80"]):
+        return {
+            "ok": True, "match_id": "FAQ::VCEM", "lang": "en",
+            "family": "VCEM", "intent": "faq", "source": "faq", "score": 90.0,
+            "text": next((r["answer"] for r in FAQ_BY_LANG.get("en", []) if "vcem" in (r["tags"]+" "+r["question"]).lower()), ""),
+            "html": ""
         }
 
     # 3) Fallback
@@ -210,13 +221,13 @@ def intent_route(q: str) -> Dict[str, Any]:
         "html": ""
     }
 
-# -------------------------------------------------
-# Endpoint di servizio (root -> redirect a /ui)
-# -------------------------------------------------
-@app.get("/", response_class=HTMLResponse)
+# --- Endpoint servizio ---
+@app.get("/")
 def _root():
-    # se vuoi lasciare il JSON diagnostico, commenta la riga sotto e riporta il JSON
-    return RedirectResponse(url="/ui", status_code=302)
+    try:
+        return {"app": "Tecnaria_V3 (online)", "status": "ok", "data_dir": str(DATA_DIR), "json_loaded": list(JSON_BAG.keys()), "faq_rows": FAQ_ROWS}
+    except Exception:
+        return {"app": "Tecnaria_V3 (online)", "status": "ok"}
 
 @app.get("/health")
 def _health():
@@ -225,20 +236,7 @@ def _health():
     except Exception:
         return {"ok": True}
 
-# comodo per capire cosa c'è registrato
-@app.get("/__routes")
-def __routes():
-    routes = []
-    for r in app.router.routes:
-        try:
-            routes.append({"path": r.path, "name": getattr(r, "name", None), "methods": list(r.methods or [])})
-        except Exception:
-            pass
-    return JSONResponse(routes)
-
-# -------------------------------------------------
-# /api/ask
-# -------------------------------------------------
+# --- /api/ask ---
 class AskIn(BaseModel):
     q: str
 
@@ -272,113 +270,85 @@ def api_ask_local(body: AskIn) -> AskOut:
         score=routed.get("score"),
     )
 
-# -------------------------------------------------
-# UI (HTML singola pagina)
-# -------------------------------------------------
-@app.get("/ui", response_class=HTMLResponse)
-def ui():
-    html = """
-<!doctype html>
+# --- UI minimale già inclusa (/ui) ---
+_UI_HTML = """<!doctype html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tecnaria • Q&A</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tecnaria V3 — QA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet"/>
 <style>
-:root{
-  --bg:#0b0f15; --card:#121826; --muted:#99a3b3; --text:#e9eef7;
-  --accent:#ff7a00; --accent2:#fb4d3d; --ok:#19c37d;
-}
-*{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#0b0f15,#0e1422 60%,#0b0f15);
-font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--text);}
-.container{max-width:980px;margin:40px auto;padding:0 16px;}
-.header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));}
-.title h1{font-size:20px;margin:0} .title small{color:var(--muted)}
-.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);backdrop-filter: blur(6px);
-border-radius:16px;padding:16px;box-shadow:0 8px 30px rgba(0,0,0,.35);}
+:root{--bg:#0b0f14;--panel:#111827;--ink:#e5e7eb;--muted:#9ca3af;--acc:#f59e0b;--ok:#10b981}
+*{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#0b0f14,#141a22);color:var(--ink);font-family:Inter,system-ui,sans-serif}
+.wrap{max-width:980px;margin:40px auto;padding:0 16px}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.badge{background:#0f172a;border:1px solid #1f2937;color:#93c5fd;padding:6px 10px;border-radius:999px;font-size:12px}
+.panel{background:var(--panel);border:1px solid #1f2937;border-radius:16px;padding:16px}
 .row{display:flex;gap:12px;flex-wrap:wrap}
-.input{flex:1;min-width:220px;background:#0f1524;border:1px solid #1f2a44;border-radius:12px;padding:12px 14px;color:var(--text)}
-.btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;border:none;border-radius:12px;padding:12px 18px;font-weight:600;cursor:pointer}
-.btn:disabled{opacity:.6;cursor:not-allowed}
-.meta{display:flex;gap:12px;color:var(--muted);font-size:12px;margin-top:10px;flex-wrap:wrap}
-.badge{background:#0f1524;border:1px solid #1f2a44;border-radius:999px;padding:6px 10px;color:#d6deeb}
-.answer{margin-top:16px;background:#0f1422;border:1px solid #1c253f;border-radius:12px;padding:14px}
-.answer h3{margin:0 0 8px 0;font-size:14px;color:#c0cadb}
-pre{white-space:pre-wrap;word-wrap:break-word;}
-.footer{margin-top:26px;color:var(--muted);font-size:12px;text-align:center}
-@media (max-width:640px){ .input{width:100%} .row{flex-direction:column} }
+.inp{flex:1;min-width:220px;background:#0b1220;border:1px solid #23304a;border-radius:12px;padding:14px 14px;color:var(--ink);outline:none}
+.btn{background:linear-gradient(90deg,#f59e0b,#ef4444);border:none;color:#111827;font-weight:700;border-radius:12px;padding:14px 18px;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.out{margin-top:16px;font-size:14px;white-space:pre-wrap}
+.small{color:var(--muted);font-size:12px;margin-top:8px}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;margin-top:10px}
+.kv b{color:#cbd5e1}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;background:#0b1220;border:1px dashed #334155;border-radius:8px;padding:10px;overflow:auto}
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <div class="logo"></div>
-    <div class="title">
-      <h1>Tecnaria • Q&A</h1>
-      <small>Interfaccia rapida su /api/ask – dati: compare/faq/overviews</small>
-    </div>
+<div class="wrap">
+  <div class="head">
+    <h1 style="margin:0;font-size:20px">Tecnaria V3 — QA</h1>
+    <span class="badge">online</span>
   </div>
-
-  <div class="card">
+  <div class="panel">
     <div class="row">
-      <input id="q" class="input" placeholder="Scrivi la domanda… es: Differenza tra CTF e CTL?">
+      <input id="q" class="inp" placeholder="Scrivi una domanda… es. 'P560: è un connettore o un'attrezzatura?'"/>
       <button id="go" class="btn">Chiedi</button>
     </div>
-    <div class="meta">
-      <span class="badge" id="status">Pronto</span>
-      <span class="badge" id="timing"></span>
-      <span class="badge" id="match"></span>
-    </div>
-    <div class="answer" id="answer" style="display:none">
-      <h3>Risposta</h3>
-      <div id="html"></div>
-      <pre id="text"></pre>
-      <div class="meta" id="meta2"></div>
-    </div>
+    <div class="small">Endpoint: <code>/api/ask</code>. Rende <code>match_id, intent, family, text/html</code>.</div>
+    <div id="out" class="out"></div>
   </div>
-
-  <div class="footer">© Tecnaria • demo UI</div>
 </div>
-
 <script>
-async function ask(q){
-  const t0 = performance.now();
-  const r = await fetch("/api/ask", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ q })
-  });
-  const data = await r.json();
-  const ms = Math.max(1, Math.round(performance.now()-t0));
-  return {data, ms};
-}
-
-const $ = (s)=>document.querySelector(s);
-$("#go").addEventListener("click", async ()=>{
-  const q = $("#q").value.trim();
-  if(!q) return;
-  $("#go").disabled = true; $("#status").textContent = "In corso…";
-  try{
-    const {data, ms} = await ask(q);
-    $("#status").textContent = data.ok ? "OK" : "Errore";
-    $("#timing").textContent = `~${ms} ms`;
-    $("#match").textContent = data.match_id || "<NULL>";
-    $("#answer").style.display = "block";
-    $("#html").innerHTML = data.html || "";
-    $("#text").textContent = data.text || "";
-    $("#meta2").textContent = `intent=${data.intent || ""} • family=${data.family || ""} • lang=${data.lang || ""} • score=${data.score ?? ""}`;
-  }catch(e){
-    $("#status").textContent = "Errore";
-    $("#answer").style.display = "block";
-    $("#text").textContent = String(e);
-  }finally{
-    $("#go").disabled = false;
+const q = document.getElementById('q');
+const go = document.getElementById('go');
+const out = document.getElementById('out');
+async function ask() {
+  const val = q.value.trim();
+  if (!val) return;
+  go.disabled = true; out.innerHTML = '…';
+  try {
+    const r = await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q:val})});
+    const j = await r.json();
+    out.innerHTML = `
+      <div class="kv">
+        <b>ok</b><span>${j.ok}</span>
+        <b>match_id</b><span>${j.match_id||''}</span>
+        <b>intent</b><span>${j.intent||''}</span>
+        <b>family</b><span>${j.family||''}</span>
+        <b>lang</b><span>${j.lang||''}</span>
+        <b>ms</b><span>${j.ms}</span>
+      </div>
+      ${j.text?`<div class="code" style="margin-top:10px">${j.text}</div>`:''}
+      ${j.html?`<div style="margin-top:10px">${j.html}</div>`:''}
+    `;
+  } catch(e){
+    out.textContent = 'Errore: '+e;
+  } finally {
+    go.disabled = false;
   }
-});
-document.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ $("#go").click(); }});
+}
+go.addEventListener('click', ask);
+q.addEventListener('keydown', e=>{ if(e.key==='Enter') ask(); });
 </script>
 </body>
 </html>
-    """
-    return HTMLResponse(content=html, status_code=200)
+"""
+
+@app.get("/ui")
+def ui():
+    return Response(content=_UI_HTML, media_type="text/html")
