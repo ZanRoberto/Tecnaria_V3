@@ -1,9 +1,10 @@
-# app.py — Tecnaria_V3 (Render-ready, UI inclusa)
+# app.py — Tecnaria_V3 con UI web (/ui) pronta per Render
 
 from typing import List, Dict, Any
 from pathlib import Path
-from fastapi import FastAPI, Query
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import time, re, csv, json
 
@@ -11,6 +12,14 @@ import time, re, csv, json
 # FastAPI
 # -------------------------------------------------
 app = FastAPI(title="Tecnaria_V3")
+
+# CORS (aperto per semplicità; restringi se vuoi)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # -------------------------------------------------
 # Dati (cartella: static/data)
@@ -94,21 +103,21 @@ for r in FAQ_ITEMS:
 
 def detect_lang(q: str) -> str:
     s = (q or "").lower()
-    if any(w in s for w in [" the ", " what ", " how ", " can ", " shall ", " should ", " is "]): return "en"
-    if any(w in s for w in [" el ", " los ", " las ", "¿", "qué", "como", "cómo", " es "]): return "es"
-    if any(w in s for w in [" le ", " la ", " les ", " quelle", " comment", " est "]): return "fr"
-    if any(w in s for w in [" der ", " die ", " das ", " wie ", " was ", " ist "]): return "de"
+    if any(w in s for w in [" the ", " what ", " how ", " can ", " shall ", " should "]): return "en"
+    if any(w in s for w in [" el ", " los ", " las ", "¿", "qué", "como", "cómo"]): return "es"
+    if any(w in s for w in [" le ", " la ", " les ", " quelle", " comment"]): return "fr"
+    if any(w in s for w in [" der ", " die ", " das ", " wie ", " was "]): return "de"
     return "it"
 
-# Token famiglie (no “traliccio” — NON Tecnaria)
+# Token famiglie (senza “traliccio/tralicciati” — NON Tecnaria)
 FAM_TOKENS: Dict[str, List[str]] = {
     "CTF":   ["ctf","lamiera","p560","hsbr14","trave","chiodatrice","sparo"],
     "CTL":   ["ctl","soletta","calcestruzzo","collaborazione","legno"],
     "VCEM":  ["vcem","preforo","vite","legno","essenze","durezza","hardwood","predrill","pilot","70","80"],
     "CEM-E": ["ceme","laterocemento","secco","senza resine","cappello"],
     "CTCEM": ["ctcem","laterocemento","secco","senza resine","cappa"],
-    "GTS":   ["gts","manicotto","filettato","giunzioni","secco","sleeve","thread"],
-    "P560":  ["p560","chiodatrice","propulsori","hsbr14","nailer","cartridges"],
+    "GTS":   ["gts","manicotto","filettato","giunzioni","secco","sleeve","threaded"],
+    "P560":  ["p560","chiodatrice","propulsori","hsbr14","nailer"],
 }
 
 def _score_tokens(text: str, tokens: List[str]) -> float:
@@ -189,7 +198,7 @@ def intent_route(q: str) -> Dict[str, Any]:
                     "family": fam, "intent": "faq", "source": "faq", "score": 88.0,
                     "text": r["answer"], "html": ""
                 }
-        # 2b) overview fallback
+        # 2b) overview
         ov = _find_overview(fam)
         return {
             "ok": True, "match_id": f"OVERVIEW::{fam}", "lang": lang,
@@ -233,7 +242,7 @@ def _health():
         return {"ok": True}
 
 # -------------------------------------------------
-# /api/ask locale (GET + POST)
+# /api/ask (locale)
 # -------------------------------------------------
 class AskIn(BaseModel):
     q: str
@@ -251,272 +260,161 @@ class AskOut(BaseModel):
     score: float | int | None = None
 
 @app.post("/api/ask", response_model=AskOut)
-def api_ask_post(body: AskIn) -> AskOut:
+def api_ask_local(body: AskIn) -> AskOut:
     t0 = time.time()
     routed = intent_route(body.q or "")
     ms = int((time.time() - t0) * 1000)
     return AskOut(
-        ok=True, match_id=str(routed.get("match_id") or "<NULL>"),
+        ok=True,
+        match_id=str(routed.get("match_id") or "<NULL>"),
         ms=ms if ms > 0 else 1,
-        text=str(routed.get("text") or ""), html=str(routed.get("html") or ""),
-        lang=routed.get("lang"), family=routed.get("family"),
-        intent=routed.get("intent"), source=routed.get("source"),
-        score=routed.get("score"),
-    )
-
-@app.get("/api/ask", response_model=AskOut)
-def api_ask_get(q: str = Query(default="")) -> AskOut:
-    t0 = time.time()
-    routed = intent_route(q or "")
-    ms = int((time.time() - t0) * 1000)
-    return AskOut(
-        ok=True, match_id=str(routed.get("match_id") or "<NULL>"),
-        ms=ms if ms > 0 else 1,
-        text=str(routed.get("text") or ""), html=str(routed.get("html") or ""),
-        lang=routed.get("lang"), family=routed.get("family"),
-        intent=routed.get("intent"), source=routed.get("source"),
+        text=str(routed.get("text") or ""),
+        html=str(routed.get("html") or ""),
+        lang=routed.get("lang"),
+        family=routed.get("family"),
+        intent=routed.get("intent"),
+        source=routed.get("source"),
         score=routed.get("score"),
     )
 
 # -------------------------------------------------
-# Interfaccia Web /ui (responsive + microfono opzionale)
+# UI Web (responsive) su /ui
 # -------------------------------------------------
-@app.get("/ui", response_class=HTMLResponse)
-def ui_page():
-    return """
-<!doctype html>
+UI_HTML = r"""<!doctype html>
 <html lang="it">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Tecnaria · Q&A</title>
-<style>
-  :root{
-    --bg:#0b0b0c; --panel:#121214; --muted:#1b1c20;
-    --brand:#FF6A00; --brand-2:#ffa149;
-    --text:#f6f7f9; --text-dim:#b9bdc7;
-    --ok:#18c37e; --radius:18px; --shadow:0 10px 30px rgba(0,0,0,.35);
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;
-    background: radial-gradient(1200px 1200px at 120% -10%, rgba(255,106,0,.16), transparent 60%) , var(--bg);
-    color:var(--text);
-    font: 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-    display:flex; flex-direction:column; gap:22px;
-  }
-  header{
-    position:sticky; top:0; z-index:10; backdrop-filter: blur(6px);
-    background: linear-gradient(180deg, rgba(11,11,12,.85), rgba(11,11,12,.55) 70%, transparent);
-    border-bottom:1px solid rgba(255,255,255,.06);
-  }
-  .wrap{max-width:1100px; margin:0 auto; padding:18px 18px 8px}
-  .brand{display:flex; align-items:center; gap:12px}
-  .dot{width:12px; height:12px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 4px rgba(24,195,126,.15)}
-  h1{margin:0; font-size:1.05rem; letter-spacing:.3px; font-weight:650}
-  main{max-width:1100px; margin:0 auto; padding:0 18px 24px}
-  .card{
-    background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
-    border:1px solid rgba(255,255,255,.06); border-radius: var(--radius);
-    box-shadow: var(--shadow);
-  }
-  .bar{display:flex; gap:10px; padding:12px; border-bottom:1px solid rgba(255,255,255,.06)}
-  .pill{
-    background: linear-gradient(135deg, var(--brand), var(--brand-2));
-    color:#111; font-weight:700; border:none; border-radius: 999px;
-    padding:10px 16px; cursor:pointer; transition: transform .06s ease;
-  }
-  .pill:active{ transform: scale(.98) }
-  .ghost{ background:transparent; color:var(--text); border:1px solid rgba(255,255,255,.12)}
-  .ghost:hover{ border-color: rgba(255,255,255,.22)}
-  .io{ display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; padding:16px; }
-  @media (max-width: 900px){ .io{ grid-template-columns: 1fr } }
-  .pane{padding:14px; border:1px solid rgba(255,255,255,.06); border-radius:calc(var(--radius) - 6px); background:var(--panel)}
-  .pane h3{ margin:0 0 10px; font-size:.95rem; color:var(--text-dim); font-weight:600; letter-spacing:.2px}
-  textarea{
-    width:100%; min-height:110px; resize:vertical; border-radius:12px; border:1px solid rgba(255,255,255,.12);
-    background:var(--muted); color:var(--text); padding:12px 44px 12px 12px; outline:none;
-  }
-  .out{ min-height:140px; white-space:pre-wrap }
-  .meta{ font: 12px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono"; color:var(--text-dim)}
-  .status{ display:flex; gap:10px; align-items:center; padding:10px 12px; border-top:1px dashed rgba(255,255,255,.08)}
-  .kbd{ font: 12px/1.2 ui-monospace; background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; border:1px solid rgba(255,255,255,.12) }
-  .tag{ display:inline-block; font-size:11px; padding:3px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.16); margin-right:6px; color:var(--text-dim)}
-  .actions{ display:flex; gap:10px; justify-content:flex-end; padding:0 12px 12px}
-  .btn{ background:linear-gradient(135deg, var(--brand), var(--brand-2)); color:#111; font-weight:800; border:none; padding:10px 16px; border-radius:12px; cursor:pointer}
-  .btn.sec{ background:transparent; color:var(--text); border:1px solid rgba(255,255,255,.16)}
-  .mic{
-    position:absolute; right:16px; bottom:16px; width:38px; height:38px; border-radius:50%;
-    display:grid; place-items:center; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); cursor:pointer;
-  }
-  .mic.on{ outline: 3px solid rgba(255,106,0,.35); background:rgba(255,106,0,.2); border-color:rgba(255,106,0,.6) }
-  a{color:var(--brand-2); text-decoration:none}
-  .small{font-size:.9rem; color:var(--text-dim)}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tecnaria · Assistant</title>
+  <style>
+    :root{
+      --bg:#0d0d0f; --card:#141418; --muted:#8a8ea3; --text:#f4f6ff;
+      --brand:#ff6a00; --brand-2:#ffa000; --ok:#32d583; --err:#ff4d4f;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#0b0b0d 0%,#111218 100%);color:var(--text);font:16px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    .wrap{max-width:980px;margin:32px auto;padding:0 16px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .logo{display:flex;gap:10px;align-items:center}
+    .dot{width:10px;height:10px;border-radius:50%;background:var(--brand);box-shadow:0 0 16px var(--brand)}
+    .title{font-size:20px;font-weight:700;letter-spacing:.4px}
+    .chip{font-size:12px;color:#101114;background:linear-gradient(90deg,var(--brand),var(--brand-2));padding:4px 10px;border-radius:999px;font-weight:700}
+    .card{background:rgba(255,255,255,.04);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.08);
+      border-radius:16px; padding:16px}
+    .row{display:flex;gap:12px}
+    .row.stack{flex-direction:column}
+    @media (max-width:700px){ .row{flex-direction:column} }
+    input[type=text]{flex:1;border:1px solid rgba(255,255,255,.12);background:#0f1117;color:var(--text);
+      padding:14px 14px;border-radius:12px;outline:none}
+    button{border:0;border-radius:12px;padding:14px 16px;font-weight:700;cursor:pointer}
+    .primary{background:linear-gradient(90deg,var(--brand),var(--brand-2));color:#101114}
+    .ghost{background:#0f1117;color:var(--muted);border:1px solid rgba(255,255,255,.08)}
+    .status{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px;margin:8px 0 16px}
+    .pill{padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12);color:var(--muted);font-size:12px}
+    .out{min-height:160px}
+    .msg{border-left:3px solid var(--brand);padding-left:12px}
+    .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .meta .kv{padding:4px 8px;border-radius:8px;background:#0f1117;border:1px solid rgba(255,255,255,.08);font-size:12px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+    @media (max-width:700px){ .grid{grid-template-columns:1fr} }
+    .sample{border:1px dashed rgba(255,255,255,.15);border-radius:12px;padding:10px;cursor:pointer;color:var(--muted)}
+    a{color:inherit}
+    .footer{margin-top:14px;color:var(--muted);font-size:12px;text-align:right}
+  </style>
 </head>
 <body>
-  <header>
-    <div class="wrap">
-      <div class="brand">
+  <div class="wrap">
+    <header>
+      <div class="logo">
         <div class="dot"></div>
-        <h1>Tecnaria · Q&A</h1>
+        <div class="title">Tecnaria · Assistant</div>
       </div>
-    </div>
-  </header>
+      <div class="chip">LIVE</div>
+    </header>
 
-  <main>
     <div class="card">
-      <div class="bar">
-        <button id="btnGet" class="pill ghost" title="GET /api/ask?q=...">GET</button>
-        <button id="btnPost" class="pill" title="POST /api/ask">POST</button>
-        <div style="flex:1"></div>
-        <span class="small">Microfono: <span id="micState" class="tag">spento</span></span>
+      <div class="status">
+        <div class="pill" id="health-pill">checking…</div>
+        <div id="health-info"></div>
       </div>
 
-      <div class="io">
-        <!-- INPUT -->
-        <div class="pane">
-          <h3>Domanda</h3>
-          <div style="position:relative">
-            <textarea id="q" placeholder="Es. Differenza tra CTF e CTL?"></textarea>
-            <button id="mic" class="mic" title="Dettatura vocale (opzionale)">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v4a3 3 0 0 0 3 3Z" stroke="currentColor" stroke-width="1.8"/>
-                <path d="M19 11a7 7 0 0 1-14 0M12 18v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </div>
-
-          <div class="actions">
-            <button id="example1" class="btn sec">Esempio: CTF vs CTL</button>
-            <button id="example2" class="btn sec">Esempio: VCEM preforo</button>
-            <button id="go" class="btn">Chiedi</button>
-          </div>
-        </div>
-
-        <!-- OUTPUT -->
-        <div class="pane">
-          <h3>Risposta Tecnaria</h3>
-          <div id="out" class="out"></div>
-          <div id="html" class="out"></div>
-          <div class="status">
-            <span class="meta">match_id: <span id="mid">—</span></span>
-            <span class="meta" style="margin-left:10px">famiglia: <span id="fam">—</span></span>
-            <span class="meta" style="margin-left:10px">intent: <span id="int">—</span></span>
-            <div style="flex:1"></div>
-            <span class="meta"><span id="ms">0</span> ms</span>
-          </div>
-        </div>
+      <div class="row">
+        <input id="q" type="text" placeholder="Scrivi una domanda (es. ‘Differenza tra CTF e CTL?’)" />
+        <button class="ghost" id="micBtn" title="microfono (opzionale/placeholder)">🎤</button>
+        <button class="primary" id="sendBtn">Chiedi</button>
       </div>
+
+      <div class="grid">
+        <div class="sample" data-q="Differenza tra CTF e CTL?">Differenza tra CTF e CTL?</div>
+        <div class="sample" data-q="P560: è un connettore o un'attrezzatura?">P560: connettore o attrezzatura?</div>
+        <div class="sample" data-q="VCEM su essenze dure: serve preforo 70–80%?">VCEM su essenze dure</div>
+      </div>
+
+      <div class="out" id="out" style="margin-top:14px"></div>
+      <div class="footer">UI v1 · arancio/nero · responsive</div>
     </div>
-
-    <p class="small" style="margin-top:10px">
-      Suggerimenti: prova <span class="kbd">Differenza tra CTF e CTL?</span>,
-      <span class="kbd">P560: è un connettore o un'attrezzatura?</span>,
-      <span class="kbd">VCEM su essenze dure: serve preforo?</span>
-      • API docs: <a href="/health">/health</a>, <a href="/api/ask">/api/ask</a>
-    </p>
-  </main>
+  </div>
 
 <script>
-(() => {
-  const base = location.origin; // stesso dominio (Render)
-  const $ = sel => document.querySelector(sel);
-  const q = $("#q"), out = $("#out"), html = $("#html");
-  const mid = $("#mid"), fam = $("#fam"), intn = $("#int"), ms = $("#ms");
-  const btnGet = $("#btnGet"), btnPost = $("#btnPost"), go = $("#go");
-  const example1 = $("#example1"), example2 = $("#example2");
-  const micBtn = $("#mic"), micState = $("#micState");
+const BASE = location.origin; // stesso dominio Render
+const $ = (s)=>document.querySelector(s);
+const out = $("#out");
+const qEl = $("#q");
 
-  // ------- MICROFONO (opzionale) -------
-  let rec = null, recOn = false;
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-
-  function micSupported(){
-    return !!SR && (location.protocol === "https:" || location.hostname === "localhost");
+// health ping
+(async ()=>{
+  try{
+    const r = await fetch(BASE + "/health");
+    const j = await r.json();
+    $("#health-pill").textContent = j.ok ? "OK" : "KO";
+    $("#health-pill").style.borderColor = j.ok ? "rgba(50,213,131,.5)" : "rgba(255,77,79,.5)";
+    $("#health-info").textContent = `json: ${ (j.json_loaded||[]).join(", ") } • faq: ${ j.faq_rows ?? 0 }`;
+  }catch(e){
+    $("#health-pill").textContent = "KO";
+    $("#health-info").textContent = "server non raggiungibile";
   }
-  function toggleMic(){
-    if(!micSupported()){
-      alert("Il microfono richiede un browser compatibile e HTTPS.");
-      return;
-    }
-    if(recOn){ rec.stop(); return; }
-    rec = new SR();
-    const lang = guessLang(q.value);
-    rec.lang = (lang === "en" ? "en-US" :
-                lang === "fr" ? "fr-FR" :
-                lang === "es" ? "es-ES" :
-                lang === "de" ? "de-DE" : "it-IT");
-    rec.interimResults = true; rec.continuous = false;
-    rec.onstart = () => setMic(true);
-    rec.onerror = () => setMic(false);
-    rec.onend = () => setMic(false);
-    rec.onresult = (e) => {
-      let final = "";
-      for (let i = e.resultIndex; i < e.results.length; i++){
-        const tr = e.results[i][0].transcript;
-        if(e.results[i].isFinal) final += tr;
-      }
-      if(final){ q.value = (q.value.trim() ? q.value + " " : "") + final.trim(); }
-    };
-    rec.start();
-  }
-  function setMic(on){
-    recOn = on;
-    micBtn.classList.toggle("on", on);
-    micState.textContent = on ? "acceso" : "spento";
-  }
-  micBtn.addEventListener("click", toggleMic);
-  if(!micSupported()){
-    micBtn.title = "Non supportato (richiede HTTPS + browser compatibile)";
-    micState.textContent = "non disponibile";
-  }
-
-  // ------- Helpers -------
-  function guessLang(text){
-    const s = (text || "").toLowerCase();
-    if(/\b(what|how|can|should|when|difference)\b/.test(s)) return "en";
-    if(/[¿¡]|(qué|cómo|cuando)/.test(s)) return "es";
-    if(/\b(quoi|comment|quand|pourquoi)\b|[àâçéèêëîïôûùüÿœ]/.test(s)) return "fr";
-    if(/\b(was|wie|wann|warum)\b|[äöüß]/.test(s)) return "de";
-    return "it";
-  }
-  function show(r){
-    out.textContent = r.text || "";
-    html.innerHTML = r.html || "";
-    mid.textContent = r.match_id || "—";
-    fam.textContent = r.family || "—";
-    intn.textContent = r.intent || "—";
-    ms.textContent = r.ms || 0;
-  }
-  async function askPOST(){
-    const body = { q: q.value || "" };
-    const t0 = performance.now();
-    const res = await fetch(base + "/api/ask", {
-      method:"POST", headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify(body)
-    });
-    const r = await res.json();
-    r.ms = Math.max(1, Math.round(performance.now()-t0));
-    show(r);
-  }
-  async function askGET(){
-    const url = base + "/api/ask?q=" + encodeURIComponent(q.value || "");
-    const t0 = performance.now();
-    const res = await fetch(url);
-    const r = await res.json();
-    r.ms = Math.max(1, Math.round(performance.now()-t0));
-    show(r);
-  }
-  go.addEventListener("click", askPOST);
-  btnPost.addEventListener("click", askPOST);
-  btnGet.addEventListener("click", askGET);
-  example1.addEventListener("click", () => { q.value="Differenza tra CTF e CTL?"; askGET(); });
-  example2.addEventListener("click", () => { q.value="VCEM su essenze dure: serve preforo 70–80%?"; askPOST(); });
-  q.addEventListener("keydown", (e) => { if(e.key === "Enter" && (e.metaKey || e.ctrlKey)) { askPOST(); } });
 })();
+
+async function ask(q){
+  if(!q || !q.trim()) return;
+  out.innerHTML = `<div class="msg">⏳ Elaboro…</div>`;
+  try{
+    const r = await fetch(BASE + "/api/ask", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json; charset=utf-8" },
+      body: JSON.stringify({ q })
+    });
+    const j = await r.json();
+    const meta = `
+      <div class="meta">
+        <div class="kv">match_id: ${j.match_id||""}</div>
+        <div class="kv">intent: ${j.intent||""}</div>
+        <div class="kv">family: ${j.family||""}</div>
+        <div class="kv">lang: ${j.lang||""}</div>
+        <div class="kv">ms: ${j.ms||""}</div>
+      </div>`;
+    if (j.html && j.html.trim()){
+      out.innerHTML = j.html + meta;
+    } else {
+      const safe = (j.text||"").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
+      out.innerHTML = `<div class="msg">${safe||"—"}</div>` + meta;
+    }
+  }catch(e){
+    out.innerHTML = `<div class="msg" style="border-left-color:#ff4d4f">Errore: ${e}</div>`;
+  }
+}
+
+$("#sendBtn").addEventListener("click", ()=> ask(qEl.value));
+qEl.addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") ask(qEl.value); });
+document.querySelectorAll(".sample").forEach(el=>{
+  el.addEventListener("click", ()=>{ qEl.value = el.dataset.q; ask(el.dataset.q); });
+});
+$("#micBtn").addEventListener("click", ()=> alert("Microfono opzionale (placeholder)"));
 </script>
 </body>
 </html>
-    """
+"""
+
+@app.get("/ui", response_class=HTMLResponse)
+def ui_page():
+    return HTMLResponse(UI_HTML, status_code=200)
