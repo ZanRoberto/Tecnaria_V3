@@ -98,9 +98,9 @@ for r in FAQ_ITEMS:
 # -----------------------------
 _LANG_PATTERNS = {
     "en": [r"\bwhat\b", r"\bhow\b", r"\bcan\b", r"\bshould\b", r"\bconnector(s)?\b"],
-    "es": [r"¿", r"\bqué\b", r"\bcómo\b", r"\bconector(es)?\b"],
-    "fr": [r"\bquoi\b", r"\bcomment\b", r"\bquel(le|s)?\b", r"\bconnecteur(s)?\b"],
-    "de": [r"\bwas\b", r"\bwie\b", r"\bverbinder\b"],
+    "es": [r"¿", r"\bqué\b", r"\bque\b", r"\bcómo\b", r"\bcomo\b", r"\bconector(es)?\b"],
+    "fr": [r"\bquoi\b", r"\bcomment\b", r"\bqu['’]?(?:est[- ]ce|estce)\b", r"\bquel(le|s)?\b", r"\bconnecteur(s)?\b"],
+    "de": [r"\bwas\b", r"\bwie\b", r"\bist\b", r"\bverbinder\b"],
 }
 def detect_lang(q: str) -> str:
     s = (q or "").lower()
@@ -114,21 +114,82 @@ def detect_lang(q: str) -> str:
     return "it"
 
 # -----------------------------
-# Token famiglie (multilingua)
+# Token famiglie (multilingua, più ricchi)
 # -----------------------------
 FAM_TOKENS: Dict[str, List[str]] = {
     "CTF": [
-        "ctf","connector","connectors","connecteur","verbinder",
-        "lamiera","trave","chiodatrice","sparo",
-        "deck","beam","nailer","powder","cartridge",
-        "bac","poutre","cloueur","chapas","viga","nagler",
-        "acciaio","lamiera grecata"
+        # IT
+        "ctf","connettore","connettori","trave acciaio","lamiera grecata","acciaio-calcestruzzo",
+        "solaio collaborante","shear","collaborante","chiodatrice","sparo","deck","decking",
+        # EN
+        "connector","connectors","steel beam","steel deck","composite slab","shear connector",
+        # FR
+        "connecteur","connecteurs","poutrelle acier","tôle nervurée","dalle mixte","connecteur de cisaillement",
+        # ES
+        "conector","conectores","viga de acero","chapa colaborante","forjado colaborante","conector de cortante",
+        # DE
+        "verbinder","schubverbinder","stahlträger","trapezblech","verbunddecke","schub"
     ],
-    "CTL": ["ctl","soletta","calcestruzzo","collaborazione","legno","timber","concrete","composito","trave legno"],
-    "VCEM": ["vcem","preforo","predrill","pre-drill","pilot","hardwood","essenze","durezza","70","80"],
-    "CEM-E": ["ceme","cem-e","laterocemento","dry","secco","senza","resine","cappello","posa a secco"],
-    "CTCEM": ["ctcem","laterocemento","dry","secco","senza","resine","cappa","malta"],
-    "GTS": ["gts","manicotto","filettato","giunzioni","secco","threaded","sleeve","joint","barra"],
+    "CTL": [
+        # IT
+        "ctl","soletta","calcestruzzo","collaborazione","legno","solaio legno-calcestruzzo","trave legno",
+        # EN
+        "timber-concrete composite","tcc","timber beam","concrete topping","composite slab",
+        # FR
+        "mixte bois-béton","poutre bois","dalle collaborative",
+        # ES
+        "mixto madera-hormigón","viga de madera","losa colaborante",
+        # DE
+        "holz-beton-verbund","holzträger","verbundplatte"
+    ],
+    "VCEM": [
+        # IT
+        "vcem","vite","viti","legno","essenze dure","preforo","preforo 70","preforo 80","70%","80%","durezza",
+        # EN
+        "predrill","pre-drill","pilot hole","hardwood","dense timber","pre-drilling 70 80",
+        # FR
+        "pré-perçage","bois dur","avant-trou",
+        # ES
+        "pretaladro","madera dura","taladro previo",
+        # DE
+        "vorbohren","hartes holz","vorbohrung"
+    ],
+    "CEM-E": [
+        # IT
+        "cem-e","ceme","posa a secco","senza resine","laterocemento","cappello","ripristino",
+        # EN
+        "dry installation","no resin","hollow brick","clay block","rc slab",
+        # FR
+        "pose à sec","sans résine","brique creuse","bloc hourdis",
+        # ES
+        "colocación en seco","sin resinas","ladrillo hueco","bloque cerámico",
+        # DE
+        "trockene montage","ohne harz","lochziegel","hohlblock"
+    ],
+    "CTCEM": [
+        # IT
+        "ctcem","malta","malte","cappa","cappa collaborante","laterocemento","ripristino","integrazione",
+        # EN
+        "mortar","cement mortar","topping","composite topping","rc slab",
+        # FR
+        "mortier","chape","dalle","renforcement","béton",
+        # ES
+        "mortero","capa de compresión","forjado","refuerzo",
+        # DE
+        "mörtel","estrich","beton","verbund"
+    ],
+    "GTS": [
+        # IT
+        "gts","manicotto","manicotto filettato","giunzione","giunzioni a secco","barra filettata",
+        # EN
+        "threaded sleeve","sleeve","threaded coupling","dry joint","rod",
+        # FR
+        "manchon fileté","manchon","raccord fileté","assemblage à sec",
+        # ES
+        "manguito roscado","manguito","acoplamiento roscado","ensamble en seco",
+        # DE
+        "gewindehülse","kupplung","hülse","trockenverbindung"
+    ],
     "P560": [
         # sigle / marchio / varianti
         "p560","spit","spit p560","spit-p560",
@@ -137,12 +198,13 @@ FAM_TOKENS: Dict[str, List[str]] = {
         "cartucce","cartuccia","gialle","verdi","rosse","dosaggio","regolazione potenza",
         "chiodi","chiodo","hsbr14","hsbr 14","adattatore","kit adattatore",
         "spari","sparo","colpo","tiro","sicura","marcatura","marcatura ce",
-        # EN: termini comuni
+        # EN
         "powder","powder-actuated","powder actuated","pat","nailer","nailgun",
-        "cartridge","cartridges","mag","magazine","trigger","safety","tool",
-        # DE/FR/ES: sinonimi base
-        "gerät","nagler","werkzeug","outil","cloueur","outil à poudre","herramienta","clavos",
-        # contesto tipico di utilizzo
+        "cartridge","cartridges","magazine","trigger","safety","tool",
+        # FR / ES / DE
+        "gerät","nagler","werkzeug","outil","cloueur","outil à poudre",
+        "herramienta","clavos",
+        # contesto tipico
         "acciaio","trave","lamiera","lamiera grecata","deck","beam","steel",
         "supporto","supporti","spessori minimi","eta"
     ],
