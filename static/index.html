@@ -1,194 +1,211 @@
-# === UI embedded (single-file) su /ui ===
-from fastapi.responses import HTMLResponse
-
-UI_HTML = r"""
 <!doctype html>
 <html lang="it">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Tecnaria Sinapsi</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tecnaria Sinapsi — BOT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    :root{ --tec-orange:#F26622; --tec-black:#000000; --tec-white:#FFFFFF; }
-    .brand-grad{ background: linear-gradient(180deg,var(--tec-black),var(--tec-orange)); }
+    :root{
+      --bg:#0d0f13;           /* nero profondo */
+      --panel:#151922;        /* pannelli */
+      --panel-2:#0f131b;      /* pannelli secondari */
+      --text:#e9eef8;         /* testo base */
+      --muted:#9fb0c3;        /* testo attenuato */
+      --accent:#ff7a18;       /* arancio 1 */
+      --accent-2:#ffb14d;     /* arancio 2 */
+      --chip:#232b37;
+      --ok:#13d389;
+      --bad:#ff5d5d;
+      --link:#8cc6ff;
+      --shadow: 0 10px 30px rgb(0 0 0 / .35);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .hero{
+      background: radial-gradient(1200px 400px at 40% -20%, rgba(255,170,60,.35), transparent),
+                  radial-gradient(800px 300px at 90% 0%, rgba(255,100,20,.25), transparent),
+                  linear-gradient(180deg,#151922 0%, #0d0f13 100%);
+      padding:42px 24px 26px;
+      border-bottom:1px solid #1f2633;
+      position:sticky;top:0;z-index:5;
+      backdrop-filter:saturate(120%) blur(4px);
+    }
+    .wrap{width:min(1100px, 92vw);margin:0 auto}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+    .logo{width:44px;height:44px;border-radius:12px;background:#101520;border:1px solid #232a39;display:grid;place-items:center;color:#fff;font-weight:800;box-shadow:var(--shadow)}
+    h1{font-size:26px;margin:0}
+    .subtitle{color:var(--muted);font-size:14px;margin-top:6px}
+
+    /* Search */
+    .search{display:flex;gap:12px;align-items:center}
+    .input{flex:1;background:#0f131b;border:1px solid #222a39;border-radius:14px;padding:16px 18px;color:var(--text);font-size:16px;outline:none;box-shadow:var(--shadow)}
+    .btn{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#111;padding:14px 18px;border:none;border-radius:14px;font-weight:700;letter-spacing:.2px;cursor:pointer;box-shadow:0 8px 20px rgba(255,122,24,.35)}
+    .btn:active{transform:translateY(1px)}
+
+    /* Chips */
+    .chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .chip{background:var(--chip);border:1px solid #253043;color:#b9c7d8;padding:8px 12px;border-radius:999px;font-size:13px;cursor:pointer}
+    .chip:hover{border-color:#365074;color:#dde9f7}
+
+    /* Content area */
+    .grid{display:grid;grid-template-columns: 340px 1fr;gap:20px;margin:28px auto;align-items:start}
+    @media (max-width: 980px){.grid{grid-template-columns: 1fr}}
+
+    .card{background:var(--panel);border:1px solid #232b3a;border-radius:var(--radius);box-shadow:var(--shadow)}
+    .card h3{margin:0 0 10px;font-size:16px;color:#d7e3f7}
+    .card .body{padding:18px}
+
+    .settings input[type="url"], .settings input[type="text"]{width:100%;background:var(--panel-2);border:1px solid #232b3a;border-radius:12px;color:var(--text);padding:10px 12px}
+    .kv{display:grid;grid-template-columns: 130px 1fr;gap:8px 10px;font-size:13px;margin-top:12px}
+    .kv div:nth-child(odd){color:#97a9bd}
+
+    .answer-card{position:relative}
+    .answer-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .tag-ok{color:var(--ok);font-weight:700;font-size:12px}
+    .lat{color:#8aa2bb;font-size:12px}
+    .answer{background:#0f131b;border:1px solid #222a36;border-radius:14px;padding:18px;line-height:1.55}
+    .meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;color:#9db1c8;font-size:12px}
+    .copy{position:absolute;top:14px;right:14px;background:#1b2330;border:1px solid #2a3548;color:#cdd9ea;border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer}
+    .copy:hover{border-color:#3c4e6d}
+
+    a{color:var(--link)}
+    .small{font-size:12px;color:#9fb0c3}
   </style>
 </head>
-<body class="bg-[var(--tec-white)] text-neutral-900">
-  <!-- HEADER -->
-  <header class="sticky top-0 z-30 border-b border-neutral-200 bg-white/90 backdrop-blur">
-    <div class="mx-auto max-w-6xl px-4 py-3 flex items-center gap-4">
-      <div class="w-9 h-9 rounded bg-[var(--tec-black)] grid place-items-center">
-        <span class="text-white font-black text-xl">T</span>
-      </div>
-      <div>
-        <h1 class="text-xl font-semibold">Tecnaria Sinapsi</h1>
-        <p class="text-xs text-neutral-500">Risposte tecniche · Voce ufficiale Tecnaria</p>
-      </div>
-      <div class="ml-auto flex items-center gap-3">
-        <span id="badge" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-200 text-neutral-700">
-          <span id="dot" class="h-2.5 w-2.5 rounded-full bg-neutral-400"></span><span id="state">Checking…</span>
-        </span>
-        <a id="docsLink" target="_blank" class="text-sm text-neutral-600 hover:text-neutral-900 underline">API Docs</a>
-      </div>
-    </div>
-  </header>
-
-  <!-- HERO -->
-  <section class="brand-grad text-white">
-    <div class="mx-auto max-w-6xl px-4 py-10">
-      <h2 class="text-3xl md:text-4xl font-semibold">Trova la soluzione, in linguaggio Tecnaria.</h2>
-      <p class="mt-2 text-white/80">CTF, GTS, Diapason, Mini-Cem-E, SPIT P560, CTL.</p>
-
-      <form id="form" class="mt-6 flex flex-col md:flex-row gap-3">
-        <input id="q" placeholder="Scrivi la tua domanda…" class="flex-1 rounded-xl border border-white/20 bg-white/95 px-4 py-3 text-neutral-900 placeholder-neutral-500 focus:outline-none focus:ring-4 focus:ring-white/30"/>
-        <button id="askBtn" class="rounded-xl bg-[var(--tec-black)] px-5 py-3 font-medium text-white shadow hover:opacity-90">Chiedi a Sinapsi</button>
-      </form>
-
-      <div class="mt-4 flex flex-wrap gap-2 text-sm">
-        <button data-preset="Si può usare una qualsiasi chiodatrice per i CTF?" class="rounded-full bg-white/15 px-3 py-1.5 hover:bg-white/25">CTF · Chiodatrice</button>
-        <button data-preset="CTL: serve il preforo su abete antico?" class="rounded-full bg-white/15 px-3 py-1.5 hover:bg-white/25">CTL · Preforo abete</button>
-        <button data-preset="Diapason vs soletta collaborante tradizionale?" class="rounded-full bg-white/15 px-3 py-1.5 hover:bg-white/25">Diapason · Confronto</button>
-        <button data-preset="Taratura P560 su IPE 300 con lamiera 6/10" class="rounded-full bg-white/15 px-3 py-1.5 hover:bg-white/25">P560 · Taratura IPE 300</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- BODY -->
-  <main class="mx-auto max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <aside class="lg:col-span-1 space-y-6">
-      <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h3 class="font-semibold">Impostazioni</h3>
-        <label class="mt-2 block text-xs text-neutral-600">Base URL servizio</label>
-        <input id="baseUrl" class="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"/>
-        <div class="mt-2 text-xs text-neutral-600">Rules: <span id="rul">n/d</span> · Router: <span id="rou">n/d</span> · Catalog: <span id="cat">n/d</span></div>
-      </div>
-      <div class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h3 class="font-semibold">Domande rapide</h3>
-        <div id="quick" class="mt-3 flex flex-wrap gap-2 text-sm"></div>
-      </div>
-    </aside>
-
-    <section class="lg:col-span-2 space-y-6">
-      <div class="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm min-h-[260px]">
-        <div class="flex items-center justify-between">
-          <h3 class="font-semibold">Risposta</h3>
-          <div class="flex items-center gap-3 text-xs text-neutral-500">
-            <span>Latency: <strong id="lat">—</strong></span>
-            <button id="copy" class="rounded-lg border border-neutral-300 px-2 py-1 hover:bg-neutral-50">Copia</button>
-          </div>
+<body>
+  <div class="hero">
+    <div class="wrap">
+      <header>
+        <div class="logo">T</div>
+        <div>
+          <h1>Tecnaria Sinapsi — BOT</h1>
+          <div class="subtitle">CTF, CEM‑E (CTCEM/VCEM), SPIT P560, CTL, GTS • IT/EN/ES/FR/DE</div>
         </div>
-        <div id="err" class="hidden mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
-        <article id="ans" class="prose prose-neutral max-w-none mt-4 whitespace-pre-wrap"></article>
+      </header>
+
+      <div class="search">
+        <input id="q" class="input" placeholder="Scrivi una domanda… es. ‘CTF su lamiera grecata: controlli in cantiere?’" />
+        <button id="askBtn" class="btn">Chiedi a Sinapsi</button>
+      </div>
+      <div class="chips">
+        <div class="chip" data-q="Differenza tra CTF e CTL?">CTF · CTL · Confronto</div>
+        <div class="chip" data-q="CTF su lamiera grecata: controlli in cantiere?">CTF · Cantiere</div>
+        <div class="chip" data-q="GTS: che cos’è e come si usa?">GTS · Panoramica</div>
+        <div class="chip" data-q="VCEM su essenze dure: serve preforo 70–80%?">VCEM · Preforo</div>
+        <div class="chip" data-q="P560: è un connettore o un'attrezzatura?">P560 · Attrezzatura</div>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap grid">
+    <!-- Settings -->
+    <section class="card settings">
+      <div class="body">
+        <h3>Impostazioni</h3>
+        <label class="small">Base URL servizio</label>
+        <input id="base" type="url" placeholder="https://…" />
+        <div class="kv">
+          <div>Rules</div><div id="rules">—</div>
+          <div>Router</div><div id="router">—</div>
+          <div>Catalog</div><div id="catalog">—</div>
+          <div>Contacts</div><div id="contacts">—</div>
+        </div>
+        <p class="small" style="margin-top:12px">API Docs: <a target="_blank" href="/api/docs">/api/docs</a></p>
+      </div>
+    </section>
+
+    <!-- Answer -->
+    <section class="card answer-card">
+      <button class="copy" id="copyBtn" title="Copia risposta">Copia</button>
+      <div class="body">
+        <div class="answer-head">
+          <h3>Risposta Tecnaria</h3>
+          <div class="lat" id="latency">— ms</div>
+        </div>
+        <div id="answer" class="answer">Scrivi una domanda sopra e premi “Chiedi a Sinapsi”.</div>
+        <div id="meta" class="meta"></div>
       </div>
     </section>
   </main>
 
-  <footer class="mt-10 border-t border-neutral-200 bg-white">
-    <div class="mx-auto max-w-6xl px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="w-7 h-7 rounded bg-[var(--tec-black)] grid place-items-center"><span class="text-white font-black">T</span></div>
-        <span class="text-sm text-neutral-600">Tecnaria S.p.A. — Bassano del Grappa (VI)</span>
-      </div>
-      <div class="text-xs text-neutral-500">API: <code id="urlShow"></code></div>
-    </div>
-  </footer>
-
   <script>
-    const $ = (s)=>document.querySelector(s);
-    const $$ = (s)=>Array.from(document.querySelectorAll(s));
+    const qs = (sel, el=document) => el.querySelector(sel);
+    const qsa = (sel, el=document) => [...el.querySelectorAll(sel)];
 
-    // default API
-    const DEFAULT_BASE_URL = "https://tecnaria-v3.onrender.com";
-    const baseUrlInput = $("#baseUrl");
-    baseUrlInput.value = DEFAULT_BASE_URL;
-    $("#urlShow").textContent = DEFAULT_BASE_URL;
-    $("#docsLink").href = DEFAULT_BASE_URL + "/docs";
+    const $q = qs('#q');
+    const $ask = qs('#askBtn');
+    const $base = qs('#base');
+    const $lat = qs('#latency');
+    const $ans = qs('#answer');
+    const $meta = qs('#meta');
+    const $copy = qs('#copyBtn');
 
-    async function healthPing(){
+    // defaults
+    const DEFAULT_BASE = 'https://tecnaria-v3.onrender.com';
+    $base.value = localStorage.getItem('tecnaria.base') || DEFAULT_BASE;
+    $base.addEventListener('change', ()=> localStorage.setItem('tecnaria.base', $base.value.trim()));
+
+    // chips
+    qsa('.chip').forEach(c => c.addEventListener('click', () => { $q.value = c.dataset.q; ask(); }));
+
+    $ask.addEventListener('click', ask);
+    $q.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ ask(); }});
+    $copy.addEventListener('click', ()=>{ navigator.clipboard.writeText($ans.innerText); $copy.textContent='Copiato'; setTimeout(()=> $copy.textContent='Copia', 1400);});
+
+    // ping root to fill flags (mock booleans based on available endpoints)
+    window.addEventListener('load', async ()=>{
       try{
-        const res = await fetch(baseUrlInput.value + "/health");
-        const j = await res.json();
-        $("#state").textContent = j.status === "ok" ? "Online" : "Offline";
-        $("#badge").className = "inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium " + (j.status==="ok"?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700");
-        $("#dot").className = "h-2.5 w-2.5 rounded-full " + (j.status==="ok"?"bg-emerald-500":"bg-red-500");
-        $("#rul").textContent = String(j.rules);
-        $("#rou").textContent = String(j.router);
-        $("#cat").textContent = String(j.catalog);
-      }catch(e){
-        $("#state").textContent = "Offline";
-      }
-    }
+        const r = await fetch($base.value + '/');
+        const j = await r.json();
+        qs('#rules').textContent   = String(!!j.status);
+        qs('#router').textContent  = String(Array.isArray(j.json_loaded));
+        qs('#catalog').textContent = String(!!j.faq_rows);
+        qs('#contacts').textContent= 'true';
+      }catch(_){/* ignore */}
+    });
 
-    async function ask(q){
-      $("#err").classList.add("hidden");
-      $("#ans").textContent = "";
+    async function ask(){
+      const base = $base.value.trim().replace(/\/$/, '');
+      const q = ($q.value || '').trim();
+      if(!q){ $q.focus(); return; }
+      $ans.textContent = 'Elaboro…';
+      $meta.textContent = '';
       const t0 = performance.now();
       try{
-        const res = await fetch(baseUrlInput.value + "/ask?q=" + encodeURIComponent(q));
-        if(!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-        const t1 = performance.now();
-        $("#lat").textContent = Math.round(t1 - t0) + " ms";
-        $("#ans").textContent = data.answer || "";
-      }catch(e){
-        $("#err").textContent = "Errore: " + (e.message || "imprevisto");
-        $("#err").classList.remove("hidden");
+        const r = await fetch(base + '/api/ask', {method:'POST', headers:{'Content-Type':'application/json; charset=utf-8'}, body: JSON.stringify({ q })});
+        const j = await r.json();
+        const ms = Math.max(1, Math.round(performance.now()-t0));
+        $lat.textContent = ms + ' ms';
+        $ans.textContent = (j.html && j.html.length>0) ? '' : (j.text || '');
+        if(j.html){
+          // naive safe inject
+          const div = document.createElement('div');
+          div.innerHTML = j.html;
+          $ans.innerHTML = '';
+          $ans.appendChild(div);
+        }
+        $meta.innerHTML = `
+          <span>ok: <b style="color:${j.ok? 'var(--ok)':'var(--bad)'}">${j.ok}</b></span>
+          <span>match_id: <b>${j.match_id||'—'}</b></span>
+          <span>intent: <b>${j.intent||'—'}</b></span>
+          <span>family: <b>${j.family||'—'}</b></span>
+          <span>lang: <b>${j.lang||'—'}</b></span>
+          <span>source: <b>${j.source||'—'}</b></span>
+          <span>score: <b>${j.score ?? '—'}</b></span>
+        `;
+      }catch(err){
+        const ms = Math.max(1, Math.round(performance.now()-t0));
+        $lat.textContent = ms + ' ms';
+        $ans.textContent = 'Errore di rete o API. Controlla Base URL e riprova.';
+        $meta.textContent = '';
+        console.error(err);
       }
     }
-
-    // form
-    $("#form").addEventListener("submit", (ev)=>{
-      ev.preventDefault();
-      const q = $("#q").value.trim();
-      if(q) ask(q);
-    });
-
-    // presets
-    $$(\"[data-preset]\").forEach(b=>{
-      b.addEventListener(\"click\", ()=>{ $("#q").value = b.dataset.preset; ask(b.dataset.preset); });
-    });
-
-    // quick list replicata
-    const quickQs = [
-      "CTF: quanti chiodi per connettore?",
-      "CTL: spessore minimo soletta collaborante?",
-      "GTS: controlli di compressione in camicia?",
-      "Diapason: stratigrafia tipica?",
-      "Mini-Cem-E: posa su cls vecchio?",
-      "P560: quali propulsori usare su IPE?"
-    ];
-    const quick = $("#quick");
-    quickQs.forEach(q=>{
-      const btn = document.createElement("button");
-      btn.className = "rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 hover:bg-neutral-100";
-      btn.textContent = q;
-      btn.onclick = ()=>{ $("#q").value = q; ask(q); };
-      quick.appendChild(btn);
-    });
-
-    // copy
-    $("#copy").addEventListener("click", async ()=>{
-      try{
-        await navigator.clipboard.writeText($("#ans").textContent);
-        alert("Risposta copiata negli appunti");
-      }catch(e){ alert("Impossibile copiare"); }
-    });
-
-    // reagisci a cambio baseUrl
-    baseUrlInput.addEventListener("change", ()=>{
-      $("#urlShow").textContent = baseUrlInput.value;
-      $("#docsLink").href = baseUrlInput.value + "/docs";
-      healthPing();
-    });
-
-    // avvio
-    healthPing();
   </script>
 </body>
 </html>
-"""
-
-@app.get("/ui", response_class=HTMLResponse)
-def ui():
-    return HTMLResponse(UI_HTML, status_code=200)
