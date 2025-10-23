@@ -93,21 +93,42 @@ for r in FAQ_ITEMS:
 
 def detect_lang(q: str) -> str:
     s = (q or "").lower()
-    if any(w in s for w in [" the ", " what ", " how ", " can ", " shall ", " should "]): return "en"
+    if any(w in s for w in [" the ", " what ", " how ", " can ", " shall ", " should ", "?"]): return "en"
     if any(w in s for w in [" el ", " los ", " las ", "¿", "qué", "como", "cómo"]): return "es"
-    if any(w in s for w in [" le ", " la ", " les ", " quelle", " comment"]): return "fr"
+    if any(w in s for w in [" le ", " la ", " les ", " quelle", " comment", "qu’est"]): return "fr"
     if any(w in s for w in [" der ", " die ", " das ", " wie ", " was "]): return "de"
     return "it"
 
-# Token famiglie (senza “traliccio/tralicciati” — NON Tecnaria)
+# Token famiglie (ITA + EN)
 FAM_TOKENS: Dict[str, List[str]] = {
-    "CTF":   ["ctf","lamiera","p560","hsbr14","trave","chiodatrice","sparo"],
-    "CTL":   ["ctl","soletta","calcestruzzo","collaborazione","legno"],
-    "VCEM":  ["vcem","preforo","vite","legno","essenze","durezza"],
-    "CEM-E": ["ceme","laterocemento","secco","senza resine","cappello"],
-    "CTCEM": ["ctcem","laterocemento","secco","senza resine","cappa"],
-    "GTS":   ["gts","manicotto","filettato","giunzioni","secco"],
-    "P560":  ["p560","chiodatrice","propulsori","hsbr14"],
+    "CTF": [
+        "ctf","lamiera","p560","hsbr14","trave","chiodatrice","sparo",
+        "steel deck","profiled sheet","beam","nailer","nailing"
+    ],
+    "CTL": [
+        "ctl","soletta","calcestruzzo","collaborazione","legno",
+        "timber","concrete topping","tcc","composite timber"
+    ],
+    "VCEM": [
+        "vcem","preforo","vite","legno","essenze","durezza",
+        "hardwood","hardwoods","predrill","pre-drill","pilot","screw","70","80"
+    ],
+    "CEM-E": [
+        "ceme","laterocemento","secco","senza resine","cappello",
+        "hollow-block","dry","resin-free"
+    ],
+    "CTCEM": [
+        "ctcem","laterocemento","secco","senza resine","cappa",
+        "hollow-block","dry","resin-free"
+    ],
+    "GTS": [
+        "gts","manicotto","filettato","giunzioni","secco",
+        "threaded","sleeve","joint","mechanical"
+    ],
+    "P560": [
+        "p560","chiodatrice","propulsori","hsbr14",
+        "nailer","cartridge","cartridges","propellants","tool"
+    ],
 }
 
 def _score_tokens(text: str, tokens: List[str]) -> float:
@@ -139,6 +160,21 @@ def _compare_html(famA: str, famB: str, ansA: str, ansB: str) -> str:
 def intent_route(q: str) -> Dict[str, Any]:
     ql = (q or "").lower().strip()
     lang = detect_lang(ql)
+
+    # Regola esplicita per EN: VCEM + hardwoods/predrill -> FAQ::VCEM
+    if "vcem" in ql and any(k in ql for k in ["hardwood","hardwoods","predrill","pre-drill","pilot","70","80"]):
+        lang_pref = "en" if any(k in ql for k in ["hardwood","hardwoods","predrill","pre-drill","pilot"]) else lang
+        pool = FAQ_BY_LANG.get(lang_pref) or FAQ_BY_LANG.get("it") or []
+        ans = ""
+        for r in pool:
+            if (r.get("id") or "").upper().startswith("FAQ::VCEM"):
+                ans = r.get("answer") or ""
+                break
+        return {
+            "ok": True, "match_id": "FAQ::VCEM", "lang": lang_pref,
+            "family": "VCEM", "intent": "faq", "source": "faq", "score": 95.0,
+            "text": ans, "html": ""
+        }
 
     # 1) Confronti A vs B
     fams = list(FAM_TOKENS.keys())
