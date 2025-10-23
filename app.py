@@ -1,25 +1,25 @@
-# app.py — Tecnaria_V3 (API + UI pronte per Render)
+# app.py — Tecnaria_V3 (UI inclusa, pronta per Render)
 
 from typing import List, Dict, Any
 from pathlib import Path
 from fastapi import FastAPI, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 import time, re, csv, json
 
-# -------------------------------------------------
+# -------------------------------
 # FastAPI
-# -------------------------------------------------
+# -------------------------------
 app = FastAPI(title="Tecnaria_V3")
 
-# -------------------------------------------------
-# Dati (cartella: static/data)
-# -------------------------------------------------
+# -------------------------------
+# Dati (static/data)
+# -------------------------------
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "static" / "data"
-OV_JSON = DATA_DIR / "tecnaria_overviews.json"   # panoramiche famiglie
-CMP_JSON = DATA_DIR / "tecnaria_compare.json"    # confronti A vs B
-FAQ_CSV = DATA_DIR / "faq.csv"                   # domande/risposte brevi multi-lingua
+OV_JSON = DATA_DIR / "tecnaria_overviews.json"
+CMP_JSON = DATA_DIR / "tecnaria_compare.json"
+FAQ_CSV = DATA_DIR / "faq.csv"
 
 def load_json(path: Path, fallback: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     try:
@@ -32,7 +32,6 @@ def load_json(path: Path, fallback: List[Dict[str, Any]] = None) -> List[Dict[st
         pass
     return fallback or []
 
-# === CSV robusto (UTF-8/CP1252 + fix mojibake) ===
 def load_faq_csv(path: Path) -> List[Dict[str, str]]:
     rows: List[Dict[str, str]] = []
     if not path.exists():
@@ -51,10 +50,10 @@ def load_faq_csv(path: Path) -> List[Dict[str, str]]:
                 })
 
     try:
-        _read("utf-8-sig")      # preferito (gestisce anche BOM)
+        _read("utf-8-sig")
     except Exception:
         try:
-            _read("cp1252")     # fallback per file salvati in Windows
+            _read("cp1252")
         except Exception:
             return rows
 
@@ -83,9 +82,9 @@ JSON_BAG = {
 }
 FAQ_ROWS = len(FAQ_ITEMS)
 
-# -------------------------------------------------
+# -------------------------------
 # Indici + euristiche
-# -------------------------------------------------
+# -------------------------------
 FAQ_BY_LANG: Dict[str, List[Dict[str, str]]] = {}
 for r in FAQ_ITEMS:
     FAQ_BY_LANG.setdefault(r["lang"], []).append(r)
@@ -98,14 +97,13 @@ def detect_lang(q: str) -> str:
     if any(w in s for w in [" der ", " die ", " das ", " wie ", " was "]): return "de"
     return "it"
 
-# Token famiglie (niente “traliccio”)
 FAM_TOKENS: Dict[str, List[str]] = {
     "CTF":   ["ctf","lamiera","p560","hsbr14","trave","chiodatrice","sparo"],
     "CTL":   ["ctl","soletta","calcestruzzo","collaborazione","legno"],
     "VCEM":  ["vcem","preforo","vite","legno","essenze","durezza","hardwood","predrill","pilot","70","80"],
-    "CEM-E": ["ceme","laterocemento","secco","senza resine","cappello","dry"],
-    "CTCEM": ["ctcem","laterocemento","secco","senza resine","cappa"],
-    "GTS":   ["gts","manicotto","filettato","giunzioni","secco","threaded","sleeve"],
+    "CEM-E": ["ceme","laterocemento","secco","senza resine","dry"],
+    "CTCEM": ["ctcem","laterocemento","secco","senza resine"],
+    "GTS":   ["gts","manicotto","filettato","giunzioni","secco","sleeve","threaded"],
     "P560":  ["p560","chiodatrice","propulsori","hsbr14","nailer","cartridges"],
 }
 
@@ -132,17 +130,16 @@ def _compare_html(famA: str, famB: str, ansA: str, ansB: str) -> str:
         "</div></div>"
     )
 
-# -------------------------------------------------
-# Intent router
-# -------------------------------------------------
 def intent_route(q: str) -> Dict[str, Any]:
     ql = (q or "").lower().strip()
     lang = detect_lang(ql)
 
-    # 1) Confronti A vs B
+    # 1) Confronti
     fams = list(FAM_TOKENS.keys())
-    for i, a in enumerate(fams):
-        for b in fams[i+1:]:
+    for a in fams:
+        for b in fams:
+            if a >= b:  # evita duplicati e auto-confronti
+                continue
             if a.lower() in ql and b.lower() in ql:
                 found = None
                 for it in CMP_ITEMS:
@@ -160,15 +157,10 @@ def intent_route(q: str) -> Dict[str, Any]:
                     html = _compare_html(a, b, ansA, ansB)
                     text = ""
                 return {
-                    "ok": True,
-                    "match_id": f"COMPARE::{a}_VS_{b}",
-                    "lang": lang,
-                    "family": f"{a}+{b}",
-                    "intent": "compare",
-                    "source": "compare" if found else "synthetic",
-                    "score": 92.0,
-                    "text": text,
-                    "html": html,
+                    "ok": True, "match_id": f"COMPARE::{a}_VS_{b}", "lang": lang,
+                    "family": f"{a}+{b}", "intent": "compare",
+                    "source": "compare" if found else "synthetic", "score": 92.0,
+                    "text": text, "html": html,
                 }
 
     # 2) Famiglia singola
@@ -201,39 +193,9 @@ def intent_route(q: str) -> Dict[str, Any]:
         "html": ""
     }
 
-# -------------------------------------------------
-# Endpoint di servizio
-# -------------------------------------------------
-@app.get("/")
-def _root(ui: int | None = Query(default=None)):
-    # se /?ui=1 voglio direttamente la UI
-    if ui == 1:
-        return HTMLResponse(content=UI_HTML, media_type="text/html")
-    try:
-        return {
-            "app": "Tecnaria_V3 (online)",
-            "status": "ok",
-            "data_dir": str(DATA_DIR),
-            "json_loaded": list(JSON_BAG.keys()),
-            "faq_rows": FAQ_ROWS
-        }
-    except Exception:
-        return {"app": "Tecnaria_V3 (online)", "status": "ok"}
-
-@app.get("/health")
-def _health():
-    try:
-        return {
-            "ok": True,
-            "json_loaded": list(JSON_BAG.keys()),
-            "faq_rows": FAQ_ROWS
-        }
-    except Exception:
-        return {"ok": True}
-
-# -------------------------------------------------
-# /api/ask (POST corpo JSON) + (GET ?q=...)
-# -------------------------------------------------
+# -------------------------------
+# Schemi I/O
+# -------------------------------
 class AskIn(BaseModel):
     q: str
 
@@ -249,7 +211,53 @@ class AskOut(BaseModel):
     source: str | None = None
     score: float | int | None = None
 
-def _answer(q: str) -> AskOut:
+# -------------------------------
+# Endpoints service
+# -------------------------------
+@app.get("/")
+def _root():
+    try:
+        return {
+            "app": "Tecnaria_V3 (online)",
+            "status": "ok",
+            "data_dir": str(DATA_DIR),
+            "json_loaded": list(JSON_BAG.keys()),
+            "faq_rows": FAQ_ROWS
+        }
+    except Exception:
+        return {"app": "Tecnaria_V3 (online)", "status": "ok"}
+
+@app.get("/health")
+def _health():
+    return {
+        "ok": True,
+        "json_loaded": list(JSON_BAG.keys()),
+        "faq_rows": FAQ_ROWS
+    }
+
+# -------------------------------
+# API ask (POST e GET)
+# -------------------------------
+@app.post("/api/ask", response_model=AskOut)
+def api_ask_post(body: AskIn) -> AskOut:
+    t0 = time.time()
+    routed = intent_route(body.q or "")
+    ms = int((time.time() - t0) * 1000)
+    return AskOut(
+        ok=True,
+        match_id=str(routed.get("match_id") or "<NULL>"),
+        ms=ms if ms > 0 else 1,
+        text=str(routed.get("text") or ""),
+        html=str(routed.get("html") or ""),
+        lang=routed.get("lang"),
+        family=routed.get("family"),
+        intent=routed.get("intent"),
+        source=routed.get("source"),
+        score=routed.get("score"),
+    )
+
+@app.get("/api/ask", response_model=AskOut)
+def api_ask_get(q: str = Query("", description="Domanda")) -> AskOut:
     t0 = time.time()
     routed = intent_route(q or "")
     ms = int((time.time() - t0) * 1000)
@@ -266,118 +274,121 @@ def _answer(q: str) -> AskOut:
         score=routed.get("score"),
     )
 
-@app.post("/api/ask", response_model=AskOut)
-def api_ask_post(body: AskIn) -> AskOut:
-    return _answer(body.q)
-
-@app.get("/api/ask", response_model=AskOut)
-def api_ask_get(q: str = Query(default="")) -> AskOut:
-    return _answer(q)
-
-# -------------------------------------------------
-# UI (pagina HTML)
-# -------------------------------------------------
-UI_HTML = """
-<!doctype html>
+# -------------------------------
+# UI (HTML)
+# -------------------------------
+UI_HTML = """<!doctype html>
 <html lang="it">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>TECNARIA · ASSISTANT</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tecnaria • Q&A</title>
 <style>
-  :root { --bg:#0b0b0e; --card:#14141a; --muted:#9aa1a9; --accent:#ff7a00; --accent2:#ffae52; --fg:#e9eef5; }
-  *{box-sizing:border-box}
-  body{margin:0;background:linear-gradient(180deg,#0b0b0e 0%,#121219 100%);color:var(--fg);font:16px/1.45 system-ui,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
-  .wrap{max-width:920px;margin:0 auto;padding:28px 18px 48px}
-  .head{display:flex;align-items:center;gap:12px;margin-bottom:22px}
-  .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 6px 20px rgba(255,122,0,.25)}
-  h1{font-size:22px;margin:0;font-weight:700;letter-spacing:.5px}
-  .card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:18px 16px;backdrop-filter: blur(6px);box-shadow:0 10px 35px rgba(0,0,0,.35)}
-  .flex{display:flex;gap:16px;flex-wrap:wrap}
-  .col{flex:1 1 350px;min-width:320px}
-  label{display:block;color:var(--muted);font-size:12px;margin:0 0 8px 2px;letter-spacing:.3px}
-  textarea{width:100%;min-height:84px;border:1px solid rgba(255,255,255,.09);border-radius:14px;background:#0f0f15;color:var(--fg);padding:12px 12px;resize:vertical;outline:none}
-  textarea:focus{border-color:var(--accent)}
-  .btn{display:inline-flex;align-items:center;gap:8px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));
-       color:#111;padding:12px 16px;border-radius:12px;font-weight:700;cursor:pointer;
-       box-shadow:0 10px 28px rgba(255,122,0,.35)}
-  .btn:disabled{opacity:.6;cursor:not-allowed}
-  .meta{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:12px}
-  .pill{background:#0e0e14;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px;min-height:40px}
-  .pill b{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
-  pre{white-space:pre-wrap;word-break:break-word;margin:0}
-  .answer{margin-top:14px}
-  .htmlbox{border:1px dashed rgba(255,255,255,.12);border-radius:12px;padding:10px;margin-top:8px;background:#0c0c12}
-  .foot{margin-top:22px;color:var(--muted);font-size:12px}
+  :root{
+    --bg:#0f0f12; --card:#15161b; --muted:#8b8ea3; --text:#e9eaf0;
+    --brand:#ff6b00; --brand2:#ffa149; --ok:#17c964; --warn:#f5a524;
+  }
+  *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#0d0e12,#141620 40%,#0d0e12);
+  font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--text)}
+  .wrap{max-width:980px;margin:0 auto;padding:24px}
+  header{display:flex;align-items:center;gap:12px;margin:8px 0 16px}
+  .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand2))}
+  h1{font-size:20px;margin:0}
+  .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:16px;
+        box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .ask{padding:18px;display:flex;gap:10px;flex-wrap:wrap}
+  input[type=text]{flex:1;min-width:220px;padding:14px 16px;border-radius:12px;background:#0f1116;
+    border:1px solid #2a2d39;color:var(--text);font-size:16px;outline:none}
+  button{padding:14px 18px;border-radius:12px;border:none;font-weight:600;cursor:pointer}
+  .b1{background:linear-gradient(90deg,var(--brand),var(--brand2));color:#111}
+  .b2{background:#222635;color:#d6d8e4;border:1px solid #2a2d39}
+  .row{display:flex;gap:16px;flex-wrap:wrap;padding:18px}
+  .col{flex:1;min-width:280px}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#1b1e29;border:1px solid #2a2d39;color:#cfd1dc;font-size:12px}
+  .pre{white-space:pre-wrap;word-wrap:break-word;background:#0c0e13;border:1px solid #22263a;border-radius:12px;padding:12px}
+  footer{opacity:.6;font-size:12px;margin-top:10px}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="head">
-      <div class="logo"></div>
-      <h1>TECNARIA · ASSISTANT</h1>
+<div class="wrap">
+  <header>
+    <div class="logo"></div>
+    <h1>Tecnaria • Q&A</h1>
+  </header>
+
+  <div class="card">
+    <div class="ask">
+      <input id="q" type="text" placeholder="Fai una domanda (es. 'Differenza tra CTF e CTL?')" />
+      <button class="b1" onclick="ask()">Chiedi</button>
+      <button class="b2" onclick="demo()">Esempi</button>
     </div>
-
-    <div class="card">
-      <div class="flex">
-        <div class="col">
-          <label for="q">Domanda</label>
-          <textarea id="q" placeholder="Scrivi la domanda..."></textarea>
-        </div>
-        <div class="col" style="align-self:flex-end">
-          <button id="btn" class="btn">Chiedi / Ask</button>
-        </div>
+    <div class="row">
+      <div class="col">
+        <div class="pill">Testo</div>
+        <div id="text" class="pre" style="min-height:120px"></div>
       </div>
-
-      <div class="meta">
-        <div class="pill"><b>match_id</b><div id="m_id">—</div></div>
-        <div class="pill"><b>ok</b><div id="m_ok">—</div></div>
-        <div class="pill"><b>intent</b><div id="m_intent">—</div></div>
-        <div class="pill"><b>family</b><div id="m_family">—</div></div>
-        <div class="pill"><b>lang</b><div id="m_lang">—</div></div>
-        <div class="pill"><b>ms</b><div id="m_ms">—</div></div>
-      </div>
-
-      <div class="answer">
-        <b>Text</b>
-        <div class="htmlbox"><pre id="m_text">—</pre></div>
-        <b style="display:block;margin-top:10px">HTML</b>
-        <div class="htmlbox" id="m_html">—</div>
+      <div class="col">
+        <div class="pill">HTML</div>
+        <div id="html" class="pre" style="min-height:120px"></div>
       </div>
     </div>
-
-    <div class="foot">UI served by /ui · GET/POST /api/ask</div>
+    <div class="row" style="border-top:1px solid #212433">
+      <div class="col">
+        <div class="pill">Meta</div>
+        <div id="meta" class="pre"></div>
+      </div>
+    </div>
   </div>
 
+  <footer>Stato: <span id="status">pronto</span></footer>
+</div>
+
 <script>
-const $ = (id) => document.getElementById(id);
-const btn = $("btn");
-btn.addEventListener("click", async () => {
-  const q = $("q").value.trim();
-  if (!q) return;
-  btn.disabled = true;
-  try {
-    // POST JSON alla stessa origine
-    const res = await fetch("/api/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
+const statusEl = document.getElementById('status');
+const qEl = document.getElementById('q');
+const textEl = document.getElementById('text');
+const htmlEl = document.getElementById('html');
+const metaEl = document.getElementById('meta');
+
+async function ask() {
+  const q = qEl.value.trim();
+  if(!q){ qEl.focus(); return; }
+  statusEl.textContent = 'invio…';
+  try{
+    const r = await fetch('/api/ask', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ q })
     });
-    const data = await res.json();
-    $("m_id").textContent = data.match_id ?? "—";
-    $("m_ok").textContent = String(data.ok ?? "—");
-    $("m_intent").textContent = data.intent ?? "—";
-    $("m_family").textContent = data.family ?? "—";
-    $("m_lang").textContent = data.lang ?? "—";
-    $("m_ms").textContent = data.ms ?? "—";
-    $("m_text").textContent = data.text ?? "—";
-    $("m_html").innerHTML = data.html || "—";
-  } catch(e) {
-    $("m_text").textContent = "Errore: " + e;
-    $("m_html").textContent = "—";
-  } finally {
-    btn.disabled = false;
+    const j = await r.json();
+    textEl.textContent = j.text || '';
+    htmlEl.innerHTML = j.html || '';
+    metaEl.textContent = JSON.stringify({
+      ok:j.ok, match_id:j.match_id, lang:j.lang, family:j.family,
+      intent:j.intent, source:j.source, ms:j.ms, score:j.score
+    }, null, 2);
+    statusEl.textContent = 'ok';
+  }catch(e){
+    statusEl.textContent = 'errore';
+    metaEl.textContent = String(e);
   }
+}
+
+function demo(){
+  const samples = [
+    "Differenza tra CTF e CTL?",
+    "Quando scegliere CTL invece di CEM-E?",
+    "CTF su lamiera grecata: controlli in cantiere?",
+    "VCEM su essenze dure: serve preforo 70–80%?",
+    "GTS: che cos’è e come si usa?",
+    "P560: è un connettore o un'attrezzatura?"
+  ];
+  qEl.value = samples[Math.floor(Math.random()*samples.length)];
+  ask();
+}
+
+window.addEventListener('keydown', (ev)=>{
+  if(ev.key === 'Enter') ask();
 });
 </script>
 </body>
@@ -386,4 +397,16 @@ btn.addEventListener("click", async () => {
 
 @app.get("/ui", response_class=HTMLResponse)
 def ui_page():
-    return HTMLResponse(content=UI_HTML, media_type="text/html")
+    return HTMLResponse(content=UI_HTML)
+
+# -------------------------------
+# Debug: elenco rotte
+# -------------------------------
+@app.get("/__routes")
+def __routes():
+    return JSONResponse({
+        "routes": [
+            {"path": r.path, "name": r.name, "methods": list(getattr(r, "methods", []) or [])}
+            for r in app.routes
+        ]
+    })
