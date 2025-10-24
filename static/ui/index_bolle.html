@@ -1,102 +1,94 @@
 <!doctype html>
 <html lang="it">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tecnaria — BOT</title>
-<style>
-  :root{--bg:#0b0d10;--panel:#121418;--panel2:#1a1d23;--ink:#f3f4f6;--muted:#9ca3af;--brand:#ff7a00;--brand2:#ff9833}
-  *{box-sizing:border-box} html,body{height:100%}
-  body{margin:0;background:radial-gradient(1200px 600px at 70% -10%, #1f232b 0%, #0b0d10 60%);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial}
-  .wrap{max-width:960px;margin:auto;padding:24px}
-  .hdr{display:flex;gap:12px;align-items:center;margin-bottom:10px}
-  .logo{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:linear-gradient(145deg,#ff8800,#995100);font-weight:800}
-  h1{margin:0;font-size:22px}.sub{color:var(--muted);font-size:12px}
-  .row{display:flex;gap:10px;margin:14px 0}
-  .in{flex:1;background:#1a1e25;border:1px solid #2a2f39;border-radius:14px;padding:14px 16px;color:var(--ink);font-size:16px;outline:none}
-  .btn{background:linear-gradient(145deg,var(--brand),var(--brand2));border:0;border-radius:14px;color:#111;padding:14px 18px;font-weight:800;cursor:pointer;box-shadow:0 12px 34px rgba(255,122,0,.25)}
-  .hint{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-  .tag{padding:6px 10px;border-radius:999px;background:#141821;border:1px solid #2a2f39;color:#e5e7eb;font-size:12px;cursor:pointer}
-  .chat{background:var(--panel2);border:1px solid #20252e;border-radius:16px;height:62vh;min-height:380px;overflow:auto;padding:16px;box-shadow:0 14px 40px rgba(0,0,0,.35)}
-  .b{max-width:78%;padding:12px 14px;border-radius:14px;margin:8px 0;line-height:1.55}
-  .user{margin-left:auto;background:#e7f0ff;color:#111;border:1px solid #c7dcff}
-  .bot{background:#11151b;border:1px solid #2a2f39}
-  .bot h2{margin:0 0 6px 0;color:var(--brand)}
-  .meta{color:#9ca3af;font-size:12px;margin-top:6px}
-  .foot{color:#9ca3af;font-size:12px;margin-top:10px}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tecnaria_V3</title>
+  <style>
+    :root { --green:#0aa84f; --dk:#0b1320; --bg:#0f1a2b; --card:#12213a; --muted:#8ca3b8;}
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    body{margin:0;background:linear-gradient(180deg,#08101d,#0c1a2d 60%,#0a1526);color:#e8f1f8}
+    header{padding:18px 20px;border-bottom:1px solid #19324e;background:#0d1a2a;position:sticky;top:0}
+    h1{margin:0;font-size:20px;color:#eafff4}
+    .container{max-width:1000px;margin:24px auto;padding:0 16px}
+    .bar{display:flex;gap:10px}
+    input[type=text]{flex:1;padding:12px 14px;border-radius:10px;border:1px solid #254766;background:#0f2138;color:#e6f6ee}
+    button{padding:12px 16px;border-radius:10px;background:var(--green);border:none;color:#02150a;font-weight:700;cursor:pointer}
+    button:hover{filter:brightness(0.95)}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+    .card{background:#102339;border:1px solid #1b3a5a;border-radius:14px;padding:14px}
+    .muted{color:#9fb3c8;font-size:13px}
+    pre{white-space:pre-wrap;word-wrap:break-word;margin:0}
+    .title{font-weight:700;margin-bottom:6px}
+    .samples{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .chip{background:#11273f;border:1px solid #1a3e60;border-radius:999px;padding:8px 10px;font-size:13px;cursor:pointer}
+    .chip:hover{border-color:#2e6b9d}
+    @media (max-width:880px){.grid{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="hdr">
-    <div class="logo">T</div>
-    <div><h1>Tecnaria — BOT</h1><div class="sub">CTF • CEM-E (CTCEM/VCEM) • SPIT P560 • CTL • GTS</div></div>
+  <header><h1>🟢 Tecnaria_V3</h1></header>
+  <div class="container">
+    <div class="card">
+      <div class="muted">Scrivi la domanda e premi <b>Chiedi</b>. Oppure scegli un esempio.</div>
+      <div class="bar" style="margin-top:10px">
+        <input id="q" type="text" placeholder="Es: Differenza tra CEM-E e CTCEM nella posa su laterocemento?" />
+        <button id="go">Chiedi</button>
+      </div>
+      <div class="samples" id="samples"></div>
+    </div>
+
+    <div class="grid" style="margin-top:16px">
+      <div class="card">
+        <div class="title">Risposta</div>
+        <div class="muted" id="meta"></div>
+        <pre id="answer"></pre>
+        <div id="html"></div>
+      </div>
+      <div class="card">
+        <div class="title">Debug</div>
+        <pre id="debug"></pre>
+      </div>
+    </div>
   </div>
 
-  <div class="row">
-    <input id="q" class="in" placeholder="Scrivi la domanda… (es. ‘Mi parli della P560?’)" autofocus>
-    <button class="btn" onclick="send()">Chiedi</button>
-  </div>
-
-  <div class="hint">
-    <div class="tag" onclick="quick('CTCEM usa resine?')">CTCEM • Resine</div>
-    <div class="tag" onclick="quick('CTF su lamiera grecata?')">CTF • Lamiera</div>
-    <div class="tag" onclick="quick('Mi parli della P560 e dei chiodi HSBR14?')">P560 • HSBR14</div>
-    <div class="tag" onclick="quick('Tempi di presa CEM-E a 10°C?')">CEM-E • 10°C</div>
-    <div class="tag" onclick="quick('VCEM su essenze dure?')">VCEM • Essenze</div>
-  </div>
-
-  <div id="chat" class="chat">
-    <div class="b bot">Ciao 👋 Scrivi una domanda libera. Es.: <em>“Mi parli della P560?”</em></div>
-  </div>
-
-  <div class="foot">Endpoint: <code>POST /api/ask</code> (stessa origine)</div>
-</div>
-
-<script>
-const BACKEND = "/api/ask"; // <-- stessa origine = niente CORS
-
-function el(h){ const d=document.createElement('div'); d.innerHTML=h; return d.firstElementChild; }
-function bottom(n){ n.scrollTop = n.scrollHeight; }
-function quick(t){ document.getElementById('q').value = t; send(); }
-
-// espansione leggera per sinonimi (migliora i match)
-function expand(q){
-  const Q = q.toLowerCase(), extra=[];
-  if (Q.includes("p560") || Q.includes("p-560") || Q.includes("spit")) extra.push("SPIT P560","P-560","HSBR14","propulsori P560");
-  if (/\bctf\b/i.test(q))  extra.push("connettori CTF","lamiera grecata","HSBR14");
-  if (/\bctl\b/i.test(q))  extra.push("connettori CTL","viti","legno calcestruzzo");
-  if (/cem[- ]?e/i.test(q)) extra.push("resina CEM-E","preforo","pulizia foro");
-  if (/\bctcem\b/i.test(q)) extra.push("piastra dentata","preforo Ø11 75 mm","a secco");
-  if (/\bvcem\b/i.test(q))  extra.push("legno calcestruzzo","a secco","piastra maggiorata");
-  return [q].concat(extra).join(" ");
-}
-
-async function send(){
-  const inp = document.getElementById('q');
-  const chat = document.getElementById('chat');
-  let q = (inp.value||"").trim(); if(!q) return;
-
-  chat.appendChild(el(`<div class="b user"></div>`)).textContent = q;
-  const holder = el(`<div class="b bot"><div class="meta">Sto chiedendo al BOT…</div></div>`);
-  chat.appendChild(holder); bottom(chat);
-
-  try{
-    const t0 = performance.now();
-    const res = await fetch(BACKEND, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ q: expand(q) })
-    });
-    const data = await res.json();
-    const took = data.ms ? data.ms : Math.round(performance.now()-t0) + " ms";
-    holder.innerHTML = (data.html || ("<pre>"+JSON.stringify(data,null,2)+"</pre>"))
-                     + `<div class="meta">${took}${data.match_id ? " • match: " + data.match_id : ""}</div>`;
-  }catch(e){
-    holder.innerHTML = "<div><h2>Errore</h2><div>Impossibile contattare /api/ask.</div></div>" +
-      "<div class='meta'>Se sei su un dominio diverso, abilita CORS sul backend o apri questa pagina da tecnaria-v3.onrender.com</div>";
-  }
-  bottom(chat);
-}
-</script>
+  <script>
+    async function fetchJSON(url){
+      const r = await fetch(url);
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      return r.json();
+    }
+    async function ask(q){
+      const url = "/api/ask?q="+encodeURIComponent(q||"");
+      const t0=performance.now();
+      const data = await fetchJSON(url);
+      const dt = Math.max(1,Math.round(performance.now()-t0));
+      document.getElementById("meta").textContent =
+        `match_id: ${data.match_id}\nintent: ${data.intent} | famiglia: ${data.family} | lang: ${data.lang}\nms: ${dt}`;
+      document.getElementById("answer").textContent = data.text || "";
+      document.getElementById("html").innerHTML = data.html || "";
+      document.getElementById("debug").textContent = JSON.stringify(data,null,2);
+    }
+    async function loadUI(){
+      try{
+        const ui = await fetchJSON("/ui"); // se app.py ritorna JSON di fallback:
+        if(ui && ui.samples){
+          const wrap = document.getElementById("samples");
+          ui.samples.forEach(s=>{
+            const chip=document.createElement("div");
+            chip.className="chip";
+            chip.textContent=s;
+            chip.onclick=()=>{ document.getElementById("q").value=s; ask(s); };
+            wrap.appendChild(chip);
+          });
+        }
+      }catch{}
+    }
+    document.getElementById("go").onclick = ()=>{
+      const q = document.getElementById("q").value||"";
+      ask(q);
+    };
+    loadUI();
+  </script>
 </body>
 </html>
