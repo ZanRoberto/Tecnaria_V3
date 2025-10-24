@@ -1,22 +1,28 @@
-# app.py — Tecnaria_V3 (FastAPI + UI su "/" e su "/app")
+# app.py — Tecnaria_V3 (FastAPI) — free-text matcher + compare robusto
 from __future__ import annotations
 from typing import List, Dict, Any, Tuple, Optional
 from pathlib import Path
 from fastapi import FastAPI, Query
-from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-import time, re, csv, json
+import time, re, csv, json, difflib, unicodedata
 
 app = FastAPI(title="Tecnaria_V3")
 
-# -----------------------------
-# Dati locali (static/data)
-# -----------------------------
+# --- Paths
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "static" / "data"
-OV_JSON = DATA_DIR / "tecnaria_overviews.json"
+OV_JSON  = DATA_DIR / "tecnaria_overviews.json"
 CMP_JSON = DATA_DIR / "tecnaria_compare.json"
-FAQ_CSV = DATA_DIR / "faq.csv"
+FAQ_CSV  = DATA_DIR / "faq.csv"
+
+# --- Utils
+def _norm(s: str) -> str:
+    s = (s or "").lower().strip()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    s = re.sub(r"[^\w\s\-+/]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
 
 def load_json(path: Path, fallback: List[Dict[str, Any]] | None = None) -> List[Dict[str, Any]]:
     try:
@@ -67,21 +73,22 @@ def load_faq_csv(path: Path) -> List[Dict[str, str]]:
 OV_ITEMS: List[Dict[str, Any]] = load_json(OV_JSON, [])
 CMP_ITEMS: List[Dict[str, Any]] = load_json(CMP_JSON, [])
 FAQ_ITEMS: List[Dict[str, str]] = load_faq_csv(FAQ_CSV)
+
 JSON_BAG = {"overviews": OV_ITEMS, "compare": CMP_ITEMS, "faq": FAQ_ITEMS}
 FAQ_ROWS = len(FAQ_ITEMS)
 
+# --- Indici per lingua
 FAQ_BY_LANG: Dict[str, List[Dict[str, str]]] = {}
 for r in FAQ_ITEMS:
     FAQ_BY_LANG.setdefault(r["lang"], []).append(r)
 
-# -----------------------------
-# Lingua
-# -----------------------------
+# --- Lang detect
 _LANG_PATTERNS = {
-    "en": [r"\bwhat\b", r"\bhow\b", r"\bcan\b", r"\bshould\b", r"\bconnector(s)?\b"],
-    "es": [r"¿", r"\bqué\b", r"\bcómo\b", r"\bconector(es)?\b"],
-    "fr": [r"\bquoi\b", r"\bcomment\b", r"\bquel(le|s)?\b", r"\bconnecteur(s)?\b"],
-    "de": [r"\bwas\b", r"\bwie\b", r"\bverbinder\b"],
+    "en": [r"\bwhat\b", r"\bhow\b", r"\bcan\b", r"\bshould\b", r"\bconnector(s)?\b", r"\bdifference\b"],
+    "es": [r"¿", r"\bqué\b", r"\bcómo\b", r"\bconector(es)?\b", r"\bdiferenc"],
+    "fr": [r"\bquoi\b", r"\bcomment\b", r"\bquel(le|s)?\b", r"\bconnecteur(s)?\b", r"\bdiff[ée]rence"],
+    "de": [r"\bwas\b", r"\bwie\b", r"\bverbinder\b", r"\bunterschied"],
+    "it": [r"\bdifferenz", r"\bconfront", r"\bpos[ae]\b"],
 }
 def detect_lang(q: str) -> str:
     s = (q or "").lower()
@@ -93,49 +100,36 @@ def detect_lang(q: str) -> str:
         return "es"
     return "it"
 
-# -----------------------------
-# Token famiglie
-# -----------------------------
+# --- Famiglie (sinonimi multilingua)
 FAM_TOKENS: Dict[str, List[str]] = {
-    "CTF": [
-        "ctf","connector","connectors","connecteur","verbinder",
-        "lamiera","trave","chiodatrice","sparo",
-        "deck","beam","nailer","powder","cartridge",
-        "bac","poutre","cloueur","chapas","viga","nagler",
-        "acciaio","lamiera grecata"
-    ],
-    "CTL": ["ctl","soletta","calcestruzzo","collaborazione","legno","timber","concrete","composito","trave legno"],
-    "VCEM": ["vcem","preforo","predrill","pre-drill","pilot","hardwood","essenze","durezza","70","80"],
-    "CEM-E": ["ceme","cem-e","laterocemento","dry","secco","senza","resine","cappello","posa a secco"],
-    "CTCEM": ["ctcem","laterocemento","dry","secco","senza","resine","cappa","malta"],
-    "GTS": ["gts","manicotto","filettato","giunzioni","secco","threaded","sleeve","joint","barra"],
-    "P560": [
-        "p560","spit","spit p560","spit-p560",
-        "chiodatrice","pistola","utensile","attrezzatura","propulsori","propulsore",
-        "cartucce","cartuccia","gialle","verdi","rosse","dosaggio","regolazione potenza",
-        "chiodi","chiodo","hsbr14","hsbr 14","adattatore","kit adattatore",
-        "spari","sparo","colpo","tiro","sicura","marcatura","marcatura ce",
-        "powder","powder-actuated","powder actuated","pat","nailer","nailgun",
-        "cartridge","cartridges","mag","magazine","trigger","safety","tool",
-        "gerät","nagler","werkzeug","outil","cloueur","outil à poudre","herramienta","clavos",
-        "acciaio","trave","lamiera","lamiera grecata","deck","beam","steel","supporto","supporti","spessori minimi","eta"
-    ],
+    "CTF": ["ctf","connettore ctf","shear connector","connector","connectors","connecteur","verbinder",
+            "lamiera","lamiera grecata","deck","trave","beam","acciaio","steel","chiodi hsbr14","hsbr14",
+            "p560","spit"],
+    "CTL": ["ctl","soletta","calcestruzzo","collaborazione","legno","timber","concrete","composito","tavolato","maxi"],
+    "VCEM": ["vcem","preforo","predrill","pre-drill","pilot","hardwood","essenze dure","durezza","70","80","foro pilota"],
+    "CEM-E": ["ceme","cem-e","laterocemento","dry","secco","senza resine","resine no","cappello","posa a secco"],
+    "CTCEM": ["ctcem","laterocemento","dry","secco","senza resine","cappa","malta","alternativa resine"],
+    "GTS": ["gts","manicotto","filettato","giunzioni","threaded","sleeve","joint","barra"],
+    "P560": ["p560","spit","spit p560","spit-p560","chiodatrice","pistola","utensile","attrezzatura",
+             "propulsori","cartucce","gialle","verdi","rosse","dosaggio","regolazione potenza",
+             "hsbr14","adattatore","kit","sicura","cloueur","nagler","outil","werkzeug","herramienta"],
 }
 
-def detect_family(text: str) -> Tuple[str, int]:
-    t = " " + (text or "").lower() + " "
-    best_fam, best_hits = "", 0
+def _families_in_text(q: str) -> List[str]:
+    t = " " + _norm(q) + " "
+    found = []
     for fam, toks in FAM_TOKENS.items():
         hits = 0
-        if fam.lower() in t:
+        if (" " + fam.lower() + " ") in t:
             hits += 2
         for tok in toks:
-            tok = (tok or "").strip().lower()
-            if tok and tok in t:
+            tok = tok.lower().strip()
+            if tok and (" " + tok + " ") in t:
                 hits += 1
-        if hits > best_hits:
-            best_fam, best_hits = fam, hits
-    return best_fam, best_hits
+        if hits > 0:
+            found.append((fam, hits))
+    found.sort(key=lambda x: x[1], reverse=True)
+    return [f for f, _ in found]
 
 def _find_overview(fam: str) -> str:
     fam = (fam or "").upper()
@@ -144,213 +138,153 @@ def _find_overview(fam: str) -> str:
             return (it.get("answer") or "").strip()
     return f"{fam}: descrizione, ambiti applicativi, posa, controlli e riferimenti."
 
-def _compare_html(famA: str, famB: str, ansA: str, ansB: str) -> str:
+# --- “Enrich” per alcune FAQ (testo più denso)
+ENRICH: Dict[str, str] = {
+    "FAQ::CTF_SITE_CHECK": (
+        "Controlli in cantiere per CTF su lamiera grecata:\n"
+        "• Pre-posa: modello CTF corretto; lamiera integra; spessori minimi (lamiera ≥0,75 mm, trave ≥6 mm) ; "
+        "allineamento greche/fori piastra.\n"
+        "• Posa: SPIT P560 con kit Tecnaria; 2 chiodi HSBR14 per connettore; testa chiodo a battuta; nessun ri-sparo sullo stesso foro.\n"
+        "• Post-posa: campionamento ≥10% per verticalità, numero chiodi, gioco assente; pulizia zona getto; "
+        "verbale con foto. Riferimenti: ETA-18/0447, Manuale CTF, linee guida Tecnaria."
+    ),
+    "FAQ::P560": (
+        "Per i CTF è ammessa **solo** la chiodatrice SPIT P560 con kit/adattatori Tecnaria. "
+        "Ogni CTF si posa con **2 chiodi HSBR14**; i propulsori P560 si scelgono in base al supporto. "
+        "Altri utensili non sono autorizzati."
+    ),
+    "FAQ::CTL_MAXI": (
+        "Per travi in legno con tavolato ≈2 cm e soletta 5 cm usa **CTL MAXI 12/040** con 2 viti Ø10 (100 mm; "
+        "se interposti/tavolato >25–30 mm valuta 120 mm). Rete a metà spessore; testa del connettore sopra la rete."
+    ),
+    "FAQ::CTCEM_DRY": (
+        "I CTCEM **non** usano resine: fissaggio totalmente meccanico (‘a secco’). "
+        "Incisione per piastra dentata → preforo Ø11 prof. ~75 mm → pulizia → avvitare il piolo fino a battuta."
+    ),
+}
+
+def _maybe_enrich(match_id: str, text: str) -> str:
+    return ENRICH.get(match_id, text)
+
+# --- Compare builder (synthetic)
+def _compare_synthetic(a: str, b: str) -> str:
+    ansA = _find_overview(a)
+    ansB = _find_overview(b)
     return (
         "<div><h2>Confronto</h2>"
         "<div style='display:flex;gap:24px;flex-wrap:wrap'>"
-        f"<div class='side' style='flex:1;min-width:320px'><h3>{famA}</h3><p>{ansA}</p>"
-        f"<p><small>Fonte: <b>OVERVIEW::{famA}</b></small></p></div>"
-        f"<div class='side' style='flex:1;min-width:320px'><h3>{famB}</h3><p>{ansB}</p>"
-        f"<p><small>Fonte: <b>OVERVIEW::{famB}</b></small></p></div>"
+        f"<div class='side' style='flex:1;min-width:320px'><h3>{a}</h3><p>{ansA}</p>"
+        f"<p><small>Fonte: <b>OVERVIEW::{a}</b></small></p></div>"
+        f"<div class='side' style='flex:1;min-width:320px'><h3>{b}</h3><p>{ansB}</p>"
+        f"<p><small>Fonte: <b>OVERVIEW::{b}</b></small></p></div>"
         "</div></div>"
     )
 
-# -----------------------------
-# Intent router
-# -----------------------------
+# --- FAQ matcher (overlap + difflib)
+STOP = set("di del della delle degli dei da a al alla alle con per tra fra the and or of en de le la los las der die das und".split())
+def _score_faq(qnorm: str, row: Dict[str,str]) -> float:
+    keys = _norm((row.get("tags") or "") + " " + (row.get("question") or ""))
+    qw = [w for w in qnorm.split() if w not in STOP]
+    kw = [w for w in keys.split() if w not in STOP]
+    overlap = len(set(qw) & set(kw))
+    sim = difflib.SequenceMatcher(None, qnorm, keys).ratio()  # 0..1
+    return overlap*1.0 + sim*2.0   # peso maggiore alla similarità
+
+def _best_faq(q: str, lang: str) -> Optional[Dict[str,str]]:
+    qn = _norm(q)
+    best = None
+    best_s = -1.0
+    def scan(rows):
+        nonlocal best, best_s
+        for r in rows:
+            s = _score_faq(qn, r)
+            if s > best_s:
+                best_s, best = s, r
+    scan(FAQ_BY_LANG.get(lang, []))
+    if best is None or best_s < 0.9:
+        scan(FAQ_ITEMS)
+    # soglia minima
+    return best if best_s >= 0.9 else None
+
+# --- Intent router
 def intent_route(q: str) -> Dict[str, Any]:
-    ql = (q or "").lower().strip()
+    ql = (q or "").strip()
     lang = detect_lang(ql)
 
-    # 1) Confronti A vs B
-    fams = list(FAM_TOKENS.keys())
-    for a in fams:
-        for b in fams:
-            if a >= b:
-                continue
-            if a.lower() in ql and b.lower() in ql:
-                found = None
-                for it in CMP_ITEMS:
-                    fa = (it.get("famA") or "").upper()
-                    fb = (it.get("famB") or "").upper()
-                    if {fa, fb} == {a, b}:
-                        found = it
-                        break
-                if found:
-                    html = found.get("html") or ""
-                    text = found.get("answer") or ""
-                else:
-                    ansA = _find_overview(a)
-                    ansB = _find_overview(b)
-                    html = _compare_html(a, b, ansA, ansB)
-                    text = ""
-                return {
-                    "ok": True,
-                    "match_id": f"COMPARE::{a}_VS_{b}",
-                    "lang": lang,
-                    "family": f"{a}+{b}",
-                    "intent": "compare",
-                    "source": "compare" if found else "synthetic",
-                    "score": 92.0,
-                    "text": text,
-                    "html": html,
-                }
+    fams = _families_in_text(ql)
+    # Riconoscimento confronti: presenza di due famiglie o parole chiave tipo vs/differenza
+    compare_hint = re.search(r"\b(vs|versus|contro|confront|differen[cz]|vs\.)\b", _norm(ql))
+    if len(fams) >= 2 or (compare_hint and len(fams) >= 1):
+        # prova ad estrarre la miglior coppia
+        a = fams[0]
+        b = fams[1] if len(fams) > 1 else next((f for f in FAM_TOKENS if f != a), "CTL")
+        # cerca nel JSON
+        found = None
+        for it in CMP_ITEMS:
+            fa = (it.get("famA") or "").upper()
+            fb = (it.get("famB") or "").upper()
+            if {fa, fb} == {a, b}:
+                found = it; break
+        if found:
+            html = found.get("html") or _compare_synthetic(a,b)
+            text = found.get("answer") or ""
+            return {"ok": True,"match_id": f"COMPARE::{a}_VS_{b}","lang": lang,"family": f"{a}+{b}",
+                    "intent": "compare","source": "compare","score": 92.0,"text": text,"html": html}
+        else:
+            return {"ok": True,"match_id": f"COMPARE::{a}_VS_{b}","lang": lang,"family": f"{a}+{b}",
+                    "intent": "compare","source": "synthetic","score": 90.0,"text": "",
+                    "html": _compare_synthetic(a,b)}
 
-    # 2) Famiglia singola
-    fam, hits = detect_family(ql)
-    if hits >= 1:
-        best_row: Optional[Dict[str, str]] = None
-        best_score: int = -1
-        def try_rows(rows: List[Dict[str, str]]):
-            nonlocal best_row, best_score
-            for r in rows:
-                keys = ((r.get("tags") or "") + " " + (r.get("question") or "")).lower()
-                score = 0
-                for tok in re.split(r"[,\s;/\-]+", keys):
-                    tok = tok.strip()
-                    if tok and tok in ql:
-                        score += 1
-                if score > best_score:
-                    best_score, best_row = score, r
-        try_rows(FAQ_BY_LANG.get(lang, []))
-        if best_row is None or best_score <= 0:
-            try_rows(FAQ_ITEMS)
-        if best_row:
-            return {
-                "ok": True,
-                "match_id": best_row.get("id") or f"FAQ::{fam}",
-                "lang": lang,
-                "family": fam,
-                "intent": "faq",
-                "source": "faq",
-                "score": 90.0 if hits >= 2 else 82.0,
-                "text": best_row.get("answer") or "",
-                "html": ""
-            }
+    # Famiglia singola → FAQ free-text, poi overview
+    fams = _families_in_text(ql)
+    fam = fams[0] if fams else ""
+    row = _best_faq(ql, lang)
+    if row:
+        mid = (row.get("id") or f"FAQ::{fam or 'GEN'}").strip()
+        txt = _maybe_enrich(mid, row.get("answer") or "")
+        return {"ok": True,"match_id": mid,"lang": lang,"family": fam,"intent": "faq",
+                "source": "faq","score": 88.0,"text": txt,"html": ""}
+
+    if fam:
         ov = _find_overview(fam)
-        return {
-            "ok": True, "match_id": f"OVERVIEW::{fam}", "lang": lang,
-            "family": fam, "intent": "overview", "source": "overview", "score": 75.0,
-            "text": ov, "html": ""
-        }
+        return {"ok": True,"match_id": f"OVERVIEW::{fam}","lang": lang,"family": fam,
+                "intent": "overview","source": "overview","score": 75.0,"text": ov,"html": ""}
 
-    # 3) Fallback
-    return {
-        "ok": True, "match_id": "<NULL>", "lang": lang,
-        "family": "", "intent": "fallback", "source": "fallback", "score": 0,
-        "text": "Non ho trovato una risposta diretta nei metadati locali. Specifica meglio la famiglia/prodotto.",
-        "html": ""
-    }
+    return {"ok": True,"match_id": "<NULL>","lang": lang,"family": "","intent": "fallback",
+            "source": "fallback","score": 0,
+            "text": "Non ho trovato una risposta diretta nei metadati locali. Specifica famiglia/prodotto.",
+            "html": ""}
 
-# -----------------------------
-# UI GRAFICA su "/" e "/app"
-# -----------------------------
-_HTML_UI = """
-<!doctype html><html lang="it"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Tecnaria_V3</title>
-<style>
-:root{--bg:#0b1727;--card:#0f2238;--txt:#e8f0ff;--muted:#9bb3d3;--acc:#22c55e}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.4 system-ui,Arial}
-.wrap{max-width:920px;margin:24px auto;padding:16px}
-.title{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.pill{background:#0a2b16;border:1px solid #114d2c;color:#9af5bd;padding:3px 8px;border-radius:999px;font-size:12px}
-.card{background:var(--card);border:1px solid #1f3b5e;border-radius:14px;padding:16px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
-.row{display:flex;gap:8px;flex-wrap:wrap}
-input[type=text]{flex:1;min-width:220px;padding:12px;border-radius:10px;border:1px solid #2d4f78;background:#0b1b2e;color:var(--txt)}
-button{background:var(--acc);color:#06240f;border:0;border-radius:10px;padding:12px 18px;font-weight:700;cursor:pointer}
-button:disabled{opacity:.6;cursor:not-allowed}
-.samples{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-top:12px}
-.chip{background:#0b1b2e;border:1px solid #24486f;color:var(--muted);padding:8px 10px;border-radius:999px;cursor:pointer}
-.resp{margin-top:16px;white-space:pre-wrap}
-.meta{color:var(--muted);font-size:13px;margin-bottom:8px}
-</style></head><body>
-<div class="wrap">
-  <div class="title"><div style="width:10px;height:10px;background:var(--acc);border-radius:50%"></div>
-    <h2 style="margin:0">Tecnaria_V3</h2><span class="pill">UI</span></div>
-  <div class="card">
-    <div style="margin-bottom:8px;color:var(--muted)">Scrivi la domanda e premi <b>Chiedi</b>. Oppure tocca un esempio qui sotto.</div>
-    <div class="row"><input id="q" type="text" placeholder="Esempio: Differenza tra CEM-E e CTCEM nella posa su laterocemento?" />
-      <button id="ask">Chiedi</button></div>
-    <div id="samples" class="samples"></div>
-    <div id="resp" class="resp"></div>
-  </div>
-</div>
-<script>
-const samples=[
- "Differenza tra CTF e CTL?","Quando scegliere CTL invece di CEM-E?","Differenza tra CEM-E e CTCEM?",
- "CTF su lamiera grecata: controlli in cantiere?","VCEM su essenze dure: serve preforo 70–80%?","GTS: che cos’è e come si usa?",
- "P560: è un connettore o un'attrezzatura?","CEM-E: è una posa a secco?","CTCEM: quando preferirlo alle resine?",
- "VCEM on hardwoods: is predrilling required?","What are Tecnaria CTF connectors?","Can I install CTF with any powder-actuated tool?",
- "Que sont les connecteurs CTF Tecnaria ?","¿Qué son los conectores CTF de Tecnaria?","Was sind Tecnaria CTF-Verbinder?"
-];
-const $q=document.getElementById('q'),$ask=document.getElementById('ask'),$resp=document.getElementById('resp'),$s=document.getElementById('samples');
-function chip(t){const b=document.createElement('button');b.className='chip';b.textContent=t;b.onclick=()=>{$q.value=t;ask();};return b;}
-samples.forEach(s=> $s.appendChild(chip(s)));
-async function ask(){
-  const qs=($q.value||'').trim(); if(!qs) return;
-  $ask.disabled=true; $resp.innerHTML='⏳ Sto chiedendo...';
-  try{
-    const r=await fetch('/api/ask?q='+encodeURIComponent(qs));
-    const j=await r.json();
-    const meta=`match_id: ${j.match_id}\nintent: ${j.intent} | famiglia: ${j.family||''} | lang: ${j.lang||''}\nms: ${j.ms||'-'}`;
-    const html=(j.html||'').trim(); const text=(j.text||'').trim();
-    $resp.innerHTML='<div class="meta">'+meta.replaceAll('\\n','<br>')+'</div>' + (html ? html : (text ? '<div>'+text.replaceAll('\\n','<br>')+'</div>' : '<i>Nessun testo.</i>'));
-  }catch(e){ $resp.textContent='Errore di rete.'; } finally{ $ask.disabled=false; }
-}
-$ask.onclick=ask; $q.addEventListener('keydown',e=>{if(e.key==='Enter') ask();});
-</script></body></html>
-""".strip()
-
-@app.get("/", response_class=HTMLResponse)
-def ui_root():
-    return HTMLResponse(content=_HTML_UI)
-
-@app.get("/app", response_class=HTMLResponse)
-def ui_app():
-    return HTMLResponse(content=_HTML_UI)
-
-# -----------------------------
-# Endpoints info/health/ui-json
-# -----------------------------
-@app.get("/_info")
-def _root_info():
+# --- Service endpoints
+@app.get("/")
+def _root():
     try:
-        return {"app":"Tecnaria_V3 (online)","status":"ok","data_dir":str(DATA_DIR),"json_loaded":list(JSON_BAG.keys()),"faq_rows":FAQ_ROWS}
+        return {"app": "Tecnaria_V3 (online)","status": "ok","data_dir": str(DATA_DIR),
+                "json_loaded": list(JSON_BAG.keys()),"faq_rows": FAQ_ROWS}
     except Exception:
-        return {"app":"Tecnaria_V3 (online)","status":"ok"}
+        return {"app": "Tecnaria_V3 (online)","status": "ok"}
 
 @app.get("/health")
 def _health():
-    try:
-        return {"ok": True, "json_loaded": list(JSON_BAG.keys()), "faq_rows": FAQ_ROWS}
-    except Exception:
-        return {"ok": True}
+    return {"ok": True, "json_loaded": list(JSON_BAG.keys()), "faq_rows": FAQ_ROWS}
 
 @app.get("/ui")
-def _ui_samples():
+def _ui():
     samples = [
         "Differenza tra CTF e CTL?",
         "Quando scegliere CTL invece di CEM-E?",
         "Differenza tra CEM-E e CTCEM?",
-        "CTF su lamiera grecata: controlli in cantiere?",
+        "CTF su lamiera grecata: controlli in cantiere",
+        "P560: posso usare una chiodatrice qualsiasi?",
         "VCEM su essenze dure: serve preforo 70–80%?",
-        "GTS: che cos’è e come si usa?",
-        "P560: è un connettore o un'attrezzatura?",
-        "CEM-E: è una posa a secco?",
-        "CTCEM: quando preferirlo alle resine?",
-        "VCEM on hardwoods: is predrilling required?",
+        "CTL MAXI su tavolato 2 cm con soletta 5 cm: quale modello?",
+        "CTCEM: è una posa a secco?",
         "What are Tecnaria CTF connectors?",
         "Can I install CTF with any powder-actuated tool?",
-        "Que sont les connecteurs CTF Tecnaria ?",
-        "¿Qué son los conectores CTF de Tecnaria?",
-        "Was sind Tecnaria CTF-Verbinder?",
     ]
-    return {"title":"Tecnaria_V3 — UI minima","how_to":"Usa GET /api/ask?q=... oppure POST /api/ask con body { q: \"...\" }","samples":samples}
+    return {"title":"Tecnaria_V3 — UI minima","how_to":"GET /api/ask?q=... oppure POST /api/ask { q: \"...\" }","samples":samples}
 
-# -----------------------------
-# API principale
-# -----------------------------
+# --- API principale
 class AskIn(BaseModel):
     q: str
 
@@ -366,81 +300,27 @@ class AskOut(BaseModel):
     source: Optional[str] = None
     score: Optional[float] = None
 
-def make_answer(payload: Dict[str, Any], started_at: float) -> AskOut:
-    ms = int((time.time() - started_at) * 1000)
-    return AskOut(
-        ok=True,
-        match_id=str(payload.get("match_id") or "<NULL>"),
-        ms=ms if ms > 0 else 1,
-        text=str(payload.get("text") or ""),
-        html=str(payload.get("html") or ""),
-        lang=payload.get("lang"),
-        family=payload.get("family"),
-        intent=payload.get("intent"),
-        source=payload.get("source"),
-        score=payload.get("score"),
-    )
-
-def intent_route(q: str) -> Dict[str, Any]:
-    ql = (q or "").lower().strip()
-    lang = detect_lang(ql)
-    fams = list(FAM_TOKENS.keys())
-    # Confronti
-    for a in fams:
-        for b in fams:
-            if a >= b:
-                continue
-            if a.lower() in ql and b.lower() in ql:
-                found = None
-                for it in CMP_ITEMS:
-                    fa = (it.get("famA") or "").upper()
-                    fb = (it.get("famB") or "").upper()
-                    if {fa, fb} == {a, b}:
-                        found = it
-                        break
-                if found:
-                    html = found.get("html") or ""
-                    text = found.get("answer") or ""
-                else:
-                    ansA = _find_overview(a)
-                    ansB = _find_overview(b)
-                    html = _compare_html(a, b, ansA, ansB)
-                    text = ""
-                return {"ok": True,"match_id": f"COMPARE::{a}_VS_{b}","lang": lang,"family": f"{a}+{b}","intent": "compare","source": "compare" if found else "synthetic","score": 92.0,"text": text,"html": html}
-    # Famiglia singola
-    fam, hits = detect_family(ql)
-    if hits >= 1:
-        best_row: Optional[Dict[str, str]] = None
-        best_score: int = -1
-        def try_rows(rows: List[Dict[str, str]]):
-            nonlocal best_row, best_score
-            for r in rows:
-                keys = ((r.get("tags") or "") + " " + (r.get("question") or "")).lower()
-                score = 0
-                for tok in re.split(r"[,\s;/\-]+", keys):
-                    tok = tok.strip()
-                    if tok and tok in ql:
-                        score += 1
-                if score > best_score:
-                    best_score, best_row = score, r
-        try_rows(FAQ_BY_LANG.get(lang, []))
-        if best_row is None or best_score <= 0:
-            try_rows(FAQ_ITEMS)
-        if best_row:
-            return {"ok": True,"match_id": best_row.get("id") or f"FAQ::{fam}","lang": lang,"family": fam,"intent": "faq","source": "faq","score": 90.0 if hits >= 2 else 82.0,"text": best_row.get("answer") or "","html": ""}
-        ov = _find_overview(fam)
-        return {"ok": True,"match_id": f"OVERVIEW::{fam}","lang": lang,"family": fam,"intent": "overview","source": "overview","score": 75.0,"text": ov,"html": ""}
-    # Fallback
-    return {"ok": True,"match_id": "<NULL>","lang": lang,"family": "","intent": "fallback","source": "fallback","score": 0,"text": "Non ho trovato una risposta diretta nei metadati locali. Specifica meglio la famiglia/prodotto.","html": ""}
+def _answer(q: str) -> Dict[str,Any]:
+    return intent_route(q or "")
 
 @app.get("/api/ask", response_model=AskOut)
 def api_ask_get(q: str = Query(default="", description="Domanda")) -> AskOut:
     t0 = time.time()
-    routed = intent_route(q or "")
-    return make_answer(routed, t0)
+    routed = _answer(q)
+    ms = int((time.time() - t0) * 1000)
+    return AskOut(ok=True, match_id=str(routed.get("match_id") or "<NULL>"), ms=max(ms,1),
+                  text=str(routed.get("text") or ""), html=str(routed.get("html") or ""),
+                  lang=routed.get("lang"), family=routed.get("family"),
+                  intent=routed.get("intent"), source=routed.get("source"),
+                  score=routed.get("score"))
 
 @app.post("/api/ask", response_model=AskOut)
 def api_ask_post(body: AskIn) -> AskOut:
     t0 = time.time()
-    routed = intent_route(body.q or "")
-    return make_answer(routed, t0)
+    routed = _answer(body.q)
+    ms = int((time.time() - t0) * 1000)
+    return AskOut(ok=True, match_id=str(routed.get("match_id") or "<NULL>"), ms=max(ms,1),
+                  text=str(routed.get("text") or ""), html=str(routed.get("html") or ""),
+                  lang=routed.get("lang"), family=routed.get("family"),
+                  intent=routed.get("intent"), source=routed.get("source"),
+                  score=routed.get("score"))
