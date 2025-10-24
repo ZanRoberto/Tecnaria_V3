@@ -1,17 +1,8 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-gunicorn==21.2.0
-requests==2.32.3
-beautifulsoup4==4.12.3
-jinja2==3.1.4
-
-
-
-
-
-
-
-
+fastapi==0.103.2
+starlette==0.27.0
+pydantic==1.10.13
+uvicorn[standard]==0.22.0
+gunicorn==22.0.0
 
 
 
