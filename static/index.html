@@ -1,177 +1,116 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Tecnaria Sinapsi — BOT</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tecnaria_V3 — UI verde</title>
   <style>
-    :root{
-      --bg:#101214;--panel:#161A1D;--muted:#889096;--text:#ECEDEE;
-      --accent:#ff7a00;--accent-2:#ff9d4d;--ring:#ffd1a3;--ok:#2ecc71;
-      --bad:#ff4757;--chip:#22262b;
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f4f8f4;
+      color: #222;
+      margin: 0;
+      padding: 0;
     }
-    *{box-sizing:border-box}
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial}
-    .wrap{max-width:1100px;margin:0 auto;padding:28px}
-    .brand{display:flex;align-items:center;gap:12px}
-    .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;font-weight:800}
-    h1{margin:0;font-size:22px}
-    .sub{margin-top:2px;color:var(--muted);font-size:13px}
-    .bar{display:flex;gap:10px;margin:22px 0}
-    input[type="text"]{flex:1;background:var(--panel);border:1px solid #23272b;color:var(--text);padding:14px 16px;border-radius:12px;outline:none}
-    input[type="text"]:focus{border-color:var(--accent)}
-    button{background:linear-gradient(135deg,var(--accent),var(--accent-2));border:0;color:#111;padding:0 18px;border-radius:12px;font-weight:700;cursor:pointer}
-    button:disabled{opacity:.6;cursor:progress}
-    .chips{display:flex;gap:8px;flex-wrap:wrap}
-    .chip{font-size:12px;color:#d2d6db;background:var(--chip);border:1px solid #222; padding:6px 10px;border-radius:999px}
-    .row{display:grid;grid-template-columns:minmax(260px,1fr) 2fr;gap:18px;align-items:start}
-    .card{background:var(--panel);border:1px solid #212529;border-radius:16px;padding:18px}
-    .card h3{margin:0 0 10px 0;font-size:14px;color:#cfd3d8;letter-spacing:.3px;text-transform:uppercase}
-    .meta{display:grid;gap:8px;font-size:13px}
-    .ok{color:var(--ok)}
-    .bad{color:var(--bad)}
-    .answer{min-height:180px;border-radius:12px;border:1px dashed #2a2f35;padding:16px}
-    .ans-title{font-weight:800;color:var(--accent);margin-bottom:10px}
-    .row2{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-top:8px;color:var(--muted)}
-    .copy{background:#202429;border:1px solid #2a2f35;color:#dbe0e6;border-radius:9px;padding:6px 10px;font-size:12px;cursor:pointer}
-    .cfg{display:flex;gap:8px;align-items:center}
-    .cfg input{width:100%;padding:9px 10px;border-radius:9px;background:#121518;color:#ddd;border:1px solid #222}
-    a{color:var(--accent-2);text-decoration:none}
-    @media(max-width:980px){.row{grid-template-columns:1fr}}
+    header {
+      background: #2e7d32;
+      color: #fff;
+      padding: 12px 20px;
+      font-size: 1.2em;
+      font-weight: 600;
+    }
+    main {
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      font-size: 1em;
+      padding: 10px;
+      border: 2px solid #2e7d32;
+      border-radius: 6px;
+      resize: vertical;
+    }
+    button {
+      background: #2e7d32;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 1em;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover { background: #388e3c; }
+    .response {
+      margin-top: 20px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .meta {
+      font-size: 0.9em;
+      color: #555;
+      margin-top: 8px;
+    }
+    .examples {
+      margin-top: 25px;
+      font-size: 0.9em;
+    }
+    .examples button {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #2e7d32;
+      margin: 3px;
+      font-size: 0.85em;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="brand">
-      <div class="logo">T</div>
-      <div>
-        <h1>Tecnaria Sinapsi — BOT</h1>
-        <div class="sub">CTF, CEM-E (CTCEM/VCEM), SPIT P560, CTL, GTS · IT/EN/ES/FR/DE</div>
-      </div>
-      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-        <span id="onlineDot" style="width:10px;height:10px;border-radius:50%;background:#999;display:inline-block"></span>
-        <span id="onlineTxt" class="sub">offline</span>
-      </div>
-    </div>
+  <header>🟢 Tecnaria_V3 — Chatbot Tecnico</header>
+  <main>
+    <p>Scrivi la tua domanda e premi <b>Chiedi</b>:</p>
+    <textarea id="question" placeholder="Esempio: Differenza tra CTF e CTL?"></textarea><br />
+    <button onclick="ask()">Chiedi</button>
 
-    <div class="bar">
-      <input id="q" type="text" placeholder="Scrivi la domanda… (es. Differenza tra CTF e CTL?)" />
-      <button id="askBtn">Chiedi a Sinapsi</button>
-    </div>
-    <div class="chips">
-      <div class="chip">CTF · Posa P560</div>
-      <div class="chip">CTL · Preforo abete</div>
-      <div class="chip">CEM-E · vs CTCEM</div>
-      <div class="chip">GTS · Giunzioni a secco</div>
-      <div class="chip">VCEM · Preforo 70–80%</div>
-    </div>
+    <div id="response" class="response" style="display:none;"></div>
 
-    <div class="row" style="margin-top:18px">
-      <div class="card">
-        <h3>Impostazioni</h3>
-        <div class="meta">
-          <div class="cfg">
-            <span style="min-width:110px;color:#cfd3d8">Base URL</span>
-            <input id="base" />
-          </div>
-          <div>Rules: <b id="rulesOk">…</b> · Router: <b id="routerOk">…</b></div>
-          <div>Catalog: <b id="catOk">…</b> · Contacts: <b id="ctOk">…</b></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="row2">
-          <div>Latency: <b id="latency">—</b></div>
-          <button id="copyBtn" class="copy">Copia</button>
-        </div>
-        <div id="answer" class="answer">
-          <div class="ans-title">Risposta Tecnaria</div>
-          <div id="ansText" style="white-space:pre-wrap"></div>
-          <div id="ansHtml"></div>
-        </div>
-      </div>
+    <div class="examples">
+      <p><b>Esempi rapidi:</b></p>
+      <button onclick="fill('Differenza tra CTF e CTL?')">CTF vs CTL</button>
+      <button onclick="fill('Che cos’è la chiodatrice P560?')">Chiodatrice P560</button>
+      <button onclick="fill('I connettori CTCEM usano resine?')">CTCEM e resine</button>
+      <button onclick="fill('Serve preforo per VCEM?')">VCEM preforo</button>
+      <button onclick="fill('Quando usare GTS?')">GTS</button>
     </div>
-
-    <div class="card" style="margin-top:18px">
-      <div style="font-size:12px;color:var(--muted)">
-        © Tecnaria S.p.A. — Questo frontend chiama le API <code>/health</code> e <code>/api/ask</code> del servizio FastAPI.
-      </div>
-    </div>
-  </div>
+  </main>
 
   <script>
-    const $ = (s)=>document.querySelector(s);
-    const baseInput = $("#base");
-    const askBtn = $("#askBtn");
-    const onlineDot = $("#onlineDot");
-    const onlineTxt = $("#onlineTxt");
-    const ansText = $("#ansText");
-    const ansHtml = $("#ansHtml");
-    const latency = $("#latency");
-    const rulesOk = $("#rulesOk");
-    const routerOk = $("#routerOk");
-    const catOk = $("#catOk");
-    const ctOk = $("#ctOk");
-    const copyBtn = $("#copyBtn");
-    const qInput = $("#q");
-
-    // default: stesso dominio (Render)
-    baseInput.value = window.location.origin;
-
-    async function ping(){
-      try{
-        const url = baseInput.value.replace(/\/+$/,"") + "/health";
-        const t0 = performance.now();
-        const r = await fetch(url);
-        const data = await r.json();
-        const t1 = performance.now();
-        onlineDot.style.background = "#2ecc71";
-        onlineTxt.textContent = "Online";
-        latency.textContent = Math.max(1,Math.round(t1-t0))+" ms";
-        rulesOk.textContent = "true";
-        routerOk.textContent = "true";
-        catOk.textContent = (data.json_loaded||[]).includes("compare")+"";
-        ctOk.textContent = (data.json_loaded||[]).includes("faq")+"";
-      }catch(e){
-        onlineDot.style.background = "#ff4757";
-        onlineTxt.textContent = "Offline";
-      }
-    }
-    ping();
-
-    async function ask(){
-      const q = qInput.value.trim();
-      if(!q){ qInput.focus(); return; }
-      askBtn.disabled = true;
-      ansText.textContent = "";
-      ansHtml.innerHTML = "";
-      try{
-        const t0 = performance.now();
-        const r = await fetch(baseInput.value.replace(/\/+$/,"")+"/api/ask",{
-          method:"POST",
-          headers:{"Content-Type":"application/json;charset=utf-8"},
-          body: JSON.stringify({q})
-        });
-        const data = await r.json();
-        const t1 = performance.now();
-        latency.textContent = Math.max(1,Math.round(t1-t0))+" ms";
-        ansText.textContent = data.text||"";
-        ansHtml.innerHTML = data.html||"";
-      }catch(e){
-        ansText.textContent = "Errore di rete o servizio non raggiungibile.";
-      }finally{
-        askBtn.disabled = false;
+    async function ask() {
+      const q = document.getElementById("question").value.trim();
+      if (!q) return alert("Scrivi una domanda prima!");
+      const box = document.getElementById("response");
+      box.style.display = "block";
+      box.innerHTML = "<i>Sto pensando...</i>";
+      try {
+        const res = await fetch("/api/ask?q=" + encodeURIComponent(q));
+        const data = await res.json();
+        box.innerHTML =
+          `<b>match_id:</b> ${data.match_id}<br>` +
+          `<b>intent:</b> ${data.intent} | <b>famiglia:</b> ${data.family}<br>` +
+          `<b>lang:</b> ${data.lang} | <b>ms:</b> ${data.ms}<br><br>` +
+          (data.html || `<p>${data.text}</p>`);
+      } catch (err) {
+        box.innerHTML = "<span style='color:red'>Errore di rete o server offline.</span>";
       }
     }
 
-    askBtn.addEventListener("click", ask);
-    qInput.addEventListener("keydown", e=>{ if(e.key==="Enter") ask(); });
-    copyBtn.addEventListener("click", ()=>{
-      const tmp = document.createElement("textarea");
-      tmp.value = (ansText.textContent||"")+"\n\n"+(ansHtml.textContent||"");
-      document.body.appendChild(tmp); tmp.select(); document.execCommand("copy"); tmp.remove();
-      copyBtn.textContent = "Copiato!"; setTimeout(()=>copyBtn.textContent="Copia",1000);
-    });
+    function fill(t) {
+      document.getElementById("question").value = t;
+    }
   </script>
 </body>
 </html>
