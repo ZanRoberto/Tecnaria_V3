@@ -1,6 +1,5 @@
-# app.py — Tecnaria_V3 (FastAPI)
+# app.py — Tecnaria_V3 (FastAPI) — versione migliorata per matching e compare
 from __future__ import annotations
-
 from typing import List, Dict, Any, Tuple, Optional
 from pathlib import Path
 from fastapi import FastAPI, Query
@@ -14,9 +13,9 @@ app = FastAPI(title="Tecnaria_V3")
 # -----------------------------
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "static" / "data"
-OV_JSON = DATA_DIR / "tecnaria_overviews.json"   # panoramiche famiglie
-CMP_JSON = DATA_DIR / "tecnaria_compare.json"    # confronti A vs B
-FAQ_CSV = DATA_DIR / "faq.csv"                   # domande/risposte brevi multi-lingua
+OV_JSON = DATA_DIR / "tecnaria_overviews.json"
+CMP_JSON = DATA_DIR / "tecnaria_compare.json"
+FAQ_CSV = DATA_DIR / "faq.csv"
 
 def load_json(path: Path, fallback: List[Dict[str, Any]] | None = None) -> List[Dict[str, Any]]:
     try:
@@ -33,8 +32,8 @@ def load_faq_csv(path: Path) -> List[Dict[str, str]]:
     rows: List[Dict[str, str]] = []
     if not path.exists():
         return rows
-    def _read(encoding: str):
-        with path.open("r", encoding=encoding, newline="") as f:
+    def _read(enc: str):
+        with path.open("r", encoding=enc, newline="") as f:
             rdr = csv.DictReader(f)
             for r in rdr:
                 rows.append({
@@ -58,7 +57,7 @@ def load_faq_csv(path: Path) -> List[Dict[str, str]]:
         "Â°": "°", "Â§": "§", "Â±": "±", "Â€": "€",
     }
     for r in rows:
-        for k in ("question", "answer", "tags"):
+        for k in ("question","answer","tags"):
             t = r[k]
             for bad, good in fixes.items():
                 t = t.replace(bad, good)
@@ -72,7 +71,7 @@ FAQ_ITEMS: List[Dict[str, str]] = load_faq_csv(FAQ_CSV)
 JSON_BAG = {"overviews": OV_ITEMS, "compare": CMP_ITEMS, "faq": FAQ_ITEMS}
 FAQ_ROWS = len(FAQ_ITEMS)
 
-# Indice per lingua
+# Index faq by language
 FAQ_BY_LANG: Dict[str, List[Dict[str, str]]] = {}
 for r in FAQ_ITEMS:
     FAQ_BY_LANG.setdefault(r["lang"], []).append(r)
@@ -97,74 +96,164 @@ def detect_lang(q: str) -> str:
     return "it"
 
 # -----------------------------
-# Token famiglie (multilingua)
+# Utility: normalizzazione tokens
 # -----------------------------
-FAM_TOKENS: Dict[str, List[str]] = {
-    "CTF": [
-        "ctf","connector","connectors","connecteur","verbinder",
-        "lamiera","trave","chiodatrice","sparo",
-        "deck","beam","nailer","powder","cartridge",
-        "bac","poutre","cloueur","chapas","viga","nagler",
-        "acciaio","lamiera grecata"
-    ],
-    "CTL": ["ctl","soletta","calcestruzzo","collaborazione","legno","timber","concrete","composito","trave legno"],
-    "VCEM": ["vcem","preforo","predrill","pre-drill","pilot","hardwood","essenze","durezza","70","80"],
-    "CEM-E": ["ceme","cem-e","laterocemento","dry","secco","senza","resine","cappello","posa a secco"],
-    "CTCEM": ["ctcem","laterocemento","dry","secco","senza","resine","cappa","malta"],
-    "GTS": ["gts","manicotto","filettato","giunzioni","secco","threaded","sleeve","joint","barra"],
-    "P560": [
-        "p560","spit","spit p560","spit-p560",
-        "chiodatrice","pistola","utensile","attrezzatura","propulsori","propulsore",
-        "cartucce","cartuccia","gialle","verdi","rosse","dosaggio","regolazione potenza",
-        "chiodi","chiodo","hsbr14","hsbr 14","adattatore","kit adattatore",
-        "spari","sparo","colpo","tiro","sicura","marcatura","marcatura ce",
-        "powder","powder-actuated","powder actuated","pat","nailer","nailgun",
-        "cartridge","cartridges","mag","magazine","trigger","safety","tool",
-        "gerät","nagler","werkzeug","outil","cloueur","outil à poudre","herramienta","clavos",
-        "acciaio","trave","lamiera","lamiera grecata","deck","beam","steel",
-        "supporto","supporti","spessori minimi","eta"
-    ],
+_nonword_re = re.compile(r"[^\wÀ-ž]+", flags=re.UNICODE)
+def tokenize(text: str) -> List[str]:
+    t = (text or "").lower()
+    # normalize punctuation to spaces, keep diacritics
+    parts = _nonword_re.split(t)
+    return [p for p in parts if p]
+
+# -----------------------------
+# Costruzione dinamica token per famiglia
+# -----------------------------
+# Base manuale (se vuoi aggiungere singole sigle utili)
+BASE_FAMILY_ALIASES = {
+    "CTF": ["ctf", "connectors", "connecteur", "verbinder"],
+    "CTL": ["ctl", "timber", "legno", "soletta"],
+    "VCEM": ["vcem", "predrill", "preforo", "hardwood"],
+    "CEM-E": ["ceme", "cem-e", "laterocemento"],
+    "CTCEM": ["ctcem", "laterocemento", "ctcem"],
+    "GTS": ["gts", "manicotto", "threaded"],
+    "P560": ["p560", "spit p560", "pistola", "chiodatrice", "powder", "nailer"],
 }
 
-# parole indicative di "tema attrezzatura"
-TOOL_TOKENS = [
-    "chiodatrice","pistola","utensile","attrezzatura","powder","powder-actuated","powder actuated",
-    "nailer","nailgun","propulsori","propulsore","cartucce","cartridge","cartridges","kit","adattatore",
-    "hsbr14","hsbr 14","spit","p560","outil","cloueur","werkzeug","gerät","herramienta","tool","safety"
-]
+# Start with base aliases, then extend from overviews and FAQ tags/questions
+FAM_TOKENS: Dict[str, List[str]] = {}
+# Initialize from overviews if present
+for item in OV_ITEMS:
+    fam = (item.get("family") or "").upper()
+    if not fam:
+        continue
+    toks = list(BASE_FAMILY_ALIASES.get(fam, []))
+    # include family name and family lower
+    toks.append(fam.lower())
+    # also include name/title if present
+    for k in ("title","name","aliases","keywords"):
+        v = item.get(k)
+        if isinstance(v, str):
+            toks += tokenize(v)
+        elif isinstance(v, list):
+            for s in v:
+                toks += tokenize(str(s))
+    FAM_TOKENS[fam] = sorted(set([t for t in toks if t]))
+
+# Ensure families from BASE_FAMILY_ALIASES exist
+for fam, aliases in BASE_FAMILY_ALIASES.items():
+    if fam not in FAM_TOKENS:
+        FAM_TOKENS[fam] = sorted(set(aliases + [fam.lower()]))
+
+# Enrich tokens with FAQ content/tags
+for r in FAQ_ITEMS:
+    tags = (r.get("tags") or "").lower()
+    lang = r.get("lang") or "it"
+    # try to guess family from tags like "ctf,p560" or from id pattern "FAQ::CTF"
+    potential = []
+    for tok in re.split(r"[,\s;/\-]+", tags):
+        tok = tok.strip()
+        if not tok:
+            continue
+        # if token equals a family alias, assign
+        for fam, toks in list(FAM_TOKENS.items()):
+            if tok in toks or tok == fam.lower():
+                potential.append((fam,tok))
+    # fallback: check question text tokens for family names
+    qtokens = tokenize(r.get("question") or "")
+    for qt in qtokens:
+        for fam, toks in list(FAM_TOKENS.items()):
+            if qt in toks or qt == fam.lower():
+                potential.append((fam,qt))
+    for fam, _ in potential:
+        # add question words as tokens for that family
+        FAM_TOKENS[fam] = sorted(set(FAM_TOKENS.get(fam,[]) + qtokens + tokenize(tags)))
+
+# Final small cleaning: remove empty tokens
+for fam in list(FAM_TOKENS.keys()):
+    FAM_TOKENS[fam] = [t for t in FAM_TOKENS[fam] if t and len(t)>0]
+
+# Add extra P560 richness manually as requested (common variants)
+if "P560" in FAM_TOKENS:
+    extras = [
+        "spit","hsbr14","hsbr","chiodi","chiodo","cartuccia","cartucce","cartuccie",
+        "propulsore","propulsori","adattatore","kit","kit adattatore","pat","powder-actuated",
+        "nailgun","nailer","tool","gerät","outil","herramienta","cloueur"
+    ]
+    FAM_TOKENS["P560"] = sorted(set(FAM_TOKENS["P560"] + extras))
 
 # -----------------------------
-# Utility detection
+# Detect family — improved (return top N)
 # -----------------------------
-def text_has_any(t: str, toks: List[str]) -> bool:
-    t = " " + t.lower() + " "
-    for x in toks:
-        x = (x or "").strip().lower()
-        if x and x in t:
-            return True
-    return False
-
-# Conteggio hit con boost acronimo
-def detect_family(text: str) -> Tuple[str, int]:
-    t = " " + (text or "").lower() + " "
-    best_fam, best_hits = "", 0
+def detect_family_scores(text: str) -> List[Tuple[str,int]]:
+    tkns = tokenize(text)
+    text_join = " " + " ".join(tkns) + " "
+    scores: List[Tuple[str,int]] = []
     for fam, toks in FAM_TOKENS.items():
         hits = 0
-        if fam.lower() in t:  # boost se compare l'acronimo
-            hits += 2
+        fam_lower = fam.lower()
+        # exact acronym boost
+        if re.search(r"\b" + re.escape(fam_lower) + r"\b", text_join):
+            hits += 4
+        # tokens
         for tok in toks:
-            tok = (tok or "").strip().lower()
-            if tok and tok in t:
+            if not tok:
+                continue
+            # word boundary check
+            if re.search(r"\b" + re.escape(tok) + r"\b", text_join):
                 hits += 1
-        if hits > best_hits:
-            best_fam, best_hits = fam, hits
-    return best_fam, best_hits
+        scores.append((fam, hits))
+    # sort desc by hits
+    scores.sort(key=lambda x: x[1], reverse=True)
+    # return only those with >0 hits (or top few)
+    return [(fam,sc) for fam,sc in scores if sc>0]
 
+# -----------------------------
+# Find best FAQ given a family and query
+# -----------------------------
+def best_faq_for_query(q: str, fam: str, lang: str) -> Tuple[Optional[Dict[str,str]], int]:
+    q_toks = set(tokenize(q))
+    best, best_score = None, -1
+    # search first in same language then cross-lang
+    tries = []
+    if lang and lang in FAQ_BY_LANG:
+        tries.append(FAQ_BY_LANG.get(lang, []))
+    tries.append(FAQ_ITEMS)
+    for rows in tries:
+        for r in rows:
+            # quick family filter: if tag contains family
+            tags = (r.get("tags") or "").lower()
+            if fam and fam.lower() not in tags and fam.lower() not in (r.get("id") or "").lower():
+                # still allow: but de-prioritize
+                pass
+            # compute overlap score with question+tags
+            keys = ((r.get("tags") or "") + " " + (r.get("question") or "")).lower()
+            k_toks = set(tokenize(keys))
+            score = 0
+            # token overlap
+            score += len(q_toks & k_toks) * 2
+            # bonus if family appears in tags or question
+            if fam and fam.lower() in keys:
+                score += 4
+            # small bonus for exact id match
+            if (r.get("id") or "").lower().endswith(fam.lower()):
+                score += 3
+            # bonus if language matches
+            if r.get("lang") == lang:
+                score += 1
+            # keep best
+            if score > best_score:
+                best_score, best = score, r
+    return best, best_score
+
+# -----------------------------
+# Overview helper
+# -----------------------------
 def _find_overview(fam: str) -> str:
     fam = (fam or "").upper()
     for it in OV_ITEMS:
         if (it.get("family") or "").upper() == fam:
             return (it.get("answer") or "").strip()
+    # fallback simple synthetic
     return f"{fam}: descrizione, ambiti applicativi, posa, controlli e riferimenti."
 
 def _compare_html(famA: str, famB: str, ansA: str, ansB: str) -> str:
@@ -178,138 +267,138 @@ def _compare_html(famA: str, famB: str, ansA: str, ansB: str) -> str:
         "</div></div>"
     )
 
-# ---- FAQ selector per una famiglia ----
-def best_faq_for_family(q: str, fam: str, lang: str) -> Optional[Dict[str, str]]:
-    fam = fam.upper().strip()
-    ql = (q or "").lower()
-    def score_row(r: Dict[str,str]) -> int:
-        keys = ((r.get("tags") or "") + " " + (r.get("question") or "") + " " + (r.get("id") or "")).lower()
-        sc = 0
-        for tok in re.split(r"[,\s;/\-]+", keys):
-            tok = tok.strip()
-            if tok and tok in ql:
-                sc += 1
-        # bonus se l'id è della famiglia attesa
-        rid = (r.get("id") or "").upper()
-        if fam in rid:
-            sc += 2
-        return sc
-
-    # priorità: stessa lingua → tutte
-    candidates = FAQ_BY_LANG.get(lang, []) + FAQ_ITEMS
-    # filtra prima per famiglia (id/tags)
-    filtered = []
-    for r in candidates:
-        rid = (r.get("id") or "").upper()
-        tgs = (r.get("tags") or "").lower()
-        if fam in rid or fam.lower() in tgs:
-            filtered.append(r)
-    pool = filtered if filtered else candidates
-
-    best, best_sc = None, -1
-    for r in pool:
-        sc = score_row(r)
-        if sc > best_sc:
-            best, best_sc = r, sc
-    return best
-
 # -----------------------------
-# Intent router
+# Intent router (migliorato)
 # -----------------------------
 def intent_route(q: str) -> Dict[str, Any]:
-    ql = (q or "").lower().strip()
+    ql = (q or "").strip()
+    qln = ql.lower()
     lang = detect_lang(ql)
 
-    has_ctf = ("ctf" in ql) or text_has_any(ql, FAM_TOKENS["CTF"])
-    has_p560 = ("p560" in ql) or text_has_any(ql, FAM_TOKENS["P560"])
-    has_tool = text_has_any(ql, TOOL_TOKENS)
+    # detect family scores
+    fam_scores = detect_family_scores(ql)
+    # if two families with positive hits -> compare candidate
+    if len(fam_scores) >= 2:
+        (fam1, s1), (fam2, s2) = fam_scores[0], fam_scores[1]
+        # require minimal evidence to treat as compare (e.g. sum hits >= 2)
+        if (s1 + s2) >= 2:
+            # check CMP_ITEMS for existing compare doc
+            found = None
+            for it in CMP_ITEMS:
+                fa = (it.get("famA") or "").upper()
+                fb = (it.get("famB") or "").upper()
+                if {fa, fb} == {fam1, fam2}:
+                    found = it
+                    break
+            if found:
+                html = found.get("html") or ""
+                text = found.get("answer") or ""
+                source = "compare"
+            else:
+                ansA = _find_overview(fam1)
+                ansB = _find_overview(fam2)
+                html = _compare_html(fam1, fam2, ansA, ansB)
+                text = ""
+                source = "synthetic"
 
-    # 0) REGOLA SPECIALE: domande su utensile per CTF -> P560 FAQ (no compare)
-    if has_ctf and (has_p560 or has_tool):
-        r = best_faq_for_family(ql, "P560", lang)
-        if r:
             return {
                 "ok": True,
-                "match_id": r.get("id") or "FAQ::P560",
+                "match_id": f"COMPARE::{fam1}_VS_{fam2}",
                 "lang": lang,
-                "family": "P560",
-                "intent": "faq",
-                "source": "faq",
-                "score": 93.0,
-                "text": r.get("answer") or "",
-                "html": ""
+                "family": f"{fam1}+{fam2}",
+                "intent": "compare",
+                "source": source,
+                "score": float(90 + min(10, s1 + s2)),
+                "text": text,
+                "html": html,
             }
 
-    # 1) Confronti A vs B (se compaiono entrambi i token famiglia e NON scatta la regola speciale)
-    fams = list(FAM_TOKENS.keys())
-    for a in fams:
-        for b in fams:
-            if a >= b:
-                continue
-            if a.lower() in ql and b.lower() in ql:
-                found = None
-                for it in CMP_ITEMS:
-                    fa = (it.get("famA") or "").upper()
-                    fb = (it.get("famB") or "").upper()
-                    if {fa, fb} == {a, b}:
-                        found = it
-                        break
-                if found:
-                    html = found.get("html") or ""
-                    text = found.get("answer") or ""
-                else:
-                    ansA = _find_overview(a)
-                    ansB = _find_overview(b)
-                    html = _compare_html(a, b, ansA, ansB)
-                    text = ""
-                return {
-                    "ok": True,
-                    "match_id": f"COMPARE::{a}_VS_{b}",
-                    "lang": lang,
-                    "family": f"{a}+{b}",
-                    "intent": "compare",
-                    "source": "compare" if found else "synthetic",
-                    "score": 92.0,
-                    "text": text,
-                    "html": html,
-                }
-
-    # 2) Famiglia singola
-    fam, hits = detect_family(ql)
-    if hits >= 1:
-        # 2a) FAQ per famiglia rilevata
-        r = best_faq_for_family(ql, fam, lang)
-        if r:
+    # 1 family candidate (best)
+    if len(fam_scores) >= 1:
+        best_fam, best_hits = fam_scores[0]
+        # try to match FAQ in best language
+        best_row, best_score = best_faq_for_query(ql, best_fam, lang)
+        # if best_score sufficiently high, return faq
+        if best_row and best_score >= 2:
             return {
                 "ok": True,
-                "match_id": r.get("id") or f"FAQ::{fam}",
-                "lang": lang,
-                "family": fam,
+                "match_id": best_row.get("id") or f"FAQ::{best_fam}",
+                "lang": best_row.get("lang") or lang,
+                "family": best_fam,
                 "intent": "faq",
                 "source": "faq",
-                "score": 90.0 if hits >= 2 else 82.0,
-                "text": r.get("answer") or "",
+                "score": float(85 if best_hits>=2 else 72) + float(min(10,best_score)),
+                "text": best_row.get("answer") or "",
                 "html": ""
             }
-        # 2b) overview di famiglia
-        ov = _find_overview(fam)
+        # else return overview for family
+        ov = _find_overview(best_fam)
         return {
-            "ok": True, "match_id": f"OVERVIEW::{fam}", "lang": lang,
-            "family": fam, "intent": "overview", "source": "overview", "score": 75.0,
-            "text": ov, "html": ""
+            "ok": True,
+            "match_id": f"OVERVIEW::{best_fam}",
+            "lang": lang,
+            "family": best_fam,
+            "intent": "overview",
+            "source": "overview",
+            "score": 70.0 + float(min(10,best_hits)),
+            "text": ov,
+            "html": ""
         }
 
-    # 3) Fallback
+    # Fallback: try to match any FAQ by pure token overlap (cross-family)
+    # Try to find best FAQ globally
+    best_row, best_score = None, -1
+    q_toks = set(tokenize(ql))
+    for r in FAQ_ITEMS:
+        keys = ((r.get("tags") or "") + " " + (r.get("question") or "")).lower()
+        k_toks = set(tokenize(keys))
+        score = len(q_toks & k_toks)
+        if score > best_score:
+            best_score, best_row = score, r
+    if best_row and best_score >= 2:
+        return {
+            "ok": True,
+            "match_id": best_row.get("id") or "<NULL>",
+            "lang": best_row.get("lang"),
+            "family": "<inferred>",
+            "intent": "faq",
+            "source": "faq",
+            "score": 60.0 + best_score,
+            "text": best_row.get("answer") or "",
+            "html": ""
+        }
+
+    # final fallback
     return {
-        "ok": True, "match_id": "<NULL>", "lang": lang,
-        "family": "", "intent": "fallback", "source": "fallback", "score": 0,
+        "ok": True,
+        "match_id": "<NULL>",
+        "lang": lang,
+        "family": "",
+        "intent": "fallback",
+        "source": "fallback",
+        "score": 0,
         "text": "Non ho trovato una risposta diretta nei metadati locali. Specifica meglio la famiglia/prodotto.",
         "html": ""
     }
 
 # -----------------------------
-# Endpoints di servizio
+# Endpoints
 # -----------------------------
+class AskIn(BaseModel):
+    q: str
+
+class AskOut(BaseModel):
+    ok: bool
+    match_id: str
+    ms: int
+    text: Optional[str] = ""
+    html: Optional[str] = ""
+    lang: Optional[str] = None
+    family: Optional[str] = None
+    intent: Optional[str] = None
+    source: Optional[str] = None
+    score: Optional[float] = None
+
 @app.get("/")
 def _root():
     try:
@@ -330,7 +419,6 @@ def _health():
     except Exception:
         return {"ok": True}
 
-# Piccola "UI" JSON per prove rapide da browser
 @app.get("/ui")
 def _ui():
     samples = [
@@ -355,24 +443,6 @@ def _ui():
         "how_to": "Usa GET /api/ask?q=... oppure POST /api/ask con body { q: \"...\" }",
         "samples": samples
     }
-
-# -----------------------------
-# API principale
-# -----------------------------
-class AskIn(BaseModel):
-    q: str
-
-class AskOut(BaseModel):
-    ok: bool
-    match_id: str
-    ms: int
-    text: Optional[str] = ""
-    html: Optional[str] = ""
-    lang: Optional[str] = None
-    family: Optional[str] = None
-    intent: Optional[str] = None
-    source: Optional[str] = None
-    score: Optional[float] = None
 
 @app.get("/api/ask", response_model=AskOut)
 def api_ask_get(q: str = Query(default="", description="Domanda")) -> AskOut:
