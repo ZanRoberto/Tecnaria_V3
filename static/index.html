@@ -1,116 +1,133 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tecnaria_V3 — UI verde</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tecnaria_V3 — Chatbot Tecnico</title>
   <style>
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      background: #f4f8f4;
-      color: #222;
-      margin: 0;
-      padding: 0;
+    :root{
+      --bg:#eef7ef; --panel:#ffffff; --accent:#2f8f2f; --accent-2:#1f6f1f; --text:#0b1e0b;
+      --chip:#e6f5e6; --chip-b:#bfe6bf; --muted:#557; --bad:#b83333;
     }
-    header {
-      background: #2e7d32;
-      color: #fff;
-      padding: 12px 20px;
-      font-size: 1.2em;
-      font-weight: 600;
-    }
-    main {
-      padding: 20px;
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    textarea {
-      width: 100%;
-      height: 100px;
-      font-size: 1em;
-      padding: 10px;
-      border: 2px solid #2e7d32;
-      border-radius: 6px;
-      resize: vertical;
-    }
-    button {
-      background: #2e7d32;
-      color: #fff;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-size: 1em;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    button:hover { background: #388e3c; }
-    .response {
-      margin-top: 20px;
-      background: #fff;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .meta {
-      font-size: 0.9em;
-      color: #555;
-      margin-top: 8px;
-    }
-    .examples {
-      margin-top: 25px;
-      font-size: 0.9em;
-    }
-    .examples button {
-      background: #e8f5e9;
-      color: #2e7d32;
-      border: 1px solid #2e7d32;
-      margin: 3px;
-      font-size: 0.85em;
-    }
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto}
+    .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
+    .bar{background:var(--accent);color:#fff;padding:14px 18px;border-radius:10px;display:flex;align-items:center;gap:10px}
+    .dot{width:12px;height:12px;border-radius:50%;background:#39d458;box-shadow:0 0 0 3px #fff2 inset}
+    h1{font-size:20px;margin:0}
+    .card{background:var(--panel);border:1px solid #dbeedb;border-radius:12px;padding:18px;margin-top:18px}
+    textarea{width:100%;min-height:100px;border:2px solid var(--accent);border-radius:10px;padding:12px;font-size:16px;outline:none}
+    button{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer}
+    button:hover{background:var(--accent-2)}
+    .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    .chip{background:var(--chip);border:1px solid var(--chip-b);padding:8px 12px;border-radius:999px;cursor:pointer}
+    .muted{color:#556}
+    .resp{white-space:pre-wrap}
+    .pill{display:inline-block;background:#eaf7ea;border:1px solid #bfe6bf;color:#184218;border-radius:999px;padding:2px 10px;font-size:12px;margin-right:6px}
+    .err{color:var(--bad);font-weight:600}
+    iframe{width:100%;border:0}
   </style>
 </head>
 <body>
-  <header>🟢 Tecnaria_V3 — Chatbot Tecnico</header>
-  <main>
-    <p>Scrivi la tua domanda e premi <b>Chiedi</b>:</p>
-    <textarea id="question" placeholder="Esempio: Differenza tra CTF e CTL?"></textarea><br />
-    <button onclick="ask()">Chiedi</button>
-
-    <div id="response" class="response" style="display:none;"></div>
-
-    <div class="examples">
-      <p><b>Esempi rapidi:</b></p>
-      <button onclick="fill('Differenza tra CTF e CTL?')">CTF vs CTL</button>
-      <button onclick="fill('Che cos’è la chiodatrice P560?')">Chiodatrice P560</button>
-      <button onclick="fill('I connettori CTCEM usano resine?')">CTCEM e resine</button>
-      <button onclick="fill('Serve preforo per VCEM?')">VCEM preforo</button>
-      <button onclick="fill('Quando usare GTS?')">GTS</button>
+  <div class="wrap">
+    <div class="bar">
+      <div class="dot"></div>
+      <h1>Tecnaria_V3 — Chatbot Tecnico</h1>
     </div>
-  </main>
 
-  <script>
-    async function ask() {
-      const q = document.getElementById("question").value.trim();
-      if (!q) return alert("Scrivi una domanda prima!");
-      const box = document.getElementById("response");
-      box.style.display = "block";
-      box.innerHTML = "<i>Sto pensando...</i>";
-      try {
-        const res = await fetch("/api/ask?q=" + encodeURIComponent(q));
-        const data = await res.json();
-        box.innerHTML =
-          `<b>match_id:</b> ${data.match_id}<br>` +
-          `<b>intent:</b> ${data.intent} | <b>famiglia:</b> ${data.family}<br>` +
-          `<b>lang:</b> ${data.lang} | <b>ms:</b> ${data.ms}<br><br>` +
-          (data.html || `<p>${data.text}</p>`);
-      } catch (err) {
-        box.innerHTML = "<span style='color:red'>Errore di rete o server offline.</span>";
-      }
+    <div class="card">
+      <p>Scrivi la tua domanda e premi <b>Chiedi</b>.</p>
+      <textarea id="q" placeholder="Es. Posso usare una chiodatrice qualunque per i CTF?"></textarea>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+        <button id="askBtn">Chiedi</button>
+        <span id="hint" class="muted"></span>
+      </div>
+
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="card" id="outCard">
+      <div id="meta" class="muted" style="margin-bottom:10px"></div>
+      <div id="out" class="resp">Attendere…</div>
+      <div id="htmlBox" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+<script>
+const samples = [
+  "Differenza tra CTF e CTL?",
+  "Quando scegliere CTL invece di CEM-E?",
+  "Differenza tra CEM-E e CTCEM?",
+  "CTF su lamiera grecata: controlli in cantiere?",
+  "VCEM su essenze dure: serve preforo 70–80%?",
+  "GTS: che cos’è e come si usa?",
+  "P560: è un connettore o un'attrezzatura?",
+  "CEM-E: è una posa a secco?",
+  "CTCEM: quando preferirlo alle resine?",
+  "Can I install CTF with any powder-actuated tool?"
+];
+
+const chips = document.getElementById('chips');
+samples.forEach(s=>{
+  const c=document.createElement('div');
+  c.className='chip'; c.textContent=s;
+  c.onclick=()=>{ document.getElementById('q').value=s; fireAsk(); };
+  chips.appendChild(c);
+});
+
+document.getElementById('askBtn').onclick = fireAsk;
+document.getElementById('q').addEventListener('keydown',e=>{
+  if(e.key==='Enter' && (e.ctrlKey || e.metaKey)) fireAsk();
+});
+
+async function fireAsk(){
+  const q = (document.getElementById('q').value||'').trim();
+  const out = document.getElementById('out');
+  const meta = document.getElementById('meta');
+  const htmlBox = document.getElementById('htmlBox');
+  const hint = document.getElementById('hint');
+
+  if(!q){ out.textContent='Scrivi una domanda.'; return; }
+  out.textContent='Attendere…';
+  htmlBox.innerHTML=''; meta.textContent=''; hint.textContent='';
+
+  // *** Importantissimo: SOLO GET, nessun POST/CORS ***
+  const url = `/api/ask?q=${encodeURIComponent(q)}`;
+
+  try{
+    const t0 = performance.now();
+    const r = await fetch(url, { method:'GET' });
+    if(!r.ok){
+      out.innerHTML = `<span class="err">Errore HTTP ${r.status}</span>`;
+      return;
+    }
+    const j = await r.json();
+    const ms = Math.max(1, Math.round(performance.now()-t0));
+
+    // Meta-pilloline
+    meta.innerHTML = [
+      `<span class="pill">match_id: ${j.match_id||'—'}</span>`,
+      `<span class="pill">intent: ${j.intent||'—'}</span>`,
+      `<span class="pill">famiglia: ${j.family||'—'}</span>`,
+      `<span class="pill">lang: ${j.lang||'—'}</span>`,
+      `<span class="pill">ms: ${ms}</span>`
+    ].join(' ');
+
+    // Testo
+    out.textContent = (j.text||'').trim() || '—';
+
+    // Eventuale HTML (confronti)
+    if ((j.html||'').trim()){
+      htmlBox.innerHTML = j.html;
     }
 
-    function fill(t) {
-      document.getElementById("question").value = t;
+    // dritta veloce se arriva fallback
+    if (j.intent==='fallback'){
+      hint.textContent = 'Suggerimento: cita la famiglia (CTF, CTL, VCEM, CEM-E, CTCEM, GTS, P560) o usa un esempio qui sopra.';
     }
-  </script>
+  }catch(err){
+    out.innerHTML = `<span class="err">Errore di rete: ${String(err)}</span>`;
+  }
+}
+</script>
 </body>
 </html>
