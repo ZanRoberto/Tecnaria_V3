@@ -1,10 +1,16 @@
-# app.py — Tecnaria_V3 (FastAPI) stabile per Python 3.11 + Pydantic 1.x
-from __future__ import annotations
+# app.py — Tecnaria_V3 (FastAPI) con UI incorporata
+# -------------------------------------------------
+# Endpoints:
+#   GET  /            -> redirect a /ui
+#   GET  /ui          -> interfaccia HTML (embedded)
+#   GET  /health      -> stato + righe FAQ caricate
+#   GET  /api/ask     -> risposta (stessa logica del POST)
+#   POST /api/ask     -> body { q: "..." } -> risposta
 
 from typing import List, Dict, Any, Tuple, Optional
 from pathlib import Path
 from fastapi import FastAPI, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import time, re, csv, json
@@ -20,6 +26,11 @@ OV_JSON = DATA_DIR / "tecnaria_overviews.json"   # panoramiche famiglie
 CMP_JSON = DATA_DIR / "tecnaria_compare.json"    # confronti A vs B
 FAQ_CSV = DATA_DIR / "faq.csv"                   # domande/risposte brevi multi-lingua
 
+# Monta /static se presente (comodo per assets futuri)
+STATIC_DIR = BASE_DIR / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+
 def load_json(path: Path, fallback: List[Dict[str, Any]] | None = None) -> List[Dict[str, Any]]:
     try:
         if path.exists():
@@ -32,6 +43,7 @@ def load_json(path: Path, fallback: List[Dict[str, Any]] | None = None) -> List[
     return fallback or []
 
 def load_faq_csv(path: Path) -> List[Dict[str, str]]:
+    """Legge faq.csv con tolleranza (UTF-8/UTF-8-BOM/CP1252) e sistema mojibake comuni."""
     rows: List[Dict[str, str]] = []
     if not path.exists():
         return rows
@@ -49,13 +61,14 @@ def load_faq_csv(path: Path) -> List[Dict[str, str]]:
                 })
 
     try:
-        _read("utf-8-sig")
+        _read("utf-8-sig")          # gestisce anche BOM
     except Exception:
         try:
-            _read("cp1252")
+            _read("cp1252")         # fallback tipico file salvati da Excel su Windows
         except Exception:
             return rows
 
+    # Fix mojibake frequenti
     fixes = {
         "â€™": "’", "â€œ": "“", "â€\x9d": "”", "â€“": "–", "â€”": "—",
         "Ã ": "à", "Ã¨": "è", "Ã©": "é", "Ã¬": "ì", "Ã²": "ò", "Ã¹": "ù",
@@ -112,20 +125,25 @@ FAM_TOKENS: Dict[str, List[str]] = {
         "bac","poutre","cloueur","chapas","viga","nagler",
         "acciaio","lamiera grecata"
     ],
-    "CTL": ["ctl","soletta","calcestruzzo","collaborazione","legno","timber","concrete","composito","trave legno"],
-    "VCEM": ["vcem","preforo","predrill","pre-drill","pilot","hardwood","essenze","durezza","70","80"],
+    "CTL": ["ctl","soletta","calcestruzzo","collaborazione","legno","timber","concrete","composito","trave legno","maxi","ctl maxi"],
+    "VCEM": ["vcem","preforo","predrill","pre-drill","pilot","hardwood","essenze","durezza","70","80","laterocemento"],
     "CEM-E": ["ceme","cem-e","laterocemento","dry","secco","senza","resine","cappello","posa a secco"],
     "CTCEM": ["ctcem","laterocemento","dry","secco","senza","resine","cappa","malta"],
     "GTS": ["gts","manicotto","filettato","giunzioni","secco","threaded","sleeve","joint","barra"],
     "P560": [
+        # sigle / marchio / varianti
         "p560","spit","spit p560","spit-p560",
+        # IT
         "chiodatrice","pistola","utensile","attrezzatura","propulsori","propulsore",
         "cartucce","cartuccia","gialle","verdi","rosse","dosaggio","regolazione potenza",
         "chiodi","chiodo","hsbr14","hsbr 14","adattatore","kit adattatore",
         "spari","sparo","colpo","tiro","sicura","marcatura","marcatura ce",
+        # EN
         "powder","powder-actuated","powder actuated","pat","nailer","nailgun",
         "cartridge","cartridges","mag","magazine","trigger","safety","tool",
+        # DE/FR/ES
         "gerät","nagler","werkzeug","outil","cloueur","outil à poudre","herramienta","clavos",
+        # contesto
         "acciaio","trave","lamiera","lamiera grecata","deck","beam","steel",
         "supporto","supporti","spessori minimi","eta"
     ],
@@ -137,7 +155,7 @@ def detect_family(text: str) -> Tuple[str, int]:
     best_fam, best_hits = "", 0
     for fam, toks in FAM_TOKENS.items():
         hits = 0
-        if fam.lower() in t:
+        if fam.lower() in t:  # boost se compare l'acronimo
             hits += 2
         for tok in toks:
             tok = (tok or "").strip().lower()
@@ -172,13 +190,16 @@ def intent_route(q: str) -> Dict[str, Any]:
     ql = (q or "").lower().strip()
     lang = detect_lang(ql)
 
-    # 1) Confronti A vs B
+    # Normalizzazione minima per confronti ("differenza tra X e Y", "vs", "contro")
+    qn = ql.replace(" vs ", " ").replace(" contro ", " ").replace("/", " ")
+
+    # 1) Confronti A vs B (se compaiono entrambi i token famiglia)
     fams = list(FAM_TOKENS.keys())
     for a in fams:
         for b in fams:
             if a >= b:
                 continue
-            if a.lower() in ql and b.lower() in ql:
+            if a.lower() in qn and b.lower() in qn:
                 found = None
                 for it in CMP_ITEMS:
                     fa = (it.get("famA") or "").upper()
@@ -194,7 +215,6 @@ def intent_route(q: str) -> Dict[str, Any]:
                     ansB = _find_overview(b)
                     html = _compare_html(a, b, ansA, ansB)
                     text = ""
-
                 return {
                     "ok": True,
                     "match_id": f"COMPARE::{a}_VS_{b}",
@@ -210,6 +230,7 @@ def intent_route(q: str) -> Dict[str, Any]:
     # 2) Famiglia singola
     fam, hits = detect_family(ql)
     if hits >= 1:
+        # 2a) FAQ prima nella lingua rilevata, poi cross-lingua
         best_row: Optional[Dict[str, str]] = None
         best_score: int = -1
 
@@ -242,6 +263,7 @@ def intent_route(q: str) -> Dict[str, Any]:
                 "html": ""
             }
 
+        # 2b) overview di famiglia
         ov = _find_overview(fam)
         return {
             "ok": True, "match_id": f"OVERVIEW::{fam}", "lang": lang,
@@ -258,17 +280,150 @@ def intent_route(q: str) -> Dict[str, Any]:
     }
 
 # -----------------------------
-# Endpoints
+# UI incorporata
 # -----------------------------
-@app.get("/")
-def _root():
-    return {"ok": True, "faq_rows": FAQ_ROWS}
+@app.get("/", include_in_schema=False)
+def _redirect_home():
+    return RedirectResponse(url="/ui")
 
-@app.get("/health")
-def _health():
-    return {"ok": True, "faq_rows": FAQ_ROWS}
+@app.get("/ui", response_class=HTMLResponse)
+def _ui_page():
+    return HTMLResponse("""
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tecnaria_V3 — UI</title>
+<style>
+  :root { --bg:#0e1f12; --card:#17351d; --accent:#2ecc71; --muted:#a6e3b7; --text:#e9ffef; }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:980px;margin:32px auto;padding:0 16px}
+  .card{background:var(--card);border:1px solid #255a33;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px}
+  h1{margin:0;font-size:20px}
+  .ok{display:inline-flex;gap:8px;align-items:center;color:var(--accent);font-weight:600}
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:16px;padding:16px}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  .inputbar{display:flex;gap:10px}
+  input[type=text]{flex:1;padding:12px 14px;border-radius:10px;border:1px solid #2a6b3c;background:#0f2415;color:var(--text)}
+  button{padding:12px 16px;border-radius:10px;border:1px solid #2a6b3c;background:var(--accent);color:#0a140d;font-weight:700;cursor:pointer}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  small.hint{color:var(--muted)}
+  .examples{display:flex;flex-direction:column;gap:8px}
+  .pill{display:inline-block;padding:8px 10px;border-radius:999px;background:#0f2415;border:1px solid #2a6b3c;color:var(--muted);cursor:pointer}
+  .resp{padding:16px;border-top:1px solid #255a33}
+  .meta{font-size:13px;color:var(--muted);margin-bottom:6px}
+  pre{white-space:pre-wrap;word-break:break-word;background:#0f2415;border:1px solid #2a6b3c;border-radius:10px;padding:12px}
+  a{color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <header>
+        <h1>🟢 Tecnaria_V3</h1>
+        <div id="health" class="ok">checking…</div>
+      </header>
 
+      <div class="grid">
+        <div>
+          <div class="inputbar">
+            <input id="q" type="text" placeholder="Scrivi la domanda (es. 'Differenza tra CEM-E e CTCEM su laterocemento?')"/>
+            <button id="askBtn">Chiedi</button>
+          </div>
+          <small class="hint">Suggerimento: puoi anche usare <code>/api/ask?q=…</code> direttamente.</small>
+          <div id="resp" class="resp">
+            <div class="meta">Risposta</div>
+            <pre id="out">(qui appare la risposta)</pre>
+          </div>
+        </div>
+
+        <aside>
+          <div class="resp">
+            <div class="meta">Esempi rapidi</div>
+            <div class="examples" id="exlist"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+<script>
+const examples = [
+  "Differenza tra CTF e CTL?",
+  "Quando scegliere CTL invece di CEM-E?",
+  "Differenza tra CEM-E e CTCEM?",
+  "CTF su lamiera grecata: controlli in cantiere?",
+  "VCEM su essenze dure: serve preforo 70–80%?",
+  "GTS: che cos’è e come si usa?",
+  "P560: è un connettore o un'attrezzatura?",
+  "CEM-E: è una posa a secco?",
+  "CTCEM: quando preferirlo alle resine?",
+  "VCEM on hardwoods: is predrilling required?",
+  "What are Tecnaria CTF connectors?",
+  "Can I install CTF with any powder-actuated tool?",
+  "Que sont les connecteurs CTF Tecnaria ?",
+  "¿Qué son los conectores CTF de Tecnaria?",
+  "Was sind Tecnaria CTF-Verbinder?"
+];
+
+async function pingHealth(){
+  try{
+    const r = await fetch('/health');
+    const j = await r.json();
+    document.getElementById('health').textContent = j.ok ? `ok • faq_rows=${j.faq_rows}` : 'errore';
+  }catch(e){
+    document.getElementById('health').textContent = 'errore';
+  }
+}
+
+function renderExamples(){
+  const box = document.getElementById('exlist');
+  examples.forEach(t=>{
+    const a = document.createElement('span');
+    a.className='pill';
+    a.textContent=t;
+    a.onclick=()=>{ document.getElementById('q').value=t; ask(); };
+    box.appendChild(a);
+  });
+}
+
+async function ask(){
+  const btn = document.getElementById('askBtn');
+  const out = document.getElementById('out');
+  const q = (document.getElementById('q').value||'').trim();
+  if(!q){ out.textContent='(scrivi una domanda)'; return; }
+  btn.disabled=true; out.textContent='…';
+  try{
+    const r = await fetch('/api/ask', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body: JSON.stringify({ q })
+    });
+    const j = await r.json();
+    const meta = `match_id: ${j.match_id}\nintent: ${j.intent} | famiglia: ${j.family} | lang: ${j.lang}\nms: ${j.ms}`;
+    const txt = (j.text && j.text.trim()) ? j.text.trim() : '(nessun testo)';
+    out.textContent = meta + "\\n\\n" + txt;
+  }catch(e){
+    out.textContent = 'Errore di rete o server.';
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+document.getElementById('askBtn').onclick = ask;
+document.getElementById('q').addEventListener('keydown', (ev)=>{ if(ev.key==='Enter') ask(); });
+renderExamples();
+pingHealth();
+</script>
+</body>
+</html>
+""")
+
+# -----------------------------
 # API principale
+# -----------------------------
 class AskIn(BaseModel):
     q: str
 
@@ -283,6 +438,13 @@ class AskOut(BaseModel):
     intent: Optional[str] = None
     source: Optional[str] = None
     score: Optional[float] = None
+
+@app.get("/health")
+def _health():
+    try:
+        return {"ok": True, "json_loaded": list(JSON_BAG.keys()), "faq_rows": FAQ_ROWS}
+    except Exception:
+        return {"ok": True}
 
 @app.get("/api/ask", response_model=AskOut)
 def api_ask_get(q: str = Query(default="", description="Domanda")) -> AskOut:
@@ -319,29 +481,3 @@ def api_ask_post(body: AskIn) -> AskOut:
         source=routed.get("source"),
         score=routed.get("score"),
     )
-
-# ---- Static UI ----
-STATIC_DIR = BASE_DIR / "static"
-UI_DIR = STATIC_DIR / "ui"
-UI_INDEX = UI_DIR / "index.html"
-
-# monta /static
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-# route /ui -> index.html
-@app.get("/ui")
-def ui_root():
-    if UI_INDEX.exists():
-        return FileResponse(str(UI_INDEX))
-    return JSONResponse({"title":"Tecnaria_V3 — UI minima",
-                         "how_to":"GET /api/ask?q=...  oppure POST /api/ask { q: '...' }",
-                         "samples":[
-                             "Differenza tra CTF e CTL?",
-                             "Quando scegliere CTL invece di CEM-E?",
-                             "Differenza tra CEM-E e CTCEM?",
-                             "CTF su lamiera grecata: controlli in cantiere?",
-                             "VCEM su essenze dure: serve preforo 70–80%?",
-                             "GTS: che cos’è e come si usa?",
-                             "P560: è un connettore o un'attrezzatura?",
-                         ]})
