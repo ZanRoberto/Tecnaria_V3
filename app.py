@@ -1,13 +1,13 @@
 # app.py
-# TECNARIA_GOLD_SEMANTIC — UI sempre attiva + API Q/A GOLD + Fallback codici + Motore semantico
+# TECNARIA_GOLD_SEMANTIC v2.1 — DEDUPE FIX
 # - UI su "/"
-# - /health per stato JSON
-# - /qa/search (ranking classico top-k)
-# - /qa/ask (risposta migliore con CLASSIFICAZIONE SEMANTICA + COMPOSIZIONE GOLD)
-# - /debug/datasets (conteggi file)
-# - /debug/classify?q=... (vedi come il motore classifica la query)
+# - /health
+# - /qa/search (top-k con DEDUPE)
+# - /qa/ask (motore semantico + composizione GOLD + DEDUPE sezioni)
+# - /debug/datasets (conteggi)
+# - /debug/classify?q=... (famiglia/intenti/anteprima top)
 #
-# Requisiti file:
+# Dataset richiesti in repo:
 #   static/data/ctf_gold.json
 #   static/data/ctl_gold.json
 #   static/data/p560_gold.json
@@ -35,10 +35,10 @@ APP_DIR = pathlib.Path(__file__).parent
 DATA_DIR = APP_DIR / "static" / "data"
 GOLD_FILES = ["ctf_gold.json", "ctl_gold.json", "p560_gold.json"]
 
-# parole chiave per intenzioni
+# Intents e famiglie
 INTENT_LEXICON: Dict[str, List[str]] = {
     "codes":    ["codici", "codice", "catalogo", "sigle", "modelli", "modello", "nomenclatura", "sku", "listino", "tabella"],
-    "sequence": ["sequenza", "ordine", "fasi", "passaggi", "step", "procedura", "posa corretta", "come si posa"],
+    "sequence": ["sequenza", "ordine", "fasi", "passaggi", "step", "procedura", "posa corretta", "come si posa", "posa"],
     "taratura": ["taratura", "potenza", "colpo a vuoto", "sporgenti", "ritaro", "penetr", "test di prova"],
     "viti":     ["vite", "viti", "lunghezza", "ø10", "diametro", "100", "120", "140"],
     "sicurezza":["dpi", "sicurezza", "perimetro", "occhiali", "guanti", "udito"],
@@ -46,7 +46,6 @@ INTENT_LEXICON: Dict[str, List[str]] = {
     "errori":   ["errori", "rischi", "attenzione", "avvertenze", "problema", "sporge", "rimbalzo"],
 }
 
-# parole chiave per famiglie
 FAMILY_LEXICON: Dict[str, List[str]] = {
     "CTF":      ["ctf", "acciaio", "lamiera", "hsbr14", "piastra", "s235", "s275", "s355", "trave"],
     "CTL":      ["ctl", "legno", "soletta", "rete", "connettore legno", "viti"],
@@ -57,7 +56,7 @@ FAMILY_LEXICON: Dict[str, List[str]] = {
 CATALOG_TOKENS = INTENT_LEXICON["codes"]
 
 # ---------------------------------------------------------------
-# Pydantic models
+# Models
 # ---------------------------------------------------------------
 class QAItem(BaseModel):
     qid: Optional[str] = None
@@ -79,12 +78,12 @@ class AskResponse(BaseModel):
     found: bool
 
 # ---------------------------------------------------------------
-# FastAPI app
+# App
 # ---------------------------------------------------------------
 app = FastAPI(
     title="Tecnaria Q/A Service — TECNARIA_GOLD_SEMANTIC",
-    version="2.0.0",
-    description="UI + API con ranking e motore semantico per CTF/CTL/CTL MAXI/P560."
+    version="2.1.0",
+    description="UI + API con ranking, motore semantico e deduplica per CTF/CTL/CTL MAXI/P560."
 )
 
 app.add_middleware(
@@ -150,25 +149,70 @@ def load_gold() -> List[QAItem]:
     return items
 
 # ---------------------------------------------------------------
-# Classificazione semantica (famiglia + intento)
+# Util: normalizzazione e deduplica
+# ---------------------------------------------------------------
+STEEL_RE = re.compile(r"\bS(235|275|355)\b", re.I)
+DECK_RE  = re.compile(r"\bH(55|75)\b", re.I)
+THICK_RE = re.compile(r"(1×1,5|2×1,0)", re.I)
+NUM_RE   = re.compile(r"\b\d+(?:[,\.]\d+)?\b")
+
+STOP_TOKENS = {
+    "ctf","ctl","maxi","p560","lamiera","trave","posa","connettore","connettori","chiodi",
+    "hsbr14","spit","rete","getto","calcestruzzo","sparo","kit","tecnaria","acciaio",
+    "sequenza","istruzioni","parametri","sicurezza","errori","checklist","doppia"
+}
+
+def normalize_question(text: str) -> str:
+    s = text.lower()
+    s = STEEL_RE.sub("", s)
+    s = DECK_RE.sub("", s)
+    s = THICK_RE.sub("", s)
+    s = NUM_RE.sub("", s)
+    s = re.sub(r"[^a-zà-ù0-9 ]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def jaccard(a: str, b: str) -> float:
+    ta = {t for t in a.split() if t not in STOP_TOKENS}
+    tb = {t for t in b.split() if t not in STOP_TOKENS}
+    if not ta or not tb:
+        return 0.0
+    inter = len(ta & tb)
+    union = len(ta | tb)
+    return inter / union if union else 0.0
+
+def dedupe_items(items: List[QAItem], sim_threshold: float = 0.80, limit: int = 5) -> List[QAItem]:
+    out: List[QAItem] = []
+    keys: List[str] = []
+    for it in items:
+        nk = normalize_question(it.question)
+        duplicate = False
+        for prevk in keys:
+            if jaccard(nk, prevk) >= sim_threshold:
+                duplicate = True
+                break
+        if not duplicate:
+            out.append(it)
+            keys.append(nk)
+        if len(out) >= limit:
+            break
+    return out
+
+# ---------------------------------------------------------------
+# Classificazione semantica
 # ---------------------------------------------------------------
 def classify_family(query: str) -> str:
     q = query.lower()
-    # punteggi
     scores: Dict[str, float] = {k: 0.0 for k in FAMILY_LEXICON}
     for fam, toks in FAMILY_LEXICON.items():
         for t in toks:
             if t in q:
                 scores[fam] += 1.0
-    # deduzioni: se cita lamiera/chiodatrice ma non dice CTF → CTF
     if any(t in q for t in ["lamiera", "chiodatrice", "hsbr14"]) and "ctf" not in q and "p560" in q:
         scores["CTF"] += 1.0
-    # se cita tavolato/assito → MAXI
     if any(t in q for t in ["tavolato", "assito"]) and "ctl" in q:
         scores["CTL MAXI"] += 0.5
-
     fam = max(scores.items(), key=lambda kv: kv[1])[0]
-    # fallback: se tutto zero e cita p560 → P560
     if all(v == 0 for v in scores.values()) and "p560" in q:
         fam = "P560"
     return fam
@@ -179,36 +223,32 @@ def classify_intents(query: str) -> List[str]:
     for intent, toks in INTENT_LEXICON.items():
         if any(t in q for t in toks):
             found.append(intent)
-    # euristiche:
     if "come si posa" in q or "posa corretta" in q:
         if "sequence" not in found:
             found.insert(0, "sequence")
-    # se nessun intento trovato, prova deduzione:
     if not found:
         if any(k in q for k in ["posare", "posa", "montare", "installare"]):
             found.append("sequence")
         elif any(k in q for k in ["controllo", "verifica", "collaudo"]):
             found.append("collaudo")
-    return found or ["sequence"]  # default: sequence
+    return found or ["sequence"]
 
 def needs_catalog_fallback(query: str) -> bool:
     q = query.lower()
     return any(tok in q for tok in CATALOG_TOKENS)
 
 # ---------------------------------------------------------------
-# Ranking classico (BM25-lite)
+# Ranking
 # ---------------------------------------------------------------
 def _score(item: QAItem, ql: str) -> float:
     base = 0.0
     fam = (item.family or "").lower()
     if fam and fam in ql:
         base += 1.5
-    # tag
     for t in (item.tags or []):
         t0 = (t or "").lower()
         if t0 and t0 in ql:
             base += 0.8
-    # testo
     qtxt = (item.question or "").lower()
     atxt = (item.answer or "").lower()
     if ql in qtxt:
@@ -219,7 +259,6 @@ def _score(item: QAItem, ql: str) -> float:
             base += 0.35
         if tok in atxt:
             base += 0.20
-    # micro-boost termini tipici
     for k, b in [("p560", 0.5), ("hsbr14", 0.3), ("lamiera", 0.3), ("tavolato", 0.3), ("rete", 0.2)]:
         if k in ql:
             base += b
@@ -236,38 +275,29 @@ def _rank(query: str, k: int = 5) -> List[QAItem]:
 def _rank_with_filters(query: str, fam: str, intents: List[str], k: int = 5) -> List[QAItem]:
     ql = (query or "").lower()
     items = load_gold()
-    # filtra per famiglia se presente
     filtered = []
     for it in items:
         if fam and it.family and fam.lower().startswith((it.family or "").lower()[:3]):
             filtered.append(it)
         elif fam in ["P560", "CTL MAXI"] and it.family and fam.lower().startswith((it.family or "").lower()[:3]):
             filtered.append(it)
-    # se niente trovato, torna all'insieme completo
     base_pool = filtered or items
-    # re-score con intent boost
     def score2(it: QAItem) -> float:
         s = _score(it, ql)
         tags = " ".join(it.tags or []).lower()
         txt = (it.question + " " + it.answer).lower()
         for intent in intents:
             if intent in tags: s += 1.2
-            # sinonimi manuali
-            if intent == "sequence" and any(k in txt for k in ["sequenza", "procedura", "passaggi", "step"]):
-                s += 0.9
-            if intent == "viti" and any(k in txt for k in ["vite", "viti", "ø10", "lunghezza"]):
-                s += 0.9
-            if intent == "taratura" and any(k in txt for k in ["taratura", "potenza", "colpo a vuoto"]):
-                s += 0.9
-            if intent == "sicurezza" and any(k in txt for k in ["dpi", "sicurezza", "perimetro", "occhiali"]):
-                s += 0.7
-            if intent == "collaudo" and any(k in txt for k in ["collaudo", "verifica", "registro", "fot"]):
-                s += 0.7
-            if intent == "errori" and any(k in txt for k in ["errore", "errori", "attenzione", "rischio", "rimbalzo", "sporg"]):
-                s += 0.7
+            if intent == "sequence" and any(k in txt for k in ["sequenza","procedura","passaggi","step"]): s += 0.9
+            if intent == "viti" and any(k in txt for k in ["vite","viti","ø10","lunghezza"]): s += 0.9
+            if intent == "taratura" and any(k in txt for k in ["taratura","potenza","colpo a vuoto"]): s += 0.9
+            if intent == "sicurezza" and any(k in txt for k in ["dpi","sicurezza","perimetro","occhiali"]): s += 0.7
+            if intent == "collaudo" and any(k in txt for k in ["collaudo","verifica","registro","fot"]): s += 0.7
+            if intent == "errori" and any(k in txt for k in ["errore","errori","attenzione","rischio","rimbalzo","sporg"]): s += 0.7
         return s
     ranked = sorted(base_pool, key=score2, reverse=True)
-    return ranked[:max(1, k)]
+    # DEDUPE a monte
+    return dedupe_items(ranked, sim_threshold=0.80, limit=k)
 
 # ---------------------------------------------------------------
 # Risposte preconfezionate (catalogo / codici) + composizione
@@ -287,159 +317,132 @@ Ecco una **scheda rapida codici/modelli** per le famiglie presenti:
 
 **CTL MAXI (tavolato/assito)**
 • **CTL MAXI 12/040**, **12/050**, **12/060**  
-• Fissaggio: **2 viti Ø10**; lunghezze comuni **100/120/140 mm** (se assito ≥25–30 mm → usa 120/140).
+• Fissaggio: **2 viti Ø10**; lunghezze comuni **100/120/140 mm** (se assito ≥25–30 mm → 120/140).
 
 **P560 (utensile)**
-• **SPIT P560** (nolo/vendita) con **kit Tecnaria**.  
-• Taratura: 2–3 tiri di prova; doppia chiodatura; DPI e perimetro di sicurezza 3 m.
+• **SPIT P560** con **kit Tecnaria**.  
+• Taratura: **2–3 tiri di prova**; doppia chiodatura; DPI + perimetro **3 m**.
 
-Se vuoi una **tabella SKU** pronta per ordine/offertra (Famiglia · Modello · Viti/Chiodi · Note di posa), dimmelo e la genero ora.
+Se ti servono **codici articolo/SKU** per ordine/offerta, genero una tabella pronta (Famiglia · Modello · Viti/Chiodi · Note).
 """
 
 def make_catalog_item(query: str) -> QAItem:
     return QAItem(
         qid="CAT-001",
         family="CATALOGO",
-        question="Quali sono i codici/modelli disponibili per CTF, CTL (standard/MAXI) e l'utensile P560?",
+        question="Quali codici/modelli sono disponibili per CTF, CTL (standard/MAXI) e utensile P560?",
         answer=CATALOGO_ANSWER,
         tags=["codici","catalogo","modelli","sigle","CTL","CTF","P560"],
         level="sintesi",
         source_hint="Sintesi operativa famiglie e utensile."
     )
 
+# --- Composizione GOLD con anti-duplicazione sezioni
+SECTION_HEADERS = [
+    ("contesto", r"(^|\n)\**\s*contesto\s*\**", "**Contesto**"),
+    ("istruzioni", r"(^|\n)\**\s*istruzioni[^\n]*\s*\**", "**Istruzioni operative**"),
+    ("parametri", r"(^|\n)\**\s*parametri[^\n]*\s*\**", "**Parametri consigliati**"),
+    ("sicurezza", r"(^|\n)\**\s*sicurezza\s*\**", "**Sicurezza**"),
+    ("errori", r"(^|\n)\**\s*errori[^\n]*\s*\**", "**Errori comuni**"),
+    ("checklist", r"(^|\n)\**\s*checklist[^\n]*\s*\**", "**Checklist**"),
+]
+
+def extract_sections(text: str) -> Dict[str, str]:
+    """
+    Estrae blocchi per intestazioni note; se non trova, restituisce vuoto.
+    """
+    low = text.lower()
+    sections: Dict[str, str] = {}
+    # Trova posizioni intestazioni nel testo
+    idx: List[Tuple[str, int, str]] = []
+    for key, pattern, canon in SECTION_HEADERS:
+        m = re.search(pattern, low, flags=re.IGNORECASE)
+        if m:
+            idx.append((key, m.start(), canon))
+    if not idx:
+        return sections
+    idx.sort(key=lambda x: x[1])
+    # Segmenta tra header i...i+1
+    for i, (key, pos, canon) in enumerate(idx):
+        start = pos
+        end = idx[i+1][1] if i+1 < len(idx) else len(text)
+        chunk = text[start:end].strip()
+        # Rimuovi header duplicando quello canonico
+        chunk = re.sub(r"^\**\s*[A-Za-zÀ-ÿ \/\-]+?\s*\**\s*", "", chunk, count=1).strip()
+        sections[key] = f"{canon}\n{chunk}".strip()
+    return sections
+
 def compose_gold_answer(query: str, fam: str, intents: List[str], top_items: List[QAItem]) -> QAItem:
     """
-    Composizione 'narrativa' GOLD:
-    - Contesto → dai migliori item
-    - Istruzioni operative → se intent 'sequence' o testi affini
-    - Parametri → estratti (lamiera, cls, viti, HSBR14)
-    - Errori/Checklist/Sicurezza/Collaudo se presenti
-    Se il dataset non copre una sezione, inserisce un testo coerente standardizzato.
+    Composizione GOLD con anti-duplicazione:
+    - Usa al max 3 item deduplicati
+    - Per ogni sezione nota, inserisce UNA sola volta (prima utile)
+    - Se sezione mancante, aggiunge fallback standardizzato
     """
-    joined = " \n\n".join([it.answer for it in top_items[:3]])
-    jl = joined.lower()
+    chosen = top_items[:3]  # già deduplicati a monte
+    collected: Dict[str, str] = {}
 
-    # blocchi standard (fallback se mancano nel testo)
-    contesto = ""
-    istruzioni = ""
-    parametri = ""
-    safety = ""
-    errori = ""
-    checklist = ""
+    # 1) prova a estrarre sezioni dai migliori item
+    for it in chosen:
+        secs = extract_sections(it.answer)
+        for key, block in secs.items():
+            if key not in collected and block.strip():
+                collected[key] = block.strip()
 
-    # CONTENSTO
-    if "contesto" in jl:
-        # estrai dal primo item
-        contesto = next((it.answer.split("Istruzioni")[0].strip() for it in top_items if "contesto" in (it.answer.lower())), "")
-    if not contesto:
+    # 2) fallback dove mancano sezioni
+    if "contesto" not in collected:
         if fam.startswith("CTF"):
-            contesto = ("I connettori CTF sono fissati meccanicamente con chiodatrice SPIT P560 e kit/adattatori Tecnaria. "
-                        "Ogni connettore si blocca con due chiodi HSBR14, garantendo l’aderenza completa della piastra all’ala della trave. "
-                        "In presenza di lamiera grecata, questa deve essere ben serrata alla trave.")
+            collected["contesto"] = "**Contesto**\nI CTF si fissano a secco con **SPIT P560** e kit Tecnaria; ogni connettore con **2 chiodi HSBR14**. Con lamiera, questa va **ben serrata** per evitare rimbalzi."
         elif fam.startswith("CTL"):
-            contesto = ("I connettori CTL per solai in legno lavorano con soletta collaborante; fissaggio con 2 viti Ø10 per connettore. "
-                        "La testa del connettore deve risultare sopra la rete a metà spessore della soletta.")
+            collected["contesto"] = "**Contesto**\nI CTL lavorano con soletta collaborante; fissaggio con **2 viti Ø10** per connettore; testa sopra la rete a metà spessore."
         elif fam == "P560":
-            contesto = ("La SPIT P560 è l’utensile dedicato per la posa dei CTF; richiede taratura con tiri di prova e DPI conformi, "
-                        "oltre a perimetro di sicurezza durante l’uso.")
+            collected["contesto"] = "**Contesto**\nLa **SPIT P560** è l’utensile dedicato alla posa dei CTF; richiede taratura con tiri di prova e DPI."
 
-    # ISTRUZIONI
-    if "istruzioni" in jl or "procedura" in jl or "sequenza" in jl or "passaggi" in jl:
-        # prendi un blocco che contenga i passaggi
-        for it in top_items:
-            low = it.answer.lower()
-            if any(k in low for k in ["istruzioni", "sequenza", "procedura", "passaggi", "step"]):
-                instr = it.answer
-                # heuristica: prendi dalla prima intestazione "Istruzioni" in poi
-                m = re.search(r"(Istruzioni[^\n]*\n[\s\S]+?)(?:\n\n[A-Z][^\n]+:|$)", instr)
-                istruzioni = m.group(1).strip() if m else instr
-                break
-    if not istruzioni and "sequence" in intents:
+    if "istruzioni" not in collected and "sequence" in intents:
         if fam.startswith("CTF"):
-            istruzioni = ("Istruzioni operative\n"
-                          "1) Traccia la maglia di posa e verifica lamiera ben serrata.\n"
-                          "2) Posiziona il CTF ortogonale (sopra lamiera se presente).\n"
-                          "3) Esegui la doppia chiodatura con P560, pressione decisa e perpendicolare.\n"
-                          "4) Controlla che i chiodi non sporgano e piastra aderente.\n"
-                          "5) Registra potenza, lotti, note nel giornale lavori.")
+            collected["istruzioni"] = "**Istruzioni operative**\n1) Traccia maglia e verifica serraggio lamiera.\n2) Posiziona CTF ortogonale (sopra lamiera).\n3) Doppia chiodatura con P560.\n4) Verifica chiodi a filo e piastra aderente.\n5) Registra potenza/lotti/note."
         elif fam.startswith("CTL"):
-            istruzioni = ("Istruzioni operative\n"
-                          "1) Posa il CTL sul tavolato, rete a metà spessore.\n"
-                          "2) Fissa con 2 viti Ø10 (100/120/140 mm in base agli interposti).\n"
-                          "3) Getta la soletta (≥5 cm) e vibra moderatamente.\n"
-                          "4) Verifica copriferro e rispetto armature.")
-        elif fam == "P560":
-            istruzioni = ("Istruzioni operative (P560)\n"
-                          "1) Verifica utensile, DPI e area sicura.\n"
-                          "2) Esegui 2–3 tiri di prova sullo stesso acciaio.\n"
-                          "3) Regola la potenza per eliminare chiodi sporgenti.\n"
-                          "4) Procedi con posa in serie.")
+            collected["istruzioni"] = "**Istruzioni operative**\n1) Posa CTL su tavolato, rete a metà spessore.\n2) 2 viti Ø10 (100/120/140 mm secondo interposti).\n3) Getta soletta ≥5 cm, vibrazione moderata.\n4) Verifica copriferro/quote."
 
-    # PARAMETRI
-    if any(k in jl for k in ["parametri", "rete", "c25/30", "hsbr14", "ø10", "s355", "s275", "s235", "1×1,5", "2×1,0"]):
-        # estrai prime righe parametro-like
-        lines = []
-        for it in top_items:
-            for ln in it.answer.splitlines():
-                if any(key in ln.lower() for key in ["acciaio", "lamiera", "rete", "calcestruzzo", "c25/30", "hsbr14", "viti", "ø10"]):
-                    lines.append(ln.strip())
-            if len(lines) >= 6:
-                break
-        parametri = "Parametri consigliati\n" + "\n".join(lines[:6]) if lines else ""
-    if not parametri:
+    if "parametri" not in collected:
         if fam.startswith("CTF"):
-            parametri = ("Parametri consigliati\n"
-                         "- Acciaio trave: S235/S275/S355 con anima ≥ 6 mm\n"
-                         "- Lamiera: 1×1,5 mm oppure 2×1,0 mm ben serrata\n"
-                         "- Fissaggio: SPIT P560 + 2 chiodi HSBR14 per connettore\n"
-                         "- Getto: cls ≥ C25/30; rete a metà spessore")
+            collected["parametri"] = "**Parametri consigliati**\n- Acciaio S235/S275/S355 con anima ≥ 6 mm\n- Lamiera 1×1,5 mm o 2×1,0 mm ben serrata\n- SPIT P560 + 2 chiodi HSBR14\n- Rete a metà spessore; cls ≥ C25/30"
         elif fam.startswith("CTL"):
-            parametri = ("Parametri consigliati\n"
-                         "- Soletta: ≥ 5 cm, cls ≥ C25/30, rete a metà spessore\n"
-                         "- Fissaggio: 2 viti Ø10; 100/120/140 mm in base agli interposti\n"
-                         "- Testa connettore: sopra la rete, sotto il filo superiore del getto")
+            collected["parametri"] = "**Parametri consigliati**\n- Soletta ≥ 5 cm; cls ≥ C25/30; rete a metà spessore\n- Fissaggio: 2 viti Ø10; 100/120/140 mm secondo interposti\n- Testa connettore sopra rete, sotto filo superiore"
 
-    # SICUREZZA
-    if "dpi" in jl or "sicurezza" in jl or "perimetro" in jl:
-        safety = "Sicurezza\n- DPI: occhiali EN166, guanti antitaglio, protezione udito\n- Perimetro sicurezza 3 m durante la posa\n- Stabilizza lamiera con morsetti per evitare rimbalzi"
-    if not safety and fam in ["CTF", "P560"]:
-        safety = "Sicurezza\n- DPI obbligatori e perimetro di sicurezza 3 m; area sgombra durante i tiri"
+    if "sicurezza" not in collected and fam in ["CTF","P560"]:
+        collected["sicurezza"] = "**Sicurezza**\n- DPI: occhiali EN166, guanti antitaglio, protezione udito\n- Perimetro 3 m; area sgombra; serrare lamiera con morsetti"
 
-    # ERRORI
-    if any(k in jl for k in ["errori", "attenzione", "rischio", "rimbalzo", "sporg"]):
-        errori = "Errori comuni\n- Potenza insufficiente: chiodi parzialmente fuori\n- Lamiera non serrata: rimbalzo\n- Connettore disassato: scarso contatto piastra/ala"
-    if not errori:
+    if "errori" not in collected:
         if fam.startswith("CTF"):
-            errori = "Errori comuni\n- Rimbalzo per lamiera non serrata\n- Chiodi sporgenti (taratura insufficiente)\n- Mancata doppia chiodatura"
+            collected["errori"] = "**Errori comuni**\n- Lamiera non serrata → rimbalzo\n- Potenza insufficiente → chiodi sporgenti\n- Mancata doppia chiodatura"
         elif fam.startswith("CTL"):
-            errori = "Errori comuni\n- Vite troppo corta per interposti\n- Testa connettore interferente con la rete\n- Vibrazione del getto eccessiva"
+            collected["errori"] = "**Errori comuni**\n- Vite troppo corta per interposti\n- Testa che interferisce con la rete\n- Vibrazione eccessiva del getto"
 
-    # CHECKLIST
-    checklist = "Checklist rapida\n- 2–3 tiri di prova (taratura ok)\n- Piastra aderente / testa corretta\n- Doppio fissaggio completato\n- Rete a metà spessore e DPI"
+    if "checklist" not in collected:
+        collected["checklist"] = "**Checklist**\n- 2–3 tiri di prova (taratura ok)\n- Aderenza piastra/testa corretta\n- Doppio fissaggio completato\n- Rete a metà spessore e DPI"
 
-    # Finale
-    blocks = [
-        f"**Contesto**\n{contesto}",
-        f"\n**Istruzioni operative**\n{istruzioni}" if istruzioni else "",
-        f"\n**Parametri consigliati**\n{parametri}" if parametri else "",
-        f"\n**Sicurezza**\n{safety}" if safety else "",
-        f"\n**Errori comuni**\n{errori}" if errori else "",
-        f"\n**Checklist**\n{checklist}" if checklist else "",
-    ]
-    answer = "\n".join([b for b in blocks if b])
+    # 3) Ordina sezioni e compone senza duplicati
+    order = ["contesto","istruzioni","parametri","sicurezza","errori","checklist"]
+    blocks = [collected[k] for k in order if k in collected]
+    answer = "\n\n".join(blocks).strip()
+
+    # 4) pulizia finale: rimuove header doppi adiacenti (ulteriore safety)
+    for key, _, canon in SECTION_HEADERS:
+        answer = re.sub(rf"({re.escape(canon)}\s*)+", f"{canon}\n", answer, flags=re.IGNORECASE)
 
     return QAItem(
-        qid=top_items[0].qid if top_items else None,
+        qid=chosen[0].qid if chosen else None,
         family=fam,
         question=query.strip(),
         answer=answer,
-        tags=list(set((top_items[0].tags if top_items else []) + intents)),
+        tags=list(set((chosen[0].tags if chosen else []) + intents)),
         level="sintesi",
-        source_hint="Composizione semantica da dataset GOLD"
+        source_hint="Composizione semantica da dataset GOLD (dedupe sezioni)"
     )
 
 # ---------------------------------------------------------------
-# UI — sempre su "/"
+# UI
 # ---------------------------------------------------------------
 HTML_UI = r"""<!doctype html>
 <html lang="it">
@@ -477,11 +480,11 @@ HTML_UI = r"""<!doctype html>
 <main>
   <div class="card">
     <div class="row">
-      <input id="q" placeholder='Domanda libera (es. “Che codici hanno i connettori?” · “Sequenza posa CTF su lamiera 1×1,5” · “Taratura P560 colpo a vuoto”)' />
+      <input id="q" placeholder='Domanda libera (es. “Sequenza posa CTF su lamiera 1×1,5” · “Che codici hanno i connettori?” · “P560 colpo a vuoto”)' />
       <button onclick="ask()">Chiedi</button>
     </div>
     <div class="muted" style="margin-top:8px">
-      Suggerimenti: “Che codici hanno i connettori?”, “CTL MAXI tavolato 25 mm viti 120”, “CTF lamiera 2×1,0 mm S355”, “P560 DPI e taratura”.
+      Suggerimenti: “Che codici hanno i connettori?”, “CTL MAXI tavolato 25–30 mm viti 120”, “CTF lamiera 2×1,0 mm S355”, “P560 DPI e taratura”.
     </div>
   </div>
 
@@ -547,7 +550,7 @@ async function search() {
 async function ask() {
   const q = document.getElementById('q').value.trim();
   if (!q) return;
-  document.getElementById('results').innerHTML = ''; // reset elenco
+  document.getElementById('results').innerHTML = ''; // reset elenco a ogni domanda
   const r = await fetch(`/qa/ask?q=${encodeURIComponent(q)}`);
   const data = await r.json();
   const best = document.getElementById('best');
@@ -588,30 +591,27 @@ def health() -> Dict[str, Any]:
     except Exception as e:
         return {"service":"Tecnaria Q/A Service","status":"error","error":str(e)}
 
-@app.get("/qa/search", response_model=SearchResponse, summary="Top-k Q/A (ranking classico)")
+@app.get("/qa/search", response_model=SearchResponse, summary="Top-k Q/A (ranking con DEDUPE)")
 def qa_search(
     q: str = Query(..., min_length=2, description="Testo della ricerca"),
     k: int = Query(5, ge=1, le=25, description="Numero risultati")
 ) -> SearchResponse:
     try:
-        results = _rank(q, k=k)
+        ranked = _rank(q, k=max(k*3, 10))  # prendi più candidati...
+        de_duplicated = dedupe_items(ranked, sim_threshold=0.80, limit=k)  # ...poi deduplica
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Errore durante la ricerca: {e}")
-    return SearchResponse(query=q, count=len(results), results=results)
+    return SearchResponse(query=q, count=len(de_duplicated), results=de_duplicated)
 
-@app.get("/qa/ask", response_model=AskResponse, summary="Risposta migliore (semantica)")
+@app.get("/qa/ask", response_model=AskResponse, summary="Risposta migliore (semantica + DEDUPE)")
 def qa_ask(q: str = Query(..., min_length=2, description="Domanda libera")) -> AskResponse:
     try:
-        # 1) fallback catalogo/codici
         if needs_catalog_fallback(q):
             return AskResponse(query=q, result=make_catalog_item(q), found=True)
 
-        # 2) classifica famiglia + intenti
         fam = classify_family(q)
         intents = classify_intents(q)
-
-        # 3) ranking filtrato + composizione GOLD
-        top_items = _rank_with_filters(q, fam=fam, intents=intents, k=5)
+        top_items = _rank_with_filters(q, fam=fam, intents=intents, k=5)  # già deduplicati
         composed = compose_gold_answer(q, fam=fam, intents=intents, top_items=top_items)
         return AskResponse(query=q, result=composed, found=True)
     except Exception as e:
