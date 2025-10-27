@@ -1,317 +1,335 @@
-# app.py
-# TECNARIA_GOLD v2.4 — best-always-populated, robust ranking, dedupe, UI stabile
-# Start (Render): gunicorn -k uvicorn.workers.UvicornWorker app:app
+# app.py  — Tecnaria Q/A Service (TECNARIA_GOLD)
+# FastAPI minimal, senza dipendenze nuove. Nessuna modifica a requirements.txt.
+# Routing intelligente: "confronto/differenze" -> tecnaria_compare.json, altrimenti gold (CTL/CTF/P560).
+# Dedup Top Risposte. Fix per f-string + template JS (niente ${} dentro f-string).
 
-import json, re, pathlib, html
-from typing import List, Dict, Any, Tuple
-from fastapi import FastAPI, Query
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+import json
+import os
+import re
+import unicodedata
+from pathlib import Path
+from typing import List, Dict, Any
 
-# ---------------------------------------------------------------
-# Config & Datasets
-# ---------------------------------------------------------------
-APP_DIR = pathlib.Path(__file__).parent
-DATA_DIR = APP_DIR / "static" / "data"
-GOLD_FILES = ["ctf_gold.json", "ctl_gold.json", "p560_gold.json"]
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 
-def _load_json(p: pathlib.Path) -> Dict[str, Any]:
-    with p.open("r", encoding="utf-8") as f:
-        return json.load(f)
+APP_NAME = "Tecnaria Q/A Service"
+app = FastAPI(title=APP_NAME)
 
-def _normalize_item(it: Dict[str, Any]) -> Dict[str, Any]:
-    it.setdefault("qid", "")
-    it.setdefault("family", "")
-    it.setdefault("question", "")
-    it.setdefault("answer", "")
-    it.setdefault("tags", [])
-    return it
+# -------- Utils ---------------------------------------------------------------
 
-def load_gold() -> Tuple[List[Dict[str,Any]], Dict[str,int]]:
-    items = []
-    counts = {}
-    for fn in GOLD_FILES:
-        obj = _load_json(DATA_DIR / fn)
-        xs = obj["items"] if "items" in obj else obj
-        xs = [_normalize_item(it) for it in xs]
-        items.extend(xs)
-        counts[fn] = len(xs)
-    return items, counts
-
-ALL_ITEMS, COUNTS = load_gold()
-
-# ---------------------------------------------------------------
-# Ranking
-# ---------------------------------------------------------------
-FAMILY_HINTS = {
-    "ctf": ["ctf","chiodo","hsbr14","lamiera","acciaio","piastra","trave","s235","s275","s355","p560"],
-    "ctl": ["ctl","legno","viti","soletta","rete","tavolato","assito","ø10","10 mm"],
-    "p560": ["p560","taratura","colpo a vuoto","cartucce","dpi","perimetro"]
-}
-
-TOKEN_WEIGHTS = {
-    # comuni
-    "sequenza": 1.2, "posa": 1.1, "istruzioni": 0.8, "checklist": 0.6, "errori": 0.8, "sicurezza": 0.8,
-    # ctf
-    "ctf": 1.6, "hsbr14": 1.2, "lamiera": 1.2, "1×1,5": 1.3, "1x1,5": 1.3, "2×1,0": 1.1, "2x1,0": 1.1,
-    "s235": 0.5, "s275": 0.5, "s355": 0.5, "acciaio": 0.6,
-    # ctl
-    "ctl": 1.6, "maxi": 1.2, "tavolato": 1.2, "assito": 1.0, "soletta": 1.0, "ø10": 1.1,
-    # p560
-    "p560": 1.5, "taratura": 1.4, "colpo": 0.9, "vuoto": 0.9, "dpi": 1.0, "perimetro": 0.8, "cartucce": 0.9
-}
-
-def _family_bias(q: str) -> Dict[str,float]:
-    ql = q.lower()
-    bias = {"ctf":0.0, "ctl":0.0, "p560":0.0}
-    for fam, toks in FAMILY_HINTS.items():
-        bias[fam] = sum(1 for t in toks if t in ql) * 0.4
-    return bias
-
-def score_item(q: str, it: Dict[str,Any]) -> float:
-    ql = q.lower()
-    family = (it.get("family") or "").lower()
-    txt = (" ".join([it.get("question",""), it.get("answer",""), " ".join(it.get("tags",[]))])).lower()
-    s = 0.0
-
-    if family and family in ql: s += 1.2
-    fam_bias = _family_bias(q)
-    if family in fam_bias: s += fam_bias[family]
-
-    for tk, w in TOKEN_WEIGHTS.items():
-        if tk in txt and tk in ql: s += w * 1.2
-        elif tk in txt: s += w * 0.25
-
-    for t in re.findall(r"[a-z0-9×.,/º°ø]+", ql):
-        if len(t) >= 2 and t in txt: s += 0.08
-
-    if ("1×1,5" in ql or "1x1,5" in ql) and ("1×1,5" in txt or "1x1,5" in txt): s += 0.8
-    if ("2×1,0" in ql or "2x1,0" in ql) and ("2×1,0" in txt or "2x1,0" in txt): s += 0.5
-    if "hsbr14" in ql and "hsbr14" in txt: s += 0.6
-    if "ø10" in ql and "ø10" in txt: s += 0.5
-    if "tavolato" in ql and "tavolato" in txt: s += 0.6
+def norm_txt(s: str) -> str:
+    if not isinstance(s, str):
+        s = str(s)
+    s = s.lower()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    s = re.sub(r"\s+", " ", s).strip()
     return s
 
-def topk(q: str, k: int=5) -> List[Dict[str,Any]]:
-    ranked = sorted(ALL_ITEMS, key=lambda it: score_item(q, it), reverse=True)
-    seen = set(); out = []
-    for it in ranked:
-        key = (it.get("family",""), re.sub(r"\s+"," ", (it.get("question","")[:85]).lower()))
-        if key in seen: continue
-        seen.add(key)
-        out.append(it)
-        if len(out) >= k: break
+def contains_any(text: str, keywords: List[str]) -> bool:
+    t = norm_txt(text)
+    return any(kw in t for kw in keywords)
+
+def score_keyword(query: str, text: str, weights: Dict[str, float]) -> float:
+    """Semplice key-score: somma i pesi delle parole chiave presenti (robusto e senza librerie)."""
+    q = norm_txt(query)
+    t = norm_txt(text)
+    score = 0.0
+    for k, w in weights.items():
+        if k in q and k in t:
+            score += w
+        elif k in q and k not in t:
+            # leggera spinta se la chiave è in query (per non azzerare)
+            score += 0.0
+        elif k not in q and k in t:
+            score += 0.0
+    # piccolo boost se tutte le parole della query compaiono (bag-of-words grezzo)
+    q_terms = [w for w in re.split(r"[^\w]+", q) if w]
+    if q_terms and all(term in t for term in q_terms[:5]):
+        score += 1.0
+    return score
+
+def uniq(items: List[Dict[str, Any]], key: str) -> List[Dict[str, Any]]:
+    seen = set()
+    out = []
+    for it in items:
+        k = it.get(key, "")
+        if k not in seen:
+            seen.add(k)
+            out.append(it)
     return out
 
-# ---------------------------------------------------------------
-# Dedupe sezioni in Answer
-# ---------------------------------------------------------------
-HEADER_PATTERNS = [
-    r"\*\*Contesto\*\*", r"\*\*Istruzioni[^\n]*\*\*", r"\*\*Parametri[^\n]*\*\*",
-    r"\*\*Sicurezza[^\n]*\*\*", r"\*\*Errori[^\n]*\*\*", r"\*\*Checklist[^\n]*\*\*", r"\*\*Taratura[^\n]*\*\*"
+def pick_best(items: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Sceglie la prima come Best (lista già ordinata per score)."""
+    return items[0] if items else {}
+
+# -------- Caricamento dati ----------------------------------------------------
+
+DATA_DIR = Path(os.environ.get("DATA_DIR", str(Path(__file__).parent / "static" / "data")))
+
+FILES_PRIMARY = [
+    "ctf_gold.json",
+    "ctl_gold.json",
+    "p560_gold.json",
 ]
-HEADER_RX = re.compile("(" + "|".join(HEADER_PATTERNS) + ")")
+FILE_COMPARE = "tecnaria_compare.json"  # nuovo indice confronti (CTF↔CTL, CTL↔MAXI, ecc.)
 
-def _normalize_headers(s: str) -> str:
-    s = re.sub(r"(?m)^(Contesto)\s*$", r"**\1**", s)
-    s = re.sub(r"(?m)^(Istruzioni[^\n]*)\s*$", r"**\1**", s)
-    s = re.sub(r"(?m)^(Parametri[^\n]*)\s*$", r"**\1**", s)
-    s = re.sub(r"(?m)^(Sicurezza)\s*$", r"**\1**", s)
-    s = re.sub(r"(?m)^(Errori[^\n]*)\s*$", r"**\1**", s)
-    s = re.sub(r"(?m)^(Checklist[^\n]*)\s*$", r"**\1**", s)
-    s = re.sub(r"(?m)^(Taratura[^\n]*)\s*$", r"**\1**", s)
-    return s
+def load_json_file(p: Path) -> Any:
+    if not p.exists():
+        return None
+    try:
+        with p.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[WARN] Impossibile leggere {p.name}: {e}")
+        return None
 
-def dedupe_sections(ans: str) -> str:
-    text = _normalize_headers(ans or "")
-    lines, seen, buf = text.splitlines(), set(), []
-    for ln in lines:
-        m = HEADER_RX.search(ln)
-        if m:
-            header = re.sub(r"\*\*|\s+$","", m.group(1)).strip().lower()
-            header = re.sub(r"\s*\(.*?\)\s*$","", header)
-            if header in seen:  # salta header duplicati
-                continue
-            seen.add(header)
-        buf.append(ln)
-    return "\n".join(buf)
+GOLD_ITEMS: List[Dict[str, Any]] = []
+COMPARE_ITEMS: List[Dict[str, Any]] = []
 
-def make_best_from_list(cands: List[Dict[str,Any]]) -> Dict[str,Any]:
-    if not cands: return {}
-    best = cands[0].copy()
-    best["answer"] = dedupe_sections(best.get("answer",""))
-    tops = []
-    seen = set()
-    for it in cands:
-        key = (it.get("family",""), it.get("qid",""))
-        if key in seen: continue
-        seen.add(key)
-        tmp = it.copy()
-        tmp["answer"] = dedupe_sections(tmp.get("answer",""))
-        tops.append(tmp)
-    return {"best": best, "tops": tops}
+def normalize_item_family(it: Dict[str, Any], default_family: str = "") -> Dict[str, Any]:
+    out = dict(it)
+    # normalizza alcuni campi tipici
+    out["id"] = out.get("id") or out.get("code") or out.get("sku") or out.get("question", "")[:48]
+    out["family"] = out.get("family") or out.get("famiglia") or default_family
+    out["question"] = out.get("question") or out.get("domanda") or ""
+    out["answer"] = out.get("answer") or out.get("risposta") or ""
+    out["tags"] = out.get("tags") or []
+    out["_search"] = norm_txt(" ".join([str(out["id"]), out["family"], out["question"], out["answer"], " ".join(out["tags"]) if isinstance(out["tags"], list) else ""]))
+    return out
 
-def compose_best(q: str, k: int=5) -> Dict[str,Any]:
-    # 1) tenta ranking normale
-    cands = topk(q, k)
-    if cands:
-        return make_best_from_list(cands)
-    # 2) fallback: usa tokenizzazione “larga” (toglie punteggiatura)
-    q2 = re.sub(r"[^a-zA-Z0-9ø×,/.\s]", " ", q)
-    cands = topk(q2, k)
-    if cands:
-        return make_best_from_list(cands)
-    # 3) nessun risultato
-    return {"best": {}, "tops": []}
+def bootstrap():
+    global GOLD_ITEMS, COMPARE_ITEMS
+    GOLD_ITEMS = []
+    for fname in FILES_PRIMARY:
+        data = load_json_file(DATA_DIR / fname)
+        if not data:
+            continue
+        if isinstance(data, list):
+            for it in data:
+                GOLD_ITEMS.append(normalize_item_family(it))
+        elif isinstance(data, dict):
+            for _, it in data.items():
+                GOLD_ITEMS.append(normalize_item_family(it))
+    # compare
+    cmp_data = load_json_file(DATA_DIR / FILE_COMPARE)
+    COMPARE_ITEMS = []
+    if cmp_data:
+        if isinstance(cmp_data, list):
+            for it in cmp_data:
+                # per i confronti, fondi anche famA/famB/html se presenti
+                base = normalize_item_family(it)
+                base["famA"] = it.get("famA", "")
+                base["famB"] = it.get("famB", "")
+                base["html"] = it.get("html", "")
+                # arricchisci testo ricerca con famA/famB/html
+                base["_search"] = norm_txt(base["_search"] + " " + base["famA"] + " " + base["famB"] + " " + it.get("question","") + " " + it.get("answer",""))
+                COMPARE_ITEMS.append(base)
+        elif isinstance(cmp_data, dict):
+            for _, it in cmp_data.items():
+                base = normalize_item_family(it)
+                base["famA"] = it.get("famA", "")
+                base["famB"] = it.get("famB", "")
+                base["html"] = it.get("html", "")
+                base["_search"] = norm_txt(base["_search"] + " " + base["famA"] + " " + base["famB"] + " " + it.get("question","") + " " + it.get("answer",""))
+                COMPARE_ITEMS.append(base)
 
-# ---------------------------------------------------------------
-# FastAPI
-# ---------------------------------------------------------------
-app = FastAPI(title="Tecnaria Q/A Service", version="2.4")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
-)
+bootstrap()
 
-@app.get("/health")
-def health():
-    return {"ok": True, "items_loaded": len(ALL_ITEMS)}
+# -------- Intent detection per "confronto" ------------------------------------
 
-@app.get("/debug/datasets")
-def debug_datasets():
-    return {"service":"Tecnaria Q/A Service","status":"ok","items_loaded":len(ALL_ITEMS),
-            "data_dir":str(DATA_DIR), "files": GOLD_FILES, "counts": COUNTS}
+COMPARE_TRIGGERS = [
+    "confronto", "confrontare", "differenza", "differenze",
+    "vs", "contro", "meglio tra", "quando usare", "rispetto a",
+    "comparare", "paragone", "paragonare",
+    "choose between", "difference", "compare", "versus"
+]
 
-@app.get("/debug/classify")
-def debug_classify(q: str):
-    return {"q": q, "family_bias": _family_bias(q), "preview_qids": [it.get("qid") for it in topk(q, 5)]}
+# keyword weights (italiano+inglese) per ranking semplice
+WEIGHTS_COMPARE = {
+    "confronto": 2.0, "differenza": 2.0, "differenze": 2.0, "vs": 1.5,
+    "contro": 1.2, "meglio": 1.0, "paragone": 1.2, "rispetto a": 1.2,
+    "compare": 2.0, "difference": 2.0, "versus": 1.5,
+    # famiglie/oggetti
+    "ctl": 1.0, "ctl maxi": 1.0, "ctf": 1.0, "p560": 1.0, "lamiera": 0.8, "legno": 0.8, "acciaio": 0.8
+}
 
-@app.get("/qa/search")
-def qa_search(q: str = Query(..., min_length=1), k: int = 5):
-    return {"q": q, "k": k, "items": topk(q, k)}
+WEIGHTS_GOLD = {
+    "ctf": 1.2, "ctl": 1.2, "ctl maxi": 1.2, "p560": 1.0,
+    "lamiera": 0.8, "rete": 0.7, "soletta": 0.7, "hsbr14": 0.9,
+    "vite": 0.8, "viti": 0.8, "taratura": 0.8, "trave": 0.8
+}
 
-@app.get("/qa/ask")
-def qa_ask(q: str = Query(..., min_length=1), k: int = 5):
-    # Best-always-populated: se ranking “puro” è vuoto, fallback al top-1 di /qa/search
-    data = compose_best(q, k)
-    if data["best"]:
-        return {"q": q, "k": k, **data}
-    # Fallback finale al top-1 di search
-    items = topk(q, 1)
-    if items:
-        return {"q": q, "k": k, **make_best_from_list(items)}
-    return {"q": q, "k": k, "best": {}, "tops": []}
+def is_compare_intent(q: str) -> bool:
+    return contains_any(q, COMPARE_TRIGGERS)
 
-# ---------------------------------------------------------------
-# UI (no f-strings)
-# ---------------------------------------------------------------
-HTML_UI = r"""<!doctype html>
+def rank_items(query: str, items: List[Dict[str, Any]], weights: Dict[str, float], k: int = 6) -> List[Dict[str, Any]]:
+    scored = []
+    for it in items:
+        s = score_keyword(query, it.get("_search", ""), weights)
+        # boost leggero se le famiglie della query sono entrambe nel confronto
+        qn = norm_txt(query)
+        fams = [it.get("family",""), it.get("famA",""), it.get("famB","")]
+        fams = [f for f in fams if f]
+        for fam in fams:
+            if fam and norm_txt(fam) in qn:
+                s += 0.5
+        scored.append((s, it))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [it for s, it in scored[:k] if s > 0]
+
+# -------- API ----------------------------------------------------------------
+
+@app.get("/healthz")
+def healthz():
+    return {"service": APP_NAME, "status": "ok"}
+
+@app.get("/load_status")
+def load_status():
+    files = []
+    for f in FILES_PRIMARY + [FILE_COMPARE]:
+        p = DATA_DIR / f
+        files.append(f)
+        if not p.exists():
+            print(f"[WARN] Manca il file: {p}")
+    return {
+        "service": APP_NAME,
+        "status": "ok",
+        "items_gold": len(GOLD_ITEMS),
+        "items_compare": len(COMPARE_ITEMS),
+        "data_dir": str(DATA_DIR),
+        "files": files
+    }
+
+@app.get("/ask")
+def ask(q: str = Query(..., description="Domanda utente"),
+        top_k: int = Query(5, ge=1, le=10)):
+    query = q.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Domanda vuota.")
+
+    # 1) instradamento
+    if is_compare_intent(query) and COMPARE_ITEMS:
+        ranked = rank_items(query, COMPARE_ITEMS, WEIGHTS_COMPARE, k=top_k+3)
+    else:
+        ranked = rank_items(query, GOLD_ITEMS, WEIGHTS_GOLD, k=top_k+3)
+
+    # fallback se nulla
+    if not ranked and GOLD_ITEMS:
+        ranked = rank_items(query, GOLD_ITEMS, WEIGHTS_GOLD, k=top_k+3)
+
+    if not ranked:
+        return {"best": None, "top": [], "debug": {"route": "none", "why": "no hits"}}
+
+    # 2) dedup per id
+    ranked = uniq(ranked, "id")
+    best = pick_best(ranked)
+    top = [it for it in ranked[1:top_k+1]]
+
+    # prepara payload “pulito”
+    def clean(it: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "id": it.get("id"),
+            "family": it.get("family") or (it.get("famA","") + (" vs " if it.get("famB") else "") + it.get("famB","")),
+            "question": it.get("question"),
+            "answer": it.get("answer"),
+            "html": it.get("html", ""),
+            "tags": it.get("tags", [])
+        }
+
+    payload = {
+        "best": clean(best),
+        "top": [clean(it) for it in top],
+        "debug": {
+            "route": "compare" if is_compare_intent(query) else "gold",
+            "items_considered": len(ranked),
+        }
+    }
+    return JSONResponse(payload)
+
+# -------- Frontend minimale ---------------------------------------------------
+
+INDEX_HTML = """
+<!doctype html>
 <html lang="it">
 <head>
   <meta charset="utf-8" />
+  <title>Tecnaria Q/A Service</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tecnaria Q/A — GOLD Semantic</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;margin:0;background:#0b0f17;color:#e7eaf2}
-    header{padding:16px 20px;background:#111827;position:sticky;top:0;z-index:2}
-    h1{margin:0;font-size:18px}
-    .wrap{max-width:1100px;margin:20px auto;padding:0 16px}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .card{background:#111827;border:1px solid #1f2937;border-radius:14px;padding:16px}
-    .pill{display:inline-block;background:#1f2937;border:1px solid #374151;border-radius:999px;padding:2px 8px;margin-right:6px;font-size:12px}
-    input,button{padding:10px 12px;border-radius:8px;border:1px solid #374151;background:#0b0f17;color:#e7eaf2}
-    button{cursor:pointer}
-    .q{font-weight:700;margin:6px 0 8px}
-    .a{white-space:pre-wrap;line-height:1.42}
-    .muted{opacity:.75}
-    a{color:#93c5fd}
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; line-height: 1.35; }
+    h1 { margin: 0 0 8px 0; }
+    .muted { color: #666; }
+    .row { display: flex; gap: 16px; }
+    textarea { width: 100%; height: 110px; font-size: 15px; padding: 10px; }
+    button { padding: 10px 14px; font-size: 14px; cursor: pointer; }
+    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin: 12px 0; }
+    .pill { display:inline-block; padding:2px 8px; border:1px solid #e5e7eb; border-radius:999px; margin-right:6px; font-size:12px; color:#374151;}
+    .k { color:#6b7280; font-size:12px; }
+    .best { border-color:#16a34a; }
+    .debug { font-size: 12px; color:#64748b; }
+    .warn { background:#fff8e1; padding:8px; border-radius:8px; font-size:13px; }
+    .htmlblock { background:#fafafa; padding:10px; border-radius:8px; margin-top:8px; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Tecnaria Q/A — GOLD Semantic <span class="muted">• 1200</span></h1>
-  </header>
-  <div class="wrap">
-    <div class="card" style="margin-bottom:12px">
-      <div style="display:flex;gap:8px">
-        <input id="q" placeholder="Fai una domanda (es. Sequenza posa CTF su lamiera 1×1,5 con P560)" style="flex:1"/>
-        <button onclick="ask()">Chiedi</button>
-        <button onclick="search()">Cerca</button>
-      </div>
-      <div class="muted" style="margin-top:8px">
-        Health: <a href="/health">/health</a> · API: <a href="/qa/search">/qa/search</a>, <a href="/qa/ask">/qa/ask</a> · Debug: <a href="/debug/datasets">/debug/datasets</a> · Classify: /debug/classify?q=...
-      </div>
-      <div class="muted" style="margin-top:6px">Suggerimenti: “CTL MAXI tavolato 25–30 mm vite 120”, “P560 taratura colpo a vuoto”, “CTF lamiera 2×1,0 mm S355”.</div>
-    </div>
+  <h1>Tecnaria Q/A Service</h1>
+  <div class="muted">TECNARIA_GOLD · Interfaccia di test (Compare routing attivo)</div>
 
-    <div class="row">
-      <div class="card">
-        <h3>Top Risposte</h3>
-        <div id="tops" class="muted">—</div>
-      </div>
-      <div class="card">
-        <h3>Risposta Migliore</h3>
-        <div id="best">—</div>
-      </div>
-    </div>
+  <div class="row" style="margin-top:12px;">
+    <textarea id="q" placeholder="Scrivi una domanda… es.: Qual è la differenza tra CTL e CTL MAXI?"></textarea>
+  </div>
+  <div style="margin-top:8px;">
+    <button onclick="ask()">Chiedi</button>
+    <span class="k">Suggerimenti: “differenza tra CTL e CTL MAXI”, “CTL vs CTF”, “P560 taratura colpo a vuoto”.</span>
   </div>
 
-<script>
-function renderItem(it){
-  return `
-    <div style="margin-bottom:10px">
-      <div class="q">Q: ${it.question||'—'}</div>
-      <div class="a">${(it.answer||'').replace(/\n/g,'<br/>')}</div>
-      <div style="margin-top:6px">
-        <span class="pill">${it.family||'n/a'}</span>
-        ${(it.tags||[]).map(t => `<span class='pill'>${t}</span>`).join(' ')}
-        ${it.qid ? `<span class='pill'>${it.qid}</span>` : ''}
-      </div>
-    </div>`;
-}
+  <div id="out"></div>
 
-async function ask(){
-  const q = document.getElementById('q').value.trim();
-  if(!q){ alert('Scrivi una domanda'); return; }
-  const r = await fetch(`/qa/ask?q=${encodeURIComponent(q)}&k=5`);
-  const data = await r.json();
-  // Sempre popola "best": se vuota, tenta un fallback lato client con /qa/search
-  if(!data.best || !data.best.question){
-    const r2 = await fetch(`/qa/search?q=${encodeURIComponent(q)}&k=5`);
-    const d2 = await r2.json();
-    if(d2.items && d2.items.length){
-      document.getElementById('best').innerHTML = renderItem(d2.items[0]);
-      document.getElementById('tops').innerHTML = d2.items.map(renderItem).join('');
-      return;
-    }else{
-      document.getElementById('best').innerText = 'Nessun risultato';
-      document.getElementById('tops').innerText = '—';
-      return;
+  <script>
+    async function ask() {
+      const q = document.getElementById('q').value.trim();
+      const out = document.getElementById('out');
+      out.innerHTML = "<div class='muted'>…sto cercando…</div>";
+      try {
+        const res = await fetch(`/ask?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        function pillList(tags) {
+          if (!tags || !tags.length) return "";
+          return "<div>" + tags.map(function(t){ return "<span class='pill'>"+t+"</span>"; }).join(" ") + "</div>";
+        }
+        function card(item, cls) {
+          if (!item) return "";
+          const hasHtml = item.html && item.html.length > 0;
+          return "<div class='card "+(cls||"")+"'>"
+            + (item.family ? "<div class='muted'>"+item.family+"</div>": "")
+            + (item.question ? "<h3>"+item.question+"</h3>": "")
+            + (item.answer ? "<div>"+item.answer.replace(/\\n/g,"<br/>")+"</div>": "")
+            + (hasHtml ? "<div class='htmlblock'>"+item.html+"</div>": "")
+            + pillList(item.tags)
+            + "</div>";
+        }
+        const best = card(data.best, "best");
+        const tops = (data.top||[]).map(function(it){ return card(it, ""); }).join("");
+        const dbg = "<div class='debug'>route: "+(data.debug && data.debug.route)+" · hits: "+(data.debug && data.debug.items_considered)+"</div>";
+        out.innerHTML = best + tops + dbg;
+      } catch (e) {
+        out.innerHTML = "<div class='warn'>Errore: "+(e && e.message ? e.message : e)+"</div>";
+      }
     }
-  }
-  document.getElementById('best').innerHTML = renderItem(data.best);
-  document.getElementById('tops').innerHTML = (data.tops||[]).map(renderItem).join('');
-}
-
-async function search(){
-  const q = document.getElementById('q').value.trim();
-  if(!q){ alert('Scrivi una domanda'); return; }
-  const r = await fetch(`/qa/search?q=${encodeURIComponent(q)}&k=5`);
-  const data = await r.json();
-  const items = data.items||[];
-  document.getElementById('tops').innerHTML = items.length ? items.map(renderItem).join('') : '—';
-  // NEW: popola sempre anche la “Risposta Migliore” col top-1 della ricerca
-  if(items.length){
-    document.getElementById('best').innerHTML = renderItem(items[0]);
-  }else{
-    document.getElementById('best').innerText = 'Nessun risultato';
-  }
-}
-</script>
+  </script>
 </body>
 </html>
 """
 
 @app.get("/", response_class=HTMLResponse)
-def ui():
-    return HTML_UI
+def index():
+    return HTMLResponse(INDEX_HTML)
+
+# -------- Static (se serve) ---------------------------------------------------
+# Monta /static per eventuali asset
+static_path = Path(__file__).parent / "static"
+if static_path.exists():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
