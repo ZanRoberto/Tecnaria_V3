@@ -1,15 +1,17 @@
 # app.py
-# TECNARIA_GOLD — UI sempre attiva + API Q/A GOLD + Debug conteggi
+# TECNARIA_GOLD — GOLD+INTELLIGENT
+# UI sempre attiva + API Q/A GOLD + Debug conteggi + Fallback "codici"
 # - UI su "/"
 # - /health per stato JSON
-# - /qa/search e /qa/ask per interrogazioni
-# - /debug/datasets per contare gli item per ogni file GOLD
+# - /qa/search e /qa/ask (ask ora con fallback se query è "catalogo/codici/sigle")
+# - /debug/datasets per contare item
 # - Caricamento GOLD da static/data/*.json (ctf_gold.json, ctl_gold.json, p560_gold.json o *_gold.json)
 
 from __future__ import annotations
 
 import json
 import pathlib
+import re
 from typing import List, Dict, Any, Optional
 from functools import lru_cache
 
@@ -24,6 +26,12 @@ from pydantic import BaseModel
 APP_DIR = pathlib.Path(__file__).parent
 DATA_DIR = APP_DIR / "static" / "data"
 GOLD_FILES = ["ctf_gold.json", "ctl_gold.json", "p560_gold.json"]
+
+# Parole chiave che attivano il fallback "catalogo/codici"
+FALLBACK_CODE_TOKENS = [
+    "codici", "codice", "sigle", "sigla", "catalogo", "modelli", "modello",
+    "listino", "tabella", "scheda", "nomenclatura"
+]
 
 # ---------------------------------------------------------------
 # Pydantic models
@@ -52,8 +60,8 @@ class AskResponse(BaseModel):
 # ---------------------------------------------------------------
 app = FastAPI(
     title="Tecnaria Q/A Service — TECNARIA_GOLD",
-    version="1.0.0",
-    description="UI sempre attiva + API su dataset GOLD (CTF/CTL/P560) da static/data/."
+    version="1.1.0",
+    description="UI sempre attiva + API su dataset GOLD (CTF/CTL/P560) da static/data/ con fallback intelligente per richieste 'codici/catalogo'."
 )
 
 # CORS aperto (limitabile se serve)
@@ -123,6 +131,49 @@ def load_gold() -> List[QAItem]:
     return items
 
 # ---------------------------------------------------------------
+# Fallback "catalogo/codici"
+# ---------------------------------------------------------------
+CATALOGO_ANSWER = """\
+Ecco una **scheda rapida codici/modelli** per le famiglie presenti:
+
+**CTF (acciaio)**
+• Modello: **CTF** (fissaggio meccanico con **2 chiodi HSBR14** per connettore).  
+• Posa: a secco con **SPIT P560** + kit/adattatori Tecnaria.  
+• Contesti ammessi: trave acciaio con anima ≥ **6 mm**; con lamiera grecata: **1×1,5 mm** oppure **2×1,0 mm** ben serrata all’ala.  
+• Note: non richiede resine; rete a metà spessore; cls **≥ C25/30**.
+
+**CTL (legno) — serie standard**
+• **CTL 12/030**, **CTL 12/040**, **CTL 12/050**, **CTL 12/060**  
+• Fissaggio: **2 viti Ø10** per connettore.  
+• Viti tipiche: **100/120 mm** (in base a interposti/tavolato).
+
+**CTL MAXI (legno su tavolato)**
+• **CTL MAXI 12/040**, **CTL MAXI 12/050**, **CTL MAXI 12/060**  
+• Fissaggio: **2 viti Ø10**; lunghezze più comuni **100/120/140 mm** (scegli in funzione dello spessore dell’assito/interposto: con **≥ 25–30 mm** preferisci la più lunga).
+
+**P560 (utensile di posa)**
+• Macchina: **SPIT P560** (nolo/vendita) con **kit/adattatori Tecnaria**.  
+• Uso: taratura con 2–3 tiri di prova; doppia chiodatura; DPI e perimetro di sicurezza 3 m.
+
+Se ti servono **codici articolo interni** (SKU) per ordine/offerta, dimmelo e ti preparo una **tabella pronta** con colonne: *Famiglia · Modello · Viti/Chiodi · Note di posa*.
+"""
+
+def needs_catalog_fallback(query: str) -> bool:
+    q = (query or "").lower()
+    return any(tok in q for tok in FALLBACK_CODE_TOKENS)
+
+def make_catalog_item(query: str) -> QAItem:
+    return QAItem(
+        qid="CAT-001",
+        family="CATALOGO",
+        question="Quali sono i codici/modelli disponibili per i connettori Tecnaria (CTF, CTL, CTL MAXI) e l'utensile P560?",
+        answer=CATALOGO_ANSWER,
+        tags=["codici", "catalogo", "modelli", "sigle", "CTL", "CTF", "P560"],
+        level="sintesi",
+        source_hint="Sintesi operativa su famiglie CTF/CTL/CTL MAXI e utensile P560."
+    )
+
+# ---------------------------------------------------------------
 # Ranking
 # ---------------------------------------------------------------
 def _score(item: QAItem, ql: str) -> float:
@@ -138,12 +189,17 @@ def _score(item: QAItem, ql: str) -> float:
     atxt = (item.answer or "").lower()
     if ql and ql in qtxt:
         base += 1.5
-    tokens = {tok for tok in ql.split() if tok}
+    # piccoli boost per parole molto frequenti in queste tematiche
+    tokens = {tok for tok in re.split(r"\W+", ql) if tok}
     for tok in tokens:
         if tok in qtxt:
             base += 0.40
         if tok in atxt:
             base += 0.20
+    # micro-boost se la query cita P560/HSBR14/lamiera ecc.
+    for key, bonus in [("p560", 0.5), ("hsbr14", 0.3), ("lamiera", 0.3), ("tavolato", 0.3)]:
+        if key in ql:
+            base += bonus
     return base
 
 def _rank(query: str, k: int = 5) -> List[QAItem]:
@@ -194,11 +250,11 @@ HTML_UI = r"""<!doctype html>
 <main>
   <div class="card">
     <div class="row">
-      <input id="q" placeholder="Fai una domanda libera (es. “Posso posare CTF su lamiera H55 con P560?”)" />
+      <input id="q" placeholder='Fai una domanda libera (es. “Che codici hanno i connettori?” o “Posso posare CTF su lamiera H55 con P560?”)' />
       <button onclick="ask()">Chiedi</button>
     </div>
     <div class="muted" style="margin-top:8px">
-      Suggerimenti: “CTL MAXI tavolato 25 mm vite 120”, “P560 taratura colpo a vuoto”, “CTF lamiera 2×1,0 mm S355”.
+      Suggerimenti: “Che codici hanno i connettori?”, “CTL MAXI tavolato 25 mm vite 120”, “P560 taratura colpo a vuoto”, “CTF lamiera 2×1,0 mm S355”.
     </div>
   </div>
 
@@ -251,7 +307,7 @@ async function search() {
     el.className = 'card';
     el.innerHTML = `
       <div class="q">Q: ${it.question}</div>
-      <div class="a">${it.answer.replace(/\n/g,'<br/>')}</div>
+      <div class="a">${it.answer.replace(/\\n/g,'<br/>')}</div>
       <div class="meta">
         <span class="pill">${it.family || 'n/a'}</span>
         ${(it.tags||[]).map(t => `<span class='pill'>${t}</span>`).join(' ')}
@@ -265,7 +321,7 @@ async function ask() {
   const q = document.getElementById('q').value.trim();
   if (!q) return;
 
-  // 🧹 Pulisce i risultati "Top Risposte" a ogni nuova domanda
+  // Pulisce "Top Risposte" a ogni nuova domanda
   document.getElementById('results').innerHTML = '';
 
   const r = await fetch(`/qa/ask?q=${encodeURIComponent(q)}`);
@@ -278,7 +334,7 @@ async function ask() {
   const it = data.result;
   best.innerHTML = `
     <div class="q">Q: ${it.question}</div>
-    <div class="a">${it.answer.replace(/\n/g,'<br/>')}</div>
+    <div class="a">${it.answer.replace(/\\n/g,'<br/>')}</div>
     <div class="meta">
       <span class="pill">${it.family || 'n/a'}</span>
       ${(it.tags||[]).map(t => `<span class='pill'>${t}</span>`).join(' ')}
@@ -319,9 +375,13 @@ def qa_search(
         raise HTTPException(status_code=500, detail=f"Errore durante la ricerca: {e}")
     return SearchResponse(query=q, count=len(results), results=results)
 
-@app.get("/qa/ask", response_model=AskResponse, summary="Risposta migliore")
+@app.get("/qa/ask", response_model=AskResponse, summary="Risposta migliore con fallback 'codici'")
 def qa_ask(q: str = Query(..., min_length=2, description="Domanda libera")) -> AskResponse:
     try:
+        # Fallback intelligente: domande "codici/catalogo/sigle"
+        if needs_catalog_fallback(q):
+            return AskResponse(query=q, result=make_catalog_item(q), found=True)
+        # Altrimenti ranking classico
         best = _rank(q, k=1)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Errore durante la ricerca: {e}")
