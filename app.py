@@ -264,6 +264,10 @@ async function search() {
 async function ask() {
   const q = document.getElementById('q').value.trim();
   if (!q) return;
+
+  // 🧹 Pulisce i risultati "Top Risposte" a ogni nuova domanda
+  document.getElementById('results').innerHTML = '';
+
   const r = await fetch(`/qa/ask?q=${encodeURIComponent(q)}`);
   const data = await r.json();
   const best = document.getElementById('best');
