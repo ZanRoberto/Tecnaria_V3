@@ -1,1 +1,15 @@
+[
+  {
+    "famA": "CTF",
+    "famB": "CTL",
+    "answer": "",
+    "html": "<div><h2>Confronto</h2><div style='display:flex;gap:24px;flex-wrap:wrap'><div class='side' style='flex:1;min-width:320px'><h3>CTF</h3><p>Solai misti acciaio–calcestruzzo su travi/lamiera grecata. Posa a freddo con SPIT P560 e due chiodi HSBR14. Ideale quando la struttura portante è in acciaio o con lamiera collaborante.</p><p><small>Fonte: OVERVIEW::CTF</small></p></div><div class='side' style='flex:1;min-width:320px'><h3>CTL</h3><p>Solai legno–calcestruzzo su travi in legno o tavolati. Posa dall’alto con viti Ø10; soletta ≥5 cm con rete a metà spessore. Migliora rigidezza/portanza e comfort dinamico.</p><p><small>Fonte: OVERVIEW::CTL</small></p></div></div></div>"
+  },
+  {
+    "famA": "CEM-E",
+    "famB": "CTCEM",
+    "answer": "",
+    "html": "<div><h2>Confronto</h2><div style='display:flex;gap:24px;flex-wrap:wrap'><div class='side' style='flex:1;min-width:320px'><h3>CEM-E</h3><p>Connettori meccanici a secco per laterocemento con staffe/cappelli; incisioni locali del copriferro e serraggio controllato. Tempi rapidi, nessuna resina.</p><p><small>Fonte: OVERVIEW::CEM-E</small></p></div><div class='side' style='flex:1;min-width:320px'><h3>CTCEM</h3><p>Piolo a vite con piastra dentata. Preforo Ø11 mm ~75 mm, pulizia, serraggio a battuta. Alternativa alle barre con resina; indicato quando servono tasselli puntuali in zona di travetto.</p><p><small>Fonte: OVERVIEW::CTCEM</small></p></div></div></div>"
+  }
+]
 
