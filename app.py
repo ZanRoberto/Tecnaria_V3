@@ -1,10 +1,9 @@
 # app.py
-# Tecnaria_V3 — App FastAPI completa con Q/A GOLD
-# - Carica dataset GOLD da static/data/
-# - Espone /qa/search (top-k) e /qa/ask (best match)
-# - Nessun requisito extra rispetto a FastAPI/uvicorn già presenti
-# - Nessuna dipendenza da percorsi Windows
-
+# TECNARIA_GOLD — UI sempre attiva + API Q/A GOLD
+# - UI su "/"
+# - Health JSON su "/health"
+# - /qa/search e /qa/ask per prove e integrazioni
+# - Caricamento GOLD da static/data/*.json (ctf_gold.json, ctl_gold.json, p560_gold.json)
 from __future__ import annotations
 
 import json
@@ -14,20 +13,14 @@ from functools import lru_cache
 
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-# ------------------------------------------------------------------------------
-# Config base
-# ------------------------------------------------------------------------------
 APP_DIR = pathlib.Path(__file__).parent
 DATA_DIR = APP_DIR / "static" / "data"
-
-# Nomi "canonici" (se presenti, hanno priorità)
 GOLD_FILES = ["ctf_gold.json", "ctl_gold.json", "p560_gold.json"]
 
-# ------------------------------------------------------------------------------
-# Modelli Pydantic
-# ------------------------------------------------------------------------------
+# ----------------------- Pydantic models -----------------------
 class QAItem(BaseModel):
     qid: Optional[str] = None
     family: Optional[str] = None
@@ -47,52 +40,40 @@ class AskResponse(BaseModel):
     result: Optional[QAItem] = None
     found: bool
 
-# ------------------------------------------------------------------------------
-# App FastAPI
-# ------------------------------------------------------------------------------
+# ----------------------- FastAPI app ---------------------------
 app = FastAPI(
-    title="Tecnaria Q/A Service",
+    title="Tecnaria Q/A Service — TECNARIA_GOLD",
     version="1.0.0",
-    description="Ricerca e risposta su dataset GOLD (CTF/CTL/P560) da static/data/."
+    description="UI sempre attiva + API per dataset GOLD (CTF/CTL/P560) da static/data/."
 )
 
-# CORS (aperto: adegua se hai front-end su dominio specifico)
+# CORS aperto (limita se serve)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # inserisci il dominio del front-end se vuoi limitarlo
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ------------------------------------------------------------------------------
-# Caricamento dataset (tollerante, no invenzioni)
-# ------------------------------------------------------------------------------
+# ----------------------- Data loading -------------------------
 def _iter_candidate_files() -> List[pathlib.Path]:
-    """Ritorna la lista di file da caricare, in ordine di priorità."""
-    candidates: List[pathlib.Path] = []
-
-    # 1) Priorità ai tre nomi canonici, se esistono
+    cand: List[pathlib.Path] = []
     for name in GOLD_FILES:
         p = DATA_DIR / name
         if p.exists() and p.is_file():
-            candidates.append(p)
-
-    # 2) Poi qualunque *_gold.json (permette versioni tipo ctf_gold_v2.json)
+            cand.append(p)
     for p in sorted(DATA_DIR.glob("*_gold.json")):
-        if p not in candidates:
-            candidates.append(p)
-
-    # Se non c'è niente, meglio fallire esplicitamente
-    if not candidates:
+        if p not in cand:
+            cand.append(p)
+    if not cand:
         raise FileNotFoundError(
-            f"Nessun dataset GOLD trovato. Attesi almeno uno tra: {', '.join(GOLD_FILES)} "
+            f"Nessun dataset GOLD trovato. Attesi: {', '.join(GOLD_FILES)} "
             f"oppure qualsiasi *_gold.json in {DATA_DIR}"
         )
-    return candidates
+    return cand
 
 def _normalize_records(raw: Any) -> List[Dict[str, Any]]:
-    """Accetta sia dict con chiave 'items' sia lista pura di item."""
     if isinstance(raw, dict) and "items" in raw and isinstance(raw["items"], list):
         return raw["items"]
     if isinstance(raw, list):
@@ -102,22 +83,19 @@ def _normalize_records(raw: Any) -> List[Dict[str, Any]]:
 @lru_cache(maxsize=1)
 def load_gold() -> List[QAItem]:
     items: List[QAItem] = []
-    seen_files = set()
-
-    candidates = _iter_candidate_files()
-    for p in candidates:
-        if p.resolve() in seen_files:
+    seen = set()
+    for p in _iter_candidate_files():
+        if p.resolve() in seen:
             continue
-        seen_files.add(p.resolve())
+        seen.add(p.resolve())
         with p.open("r", encoding="utf-8") as f:
             data = json.load(f)
         for rec in _normalize_records(data):
-            # Mappa campi minimi obbligatori; se mancanti, salta
             q = (rec.get("question") or "").strip()
             a = (rec.get("answer") or "").strip()
             if not q or not a:
                 continue
-            item = QAItem(
+            items.append(QAItem(
                 qid=rec.get("qid"),
                 family=rec.get("family"),
                 question=q,
@@ -125,44 +103,26 @@ def load_gold() -> List[QAItem]:
                 tags=rec.get("tags") or [],
                 level=rec.get("level"),
                 source_hint=rec.get("source_hint"),
-            )
-            items.append(item)
-
+            ))
     if not items:
-        raise ValueError("Nessun item valido caricato dai dataset GOLD.")
+        raise ValueError("Nessun item valido caricato.")
     return items
 
-# ------------------------------------------------------------------------------
-# Ranking semplice (lessicale robusto, leggero, deterministico)
-# ------------------------------------------------------------------------------
+# ----------------------- Ranking ------------------------------
 def _score(item: QAItem, ql: str) -> float:
     base = 0.0
-
     fam = (item.family or "").lower()
-    if fam and fam in ql:
-        base += 2.0
-
-    # boost sui tag presenti nella query
+    if fam and fam in ql: base += 2.0
     for t in (item.tags or []):
-        t0 = (t or "").lower().strip()
-        if t0 and t0 in ql:
-            base += 1.0
-
+        t0 = (t or "").lower()
+        if t0 and t0 in ql: base += 1.0
     qtxt = (item.question or "").lower()
     atxt = (item.answer or "").lower()
-
-    # match pieno della query nel testo domanda
-    if ql and ql in qtxt:
-        base += 1.5
-
-    # token-level matching
+    if ql and ql in qtxt: base += 1.5
     tokens = {tok for tok in ql.split() if tok}
     for tok in tokens:
-        if tok in qtxt:
-            base += 0.40
-        if tok in atxt:
-            base += 0.20
-
+        if tok in qtxt: base += 0.40
+        if tok in atxt: base += 0.20
     return base
 
 def _rank(query: str, k: int = 5) -> List[QAItem]:
@@ -171,62 +131,167 @@ def _rank(query: str, k: int = 5) -> List[QAItem]:
         return []
     items = load_gold()
     ranked = sorted(items, key=lambda it: _score(it, ql), reverse=True)
-    return ranked[: max(1, k)]
+    return ranked[:max(1, k)]
 
-# ------------------------------------------------------------------------------
-# Endpoints
-# ------------------------------------------------------------------------------
-@app.get("/", summary="Health & Info")
-def root() -> Dict[str, Any]:
-    """Health check + meta."""
+# ----------------------- UI (/) + Health (/health) ------------
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def ui_root() -> str:
+    """UI sempre attiva: ricerca + domanda libera."""
+    # Nota: health JSON è spostato su /health per evitare conflitti con la UI
+    try:
+        files = [p.name for p in _iter_candidate_files()]
+        n = len(load_gold())
+    except Exception as e:
+        files, n = [], 0
+        err = f"Errore caricamento dati: {e}"
+    else:
+        err = ""
+
+    return f"""<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tecnaria Q/A — GOLD</title>
+  <style>
+    body {{ font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; background: #0b0c10; color: #eaf0f6; }}
+    header {{ padding: 20px; background: #101219; border-bottom: 1px solid #1c2030; }}
+    h1 {{ margin: 0; font-size: 20px; letter-spacing: .5px; }}
+    main {{ max-width: 1100px; margin: 0 auto; padding: 20px; }}
+    .card {{ background: #111622; border: 1px solid #1c2030; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.3); }}
+    .row {{ display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }}
+    input, button {{ height: 44px; border-radius: 10px; border: 1px solid #283049; background: #0f1420; color: #eaf0f6; }}
+    input {{ padding: 0 12px; width: 100%; }}
+    button {{ padding: 0 18px; cursor: pointer; }}
+    .pill {{ display:inline-block; padding: 2px 8px; border: 1px solid #2e3754; border-radius: 999px; margin-right: 6px; font-size: 12px; color: #a9b6d3; }}
+    .q {{ font-weight: 600; margin-bottom: 6px; }}
+    .a {{ white-space: pre-wrap; line-height: 1.45; }}
+    .meta {{ font-size: 12px; color: #93a2c8; margin-top: 6px; }}
+    .err {{ color: #ff6b6b; }}
+    .muted {{ color:#93a2c8; font-size:13px; }}
+    .footer {{ margin-top: 24px; font-size: 12px; color: #7f8bb0; }}
+    .split {{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; }}
+    @media (max-width: 900px) {{ .split {{ grid-template-columns: 1fr; }} }}
+  </style>
+</head>
+<body>
+<header>
+  <h1> Tecnaria Q/A — GOLD · <span class="muted">{n} item</span> </h1>
+  <div class="muted">Files: {", ".join(files)} {f'<span class="err">· {err}</span>' if err else ''}</div>
+</header>
+
+<main>
+  <div class="card">
+    <div class="row">
+      <input id="q" placeholder="Fai una domanda libera (es. “Posso posare CTF su lamiera H55 con P560?”)" />
+      <button onclick="ask()">Chiedi</button>
+    </div>
+    <div class="muted" style="margin-top:8px">
+      Suggerimenti: “CTL MAXI tavolato 25 mm vite 120”, “P560 taratura colpo a vuoto”, “CTF lamiera 2×1,0 mm S355”.
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="card">
+      <h3>Top Risposte</h3>
+      <div class="row" style="margin-bottom:8px">
+        <input id="qsearch" placeholder="Cerca (top-5)..." />
+        <button onclick="search()">Cerca</button>
+      </div>
+      <div id="results"></div>
+    </div>
+
+    <div class="card">
+      <h3>Risposta Migliore</h3>
+      <div id="best"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Health: <a href="/health" target="_blank">/health</a> · API: <code>/qa/search</code>, <code>/qa/ask</code>
+  </div>
+</main>
+
+<script>
+async function search() {{
+  const q = document.getElementById('qsearch').value.trim();
+  if (!q) return;
+  const r = await fetch(`/qa/search?q=${{encodeURIComponent(q)}}&k=5`);
+  const data = await r.json();
+  const root = document.getElementById('results');
+  root.innerHTML = '';
+  (data.results || []).forEach(it => {{
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML = `
+      <div class="q">Q: ${'{'}it.question{'}'}</div>
+      <div class="a">${'{'}it.answer.replace(/\\n/g,'<br/>'){'}'}</div>
+      <div class="meta">
+        <span class="pill">${'{'}it.family || 'n/a'{'}'}</span>
+        ${(it.tags||[]).map(t => `<span class='pill'>${'{'}t{'}'}</span>`).join(' ')}
+        ${'{'}it.qid ? `<span class='pill'>${'{'}it.qid{'}'}</span>` : ''{'}'}
+      </div>`;
+    root.appendChild(el);
+  }});
+}}
+
+async function ask() {{
+  const q = document.getElementById('q').value.trim();
+  if (!q) return;
+  const r = await fetch(`/qa/ask?q=${{encodeURIComponent(q)}}`);
+  const data = await r.json();
+  const best = document.getElementById('best');
+  if (!data.found) {{
+    best.innerHTML = `<div class='err'>Nessun risultato.</div>`;
+    return;
+  }}
+  const it = data.result;
+  best.innerHTML = `
+    <div class="q">Q: ${'{'}it.question{'}'}</div>
+    <div class="a">${'{'}it.answer.replace(/\\n/g,'<br/>'){'}'}</div>
+    <div class="meta">
+      <span class="pill">${'{'}it.family || 'n/a'{'}'}</span>
+      ${(it.tags||[]).map(t => `<span class='pill'>${'{'}t{'}'}</span>`).join(' ')}
+      ${'{'}it.qid ? `<span class='pill'>${'{'}it.qid{'}'}</span>` : ''{'}'}
+    </div>`;
+}}
+</script>
+</body>
+</html>
+"""
+
+@app.get("/health", summary="Health JSON")
+def health() -> Dict[str, Any]:
     try:
         n = len(load_gold())
-        files = [str(p.name) for p in _iter_candidate_files()]
+        files = [p.name for p in _iter_candidate_files()]
+        return {"service":"Tecnaria Q/A Service","status":"ok","items_loaded":n,"data_dir":str(DATA_DIR),"files":files}
     except Exception as e:
-        return {
-            "service": "Tecnaria Q/A Service",
-            "status": "error",
-            "error": str(e),
-        }
-    return {
-        "service": "Tecnaria Q/A Service",
-        "status": "ok",
-        "items_loaded": n,
-        "data_dir": str(DATA_DIR),
-        "files": files,
-    }
+        return {"service":"Tecnaria Q/A Service","status":"error","error":str(e)}
 
-@app.get("/qa/search", response_model=SearchResponse, summary="Restituisce top-k Q/A")
+# ----------------------- API endpoints ------------------------
+@app.get("/qa/search", response_model=SearchResponse, summary="Top-k Q/A")
 def qa_search(
     q: str = Query(..., min_length=2, description="Testo della ricerca"),
     k: int = Query(5, ge=1, le=25, description="Numero risultati")
 ) -> SearchResponse:
     try:
         results = _rank(q, k=k)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Errore durante la ricerca: {e}")
     return SearchResponse(query=q, count=len(results), results=results)
 
-@app.get("/qa/ask", response_model=AskResponse, summary="Risposta singola migliore")
-def qa_ask(
-    q: str = Query(..., min_length=2, description="Domanda libera")
-) -> AskResponse:
+@app.get("/qa/ask", response_model=AskResponse, summary="Risposta migliore")
+def qa_ask(q: str = Query(..., min_length=2, description="Domanda libera")) -> AskResponse:
     try:
         best = _rank(q, k=1)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Errore durante la ricerca: {e}")
-
     if not best:
         return AskResponse(query=q, result=None, found=False)
     return AskResponse(query=q, result=best[0], found=True)
 
-# ------------------------------------------------------------------------------
-# Run locale (opzionale). In produzione su Render usa gunicorn/uvicorn worker.
-# ------------------------------------------------------------------------------
+# ----------------------- Local run (opzionale) ----------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
