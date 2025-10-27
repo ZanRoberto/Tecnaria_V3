@@ -1,9 +1,11 @@
 # app.py
-# TECNARIA_GOLD — UI sempre attiva + API Q/A GOLD
+# TECNARIA_GOLD — UI sempre attiva + API Q/A GOLD + Debug conteggi
 # - UI su "/"
-# - Health JSON su "/health"
-# - /qa/search e /qa/ask per prove e integrazioni
-# - Caricamento GOLD da static/data/*.json (ctf_gold.json, ctl_gold.json, p560_gold.json)
+# - /health per stato JSON
+# - /qa/search e /qa/ask per interrogazioni
+# - /debug/datasets per contare gli item per ogni file GOLD
+# - Caricamento GOLD da static/data/*.json (ctf_gold.json, ctl_gold.json, p560_gold.json o *_gold.json)
+
 from __future__ import annotations
 
 import json
@@ -16,11 +18,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
+# ---------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------
 APP_DIR = pathlib.Path(__file__).parent
 DATA_DIR = APP_DIR / "static" / "data"
 GOLD_FILES = ["ctf_gold.json", "ctl_gold.json", "p560_gold.json"]
 
-# ----------------------- Pydantic models -----------------------
+# ---------------------------------------------------------------
+# Pydantic models
+# ---------------------------------------------------------------
 class QAItem(BaseModel):
     qid: Optional[str] = None
     family: Optional[str] = None
@@ -40,14 +47,16 @@ class AskResponse(BaseModel):
     result: Optional[QAItem] = None
     found: bool
 
-# ----------------------- FastAPI app ---------------------------
+# ---------------------------------------------------------------
+# FastAPI app
+# ---------------------------------------------------------------
 app = FastAPI(
     title="Tecnaria Q/A Service — TECNARIA_GOLD",
     version="1.0.0",
-    description="UI sempre attiva + API per dataset GOLD (CTF/CTL/P560) da static/data/."
+    description="UI sempre attiva + API su dataset GOLD (CTF/CTL/P560) da static/data/."
 )
 
-# CORS aperto (limita se serve)
+# CORS aperto (limitabile se serve)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -56,13 +65,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ----------------------- Data loading -------------------------
+# ---------------------------------------------------------------
+# Data loading
+# ---------------------------------------------------------------
 def _iter_candidate_files() -> List[pathlib.Path]:
     cand: List[pathlib.Path] = []
+    # 1) canonici
     for name in GOLD_FILES:
         p = DATA_DIR / name
         if p.exists() and p.is_file():
             cand.append(p)
+    # 2) fallback: qualsiasi *_gold.json
     for p in sorted(DATA_DIR.glob("*_gold.json")):
         if p not in cand:
             cand.append(p)
@@ -85,9 +98,10 @@ def load_gold() -> List[QAItem]:
     items: List[QAItem] = []
     seen = set()
     for p in _iter_candidate_files():
-        if p.resolve() in seen:
+        rp = p.resolve()
+        if rp in seen:
             continue
-        seen.add(p.resolve())
+        seen.add(rp)
         with p.open("r", encoding="utf-8") as f:
             data = json.load(f)
         for rec in _normalize_records(data):
@@ -108,21 +122,28 @@ def load_gold() -> List[QAItem]:
         raise ValueError("Nessun item valido caricato.")
     return items
 
-# ----------------------- Ranking ------------------------------
+# ---------------------------------------------------------------
+# Ranking
+# ---------------------------------------------------------------
 def _score(item: QAItem, ql: str) -> float:
     base = 0.0
     fam = (item.family or "").lower()
-    if fam and fam in ql: base += 2.0
+    if fam and fam in ql:
+        base += 2.0
     for t in (item.tags or []):
         t0 = (t or "").lower()
-        if t0 and t0 in ql: base += 1.0
+        if t0 and t0 in ql:
+            base += 1.0
     qtxt = (item.question or "").lower()
     atxt = (item.answer or "").lower()
-    if ql and ql in qtxt: base += 1.5
+    if ql and ql in qtxt:
+        base += 1.5
     tokens = {tok for tok in ql.split() if tok}
     for tok in tokens:
-        if tok in qtxt: base += 0.40
-        if tok in atxt: base += 0.20
+        if tok in qtxt:
+            base += 0.40
+        if tok in atxt:
+            base += 0.20
     return base
 
 def _rank(query: str, k: int = 5) -> List[QAItem]:
@@ -133,51 +154,41 @@ def _rank(query: str, k: int = 5) -> List[QAItem]:
     ranked = sorted(items, key=lambda it: _score(it, ql), reverse=True)
     return ranked[:max(1, k)]
 
-# ----------------------- UI (/) + Health (/health) ------------
-@app.get("/", response_class=HTMLResponse, include_in_schema=False)
-def ui_root() -> str:
-    """UI sempre attiva: ricerca + domanda libera."""
-    # Nota: health JSON è spostato su /health per evitare conflitti con la UI
-    try:
-        files = [p.name for p in _iter_candidate_files()]
-        n = len(load_gold())
-    except Exception as e:
-        files, n = [], 0
-        err = f"Errore caricamento dati: {e}"
-    else:
-        err = ""
-
-    return f"""<!doctype html>
+# ---------------------------------------------------------------
+# UI — sempre su "/"
+# (HTML statico: niente f-string → nessun problema con parentesi JS)
+# ---------------------------------------------------------------
+HTML_UI = r"""<!doctype html>
 <html lang="it">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Tecnaria Q/A — GOLD</title>
   <style>
-    body {{ font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; background: #0b0c10; color: #eaf0f6; }}
-    header {{ padding: 20px; background: #101219; border-bottom: 1px solid #1c2030; }}
-    h1 {{ margin: 0; font-size: 20px; letter-spacing: .5px; }}
-    main {{ max-width: 1100px; margin: 0 auto; padding: 20px; }}
-    .card {{ background: #111622; border: 1px solid #1c2030; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.3); }}
-    .row {{ display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }}
-    input, button {{ height: 44px; border-radius: 10px; border: 1px solid #283049; background: #0f1420; color: #eaf0f6; }}
-    input {{ padding: 0 12px; width: 100%; }}
-    button {{ padding: 0 18px; cursor: pointer; }}
-    .pill {{ display:inline-block; padding: 2px 8px; border: 1px solid #2e3754; border-radius: 999px; margin-right: 6px; font-size: 12px; color: #a9b6d3; }}
-    .q {{ font-weight: 600; margin-bottom: 6px; }}
-    .a {{ white-space: pre-wrap; line-height: 1.45; }}
-    .meta {{ font-size: 12px; color: #93a2c8; margin-top: 6px; }}
-    .err {{ color: #ff6b6b; }}
-    .muted {{ color:#93a2c8; font-size:13px; }}
-    .footer {{ margin-top: 24px; font-size: 12px; color: #7f8bb0; }}
-    .split {{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; }}
-    @media (max-width: 900px) {{ .split {{ grid-template-columns: 1fr; }} }}
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; background: #0b0c10; color: #eaf0f6; }
+    header { padding: 20px; background: #101219; border-bottom: 1px solid #1c2030; }
+    h1 { margin: 0; font-size: 20px; letter-spacing: .5px; }
+    main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+    .card { background: #111622; border: 1px solid #1c2030; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+    input, button { height: 44px; border-radius: 10px; border: 1px solid #283049; background: #0f1420; color: #eaf0f6; }
+    input { padding: 0 12px; width: 100%; }
+    button { padding: 0 18px; cursor: pointer; }
+    .pill { display:inline-block; padding: 2px 8px; border: 1px solid #2e3754; border-radius: 999px; margin-right: 6px; font-size: 12px; color: #a9b6d3; }
+    .q { font-weight: 600; margin-bottom: 6px; }
+    .a { white-space: pre-wrap; line-height: 1.45; }
+    .meta { font-size: 12px; color: #93a2c8; margin-top: 6px; }
+    .err { color: #ff6b6b; }
+    .muted { color:#93a2c8; font-size:13px; }
+    .footer { margin-top: 24px; font-size: 12px; color: #7f8bb0; }
+    .split { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
 <header>
-  <h1> Tecnaria Q/A — GOLD · <span class="muted">{n} item</span> </h1>
-  <div class="muted">Files: {", ".join(files)} {f'<span class="err">· {err}</span>' if err else ''}</div>
+  <h1> Tecnaria Q/A — GOLD · <span class="muted" id="count">—</span> </h1>
+  <div class="muted">Files: <span id="files">—</span> <span class="err" id="err"></span></div>
 </header>
 
 <main>
@@ -208,58 +219,82 @@ def ui_root() -> str:
   </div>
 
   <div class="footer">
-    Health: <a href="/health" target="_blank">/health</a> · API: <code>/qa/search</code>, <code>/qa/ask</code>
+    Health: <a href="/health" target="_blank">/health</a> · API: <code>/qa/search</code>, <code>/qa/ask</code> · Debug: <a href="/debug/datasets" target="_blank">/debug/datasets</a>
   </div>
 </main>
 
 <script>
-async function search() {{
+async function hydrate() {
+  try {
+    const r = await fetch('/health');
+    const d = await r.json();
+    if (d.status === 'ok') {
+      document.getElementById('count').textContent = d.items_loaded;
+      document.getElementById('files').textContent = (d.files || []).join(', ');
+    } else {
+      document.getElementById('err').textContent = d.error || 'errore';
+    }
+  } catch (e) {
+    document.getElementById('err').textContent = String(e);
+  }
+}
+
+async function search() {
   const q = document.getElementById('qsearch').value.trim();
   if (!q) return;
-  const r = await fetch(`/qa/search?q=${{encodeURIComponent(q)}}&k=5`);
+  const r = await fetch(`/qa/search?q=${encodeURIComponent(q)}&k=5`);
   const data = await r.json();
   const root = document.getElementById('results');
   root.innerHTML = '';
-  (data.results || []).forEach(it => {{
+  (data.results || []).forEach(it => {
     const el = document.createElement('div');
     el.className = 'card';
     el.innerHTML = `
-      <div class="q">Q: ${'{'}it.question{'}'}</div>
-      <div class="a">${'{'}it.answer.replace(/\\n/g,'<br/>'){'}'}</div>
+      <div class="q">Q: ${it.question}</div>
+      <div class="a">${it.answer.replace(/\n/g,'<br/>')}</div>
       <div class="meta">
-        <span class="pill">${'{'}it.family || 'n/a'{'}'}</span>
-        ${(it.tags||[]).map(t => `<span class='pill'>${'{'}t{'}'}</span>`).join(' ')}
-        ${'{'}it.qid ? `<span class='pill'>${'{'}it.qid{'}'}</span>` : ''{'}'}
+        <span class="pill">${it.family || 'n/a'}</span>
+        ${(it.tags||[]).map(t => `<span class='pill'>${t}</span>`).join(' ')}
+        ${it.qid ? `<span class='pill'>${it.qid}</span>` : ''}
       </div>`;
     root.appendChild(el);
-  }});
-}}
+  });
+}
 
-async function ask() {{
+async function ask() {
   const q = document.getElementById('q').value.trim();
   if (!q) return;
-  const r = await fetch(`/qa/ask?q=${{encodeURIComponent(q)}}`);
+  const r = await fetch(`/qa/ask?q=${encodeURIComponent(q)}`);
   const data = await r.json();
   const best = document.getElementById('best');
-  if (!data.found) {{
+  if (!data.found) {
     best.innerHTML = `<div class='err'>Nessun risultato.</div>`;
     return;
-  }}
+  }
   const it = data.result;
   best.innerHTML = `
-    <div class="q">Q: ${'{'}it.question{'}'}</div>
-    <div class="a">${'{'}it.answer.replace(/\\n/g,'<br/>'){'}'}</div>
+    <div class="q">Q: ${it.question}</div>
+    <div class="a">${it.answer.replace(/\n/g,'<br/>')}</div>
     <div class="meta">
-      <span class="pill">${'{'}it.family || 'n/a'{'}'}</span>
-      ${(it.tags||[]).map(t => `<span class='pill'>${'{'}t{'}'}</span>`).join(' ')}
-      ${'{'}it.qid ? `<span class='pill'>${'{'}it.qid{'}'}</span>` : ''{'}'}
+      <span class="pill">${it.family || 'n/a'}</span>
+      ${(it.tags||[]).map(t => `<span class='pill'>${t}</span>`).join(' ')}
+      ${it.qid ? `<span class='pill'>${it.qid}</span>` : ''}
     </div>`;
-}}
+}
+
+hydrate();
 </script>
 </body>
 </html>
 """
 
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def ui_root() -> HTMLResponse:
+    return HTMLResponse(content=HTML_UI)
+
+# ---------------------------------------------------------------
+# Health + API
+# ---------------------------------------------------------------
 @app.get("/health", summary="Health JSON")
 def health() -> Dict[str, Any]:
     try:
@@ -269,7 +304,6 @@ def health() -> Dict[str, Any]:
     except Exception as e:
         return {"service":"Tecnaria Q/A Service","status":"error","error":str(e)}
 
-# ----------------------- API endpoints ------------------------
 @app.get("/qa/search", response_model=SearchResponse, summary="Top-k Q/A")
 def qa_search(
     q: str = Query(..., min_length=2, description="Testo della ricerca"),
@@ -291,7 +325,33 @@ def qa_ask(q: str = Query(..., min_length=2, description="Domanda libera")) -> A
         return AskResponse(query=q, result=None, found=False)
     return AskResponse(query=q, result=best[0], found=True)
 
-# ----------------------- Local run (opzionale) ----------------
+# ---------------------------------------------------------------
+# Debug: conteggio item per ogni dataset GOLD caricato
+# ---------------------------------------------------------------
+@app.get("/debug/datasets", summary="Conteggi per file GOLD")
+def debug_datasets() -> Dict[str, Any]:
+    out: Dict[str, Any] = {}
+    try:
+        for p in _iter_candidate_files():
+            try:
+                with p.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict) and "items" in data and isinstance(data["items"], list):
+                    out[p.name] = len(data["items"])
+                elif isinstance(data, list):
+                    out[p.name] = len(data)
+                else:
+                    out[p.name] = None
+            except Exception as e:
+                out[p.name] = f"error: {e}"
+        out["_total_items_loaded"] = len(load_gold())
+    except Exception as e:
+        out["error"] = str(e)
+    return out
+
+# ---------------------------------------------------------------
+# Local run (opzionale). In produzione su Render usa gunicorn+uvicorn worker.
+# ---------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
