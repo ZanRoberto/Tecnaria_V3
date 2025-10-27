@@ -1,15 +1,110 @@
 [
   {
-    "famA": "CTF",
-    "famB": "CTL",
-    "answer": "",
-    "html": "<div><h2>Confronto</h2><div style='display:flex;gap:24px;flex-wrap:wrap'><div class='side' style='flex:1;min-width:320px'><h3>CTF</h3><p>Solai misti acciaio–calcestruzzo su travi/lamiera grecata. Posa a freddo con SPIT P560 e due chiodi HSBR14. Ideale quando la struttura portante è in acciaio o con lamiera collaborante.</p><p><small>Fonte: OVERVIEW::CTF</small></p></div><div class='side' style='flex:1;min-width:320px'><h3>CTL</h3><p>Solai legno–calcestruzzo su travi in legno o tavolati. Posa dall’alto con viti Ø10; soletta ≥5 cm con rete a metà spessore. Migliora rigidezza/portanza e comfort dinamico.</p><p><small>Fonte: OVERVIEW::CTL</small></p></div></div></div>"
+    "id": "CMP-CTL-CTLMAXI",
+    "famA": "CTL",
+    "famB": "CTL MAXI",
+    "question": "Qual è la differenza tecnica e d’impiego tra i connettori CTL e CTL MAXI? Quando conviene usare l’uno o l’altro in un solaio legno–calcestruzzo?",
+    "answer": "Entrambi appartengono alla famiglia CTL Tecnaria per solai legno–calcestruzzo con fissaggio meccanico a viti Ø10. La differenza chiave è l’altezza del gambo e il supporto: CTL (standard) si posa direttamente sulla trave in legno (massiccio/lamellare) ed è ideale per solette 4–5 cm e travi a vista; CTL MAXI nasce per posa su tavolato/assito ≥ 25–30 mm e solette 5–6 cm, con geometria che favorisce l’innesto nel calcestruzzo. Fissaggi: CTL impiega 2 viti Ø10 × 100/120 mm; CTL MAXI 2 viti Ø10 × 120/140 mm. Quota rete: sempre a metà soletta; la testa del MAXI deve stare sopra la rete ma sotto il filo del getto. Evitare di mescolare CTL e CTL MAXI nello stesso solaio.",
+    "html": "<table class='cmp'><tr><th>Caratteristica</th><th>CTL</th><th>CTL MAXI</th></tr><tr><td>Supporto</td><td>Trave legno (massiccio/lamellare)</td><td>Tavolato/assito ≥ 25–30 mm</td></tr><tr><td>Altezze</td><td>12/030–12/060</td><td>12/040–12/060</td></tr><tr><td>Viti Ø10</td><td>100 / 120 mm</td><td>120 / 140 mm</td></tr><tr><td>Soletta tipica</td><td>4–5 cm</td><td>5–6 cm</td></tr><tr><td>Posizione testa</td><td>a metà rete</td><td>sopra rete, sotto filo getto</td></tr><tr><td>Impiego ideale</td><td>Travi a vista, spessori ridotti</td><td>Rinforzi su tavolati, getti più spessi</td></tr></table>",
+    "tags": ["CTL","CTL MAXI","confronto","legno","tavolato","rete","soletta","viti Ø10"]
   },
   {
+    "id": "CMP-CTL-CTF",
+    "famA": "CTL",
+    "famB": "CTF",
+    "question": "Qual è la differenza tra CTL (legno-calcestruzzo) e CTF (acciaio-calcestruzzo) e in quali casi si usa l’uno rispetto all’altro?",
+    "answer": "Sono sistemi per materiali diversi: CTL/CTL MAXI lavorano su legno (travi o tavolati) con fissaggio a viti Ø10; CTF lavora su travi in acciaio S275–S355 e si fissa con chiodatrice a sparo SPIT P560 e chiodi HSBR14. CTL richiede soletta 4–6 cm e rete a metà spessore; CTL MAXI su tavolato usa 120/140 mm. CTF ammette lamiera grecata 1×1,5 mm o 2×1,0 mm ben serrata; i connettori si posano sopra la lamiera con doppia chiodatura. Le due famiglie non sono intercambiabili.",
+    "html": "<table class='cmp'><tr><th>Caratteristica</th><th>CTL / CTL MAXI</th><th>CTF</th></tr><tr><td>Materiale struttura</td><td>Legno (travi/tavolati)</td><td>Acciaio S275–S355</td></tr><tr><td>Fissaggio</td><td>2 viti Ø10 (100–140 mm)</td><td>SPIT P560 + 2 chiodi HSBR14</td></tr><tr><td>Lamiera grecata</td><td>N/A</td><td>Ammessa 1×1,5 o 2×1,0 ben serrata</td></tr><tr><td>Soletta tipica</td><td>4–6 cm</td><td>≥ 5 cm, rete a metà spessore</td></tr><tr><td>Ambito</td><td>Rinforzo/nuovi solai legno</td><td>Rinforzo/nuovi solai acciaio</td></tr></table>",
+    "tags": ["CTL","CTF","legno","acciaio","fissaggi","SPIT P560","HSBR14","rete"]
+  },
+  {
+    "id": "CMP-CTCEM-VCEM",
+    "famA": "CTCEM",
+    "famB": "VCEM",
+    "question": "Qual è la differenza tra CTCEM e VCEM per solai in laterocemento? Serve la resina?",
+    "answer": "CTCEM e VCEM sono connettori meccanici per laterocemento: non richiedono resine. La posa è a secco: incisione/assestamento per la piastra dentata, preforo Ø ~11 mm prof. ~75 mm, pulizia polveri, avvitatura con avvitatore a percussione/frizione fino a battuta. La scelta tra CTCEM e VCEM dipende dallo spessore dell’estradosso, dagli interposti e dal dettaglio di piastra/denti; entrambi nascono come alternativa alle tradizionali barre piegate + resina.",
+    "html": "<table class='cmp'><tr><th>Caratteristica</th><th>CTCEM</th><th>VCEM</th></tr><tr><td>Campo d’uso</td><td>Laterocemento</td><td>Laterocemento</td></tr><tr><td>Fissaggio</td><td>Meccanico (a secco)</td><td>Meccanico (a secco)</td></tr><tr><td>Preforo</td><td>Ø ~11 mm, prof. ~75 mm</td><td>Ø ~11 mm, prof. ~75 mm</td></tr><tr><td>Resine</td><td>Non necessarie</td><td>Non necessarie</td></tr><tr><td>Alternativa a</td><td>Barre piegate + resina</td><td>Barre piegate + resina</td></tr></table>",
+    "tags": ["CTCEM","VCEM","laterocemento","meccanico","senza resine","preforo"]
+  },
+  {
+    "id": "CMP-CEME-CTCEM",
     "famA": "CEM-E",
     "famB": "CTCEM",
-    "answer": "",
-    "html": "<div><h2>Confronto</h2><div style='display:flex;gap:24px;flex-wrap:wrap'><div class='side' style='flex:1;min-width:320px'><h3>CEM-E</h3><p>Connettori meccanici a secco per laterocemento con staffe/cappelli; incisioni locali del copriferro e serraggio controllato. Tempi rapidi, nessuna resina.</p><p><small>Fonte: OVERVIEW::CEM-E</small></p></div><div class='side' style='flex:1;min-width:320px'><h3>CTCEM</h3><p>Piolo a vite con piastra dentata. Preforo Ø11 mm ~75 mm, pulizia, serraggio a battuta. Alternativa alle barre con resina; indicato quando servono tasselli puntuali in zona di travetto.</p><p><small>Fonte: OVERVIEW::CTCEM</small></p></div></div></div>"
+    "question": "Differenza tra CEM-E e CTCEM su solai in laterocemento: quando preferire l’uno all’altro?",
+    "answer": "Entrambi sono per laterocemento, ma differiscono per geometria e modalità operative. CTCEM adotta un piolo con piastra dentata, preforo ~11×75 mm e avvitatura a secco; CEM-E ha geometria differente e viene scelto in presenza di condizioni geometriche/stratigrafiche specifiche (ad esempio spessori utili, necessità di impronte diverse). In generale, se cerchi una soluzione pienamente meccanica alternativa a barre con resina, CTCEM/VCEM sono il riferimento; CEM-E resta una valida opzione quando la stratigrafia o il dettaglio costruttivo lo rendono più adatto.",
+    "html": "<table class='cmp'><tr><th>Caratteristica</th><th>CEM-E</th><th>CTCEM</th></tr><tr><td>Campo d’uso</td><td>Laterocemento</td><td>Laterocemento</td></tr><tr><td>Approccio</td><td>Connettore dedicato</td><td>Piolo + piastra dentata</td></tr><tr><td>Posa</td><td>Secondo scheda prodotto</td><td>Incisione · preforo · avvitatura</td></tr><tr><td>Resine</td><td>Non richieste</td><td>Non richieste</td></tr></table>",
+    "tags": ["CEM-E","CTCEM","confronto","laterocemento","posa meccanica"]
+  },
+  {
+    "id": "CMP-CTF-P560",
+    "famA": "CTF",
+    "famB": "P560",
+    "question": "Che relazione c’è tra i connettori CTF e l’utensile SPIT P560? Si può usare una chiodatrice generica?",
+    "answer": "I CTF sono progettati per posa a secco con chiodatrice a sparo SPIT P560 e kit/adattatori dedicati Tecnaria; altre macchine non sono ammesse. Ogni connettore si fissa con 2 chiodi HSBR14. Con lamiera grecata (1×1,5 mm o 2×1,0 mm) questa deve essere ben serrata all’ala della trave per evitare rimbalzi. La taratura P560 richiede 2–3 tiri di prova sullo stesso acciaio; registrare potenza e lotti cartucce nel giornale lavori.",
+    "html": "<table class='cmp'><tr><th>Voce</th><th>CTF</th><th>SPIT P560</th></tr><tr><td>Funzione</td><td>Connettore per acciaio-calcestruzzo</td><td>Utensile di posa dedicato</td></tr><tr><td>Fissaggio</td><td>2 chiodi HSBR14</td><td>Chiodatrice a sparo con kit Tecnaria</td></tr><tr><td>Lamiera</td><td>1×1,5 o 2×1,0 (ben serrata)</td><td>Taratura con 2–3 tiri di prova</td></tr></table>",
+    "tags": ["CTF","P560","SPIT","HSBR14","taratura","lamiera"]
+  },
+  {
+    "id": "CMP-CTL-ALTEZZE",
+    "famA": "CTL",
+    "famB": "Altezze soletta",
+    "question": "Come selezionare l’altezza del CTL (12/030–12/060) in funzione dello spessore della soletta (4–6 cm) e della quota della rete?",
+    "answer": "Per solette 4–5 cm su trave in legno senza tavolato, il CTL 12/030–12/040 è in genere adeguato; con 5–6 cm si valutano 12/050–12/060. Obiettivo: testa del connettore a metà soletta in prossimità della rete senza superare il filo superiore del getto. In presenza di interferenze (staffe/armatura) riduci l’altezza mantenendo la testa sopra la rete.",
+    "html": "<table class='cmp'><tr><th>Soletta</th><th>CTL consigliato</th><th>Quota</th></tr><tr><td>~4 cm</td><td>12/030</td><td>Testa a metà soletta</td></tr><tr><td>~5 cm</td><td>12/040–12/050</td><td>Testa prossima alla rete</td></tr><tr><td>~6 cm</td><td>12/050–12/060</td><td>Testa sotto filo getto</td></tr></table>",
+    "tags": ["CTL","altezza","soletta","rete","selezione"]
+  },
+  {
+    "id": "CMP-CTLMAXI-VITI",
+    "famA": "CTL MAXI",
+    "famB": "Viti Ø10",
+    "question": "Quale lunghezza viti Ø10 abbinare ai CTL MAXI su tavolato/assito 25–30 mm con soletta 5–6 cm?",
+    "answer": "Per CTL MAXI su assito 25–30 mm si impiegano 2 viti Ø10 × 120–140 mm. La prima scelta è 140 mm quando l’interposto complessivo è ≥ 25–30 mm per garantire trazione efficace; 120 mm resta idonea per assiti più leggeri o dove la profondità utile è limitata. Le viti vanno posate in coppia simmetrica, perpendicolari e con serraggio uniforme.",
+    "html": "<table class='cmp'><tr><th>Assito</th><th>Lunghezza consigliata</th><th>Note</th></tr><tr><td>~25 mm</td><td>Ø10 × 120–140</td><td>Preferire 140 mm</td></tr><tr><td>~30 mm</td><td>Ø10 × 140</td><td>Trazione più efficace</td></tr></table>",
+    "tags": ["CTL MAXI","viti Ø10","tavolato","140 mm","120 mm"]
+  },
+  {
+    "id": "CMP-CTF-LAMIERA",
+    "famA": "CTF",
+    "famB": "Lamiera grecata",
+    "question": "Quali configurazioni di lamiera grecata sono ammesse con i CTF e quali accortezze servono in posa?",
+    "answer": "Con CTF sono ammesse lamiera 1×1,5 mm o 2×1,0 mm, purché ben serrata all’ala della trave. Il connettore si posa sopra la lamiera con doppia chiodatura (2 HSBR14). Critico evitare rimbalzi: serrare la lamiera con morsetti o puntellazioni locali; tarare la P560 con 2–3 tiri di prova sullo stesso acciaio. Verificare che i chiodi siano a filo piastra e registrare i parametri in giornale lavori.",
+    "html": "<table class='cmp'><tr><th>Parametro</th><th>Requisito</th></tr><tr><td>Lamiera</td><td>1×1,5 mm o 2×1,0 mm</td></tr><tr><td>Serraggio</td><td>Ben aderente all’ala</td></tr><tr><td>Fissaggio</td><td>2 chiodi HSBR14</td></tr><tr><td>Taratura</td><td>2–3 tiri di prova</td></tr></table>",
+    "tags": ["CTF","lamiera","HSBR14","P560","serraggio"]
+  },
+  {
+    "id": "CMP-P560-TARATURA",
+    "famA": "P560",
+    "famB": "Taratura",
+    "question": "Come si effettua la taratura della SPIT P560 per evitare chiodi sporgenti o colpi a vuoto nella posa dei CTF?",
+    "answer": "Eseguire 2–3 tiri di prova sullo stesso acciaio del cantiere partendo da potenza media. Se il chiodo sporge > 1 mm aumentare di un livello; se risulta deformato/affondato, ridurlo. Pulire la boccola regolarmente e, in caso di colpo a vuoto, scaricare l’utensile e rimuovere cartuccia/chiodo prima di riprendere. Annotare potenza e lotti cartucce nel giornale lavori.",
+    "html": "<ul class='steps'><li>2–3 tiri di prova → regola potenza</li><li>Chiodo a filo piastra (no sporgenze)</li><li>Pulizia boccola periodica</li><li>Colpo a vuoto → scaricare, rimuovere cartuccia/chiodo</li><li>Registrare parametri in giornale lavori</li></ul>",
+    "tags": ["P560","taratura","HSBR14","colpo a vuoto","giornale lavori"]
+  },
+  {
+    "id": "CMP-CTL-MIX",
+    "famA": "CTL",
+    "famB": "CTL MAXI (mix)",
+    "question": "Posso usare CTL e CTL MAXI nello stesso solaio legno–calcestruzzo?",
+    "answer": "È sconsigliato: differenze di gambo e annegamento nel getto generano comportamenti non uniformi e possono alterare la collaborazione. Se servono correzioni di quota, restare sulla stessa tipologia variando solo l’altezza (es. CTL 12/030 e CTL 12/050) e mantenere regolare la posizione della rete.",
+    "html": "<div class='warn'>Uso misto sconsigliato: mantenere uniformità di tipologia e variare al limite solo l’altezza del gambo.</div>",
+    "tags": ["CTL","CTL MAXI","uniformità","altezza","rete"]
+  },
+  {
+    "id": "CMP-CTL-SCelta",
+    "famA": "CTL",
+    "famB": "Scelta modello",
+    "question": "Quali criteri pratici usare per scegliere tra CTL 12/030, 12/040, 12/050 e 12/060 su travi a vista?",
+    "answer": "Usa lo spessore della soletta e la posizione della rete come guida: per ~4 cm scegli 12/030; per 4–5 cm 12/040–12/050; per 6 cm 12/050–12/060. La testa del connettore deve stare prossima alla rete senza superare il filo superiore del getto. Valuta interferenze (staffe/impianti) per correggere di una taglia verso il basso.",
+    "html": "<ul><li>~4 cm → 12/030</li><li>4–5 cm → 12/040–12/050</li><li>6 cm → 12/050–12/060</li><li>Testa: prossima alla rete, sotto filo getto</li></ul>",
+    "tags": ["CTL","selezione","altezza","soletta","rete"]
+  },
+  {
+    "id": "CMP-CTLMAXI-SolaioEsistente",
+    "famA": "CTL MAXI",
+    "famB": "Solaio esistente",
+    "question": "Perché il CTL MAXI è spesso consigliato nel rinforzo di solai esistenti con tavolato?",
+    "answer": "Perché il tavolato fornisce una base continua che valorizza il gambo più lungo del MAXI e il suo miglior innesto nel calcestruzzo. Con soletta 5–6 cm e rete a metà spessore, la testa sopra rete garantisce adeguato copriferro. Le viti Ø10 × 120/140 mm permettono una trazione più efficace in presenza di interposti.",
+    "html": "<div class='note'>Su assiti ≥ 25–30 mm, CTL MAXI + Ø10×140 mm massimizza trazione e innesto nel getto.</div>",
+    "tags": ["CTL MAXI","rinforzo","assito","viti Ø10","soletta 5–6 cm"]
   }
 ]
-
