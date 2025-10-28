@@ -1,8 +1,6 @@
-fastapi>=0.115.0
-uvicorn>=0.30.0
-pydantic>=2.8.0
-pydantic-core>=2.23.0
-gunicorn>=21.2
+fastapi>=0.115.0,<0.116
+uvicorn>=0.30.6,<0.31
+pydantic>=2.8.0,<2.10
 
 
 
