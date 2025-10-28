@@ -1,4 +1,5 @@
-web: uvicorn app:app --host 0.0.0.0 --port $PORT
+web: gunicorn -k uvicorn.workers.UvicornWorker -w 1 app:app --timeout 120 --log-level info
+
 
 
 
