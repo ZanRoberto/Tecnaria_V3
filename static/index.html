@@ -1,116 +1,248 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Tecnaria Sinapsi — Risposte tecniche</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --brand1:#ff7a00; --brand2:#0b0b0b; }
+    html,body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue','Noto Sans',sans-serif;background:#0b0b0b;color:#e5e7eb}
+    .grad { background: linear-gradient(135deg, var(--brand1) 0%, #ff5400 30%, #1e1e1e 60%, var(--brand2) 100%);}
+    .card { background: #101214; border: 1px solid #1f232a; }
+    .pill { background:#14171c; border:1px solid #222630; }
+    .shadow-soft { box-shadow: 0 10px 30px rgba(0,0,0,.35) }
+    .kbd{background:#0f1318;border:1px solid #222630;border-bottom-color:#1a1f27;padding:.1rem .35rem;border-radius:.375rem}
+    .link{color:#60a5fa}
+  </style>
 </head>
-<body class="bg-neutral-950 text-neutral-100">
-  <!-- Header gradient -->
-  <header class="bg-gradient-to-b from-orange-500 to-neutral-900">
-    <div class="max-w-6xl mx-auto px-4 py-8">
+<body class="min-h-screen">
+  <!-- HEADER -->
+  <header class="grad py-10">
+    <div class="max-w-6xl mx-auto px-4">
       <div class="flex items-center gap-3">
-        <div class="h-9 w-9 rounded-xl bg-black/70 grid place-items-center font-bold">T</div>
+        <div class="h-10 w-10 rounded-2xl bg-black/60 flex items-center justify-center text-white font-bold">T</div>
         <div>
-          <p class="text-sm text-neutral-200">Risposte tecniche. Voce ufficiale Tecnaria.</p>
-          <h1 class="text-3xl sm:text-4xl font-semibold">Trova la soluzione, in linguaggio Tecnaria.</h1>
+          <h1 class="text-3xl md:text-4xl font-extrabold text-white">Trova la soluzione, in linguaggio Tecnaria.</h1>
+          <p class="text-white/70 mt-1">CTF, CTL, CTL MAXI, Diapason, GTS, Mini-Cem-E, <span class="font-semibold">SPIT P560</span>.</p>
         </div>
       </div>
 
-      <!-- Search -->
+      <!-- QUERY BAR -->
       <div class="mt-6 flex gap-3">
-        <input id="q" placeholder="Scrivi la domanda… (es. Mi spieghi la chiodatrice P560?)"
-               class="flex-1 rounded-xl bg-white/10 border border-white/15 px-4 py-3 outline-none placeholder-neutral-300" />
-        <button id="askBtn"
-                class="rounded-xl bg-white text-black font-medium px-5 py-3 hover:bg-neutral-100 transition">
-          Chiedi a Sinapsi
-        </button>
+        <input id="q" class="flex-1 rounded-xl px-4 py-3 bg-white text-black shadow-soft"
+               placeholder="Es. Mi spieghi la chiodatrice P560? / Codici CTF? / CTL vs CTL MAXI" />
+        <button id="askBtn" class="rounded-xl bg-black/70 hover:bg-black text-white px-5 font-semibold">Chiedi a Sinapsi</button>
       </div>
 
-      <!-- Pills -->
-      <div class="mt-3 flex flex-wrap gap-2 text-sm">
-        <button class="pill">CTF · Chiodatrice</button>
-        <button class="pill">CTL · Preforo abete</button>
-        <button class="pill">Diapason · Confronto</button>
-        <button class="pill">P560 · Taratura IPE 300</button>
-        <style>
-          .pill{padding:.4rem .7rem;border-radius:9999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16)}
-          .pill:hover{background:rgba(255,255,255,.16)}
-        </style>
+      <!-- SUGGESTION PILLS -->
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" data-s="CTF · Chiodatrice">CTF · Chiodatrice</button>
+        <button class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" data-s="CTL · Preforo abete">CTL · Preforo abete</button>
+        <button class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" data-s="Diapason · Confronto">Diapason · Confronto</button>
+        <button class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" data-s="P560 · Taratura IPE 300">P560 · Taratura IPE 300</button>
       </div>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-6 grid lg:grid-cols-3 gap-5">
-    <!-- Impostazioni -->
-    <section class="lg:col-span-1">
-      <div class="rounded-2xl border border-white/10 bg-white/5 shadow-lg">
-        <div class="p-4 border-b border-white/10"><h2 class="font-semibold">Impostazioni</h2></div>
-        <div class="p-4 space-y-3 text-sm">
-          <label class="block text-neutral-300">Base URL servizio</label>
-          <input id="baseUrl" class="w-full rounded-lg bg-white/10 border border-white/15 px-3 py-2"
-                 value="https://tecnaria-v3.onrender.com" />
-          <div class="flex flex-wrap gap-2 text-xs text-neutral-300">
-            <span class="chip">Rules: <b id="flag-rules">true</b></span>
-            <span class="chip">Router: <b id="flag-router">true</b></span>
-            <span class="chip">Catalog: <b id="flag-catalog">true</b></span>
-            <span class="chip">Contacts: <b id="flag-contacts">true</b></span>
+  <!-- MAIN -->
+  <main class="max-w-6xl mx-auto px-4 -mt-8 relative z-10">
+    <div class="grid md:grid-cols-3 gap-4">
+      <!-- SETTINGS -->
+      <aside class="card rounded-2xl p-4 md:col-span-1">
+        <h2 class="text-white font-semibold">Impostazioni</h2>
+        <label class="block text-sm mt-3 text-white/70">Base URL servizio</label>
+        <input id="baseUrl" class="mt-1 w-full rounded-lg bg-[#0f1318] border border-[#222630] px-3 py-2"
+               placeholder="https://tecnaria-v3.onrender.com">
+        <label class="block text-sm mt-3 text-white/70">Endpoint (auto)</label>
+        <div class="flex gap-2 mt-1">
+          <input id="endpoint" class="flex-1 rounded-lg bg-[#0f1318] border border-[#222630] px-3 py-2"
+                 placeholder="/qa/ask (auto)">
+          <button id="detectBtn" class="rounded-lg bg-white/10 hover:bg-white/15 px-3">Auto</button>
+        </div>
+        <div class="text-xs text-white/50 mt-3" id="statusLine">Pronto.</div>
+
+        <div class="mt-6 border-t border-white/5 pt-4">
+          <h3 class="font-semibold">Contatti & Dati aziendali</h3>
+          <p class="text-sm mt-2 text-white/70">
+            TECNARIA S.p.A.<br>
+            Viale Pecori Giraldi, 55 — 36061 Bassano del Grappa (VI)<br>
+            Email: <a class="link" href="mailto:info@tecnaria.com">info@tecnaria.com</a> — Tel: <a class="link" href="tel:+390424502029">+39 0424 502029</a>
+          </p>
+        </div>
+      </aside>
+
+      <!-- ANSWER -->
+      <section class="md:col-span-2">
+        <div class="card rounded-2xl p-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-white font-semibold">Risposta</h2>
+            <div class="text-xs text-white/50">Latency: <span id="latency">–</span></div>
           </div>
-          <style>.chip{padding:.2rem .5rem;border-radius:.5rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}</style>
+          <div id="answer" class="prose prose-invert max-w-none mt-3">
+            <p class="text-white/60">Scrivi una domanda oppure scegli una pillola sopra.</p>
+          </div>
+          <div class="mt-4 flex gap-2">
+            <button id="copyBtn" class="rounded-lg bg-white/10 hover:bg-white/15 px-3 py-1 text-sm">Copia</button>
+            <span id="routeBadge" class="text-xs text-white/40"></span>
+          </div>
         </div>
-      </div>
-
-      <!-- Contatti -->
-      <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 shadow-lg">
-        <div class="p-4 border-b border-white/10"><h2 class="font-semibold">Contatti & Dati aziendali</h2></div>
-        <div class="p-4 text-sm leading-6">
-          <p><b>TECNARIA S.p.A.</b><br/>Viale Pecori Giraldi, 55 · 36061 Bassano del Grappa (VI)</p>
-          <p>Email: <a href="mailto:info@tecnaria.com" class="underline">info@tecnaria.com</a><br/>
-             Tel: <a href="tel:+390424502029" class="underline">+39 0424 502029</a></p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Risposta singola -->
-    <section class="lg:col-span-2">
-      <div class="rounded-2xl border border-white/10 bg-white/5 shadow-xl">
-        <div class="p-4 border-b border-white/10 flex items-center justify-between">
-          <h2 class="font-semibold">Risposta</h2>
-          <div class="text-xs text-neutral-300">Latency: <span id="latency">—</span> ms</div>
-        </div>
-        <div id="answer" class="p-5 text-neutral-100 whitespace-pre-wrap min-h-[180px]">
-          Fai una domanda e qui comparirà la migliore risposta, unica e pulita.
-        </div>
-        <div class="p-4 border-t border-white/10 flex gap-2">
-          <button id="copyBtn" class="rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 px-3 py-2 text-sm">Copia</button>
-        </div>
-      </div>
-    </section>
+      </section>
+    </div>
   </main>
 
   <script>
-    const $ = (s)=>document.querySelector(s);
-    const ask = async (text) => {
-      const base = $('#baseUrl').value.trim().replace(/\/+$/,'');
-      const t0 = performance.now();
-      // chiamata semplice: /qa/ask?q=...
-      const res = await fetch(`${base}/qa/ask?q=`+encodeURIComponent(text));
-      const t1 = performance.now();
-      $('#latency').textContent = Math.round(t1 - t0);
-      if(!res.ok){ $('#answer').textContent = 'Errore: ' + res.status + ' ' + res.statusText; return; }
-      const data = await res.json();
-      // compatibile con schema “best answer”
-      const out = data.answer || data.best || data.result || JSON.stringify(data,null,2);
-      $('#answer').textContent = out;
+    // --------- Small helper: fetch with timeout
+    const withTimeout = (p, ms=8000) => {
+      let t; const timeout = new Promise((_,rej)=>t=setTimeout(()=>rej(new Error('timeout')), ms));
+      return Promise.race([p.finally(()=>clearTimeout(t)), timeout]);
     };
-    $('#askBtn').addEventListener('click', ()=> ask($('#q').value.trim()));
-    $('#q').addEventListener('keydown', (e)=>{ if(e.key==='Enter') ask($('#q').value.trim()); });
-    document.querySelectorAll('.pill').forEach(p=>p.addEventListener('click',()=>{ $('#q').value = p.textContent; ask($('#q').value);} ));
-    $('#copyBtn').addEventListener('click', async ()=>{
-      const txt = $('#answer').textContent; await navigator.clipboard.writeText(txt);
-      $('#copyBtn').textContent = 'Copiato'; setTimeout(()=>$('#copyBtn').textContent='Copia',1200);
+
+    // --------- Endpoint candidates, both GET and POST variants
+    const CANDIDATES = [
+      {path:'/qa/ask', method:'GET',  build:(q)=>`/qa/ask?q=${encodeURIComponent(q)}`},
+      {path:'/ask',    method:'GET',  build:(q)=>`/ask?q=${encodeURIComponent(q)}`},
+      {path:'/qa/search', method:'GET', build:(q)=>`/qa/search?q=${encodeURIComponent(q)}`},
+      {path:'/ask',    method:'POST', build:(q)=>({url:'/ask', body:{q}})},
+    ];
+
+    const $ = (id)=>document.getElementById(id);
+    const baseUrlInput = $('baseUrl');
+    const endpointInput = $('endpoint');
+    const askBtn = $('askBtn');
+    const detectBtn = $('detectBtn');
+    const qInput = $('q');
+    const ans = $('answer');
+    const latencyEl = $('latency');
+    const statusLine = $('statusLine');
+    const routeBadge = $('routeBadge');
+
+    // Defaults
+    baseUrlInput.value = location.origin.includes('localhost') ? 'http://localhost:8000' : (location.origin || 'https://tecnaria-v3.onrender.com');
+
+    // Attach pill clicks
+    document.querySelectorAll('.pill').forEach(b=>{
+      b.addEventListener('click', ()=>{ qInput.value = b.dataset.s; ask(); });
     });
+
+    // Copy
+    $('copyBtn').addEventListener('click', ()=>{
+      const txt = ans.innerText.trim();
+      if(!txt) return;
+      navigator.clipboard.writeText(txt).then(()=>status('Copiato negli appunti'));
+    });
+
+    askBtn.addEventListener('click', ask);
+    qInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') ask(); });
+    detectBtn.addEventListener('click', autoDetect);
+
+    function status(t){ statusLine.textContent = t; }
+
+    async function autoDetect(){
+      const base = baseUrlInput.value.trim().replace(/\/+$/,'');
+      status('Rilevamento endpoint…');
+      for(const c of CANDIDATES){
+        try{
+          const pingQ = 'ping';
+          const t0 = performance.now();
+          let res;
+          if(c.method==='GET'){
+            res = await withTimeout(fetch(base + c.build(pingQ), {method:'GET'}), 4000);
+          } else {
+            const obj = c.build(pingQ);
+            res = await withTimeout(fetch(base + obj.url, {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify(obj.body)
+            }), 4000);
+          }
+          if(res.ok){
+            endpointInput.value = c.path + ' ('+c.method+')';
+            routeBadge.textContent = `route: ${c.path} · method: ${c.method}`;
+            status('Endpoint rilevato: '+c.path+' '+c.method);
+            return c;
+          }
+        }catch(e){ /* try next */ }
+      }
+      status('Nessun endpoint rilevato automaticamente. Imposta manualmente.');
+      return null;
+    }
+
+    function pickEndpoint(){
+      // If user set a specific endpoint, honor it; otherwise guess best.
+      const manual = endpointInput.value.trim();
+      if(manual){
+        const low = manual.toLowerCase();
+        if(low.includes('/qa/ask')) return CANDIDATES.find(x=>x.path==='/qa/ask' && x.method==='GET');
+        if(low.includes('/qa/search')) return CANDIDATES.find(x=>x.path==='/qa/search' && x.method==='GET');
+        if(low.includes('/ask') && low.includes('post')) return CANDIDATES.find(x=>x.path==='/ask' && x.method==='POST');
+        if(low.includes('/ask')) return CANDIDATES.find(x=>x.path==='/ask' && x.method==='GET');
+      }
+      // Default preference
+      return CANDIDATES[0];
+    }
+
+    async function ask(){
+      const text = qInput.value.trim();
+      if(!text){ qInput.focus(); return; }
+      const base = baseUrlInput.value.trim().replace(/\/+$/,'');
+      let chosen = pickEndpoint();
+      let lastErr = null;
+
+      // Try chosen first, then fallbacks
+      const tryList = [chosen, ...CANDIDATES.filter(c => c!==chosen)];
+      for(const c of tryList){
+        try{
+          const t0 = performance.now();
+          let res;
+          if(c.method==='GET'){
+            res = await withTimeout(fetch(base + c.build(text), {method:'GET'}), 12000);
+          } else {
+            const obj = c.build(text);
+            res = await withTimeout(fetch(base + obj.url, {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify(obj.body)
+            }), 12000);
+          }
+          if(!res.ok) throw new Error('HTTP '+res.status);
+          const data = await res.json().catch(()=> ({}));
+
+          // Accept common payload shapes
+          const answer = data.answer || data.text || data.result || data.content || '';
+          const latency = (performance.now() - t0).toFixed(0)+' ms';
+          renderAnswer(answer || 'Nessuna risposta.');
+          latencyEl.textContent = latency;
+          endpointInput.value = c.path + ' ('+c.method+')';
+          routeBadge.textContent = `route: ${c.path} · method: ${c.method}`;
+          status('OK');
+          return;
+        } catch(err){
+          lastErr = err;
+          continue;
+        }
+      }
+      renderAnswer('Errore: nessuna rotta ha risposto correttamente. Verifica Base URL/endpoint.');
+      status('Errore richiesta ('+(lastErr?.message||'sconosciuto')+')');
+    }
+
+    function renderAnswer(markdownText){
+      // very small MD → HTML (bold, lists, code ticks) without libs to stay self-contained
+      let html = (markdownText||'').toString()
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html = html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      html = html.replace(/`([^`]+)`/g,'<code class="kbd">$1</code>');
+      html = html.replace(/\n\- (.+)/g,'<li>$1</li>');
+      html = html.replace(/(?:\r?\n){2,}/g,'</p><p>');
+      html = '<p>'+html+'</p>';
+      html = html.replace(/<p>\s*<li>/g,'<ul class="list-disc pl-6"><li>').replace(/<\/li>\s*<\/p>/g,'</li></ul>');
+      ans.innerHTML = html;
+    }
+
+    // Auto-detect once at load, but don’t block UI
+    setTimeout(autoDetect, 50);
   </script>
 </body>
 </html>
