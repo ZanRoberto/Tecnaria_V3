@@ -1,130 +1,185 @@
-
-import json, re, os, math
+from __future__ import annotations
+import json, os, re
 from pathlib import Path
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+from typing import Any, Dict, List, Optional, Tuple
 
-APP_DIR = Path(__file__).parent
-DATA_PATH = APP_DIR / "static" / "data" / "tecnaria_gold_full.json"
+from fastapi import FastAPI, Query
+from pydantic import BaseModel
 
-app = FastAPI(title="Tecnaria Sinapsi • GOLD")
+# -----------------------------
+# Config base
+# -----------------------------
+APP_TITLE = "Tecnaria Sinapsi — Q/A"
+DATA_DIR = Path(__file__).parent / "static" / "data"
+GOLD_FILE = DATA_DIR / "tecnaria_gold.json"   # <<— nome fisso richiesto
+ALLOWED_FAMILIES = {"CTF", "CTL", "CTL MAXI", "DIAPASON", "GTS", "VCEM", "CTCEM", "SPIT P560", "ACCESSORI"}
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+app = FastAPI(title=APP_TITLE)
+
+# -----------------------------
+# Modelli I/O
+# -----------------------------
+class QAItem(BaseModel):
+    family: str
+    question: str
+    answer: str
+    tags: List[str] = []
+    score: float = 1.0
+    lang: Optional[str] = None
+
+class AskResponse(BaseModel):
+    family: Optional[str]
+    score: float
+    language: str
+    best_answer: str
+    best_question: str
+    tags: List[str] = []
+
+# -----------------------------
+# Seed Fallback (stringa CHIUSA correttamente)
+# -----------------------------
+DEFAULT_FALLBACK = QAItem(
+    family="GENERIC",
+    question="Domanda poco chiara o fuori ambito.",
+    answer=(
+        "Domanda poco chiara o fuori ambito Tecnaria.\n\n"
+        "Esempi utili di domanda:\n"
+        "• «CTF: posso usare una chiodatrice generica o serve la SPIT P560?»\n"
+        "• «CTL MAXI su tavolato 25–30 mm e soletta 5–6 cm: quali viti?»\n"
+        "• «CTCEM/VCEM: serve resina per laterocemento?»\n\n"
+        "Suggerimento: indica famiglia (CTF, CTL/CTL MAXI, P560, VCEM, Diapason…) e il caso d’uso."
+    ),
+    tags=["fallback", "help"],
+    score=0.0,
+    lang="it",
 )
 
-def normalize(s:str)->str:
-    s = s.lower()
-    s = re.sub(r"[^a-z0-9àèéìòùçäöüß\s/×\-\.]", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+# -----------------------------
+# Caricamento GOLD
+# -----------------------------
+GOLD: List[QAItem] = []
 
-def contains_keywords(text, keywords):
-    t = " " + normalize(text) + " "
-    score = 0
-    hits = []
-    for kw in keywords:
-        kwn = " " + normalize(kw) + " "
-        if kwn in t:
-            score += 1
-            hits.append(kw)
-    return score, hits
+def _detect_lang(text: str) -> str:
+    t = text.lower()
+    if re.search(r"[àèéìíòóù]", t) or " che " in t or " come " in t:
+        return "it"
+    if re.search(r"\b(que|cómo|cuál|dónde|por qué)\b", t):
+        return "es"
+    if re.search(r"\b(comment|pourquoi|quelle|où)\b", t):
+        return "fr"
+    if re.search(r"\b(welche|warum|wie|wo)\b", t):
+        return "de"
+    return "en"
 
-def soft_ratio(a, b):
-    ta = set(normalize(a).split())
-    tb = set(normalize(b).split())
-    if not ta or not tb: 
-        return 0.0
-    inter = len(ta & tb)
-    denom = math.sqrt(len(ta)*len(tb))
-    return inter/denom
+def _norm(s: str) -> str:
+    return re.sub(r"\s+", " ", s.lower()).strip()
 
-def it_only_guard(q):
-    blacklist = ["bitcoin","binance","forex","tourism","hotel","iphone","android","python code","javascript","football","soccer","car","trading"]
-    qn = normalize(q)
-    if any(x in qn for x in blacklist):
-        return False
-    return True
+def _score(q: str, item: QAItem) -> float:
+    # pesi semplici: overlap parole + boost per famiglia
+    qn = set(_norm(q).split())
+    kn = set(_norm(item.question + " " + " ".join(item.tags)).split())
+    overlap = len(qn & kn) / (len(qn) + 1e-6)
+    fam_boost = 0.10 if any(f.lower() in _norm(q) for f in [item.family]) else 0.0
+    return round(min(1.0, overlap + fam_boost), 4)
 
-with open(DATA_PATH, "r", encoding="utf-8") as f:
-    GOLD = json.load(f)
+def load_gold() -> None:
+    GOLD.clear()
 
-ITEMS = []
-for fam, rows in GOLD.items():
-    for r in rows:
-        rr = dict(r)
-        rr["_family"] = fam
-        ITEMS.append(rr)
+    # seed: se il file manca, non crolla
+    if not GOLD_FILE.exists():
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        DATA_DIR.joinpath("README.txt").write_text("Metti qui tecnaria_gold.json", encoding="utf-8")
+        GOLD.append(DEFAULT_FALLBACK)
+        return
 
-@app.get("/", response_class=HTMLResponse)
-def index():
-    html = (APP_DIR / "static" / "index.html").read_text(encoding="utf-8")
-    return HTMLResponse(content=html, status_code=200)
+    with GOLD_FILE.open("r", encoding="utf-8") as f:
+        raw = json.load(f)
 
+    # Accetta sia lista piatta sia oggetti con chiavi note
+    items: List[Dict[str, Any]] = raw if isinstance(raw, list) else raw.get("items", [])
+    for it in items:
+        try:
+            fam = it.get("family") or it.get("famiglia") or ""
+            fam = fam.strip().upper()
+            if fam and fam not in ALLOWED_FAMILIES and fam != "GENERIC":
+                # scarta roba non Tecnaria
+                continue
+
+            q = (it.get("question") or it.get("q") or "").strip()
+            a = (it.get("answer") or it.get("a") or "").strip()
+            tags = it.get("tags") or []
+            lang = it.get("lang") or _detect_lang(a or q)
+
+            if not q or not a:
+                continue
+
+            GOLD.append(QAItem(family=fam or "GENERIC", question=q, answer=a, tags=tags, lang=lang))
+        except Exception:
+            # in caso di riga sporca, ignora e continua
+            continue
+
+    if not GOLD:
+        GOLD.append(DEFAULT_FALLBACK)
+
+load_gold()
+
+# -----------------------------
+# Health
+# -----------------------------
 @app.get("/health")
 def health():
-    return {"ok": True, "items": len(ITEMS), "families": list(GOLD.keys())}
+    return {"ok": True, "items": len(GOLD), "file": str(GOLD_FILE)}
 
-@app.post("/qa/ask")
-async def qa_ask(payload: dict):
-    q = payload.get("q","").strip()
-    if not q:
-        return JSONResponse({"error":"Missing question"}, status_code=400)
+# -----------------------------
+# ASK (una sola Risposta Migliore)
+# -----------------------------
+@app.get("/qa/ask", response_model=AskResponse)
+def qa_ask(q: str = Query(..., min_length=2, description="Domanda utente"),
+           family: Optional[str] = Query(None, description="Filtra per famiglia (CTF, CTL, …)")):
 
-    if not it_only_guard(q):
-        return {"family": "FILTER", "score": 0.0, "answer": "Rispondo esclusivamente su prodotti e sistemi **Tecnaria S.p.A.** (CTF, CTL/MAXI, VCEM/CTCEM, DIAPASON, GTS, P560, accessori, ordini/forniture). Riformula la domanda in questo perimetro."}
+    if not q.strip():
+        item = DEFAULT_FALLBACK
+        return AskResponse(family=item.family, score=item.score, language=item.lang or "it",
+                           best_answer=item.answer, best_question=item.question, tags=item.tags)
 
-    best = None
-    best_score = -1
-    trace = []
-    for it in ITEMS:
-        title = it.get("q","")
-        ans = it.get("a","")
-        tags = " ".join(it.get("tags",[]))
-        patterns = " ".join(it.get("patterns",[]))
+    user_lang = _detect_lang(q)
+    cand: List[Tuple[float, QAItem]] = []
 
-        s_title = soft_ratio(q, title)
-        s_ans = soft_ratio(q, ans[:300])
-        s_tags = soft_ratio(q, tags)
-        s_pat = soft_ratio(q, patterns)
+    for it in GOLD:
+        if family and it.family and it.family.upper() != family.upper():
+            continue
+        s = _score(q, it)
+        if s > 0:
+            cand.append((s, it))
 
-        kw_score, kw_hits = contains_keywords(q, it.get("keywords", []))
-        score = (2.0*s_title + 0.6*s_ans + 1.0*s_tags + 1.4*s_pat) + 0.8*kw_score
+    if not cand:
+        item = DEFAULT_FALLBACK
+        return AskResponse(family=item.family, score=item.score, language=user_lang,
+                           best_answer=item.answer, best_question=item.question, tags=item.tags)
 
-        trace.append((it["_family"], it.get("id",""), float(score), kw_hits))
+    cand.sort(key=lambda x: x[0], reverse=True)
+    s, best = cand[0]
 
-        if score > best_score:
-            best_score = score
-            best = it
+    return AskResponse(
+        family=best.family or None,
+        score=float(s),
+        language=user_lang,
+        best_answer=best.answer,
+        best_question=best.question,
+        tags=best.tags,
+    )
 
-    if best is None or best_score < 0.7:
-        return {
-            "family":"HINT",
-            "score": round(float(best_score),3) if best is not None else 0.0,
-            "answer": "Domanda poco chiara o fuori ambito. Esempi utili:
-• **P560**: taratura e DPI
-• **CTL MAXI**: su tavolato 25–30 mm che viti uso?
-• **CTF**: su S355 con lamiera 1×1,5 mm come si posa?
-• **VCEM/CTCEM**: servono resine?",
-            "trace": trace[:10]
-        }
-
-    family = best.get("_family","GEN")
-    answer = best.get("a","").strip()
-    if not answer.endswith("
-"):
-        answer += "
-"
-
+# -----------------------------
+# Index minimale (per comodità)
+# -----------------------------
+@app.get("/")
+def index():
     return {
-        "family": family,
-        "score": round(float(best_score),3),
-        "answer": answer,
-        "id": best.get("id",""),
-        "trace": trace[:8]
+        "title": APP_TITLE,
+        "endpoints": {
+            "health": "/health",
+            "ask": "/qa/ask?q=MI%20PARLI%20DELLA%20P560%20%3F",
+        },
+        "data_file": str(GOLD_FILE),
+        "items_loaded": len(GOLD),
     }
