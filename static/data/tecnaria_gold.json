@@ -1,1 +1,112 @@
-static/data/tecnaria_gold.json
+{
+  "items": [
+    {
+      "family": "ctf",
+      "question": "Che cosa sono i CTF Tecnaria e in quali casi si usano?",
+      "answer": "I CTF sono connettori meccanici Tecnaria per solai acciaio–calcestruzzo: si fissano sulle travi in acciaio S275–S355 mediante chiodatrice a sparo SPIT P560 con kit/adattatori dedicati Tecnaria. Ogni connettore usa 2 chiodi HSBR14 a freddo (nessuna resina). Ammessa la posa anche in presenza di lamiera grecata 1×1,5 mm o 2×1,0 mm purché ben serrata all’ala per evitare rimbalzi. Sequenza tipica: tracciamento, appoggio piastra, doppia chiodatura perpendicolare con pressione decisa, verifica che i chiodi siano a filo piastra e che la piastra aderisca su tutta l’impronta, registrazione potenza/lotti cartucce nel giornale lavori. Soletta con rete a metà spessore (cls ≥ C25/30).",
+      "tags": ["CTF","acciaio","P560","HSBR14","rete a metà spessore","nessuna resina"]
+    },
+    {
+      "family": "p560",
+      "question": "Mi parli della SPIT P560? Si può usare una chiodatrice qualsiasi per i CTF?",
+      "answer": "No: per i CTF è ammessa esclusivamente la chiodatrice SPIT P560 con kit/adattatori dedicati Tecnaria. Ogni connettore si posa con 2 chiodi HSBR14; prima della produzione si eseguono 2–3 tiri di prova sullo stesso acciaio del cantiere per tarare la potenza. In esercizio: utensile perpendicolare, pressione decisa, boccola pulita, area di sicurezza 3 m, DPI (occhiali EN166, guanti antitaglio, protezione udito). Registra sul giornale lavori: potenza scelta, lotti cartucce, risultati dei tiri di prova. Altre chiodatrici non sono ammesse.",
+      "tags": ["P560","CTF","taratura","DPI","sicurezza"]
+    },
+    {
+      "family": "p560",
+      "question": "Come verifico in cantiere che i chiodi HSBR14 dei CTF sono entrati correttamente? Quando ritoccare la taratura P560?",
+      "answer": "Esegui 2–3 tiri di prova su pezzo di acciaio equivalente. Il chiodo deve risultare a filo piastra, senza sporgenze. Se sporge >1 mm, aumenta la potenza di un livello; se è deformato/affondato eccessivamente, riduci. Durante la produzione controlla a campione le prime 10–15 unità e poi periodicamente. Mantieni la boccola pulita; in caso di colpo a vuoto, scarica l’utensile e rimuovi cartuccia/chiodo in sicurezza. Registra nel giornale lavori potenza effettiva e lotti utilizzati.",
+      "tags": ["P560","HSBR14","taratura","collaudo cantiere"]
+    },
+    {
+      "family": "ctf",
+      "question": "CTF su trave in acciaio con lamiera grecata: quali configurazioni sono ammesse e quali accortezze servono?",
+      "answer": "Sono ammesse lamiera 1×1,5 mm o 2×1,0 mm, posizionata fra piastra e trave, purché sia ben serrata all’ala per evitare rimbalzi. Il connettore si posa sopra la lamiera con doppia chiodatura (2 HSBR14). Prima di procedere, serra la lamiera con morsetti/puntellazioni locali. Taratura P560 con 2–3 tiri di prova sullo stesso acciaio; verificare che i chiodi siano a filo piastra e che non vi siano spazi tra piastra e supporto. Rete a metà spessore e cls ≥ C25/30.",
+      "tags": ["CTF","lamiera 1×1,5","lamiera 2×1,0","serraggio","P560"]
+    },
+    {
+      "family": "ctl",
+      "question": "Che cosa sono i CTL Tecnaria e quando si usano (standard)?",
+      "answer": "I CTL sono connettori vite Tecnaria per solai legno–calcestruzzo con fissaggio completamente meccanico (nessuna resina). Si posano dall’alto sulle travi in legno (massiccio/lamellare) prima del getto collaborante. Ogni connettore impiega 2 viti Ø10 (tipicamente 100/120 mm). Soletta tipica 4–5 cm con rete a metà spessore; la testa del connettore deve rimanere in prossimità della rete, senza superare il filo superiore del getto. Si scelgono altezze 12/030–12/060 in funzione di spessore soletta e interferenze.",
+      "tags": ["CTL","legno","viti Ø10","nessuna resina","rete a metà spessore"]
+    },
+    {
+      "family": "ctl maxi",
+      "question": "Che cosa sono i CTL MAXI e quando conviene usarli?",
+      "answer": "I CTL MAXI sono connettori vite per solai legno–calcestruzzo progettati per posa su tavolato/assito (≥25–30 mm). Offrono un gambo più lungo per un miglior innesto nel calcestruzzo, con solette tipiche 5–6 cm. Fissaggio: 2 viti Ø10, lunghezze usuali 120/140 mm (preferire 140 mm con interposti complessivi ≥25–30 mm). La testa deve restare sopra la rete (sempre a metà spessore) ma sotto il filo superiore del getto.",
+      "tags": ["CTL MAXI","tavolato","viti Ø10 120/140","soletta 5–6 cm"]
+    },
+    {
+      "family": "ctl maxi",
+      "question": "Solaio legno + calcestruzzo con tavolato 30 mm e soletta 50 mm: quale connettore usare e quali viti abbinare?",
+      "answer": "Usa CTL MAXI 12/050: il gambo 50 mm garantisce annegamento corretto con soletta 50 mm. Fissaggi: 2 viti Ø10; lunghezza consigliata 140 mm con tavolato/interposti ≥25–30 mm, per massimizzare la trazione. Rete a metà spessore, vibrazione moderata del cls (≥ C25/30 o leggero strutturale). Evita che la testa del connettore vada a contatto con la rete: se accade, alza la rete o valuta 12/040.",
+      "tags": ["CTL MAXI","12/050","viti 140 mm","tavolato 30 mm","soletta 50 mm"]
+    },
+    {
+      "family": "ctl",
+      "question": "Come seleziono l’altezza del CTL (12/030–12/060) in funzione della soletta 4–6 cm?",
+      "answer": "Obiettivo: testa del connettore in prossimità della rete (rete sempre a metà spessore) senza superare il filo superiore del getto. Tipicamente: soletta ~4 cm → 12/030; soletta ~5 cm → 12/040–12/050; soletta ~6 cm → 12/050–12/060. In presenza di interferenze (staffe/armature), riduci di una taglia mantenendo la testa sopra la rete.",
+      "tags": ["CTL","altezze 12/030–12/060","soletta 4–6 cm","rete"]
+    },
+    {
+      "family": "ctl vs ctl maxi",
+      "question": "Posso usare CTL e CTL MAXI insieme nello stesso solaio legno–calcestruzzo?",
+      "answer": "È sconsigliato: differenze di gambo e annegamento nel getto generano comportamenti non uniformi e possono alterare la collaborazione legno–cls. Mantieni uniformità di tipologia; se devi correggere la quota usa la stessa famiglia variando solo l’altezza (es. CTL 12/030 e 12/050) e mantieni regolare la posizione della rete.",
+      "tags": ["confronto","CTL","CTL MAXI","uniformità"]
+    },
+    {
+      "family": "ctl vs ctf",
+      "question": "Qual è la differenza tra CTL (legno–calcestruzzo) e CTF (acciaio–calcestruzzo)?",
+      "answer": "Sistemi per materiali diversi: CTL/CTL MAXI lavorano su legno con 2 viti Ø10 (100–140 mm), solette tipiche 4–6 cm, rete a metà spessore; CTL MAXI è dedicato a tavolati ≥25–30 mm. CTF lavora su travi in acciaio S275–S355, si fissa con chiodatrice SPIT P560 e 2 chiodi HSBR14 (nessuna resina), ammette lamiera grecata 1×1,5 o 2×1,0 ben serrata. Le famiglie non sono intercambiabili.",
+      "tags": ["confronto","CTL","CTF","P560","HSBR14","viti Ø10"]
+    },
+    {
+      "family": "ctcem_vcem",
+      "question": "I connettori CTCEM/VCEM per laterocemento usano resine?",
+      "answer": "No. CTCEM e VCEM sono connettori meccanici a secco (alternativa alle barre piegate + resina). Posa tipica: incisione sede piastra dentata, preforo Ø ~11 mm prof. ~75 mm, pulizia polveri, avvitatura con avvitatore a percussione/frizione fino a battuta. La scelta tra CTCEM e VCEM dipende da spessori e dettagli dell’estradosso. Nessuna resina.",
+      "tags": ["CTCEM","VCEM","laterocemento","meccanico","no resine"]
+    },
+    {
+      "family": "gts",
+      "question": "Quando usare i manicotti GTS Tecnaria?",
+      "answer": "I manicotti GTS si usano per estensioni/accoppiamenti filettati in sistemi di collegamento Tecnaria quando è necessario raccordare elementi (es. prolunghe o adattamenti di fissaggio) nel rispetto delle istruzioni di posa. Seleziona il tipo GTS coerente con diametro/filettatura e verifica la coppia di serraggio prescritta.",
+      "tags": ["GTS","manicotti","accessori","accoppiamenti"]
+    },
+    {
+      "family": "diapason",
+      "question": "A che cosa serve la piastra Diapason?",
+      "answer": "Diapason è una famiglia di piastre/elementi di connessione Tecnaria per dettagli costruttivi specifici (appoggi, ripartizioni, irrigidimenti locali). Si adotta quando il nodo richiede una piastra dedicata coerente con geometrie e carichi. Segui le schede Tecnaria per scelta del formato e disposizione dei fissaggi.",
+      "tags": ["Diapason","piastre","nodi","accessori"]
+    },
+    {
+      "family": "ceme",
+      "question": "Che cos’è CEME nel catalogo Tecnaria?",
+      "answer": "CEME identifica elementi e accessori per il trattamento del calcestruzzo (o soluzioni integrate col cls) nel contesto dei sistemi collaboranti. Rispettare sempre copriferro, vibrazione moderata e posizione della rete; consultare le schede per l’impiego specifico.",
+      "tags": ["CEME","calcestruzzo","accessori"]
+    },
+    {
+      "family": "accessori",
+      "question": "Mi dai i codici dei CTF (base) e come si ordinano?",
+      "answer": "Codici CTF: la famiglia è “CTF” (unico modello base), con accessori dedicati P560 e chiodi HSBR14. In offerta/ordine indica sempre: famiglia (CTF), quantità connettori, chiodi HSBR14, nolo/vendita utensile P560 con kit Tecnaria, contesto d’uso (acciaio S275–S355, con/ senza lamiera e relativo spessore), rete e cls previsti. Per l’ordine: invia richiesta a Tecnaria con quantità e cantiere; riceverai conferma disponibilità e tempi.",
+      "tags": ["CTF","codici","ordine","commerciale"]
+    },
+    {
+      "family": "commerciale",
+      "question": "Come posso fare un ordine Tecnaria o chiedere un’offerta?",
+      "answer": "Prepara una distinta chiara con: famiglia (CTL/CTL MAXI/CTF/CTCEM/VCEM/…); quantità; fissaggi (viti Ø10 o chiodi HSBR14 + P560); contesto (legno/accaio/laterocemento), spessori (soletta, tavolato, lamiera), rete a metà spessore, eventuali accessori (GTS, piastre, ecc.). Invia la richiesta a Tecnaria indicando cantiere e tempi; riceverai offerta e disponibilità. In capitolato, inserisci note su DPI, tarature (per P560) e registri di cantiere.",
+      "tags": ["ordine","offerta","capitolato","commerciale"]
+    },
+    {
+      "family": "guardrail",
+      "question": "La soluzione Tecnaria richiede l’uso di resine?",
+      "answer": "No per CTL/CTL MAXI e CTF: sono sistemi completamente meccanici (viti Ø10 e chiodi HSBR14 con P560). Anche CTCEM/VCEM per laterocemento è meccanico a secco (incisione + preforo + avvitatura). Le resine non sono richieste dalle famiglie citate.",
+      "tags": ["nessuna resina","meccanico","CTL","CTF","CTCEM","VCEM"]
+    },
+    {
+      "family": "guardrail",
+      "question": "Quali errori comuni evitare in posa?",
+      "answer": "CTF: lamiera non serrata (rimbalzi), potenza P560 errata (chiodi sporgenti o deformati), utensile inclinato, mancata registrazione tarature. CTL/CTL MAXI: scelta altezza non coerente con soletta/rete, viti troppo corte su tavolati spessi, testa a contatto con la rete. Laterocemento: preforo/pulizia inadeguati, battuta non raggiunta.",
+      "tags": ["errori comuni","posa","qualità","sicurezza"]
+    }
+  ]
+}
