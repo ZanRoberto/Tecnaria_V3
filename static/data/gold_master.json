@@ -1,1 +1,186 @@
-
+{
+  "meta": {
+    "name": "Tecnaria GOLD Master",
+    "version": "1.0.0",
+    "families": ["CTF","CTL","CTL MAXI","P560","CTCEM","VCEM","GTS","Diapason","Accessori"],
+    "languages": ["it","en","fr","de","es"],
+    "policy": {
+      "tecnaria_only": true,
+      "p560_only_for_ctf": true,
+      "non_tecnaria_blocklist": ["hilti","bossong","makita","dewalt","fischer"],
+      "lamiera_height_tokens_ok": ["h55","h75","h100","1x1.5","2x1.0"]
+    }
+  },
+  "items": [
+    {
+      "id": "CTF-CODICI-001",
+      "family": "CTF",
+      "intent": "catalogo_codici",
+      "priority": 100,
+      "patterns": {
+        "it": ["codici ctf","quali codici ctf","modelli ctf","sku ctf","lista codici ctf"],
+        "en": ["ctf codes","ctf models","ctf skus","list of ctf codes"]
+      },
+      "keywords": ["CTF","codici","modelli","SKU","listino"],
+      "answer": {
+        "it": "I **CTF Tecnaria** sono connettori per acciaio–calcestruzzo a posa meccanica (2 chiodi HSBR14 per connettore). Codici/modelli a listino:\n• **CTF 12/030–12/060** (altezze tipiche di gambo in funzione della soletta)\n• Fissaggio: **SPIT P560** con kit/adattatori Tecnaria\n• Accessori: **HSBR14** (chiodi), propulsori dedicati P560\nNota: per offerte/capitolati fornisco tabella dettagliata su richiesta (Famiglia · Modello · Fissaggi · Note).",
+        "en": "**CTF Tecnaria** are steel–concrete shear connectors installed mechanically (2 HSBR14 nails per connector). Codes/models:\n• **CTF 12/030–12/060** (shank heights vs. slab thickness)\n• Fastening: **SPIT P560** with Tecnaria kits\n• Accessories: **HSBR14** nails, P560 cartridges\nNote: a detailed SKU table is available on request."
+      },
+      "tags": ["CTF","Catalogo","Codici"],
+      "doc_refs": []
+    },
+    {
+      "id": "P560-INTRO-001",
+      "family": "P560",
+      "intent": "spiegazione_rapida",
+      "priority": 100,
+      "patterns": {
+        "it": ["cos'è la p560","mi parli della p560","p560 spiegazione","p560 a cosa serve"],
+        "en": ["what is the p560","explain p560","p560 overview"]
+      },
+      "keywords": ["P560","SPIT","chiodatrice","CTF"],
+      "answer": {
+        "it": "La **SPIT P560** è l’utensile dedicato per la posa dei **CTF**. Funziona a freddo con **propulsori** e fissa ciascun connettore con **2 chiodi HSBR14**. Indicazioni chiave: eseguire **2–3 tiri di prova** sullo stesso acciaio, mantenere utensile **perpendicolare** e lamiera (se presente) **ben serrata**; registrare **potenza** e **lotti** nel giornale lavori. DPI: occhiali EN166, guanti antitaglio, protezione udito; perimetro sicurezza 3 m.",
+        "en": "The **SPIT P560** is the dedicated tool for installing **CTF** connectors. It uses cartridges and installs **2 HSBR14 nails** per connector. Key guidance: perform **2–3 test shots** on the same steel, keep the tool **perpendicular**, ensure any deck sheet is **well clamped**; record **power** and **cartridge lots** in the site log. PPE: EN166 eyewear, cut-resistant gloves, hearing protection; 3 m safety perimeter."
+      },
+      "tags": ["P560","Sicurezza","Taratura"],
+      "doc_refs": []
+    },
+    {
+      "id": "CTF-P560-ONLY-001",
+      "family": "CTF",
+      "intent": "policy_tecnaria_only",
+      "priority": 100,
+      "patterns": {
+        "it": ["posso usare una chiodatrice qualsiasi per ctf","p560 alternativa","pistola diversa da p560","h75 meglio di p560?"],
+        "en": ["can i use any nailer for ctf","p560 alternative","other tool than p560","is h75 better than p560"]
+      },
+      "keywords": ["CTF","P560","chiodatrice","alternativa","confronto"],
+      "answer": {
+        "it": "Per i **CTF Tecnaria** è ammesso **solo** l’uso della **SPIT P560** con kit dedicato Tecnaria. Altri utensili/marchi **non sono ammessi**. Nota: **H75** può essere una **quota lamiera** (es. profilo grecato); non è un utensile Tecnaria. Se la domanda intendeva confrontare utensili, la risposta resta: **solo P560**.",
+        "en": "For **CTF Tecnaria**, **only** the **SPIT P560** with Tecnaria dedicated kits is allowed. Other brands/tools are **not allowed**. Note: **H75** can be a **deck height** token, not a tool. If the question compared tools, the answer remains: **P560 only**."
+      },
+      "tags": ["Policy","CTF","P560"],
+      "doc_refs": []
+    },
+    {
+      "id": "CTF-LAMIERA-001",
+      "family": "CTF",
+      "intent": "lamiera_config",
+      "priority": 95,
+      "patterns": {
+        "it": ["ctf lamiera h55","ctf lamiera h75","1x1,5 mm","2x1,0 mm","lamiera ben serrata"],
+        "en": ["ctf deck h55","ctf deck h75","1x1.5 mm","2x1.0 mm","well clamped deck"]
+      },
+      "keywords": ["CTF","lamiera grecata","H55","H75","1x1.5","2x1.0"],
+      "answer": {
+        "it": "Con **CTF** sono ammesse configurazioni di lamiera come **1×1,5 mm** o **2×1,0 mm**, purché **ben serrate** all’ala per evitare rimbalzi. Posa **sopra lamiera** con **doppia chiodatura (HSBR14)**, utensile **SPIT P560**. Esegui **2–3 tiri di prova** e verifica che i chiodi risultino **a filo piastra**.",
+        "en": "With **CTF**, deck configurations like **1×1.5 mm** or **2×1.0 mm** are allowed, provided they are **well clamped** to avoid rebound. Install **on top of the deck** with **two HSBR14 nails** using **SPIT P560**. Perform **2–3 test shots** and check nails are **flush** with the plate."
+      },
+      "tags": ["CTF","Lamiera","Posa"],
+      "doc_refs": []
+    },
+    {
+      "id": "CTF-TARATURA-001",
+      "family": "CTF",
+      "intent": "controlli_cantiere",
+      "priority": 95,
+      "patterns": {
+        "it": ["come verifico i chiodi ctf","taratura p560","chiodi sporgenti ctf","colpo a vuoto p560"],
+        "en": ["check ctf nails","p560 tuning","protruding nails","misfire p560"]
+      },
+      "keywords": ["CTF","P560","taratura","cantiere","HSBR14"],
+      "answer": {
+        "it": "In cantiere: **2–3 tiri di prova** sullo stesso acciaio, poi avvia la produzione. Criteri di accettazione: chiodi **non sporgenti**, piastra **aderente**, utensile **perpendicolare**. In caso di **colpo a vuoto**, scarica in sicurezza e ripristina. Registra **potenza** e **lotti** nel giornale lavori.",
+        "en": "On site: do **2–3 test shots** on the same steel, then start production. Acceptance: nails **not protruding**, plate **fully seated**, tool **perpendicular**. For any **misfire**, unload safely and reset. Log **power setting** and **cartridge lots**."
+      },
+      "tags": ["CTF","Controlli","Qualità"],
+      "doc_refs": []
+    },
+    {
+      "id": "CTL-MAXI-SCELTA-050",
+      "family": "CTL MAXI",
+      "intent": "scelta_connettore",
+      "priority": 98,
+      "patterns": {
+        "it": ["tavolato 30 mm soletta 50 mm quale connettore","ctl maxi 12/050","rete metà spessore"],
+        "en": ["board 30 mm slab 50 mm which connector","ctl maxi 12/050"]
+      },
+      "keywords": ["CTL MAXI","tavolato","soletta 50","rete metà spessore"],
+      "answer": {
+        "it": "**CTL MAXI 12/050** è idoneo per tavolato ~30 mm e soletta **50 mm**: la testa del connettore resta **sopra la rete** (a metà spessore) e **sotto** il filo superiore del getto. Fissaggio: **2 viti Ø10**, lunghezza **140 mm** se interposti ≥ 25–30 mm.",
+        "en": "**CTL MAXI 12/050** suits ~30 mm board with **50 mm** slab: the head remains **above the mesh** (mid-depth) and **below** top surface. Fasteners: **2 × Ø10 screws**, **140 mm** when intermediate layers are ≥ 25–30 mm."
+      },
+      "tags": ["CTL MAXI","Scelta","Viti"],
+      "doc_refs": []
+    },
+    {
+      "id": "CTL-MAXI-VITI-001",
+      "family": "CTL MAXI",
+      "intent": "viti_abbinamento",
+      "priority": 96,
+      "patterns": {
+        "it": ["viti ctl maxi 25 30 mm","quali viti ctl maxi","lunghezza viti ctl maxi"],
+        "en": ["screws ctl maxi","ctl maxi screw length","25 30 mm board screws"]
+      },
+      "keywords": ["CTL MAXI","viti Ø10","120","140"],
+      "answer": {
+        "it": "Per **CTL MAXI** su assito **25–30 mm**: **2 viti Ø10 × 120–140 mm**. Preferisci **140 mm** quando l’interposto complessivo è vicino a 30 mm; **120 mm** resta idonea su assiti più leggeri o dove la profondità utile è limitata.",
+        "en": "For **CTL MAXI** on **25–30 mm** boards: **2 × Ø10 × 120–140 mm** screws. Prefer **140 mm** near 30 mm total layers; **120 mm** is fine for lighter boards or limited embedment."
+      },
+      "tags": ["CTL MAXI","Viti"],
+      "doc_refs": []
+    },
+    {
+      "id": "CTL-MIX-POLICY-001",
+      "family": "CTL",
+      "intent": "mix_ctl_maxi",
+      "priority": 97,
+      "patterns": {
+        "it": ["posso usare ctl e ctl maxi insieme","mix ctl maxi","mescolare ctl con maxi"],
+        "en": ["mix ctl and ctl maxi","use ctl with ctl maxi together"]
+      },
+      "keywords": ["CTL","CTL MAXI","mix","uniformità"],
+      "answer": {
+        "it": "L’uso **misto** di **CTL** e **CTL MAXI** nello stesso solaio è **sconsigliato**: differenze di gambo/annegamento producono risposta non uniforme. Se serve variare, resta **nella stessa tipologia** cambiando solo **l’altezza** (es. CTL 12/030 e 12/050) e mantieni la **rete a metà spessore**.",
+        "en": "Using **CTL** and **CTL MAXI** together in the same slab is **discouraged**: different shank/embedding leads to non-uniform behavior. If adjustment is needed, stay **within one type** and vary only **height** (e.g., CTL 12/030 and 12/050), keeping mesh **mid-depth**."
+      },
+      "tags": ["CTL","CTL MAXI","Policy"],
+      "doc_refs": []
+    },
+    {
+      "id": "CTCEM-NO-RESINE-001",
+      "family": "CTCEM",
+      "intent": "posa_meccanica",
+      "priority": 90,
+      "patterns": {
+        "it": ["ctcem resine","serve resina ctcem","ctcem posa"],
+        "en": ["ctcem resin","do i need resin for ctcem"]
+      },
+      "keywords": ["CTCEM","VCEM","laterocemento","resine"],
+      "answer": {
+        "it": "I **CTCEM** (e i **VCEM**) non richiedono **resine**: la posa è **meccanica** (“a secco”). Procedura tipica: piccola incisione per la piastra dentata, **preforo Ø≈11 mm** prof. **≈75 mm**, pulizia polveri, avvitatura fino a battuta con avvitatore idoneo.",
+        "en": "**CTCEM** (and **VCEM**) do **not** require **resins**: installation is **mechanical** (dry). Typical steps: minor seat for the toothed plate, **pre-drill Ø≈11 mm** depth **≈75 mm**, clean dust, then drive to seat."
+      },
+      "tags": ["CTCEM","VCEM","Posa"],
+      "doc_refs": []
+    },
+    {
+      "id": "COMM-ORDINI-001",
+      "family": "Accessori",
+      "intent": "come_ordinare",
+      "priority": 70,
+      "patterns": {
+        "it": ["come posso fare un ordine","preventivo tecnaria","come acquistare connettori","dove compro"],
+        "en": ["how to order","quote request","where to buy tecnaria"]
+      },
+      "keywords": ["Commerciale","Ordine","Preventivo"],
+      "answer": {
+        "it": "Per **ordini/preventivi** prepara: famiglia (es. **CTF/CTL/CTL MAXI/CTCEM/VCEM**), **codici/modelli**, quantità, accessori (es. **HSBR14**, **propulsori P560**, **viti Ø10**), e contesti di posa (spessori, tavolati, lamiera). Inoltra la richiesta al canale commerciale Tecnaria o al rivenditore autorizzato.",
+        "en": "For **orders/quotes**, prepare: family (e.g., **CTF/CTL/CTL MAXI/CTCEM/VCEM**), **codes/models**, quantities, accessories (e.g., **HSBR14**, **P560 cartridges**, **Ø10 screws**), and site context (thicknesses, boards, decks). Send to Tecnaria sales or an authorized dealer."
+      },
+      "tags": ["Commerciale","Ordini"],
+      "doc_refs": []
+    }
+  ]
+}
