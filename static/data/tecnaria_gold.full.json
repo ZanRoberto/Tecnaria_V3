@@ -1,0 +1,199 @@
+{
+  "CTF": [
+    {
+      "id": "CTF-001",
+      "q": "Posso usare una chiodatrice generica per posare i CTF?",
+      "patterns": [
+        "si possono posare con una normale chiodatrice a sparo",
+        "quale chiodatrice usare per i CTF",
+        "P560 obbligatoria?",
+        "HSBR14 chiodi CTF quali"
+      ],
+      "keywords": [
+        "CTF",
+        "P560",
+        "SPIT",
+        "HSBR14",
+        "chiodatrice",
+        "acciaio",
+        "lamiera grecata"
+      ],
+      "tags": [
+        "posa",
+        "strumenti",
+        "sicurezza",
+        "taratura"
+      ],
+      "a": "No: per i **CTF Tecnaria** è ammessa esclusivamente la **chiodatrice SPIT P560** con **kit/adattatori Tecnaria**. Ogni connettore si fissa con **2 chiodi HSBR14**.\n\n**Come operare**\n1) Esegui **2–3 tiri di prova** sullo stesso acciaio del cantiere e registra potenza/lotti nel giornale lavori.\n2) Mantieni utensile **perpendicolare** e **pressione decisa**; controlla che i chiodi non sporgano.\n3) Con **lamiera grecata** (1×1,5 mm o 2×1,0 mm) assicurati che sia **ben serrata** all’ala della trave per evitare rimbalzi.\n\n**Errori da evitare**: potenza insufficiente, lamiera non aderente, colpi a vuoto, connettore disassato.\n"
+    },
+    {
+      "id": "CTF-002",
+      "q": "CTF su trave S355 con lamiera 1×1,5 mm: istruzioni di posa",
+      "patterns": [
+        "CTF su S355 lamiera 1x1,5 posa",
+        "posa CTF con lamiera grecata 1x1.5",
+        "doppia chiodatura con P560 su lamiera"
+      ],
+      "keywords": [
+        "CTF",
+        "S355",
+        "lamiera 1x1,5",
+        "P560",
+        "HSBR14",
+        "rete",
+        "getto"
+      ],
+      "tags": [
+        "posa",
+        "lamiera",
+        "taratura"
+      ],
+      "a": "**Procedura sintetica (CTF + lamiera 1×1,5 mm ben serrata)**\n• Traccia maglia di posa; pulisci ossidi/vernici incoerenti.\n• Appoggia il **CTF sopra la lamiera** e tienilo ortogonale.\n• **Doppia chiodatura** con **P560**; verifica che i chiodi HSBR14 siano **a filo piastra**.\n• Rete a **metà spessore** e calcestruzzo **≥ C25/30**. Nessuna resina.\n\n**Checklist**: 2–3 tiri di prova → piastra aderente → lamiera serrata → DPI e perimetro 3 m."
+    },
+    {
+      "id": "CTF-003",
+      "q": "Come verifico in cantiere che i chiodi HSBR14 dei CTF sono entrati correttamente?",
+      "patterns": [
+        "verifica chiodi hsbr14",
+        "controllo qualità posa ctf",
+        "quando ritoccare taratura p560"
+      ],
+      "keywords": [
+        "HSBR14",
+        "taratura",
+        "P560",
+        "collaudo",
+        "giornale lavori"
+      ],
+      "tags": [
+        "controlli",
+        "collaudo"
+      ],
+      "a": "**Controllo qualità in cantiere (CTF)**\n1) Campiona **10–15 pezzi** posati: testa chiodi **a filo piastra**, nessuna sporgenza >1 mm.\n2) In caso di sporgenza → **aumenta** la potenza **di un livello**; se deformazione/affondamento → **riduci**.\n3) Registra **taratura e lotti cartucce** sul giornale lavori; allega **foto**.\n4) Se presente lamiera, verifica **serraggio** (nessun rimbalzo durante lo sparo)."
+    }
+  ],
+  "CTL": [
+    {
+      "id": "CTL-001",
+      "q": "Solaio legno con tavolato 30 mm e soletta 50 mm: quale CTL e quali viti?",
+      "patterns": [
+        "tavolato 30mm soletta 50mm",
+        "quale CTL MAXI usare con assito 25-30 mm"
+      ],
+      "keywords": [
+        "CTL MAXI 12/050",
+        "viti Ø10 140",
+        "rete a metà"
+      ],
+      "tags": [
+        "scelta modello",
+        "viti",
+        "rete"
+      ],
+      "a": "**Scelta consigliata**: **CTL MAXI 12/050** su tavolato **30 mm** con soletta **50 mm**.\n• **Viti**: 2 × **Ø10 × 140 mm** (su assiti ≥ 25–30 mm privilegia 140 mm).\n• **Rete**: sempre **a metà spessore**; testa del connettore **sopra la rete** ma **sotto il filo del getto**.\n\n**Errori da evitare**: vite troppo corta → trazione ridotta; testa a contatto con la rete → sposta la rete a metà."
+    },
+    {
+      "id": "CTL-002",
+      "q": "Differenza tra CTL (standard) e CTL MAXI e quando usarli",
+      "patterns": [
+        "CTL vs CTL MAXI differenze",
+        "quando usare CTL MAXI"
+      ],
+      "keywords": [
+        "assito",
+        "altezze 12/030-060",
+        "viti Ø10 100-140"
+      ],
+      "tags": [
+        "confronti",
+        "selezione"
+      ],
+      "a": "**CTL vs CTL MAXI**\n• **CTL (standard)**: posa **su trave in legno**, solette tipiche **4–5 cm**, viti Ø10 **100/120 mm**.\n• **CTL MAXI**: posa **su tavolato/assito ≥ 25–30 mm**, solette **5–6 cm**, viti Ø10 **120/140 mm**.\n**Regola pratica**: non mischiare CTL e MAXI nello stesso solaio; se serve, **varia solo l’altezza** all’interno della stessa famiglia."
+    }
+  ],
+  "P560": [
+    {
+      "id": "P560-001",
+      "q": "Spiegami la P560 e come si tara in cantiere",
+      "patterns": [
+        "mi spieghi la p560",
+        "taratura p560",
+        "colpo a vuoto p560"
+      ],
+      "keywords": [
+        "SPIT P560",
+        "taratura",
+        "DPI",
+        "colpi di prova",
+        "boccola"
+      ],
+      "tags": [
+        "utensili",
+        "sicurezza"
+      ],
+      "a": "**SPIT P560 — Cos’è e come si usa per i CTF**\nUtensile a sparo **dedicato** ai CTF con **kit Tecnaria**. Non sono ammesse alternative generiche.\n\n**Taratura rapida**\n1) Esegui **2–3 tiri di prova** sullo **stesso acciaio** del cantiere.\n2) **Chiodo sporgente >1 mm** → aumenta potenza; **chiodo deformato** → riduci.\n3) Pulisci la **boccola** periodicamente; in caso di **colpo a vuoto**, scarica e rimuovi cartuccia/chiodo.\n\n**DPI e sicurezza**: occhiali **EN166**, guanti antitaglio, protezione udito; **perimetro 3 m**."
+    }
+  ],
+  "VCEM": [
+    {
+      "id": "VCEM-001",
+      "q": "I connettori per laterocemento richiedono resine? (VCEM/CTCEM)",
+      "patterns": [
+        "VCEM resina",
+        "CTCEM usa resine",
+        "fissaggio laterocemento"
+      ],
+      "keywords": [
+        "meccanico a secco",
+        "preforo 11 mm 75 mm",
+        "alternativa a barre piegate + resina"
+      ],
+      "tags": [
+        "laterocemento",
+        "posa"
+      ],
+      "a": "**VCEM / CTCEM — Niente resine**\nIl fissaggio è **completamente meccanico (a secco)**: piccola **incisione** per la piastra dentata, **preforo Ø≈11 mm prof. ≈75 mm**, pulizia polveri e **avvitatura** con avvitatore a percussione/frizione fino a battuta. Sono pensati come **alternativa** alle barre piegate + resina."
+    }
+  ],
+  "DIAPASON": [
+    {
+      "id": "DIA-001",
+      "q": "Che cosa è DIAPASON e quando si usa in combinazione con i connettori?",
+      "patterns": [
+        "differenza CTF e Diapason",
+        "che cosa è DIAPASON"
+      ],
+      "keywords": [
+        "posa",
+        "accessori",
+        "scheda tecnica"
+      ],
+      "tags": [
+        "linea",
+        "accessorio"
+      ],
+      "a": "**DIAPASON** è una **linea/accessorio tecnico** dedicato a specifici dettagli di collegamento e posa. Si utilizza **in combinazione** con i connettori previsti a progetto, seguendo la **scheda tecnica DIAPASON**. Non sostituisce CTF/CTL/VCEM, ma li **completa** dove richiesto dal dettaglio esecutivo."
+    }
+  ],
+  "COMMERCIALE": [
+    {
+      "id": "COM-001",
+      "q": "Come faccio a ordinare i prodotti Tecnaria o ricevere un’offerta?",
+      "patterns": [
+        "come fare un ordine",
+        "richiesta offerta",
+        "dove comprare tecnaria"
+      ],
+      "keywords": [
+        "ordine",
+        "offerta",
+        "SKU",
+        "distinta"
+      ],
+      "tags": [
+        "commerciale"
+      ],
+      "a": "**Ordini e offerte**\n1) Prepara una **distinta** con **famiglia/modello** (es. CTL MAXI 12/050), **fissaggi** (viti/chiodi), **quantità** e note (es. tavolato 30 mm, soletta 50 mm).\n2) Invia richiesta a **ufficio commerciale Tecnaria** o al **rivenditore** di zona.\n3) Per i **codici/SKU** posso generare una tabella pronta all’uso su richiesta."
+    }
+  ]
+}
