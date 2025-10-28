@@ -1,248 +1,177 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tecnaria Sinapsi — Risposte tecniche</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Tecnaria Sinapsi — Q/A</title>
   <style>
-    :root { --brand1:#ff7a00; --brand2:#0b0b0b; }
-    html,body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue','Noto Sans',sans-serif;background:#0b0b0b;color:#e5e7eb}
-    .grad { background: linear-gradient(135deg, var(--brand1) 0%, #ff5400 30%, #1e1e1e 60%, var(--brand2) 100%);}
-    .card { background: #101214; border: 1px solid #1f232a; }
-    .pill { background:#14171c; border:1px solid #222630; }
-    .shadow-soft { box-shadow: 0 10px 30px rgba(0,0,0,.35) }
-    .kbd{background:#0f1318;border:1px solid #222630;border-bottom-color:#1a1f27;padding:.1rem .35rem;border-radius:.375rem}
-    .link{color:#60a5fa}
+    :root{
+      --bg1:#ff7a18; --bg2:#0f0f0f;
+      --card:#111; --muted:#666; --text:#f5f5f5; --accent:#ffb35c;
+      --chip:#1c1c1c; --ok:#2ecc71; --warn:#f1c40f; --bad:#e74c3c;
+      --shadow:0 10px 30px rgba(0,0,0,.25);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; color:var(--text);
+      min-height:100dvh;
+      background: linear-gradient(120deg,var(--bg1),var(--bg2));
+      display:flex; flex-direction:column;
+    }
+    header{
+      padding:28px 24px; display:flex; align-items:center; gap:18px;
+    }
+    .logo{
+      width:42px; height:42px; border-radius:12px;
+      background: radial-gradient(closest-side,#fff2,transparent), #0008;
+      display:grid; place-items:center; box-shadow:var(--shadow);
+      font-weight:800; letter-spacing:.5px;
+    }
+    .title h1{margin:0; font-size:22px}
+    .title p{margin:4px 0 0; color:#ddd; font-size:13px}
+    main{
+      display:grid; grid-template-columns: minmax(320px, 740px) 1fr;
+      gap:22px; padding:0 24px 32px; flex:1;
+    }
+    .left{display:flex; flex-direction:column; gap:16px}
+    .search{
+      background: #ffffff10; border:1px solid #ffffff1a; border-radius:16px; padding:14px; backdrop-filter: blur(6px);
+      display:flex; gap:10px; align-items:center; box-shadow:var(--shadow)
+    }
+    .search input{
+      flex:1; background:transparent; border:none; outline:none; color:var(--text);
+      font-size:16px; padding:8px;
+    }
+    .btn{
+      background:#fff; color:#111; border:none; font-weight:700; border-radius:12px; padding:10px 14px; cursor:pointer;
+    }
+    .chips{display:flex; flex-wrap:wrap; gap:8px}
+    .chip{
+      background:var(--chip); border:1px solid #ffffff20; border-radius:999px; padding:8px 12px; font-size:13px; cursor:pointer;
+    }
+    .panel{
+      background:#0a0a0a; border:1px solid #ffffff12; border-radius:18px; padding:18px; min-height:220px; box-shadow:var(--shadow)
+    }
+    .panel h3{margin:0 0 10px}
+    .meta{font-size:12px; color:var(--muted); display:flex; gap:10px; align-items:center; margin-bottom:10px}
+    .tag{background:#ffffff14; padding:4px 8px; border-radius:999px; font-size:12px}
+    .right{display:flex; flex-direction:column; gap:16px}
+    .card{
+      background:#0b0b0b; border:1px solid #ffffff12; border-radius:18px; padding:18px; box-shadow:var(--shadow)
+    }
+    .status-dot{width:10px; height:10px; border-radius:50%;}
+    .ok{background:var(--ok)} .bad{background:var(--bad)}
+    .small{font-size:12px;color:var(--muted)}
+    footer{padding:14px 24px; color:#bbb; font-size:12px}
+    .answer{white-space:pre-wrap; line-height:1.5}
+    .muted{color:#cfcfcf}
   </style>
 </head>
-<body class="min-h-screen">
-  <!-- HEADER -->
-  <header class="grad py-10">
-    <div class="max-w-6xl mx-auto px-4">
-      <div class="flex items-center gap-3">
-        <div class="h-10 w-10 rounded-2xl bg-black/60 flex items-center justify-center text-white font-bold">T</div>
-        <div>
-          <h1 class="text-3xl md:text-4xl font-extrabold text-white">Trova la soluzione, in linguaggio Tecnaria.</h1>
-          <p class="text-white/70 mt-1">CTF, CTL, CTL MAXI, Diapason, GTS, Mini-Cem-E, <span class="font-semibold">SPIT P560</span>.</p>
-        </div>
-      </div>
-
-      <!-- QUERY BAR -->
-      <div class="mt-6 flex gap-3">
-        <input id="q" class="flex-1 rounded-xl px-4 py-3 bg-white text-black shadow-soft"
-               placeholder="Es. Mi spieghi la chiodatrice P560? / Codici CTF? / CTL vs CTL MAXI" />
-        <button id="askBtn" class="rounded-xl bg-black/70 hover:bg-black text-white px-5 font-semibold">Chiedi a Sinapsi</button>
-      </div>
-
-      <!-- SUGGESTION PILLS -->
-      <div class="mt-4 flex flex-wrap gap-2">
-        <button class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" data-s="CTF · Chiodatrice">CTF · Chiodatrice</button>
-        <button class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" data-s="CTL · Preforo abete">CTL · Preforo abete</button>
-        <button class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" data-s="Diapason · Confronto">Diapason · Confronto</button>
-        <button class="pill rounded-full px-3 py-1 text-sm hover:bg-white/5" data-s="P560 · Taratura IPE 300">P560 · Taratura IPE 300</button>
-      </div>
+<body>
+  <header>
+    <div class="logo">TS</div>
+    <div class="title">
+      <h1>Trova la soluzione, in linguaggio Tecnaria.</h1>
+      <p>Assistente Q/A ufficiale • solo prodotti Tecnaria • risposte filtrate e curate</p>
     </div>
   </header>
 
-  <!-- MAIN -->
-  <main class="max-w-6xl mx-auto px-4 -mt-8 relative z-10">
-    <div class="grid md:grid-cols-3 gap-4">
-      <!-- SETTINGS -->
-      <aside class="card rounded-2xl p-4 md:col-span-1">
-        <h2 class="text-white font-semibold">Impostazioni</h2>
-        <label class="block text-sm mt-3 text-white/70">Base URL servizio</label>
-        <input id="baseUrl" class="mt-1 w-full rounded-lg bg-[#0f1318] border border-[#222630] px-3 py-2"
-               placeholder="https://tecnaria-v3.onrender.com">
-        <label class="block text-sm mt-3 text-white/70">Endpoint (auto)</label>
-        <div class="flex gap-2 mt-1">
-          <input id="endpoint" class="flex-1 rounded-lg bg-[#0f1318] border border-[#222630] px-3 py-2"
-                 placeholder="/qa/ask (auto)">
-          <button id="detectBtn" class="rounded-lg bg-white/10 hover:bg-white/15 px-3">Auto</button>
-        </div>
-        <div class="text-xs text-white/50 mt-3" id="statusLine">Pronto.</div>
+  <main>
+    <section class="left">
+      <div class="search">
+        <input id="q" placeholder="Chiedi a Sinapsi (es. “Mi parli della P560?”)" />
+        <button class="btn" id="askBtn">Chiedi a Sinapsi</button>
+      </div>
+      <div class="chips">
+        <div class="chip" data-q="Mi parli della P560?">P560</div>
+        <div class="chip" data-q="Differenza tra CTL e CTL MAXI?">CTL vs CTL MAXI</div>
+        <div class="chip" data-q="CTF su lamiera 2×1,0 mm: accortezze in posa?">CTF su lamiera</div>
+        <div class="chip" data-q="Codici CTF e come fare un ordine?">Codici / ordini</div>
+        <div class="chip" data-q="Differenza tra CTF e VCEM?">Comparazioni</div>
+      </div>
 
-        <div class="mt-6 border-t border-white/5 pt-4">
-          <h3 class="font-semibold">Contatti & Dati aziendali</h3>
-          <p class="text-sm mt-2 text-white/70">
-            TECNARIA S.p.A.<br>
-            Viale Pecori Giraldi, 55 — 36061 Bassano del Grappa (VI)<br>
-            Email: <a class="link" href="mailto:info@tecnaria.com">info@tecnaria.com</a> — Tel: <a class="link" href="tel:+390424502029">+39 0424 502029</a>
-          </p>
-        </div>
-      </aside>
+      <div class="panel" id="answerPanel">
+        <div class="meta" id="meta"></div>
+        <h3 id="qTitle" class="muted">Fai una domanda per iniziare</h3>
+        <div class="answer" id="answerText"></div>
+      </div>
+    </section>
 
-      <!-- ANSWER -->
-      <section class="md:col-span-2">
-        <div class="card rounded-2xl p-5">
-          <div class="flex items-center justify-between">
-            <h2 class="text-white font-semibold">Risposta</h2>
-            <div class="text-xs text-white/50">Latency: <span id="latency">–</span></div>
-          </div>
-          <div id="answer" class="prose prose-invert max-w-none mt-3">
-            <p class="text-white/60">Scrivi una domanda oppure scegli una pillola sopra.</p>
-          </div>
-          <div class="mt-4 flex gap-2">
-            <button id="copyBtn" class="rounded-lg bg-white/10 hover:bg-white/15 px-3 py-1 text-sm">Copia</button>
-            <span id="routeBadge" class="text-xs text-white/40"></span>
-          </div>
+    <aside class="right">
+      <div class="card">
+        <h3>Impostazioni</h3>
+        <div class="small">Base URL servizio: <code id="baseUrl"></code></div>
+        <div class="small">Endpoint: <code>/qa/ask</code></div>
+        <div class="small">Dataset: <code>static/data/tecnaria_gold.json</code></div>
+        <div class="small" id="healthRow">
+          Stato: <span class="status-dot bad"></span> <span id="healthText">offline</span>
         </div>
-      </section>
-    </div>
+      </div>
+      <div class="card">
+        <h3>Note</h3>
+        <p class="small">Solo prodotti Tecnaria. Le risposte sono filtrate dal knowledge base tecnico e migliorate con narrazione “gold”.</p>
+      </div>
+    </aside>
   </main>
 
+  <footer>© Tecnaria — Sinapsi Q/A • UI stabile (gradiente arancio → nero) • v1</footer>
+
   <script>
-    // --------- Small helper: fetch with timeout
-    const withTimeout = (p, ms=8000) => {
-      let t; const timeout = new Promise((_,rej)=>t=setTimeout(()=>rej(new Error('timeout')), ms));
-      return Promise.race([p.finally(()=>clearTimeout(t)), timeout]);
-    };
+    const askBtn = document.getElementById('askBtn');
+    const qInput = document.getElementById('q');
+    const baseUrl = window.location.origin;
+    document.getElementById('baseUrl').textContent = baseUrl;
 
-    // --------- Endpoint candidates, both GET and POST variants
-    const CANDIDATES = [
-      {path:'/qa/ask', method:'GET',  build:(q)=>`/qa/ask?q=${encodeURIComponent(q)}`},
-      {path:'/ask',    method:'GET',  build:(q)=>`/ask?q=${encodeURIComponent(q)}`},
-      {path:'/qa/search', method:'GET', build:(q)=>`/qa/search?q=${encodeURIComponent(q)}`},
-      {path:'/ask',    method:'POST', build:(q)=>({url:'/ask', body:{q}})},
-    ];
-
-    const $ = (id)=>document.getElementById(id);
-    const baseUrlInput = $('baseUrl');
-    const endpointInput = $('endpoint');
-    const askBtn = $('askBtn');
-    const detectBtn = $('detectBtn');
-    const qInput = $('q');
-    const ans = $('answer');
-    const latencyEl = $('latency');
-    const statusLine = $('statusLine');
-    const routeBadge = $('routeBadge');
-
-    // Defaults
-    baseUrlInput.value = location.origin.includes('localhost') ? 'http://localhost:8000' : (location.origin || 'https://tecnaria-v3.onrender.com');
-
-    // Attach pill clicks
-    document.querySelectorAll('.pill').forEach(b=>{
-      b.addEventListener('click', ()=>{ qInput.value = b.dataset.s; ask(); });
-    });
-
-    // Copy
-    $('copyBtn').addEventListener('click', ()=>{
-      const txt = ans.innerText.trim();
-      if(!txt) return;
-      navigator.clipboard.writeText(txt).then(()=>status('Copiato negli appunti'));
-    });
-
-    askBtn.addEventListener('click', ask);
-    qInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') ask(); });
-    detectBtn.addEventListener('click', autoDetect);
-
-    function status(t){ statusLine.textContent = t; }
-
-    async function autoDetect(){
-      const base = baseUrlInput.value.trim().replace(/\/+$/,'');
-      status('Rilevamento endpoint…');
-      for(const c of CANDIDATES){
-        try{
-          const pingQ = 'ping';
-          const t0 = performance.now();
-          let res;
-          if(c.method==='GET'){
-            res = await withTimeout(fetch(base + c.build(pingQ), {method:'GET'}), 4000);
-          } else {
-            const obj = c.build(pingQ);
-            res = await withTimeout(fetch(base + obj.url, {
-              method:'POST',
-              headers:{'Content-Type':'application/json'},
-              body: JSON.stringify(obj.body)
-            }), 4000);
-          }
-          if(res.ok){
-            endpointInput.value = c.path + ' ('+c.method+')';
-            routeBadge.textContent = `route: ${c.path} · method: ${c.method}`;
-            status('Endpoint rilevato: '+c.path+' '+c.method);
-            return c;
-          }
-        }catch(e){ /* try next */ }
+    async function pingHealth(){
+      try{
+        const r = await fetch('/health');
+        const j = await r.json();
+        document.querySelector('#healthRow .status-dot').classList.remove('bad');
+        document.querySelector('#healthRow .status-dot').classList.add('ok');
+        document.getElementById('healthText').textContent = `online • items: ${j.items_loaded}`;
+      }catch(e){
+        document.querySelector('#healthRow .status-dot').classList.remove('ok');
+        document.querySelector('#healthRow .status-dot').classList.add('bad');
+        document.getElementById('healthText').textContent = 'offline';
       }
-      status('Nessun endpoint rilevato automaticamente. Imposta manualmente.');
-      return null;
     }
+    pingHealth();
 
-    function pickEndpoint(){
-      // If user set a specific endpoint, honor it; otherwise guess best.
-      const manual = endpointInput.value.trim();
-      if(manual){
-        const low = manual.toLowerCase();
-        if(low.includes('/qa/ask')) return CANDIDATES.find(x=>x.path==='/qa/ask' && x.method==='GET');
-        if(low.includes('/qa/search')) return CANDIDATES.find(x=>x.path==='/qa/search' && x.method==='GET');
-        if(low.includes('/ask') && low.includes('post')) return CANDIDATES.find(x=>x.path==='/ask' && x.method==='POST');
-        if(low.includes('/ask')) return CANDIDATES.find(x=>x.path==='/ask' && x.method==='GET');
-      }
-      // Default preference
-      return CANDIDATES[0];
-    }
-
-    async function ask(){
-      const text = qInput.value.trim();
-      if(!text){ qInput.focus(); return; }
-      const base = baseUrlInput.value.trim().replace(/\/+$/,'');
-      let chosen = pickEndpoint();
-      let lastErr = null;
-
-      // Try chosen first, then fallbacks
-      const tryList = [chosen, ...CANDIDATES.filter(c => c!==chosen)];
-      for(const c of tryList){
-        try{
-          const t0 = performance.now();
-          let res;
-          if(c.method==='GET'){
-            res = await withTimeout(fetch(base + c.build(text), {method:'GET'}), 12000);
-          } else {
-            const obj = c.build(text);
-            res = await withTimeout(fetch(base + obj.url, {
-              method:'POST',
-              headers:{'Content-Type':'application/json'},
-              body: JSON.stringify(obj.body)
-            }), 12000);
-          }
-          if(!res.ok) throw new Error('HTTP '+res.status);
-          const data = await res.json().catch(()=> ({}));
-
-          // Accept common payload shapes
-          const answer = data.answer || data.text || data.result || data.content || '';
-          const latency = (performance.now() - t0).toFixed(0)+' ms';
-          renderAnswer(answer || 'Nessuna risposta.');
-          latencyEl.textContent = latency;
-          endpointInput.value = c.path + ' ('+c.method+')';
-          routeBadge.textContent = `route: ${c.path} · method: ${c.method}`;
-          status('OK');
+    async function ask(q){
+      const panel = document.getElementById('answerPanel');
+      const meta = document.getElementById('meta');
+      const qTitle = document.getElementById('qTitle');
+      const aText = document.getElementById('answerText');
+      qTitle.textContent = '...';
+      aText.textContent = '';
+      meta.innerHTML = '';
+      try{
+        const r = await fetch('/qa/ask?q=' + encodeURIComponent(q));
+        const j = await r.json();
+        if(j.error){
+          qTitle.textContent = 'Domanda non valida';
+          aText.textContent = (j.error || '') + (j.examples ? `\n\nEsempi:\n- ${j.examples.join('\n- ')}`:'');
           return;
-        } catch(err){
-          lastErr = err;
-          continue;
         }
+        meta.innerHTML = `<span class="tag">Famiglia: ${j.family || '-'}</span><span class="tag">Score: ${j.score}</span>`;
+        qTitle.textContent = 'Q: ' + j.question;
+        aText.textContent = j.answer || '—';
+      }catch(e){
+        qTitle.textContent = 'Errore di rete';
+        aText.textContent = String(e);
       }
-      renderAnswer('Errore: nessuna rotta ha risposto correttamente. Verifica Base URL/endpoint.');
-      status('Errore richiesta ('+(lastErr?.message||'sconosciuto')+')');
     }
 
-    function renderAnswer(markdownText){
-      // very small MD → HTML (bold, lists, code ticks) without libs to stay self-contained
-      let html = (markdownText||'').toString()
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      html = html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
-      html = html.replace(/`([^`]+)`/g,'<code class="kbd">$1</code>');
-      html = html.replace(/\n\- (.+)/g,'<li>$1</li>');
-      html = html.replace(/(?:\r?\n){2,}/g,'</p><p>');
-      html = '<p>'+html+'</p>';
-      html = html.replace(/<p>\s*<li>/g,'<ul class="list-disc pl-6"><li>').replace(/<\/li>\s*<\/p>/g,'</li></ul>');
-      ans.innerHTML = html;
-    }
-
-    // Auto-detect once at load, but don’t block UI
-    setTimeout(autoDetect, 50);
+    askBtn.addEventListener('click', ()=> {
+      if(qInput.value.trim()) ask(qInput.value.trim());
+    });
+    qInput.addEventListener('keydown', (e)=> {
+      if(e.key === 'Enter' && qInput.value.trim()) ask(qInput.value.trim());
+    });
+    document.querySelectorAll('.chip').forEach(ch => {
+      ch.addEventListener('click', ()=> ask(ch.dataset.q));
+    });
   </script>
 </body>
 </html>
