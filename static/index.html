@@ -2,132 +2,115 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tecnaria_V3 — Chatbot Tecnico</title>
-  <style>
-    :root{
-      --bg:#eef7ef; --panel:#ffffff; --accent:#2f8f2f; --accent-2:#1f6f1f; --text:#0b1e0b;
-      --chip:#e6f5e6; --chip-b:#bfe6bf; --muted:#557; --bad:#b83333;
-    }
-    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto}
-    .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
-    .bar{background:var(--accent);color:#fff;padding:14px 18px;border-radius:10px;display:flex;align-items:center;gap:10px}
-    .dot{width:12px;height:12px;border-radius:50%;background:#39d458;box-shadow:0 0 0 3px #fff2 inset}
-    h1{font-size:20px;margin:0}
-    .card{background:var(--panel);border:1px solid #dbeedb;border-radius:12px;padding:18px;margin-top:18px}
-    textarea{width:100%;min-height:100px;border:2px solid var(--accent);border-radius:10px;padding:12px;font-size:16px;outline:none}
-    button{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer}
-    button:hover{background:var(--accent-2)}
-    .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
-    .chip{background:var(--chip);border:1px solid var(--chip-b);padding:8px 12px;border-radius:999px;cursor:pointer}
-    .muted{color:#556}
-    .resp{white-space:pre-wrap}
-    .pill{display:inline-block;background:#eaf7ea;border:1px solid #bfe6bf;color:#184218;border-radius:999px;padding:2px 10px;font-size:12px;margin-right:6px}
-    .err{color:var(--bad);font-weight:600}
-    iframe{width:100%;border:0}
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tecnaria Sinapsi — Risposte tecniche</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <div class="wrap">
-    <div class="bar">
-      <div class="dot"></div>
-      <h1>Tecnaria_V3 — Chatbot Tecnico</h1>
-    </div>
-
-    <div class="card">
-      <p>Scrivi la tua domanda e premi <b>Chiedi</b>.</p>
-      <textarea id="q" placeholder="Es. Posso usare una chiodatrice qualunque per i CTF?"></textarea>
-      <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
-        <button id="askBtn">Chiedi</button>
-        <span id="hint" class="muted"></span>
+<body class="bg-neutral-950 text-neutral-100">
+  <!-- Header gradient -->
+  <header class="bg-gradient-to-b from-orange-500 to-neutral-900">
+    <div class="max-w-6xl mx-auto px-4 py-8">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-xl bg-black/70 grid place-items-center font-bold">T</div>
+        <div>
+          <p class="text-sm text-neutral-200">Risposte tecniche. Voce ufficiale Tecnaria.</p>
+          <h1 class="text-3xl sm:text-4xl font-semibold">Trova la soluzione, in linguaggio Tecnaria.</h1>
+        </div>
       </div>
 
-      <div class="chips" id="chips"></div>
+      <!-- Search -->
+      <div class="mt-6 flex gap-3">
+        <input id="q" placeholder="Scrivi la domanda… (es. Mi spieghi la chiodatrice P560?)"
+               class="flex-1 rounded-xl bg-white/10 border border-white/15 px-4 py-3 outline-none placeholder-neutral-300" />
+        <button id="askBtn"
+                class="rounded-xl bg-white text-black font-medium px-5 py-3 hover:bg-neutral-100 transition">
+          Chiedi a Sinapsi
+        </button>
+      </div>
+
+      <!-- Pills -->
+      <div class="mt-3 flex flex-wrap gap-2 text-sm">
+        <button class="pill">CTF · Chiodatrice</button>
+        <button class="pill">CTL · Preforo abete</button>
+        <button class="pill">Diapason · Confronto</button>
+        <button class="pill">P560 · Taratura IPE 300</button>
+        <style>
+          .pill{padding:.4rem .7rem;border-radius:9999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16)}
+          .pill:hover{background:rgba(255,255,255,.16)}
+        </style>
+      </div>
     </div>
+  </header>
 
-    <div class="card" id="outCard">
-      <div id="meta" class="muted" style="margin-bottom:10px"></div>
-      <div id="out" class="resp">Attendere…</div>
-      <div id="htmlBox" style="margin-top:16px"></div>
-    </div>
-  </div>
+  <main class="max-w-6xl mx-auto px-4 py-6 grid lg:grid-cols-3 gap-5">
+    <!-- Impostazioni -->
+    <section class="lg:col-span-1">
+      <div class="rounded-2xl border border-white/10 bg-white/5 shadow-lg">
+        <div class="p-4 border-b border-white/10"><h2 class="font-semibold">Impostazioni</h2></div>
+        <div class="p-4 space-y-3 text-sm">
+          <label class="block text-neutral-300">Base URL servizio</label>
+          <input id="baseUrl" class="w-full rounded-lg bg-white/10 border border-white/15 px-3 py-2"
+                 value="https://tecnaria-v3.onrender.com" />
+          <div class="flex flex-wrap gap-2 text-xs text-neutral-300">
+            <span class="chip">Rules: <b id="flag-rules">true</b></span>
+            <span class="chip">Router: <b id="flag-router">true</b></span>
+            <span class="chip">Catalog: <b id="flag-catalog">true</b></span>
+            <span class="chip">Contacts: <b id="flag-contacts">true</b></span>
+          </div>
+          <style>.chip{padding:.2rem .5rem;border-radius:.5rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}</style>
+        </div>
+      </div>
 
-<script>
-const samples = [
-  "Differenza tra CTF e CTL?",
-  "Quando scegliere CTL invece di CEM-E?",
-  "Differenza tra CEM-E e CTCEM?",
-  "CTF su lamiera grecata: controlli in cantiere?",
-  "VCEM su essenze dure: serve preforo 70–80%?",
-  "GTS: che cos’è e come si usa?",
-  "P560: è un connettore o un'attrezzatura?",
-  "CEM-E: è una posa a secco?",
-  "CTCEM: quando preferirlo alle resine?",
-  "Can I install CTF with any powder-actuated tool?"
-];
+      <!-- Contatti -->
+      <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 shadow-lg">
+        <div class="p-4 border-b border-white/10"><h2 class="font-semibold">Contatti & Dati aziendali</h2></div>
+        <div class="p-4 text-sm leading-6">
+          <p><b>TECNARIA S.p.A.</b><br/>Viale Pecori Giraldi, 55 · 36061 Bassano del Grappa (VI)</p>
+          <p>Email: <a href="mailto:info@tecnaria.com" class="underline">info@tecnaria.com</a><br/>
+             Tel: <a href="tel:+390424502029" class="underline">+39 0424 502029</a></p>
+        </div>
+      </div>
+    </section>
 
-const chips = document.getElementById('chips');
-samples.forEach(s=>{
-  const c=document.createElement('div');
-  c.className='chip'; c.textContent=s;
-  c.onclick=()=>{ document.getElementById('q').value=s; fireAsk(); };
-  chips.appendChild(c);
-});
+    <!-- Risposta singola -->
+    <section class="lg:col-span-2">
+      <div class="rounded-2xl border border-white/10 bg-white/5 shadow-xl">
+        <div class="p-4 border-b border-white/10 flex items-center justify-between">
+          <h2 class="font-semibold">Risposta</h2>
+          <div class="text-xs text-neutral-300">Latency: <span id="latency">—</span> ms</div>
+        </div>
+        <div id="answer" class="p-5 text-neutral-100 whitespace-pre-wrap min-h-[180px]">
+          Fai una domanda e qui comparirà la migliore risposta, unica e pulita.
+        </div>
+        <div class="p-4 border-t border-white/10 flex gap-2">
+          <button id="copyBtn" class="rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 px-3 py-2 text-sm">Copia</button>
+        </div>
+      </div>
+    </section>
+  </main>
 
-document.getElementById('askBtn').onclick = fireAsk;
-document.getElementById('q').addEventListener('keydown',e=>{
-  if(e.key==='Enter' && (e.ctrlKey || e.metaKey)) fireAsk();
-});
-
-async function fireAsk(){
-  const q = (document.getElementById('q').value||'').trim();
-  const out = document.getElementById('out');
-  const meta = document.getElementById('meta');
-  const htmlBox = document.getElementById('htmlBox');
-  const hint = document.getElementById('hint');
-
-  if(!q){ out.textContent='Scrivi una domanda.'; return; }
-  out.textContent='Attendere…';
-  htmlBox.innerHTML=''; meta.textContent=''; hint.textContent='';
-
-  // *** Importantissimo: SOLO GET, nessun POST/CORS ***
-  const url = `/api/ask?q=${encodeURIComponent(q)}`;
-
-  try{
-    const t0 = performance.now();
-    const r = await fetch(url, { method:'GET' });
-    if(!r.ok){
-      out.innerHTML = `<span class="err">Errore HTTP ${r.status}</span>`;
-      return;
-    }
-    const j = await r.json();
-    const ms = Math.max(1, Math.round(performance.now()-t0));
-
-    // Meta-pilloline
-    meta.innerHTML = [
-      `<span class="pill">match_id: ${j.match_id||'—'}</span>`,
-      `<span class="pill">intent: ${j.intent||'—'}</span>`,
-      `<span class="pill">famiglia: ${j.family||'—'}</span>`,
-      `<span class="pill">lang: ${j.lang||'—'}</span>`,
-      `<span class="pill">ms: ${ms}</span>`
-    ].join(' ');
-
-    // Testo
-    out.textContent = (j.text||'').trim() || '—';
-
-    // Eventuale HTML (confronti)
-    if ((j.html||'').trim()){
-      htmlBox.innerHTML = j.html;
-    }
-
-    // dritta veloce se arriva fallback
-    if (j.intent==='fallback'){
-      hint.textContent = 'Suggerimento: cita la famiglia (CTF, CTL, VCEM, CEM-E, CTCEM, GTS, P560) o usa un esempio qui sopra.';
-    }
-  }catch(err){
-    out.innerHTML = `<span class="err">Errore di rete: ${String(err)}</span>`;
-  }
-}
-</script>
+  <script>
+    const $ = (s)=>document.querySelector(s);
+    const ask = async (text) => {
+      const base = $('#baseUrl').value.trim().replace(/\/+$/,'');
+      const t0 = performance.now();
+      // chiamata semplice: /qa/ask?q=...
+      const res = await fetch(`${base}/qa/ask?q=`+encodeURIComponent(text));
+      const t1 = performance.now();
+      $('#latency').textContent = Math.round(t1 - t0);
+      if(!res.ok){ $('#answer').textContent = 'Errore: ' + res.status + ' ' + res.statusText; return; }
+      const data = await res.json();
+      // compatibile con schema “best answer”
+      const out = data.answer || data.best || data.result || JSON.stringify(data,null,2);
+      $('#answer').textContent = out;
+    };
+    $('#askBtn').addEventListener('click', ()=> ask($('#q').value.trim()));
+    $('#q').addEventListener('keydown', (e)=>{ if(e.key==='Enter') ask($('#q').value.trim()); });
+    document.querySelectorAll('.pill').forEach(p=>p.addEventListener('click',()=>{ $('#q').value = p.textContent; ask($('#q').value);} ));
+    $('#copyBtn').addEventListener('click', async ()=>{
+      const txt = $('#answer').textContent; await navigator.clipboard.writeText(txt);
+      $('#copyBtn').textContent = 'Copiato'; setTimeout(()=>$('#copyBtn').textContent='Copia',1200);
+    });
+  </script>
 </body>
 </html>
