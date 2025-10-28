@@ -1,5 +1,352 @@
 # app.py — TECNARIA_GOLD · FastAPI Q/A (gold + compare) — FILE COMPLETO
-# Requisiti (già noti e stabili): fastapi, uvicorn, jinja2 (opzionale)
+# Requisiti (già noti e stabili): fastapi, uvicorn, jinja2 (opzionale)# app.py
+import json
+import re
+import unicodedata
+from pathlib import Path
+from typing import List, Dict, Any, Optional, Tuple
+
+from fastapi import FastAPI, Query
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.middleware.cors import CORSMiddleware
+
+APP_NAME = "Tecnaria Q/A Service"
+ROOT_DIR = Path(__file__).parent.resolve()
+DATA_DIR = ROOT_DIR / "static" / "data"
+
+# ---------- Utilities ----------
+
+def norm_txt(s: Any) -> str:
+    if s is None:
+        return ""
+    if not isinstance(s, str):
+        s = str(s)
+    s = unicodedata.normalize("NFKC", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+def tokenize(s: str) -> List[str]:
+    s = s.lower()
+    s = re.sub(r"[^\wàèéìòóùç/.-]+", " ", s, flags=re.IGNORECASE)
+    return [t for t in s.split() if t]
+
+def safe_get(d: Dict[str, Any], keys: List[str], default="") -> str:
+    for k in keys:
+        if k in d and isinstance(d[k], str):
+            return d[k]
+    return default
+
+def load_all_items(data_dir: Path) -> List[Dict[str, Any]]:
+    items: List[Dict[str, Any]] = []
+    if not data_dir.exists():
+        return items
+    for p in sorted(data_dir.glob("*.json")):
+        try:
+            with p.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            continue
+
+        # Accept: list[...] OR {"items":[...]} OR any iterable of dicts
+        payload = None
+        if isinstance(data, list):
+            payload = data
+        elif isinstance(data, dict):
+            if "items" in data and isinstance(data["items"], list):
+                payload = data["items"]
+            else:
+                # try flatten dict-of-lists
+                flat = []
+                for v in data.values():
+                    if isinstance(v, list) and v and isinstance(v[0], dict):
+                        flat.extend(v)
+                payload = flat if flat else None
+
+        if not payload:
+            continue
+
+        for it in payload:
+            if not isinstance(it, dict):
+                continue
+            q = norm_txt(
+                safe_get(it, ["q", "question", "domanda", "title"], "")
+            )
+            a = norm_txt(
+                safe_get(it, ["a", "answer", "risposta", "content", "text"], "")
+            )
+            fam = norm_txt(
+                safe_get(it, ["family", "famiglia", "categoria"], "")
+            )
+            tags = it.get("tags") or it.get("tag") or []
+            if isinstance(tags, str):
+                tags = [tags]
+            tags = [norm_txt(t) for t in tags if t]
+
+            # Only keep rows with some content
+            if not q and not a:
+                continue
+
+            items.append({
+                "question": q,
+                "answer": a,
+                "family": fam or infer_family_from_filename(p.name),
+                "tags": tags,
+                "source_file": p.name
+            })
+    return items
+
+def infer_family_from_filename(name: str) -> str:
+    s = name.lower()
+    if "ctf" in s:
+        return "CTF"
+    if "ctl" in s:
+        return "CTL"
+    if "p560" in s:
+        return "P560"
+    if "vcem" in s:
+        return "VCEM"
+    if "cem" in s or "ceme" in s or "cem-e" in s:
+        return "CEM-E"
+    if "gts" in s:
+        return "GTS"
+    if "diapason" in s:
+        return "DIAPASON"
+    if "accessori" in s or "accessory" in s:
+        return "ACCESSORI"
+    return ""
+
+def score_candidate(query: str, item: Dict[str, Any]) -> float:
+    """
+    Semplice motore di rilevanza:
+    - overlap termini (query vs question+answer+tags)
+    - boost per famiglie/termini chiave
+    - piccola penalità se risposta è troppo corta
+    """
+    q_tokens = set(tokenize(query))
+    hay = " ".join([
+        item.get("question", ""),
+        item.get("answer", ""),
+        " ".join(item.get("tags", [])),
+        item.get("family", "")
+    ])
+    h_tokens = set(tokenize(hay))
+
+    if not h_tokens:
+        return 0.0
+
+    overlap = len(q_tokens & h_tokens)
+    ratio = overlap / max(1, len(q_tokens))
+
+    # Boost keyword
+    key_boost = 0.0
+    keys = [
+        ("ctf", 0.25), ("ctl", 0.25), ("maxi", 0.18), ("p560", 0.22),
+        ("hsbr14", 0.18), ("lamiera", 0.15), ("rete", 0.10),
+        ("soletta", 0.12), ("viti", 0.12), ("chiodi", 0.12),
+        ("s275", 0.10), ("s355", 0.10)
+    ]
+    ht = " " + hay.lower() + " "
+    for k, w in keys:
+        if f" {k} " in ht:
+            key_boost += w
+
+    # Penalità risposte troppo corte (riduce il rischio “risposta scarna”)
+    ans_len = len(item.get("answer", "")) if item.get("answer") else 0
+    short_pen = 0.0
+    if ans_len < 300:
+        short_pen = 0.15
+    if ans_len < 120:
+        short_pen = 0.30
+
+    return max(0.0, ratio + key_boost - short_pen)
+
+def choose_best_answer(query: str, items: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not items:
+        return None
+    # Se la query inizia con una famiglia (es. "CTF", "CTL"), leggero filtro
+    fam_hint = None
+    m = re.match(r"^\s*(ctf|ctl|p560|vcem|cem[- ]?e|gts|diapason)\b", query, flags=re.I)
+    if m:
+        fam_hint = m.group(1).upper().replace(" ", "").replace("-", "")
+        fam_map = {"CEME": "CEM-E", "CEME": "CEM-E"}
+        fam_hint = fam_map.get(fam_hint, fam_hint)
+
+    candidates = items
+    if fam_hint:
+        filtered = [it for it in items if it.get("family", "").upper() == fam_hint]
+        if filtered:
+            candidates = filtered
+
+    scored: List[Tuple[float, Dict[str, Any]]] = []
+    for it in candidates:
+        s = score_candidate(query, it)
+        if s > 0:
+            scored.append((s, it))
+
+    if not scored:
+        # fallback: ritorna la più “ricca” (risposta più lunga) della collezione
+        longest = max(items, key=lambda x: len(x.get("answer", "")) if x.get("answer") else 0, default=None)
+        return longest
+
+    scored.sort(key=lambda t: t[0], reverse=True)
+    return scored[0][1]
+
+# ---------- Bootstrap (load data) ----------
+
+GOLD_ITEMS: List[Dict[str, Any]] = []
+
+def bootstrap():
+    GOLD_ITEMS.clear()
+    loaded = load_all_items(DATA_DIR)
+    # Normalizzazione minima
+    for it in loaded:
+        it["question"] = it.get("question") or ""
+        it["answer"] = it.get("answer") or ""
+        it["family"] = it.get("family") or ""
+        it["tags"] = it.get("tags") or []
+        GOLD_ITEMS.append(it)
+
+bootstrap()
+
+# ---------- FastAPI ----------
+
+app = FastAPI(title=APP_NAME)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"]
+)
+
+@app.get("/health", response_class=PlainTextResponse)
+def health():
+    return "ok"
+
+@app.get("/service")
+def service():
+    return {
+        "service": APP_NAME,
+        "status": "ok",
+        "items_loaded": len(GOLD_ITEMS),
+        "data_dir": str(DATA_DIR),
+        "files": sorted({it.get("source_file","") for it in GOLD_ITEMS if it.get("source_file")})
+    }
+
+@app.get("/api/ask")
+def api_ask(q: str = Query(..., description="Domanda libera")):
+    query = norm_txt(q)
+    if not query:
+        return {"ok": False, "message": "Query vuota."}
+
+    best = choose_best_answer(query, GOLD_ITEMS)
+    if not best:
+        return {"ok": False, "message": "Nessuna risposta disponibile nei file GOLD."}
+
+    return {
+        "ok": True,
+        "best_answer": {
+            "question": best.get("question", ""),
+            "answer": best.get("answer", ""),
+            "family": best.get("family", ""),
+            "tags": best.get("tags", []),
+            "source_file": best.get("source_file", "")
+        }
+    }
+
+@app.get("/", response_class=HTMLResponse)
+def home():
+    html = """
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Tecnaria Q/A – Risposta Migliore</title>
+<style>
+  :root{--bg:#0b0d10;--card:#14181d;--muted:#93a1b1;--fg:#e6edf3;--accent:#4cc9f0;--ok:#22c55e;--warn:#f59e0b;}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--fg);}
+  .wrap{max-width:980px;margin:40px auto;padding:0 16px;}
+  .title{font-weight:700;font-size:28px;letter-spacing:.2px;}
+  .bar{display:flex;gap:8px;margin:16px 0;}
+  input[type=text]{flex:1;padding:14px 16px;border-radius:12px;border:1px solid #26313d;background:#0f141a;color:var(--fg);outline:none}
+  button{padding:14px 18px;border-radius:12px;border:0;background:var(--accent);color:#081018;font-weight:700;cursor:pointer;}
+  .card{background:var(--card);border:1px solid #26313d;border-radius:14px;padding:16px;margin-top:14px;}
+  .muted{color:var(--muted);font-size:13px}
+  .ans h3{margin:0 0 8px 0}
+  .grid{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#0f141a;border:1px solid #26313d;color:var(--muted);font-size:12px;margin-right:4px}
+  .meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+  .small{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">Tecnaria Q/A — Risposta Migliore</div>
+    <div class="muted">Solo una risposta. Niente duplicati. Usa i file GOLD in <code>static/data</code>.</div>
+
+    <div class="bar">
+      <input id="q" type="text" placeholder="Fai una domanda (es. 'Quali codici CTL MAXI?' o 'CTF su lamiera 1×1,5 mm')"/>
+      <button id="go">Chiedi</button>
+    </div>
+
+    <div id="out" class="card">
+      <div class="muted">Suggerimenti: “Codici CTF”, “CTL MAXI 12/050 viti”, “CTF lamiera 2×1,0 mm S355”, “P560 taratura”.</div>
+    </div>
+
+    <div class="card">
+      <div class="small">/service → mostra quanti elementi sono caricati. /api/ask?q=… → API JSON.</div>
+    </div>
+  </div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+const out = $("#out");
+const q = $("#q");
+$("#go").addEventListener("click", ask);
+q.addEventListener("keydown", (e)=>{ if(e.key==="Enter") ask(); });
+
+async function ask(){
+  const txt = q.value.trim();
+  if(!txt){ return; }
+  out.innerHTML = "<div class='muted'>Cerco la risposta migliore…</div>";
+  try{
+    const res = await fetch("/api/ask?q="+encodeURIComponent(txt));
+    const data = await res.json();
+    if(!data.ok){
+      out.innerHTML = "<div class='muted'>"+(data.message||"Nessuna risposta trovata")+"</div>";
+      return;
+    }
+    const it = data.best_answer || {};
+    const fam = it.family ? "<span class='pill'>"+it.family+"</span>" : "";
+    const tags = (it.tags||[]).map(t=>"<span class='pill'>"+t+"</span>").join(" ");
+    const src = it.source_file ? "<span class='small'>Fonte: "+it.source_file+"</span>" : "";
+
+    const qhtml = it.question ? ("<div class='muted'>Q: "+escapeHtml(it.question)+"</div>") : "";
+    const ans = it.answer ? it.answer : "<i class='muted'>Nessuna risposta testuale nel file.</i>";
+
+    out.innerHTML = `
+      <div class="ans">
+        ${qhtml}
+        <h3>Risposta Migliore</h3>
+        <div>${ans}</div>
+        <div class="meta">
+          <div>${fam} ${tags}</div>
+          <div>${src}</div>
+        </div>
+      </div>
+    `;
+  }catch(e){
+    out.innerHTML = "<div class='muted'>Errore di rete o servizio non raggiungibile.</div>";
+  }
+}
+
+function escapeHtml(s){
+  return s.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+}
+</script>
+</body>
+</html>
+    """
+    return HTMLResponse(html)
+
 # Start: uvicorn app:app --host 0.0.0.0 --port $PORT
 
 import os, json, re, uuid, html
