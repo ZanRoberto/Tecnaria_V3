@@ -39,9 +39,38 @@
     "baseline": "RECOVERED_TEKNARIA_GOLD_12",
     "gold_mode": "extended",
     "last_built_at": "2025-10-29T20:17:34",
-    "note": "Risposte Gold complete rese disponibili in answer_long mantenendo lo stesso nome del file."
+    "note": "Risposte Gold complete rese disponibili in answer_long mantenendo lo stesso nome del file.",
+    "last_hotfix": {
+      "what": "Add GOLD-CTF-CODICI-019 for routing 'codici CTF' to Gold answer",
+      "when": "2025-10-29T20:34:15"
+    }
   },
   "items": [
+    {
+      "id": "GOLD-CTF-CODICI-019",
+      "family": "CTF",
+      "domanda": "Mi dai i codici dei connettori CTF?",
+      "risposta": "Per i CTF l’ordine si compone di **connettori CTF** + **chiodi HSBR14** (2 per connettore) + **utensile SPIT P560** (nolo/vendita). I codici commerciali possono variare per confezione e kit; per il preventivo ufficiale specifica: quantità connettori, numero chiodi, presenza lamiera (1×1,5 o 2×1,0 mm), tipo acciaio (S275–S355) e cantiere. Il servizio Tecnaria restituisce i **codici d’ordine esatti** e la disponibilità.",
+      "question": "Mi dai i codici dei connettori CTF?",
+      "answer": "Ordine CTF = connettori CTF + chiodi HSBR14 (2/pezzo) + utensile SPIT P560. I codici variano per confezione/kit: indica quantità, lamiera (1×1,5 o 2×1,0), acciaio S275–S355 e cantiere; Tecnaria conferma i codici ufficiali e la disponibilità.",
+      "answer_long": "**Codici d’ordine CTF – guida pratica GOLD**\n\n**Componenti**\n• **CTF (connettori)** — elemento principale per travi S275–S355 (meccanico a secco, posa con P560).\n• **HSBR14 (chiodi)** — 2 chiodi per ogni connettore CTF.\n• **SPIT P560** — utensile dedicato (nolo oppure vendita) con adattatori Tecnaria.\n\n**Come ottenere i codici corretti (senza errori)**\n1) Indica **quantità** CTF e **chiodi** (2 per connettore).\n2) Specifica se c’è **lamiera grecata** (1×1,5 mm o 2×1,0 mm) e conferma che sarà **ben serrata**.\n3) Materiale trave: **S275 o S355** (anima ≥ 6 mm).\n4) **Cantiere e tempi** di consegna; **nolo/vendita P560**.\n\n**Output**: l’ufficio Tecnaria invia i **codici d’ordine ufficiali** (confezioni CTF, HSBR14 e P560) e la **disponibilità**.\n\n**Nota**: i codici sono legati a confezioni/kit; per questo vengono confermati a preventivo evitando ambiguità.\n",
+      "trigger": {
+        "peso": 0.98,
+        "keywords": [
+          "CTF",
+          "codici",
+          "codice",
+          "codici d'ordine",
+          "SKU",
+          "ordine",
+          "preventivo",
+          "HSBR14",
+          "P560",
+          "confezione",
+          "kit"
+        ]
+      }
+    },
     {
       "id": "GOLD-CTF-P560-001",
       "family": "CTF",
