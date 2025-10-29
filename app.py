@@ -1,250 +1,224 @@
-import json, re
-from pathlib import Path
+import os, json, re, html
+from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, Query
-from fastapi.responses import HTMLResponse, JSONResponse
-from typing import List, Dict, Any
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
-APP_TITLE = "Tecnaria Sinapsi — Q/A"
-DATA_PATH = Path(__file__).parent / "static" / "data" / "tecnaria_gold.json"
+TITLE = "Tecnaria Sinapsi — Q/A"
+DATA_PATH = os.environ.get("TECNARIA_DATA", "static/data/tecnaria_gold.json")
 
-app = FastAPI(title=APP_TITLE)
+app = FastAPI(title=TITLE)
 
-# -------------------------------
-# Load dataset safely
-# -------------------------------
-def load_items() -> List[Dict[str, Any]]:
-    if not DATA_PATH.exists():
+GOLD_ITEMS: List[Dict[str, Any]] = []
+FAMILIES = set()
+
+# -----------------------------
+# Utilities
+# -----------------------------
+def normalize_item(it: Dict[str, Any]) -> Dict[str, Any]:
+    out = {
+        "family": it.get("family","").strip().upper(),
+        "tags": sorted(list({t.strip().lower() for t in it.get("tags", []) if t.strip()})),
+        "questions": [q.strip() for q in it.get("questions",[]) if isinstance(q,str) and q.strip()],
+        "answer": it.get("answer","").strip(),
+        # opzionali per traduzione pragmatica:
+        "answer_en": it.get("answer_en","").strip(),
+        "answer_fr": it.get("answer_fr","").strip(),
+        "answer_de": it.get("answer_de","").strip(),
+        "answer_es": it.get("answer_es","").strip(),
+    }
+    return out
+
+def load_dataset(path: str) -> List[Dict[str, Any]]:
+    if not os.path.exists(path):
         return []
-    try:
-        with open(DATA_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, dict) and "items" in data:
-            items = data.get("items", [])
-        elif isinstance(data, list):
-            items = data
-        else:
-            items = []
-        out = []
-        for it in items:
-            if isinstance(it, dict):
-                fam = str(it.get("family") or it.get("famiglia") or "").strip()
-                q = str(it.get("q") or it.get("question") or "").strip()
-                a = str(it.get("answer") or it.get("a") or "").strip()
-                tags = it.get("tags") or it.get("keywords") or []
-                if isinstance(tags, str):
-                    tags = [tags]
-                out.append({"family": fam, "q": q, "answer": a, "tags": tags})
-        return out
-    except Exception:
-        return []
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    items = []
+    if isinstance(data, dict) and "items" in data:
+        data = data["items"]
+    for it in data:
+        items.append(normalize_item(it))
+    return items
 
-GOLD_ITEMS: List[Dict[str, Any]] = load_items()
+def tokenize(s: str) -> List[str]:
+    return re.findall(r"[a-zA-ZàèéìòóùÀÈÉÌÒÓÙ0-9]+", s.lower())
 
-# -------------------------------
-# Family routing (P560 vince su CTF)
-# -------------------------------
-FAMILY_KEYWORDS = [
-    ("P560", [
-        r"\bp560\b", r"\bspit\s*p560\b", r"\bchiodatrice\b", r"\bspara(chiodi|chiodi)\b",
-        r"\butensile\b", r"\bpropulsor[ie]\b", r"\bhsbr14\b"
-    ]),
-    ("CTF", [
-        r"\bctf\b", r"\btrave\b.*\bacciaio\b", r"\blamiera\b\s*(grecata|h\d+)?",
-        r"\bchiod[io]?\b", r"\bdoppia\s*chiodatura\b"
-    ]),
-    ("CTL MAXI", [r"\bctl\s*maxi\b", r"\btavolato\b", r"\bassito\b", r"\bviti?\s*ø?\s*10\b", r"\bsoletta\b"]),
-    ("CTL", [r"\bctl\b", r"\btrave\b.*\blegno\b", r"\bviti?\s*ø?\s*10\b"]),
-    ("CTCEM", [r"\bctcem\b", r"\blaterocemento\b", r"\bresine?\b", r"\bpre[ -]?foro\b"]),
-    ("VCEM", [r"\bvcem\b", r"\blaterocemento\b", r"\bmeccanico\b"]),
-    ("DIAPASON", [r"\bdiapason\b"]),
-    ("GTS", [r"\bgts\b", r"\bmanicott[io]\b"]),
-    ("ACCESSORI", [r"\baccessori\b", r"\bkit\b", r"\badattator[ei]\b"]),
-]
-
-def classify_family(query: str) -> str:
-    q = query.lower()
-    for fam, patterns in FAMILY_KEYWORDS:
-        for pat in patterns:
-            if re.search(pat, q):
-                return fam
-    return ""
-
-# -------------------------------
-# Scoring semplice
-# -------------------------------
-def score_item(q: str, item: Dict[str, Any]) -> float:
+def detect_lang(q: str) -> str:
     ql = q.lower()
-    score = 0.0
-    if item.get("q"):
-        score += len(set(ql.split()) & set(item["q"].lower().split()))
-    if item.get("answer"):
-        ans = item["answer"].lower()
-        for tok in ["p560","ctf","ctl","maxi","lamiera","viti","chiod","rete","taratura","hsbr14"]:
-            if tok in ql and tok in ans:
-                score += 0.8
-    for t in item.get("tags", []):
-        if isinstance(t, str) and t.lower() in ql:
-            score += 1.2
-    return score
+    # euristica minimal: rileva EN/FR/DE/ES
+    en = any(w in ql for w in ["what", "how", "can", "difference", "which", "vs"])
+    fr = any(w in ql for w in ["quelle", "comment", "peut-on", "différence"])
+    de = any(w in ql for w in ["was", "wie", "unterschied", "kann", "zwischen"])
+    es = any(w in ql for w in ["qué", "cómo", "puedo", "diferencia", "entre"])
+    if fr: return "fr"
+    if de: return "de"
+    if es: return "es"
+    if en: return "en"
+    return "it"
 
-# -------------------------------
-# Clean-up tono/duplicati
-# -------------------------------
-def clean_answer(text: str) -> str:
-    if not text: return ""
-    text = re.sub(r"^\s*no\s*[:\.]\s*", "", text, flags=re.I)  # niente "No." in testa
-    text = re.sub(r"(\*?Nota RAG:[^\n]*\.)\s*(\*?Nota RAG:[^\n]*\.)", r"\1", text, flags=re.I)  # dedup
-    return text.strip()
+def format_answer(item: Dict[str,Any], lang: str) -> str:
+    # seleziona lingua se disponibile
+    ans = item.get("answer","")
+    if lang == "en" and item.get("answer_en"): ans = item["answer_en"]
+    if lang == "fr" and item.get("answer_fr"): ans = item["answer_fr"]
+    if lang == "de" and item.get("answer_de"): ans = item["answer_de"]
+    if lang == "es" and item.get("answer_es"): ans = item["answer_es"]
 
-# -------------------------------
-# Fallback canonici
-# -------------------------------
-CANONICAL = {
-    "P560": (
-        "**P560 — Utensile dedicato per CTF (posa a secco)**\n"
-        "**Quando si usa**: posa dei connettori CTF su travi in acciaio S275–S355; ammessa lamiera grecata "
-        "**1×1,5 mm** o **2×1,0 mm** solo se **ben serrata** all’ala.\n\n"
-        "**Sequenza operativa**\n"
-        "1) Tracciamento maglia e pulizia del punto d’impatto.\n"
-        "2) Appoggio del connettore e **doppia chiodatura (2×HSBR14)** con **SPIT P560**: utensile perpendicolare, pressione piena.\n"
-        "3) **Taratura**: eseguire **2–3 tiri di prova** sullo stesso acciaio; chiodi a **filo piastra** (no sporgenze).\n"
-        "4) Registrare potenza impostata e lotti cartucce nel **giornale lavori**.\n\n"
-        "**Sicurezza (DPI)**: occhiali EN166, guanti antitaglio, protezione udito; **perimetro 3 m**.\n\n"
-        "**Errori comuni**\n"
-        "- Lamiera non serrata → rimbalzo; serrare con morsetti/puntellazioni.\n"
-        "- Potenza insufficiente → chiodi sporgenti.\n"
-        "- Connettore disassato → contatto piastra/ala insufficiente.\n\n"
-        "**Checklist rapida**\n"
-        "• 2–3 tiri di prova • Doppia chiodatura completata • Piastra aderente • Lamiera ben serrata • DPI + perimetro 3 m\n\n"
-        "*Nota RAG: risposte filtrate su prodotti Tecnaria; no marchi terzi.*"
-    ),
-    "CTF": (
-        "**CTF — Connettori per acciaio-calcestruzzo (posa a secco)**\n"
-        "**Fissaggio**: SPIT **P560** + **2 chiodi HSBR14** per connettore. Trave S275–S355; anima ≥ **6 mm**.\n"
-        "Con lamiera: **1×1,5 mm** o **2×1,0 mm** **ben serrata** all’ala; posa **sopra la lamiera**.\n\n"
-        "**Taratura & Sicurezza**: 2–3 tiri di prova; chiodi a filo piastra; DPI EN166/guanti/udito; perimetro 3 m.\n\n"
-        "**Checklist**: doppia chiodatura, piastra aderente, rete a metà spessore, cls ≥ C25/30.\n\n"
-        "*Nota RAG: risposte filtrate su prodotti Tecnaria; no marchi terzi.*"
-    ),
+    # garantisce struttura GOLD: se già narrativa, lascia; altrimenti imposta baseline
+    gold = ans.strip()
+    if not gold:
+        gold = (
+            "**Contesto** Risposta non disponibile.\n\n"
+            "**Istruzioni/Scelta** Consultare documentazione Tecnaria.\n\n"
+            "**Errori comuni** —\n\n"
+            "**Checklist** —\n\n"
+            "*Nota RAG: risposte filtrate su prodotti Tecnaria; no marchi terzi.*"
+        )
+    return gold
+
+# priorità famiglie per trigger diretti
+FAMILY_ALIAS = {
+    "P560": {"p560", "spit p560", "chiodatrice", "sparo", "propulsori", "hsbr14"},
+    "CTF": {"ctf", "acciaio", "trave", "hsbr14", "lamiera", "s275", "s355"},
+    "CTL": {"ctl", "legno", "soletta", "trave legno"},
+    "CTL MAXI": {"maxi", "ctl maxi", "tavolato", "assito"},
+    "CTCEM": {"ctcem", "laterocemento", "piastra dentata"},
+    "VCEM": {"vcem", "laterocemento", "preforo"},
+    "DIAPASON": {"diapason"},
+    "GTS": {"gts", "manicotti", "tiranti"},
+    "ACCESSORI": {"accessori", "viti", "chiodi", "kit", "cartucce"},
 }
 
-# -------------------------------
-# Best answer selection
-# -------------------------------
-def best_answer(query: str) -> Dict[str, Any]:
-    fam = classify_family(query)
-    candidates = []
-    pool = GOLD_ITEMS
-    if fam:
-        for it in GOLD_ITEMS:
-            if it.get("family","").strip().lower() == fam.lower():
-                candidates.append(it)
-        pool = candidates or GOLD_ITEMS
+COMPARATORS = {
+    "CTL vs CTL MAXI": ({"ctl"}, {"maxi","ctl maxi"}),
+    "CTL vs CTF": ({"ctl"}, {"ctf"}),
+    "CTCEM vs VCEM": ({"ctcem"}, {"vcem"}),
+    "P560 vs generiche": ({"p560"}, {"chiodatrice generica","generica"}),
+}
 
-    if not pool:
-        txt = CANONICAL.get(fam, "")
-        return {"family": fam or "", "score": 0.0, "answer": clean_answer(txt)}
+def score_item(q: str, item: Dict[str,Any]) -> float:
+    q_tokens = set(tokenize(q))
+    score = 0.0
 
-    scored = []
-    for it in pool:
-        s = score_item(query, it)
-        if fam and it.get("family","").strip().lower() == fam.lower():
-            s += 1.5
-        scored.append((s, it))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    top_score, top = scored[0]
-    ans = clean_answer(top.get("answer",""))
+    # match su domande registrate
+    for qq in item.get("questions",[]):
+        overlap = len(q_tokens & set(tokenize(qq)))
+        score += overlap * 1.5
 
-    if (not ans or len(ans) < 120) and fam in CANONICAL:
-        base = CANONICAL[fam]
-        if ans and ans not in base:
-            ans = f"{ans}\n\n{base}"
-        else:
-            ans = base
+    # match su tag/keywords (boost)
+    tagset = set(item.get("tags",[]))
+    overlap_tags = len(q_tokens & tagset)
+    score += overlap_tags * 2.0
 
-    return {"family": fam or (top.get("family") or ""), "score": round(float(top_score), 2), "answer": clean_answer(ans or "")}
+    # boost per famiglia se trigger presente
+    fam = item.get("family","")
+    triggers = FAMILY_ALIAS.get(fam, set())
+    if len(q_tokens & {t.lower() for t in triggers})>0:
+        score += 3.0
 
-# -------------------------------
-# HTML (no f-string!) + replace
-# -------------------------------
-HTML_PAGE_TEMPLATE = """
+    # boost comparazioni
+    for name,(a,b) in COMPARATORS.items():
+        if (q_tokens & a) and (q_tokens & b):
+            # se l'item contiene entrambi i gruppi nei tag → più alto
+            if set(a|b).issubset(set(tagset)):
+                score += 4.0
+            else:
+                score += 2.0
+
+    # piccola penalità se famiglia molto distante da trigger presenti
+    fam_hits = 1 if len(q_tokens & {t.lower() for t in triggers})>0 else 0
+    if fam_hits==0 and fam in ("P560","CTF") and ("p560" in q_tokens or "ctf" in q_tokens):
+        score -= 0.5
+
+    return score
+
+def is_off_domain(q: str) -> bool:
+    # se non troviamo nessun trigger Tecnaria e nessun token noto, blocchiamo
+    tok = set(tokenize(q))
+    tecnaria_tokens = {"ctf","ctl","maxi","p560","ctcem","vcem","diapason","gts","tecnaria","connettore","lamiera","soletta"}
+    return len(tok & tecnaria_tokens) == 0
+
+# -----------------------------
+# Bootstrap
+# -----------------------------
+def bootstrap():
+    global GOLD_ITEMS, FAMILIES
+    GOLD_ITEMS = load_dataset(DATA_PATH)
+    FAMILIES = {it["family"] for it in GOLD_ITEMS if it["family"]}
+    # normalizzazione tag per matching
+    for it in GOLD_ITEMS:
+        it["tags"] = [t.lower() for t in it.get("tags",[])]
+bootstrap()
+
+# -----------------------------
+# UI
+# -----------------------------
+UI_HTML = f"""
 <!doctype html>
 <html lang="it">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>{{APP_TITLE}}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>{html.escape(TITLE)}</title>
 <style>
-  body { margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b0b0b; color:#fff; }
-  .header {
-    background: linear-gradient(90deg, #ff7a1a, #0b0b0b);
-    padding: 28px 18px;
-  }
-  .wrap { max-width: 980px; margin: 0 auto; }
-  h1 { margin: 0 0 8px; font-size: 28px; font-weight: 800; }
-  .subtitle { opacity:.9; }
-  .searchbox { margin: 22px 0; display:flex; gap:10px; }
-  input[type="text"] {
-    flex: 1; padding: 14px 16px; border-radius: 12px; border: 1px solid #222; background: #111; color: #fff; outline:none;
-  }
-  button {
-    padding: 14px 18px; border-radius: 12px; border: 0; background: #ff7a1a; color:#0b0b0b; font-weight:800; cursor:pointer;
-  }
-  .pillbar { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
-  .pill {
-    background:#161616; border:1px solid #222; padding:8px 10px; border-radius:999px; font-size:13px; cursor:pointer;
-  }
-  .grid { display:grid; grid-template-columns: 2fr 3fr; gap: 18px; margin: 22px 0 40px; }
-  .card { background:#0f0f0f; border:1px solid #1b1b1b; border-radius:16px; padding:18px; }
-  .muted { color:#cfcfcf; opacity:.8; font-size:13px; }
-  .ans h3 { margin:0 0 8px; }
-  .meta { font-size:12px; color:#bbb; margin:6px 0 14px; }
-  .answer { line-height:1.5; white-space:pre-wrap; }
+  body {{
+    margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    background: linear-gradient(135deg,#ff7a18 0%, #111 60%);
+    color:#111;
+  }}
+  .wrap{{max-width:1000px;margin:0 auto;padding:32px}}
+  .hero{{background:#fff; border-radius:20px; padding:28px 28px 20px; box-shadow:0 10px 30px rgba(0,0,0,.15)}}
+  h1{{margin:0;font-size:28px}}
+  .subtitle{{color:#555;margin-top:6px}}
+  .bar{{margin-top:18px; display:flex; gap:10px}}
+  input[type=text]{{flex:1;padding:14px;border-radius:12px;border:1px solid #ddd;font-size:16px}}
+  button{{padding:14px 18px;border-radius:12px;border:0;background:#111;color:#fff;font-weight:600;cursor:pointer}}
+  .pills{{display:flex;flex-wrap:wrap; gap:10px; margin-top:12px}}
+  .pill{{background:#111;color:#fff;border-radius:999px;padding:8px 12px;font-size:13px;cursor:pointer}}
+  .panel{{margin-top:16px;background:#fff;border-radius:16px;padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.15)}}
+  .muted{{color:#666;font-size:13px}}
+  pre {{white-space:pre-wrap;}}
+  .kv{{display:flex; gap:14px; flex-wrap:wrap; margin:6px 0 0}}
+  .kv span{{background:#f3f3f3; border-radius:8px; padding:6px 8px; font-size:12px}}
 </style>
 </head>
 <body>
-  <div class="header">
-    <div class="wrap">
-      <h1>Trova la soluzione, in linguaggio Tecnaria.</h1>
-      <div class="subtitle">Bot ufficiale — risposte su CTF, CTL/CTL MAXI, P560, CTCEM/VCEM, confronti, codici, ordini.</div>
-      <div class="searchbox">
-        <input id="q" type="text" placeholder="Scrivi la domanda (es. ‘Mi parli della P560?’)" />
-        <button onclick="ask()">Chiedi a Sinapsi</button>
-      </div>
-      <div class="pillbar">
-        <div class="pill" onclick="sample('Mi parli della P560?')">P560 (istruzioni)</div>
-        <div class="pill" onclick="sample('CTL MAXI su tavolato 30 mm e soletta 50 mm: quali viti?')">CTL MAXI + viti</div>
-        <div class="pill" onclick="sample('Posso usare CTL e CTL MAXI nello stesso solaio?')">Mix CTL/MAXI</div>
-        <div class="pill" onclick="sample('I CTCEM usano resine?')">CTCEM resine?</div>
-        <div class="pill" onclick="sample('Mi dai i codici dei CTF?')">Codici CTF</div>
-      </div>
+<div class="wrap">
+  <div class="hero">
+    <h1>Tecnaria Sinapsi — Q/A</h1>
+    <div class="subtitle">Bot ufficiale — risposte GOLD su CTF, CTL/CTL MAXI, P560, CTCEM/VCEM, DIAPASON, GTS, ACCESSORI.</div>
+    <div class="bar">
+      <input id="q" type="text" placeholder="Chiedi a Sinapsi… Es: Mi parli della P560? Differenza CTL e CTL MAXI?" />
+      <button onclick="ask()">Chiedi</button>
+    </div>
+    <div class="pills">
+      <div class="pill" onclick="preset('Mi parli della P560?')">P560 (istruzioni)</div>
+      <div class="pill" onclick="preset('Codici dei CTF?')">Codici CTF</div>
+      <div class="pill" onclick="preset('CTL vs CTL MAXI?')">Confronto CTL</div>
+      <div class="pill" onclick="preset('CTCEM: servono resine?')">CTCEM resine?</div>
+      <div class="pill" onclick="preset('Posa CTF su S235 con lamiera 2×1,0 H75?')">CTF + lamiera</div>
     </div>
   </div>
-  <div class="wrap grid">
-    <div class="card">
-      <div class="muted">Endpoint /qa/ask: <span id="hstatus">…</span></div>
-      <div class="muted">Famiglia: <span id="fam">—</span> | Score: <span id="score">—</span></div>
-    </div>
-    <div class="card ans">
-      <h3>Risposta Migliore</h3>
-      <div class="answer" id="answer">—</div>
-    </div>
+
+  <div class="panel">
+    <div id="meta" class="muted">Endpoint <code>/qa/ask</code> • Health: <span id="hstatus">…</span></div>
+    <div id="result" style="margin-top:10px"></div>
   </div>
+</div>
+
 <script>
-async function health(){
-  const r = await fetch('/health');
-  document.getElementById('hstatus').innerText = r.ok ? 'ok' : 'ko';
-}
-function sample(v){ document.getElementById('q').value=v; ask(); }
+async function health(){ const r = await fetch('/health'); document.getElementById('hstatus').innerText = r.ok ? 'ok' : 'ko'; }
+function preset(t){ document.getElementById('q').value=t; ask(); }
 async function ask(){
-  const q = document.getElementById('q').value || '';
+  const q = document.getElementById('q').value.trim();
+  if(!q){ return; }
   const r = await fetch('/qa/ask?q='+encodeURIComponent(q));
-  const j = await r.json();
-  document.getElementById('fam').innerText = j.family || '—';
-  document.getElementById('score').innerText = (j.score ?? '—');
-  document.getElementById('answer').innerText = j.answer || '—';
+  const js = await r.json();
+  const fam = js.family ? js.family : 'N/D';
+  const score = js.score !== undefined ? js.score.toFixed(2) : 'N/D';
+  document.getElementById('result').innerHTML =
+    `<div class="kv"><span><b>Famiglia:</b> ${fam}</span><span><b>Score:</b> ${score}</span></div>` +
+    `<h3>Risposta Migliore</h3><pre>${js.answer}</pre>`;
 }
 health();
 </script>
@@ -252,27 +226,74 @@ health();
 </html>
 """
 
-HTML_PAGE = HTML_PAGE_TEMPLATE.replace("{{APP_TITLE}}", APP_TITLE)
-
 @app.get("/", response_class=HTMLResponse)
 def home():
-    return HTML_PAGE
+    return UI_HTML
 
+# -----------------------------
+# API
+# -----------------------------
 @app.get("/health")
 def health():
+    exists = os.path.exists(DATA_PATH)
+    size = os.path.getsize(DATA_PATH) if exists else 0
     return {
-        "title": APP_TITLE,
+        "title": TITLE,
         "endpoints": {"health": "/health", "ask": "/qa/ask?q=MI%20PARLI%20DELLA%20P560%20%3F"},
-        "data_file": str(DATA_PATH),
-        "items_loaded": len(GOLD_ITEMS)
+        "data_file": DATA_PATH,
+        "dataset_exists": exists,
+        "dataset_size_bytes": size,
+        "items_loaded": len(GOLD_ITEMS),
+        "families": sorted(list(FAMILIES)),
+        "routes": ["/","/health","/qa/ask","/ask","/debug"]
     }
+
+@app.get("/debug")
+def debug():
+    from collections import Counter
+    fam_count = Counter([it["family"] for it in GOLD_ITEMS])
+    top = fam_count.most_common(5)
+    empties = sum(1 for it in GOLD_ITEMS if not it.get("answer"))
+    return {"top_families": top, "items": len(GOLD_ITEMS), "empty_answers": empties}
 
 @app.get("/qa/ask")
 def qa_ask(q: str = Query(..., min_length=2)):
-    guard_terms = ["tecnaria","ctf","ctl","p560","ctcem","vcem","diapason","gts","connettori","lamiera","viti","chiod"]
-    if not any(t in q.lower() for t in guard_terms):
-        msg = ("Sono il bot ufficiale Tecnaria (Bassano del Grappa). "
-               "Rispondo solo a domande su prodotti e sistemi Tecnaria (CTF, CTL/CTL MAXI, P560, CTCEM/VCEM, ecc.).")
-        return JSONResponse({"family": "", "score": 0.0, "answer": msg})
-    res = best_answer(q)
-    return JSONResponse(res)
+    q_stripped = q.strip()
+    # filtro dominio
+    if is_off_domain(q_stripped):
+        return {
+            "family": None,
+            "score": 0,
+            "answer": ("Sono il bot ufficiale **Tecnaria** (Bassano del Grappa). "
+                       "Rispondo solo a domande su prodotti e sistemi Tecnaria (CTF, CTL/CTL MAXI, P560, CTCEM/VCEM, DIAPASON, GTS, ACCESSORI).")
+        }
+
+    if not GOLD_ITEMS:
+        return {"family": None, "score": 0,
+                "answer": "Dataset non caricato. Verifica `static/data/tecnaria_gold.json`."}
+
+    # ranking
+    ranked = sorted(
+        ((score_item(q_stripped, it), it) for it in GOLD_ITEMS),
+        key=lambda x: x[0],
+        reverse=True
+    )
+    top_score, top_item = ranked[0]
+    lang = detect_lang(q_stripped)
+    ans = format_answer(top_item, lang)
+
+    return {
+        "family": top_item.get("family"),
+        "score": float(top_score),
+        "answer": ans
+    }
+
+@app.get("/ask")
+def ask_alias(q: str = Query(..., min_length=2)):
+    return qa_ask(q)
+
+# hot-reload dataset (facoltativo)
+@app.get("/admin/reload")
+def admin_reload():
+    bootstrap()
+    return {"reloaded": True, "items_loaded": len(GOLD_ITEMS)}
