@@ -5572,6 +5572,145 @@
         "lamiera",
         "p560"
       ]
+    },
+    {
+      "id": "GOLD-401",
+      "family": "P560",
+      "lang": "it",
+      "question": "P560 (taratura) — Come regolo la potenza per evitare chiodi sporgenti o schiacciati?",
+      "answer": "Esegui 2–3 tiri di prova sullo stesso acciaio del cantiere partendo da potenza media. Se il chiodo sporge >1 mm aumenta di un livello; se il gambo risulta deformato o affondato, riduci. Mantieni la boccola pulita, perpendicolarità in spinta e registra potenza e lotti cartucce nel giornale lavori.",
+      "tags": [
+        "p560",
+        "taratura",
+        "hsbr14",
+        "cantiere",
+        "procedure"
+      ]
+    },
+    {
+      "id": "GOLD-402",
+      "family": "P560",
+      "lang": "it",
+      "question": "P560 (DPI) — Quali dispositivi di protezione sono obbligatori durante la posa CTF?",
+      "answer": "Indossa occhiali EN166, guanti antitaglio, cuffie/inserti udito; delimita un perimetro di sicurezza di 3 m. Con lamiera grecata, serra la lamiera con morsetti per evitare rimbalzi prima di sparare.",
+      "tags": [
+        "p560",
+        "dpi",
+        "sicurezza",
+        "ctf"
+      ]
+    },
+    {
+      "id": "GOLD-403",
+      "family": "P560",
+      "lang": "it",
+      "question": "P560 (lamiera) — Cosa verificare con lamiera grecata H55/H75?",
+      "answer": "La lamiera deve aderire perfettamente all’ala della trave (morsetti/puntellazioni locali). Posa il CTF sopra la lamiera e usa doppia chiodatura HSBR14. Effettua mock‑up con 3–5 connettori, controllando chiodi a filo piastra e assenza di rimbalzi.",
+      "tags": [
+        "p560",
+        "lamiera",
+        "ctf",
+        "mockup"
+      ]
+    },
+    {
+      "id": "GOLD-404",
+      "family": "P560",
+      "lang": "it",
+      "question": "P560 (compatibilità) — Posso usare altre chiodatrici in alternativa alla SPIT P560?",
+      "answer": "No. Per i CTF Tecnaria è ammessa esclusivamente la chiodatrice SPIT P560 con kit/adattatori dedicati Tecnaria. Altre macchine non sono ammesse.",
+      "tags": [
+        "p560",
+        "compatibilità",
+        "ctf",
+        "regole"
+      ]
+    },
+    {
+      "id": "GOLD-405",
+      "family": "P560",
+      "lang": "it",
+      "question": "P560 (colpi a vuoto) — Cosa faccio se sento un colpo a vuoto?",
+      "answer": "Interrompi, scarica l’utensile, rimuovi cartuccia e chiodo, controlla la pulizia della boccola e la corretta aderenza del pezzo. Riprendi con una prova di taratura prima di proseguire.",
+      "tags": [
+        "p560",
+        "manutenzione",
+        "sicurezza"
+      ]
+    },
+    {
+      "id": "GOLD-406",
+      "family": "P560",
+      "lang": "it",
+      "question": "P560 (manutenzione) — Ogni quanto pulire boccola e cursori?",
+      "answer": "Pulizia leggera quotidiana e approfondita a fine giornata in ambienti polverosi (getto, tagli); lubrifica secondo manuale SPIT. Sostituisci tempestivamente parti usurate.",
+      "tags": [
+        "p560",
+        "manutenzione",
+        "attrezzatura"
+      ]
+    },
+    {
+      "id": "GOLD-407",
+      "family": "P560",
+      "lang": "it",
+      "question": "P560 (ordini) — Posso noleggiare la P560 e acquistare HSBR14?",
+      "answer": "Sì. Sono disponibili nolo/vendita P560 e consumabili HSBR14/propulsori. Il commerciale Tecnaria conferma disponibilità, tempi e trasporto sulla base del cantiere.",
+      "tags": [
+        "p560",
+        "commerciale",
+        "ordini"
+      ]
+    },
+    {
+      "id": "GOLD-408",
+      "family": "P560",
+      "lang": "it",
+      "question": "P560 (checklist) — Controlli rapidi prima di iniziare la produzione",
+      "answer": "1) Mock‑up 3–5 pezzi; 2) Lamiera serrata e trave pulita; 3) Taratura a 2–3 tiri; 4) Chiodi a filo piastra; 5) DPI e perimetro 3 m; 6) Registri: potenza, lotti cartucce, foto.",
+      "tags": [
+        "p560",
+        "checklist",
+        "qualità"
+      ]
+    },
+    {
+      "id": "GOLD-409",
+      "family": "P560",
+      "lang": "it",
+      "question": "P560 (lingue) — Come si definisce in inglese o tedesco?",
+      "answer": "EN: powder‑actuated tool SPIT P560. DE: Bolzensetzgerät SPIT P560. FR: Outil à poudre SPIT P560. ES: Herramienta a pólvora SPIT P560.",
+      "tags": [
+        "p560",
+        "terminologia",
+        "multilingua"
+      ]
+    },
+    {
+      "id": "GOLD-410",
+      "family": "CONFRONTO",
+      "lang": "it",
+      "question": "Confronto utensili — Perché P560 (SPIT) e non una chiodatrice generica?",
+      "answer": "La P560 è l’unica macchina validata per i CTF Tecnaria: garantisce energia/propulsori compatibili con HSBR14, geometrie di appoggio e kit/adattatori dedicati. L’uso di utensili generici espone a rimbalzi, penetrazione insufficiente o deformazioni del chiodo, con perdita di collaborazione e non conformità.",
+      "tags": [
+        "confronto",
+        "p560",
+        "utensili",
+        "ctf"
+      ]
+    },
+    {
+      "id": "GOLD-411",
+      "family": "CONFRONTO",
+      "lang": "it",
+      "question": "Confronto posa — P560 + CTF vs viti Ø10 su legno (CTL)",
+      "answer": "P560+CTF: travi in acciaio S235–S355, fissaggio a secco su ala anche con lamiera; doppia chiodatura HSBR14. Viti Ø10 (CTL): travi in legno con soletta 4–6 cm; nessuna resina. I sistemi non sono intercambiabili: scegliere in base al materiale strutturale.",
+      "tags": [
+        "confronto",
+        "p560",
+        "ctf",
+        "ctl"
+      ]
     }
   ]
 }
