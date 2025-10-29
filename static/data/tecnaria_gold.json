@@ -22,7 +22,28 @@
       "Stile narrativo GOLD con checklist, parametri tecnici, safety e codici d'ordine.",
       "Trigger semantici con peso 0..1 e keywords per routing Sinapsi/A2SR.",
       "File unico pronto per static/data/tecnaria_gold.json."
-    ]
+    ],
+    "source_provenance": {
+      "type": "chat_corpus",
+      "sessions": [
+        "this conversation"
+      ],
+      "note": "Contenuti consolidati da indicazioni di Roberto in chat; nessuna citazione testuale esterna trasferita.",
+      "updated_at": "2025-10-29T19:52:34"
+    },
+    "frozen": true,
+    "compatibility": {
+      "dual_keys": true,
+      "keys": [
+        "domanda",
+        "risposta",
+        "question",
+        "answer",
+        "family"
+      ],
+      "note": "File compatibile con loader IT/EN; non modificare i nomi chiave."
+    },
+    "last_fixed_at": "2025-10-29T20:07:57"
   },
   "items": [
     {
@@ -39,7 +60,9 @@
           "taratura",
           "sicurezza"
         ]
-      }
+      },
+      "question": "Posso usare una chiodatrice generica per posare i CTF?",
+      "answer": "No. Per i CTF Tecnaria è ammessa esclusivamente la SPIT P560 con kit/adattatori Tecnaria. Ogni connettore si fissa con 2 chiodi HSBR14. Esegui 2–3 tiri di prova sullo stesso acciaio per la taratura; registra potenza e lotti cartucce nel giornale lavori. Sistema interamente meccanico: nessuna resina."
     },
     {
       "id": "GOLD-CTF-LAMIERA-002",
@@ -56,7 +79,9 @@
           "morsetti",
           "puntellazioni"
         ]
-      }
+      },
+      "question": "Con CTF posso posare sopra lamiera grecata? Quali spessori sono ammessi?",
+      "answer": "Sì. Con CTF è ammessa lamiera 1×1,5 mm oppure 2×1,0 mm, purché ben serrata all’ala della trave per evitare rimbalzi. Il connettore si posa SOPRA la lamiera con doppia chiodatura (2×HSBR14). Effettua morsettaggi/puntellazioni locali per stabilizzare la lamiera durante i tiri."
     },
     {
       "id": "GOLD-CTF-POSA-003",
@@ -74,7 +99,9 @@
           "HSBR14",
           "checklist"
         ]
-      }
+      },
+      "question": "CTF su trave S355 con lamiera H75 (2×1,0 mm): qual è la sequenza corretta di posa con P560?",
+      "answer": "1) Tracciamento maglia e pulizia del punto d’impatto. 2) Appoggio del connettore sopra la lamiera e assetto perpendicolare. 3) Doppia chiodatura con SPIT P560 mantenendo pressione decisa. 4) Controllo finale: chiodi a filo piastra e piastra aderente su tutta l’impronta. 5) Registrazione potenza e lotti cartucce nel giornale lavori. Checklist: 2–3 tiri di prova; lamiera ben serrata; DPI e area sicura 3 m."
     },
     {
       "id": "GOLD-CTF-PARAM-004",
@@ -92,7 +119,9 @@
           "rete",
           "vibrazione"
         ]
-      }
+      },
+      "question": "Parametri consigliati per CTF (acciaio, lamiera, getto, attrezzatura)?",
+      "answer": "Acciaio S275–S355 con anima ≥ 6 mm. Lamiera: 1×1,5 mm o 2×1,0 mm ben aderenti. Getto: rete a metà spessore e calcestruzzo ≥ C25/30, vibrazione moderata. Attrezzatura: SPIT P560 con kit Tecnaria; nessuna resina."
     },
     {
       "id": "GOLD-CTF-ERRORI-005",
@@ -109,7 +138,9 @@
           "rimbalzo",
           "piastra"
         ]
-      }
+      },
+      "question": "Errori tipici da evitare con i CTF su trave d’acciaio (con lamiera)?",
+      "answer": "Potenza insufficiente (chiodi parzialmente fuori), lamiera non ben serrata (rimbalzo), connettore disassato (scarso contatto piastra/ala). Tarare con 2–3 tiri di prova e verificare sempre che le teste dei chiodi risultino a filo piastra."
     },
     {
       "id": "GOLD-CTF-CHECK-006",
@@ -125,7 +156,9 @@
           "sicurezza",
           "taratura"
         ]
-      }
+      },
+      "question": "Checklist rapida di controllo per posa CTF?",
+      "answer": "• 2–3 tiri di prova → potenza ok • piastra aderente • doppia chiodatura completata • lamiera serrata • DPI e area sicura 3 m."
     },
     {
       "id": "GOLD-P560-BASE-007",
@@ -141,7 +174,9 @@
           "sicurezza",
           "taratura"
         ]
-      }
+      },
+      "question": "Mi spieghi la P560?",
+      "answer": "SPIT P560 è la chiodatrice a sparo dedicata alla posa dei CTF Tecnaria. Usa cartucce propulsive e installa 2 chiodi HSBR14 per connettore. Guida essenziale: eseguire 2–3 tiri di prova sullo stesso acciaio, mantenere l’utensile perpendicolare, assicurare lamiera ben serrata, registrare potenza e lotti cartucce. DPI: occhiali EN166, guanti antitaglio, protezione udito; perimetro di sicurezza 3 m."
     },
     {
       "id": "GOLD-P560-PAT-008",
@@ -157,7 +192,9 @@
           "DPI",
           "manuale"
         ]
-      }
+      },
+      "question": "Serve un patentino specifico per usare la P560?",
+      "answer": "In generale non è richiesto un patentino specifico; è obbligatoria la formazione all’uso in sicurezza e il rispetto dei DPI. Attenersi al manuale e alle istruzioni Tecnaria/SPIT."
     },
     {
       "id": "GOLD-CTL-BASE-009",
@@ -173,7 +210,9 @@
           "viti Ø10",
           "rete"
         ]
-      }
+      },
+      "question": "Cos’è il sistema CTL e dove si usa?",
+      "answer": "CTL è il connettore per solai in legno (travi o tavolati) con fissaggio tramite 2 viti Ø10. Tipiche solette 4–6 cm con rete a metà spessore. Non riguarda lamiere grecate."
     },
     {
       "id": "GOLD-CTL-MAXI-010",
@@ -188,7 +227,9 @@
           "viti Ø10x120",
           "viti Ø10x140"
         ]
-      }
+      },
+      "question": "Quando scegliere CTL MAXI rispetto a CTL?",
+      "answer": "CTL MAXI è dedicato a tavolati importanti (≥ 25–30 mm) e consente l’uso di viti Ø10×120/140. Si sceglie quando lo spessore del piano di appoggio e la geometria del solaio lo richiedono."
     },
     {
       "id": "GOLD-CTL-CODICI-011",
@@ -204,7 +245,9 @@
           "altezze",
           "viti Ø10"
         ]
-      }
+      },
+      "question": "Codici e modelli disponibili per CTL e CTL MAXI?",
+      "answer": "Serie CTL: altezze 12/030–12/060, viti Ø10×100/120. Serie CTL MAXI: 12/040–12/060, viti Ø10×120/140. In ordine specificare famiglia, altezza, quantità, lunghezza viti e destinazione d’uso (trave/tavolato)."
     },
     {
       "id": "GOLD-CTL-VS-CTF-012",
@@ -222,7 +265,9 @@
           "viti Ø10",
           "lamiera"
         ]
-      }
+      },
+      "question": "Differenza tra CTL e CTF (uso, materiali, lamiera/soletta)?",
+      "answer": "CTL/CTL MAXI lavorano su legno con 2 viti Ø10 (100–140 mm), solette tipiche 4–6 cm, rete a metà spessore. CTF lavora su travi in acciaio S275–S355, si fissa con SPIT P560 e 2 chiodi HSBR14 (senza resina), ammette lamiera 1×1,5 o 2×1,0 ben serrata. Non sono intercambiabili."
     },
     {
       "id": "GOLD-CTCEM-BASE-013",
@@ -238,7 +283,9 @@
           "no resine",
           "preforo 11"
         ]
-      }
+      },
+      "question": "I CTCEM per laterocemento usano resine?",
+      "answer": "No. CTCEM è un connettore meccanico a secco. Posa tipica: incisione per sede piastra dentata, preforo ~Ø11 mm prof. ~75 mm, pulizia polveri, avvitatura fino a battuta. Alternativo alle barre piegate + resina."
     },
     {
       "id": "GOLD-VCEM-BASE-014",
@@ -254,7 +301,9 @@
           "meccanico",
           "no resine"
         ]
-      }
+      },
+      "question": "VCEM richiede resina? Differenze con CTCEM?",
+      "answer": "VCEM è anch’esso meccanico a secco, con procedura analoga (preforo ~Ø11 mm prof. ~75 mm, pulizia, avvitatura a battuta). La scelta tra CTCEM e VCEM dipende da dettagli costruttivi e quote disponibili."
     },
     {
       "id": "GOLD-DIAPASON-015",
@@ -270,7 +319,9 @@
           "viti",
           "bulloni"
         ]
-      }
+      },
+      "question": "Che cos’è la linea DIAPASON e quando si usa?",
+      "answer": "DIAPASON è una linea di piastre/staffe per collegamenti strutturali su legno o acciaio, fissate con viti o bulloni; non impiegano P560. Si usa per giunzioni, ripartizioni di carico e ancoraggi locali."
     },
     {
       "id": "GOLD-GTS-016",
@@ -285,7 +336,9 @@
           "accessori",
           "coppia serraggio"
         ]
-      }
+      },
+      "question": "Che cos’è la linea GTS?",
+      "answer": "GTS è una linea di manicotti e accessori di fissaggio complementari ai sistemi principali (CTL, CTL MAXI, etc.). Vanno scelti per compatibilità e coppia di serraggio prevista in scheda."
     },
     {
       "id": "GOLD-COMM-ORDINE-017",
@@ -301,7 +354,9 @@
           "HSBR14",
           "P560"
         ]
-      }
+      },
+      "question": "Come posso fare un ordine di CTF con utensile e chiodi?",
+      "answer": "Indica in richiesta: quantità CTF, chiodi HSBR14 e utensile SPIT P560 (nolo/vendita). Specifica cantiere, tempi di consegna e recapiti. Per supporto tecnico allega schema di posa e foto dei primi esemplari."
     },
     {
       "id": "GOLD-P560-SIC-018",
@@ -317,7 +372,9 @@
           "EN166",
           "perimetro 3 m"
         ]
-      }
+      },
+      "question": "Quali DPI e accortezze di sicurezza servono con P560?",
+      "answer": "DPI: occhiali EN166, guanti antitaglio, protezione udito. Perimetro di sicurezza 3 m durante i tiri. Mantenere l’utensile perpendicolare e verificare l’aderenza della piastra dopo ogni tiro."
     }
   ]
 }
