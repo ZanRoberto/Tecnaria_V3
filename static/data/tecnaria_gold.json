@@ -22,7 +22,15 @@
       "Stile narrativo GOLD con checklist, parametri tecnici, safety e codici d'ordine.",
       "Trigger semantici con peso 0..1 e keywords per routing Sinapsi/A2SR.",
       "File unico pronto per static/data/tecnaria_gold.json."
-    ]
+    ],
+    "source_provenance": {
+      "type": "chat_corpus",
+      "sessions": [
+        "this conversation"
+      ],
+      "note": "Contenuti consolidati da indicazioni di Roberto in chat; nessuna citazione testuale esterna trasferita.",
+      "updated_at": "2025-10-29T19:52:34"
+    }
   },
   "items": [
     {
