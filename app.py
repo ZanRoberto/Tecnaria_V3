@@ -1,214 +1,277 @@
 import json, re, os
 from pathlib import Path
-from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, Query
-from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, JSONResponse
+from typing import List, Dict, Any
 
 APP_TITLE = "Tecnaria Sinapsi — Q/A"
 DATA_PATH = Path(__file__).parent / "static" / "data" / "tecnaria_gold.json"
 
 app = FastAPI(title=APP_TITLE)
 
-# ---------------------------
-# Utilities
-# ---------------------------
+# -------------------------------
+# Helper: safe load dataset
+# -------------------------------
 def load_items() -> List[Dict[str, Any]]:
     if not DATA_PATH.exists():
         return []
     try:
-        data = json.loads(DATA_PATH.read_text(encoding="utf-8"))
+        with open(DATA_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # normalizza in lista
         if isinstance(data, dict) and "items" in data:
-            return data["items"]
-        if isinstance(data, list):
-            return data
-        return []
+            items = data.get("items", [])
+        elif isinstance(data, list):
+            items = data
+        else:
+            items = []
+        # coerci chiavi basiche
+        out = []
+        for it in items:
+            if isinstance(it, dict):
+                fam = str(it.get("family") or it.get("famiglia") or "").strip()
+                q = str(it.get("q") or it.get("question") or "").strip()
+                a = str(it.get("answer") or it.get("a") or "").strip()
+                tags = it.get("tags") or it.get("keywords") or []
+                if isinstance(tags, str):
+                    tags = [tags]
+                out.append({
+                    "family": fam,
+                    "q": q,
+                    "answer": a,
+                    "tags": tags,
+                })
+        return out
     except Exception:
         return []
 
-ITEMS: List[Dict[str, Any]] = load_items()
+GOLD_ITEMS: List[Dict[str, Any]] = load_items()
 
-# Family boosts and keyword routing
-FAMILY_ALIASES = {
-    "CTF": ["ctf", "acciaio", "trave acciaio", "hsbr14", "lamiera", "piastra", "s275", "s355"],
-    "CTL": ["ctl", "legno", "trave legno", "soletta 4", "soletta 5"],
-    "CTL_MAXI": ["ctl maxi", "maxi", "tavolato", "assito", "viti 120", "viti 140"],
-    "P560_TOOL": ["p560", "chiodatrice", "sparo", "propulsori", "cartucce", "taratura", "colpo a vuoto"],
-    "CTCEM": ["ctcem", "laterocemento", "piastra dentata", "preforo"],
-    "VCEM": ["vcem", "laterocemento", "preforo", "avvitare"],
-    "DIAPASON": ["diapason"],
-    "GTS": ["gts", "manicotti", "barre filettate"],
-    "ACCESSORI": ["accessori", "kit", "adattatori"],
-    "COMPARAZIONI": ["differenza", "confronto", "vs", "mix", "insieme", "compatibili"],
-    "CODICI_ORDINI": ["codici", "sku", "ordine", "offerta", "distinta"]
+# -------------------------------
+# Routing semantico (priorità famiglie)
+# -------------------------------
+# Nota: P560 deve vincere su CTF quando in query compaiono termini relativi alla chiodatrice.
+FAMILY_KEYWORDS = [
+    ("P560", [
+        r"\bp560\b", r"\bspit\s*p560\b", r"\bchiodatrice\b", r"\bspara(chiodi|chiodi)\b",
+        r"\butensile\b", r"\bpropulsor[ie]\b", r"\bhsbr14\b"
+    ]),
+    ("CTF", [
+        r"\bctf\b", r"\btrave\b.*\bacciaio\b", r"\blamiera\b\s*(grecata|h\d+)?",
+        r"\bchiod[io]?\b", r"\bdoppia\s*chiodatura\b"
+    ]),
+    ("CTL MAXI", [
+        r"\bctl\s*maxi\b", r"\btavolato\b", r"\bassito\b", r"\bviti?\s*ø?\s*10\b", r"\bsoletta\b"
+    ]),
+    ("CTL", [
+        r"\bctl\b", r"\btrave\b.*\blegno\b", r"\bviti?\s*ø?\s*10\b"
+    ]),
+    ("CTCEM", [r"\bctcem\b", r"\blaterocemento\b", r"\bresine?\b", r"\bpre[ -]?foro\b"]),
+    ("VCEM", [r"\bvcem\b", r"\blaterocemento\b", r"\bmeccanico\b"]),
+    ("DIAPASON", [r"\bdiapason\b"]),
+    ("GTS", [r"\bgts\b", r"\bmanicott[io]\b"]),
+    ("ACCESSORI", [r"\baccessori\b", r"\bkit\b", r"\badattator[ei]\b"]),
+]
+
+def classify_family(query: str) -> str:
+    q = query.lower()
+    # priorità: se si parla esplicitamente di P560/utensile → P560 vince su CTF
+    for fam, patterns in FAMILY_KEYWORDS:
+        for pat in patterns:
+            if re.search(pat, q):
+                return fam
+    return ""  # fallback: non classificato
+
+# -------------------------------
+# Scoring semplice (bag of words)
+# -------------------------------
+def score_item(q: str, item: Dict[str, Any]) -> float:
+    ql = q.lower()
+    score = 0.0
+    if item.get("q"):
+        # bonus per match in domanda base
+        score += len(set(ql.split()) & set(item["q"].lower().split()))
+    if item.get("answer"):
+        # peso leggero sul testo risposta
+        ans = item["answer"].lower()
+        for tok in ["p560","ctf","ctl","maxi","lamiera","viti","chiod","rete","taratura","hsbr14"]:
+            if tok in ql and tok in ans:
+                score += 0.8
+    # bonus tags
+    for t in item.get("tags", []):
+        if isinstance(t, str) and t.lower() in ql:
+            score += 1.2
+    return score
+
+# -------------------------------
+# Anti-duplicazioni & tono
+# -------------------------------
+def clean_answer(text: str) -> str:
+    if not text:
+        return ""
+    # togli “No.” iniziale se presente
+    text = re.sub(r"^\s*no\s*[:\.]\s*", "", text, flags=re.I)
+    # de-dup Nota RAG
+    text = re.sub(r"(\*?Nota RAG:[^\n]*\.)\s*(\*?Nota RAG:[^\n]*\.)", r"\1", text, flags=re.I)
+    return text.strip()
+
+# -------------------------------
+# Fallback canonico (se dataset è scarno)
+# -------------------------------
+CANONICAL = {
+    "P560": (
+        "**P560 — Utensile dedicato per CTF (posa a secco)**\n"
+        "**Quando si usa**: posa dei connettori CTF su travi in acciaio S275–S355; ammessa lamiera grecata "
+        "**1×1,5 mm** o **2×1,0 mm** solo se **ben serrata** all’ala.\n\n"
+        "**Sequenza operativa**\n"
+        "1) Tracciamento maglia e pulizia del punto d’impatto.\n"
+        "2) Appoggio del connettore e **doppia chiodatura (2×HSBR14)** con **SPIT P560**: utensile perpendicolare, pressione piena.\n"
+        "3) **Taratura**: eseguire **2–3 tiri di prova** sullo stesso acciaio; chiodi a **filo piastra** (no sporgenze).\n"
+        "4) Registrare potenza impostata e lotti cartucce nel **giornale lavori**.\n\n"
+        "**Sicurezza (DPI)**: occhiali EN166, guanti antitaglio, protezione udito; **perimetro 3 m**.\n\n"
+        "**Errori comuni**\n"
+        "- Lamiera non serrata → rimbalzo; serrare con morsetti/puntellazioni.\n"
+        "- Potenza insufficiente → chiodi sporgenti.\n"
+        "- Connettore disassato → contatto piastra/ala insufficiente.\n\n"
+        "**Checklist rapida**\n"
+        "• 2–3 tiri di prova • Doppia chiodatura completata • Piastra aderente • Lamiera ben serrata • DPI + perimetro 3 m\n\n"
+        "*Nota RAG: risposte filtrate su prodotti Tecnaria; no marchi terzi.*"
+    ),
+    "CTF": (
+        "**CTF — Connettori per acciaio-calcestruzzo (posa a secco)**\n"
+        "**Fissaggio**: SPIT **P560** + **2 chiodi HSBR14** per connettore. Trave S275–S355; anima ≥ **6 mm**.\n"
+        "Con lamiera: **1×1,5 mm** o **2×1,0 mm** **ben serrata** all’ala; posa **sopra la lamiera**.\n\n"
+        "**Taratura & Sicurezza**: 2–3 tiri di prova; chiodi a filo piastra; DPI EN166/guanti/udito; perimetro 3 m.\n\n"
+        "**Checklist**: doppia chiodatura, piastra aderente, rete a metà spessore, cls ≥ C25/30.\n\n"
+        "*Nota RAG: risposte filtrate su prodotti Tecnaria; no marchi terzi.*"
+    ),
 }
 
-# Hard routing for P560 (takes precedence over anything that mentions it)
-def forced_family(query: str) -> Optional[str]:
-    q = query.lower()
-    p560_triggers = ["p560", "chiodatrice", "sparo", "hsbr14", "propulsori", "cartucce", "taratura", "colpo a vuoto", "boccola"]
-    if any(t in q for t in p560_triggers):
-        return "P560_TOOL"
-    return None
+# -------------------------------
+# Selezione top risposta
+# -------------------------------
+def best_answer(query: str) -> Dict[str, Any]:
+    fam = classify_family(query)
+    # filtra per famiglia se classificata
+    candidates = []
+    pool = GOLD_ITEMS
+    if fam:
+        for it in GOLD_ITEMS:
+            if it.get("family","").strip().lower() == fam.lower():
+                candidates.append(it)
+        # se zero in famiglia, usa tutto il pool (poi fallback)
+        pool = candidates or GOLD_ITEMS
 
-# Naive language detection among IT/EN/FR/DE/ES
-def detect_lang(q: str) -> str:
-    ql = q.lower()
-    # quick hints
-    if re.search(r"\b(el|la|los|las|herramienta|hormigón)\b", ql): return "es"
-    if re.search(r"\b(le|la|les|outil|béton)\b", ql): return "fr"
-    if re.search(r"\b(the|tool|concrete|steel|difference)\b", ql): return "en"
-    if re.search(r"\b(die|der|das|werkzeug|beton)\b", ql): return "de"
-    # default italian
-    return "it"
+    if not pool:
+        # nessun dataset: fallback se famiglia nota
+        txt = CANONICAL.get(fam, "")
+        return {"family": fam or "", "score": 0.0, "answer": clean_answer(txt)}
 
-def lang_labels(lang: str) -> Dict[str, str]:
-    MAP = {
-        "it": {"ask":"Chiedi a Sinapsi","answer":"Risposta","family":"Famiglia","score":"Score","ok":"ok"},
-        "en": {"ask":"Ask Sinapsi","answer":"Answer","family":"Family","score":"Score","ok":"ok"},
-        "fr": {"ask":"Demander à Sinapsi","answer":"Réponse","family":"Famille","score":"Score","ok":"ok"},
-        "de": {"ask":"Frag Sinapsi","answer":"Antwort","family":"Familie","score":"Score","ok":"ok"},
-        "es": {"ask":"Pregunta a Sinapsi","answer":"Respuesta","family":"Familia","score":"Puntuación","ok":"ok"},
+    # scoriamo
+    scored = []
+    for it in pool:
+        s = score_item(query, it)
+        # piccolo bonus se family match
+        if fam and it.get("family","").strip().lower() == fam.lower():
+            s += 1.5
+        scored.append((s, it))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top_score, top = scored[0]
+
+    # se risposta povera o mismatch e abbiamo canonico, fondiamo
+    ans = clean_answer(top.get("answer",""))
+    if (not ans or len(ans) < 120) and fam in CANONICAL:
+        base = CANONICAL[fam]
+        if ans and ans not in base:
+            ans = f"{ans}\n\n{base}"
+        else:
+            ans = base
+
+    return {
+        "family": fam or (top.get("family") or ""),
+        "score": round(float(top_score), 2),
+        "answer": clean_answer(ans or "")
     }
-    return MAP.get(lang, MAP["it"])
 
-def score_item(q: str, it: Dict[str, Any]) -> float:
-    s = 0.0
-    ql = q.lower()
-    text = " ".join([
-        it.get("question",""), it.get("answer",""),
-        " ".join(it.get("tags",[])), it.get("family","")
-    ]).lower()
-
-    # exact term overlap
-    for tok in set(re.findall(r"[a-z0-9]+", ql)):
-        if tok in text:
-            s += 1.0
-
-    # family boost by aliases
-    fam = it.get("family","").upper()
-    for k, alias in FAMILY_ALIASES.items():
-        if k == fam:
-            if any(a in ql for a in alias): s += 2.5
-
-    # explicit family words in query
-    if fam and fam.lower() in ql: s += 2.0
-
-    # prefer more “gold” length (richer answer)
-    ans_len = len(it.get("answer",""))
-    s += min(ans_len/800.0, 2.0)
-
-    return s
-
-def select_best(q: str, items: List[Dict[str,Any]]) -> Dict[str,Any]:
-    forced = forced_family(q)
-    candidates = items
-    if forced:
-        candidates = [it for it in items if it.get("family","").upper() == forced]
-        # if nothing found (shouldn’t happen), fallback to all items
-        if not candidates:
-            candidates = items
-
-    # single best
-    best = max(candidates, key=lambda it: score_item(q, it), default=None)
-    return best or {}
-
-def wrap_gold_answer(ans: str, fam: str, lang: str) -> str:
-    # ensure NOTE RAG and single-answer format
-    NOTE = {
-        "it": "\n\n*Nota RAG: risposte filtrate su prodotti Tecnaria; no marchi terzi.*",
-        "en": "\n\n*RAG note: answers filtered to Tecnaria products only; no third-party brands.*",
-        "fr": "\n\n*Note RAG : réponses limitées aux produits Tecnaria ; sans marques tierces.*",
-        "de": "\n\n*RAG-Hinweis: Antworten nur zu Tecnaria-Produkten; keine Fremdmarken.*",
-        "es": "\n\n*Nota RAG: respuestas filtradas sólo a productos Tecnaria; sin marcas de terceros.*",
-    }
-    footer = NOTE.get(lang, NOTE["it"])
-    return ans.strip() + footer
-
-# ---------------------------
-# Web UI
-# ---------------------------
+# -------------------------------
+# UI (pagina unica)
+# -------------------------------
 HTML_PAGE = f"""
 <!doctype html>
 <html lang="it">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>{APP_TITLE}</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
-  .grad {{ background: linear-gradient(90deg, #ff8c00 0%, #111 70%); }}
+  body {{ margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b0b0b; color:#fff; }}
+  .header {{
+    background: linear-gradient(90deg, #ff7a1a, #0b0b0b);
+    padding: 28px 18px;
+  }}
+  .wrap {{ max-width: 980px; margin: 0 auto; }}
+  h1 {{ margin: 0 0 8px; font-size: 28px; font-weight: 800; }}
+  .subtitle {{ opacity:.9; }}
+  .searchbox {{ margin: 22px 0; display:flex; gap:10px; }}
+  input[type="text"] {{
+    flex: 1; padding: 14px 16px; border-radius: 12px; border: 1px solid #222; background: #111; color: #fff; outline:none;
+  }}
+  button {{
+    padding: 14px 18px; border-radius: 12px; border: 0; background: #ff7a1a; color:#0b0b0b; font-weight:800; cursor:pointer;
+  }}
+  .pillbar {{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }}
+  .pill {{
+    background:#161616; border:1px solid #222; padding:8px 10px; border-radius:999px; font-size:13px; cursor:pointer;
+  }}
+  .grid {{ display:grid; grid-template-columns: 2fr 3fr; gap: 18px; margin: 22px 0 40px; }}
+  .card {{ background:#0f0f0f; border:1px solid #1b1b1b; border-radius:16px; padding:18px; }}
+  .muted {{ color:#cfcfcf; opacity:.8; font-size:13px; }}
+  .ans h3 {{ margin:0 0 8px; }}
+  .meta {{ font-size:12px; color:#bbb; margin:6px 0 14px; }}
+  .answer {{ line-height:1.5; white-space:pre-wrap; }}
 </style>
 </head>
-<body class="bg-neutral-50">
-<header class="grad text-white p-6">
-  <div class="max-w-5xl mx-auto">
-    <h1 class="text-3xl font-bold">Tecnaria Sinapsi — Q/A</h1>
-    <p class="opacity-90">Trova la soluzione, in linguaggio Tecnaria.</p>
-  </div>
-</header>
-
-<main class="max-w-5xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-  <section class="md:col-span-2">
-    <div class="bg-white rounded-2xl shadow p-4">
-      <form id="askForm" class="flex gap-2">
-        <input id="q" name="q" autofocus
-          class="flex-1 border rounded-xl px-4 py-3"
-          placeholder="Es. Mi parli della P560? Codici CTF? Differenza CTL vs CTL MAXI?" />
-        <button class="px-4 py-3 rounded-xl bg-black text-white">Chiedi a Sinapsi</button>
-      </form>
-      <div id="meta" class="text-sm text-neutral-500 mt-3"></div>
-      <article id="answer" class="prose max-w-none mt-4"></article>
-    </div>
-  </section>
-
-  <aside class="md:col-span-1">
-    <div class="bg-white rounded-2xl shadow p-4">
-      <h3 class="font-semibold mb-2">Suggerimenti</h3>
-      <div class="flex flex-wrap gap-2">
-        <button class="sug">Mi parli della P560?</button>
-        <button class="sug">Codici CTF</button>
-        <button class="sug">CTL vs CTL MAXI</button>
-        <button class="sug">CTF su S275 con lamiera 1×1,5 mm</button>
-        <button class="sug">CTCEM: servono resine?</button>
+<body>
+  <div class="header">
+    <div class="wrap">
+      <h1>Trova la soluzione, in linguaggio Tecnaria.</h1>
+      <div class="subtitle">Bot ufficiale — risposte su CTF, CTL/CTL MAXI, P560, CTCEM/VCEM, confronti, codici, ordini.</div>
+      <div class="searchbox">
+        <input id="q" type="text" placeholder="Scrivi la domanda (es. ‘Mi parli della P560?’)" />
+        <button onclick="ask()">Chiedi a Sinapsi</button>
+      </div>
+      <div class="pillbar">
+        <div class="pill" onclick="sample('Mi parli della P560?')">P560 (istruzioni)</div>
+        <div class="pill" onclick="sample('CTL MAXI su tavolato 30 mm e soletta 50 mm: quali viti?')">CTL MAXI + viti</div>
+        <div class="pill" onclick="sample('Posso usare CTL e CTL MAXI nello stesso solaio?')">Mix CTL/MAXI</div>
+        <div class="pill" onclick="sample('I CTCEM usano resine?')">CTCEM resine?</div>
+        <div class="pill" onclick="sample('Mi dai i codici dei CTF?')">Codici CTF</div>
       </div>
     </div>
-    <div class="bg-white rounded-2xl shadow p-4 mt-4">
-      <h3 class="font-semibold mb-2">Stato</h3>
-      <pre class="text-xs" id="state"></pre>
+  </div>
+  <div class="wrap grid">
+    <div class="card">
+      <div class="muted">Endpoint /qa/ask: <span id="hstatus">…</span></div>
+      <div class="muted">Famiglia: <span id="fam">—</span> | Score: <span id="score">—</span></div>
     </div>
-  </aside>
-</main>
-
+    <div class="card ans">
+      <h3>Risposta Migliore</h3>
+      <div class="answer" id="answer">—</div>
+    </div>
+  </div>
 <script>
-async function health() {{
-  const r = await fetch('/health');
+async function health(){ const r = await fetch('/health'); if(r.ok){ document.getElementById('hstatus').innerText='ok'; } else { document.getElementById('hstatus').innerText='ko'; } }
+function sample(v){ document.getElementById('q').value=v; ask(); }
+async function ask(){
+  const q = document.getElementById('q').value || '';
+  const r = await fetch('/qa/ask?q='+encodeURIComponent(q));
   const j = await r.json();
-  document.getElementById('state').textContent = JSON.stringify(j, null, 2);
-}}
-
-async function ask(q) {{
-  const r = await fetch('/qa/ask?q=' + encodeURIComponent(q));
-  const j = await r.json();
-  document.getElementById('meta').textContent =
-    'Famiglia: ' + (j.family||'-') + ' | Score: ' + (j.score?.toFixed(2)||'') + ' | Endpoint /qa/ask: ok';
-  document.getElementById('answer').innerHTML = j.answer_html || '<p class="text-red-600">Nessuna risposta.</p>';
-}}
-
-document.getElementById('askForm').addEventListener('submit', (e) => {{
-  e.preventDefault();
-  const q = document.getElementById('q').value.trim();
-  if (!q) return;
-  ask(q);
-}});
-
-document.querySelectorAll('.sug').forEach(b => {{
-  b.addEventListener('click', () => {{
-    document.getElementById('q').value = b.textContent;
-    document.getElementById('q').focus();
-  }});
-}});
-
+  document.getElementById('fam').innerText = j.family || '—';
+  document.getElementById('score').innerText = j.score ?? '—';
+  document.getElementById('answer').innerText = j.answer || '—';
+}
 health();
 </script>
 </body>
@@ -221,41 +284,17 @@ def home():
 
 @app.get("/health")
 def health():
-    return {
-        "title": APP_TITLE,
-        "endpoints": {"health": "/health", "ask": "/qa/ask?q=MI%20PARLI%20DELLA%20P560%20%3F"},
-        "data_file": str(DATA_PATH),
-        "items_loaded": len(ITEMS),
-    }
+    return {"title": APP_TITLE, "endpoints": {"health": "/health", "ask": "/qa/ask?q=MI%20PARLI%20DELLA%20P560%20%3F"},
+            "data_file": str(DATA_PATH), "items_loaded": len(GOLD_ITEMS)}
 
-class AskOut(BaseModel):
-    family: Optional[str] = None
-    score: float = 0.0
-    answer_html: str = ""
-
-@app.get("/qa/ask", response_model=AskOut)
+@app.get("/qa/ask")
 def qa_ask(q: str = Query(..., min_length=2)):
-    lang = detect_lang(q)
-    best = select_best(q, ITEMS)
-    if not best:
-        fallback = {
-            "it": "Domanda poco chiara o fuori ambito Tecnaria. Esempi: “Mi parli della P560?” • “Codici CTF” • “CTL vs CTL MAXI”.",
-            "en": "Question unclear or out of Tecnaria scope. Examples: “Tell me about P560” • “CTF codes” • “CTL vs CTL MAXI”.",
-            "fr": "Question floue ou hors périmètre Tecnaria. Exemples : « Parlez-moi de la P560 » • « Codes CTF » • « CTL vs CTL MAXI ».",
-            "de": "Unklare oder außerhalb des Tecnaria-Rahmens liegende Frage. Beispiele: „Erzählen Sie mir von P560“ • „CTF-Codes“ • „CTL vs CTL MAXI“.",
-            "es": "Pregunta poco clara o fuera del ámbito Tecnaria. Ejemplos: «Háblame de P560» • «Códigos CTF» • «CTL vs CTL MAXI».",
-        }
-        return AskOut(family=None, score=0.0, answer_html=f"<p>{fallback.get(lang,fallback['it'])}</p>")
+    # blocco RAG: se la domanda sembra fuori Tecnaria, rispondi educatamente
+    guard_terms = ["tecnaria","ctf","ctl","p560","ctcem","vcem","diapason","gts","connettori","lamiera","viti","chiod"]
+    if not any(t in q.lower() for t in guard_terms):
+        msg = ("Sono il bot ufficiale Tecnaria (Bassano del Grappa). "
+               "Rispondo solo a domande su prodotti e sistemi Tecnaria (CTF, CTL/CTL MAXI, P560, CTCEM/VCEM, ecc.).")
+        return JSONResponse({"family": "", "score": 0.0, "answer": msg})
 
-    fam = best.get("family","").upper()
-    # compose final gold answer
-    ans = best.get("answer","").strip()
-    ans = wrap_gold_answer(ans, fam, lang)
-    # simple Markdown → HTML (very light)
-    html = (
-        ans.replace("\n\n", "</p><p>")
-           .replace("\n•", "<br>•")
-           .replace("\n- ", "<br>- ")
-    )
-    html = f"<p>{html}</p>"
-    return AskOut(family=fam, score=score_item(q, best), answer_html=html)
+    res = best_answer(q)
+    return JSONResponse(res)
