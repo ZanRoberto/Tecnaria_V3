@@ -1,111 +1,184 @@
-from fastapi import FastAPI, HTTPException
+# app.py
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import json
 from pathlib import Path
+import json
+import re
+from typing import List, Dict, Any, Optional
 
-# 1. istanza FastAPI — QUESTA è quella che Render non trovava
-app = FastAPI(title="Tecnaria Sinapsi — Q/A", version="1.0.0")
+# =========================
+# CONFIG
+# =========================
+DATA_FILE = Path("static/data/tecnaria_gold.json")  # nome fisso come hai detto tu
 
-# 2. CORS (così puoi chiamarlo dal frontend)
+# =========================
+# LOAD DATA
+# =========================
+def load_tecnaria_data(path: Path) -> Dict[str, Any]:
+    if not path.exists():
+        raise FileNotFoundError(f"File JSON non trovato: {path}")
+    with path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+    # normalizzo
+    data.setdefault("items", [])
+    return data
+
+try:
+    TECNARIA_DATA = load_tecnaria_data(DATA_FILE)
+    TECNARIA_ITEMS: List[Dict[str, Any]] = TECNARIA_DATA.get("items", [])
+except Exception as e:
+    # se proprio all'avvio non c'è il file, parto lo stesso ma avviso
+    TECNARIA_DATA = {"_meta": {}, "items": []}
+    TECNARIA_ITEMS = []
+    print(f"[WARN] impossibile caricare {DATA_FILE}: {e}")
+
+# =========================
+# FASTAPI APP
+# =========================
+app = FastAPI(
+    title="Tecnaria Sinapsi — Q/A",
+    description="Bot ufficiale Tecnaria (CTF, CTL/CTL MAXI, CTCEM/VCEM, P560, DIAPASON, GTS, ACCESSORI) — stile GOLD — RAG Tecnaria-only",
+    version="1.0.0",
+)
+
+# CORS aperto (va bene per test, poi puoi chiuderlo)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 3. modelli
-class AskRequest(BaseModel):
-    question: str
+# =========================
+# UTILS DI MATCHING
+# =========================
+def normalize(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip().lower())
 
-class AskResponse(BaseModel):
-    answer: str
-    score: float | None = None
-    family: str | None = None
-    source_id: str | None = None
+def match_by_id(q: str) -> Optional[Dict[str, Any]]:
+    q_norm = normalize(q)
+    for item in TECNARIA_ITEMS:
+        if normalize(item.get("id", "")) == q_norm:
+            return item
+    return None
 
-# 4. carico il JSON Tecnaria
-DATA_PATH = Path("static/data/tecnaria_gold.json")
-if not DATA_PATH.exists():
-    # se non c'è, almeno non ti esplode l'app
-    TECNARIA_DATA = {"items": []}
-else:
-    with DATA_PATH.open("r", encoding="utf-8") as f:
-        TECNARIA_DATA = json.load(f)
+def match_by_family(q: str) -> Optional[Dict[str, Any]]:
+    q_norm = normalize(q)
+    # se l'utente scrive solo "ctf" o "ctl maxi" ecc.
+    for item in TECNARIA_ITEMS:
+        fam = normalize(item.get("family", ""))
+        if fam and fam in q_norm:
+            return item
+    return None
 
-ITEMS = TECNARIA_DATA.get("items", [])
+def match_by_triggers(q: str) -> Optional[Dict[str, Any]]:
+    q_norm = normalize(q)
+    best_item = None
+    best_weight = 0.0
+    for item in TECNARIA_ITEMS:
+        trig = item.get("trigger", {})
+        peso = trig.get("peso", 0)
+        keywords = trig.get("keywords", [])
+        for kw in keywords:
+            if normalize(kw) in q_norm:
+                # prendo quello col peso più alto
+                if peso > best_weight:
+                    best_weight = peso
+                    best_item = item
+    return best_item
 
-# 5. health
+def build_fallback(q: str) -> Dict[str, Any]:
+    return {
+        "family": "COMM",
+        "domanda": "La tua domanda non ha trovato una corrispondenza diretta nel file Tecnaria.",
+        "risposta": (
+            "Non trovo un trigger GOLD per: «" + q + "».\n"
+            "Verifica che la domanda riguardi una di queste famiglie: CTF, CTL, CTL MAXI, CTCEM, VCEM, P560, DIAPASON, GTS, ACCESSORI, CONFRONTO, PROBLEMATICHE, KILLER.\n"
+            "Se è una domanda di cantiere speciale (foto, posa fatta male, saldature, lamiera non serrata), invia tutto a **info@tecnaria.com** con foto e metti nell’oggetto: «Richiesta verifica posa connettori Tecnaria – cantiere».\n"
+            "Sede: Viale Pecori Giraldi, 55 – 36061 Bassano del Grappa (VI). Tel. +39 0424 502029."
+        ),
+        "matched": False
+    }
+
+# =========================
+# ROUTES
+# =========================
 @app.get("/health")
 def health():
-    return {"status": "ok", "items_loaded": len(ITEMS)}
+    return {
+        "status": "ok",
+        "items": len(TECNARIA_ITEMS),
+        "families": sorted(list({it.get("family", "") for it in TECNARIA_ITEMS if it.get("family")})),
+        "source": str(DATA_FILE)
+    }
 
-# 6. funzione di ricerca molto semplice (semantica light)
-def find_best_match(user_q: str):
-    user_q_low = user_q.lower()
-    best = None
-    best_score = 0.0
+@app.get("/")
+def root():
+    return {
+        "app": "Tecnaria Sinapsi — Q/A",
+        "message": "Usa POST /qa/ask con {\"question\": \"...\"}",
+        "health": "/health",
+        "doc": "/docs"
+    }
 
-    for item in ITEMS:
-        domanda = item.get("domanda", "") or item.get("question", "")
-        domanda_low = domanda.lower()
-        trigger = item.get("trigger", {})
-        keywords = trigger.get("keywords", [])
+@app.post("/qa/ask")
+async def qa_ask(payload: Dict[str, Any], request: Request):
+    """
+    Payload atteso:
+    {
+        "question": "testo della domanda",
+        "lang": "it"  (opzionale: per ora solo it → risponde it)
+    }
+    """
+    question = payload.get("question", "")
+    if not question:
+        raise HTTPException(status_code=400, detail="Campo 'question' mancante")
 
-        score = 0.0
+    q_norm = normalize(question)
 
-        # match diretto testo
-        if user_q_low in domanda_low or domanda_low in user_q_low:
-            score += 0.6
+    # 1) match per id (se uno scrive COMM-0001)
+    item = match_by_id(q_norm)
+    if item:
+        return {
+            "matched": True,
+            "match_type": "id",
+            "family": item.get("family"),
+            "domanda": item.get("domanda"),
+            "risposta": item.get("risposta"),
+            "trigger": item.get("trigger", {})
+        }
 
-        # match keyword
-        for kw in keywords:
-            if kw.lower() in user_q_low:
-                score += 0.3
+    # 2) match per trigger/keywords (il caso principale)
+    item = match_by_triggers(q_norm)
+    if item:
+        return {
+            "matched": True,
+            "match_type": "trigger",
+            "family": item.get("family"),
+            "domanda": item.get("domanda"),
+            "risposta": item.get("risposta"),
+            "trigger": item.get("trigger", {})
+        }
 
-        # family hint
-        if "ctf" in user_q_low and item.get("family", "").lower() == "ctf":
-            score += 0.15
-        if "ctl" in user_q_low and "ctl" in item.get("family", "").lower():
-            score += 0.15
-        if "ctcem" in user_q_low and item.get("family", "").lower() == "ctcem":
-            score += 0.15
-        if "vcem" in user_q_low and item.get("family", "").lower() == "vcem":
-            score += 0.15
-        if "p560" in user_q_low and item.get("family", "").lower() == "p560":
-            score += 0.15
+    # 3) match per family nel testo
+    item = match_by_family(q_norm)
+    if item:
+        return {
+            "matched": True,
+            "match_type": "family",
+            "family": item.get("family"),
+            "domanda": item.get("domanda"),
+            "risposta": item.get("risposta"),
+            "trigger": item.get("trigger", {})
+        }
 
-        if score > best_score:
-            best_score = score
-            best = item
+    # 4) Fallback GOLD
+    return build_fallback(question)
 
-    return best, best_score
-
-# 7. endpoint Q/A
-@app.post("/qa/ask", response_model=AskResponse)
-def qa_ask(req: AskRequest):
-    q = req.question.strip()
-    if not q:
-        raise HTTPException(status_code=400, detail="Question is empty")
-
-    item, score = find_best_match(q)
-    if not item:
-        # fallback se non trova niente
-        return AskResponse(
-            answer="Non ho trovato una risposta adeguata in Tecnaria Gold. Specifica meglio la famiglia (CTF, CTL, CTCEM, VCEM, P560) o il problema di posa.",
-            score=0.0,
-            family=None,
-            source_id=None,
-        )
-
-    answer = item.get("risposta") or item.get("answer") or "Risposta non disponibile."
-    family = item.get("family")
-    source_id = item.get("id")
-
-    return AskResponse(
-        answer=answer,
-        score=round(score, 3),
-        family=family,
-        source_id=source_id,
-    )
+# =========================
+# RUN (solo locale)
+# =========================
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
