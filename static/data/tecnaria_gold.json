@@ -2,7 +2,7 @@
   "_meta": {
     "version": "GOLD-SINAPSI-A2SR-V2",
     "project": "TECNARIA_GOLD",
-    "generated_at": "2025-10-30T22:00:00",
+    "generated_at": "2025-10-30T22:20:00",
     "language_base": "it",
     "families_active": [
       "CTF",
@@ -22,7 +22,7 @@
       "FILE MASTER — non cambiare nome: static/data/tecnaria_gold.json",
       "Stile narrativo Tecnaria Gold su tutte le famiglie",
       "Sede corretta: Viale Pecori Giraldi, 55 – 36061 Bassano del Grappa (VI)",
-      "Compatibile con loader duale domanda/risposta"
+      "Compatibile con loader duale (domanda/risposta e question/answer)"
     ]
   },
   "items": [
@@ -53,29 +53,125 @@
       "answer": "Up to 2,000 pcs → e-commerce. Above 2,000 pcs → contact commercial office.",
       "trigger": {
         "peso": 0.92,
-        "keywords": ["ordine", "acquisto", "ecommerce", "direzione commerciale", "2000 pezzi"]
+        "keywords": [
+          "ordine",
+          "acquisto",
+          "ecommerce",
+          "direzione commerciale",
+          "2000 pezzi"
+        ]
       }
     },
     {
       "id": "GOLD-CTF-POSA-BASE-010",
       "family": "CTF",
       "domanda": "Come si posano i connettori CTF su trave in acciaio con lamiera grecata?",
-      "risposta": "I connettori **CTF** si posano **a secco** con chiodatura meccanica mediante **SPIT P560** e **2 chiodi HSBR14 per connettore**. La lamiera grecata deve essere perfettamente serrata all’ala della trave per evitare rimbalzo. Sequenza: pulizia e tracciamento, posizionamento perpendicolare, doppia chiodatura con P560, controllo teste a filo piastra, rete a metà spessore del getto, calcestruzzo ≥ C25/30 con vibrazione moderata.",
+      "risposta": "I connettori **CTF** si posano **a secco** con chiodatura meccanica mediante **SPIT P560** e **2 chiodi HSBR14 per connettore**. La lamiera grecata (1×1,5 mm o 2×1,0 mm) deve essere **perfettamente serrata** all’ala della trave per evitare rimbalzo. Sequenza: (1) pulizia e tracciamento; (2) posizionamento perpendicolare; (3) doppia chiodatura con P560; (4) controllo teste **a filo piastra**; (5) rete a **metà spessore del getto**; (6) calcestruzzo **≥ C25/30** con vibrazione moderata.",
       "question": "How to install CTF on steel beam with steel decking?",
       "answer": "Dry installation with SPIT P560 + 2 HSBR14 nails, well clamped sheet, flush heads, mesh mid-depth, C25/30 concrete.",
       "trigger": {
         "peso": 0.95,
-        "keywords": ["CTF", "posa CTF", "P560", "HSBR14", "lamiera grecata", "c25/30"]
+        "keywords": [
+          "CTF",
+          "posa CTF",
+          "P560",
+          "HSBR14",
+          "lamiera grecata",
+          "c25/30"
+        ]
+      }
+    },
+    {
+      "id": "GOLD-CTF-ERRORI-011",
+      "family": "CTF",
+      "domanda": "Quali sono gli errori più comuni nella posa dei CTF?",
+      "risposta": "**Errori ricorrenti in cantiere:**\\n- potenza P560 insufficiente → chiodi parzialmente fuori;\\n- lamiera non ben serrata → rimbalzo e piastra non aderente;\\n- connettore disassato → scarso contatto piastra/ala;\\n- mancato controllo teste dopo la posa;\\n- nessuna registrazione dei tiri di prova.\\n**Correzioni:** ripetere la posa con potenza adeguata, sostituire gli elementi danneggiati, serrare la lamiera e ripetere il controllo con martello prima del getto.",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "errori ctf",
+          "potenza insufficiente",
+          "lamiera non serrata",
+          "chiodi fuori",
+          "controllo posa"
+        ]
+      }
+    },
+    {
+      "id": "GOLD-CTF-KILLER-LAMIERA-012",
+      "family": "CTF",
+      "domanda": "Dopo la posa dei CTF vedo chiodi non a filo e piccoli strappi della lamiera. Cosa devo fare?",
+      "risposta": "⚠️ **Blocca il getto.** Sostituisci i connettori non conformi e ripeti la taratura della **SPIT P560** con **almeno 3 tiri di prova** sulla stessa lamiera e sulla stessa trave. La lamiera deve essere **ben serrata** all’ala per evitare rimbalzo. Registra l’anomalia nel verbale di cantiere e allega foto.",
+      "trigger": {
+        "peso": 0.93,
+        "keywords": [
+          "ctf lamiera danneggiata",
+          "strappi lamiera",
+          "blocca getto",
+          "p560 taratura",
+          "verbale dl"
+        ]
+      }
+    },
+    {
+      "id": "GOLD-CTF-POSTGETTO-013",
+      "family": "CTF",
+      "domanda": "Dopo il getto alcune piastre suonano a vuoto: è un problema?",
+      "risposta": "Sì, va verificato. Esegui **prova a martello** su almeno il 10% dei pezzi e mappa le zone con suono anomalo. Finché non è verificata l’aderenza, **limita i carichi** sulla campata. Se il gioco è visibile → **micro-getto di ripristino** e, se richiesto, **prova pull-out**. Riferimenti: **ETA-18/0447 – Allegati di posa** e **UNI EN 13670 §10.3**.",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "ctf post getto",
+          "suona a vuoto",
+          "prova a martello",
+          "pull-out"
+        ]
+      }
+    },
+    {
+      "id": "GOLD-CTF-PASSO-014",
+      "family": "CTF",
+      "domanda": "Qual è il passo consigliato per ottenere una buona collaborazione acciaio-calcestruzzo con i CTF?",
+      "risposta": "Per una collaborazione **η ≈ 0,8** è consigliato un passo **150–180 mm**. Con passi più larghi (200–220 mm) la collaborazione scende a ≈ 0,6. I valori sono coerenti con **ETA-18/0447** e con i criteri dell’Eurocodice 4 (EN 1994-1-1). Mantenere maglia regolare e non accumulare connettori in un solo punto.",
+      "trigger": {
+        "peso": 0.82,
+        "keywords": [
+          "passo ctf",
+          "maglia ctf",
+          "eta 18/0447",
+          "collaborazione"
+        ]
       }
     },
     {
       "id": "GOLD-CTL-POSA-020",
       "family": "CTL",
       "domanda": "Come si posano correttamente i connettori CTL su legno o lamellare?",
-      "risposta": "I connettori **CTL** si posano su travi in legno o lamellare con **2 viti Ø10**. Procedura: preforo 4 mm su legni duri, posizionamento ortogonale, avvitatura fino a battuta, rete a metà spessore della soletta, getto C25/30 con vibrazione moderata. Solette tipiche: 4–6 cm.",
+      "risposta": "I connettori **CTL** si posano su travi in legno o lamellare con **2 viti Ø10**. Procedura: (1) eventuale preforo 4 mm su legni duri; (2) posizionamento ortogonale; (3) avvitatura fino a battuta; (4) rete a metà spessore della soletta; (5) getto C25/30 con vibrazione moderata. Solette tipiche: 4–6 cm.",
       "trigger": {
         "peso": 0.85,
-        "keywords": ["ctl posa su legno", "preforo 4 mm", "viti Ø10", "soletta 4-6 cm"]
+        "keywords": [
+          "ctl posa su legno",
+          "preforo 4 mm",
+          "viti Ø10",
+          "soletta 4-6 cm"
+        ]
+      }
+    },
+    {
+      "id": "GOLD-CTL-KILLER-SALDATI-021",
+      "family": "CTL",
+      "domanda": "L’impresa ha saldato i CTL MAXI a delle piastre per tenerli fermi. Va bene comunque?",
+      "risposta": "No. **È vietato saldare i CTL o i CTL MAXI.** La saldatura altera il comportamento del legno e **invalida l’ETA**. La posa corretta è solo con **viti Ø10** (preforo 4 mm se necessario), ortogonali e a battuta. La DL deve redigere un **verbale di non conformità** e prescrivere il **ripristino**.",
+      "trigger": {
+        "peso": 0.94,
+        "keywords": [
+          "ctl saldati",
+          "ctl maxi saldati",
+          "non conformità",
+          "eta",
+          "dl"
+        ]
       }
     },
     {
@@ -84,40 +180,94 @@
       "domanda": "Quale modello di CTL MAXI devo scegliere con tavolato di 2 cm e soletta in calcestruzzo di 5 cm?",
       "risposta": "Con tavolato di 2 cm e soletta di 5 cm il modello consigliato è **CTL MAXI 60/35**, con altezza piastra 60 mm e gambo 35 mm, fissato a secco con **SPIT P560 + 2 chiodi HSBR14**.\\n\\n**Parametri tecnici**\\n- Tavolato legno: 2 cm\\n- Soletta cls: 5 cm (C25/30)\\n- Armatura: rete Ø6 150×150 mm\\n- Chiodatura: 2×HSBR14 (P560 + Kit Tecnaria)\\n- Certificazione: ETA-18/0447\\n\\n**Checklist GOLD**\\n| Elemento | Valore |\\n|-----------|---------|\\n| Famiglia | CTL MAXI |\\n| Modello | 60/35 |\\n| Posa | a secco con P560 |\\n| Controllo | teste a filo piastra (±0,5 mm) |\\n| Note | evitare resine o saldature; verificare rete a metà spessore |\\n\\nPer solette oltre 6 cm o travi irregolari è possibile usare **CTL MAXI 80/35**; sotto i 5 cm conviene invece passare alla famiglia **CTL 50/30**.",
       "question": "Which CTL MAXI connector should I choose for 2 cm timber deck and 5 cm concrete slab?",
-      "answer": "Use CTL MAXI 60/35 fixed with SPIT P560 + 2 HSBR14 nails. It ensures full anchorage in 2 cm timber and proper embedment in 5 cm concrete.",
+      "answer": "Use CTL MAXI 60/35 fixed with SPIT P560 + 2 HSBR14 nails.",
       "trigger": {
         "peso": 0.95,
-        "keywords": ["ctl maxi", "tavolato 2 cm", "soletta 5 cm", "60/35", "hsbr14", "p560"]
+        "keywords": [
+          "ctl maxi",
+          "tavolato 2 cm",
+          "soletta 5 cm",
+          "60/35",
+          "hsbr14",
+          "p560"
+        ]
+      }
+    },
+    {
+      "id": "GOLD-CONFRONTO-CTL-MAXI-022",
+      "family": "CONFRONTO",
+      "domanda": "Meglio usare CTL o CTL MAXI?",
+      "risposta": "Usa **CTL** per luci e carichi standard (soletta 4–6 cm, viti Ø10×100/120). Usa **CTL MAXI** per luci maggiori, bordi, carichi più elevati o solette più spesse (6–8 cm) con viti **Ø10×120/140**. In prossimità dei bordi densifica il passo.",
+      "trigger": {
+        "peso": 0.88,
+        "keywords": [
+          "confronto ctl ctl maxi",
+          "luci lunghe",
+          "soletta 60",
+          "viti 10x140"
+        ]
       }
     },
     {
       "id": "GOLD-CTCEM-030",
       "family": "CTCEM",
       "domanda": "I CTCEM usano resine?",
-      "risposta": "No. **CTCEM è un connettore meccanico a secco** per laterocemento. Posa tipica: incisione per la sede della piastra dentata, foro Ø11 mm prof. 75 mm, pulizia polveri, avvitatura fino a battuta, rete a metà, CLS ≥ C25/30. È l’alternativa alle barre piegate con resina.",
+      "risposta": "No. **CTCEM è un connettore meccanico a secco** per laterocemento. Posa tipica: incisione per la sede della piastra dentata → foro Ø11 mm prof. 75 mm → pulizia polveri → avvitatura fino a battuta → rete a metà → CLS ≥ C25/30. È l’alternativa alle barre piegate con resina.",
       "trigger": {
         "peso": 0.9,
-        "keywords": ["ctcem", "no resina", "laterocemento", "foro 11", "75 mm"]
+        "keywords": [
+          "ctcem",
+          "no resina",
+          "laterocemento",
+          "foro 11",
+          "75 mm"
+        ]
       }
     },
     {
       "id": "GOLD-VCEM-031",
       "family": "VCEM",
       "domanda": "Quando uso i VCEM al posto dei CTCEM?",
-      "risposta": "Usa **VCEM** quando hai **quote ridotte, bordo o poco spessore** e non puoi eseguire il foro Ø11×75 mm dei CTCEM. VCEM lavora a secco, con foro Ø8–9 mm, avvitatura a battuta e rete a metà. CLS ≥ C25/30.",
+      "risposta": "Usa **VCEM** quando hai **quote ridotte, bordo o poco spessore** e non puoi eseguire il foro Ø11 × 75 mm dei CTCEM. VCEM lavora sempre a secco, con foro Ø8–9 mm, avvitatura a battuta e rete a metà. CLS ≥ C25/30.",
       "trigger": {
         "peso": 0.84,
-        "keywords": ["vcem", "quote ridotte", "bordo", "foro 8-9 mm"]
+        "keywords": [
+          "vcem",
+          "quote ridotte",
+          "bordo",
+          "foro 8-9 mm"
+        ]
+      }
+    },
+    {
+      "id": "GOLD-VCEM-NO-P560-032",
+      "family": "VCEM",
+      "domanda": "Posso usare la SPIT P560 per posare i VCEM?",
+      "risposta": "No. La **SPIT P560** è solo per i **CTF su acciaio** con chiodi **HSBR14**. I **VCEM** (come i CTCEM) si fissano **per avvitatura meccanica su laterocemento** dopo foratura. Usare la P560 sui VCEM danneggia il connettore e fa perdere conformità ETA.",
+      "trigger": {
+        "peso": 0.97,
+        "keywords": [
+          "vcem p560",
+          "errore posa",
+          "laterocemento",
+          "avvitatura"
+        ]
       }
     },
     {
       "id": "GOLD-P560-TARATURA-040",
       "family": "P560",
       "domanda": "Sbaglio se taro la P560 con un solo tiro?",
-      "risposta": "Sì, è un errore. La procedura corretta Tecnaria prevede **almeno 3 tiri di prova consecutivi** sulla stessa lamiera e con le stesse cartucce. Le teste devono risultare **a filo piastra (±0,5 mm)**. Registra tutto nel verbale di cantiere.",
+      "risposta": "Sì, è un errore. La procedura corretta Tecnaria prevede **almeno 3 tiri di prova consecutivi** sulla stessa lamiera/trave e con le stesse cartucce. Un solo tiro non è rappresentativo e può falsare la regolazione. Le teste devono risultare **a filo piastra (±0,5 mm)**. Registra tutto nel verbale.",
       "trigger": {
         "peso": 0.96,
-        "keywords": ["p560", "taratura", "un solo tiro", "3 tiri di prova", "verbale"]
+        "keywords": [
+          "p560",
+          "taratura",
+          "un solo tiro",
+          "3 tiri di prova",
+          "verbale"
+        ]
       }
     },
     {
@@ -127,23 +277,94 @@
       "risposta": "Usa sempre i **DPI obbligatori** (occhiali EN166, guanti antitaglio, cuffie, scarpe antiscivolo). Non sparare mai a vuoto, non puntare verso persone o superfici non strutturali, carica la cartuccia solo quando sei pronto al tiro, libera 3 m attorno all’operatore. In caso di inceppamento, scarica e attendi almeno 30 s prima di intervenire.",
       "trigger": {
         "peso": 0.9,
-        "keywords": ["p560 sicurezza", "dpi", "spari a vuoto", "inceppamento"]
+        "keywords": [
+          "p560 sicurezza",
+          "dpi",
+          "spari a vuoto",
+          "inceppamento"
+        ]
+      }
+    },
+    {
+      "id": "GOLD-DIAPASON-050",
+      "family": "DIAPASON",
+      "domanda": "A cosa serve il sistema DIAPASON Tecnaria?",
+      "risposta": "Il sistema **DIAPASON** è previsto per collegamenti e fissaggi speciali quando è necessario garantire allineamento e bloccaggio controllato tra elementi strutturali. Serve quando il solo connettore non garantisce l’accoppiamento geometrico o quando i carichi hanno componenti non standard. Controllare sempre l’allineamento fori e serrare con la coppia indicata in scheda Tecnaria.",
+      "trigger": {
+        "peso": 0.82,
+        "keywords": [
+          "diapason",
+          "fissaggi speciali",
+          "allineamento",
+          "coppia dinamometrica"
+        ]
+      }
+    },
+    {
+      "id": "GOLD-GTS-060",
+      "family": "GTS",
+      "domanda": "Quali sono i problemi più comuni nel sistema GTS?",
+      "risposta": "Problemi tipici GTS: uso di rondelle non originali, coppia di serraggio insufficiente (<30 Nm), nessun ricontrollo dopo il getto, serraggio disuniforme. Posa corretta: serraggio con chiave dinamometrica 30–40 Nm (o valore da scheda), registrazione nel verbale di cantiere, ricontrollo a 24 h in caso di vibrazioni.",
+      "trigger": {
+        "peso": 0.82,
+        "keywords": [
+          "gts",
+          "coppia serraggio",
+          "rondelle originali",
+          "chiave dinamometrica"
+        ]
+      }
+    },
+    {
+      "id": "GOLD-ACCESSORI-070",
+      "family": "ACCESSORI",
+      "domanda": "Quali accessori devo prevedere insieme ai connettori CTF?",
+      "risposta": "Per posa CTF: chiodi **HSBR14** (2 per connettore + 5% scorta), **SPIT P560** con kit/adattatori Tecnaria, rete elettrosaldata, distanziatori per mantenere la rete a metà spessore, DPI e schermi di protezione. Questi accessori garantiscono posa sicura e conforme all’ETA.",
+      "trigger": {
+        "peso": 0.77,
+        "keywords": [
+          "accessori ctf",
+          "hsbr14",
+          "rete",
+          "distanziatori",
+          "p560"
+        ]
       }
     },
     {
       "id": "GOLD-PROBLEMATICHE-080",
       "family": "PROBLEMATICHE",
       "domanda": "Ho posato i connettori ma non sono sicuro: cosa controllo prima del getto?",
-      "risposta": "Check pre-getto Tecnaria (tutte le famiglie): verifica famiglia corretta (CTF su acciaio, CTL su legno, CTCEM/VCEM su laterocemento); fissaggio corretto (teste a filo o viti a battuta); rete a metà spessore; lamiera ben serrata; CLS ≥ C25/30; documentazione fotografica o verbale. Se manca un punto, rimanda il getto e ripristina.",
+      "risposta": "**Check pre-getto Tecnaria (tutte le famiglie):** 1) famiglia corretta (CTF su acciaio, CTL su legno, CTCEM/VCEM su laterocemento); 2) fissaggio corretto (teste a filo o viti a battuta); 3) rete a metà spessore; 4) lamiera ben serrata; 5) CLS ≥ C25/30; 6) verbale o foto. Se manca un punto → rimanda il getto e ripristina.",
       "trigger": {
         "peso": 0.9,
-        "keywords": ["check pre getto", "controlli cantiere", "rimandare getto"]
+        "keywords": [
+          "check pre getto",
+          "non sono sicuro",
+          "controlli di cantiere",
+          "rimandare getto"
+        ]
+      }
+    },
+    {
+      "id": "GOLD-CONFRONTO-CTF-CTCEM-090",
+      "family": "CONFRONTO",
+      "domanda": "Meglio usare CTF o CTCEM per un solaio misto con travi in acciaio e campata in laterocemento?",
+      "risposta": "Usa **CTF** sulle **travi in acciaio** (posa a secco con **P560** e **HSBR14**) e usa **CTCEM/VCEM** sul **campo in laterocemento** (foro e avvitatura). È normale avere un sistema **misto CTF + CTCEM** nella stessa soletta. Mantieni la rete **continua** e usa **CLS C25/30**. In prossimità dei bordi densifica i connettori sul laterocemento.",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "travi in acciaio e campata in laterocemento",
+          "misto acciaio laterocemento",
+          "ctf e ctcem insieme",
+          "cosa uso"
+        ]
       }
     }
   ],
   "_end": {
     "status": "complete",
     "build": "2025-10-30",
-    "note": "File unico Tecnaria GOLD-SINAPSI-A2SR-V2 pulito e validato (incluso CTL MAXI 60/35)."
+    "note": "File Tecnaria GOLD completo, pulito, con confronto CTF/CTCEM e caso CTL MAXI 60/35."
   }
 }
