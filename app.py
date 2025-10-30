@@ -1,228 +1,637 @@
-import json, os, re
-from pathlib import Path
-from typing import Any, Dict, List, Tuple
-from fastapi import FastAPI, Query
-from fastapi.responses import HTMLResponse, PlainTextResponse
-from fastapi.staticfiles import StaticFiles
+{
+  "_meta": {
+    "version": "TECNARIA_GOLD-SINAPSI-A2SR-MASTER",
+    "project": "TECNARIA_GOLD",
+    "generated_at": "2025-10-31T02:40:00",
+    "language_base": "it",
+    "families_active": [
+      "COMM",
+      "CTF",
+      "CTL",
+      "CTL MAXI",
+      "CTCEM",
+      "VCEM",
+      "P560",
+      "DIAPASON",
+      "GTS",
+      "ACCESSORI",
+      "CONFRONTO",
+      "PROBLEMATICHE",
+      "KILLER"
+    ],
+    "notes": [
+      "FILE MASTER — nome fisso: static/data/tecnaria_gold.json",
+      "Sede corretta: Viale Pecori Giraldi, 55 – 36061 Bassano del Grappa (VI)",
+      "Niente elementi provvisori (gialli/rossi): tutte risposte GOLD",
+      "Traduzione solo runtime (IT → EN/FR/DE/ES)",
+      "Compatibile con loader duale /qa/ask"
+    ]
+  },
+  "items": [
+    {
+      "id": "COMM-0001",
+      "family": "COMM",
+      "domanda": "Dove si trova la Tecnaria S.p.A.?",
+      "risposta": "La Tecnaria S.p.A. ha sede in **Viale Pecori Giraldi, 55 – 36061 Bassano del Grappa (VI)**, Italia. Qui si trovano uffici tecnici, ufficio commerciale e magazzino spedizioni. È il riferimento unico per tutti i contatti su CTF, CTL, CTL MAXI, CTCEM, VCEM, P560, GTS e accessori. Tel. **+39 0424 502029** – Email: **info@tecnaria.com**.",
+      "trigger": {
+        "peso": 1.0,
+        "keywords": [
+          "dove si trova tecnaria",
+          "sede tecnaria",
+          "indirizzo tecnaria",
+          "viale pecori giraldi 55",
+          "bassano del grappa"
+        ]
+      }
+    },
+    {
+      "id": "COMM-0002",
+      "family": "COMM",
+      "domanda": "Qual è l'indirizzo della sede Tecnaria di Bassano?",
+      "risposta": "L’indirizzo corretto è: **Viale Pecori Giraldi, 55 – 36061 Bassano del Grappa (VI)**. È quello da indicare su ordini, verbali di posa e richieste alla direzione lavori.",
+      "trigger": {
+        "peso": 0.92,
+        "keywords": [
+          "indirizzo tecnaria",
+          "sede bassano",
+          "pecori giraldi 55",
+          "ufficio tecnico"
+        ]
+      }
+    },
+    {
+      "id": "COMM-0003",
+      "family": "COMM",
+      "domanda": "Come devo ordinare i prodotti Tecnaria?",
+      "risposta": "Per **ordini fino a ~2.000 pezzi** usa l’e-commerce Tecnaria con conferma immediata. Per **ordini superiori, misti o urgenti** contatta la **direzione commerciale** (commerciale@tecnaria.com – Tel. +39 0424 502029) per definire disponibilità e tempi. Le spedizioni partono sempre dalla sede di Bassano del Grappa.",
+      "trigger": {
+        "peso": 0.95,
+        "keywords": [
+          "ordine",
+          "acquisto",
+          "ecommerce",
+          "direzione commerciale",
+          "2000 pezzi",
+          "ordinare connettori"
+        ]
+      }
+    },
+    {
+      "id": "COMM-0004",
+      "family": "COMM",
+      "domanda": "In quanto tempo arrivano i connettori Tecnaria?",
+      "risposta": "I prodotti standard (CTF, CTL, CTL MAXI, CTCEM, VCEM) vengono normalmente spediti dal magazzino di Bassano del Grappa in **3–5 giorni lavorativi** in Italia. Per l’estero: **5–8 giorni** in UE e **10–15 giorni** extra UE. Per grandi quantità o ordini misti la data è concordata con la direzione commerciale.",
+      "trigger": {
+        "peso": 0.86,
+        "keywords": [
+          "spedizione",
+          "tempi consegna",
+          "magazzino",
+          "corriere",
+          "consegna tecnaria"
+        ]
+      }
+    },
+    {
+      "id": "COMM-0005",
+      "family": "COMM",
+      "domanda": "Posso avere certificazioni o ETA della Tecnaria per la direzione lavori?",
+      "risposta": "Sì. I connettori Tecnaria sono coperti da **ETA-18/0447** e marcatura CE secondo **ETAG 015**. Richiedi i documenti a **info@tecnaria.com**: li alleghi al verbale di cantiere o li consegni alla DL per il SAL.",
+      "trigger": {
+        "peso": 1.0,
+        "keywords": [
+          "eta tecnaria",
+          "certificazione connettori",
+          "etag 015",
+          "documenti per dl",
+          "marcatura ce"
+        ]
+      }
+    },
 
-APP_TITLE = "Tecnaria Sinapsi — Q/A"
-DATA_FILE = os.getenv("TEC_DATA_FILE", "static/data/tecnaria_gold.json")
+    {
+      "id": "CTF-0100",
+      "family": "CTF",
+      "domanda": "Come si posano i connettori CTF su trave in acciaio con lamiera grecata?",
+      "risposta": "**Contesto**: CTF è il connettore Tecnaria per travi in acciaio e solette collaboranti con lamiera grecata.\n**Posa corretta**:\n1) lamiera **perfettamente serrata** all’ala;\n2) posizionamento del connettore perpendicolare;\n3) chiodatura **con SPIT P560** e **2 chiodi HSBR14 per connettore**;\n4) controllo teste **a filo piastra (±0,5 mm)**;\n5) rete **a metà spessore del getto**;\n6) calcestruzzo **≥ C25/30** con vibrazione moderata.\n**Cosa NON fare**: non sparare su lamiera non aderente, non usare chiodi diversi, non saltare il controllo.\n**Riferimenti**: ETA-18/0447; UNI EN 13670.",
+      "trigger": {
+        "peso": 1.0,
+        "keywords": [
+          "ctf",
+          "posa ctf",
+          "p560",
+          "hsbr14",
+          "lamiera grecata",
+          "trave in acciaio"
+        ]
+      }
+    },
+    {
+      "id": "CTF-0101",
+      "family": "CTF",
+      "domanda": "E se non ho la lamiera posso comunque usare i CTF?",
+      "risposta": "Sì, puoi posare i CTF anche **senza lamiera**, purché l’ala della trave sia **pulita, piana e non verniciata con strati incoerenti**. La chiodatura rimane **2× HSBR14 con P560**. Dopo la posa esegui la **prova a martello** e poi getti con rete a metà spessore.",
+      "trigger": {
+        "peso": 0.85,
+        "keywords": [
+          "ctf senza lamiera",
+          "posare ctf senza lamiera",
+          "lamiera assente",
+          "posa su acciaio nudo"
+        ]
+      }
+    },
+    {
+      "id": "CTF-0102",
+      "family": "CTF",
+      "domanda": "Quali sono gli errori più comuni nella posa dei CTF?",
+      "risposta": "**Errori ricorrenti**:\n- potenza P560 insufficiente → chiodi parzialmente fuori;\n- lamiera non serrata → piastra non aderente o piccoli strappi;\n- connettore disassato → scarso contatto piastra/ala;\n- mancato controllo teste;\n- getto eseguito senza verifiche.\n**Correzioni**: ripetere la posa con potenza adeguata, serrare la lamiera, sostituire gli elementi danneggiati, rifare il verbale.",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "errori ctf",
+          "potenza insufficiente",
+          "lamiera non serrata",
+          "chiodi fuori",
+          "controllo posa ctf"
+        ]
+      }
+    },
+    {
+      "id": "CTF-0103",
+      "family": "CTF",
+      "domanda": "Dopo la posa dei CTF vedo chiodi non a filo e piccoli strappi della lamiera. Cosa devo fare?",
+      "risposta": "⚠️ **Blocca il getto.** Sostituisci i connettori non conformi e ripeti la taratura della **SPIT P560** con **almeno 3 tiri di prova** sulla stessa lamiera e sulla stessa trave. La lamiera deve essere **ben serrata** all’ala per evitare rimbalzo. Registra l’anomalia nel verbale di cantiere e allega foto.",
+      "trigger": {
+        "peso": 0.93,
+        "keywords": [
+          "ctf lamiera danneggiata",
+          "strappi lamiera",
+          "blocca getto",
+          "p560 taratura",
+          "verbale dl"
+        ]
+      }
+    },
+    {
+      "id": "CTF-0104",
+      "family": "CTF",
+      "domanda": "Dopo il getto alcune piastre suonano a vuoto: è un problema?",
+      "risposta": "Sì, va verificato. Esegui **prova a martello** su almeno il 10% dei pezzi e mappa le zone con suono anomalo. Finché non è verificata l’aderenza, **limita i carichi** sulla campata. Se il gioco è visibile → **micro-getto di ripristino** e, se richiesto, **prova pull-out**. Riferimenti: ETA-18/0447 – Allegati di posa e UNI EN 13670 §10.3.",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "ctf post getto",
+          "suona a vuoto",
+          "prova a martello",
+          "pull out"
+        ]
+      }
+    },
+    {
+      "id": "CTF-0105",
+      "family": "CTF",
+      "domanda": "Qual è il passo consigliato per ottenere una buona collaborazione acciaio-calcestruzzo con i CTF?",
+      "risposta": "Per una collaborazione **η ≈ 0,8** è consigliato un passo **150–180 mm**. Con passi più larghi (200–220 mm) la collaborazione scende a ≈ 0,6. I valori sono coerenti con **ETA-18/0447** e con i criteri dell’Eurocodice 4 (EN 1994-1-1). Mantenere maglia regolare e non accumulare connettori in un solo punto.",
+      "trigger": {
+        "peso": 0.82,
+        "keywords": [
+          "passo ctf",
+          "maglia ctf",
+          "eta 18/0447",
+          "collaborazione ctf"
+        ]
+      }
+    },
 
-app = FastAPI(title=APP_TITLE)
+    {
+      "id": "CTL-0200",
+      "family": "CTL",
+      "domanda": "Come si posano correttamente i connettori CTL su legno o lamellare?",
+      "risposta": "I connettori **CTL** si posano su travi in legno o lamellare con **2 viti Ø10**. Procedura: (1) eventuale **preforo 4 mm** su legni duri; (2) posizionamento ortogonale; (3) avvitatura fino a **battuta**; (4) rete a metà spessore della soletta; (5) getto **C25/30** con vibrazione moderata. Solette tipiche: **4–6 cm**.",
+      "trigger": {
+        "peso": 0.85,
+        "keywords": [
+          "ctl posa su legno",
+          "preforo 4 mm",
+          "viti Ø10",
+          "soletta 4-6 cm"
+        ]
+      }
+    },
+    {
+      "id": "CTL-0201",
+      "family": "CTL",
+      "domanda": "L’impresa ha saldato i CTL MAXI a delle piastre per tenerli fermi. Va bene comunque?",
+      "risposta": "No. **È vietato saldare i CTL o i CTL MAXI.** La saldatura altera il comportamento del legno e **invalida l’ETA**. La posa corretta è solo con **viti Ø10** (preforo 4 mm se necessario), ortogonali e a battuta. La DL deve redigere un **verbale di non conformità** e prescrivere il **ripristino**.",
+      "trigger": {
+        "peso": 0.94,
+        "keywords": [
+          "ctl saldati",
+          "ctl maxi saldati",
+          "non conformità",
+          "eta",
+          "dl"
+        ]
+      }
+    },
+    {
+      "id": "CONFRONTO-0220",
+      "family": "CONFRONTO",
+      "domanda": "Meglio usare CTL o CTL MAXI?",
+      "risposta": "Usa **CTL** per luci e carichi standard (soletta 4–6 cm, viti Ø10×100/120). Usa **CTL MAXI** per luci maggiori, bordi, carichi più elevati o solette più spesse (6–8 cm) con viti **Ø10×120/140**. In prossimità dei bordi densifica il passo.",
+      "trigger": {
+        "peso": 0.88,
+        "keywords": [
+          "confronto ctl ctl maxi",
+          "luci lunghe",
+          "soletta 6-8 cm",
+          "viti 10x140"
+        ]
+      }
+    },
 
-# ------------------ DATA LOADING ------------------
-GOLD_ITEMS: List[Dict[str, Any]] = []
-DATASET_EXISTS = False
-DATASET_SIZE = 0
+    {
+      "id": "CTCEM-0300",
+      "family": "CTCEM",
+      "domanda": "I CTCEM usano resine?",
+      "risposta": "No. **CTCEM è un connettore meccanico a secco** per laterocemento. Posa tipica: incisione per la sede della piastra dentata → **foro Ø11 mm prof. 75 mm** → pulizia polveri → avvitatura fino a battuta → rete a metà → CLS ≥ C25/30. È l’alternativa alle barre piegate con resina.",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "ctcem",
+          "no resina",
+          "laterocemento",
+          "foro 11",
+          "75 mm"
+        ]
+      }
+    },
+    {
+      "id": "VCEM-0310",
+      "family": "VCEM",
+      "domanda": "Quando uso i VCEM al posto dei CTCEM?",
+      "risposta": "Usa **VCEM** quando hai **quote ridotte, bordo o poco spessore** e non puoi eseguire il foro Ø11 × 75 mm dei CTCEM. VCEM lavora sempre a secco, con foro **Ø8–9 mm**, avvitatura a battuta e rete a metà. CLS ≥ C25/30.",
+      "trigger": {
+        "peso": 0.84,
+        "keywords": [
+          "vcem",
+          "quote ridotte",
+          "bordo",
+          "foro 8-9 mm",
+          "poco spessore"
+        ]
+      }
+    },
+    {
+      "id": "VCEM-0311",
+      "family": "VCEM",
+      "domanda": "Posso usare la SPIT P560 per posare i VCEM?",
+      "risposta": "No. La **SPIT P560** è solo per i **CTF su acciaio** con chiodi **HSBR14**. I **VCEM** (come i CTCEM) si fissano **per avvitatura meccanica su laterocemento** dopo foratura. Usare la P560 sui VCEM danneggia il connettore e fa perdere conformità ETA.",
+      "trigger": {
+        "peso": 0.97,
+        "keywords": [
+          "vcem p560",
+          "errore posa",
+          "laterocemento",
+          "avvitatura",
+          "uso improprio p560"
+        ]
+      }
+    },
 
-def load_dataset() -> Tuple[bool, int]:
-    global GOLD_ITEMS, DATASET_EXISTS, DATASET_SIZE
-    p = Path(DATA_FILE)
-    if not p.exists():
-        GOLD_ITEMS = []
-        DATASET_EXISTS = False
-        DATASET_SIZE = 0
-        return False, 0
-    try:
-        with p.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-        items = data.get("items") if isinstance(data, dict) else data
-        if not isinstance(items, list):
-            items = []
-        norm = []
-        for it in items:
-            if not isinstance(it, dict):
-                continue
-            fam = (it.get("family") or it.get("famiglia") or "").strip()
-            q  = (it.get("q") or it.get("question") or "").strip()
-            a  = (it.get("a") or it.get("answer") or "").strip()
-            tags = it.get("tags") or it.get("keywords") or []
-            if isinstance(tags, str):
-                tags = [t.strip() for t in tags.split(",") if t.strip()]
-            norm.append({"family": fam, "question": q, "answer": a, "tags": tags})
-        GOLD_ITEMS = norm
-        DATASET_EXISTS = True
-        DATASET_SIZE = p.stat().st_size
-        return True, DATASET_SIZE
-    except Exception:
-        GOLD_ITEMS = []
-        DATASET_EXISTS = False
-        DATASET_SIZE = 0
-        return False, 0
+    {
+      "id": "P560-0400",
+      "family": "P560",
+      "domanda": "Sbaglio se taro la P560 con un solo tiro?",
+      "risposta": "Sì, è un errore. La procedura corretta Tecnaria prevede **almeno 3 tiri di prova consecutivi** sulla stessa lamiera/trave e con le **stesse cartucce**. Un solo tiro non è rappresentativo e può falsare la regolazione. Le teste devono risultare **a filo piastra (±0,5 mm)**. Registra tutto nel verbale.",
+      "trigger": {
+        "peso": 0.96,
+        "keywords": [
+          "p560",
+          "taratura",
+          "un solo tiro",
+          "3 tiri di prova",
+          "verbale"
+        ]
+      }
+    },
+    {
+      "id": "P560-0401",
+      "family": "P560",
+      "domanda": "Quali sono le regole di sicurezza per usare la P560 in cantiere?",
+      "risposta": "Usa sempre i **DPI obbligatori** (occhiali EN166, guanti antitaglio, cuffie, scarpe antiscivolo). Non sparare mai a vuoto, non puntare verso persone o superfici non strutturali, carica la cartuccia solo quando sei pronto al tiro, libera 3 m attorno all’operatore. In caso di inceppamento, scarica e attendi almeno 30 s prima di intervenire.",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "p560 sicurezza",
+          "dpi",
+          "spari a vuoto",
+          "inceppamento",
+          "regole p560"
+        ]
+      }
+    },
 
-load_dataset()
+    {
+      "id": "DIAPASON-0500",
+      "family": "DIAPASON",
+      "domanda": "A cosa serve il sistema DIAPASON Tecnaria?",
+      "risposta": "Il sistema **DIAPASON** è previsto per collegamenti e fissaggi speciali quando è necessario garantire allineamento e bloccaggio controllato tra elementi strutturali. Serve quando il solo connettore non garantisce l’accoppiamento geometrico o quando i carichi hanno componenti non standard. Controllare sempre l’allineamento fori e serrare con la coppia indicata in scheda Tecnaria.",
+      "trigger": {
+        "peso": 0.82,
+        "keywords": [
+          "diapason",
+          "fissaggi speciali",
+          "allineamento",
+          "coppia dinamometrica"
+        ]
+      }
+    },
 
-# ------------------ MATCHING ------------------
-def family_hint(q: str) -> str:
-    ql = q.lower()
-    if "p560" in ql: return "P560"
-    if "ctf" in ql or "sparachiod" in ql or "trave acciaio" in ql: return "CTF"
-    if "ctl maxi" in ql or "assito" in ql or "tavolato" in ql: return "CTL MAXI"
-    if "ctl" in ql: return "CTL"
-    if "ctcem" in ql: return "CTCEM"
-    if "vcem"  in ql: return "VCEM"
-    if "diapason" in ql: return "DIAPASON"
-    if "gts" in ql: return "GTS"
-    if "accessori" in ql or "codici" in ql: return "ACCESSORI"
-    return ""
+    {
+      "id": "GTS-0600",
+      "family": "GTS",
+      "domanda": "Quali sono i problemi più comuni nel sistema GTS?",
+      "risposta": "Problemi tipici GTS: uso di rondelle non originali, coppia di serraggio insufficiente (<30 Nm), nessun ricontrollo dopo il getto, serraggio disuniforme. Posa corretta: serraggio con chiave dinamometrica 30–40 Nm (o valore da scheda), registrazione nel verbale di cantiere, ricontrollo a 24 h in caso di vibrazioni.",
+      "trigger": {
+        "peso": 0.82,
+        "keywords": [
+          "gts",
+          "coppia serraggio",
+          "rondelle originali",
+          "chiave dinamometrica"
+        ]
+      }
+    },
 
-def score_item(q: str, it: Dict[str, Any]) -> float:
-    ql = q.lower()
-    s = 0.0
-    fam = (it.get("family") or "").lower()
-    if fam and fam in ql: s += 4.0
-    hint = family_hint(q)
-    if hint and hint.lower() == fam: s += 3.0
-    text = (" ".join([it.get("question",""), it.get("answer","")])).lower()
-    for kw, w in [
-        ("p560",3.0),("hsbr14",2.2),("lamiera",1.5),("rete",1.2),
-        ("viti",1.6),("soletta",1.4),("c25/30",1.0),
-        ("taratura",1.8),("chiodi",1.6),("sparo",1.4),
-        ("resina",1.2),("a secco",1.2),("tecnaria",1.0),
-    ]:
-        if kw in ql and kw in text: s += w
-    q_tok = set(re.findall(r"[a-z0-9]+", ql))
-    t_tok = set(re.findall(r"[a-z0-9]+", text))
-    s += min(len(q_tok & t_tok)*0.2, 3.0)
-    return s
+    {
+      "id": "ACCESSORI-0700",
+      "family": "ACCESSORI",
+      "domanda": "Quali accessori devo prevedere insieme ai connettori CTF?",
+      "risposta": "Per posa CTF: chiodi **HSBR14** (2 per connettore + 5% scorta), **SPIT P560** con kit/adattatori Tecnaria, rete elettrosaldata, distanziatori per mantenere la rete a metà spessore, DPI e schermi di protezione. Questi accessori garantiscono posa sicura e conforme all’ETA.",
+      "trigger": {
+        "peso": 0.77,
+        "keywords": [
+          "accessori ctf",
+          "hsbr14",
+          "rete",
+          "distanziatori",
+          "p560"
+        ]
+      }
+    },
 
-def pick_answer(q: str) -> Tuple[Dict[str, Any], float]:
-    if not GOLD_ITEMS: return {}, 0.0
-    it, sc = max(((it, score_item(q, it)) for it in GOLD_ITEMS), key=lambda x: x[1])
-    return it, sc
+    {
+      "id": "PROB-1001",
+      "family": "PROBLEMATICHE",
+      "domanda": "Ho posato i connettori ma non sono sicuro: cosa controllo prima del getto?",
+      "risposta": "**Check pre-getto Tecnaria (tutte le famiglie):** 1) famiglia corretta (CTF su acciaio, CTL su legno, CTCEM/VCEM su laterocemento); 2) fissaggio corretto (teste a filo o viti a battuta); 3) rete a metà spessore; 4) lamiera ben serrata; 5) CLS ≥ C25/30; 6) verbale o foto. Se manca un punto → rimanda il getto e ripristina.",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "check pre getto",
+          "non sono sicuro",
+          "controlli di cantiere",
+          "rimandare getto",
+          "verifica posa"
+        ]
+      }
+    },
 
-def is_tecnaria_domain(q: str) -> bool:
-    ql = q.lower()
-    banned = ["bitcoin","ricetta","calcio","meteo","borsa","binance","android","iphone","film","politica","elezioni"]
-    return not any(b in ql for b in banned)
+    {
+      "id": "CONF-0901",
+      "family": "CONFRONTO",
+      "domanda": "Meglio usare CTF o CTCEM per un solaio misto con travi in acciaio e campata in laterocemento?",
+      "risposta": "Usa **CTF** sulle travi in acciaio (posa a secco con P560 e HSBR14) e **CTCEM/VCEM** sul campo in laterocemento (foro e avvitatura). È normale avere un sistema misto CTF + CTCEM nella stessa soletta. Rete continua e CLS C25/30.",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "confronto ctf ctcem",
+          "misto acciaio laterocemento",
+          "due famiglie",
+          "ctf e ctcem insieme"
+        ]
+      }
+    },
 
-# ------------------ ROUTES ------------------
-@app.get("/health")
-def health():
-    fam_count: Dict[str,int] = {}
-    for it in GOLD_ITEMS:
-        fam = it.get("family") or ""
-        fam_count[fam] = fam_count.get(fam, 0) + 1
-    top3 = sorted(fam_count.items(), key=lambda x: x[1], reverse=True)[:3]
-    return {
-        "title": APP_TITLE,
-        "endpoints": {
-            "health": "/health",
-            "ask": "/qa/ask?q=MI%20PARLI%20DELLA%20P560%20%3F",
-            "ask_alias": "/ask?q=MI%20PARLI%20DELLA%20P560%20%3F",
-        },
-        "data_file": str(Path(DATA_FILE).resolve()),
-        "dataset_exists": DATASET_EXISTS,
-        "dataset_size_bytes": DATASET_SIZE,
-        "items_loaded": len(GOLD_ITEMS),
-        "top_families": top3,
-        "ui": "root /",
-        "note": "Alias /ask attivo. RAG Tecnaria-only."
+    {
+      "id": "COMM-0118",
+      "family": "COMM",
+      "domanda": "Dove devo rivolgermi se in cantiere ho un dubbio sui connettori Tecnaria?",
+      "risposta": "**Cosa fare subito**: scrivi o chiama **Tecnaria S.p.A., Viale Pecori Giraldi, 55 – 36061 Bassano del Grappa (VI)** – Tel. +39 0424 502029 – info@tecnaria.com. Invia foto della posa e scrivi che famiglia hai usato. Ti dicono se puoi gettare o se devi ripristinare. Non decidere in autonomia durante il getto.",
+      "trigger": {
+        "peso": 1.0,
+        "keywords": [
+          "dubbio in cantiere",
+          "assistenza tecnaria",
+          "chi chiamo tecnaria",
+          "foto posa alla sede"
+        ]
+      }
+    },
+    {
+      "id": "COMM-0119",
+      "family": "COMM",
+      "domanda": "Se sbaglio articolo o famiglia, la Tecnaria me lo cambia?",
+      "risposta": "Se hai ordinato la famiglia sbagliata (es. CTF invece di CTCEM o CTL invece di CTL MAXI), avvisa subito la sede di Bassano. Si valuta la sostituzione o il cambio fornitura. **Cosa NON fare**: non ‘adattare’ in cantiere una famiglia al posto dell’altra.",
+      "trigger": {
+        "peso": 0.87,
+        "keywords": [
+          "ho sbagliato articolo",
+          "cambio famiglia",
+          "sostituzione connettori",
+          "ordinato ctf ma serve ctcem"
+        ]
+      }
+    },
+
+    {
+      "id": "CONF-0123",
+      "family": "CONFRONTO",
+      "domanda": "Qual è la differenza vera tra CTF e CTL?",
+      "risposta": "**CTF** è per **travi in acciaio**, posa **a secco con SPIT P560** e **2 HSBR14**, lamiera serrata. **CTL** è per **travi in legno** (piene o lamellari), posa **con 2 viti Ø10 a battuta** e soletta 4–6 cm. Non sono intercambiabili perché cambia il supporto, il modo di fissaggio e la certificazione. Non usare CTL su acciaio e non usare CTF su legno.",
+      "trigger": {
+        "peso": 1.0,
+        "keywords": [
+          "differenza ctf ctl",
+          "ctf o ctl",
+          "legno o acciaio",
+          "quale connettore usare"
+        ]
+      }
+    },
+    {
+      "id": "CONF-0124",
+      "family": "CONFRONTO",
+      "domanda": "Quando devo scegliere CTCEM e quando VCEM?",
+      "risposta": "Scegli **CTCEM** quando hai spazio e puoi fare foro Ø11×75 mm. Scegli **VCEM** quando non hai spazio, sei vicino al bordo o la soletta è vecchia e non vuoi indebolirla: foro più piccolo (Ø8–9 mm) e avvitatura. È la versione ‘snella’ del CTCEM.",
+      "trigger": {
+        "peso": 0.95,
+        "keywords": [
+          "ctcem o vcem",
+          "differenza ctcem vcem",
+          "poco spessore",
+          "bordo solaio"
+        ]
+      }
+    },
+    {
+      "id": "CONF-0125",
+      "family": "CONFRONTO",
+      "domanda": "Se ho travi in acciaio e campo in laterocemento, posso usare una sola famiglia di connettori?",
+      "risposta": "No, in generale **ne usi due**. Su acciaio → **CTF** con P560. Su laterocemento → **CTCEM o VCEM** con foro e avvitatura. È normale avere CTF + CTCEM nella stessa soletta.",
+      "trigger": {
+        "peso": 1.0,
+        "keywords": [
+          "travi acciaio e campo laterocemento",
+          "posso usare una sola famiglia",
+          "ctf più ctcem",
+          "soletta mista"
+        ]
+      }
+    },
+
+    {
+      "id": "PROB-0136",
+      "family": "PROBLEMATICHE",
+      "domanda": "Dopo il getto alcune piastre dei CTF suonano a vuoto quando le batto, è grave?",
+      "risposta": "Sì, va verificato. Mappa le zone con suono diverso (almeno 10% dei pezzi), limita i carichi, valuta un micro-getto di ripristino o una nuova chiodatura. Se il difetto è diffuso → chiama Tecnaria/DL.",
+      "trigger": {
+        "peso": 0.98,
+        "keywords": [
+          "dopo getto suona a vuoto",
+          "ctf suona vuoto",
+          "controllo a martello dopo getto",
+          "aderenza piastra"
+        ]
+      }
+    },
+    {
+      "id": "PROB-0137",
+      "family": "PROBLEMATICHE",
+      "domanda": "Ho fatto il getto e mi sono accorto dopo che mancavano alcuni connettori, devo demolire?",
+      "risposta": "Non per forza. Segna la zona, fai foto e avvisa DL e Tecnaria. Se è una zona piccola → si fa integrazione post-getto. Se è una zona grande o in mezzeria → il progettista può chiedere un ripristino più forte.",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "mancano connettori",
+          "mi sono dimenticato connettori",
+          "getto già fatto",
+          "integrazione post getto"
+        ]
+      }
+    },
+    {
+      "id": "PROB-0138",
+      "family": "PROBLEMATICHE",
+      "domanda": "Se durante il getto la lamiera si è sollevata sotto ai CTF, cosa faccio?",
+      "risposta": "Fermati in quella zona, controlla i CTF: se non sono più aderenti o le teste non sono a filo → rifai posa dopo aver serrato la lamiera. Poi riprendi il getto.",
+      "trigger": {
+        "peso": 0.95,
+        "keywords": [
+          "lamiera si è sollevata",
+          "getto ha mosso lamiera",
+          "ctf non aderente dopo getto",
+          "rifare connettori"
+        ]
+      }
+    },
+    {
+      "id": "PROB-0143",
+      "family": "PROBLEMATICHE",
+      "domanda": "Se non ho fatto le 3 prove di taratura P560 e ho già posato, è tutto da rifare?",
+      "risposta": "Non è automatico, ma è una non conformità. Fai subito le 3 prove, confronta le teste dei connettori già posati e integra solo quelli fuori tolleranza.",
+      "trigger": {
+        "peso": 0.93,
+        "keywords": [
+          "non ho fatto le 3 prove",
+          "taratura p560 mancante",
+          "posati senza prova",
+          "come recupero"
+        ]
+      }
+    },
+
+    {
+      "id": "KILLER-0146",
+      "family": "KILLER",
+      "domanda": "Ho usato CTF sulla parte in laterocemento perché dovevo finire oggi, posso lasciarli?",
+      "risposta": "No. CTF = travi in acciaio. Laterocemento = CTCEM/VCEM. I CTF usati su laterocemento non sono conformi e vanno ripristinati.",
+      "trigger": {
+        "peso": 1.0,
+        "keywords": [
+          "ctf su laterocemento",
+          "usato ctf dove non dovevo",
+          "fare prima",
+          "errore di famiglia grave"
+        ]
+      }
+    },
+    {
+      "id": "KILLER-0147",
+      "family": "KILLER",
+      "domanda": "Hanno saldato i CTL MAXI per tenerli fermi e poi hanno gettato, cosa devo dire?",
+      "risposta": "Da rifare. CTL/CTL MAXI non si saldano. Vanno fissati con viti Ø10. La saldatura invalida l’ETA.",
+      "trigger": {
+        "peso": 1.0,
+        "keywords": [
+          "ctl maxi saldati",
+          "hanno saldato connettori legno",
+          "errore gravissimo legno",
+          "rifare posa"
+        ]
+      }
+    },
+
+    {
+      "id": "NAT-0200",
+      "family": "PROBLEMATICHE",
+      "domanda": "Posso gettare oggi o devo aspettare che controllate la posa?",
+      "risposta": "Se anche solo un punto del check non è ok (famiglia sbagliata, lamiera non serrata, viti non a battuta, rete non in posizione) → **rimandi il getto**. Prima sistema, fai foto, poi getti.",
+      "trigger": {
+        "peso": 1.0,
+        "keywords": [
+          "posso gettare oggi",
+          "getto oggi",
+          "devo aspettare",
+          "controllo posa prima di gettare"
+        ]
+      }
+    },
+    {
+      "id": "NAT-0201",
+      "family": "PROBLEMATICHE",
+      "domanda": "Mi manca la rete, posso gettare lo stesso e poi la metto?",
+      "risposta": "No. La rete va messa prima e tenuta a metà spessore. Metterla dopo non lavora.",
+      "trigger": {
+        "peso": 1.0,
+        "keywords": [
+          "manca rete",
+          "gettare senza rete",
+          "metto dopo la rete",
+          "piove domani"
+        ]
+      }
+    },
+    {
+      "id": "NAT-0202",
+      "family": "PROBLEMATICHE",
+      "domanda": "Il capo mi ha detto di usare la chiodatrice dell’altra impresa, va bene lo stesso?",
+      "risposta": "Solo se è la **SPIT P560** con **HSBR14** e fai le 3 prove. Altre chiodatrici/cartucce non vanno bene.",
+      "trigger": {
+        "peso": 0.95,
+        "keywords": [
+          "chiodatrice altra impresa",
+          "posso usare la loro p560",
+          "altra pistola sparachiodi",
+          "non ho la mia p560"
+        ]
+      }
     }
-
-@app.get("/qa/ask")
-def qa_ask(q: str = Query(..., min_length=2)):
-    if not is_tecnaria_domain(q):
-        return {"family":"RAG","score":0.0,
-                "answer":"Sono il bot ufficiale Tecnaria (Bassano del Grappa). Rispondo solo su prodotti e sistemi Tecnaria.",
-                "query": q}
-    it, sc = pick_answer(q)
-    if not it:
-        return {"family":"RAG","score":0.0,
-                "answer":"Dataset non disponibile o vuoto. Caricare static/data/tecnaria_gold.json.",
-                "query": q}
-    return {"family": it.get("family") or "N/A",
-            "score": round(sc,2),
-            "answer": it.get("answer") or "Risposta non disponibile.",
-            "query": q}
-
-@app.get("/ask")
-def ask_alias(q: str = Query(..., min_length=2)):
-    return qa_ask(q)
-
-# ------------------ STATIC & UI ------------------
-if Path("static").exists():
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-
-HTML_PAGE = r"""<!doctype html>
-<html lang="it">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Tecnaria Sinapsi — Q/A</title>
-<style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(135deg,#ff7a18,#1f1f1f);margin:0;color:#111}
-.wrap{max-width:980px;margin:48px auto;padding:0 16px}
-.card{background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.15);overflow:hidden}
-.header{padding:24px 24px 8px 24px;background:linear-gradient(90deg,#ff9a3c,#ff7a18);color:#fff}
-.title{font-size:24px;margin:0;font-weight:800}
-.subtitle{opacity:.9;margin-top:6px}
-.content{padding:20px 24px}
-.bar{display:flex;gap:8px;margin-top:8px}
-input[type=text]{flex:1;padding:12px 14px;border:1px solid #ddd;border-radius:10px;font-size:16px;outline:none}
-button{padding:12px 16px;border:none;border-radius:10px;background:#111;color:#fff;font-weight:700;cursor:pointer}
-.pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.pill{background:#f3f3f3;border-radius:100px;padding:8px 12px;font-size:13px;cursor:pointer}
-.meta{font-size:12px;color:#666;margin-top:8px}
-.answer{white-space:pre-wrap;line-height:1.45;border:1px solid #eee;border-radius:12px;padding:14px;margin-top:12px;background:#fafafa}
-.badge{display:inline-block;background:#111;color:#fff;border-radius:999px;font-size:11px;padding:4px 8px;margin-right:6px}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="card">
-    <div class="header">
-      <div class="title">Tecnaria Sinapsi — Q/A</div>
-      <div class="subtitle">Bot ufficiale: CTF, CTL/CTL MAXI, P560, CTCEM/VCEM, DIAPASON, GTS, ACCESSORI • Stile GOLD • RAG Tecnaria-only</div>
-    </div>
-    <div class="content">
-      <div class="bar">
-        <input id="q" type="text" placeholder="Scrivi la tua domanda (es. “Mi parli della P560?”)"/>
-        <button onclick="ask()">Chiedi a Sinapsi</button>
-      </div>
-      <div class="pills">
-        <div class="pill" onclick="prefill('Mi parli della P560?')">P560 (istruzioni)</div>
-        <div class="pill" onclick="prefill('Posso usare una chiodatrice qualsiasi per i CTF?')">CTF (chiodatrice)</div>
-        <div class="pill" onclick="prefill('Differenza tra CTL e CTL MAXI?')">CTL vs CTL MAXI</div>
-        <div class="pill" onclick="prefill('I CTCEM usano resine?')">CTCEM (resine?)</div>
-        <div class="pill" onclick="prefill('Codici connettori CTF?')">Codici / ordini</div>
-      </div>
-      <div class="meta">Endpoint <span class="badge">/qa/ask</span> Health: <span id="hstatus">…</span></div>
-      <div id="out" class="answer">Scrivi una domanda e premi “Chiedi a Sinapsi”.</div>
-    </div>
-  </div>
-</div>
-<script>
-async function health(){
-  try{
-    const r = await fetch('/health');
-    document.getElementById('hstatus').innerText = r.ok ? 'ok' : 'ko';
-  }catch(e){
-    document.getElementById('hstatus').innerText = 'ko';
+  ],
+  "_end": {
+    "status": "complete",
+    "note": "Master unificato con blocchi 1–8, solo contenuti GOLD, senza sezioni provvisorie."
   }
 }
-function prefill(t){ document.getElementById('q').value = t; }
-async function ask(){
-  const v = document.getElementById('q').value.trim();
-  if(!v){ return; }
-  const r = await fetch('/qa/ask?q='+encodeURIComponent(v));
-  const js = await r.json();
-  const fam = js.family || 'N/A';
-  const sc = js.score !== undefined ? js.score : '';
-  const ans = js.answer || '—';
-  document.getElementById('out').innerText = 'Famiglia: '+fam+'  |  Score: '+sc+'\\n\\n'+ans;
-}
-health();
-</script>
-</body>
-</html>
-"""
-
-@app.get("/", response_class=HTMLResponse)
-def root():
-    return HTML_PAGE
-
-@app.get("/reload", response_class=PlainTextResponse)
-def reload_data():
-    ok, _ = load_dataset()
-    return "reloaded: " + ("ok" if ok else "fail")
