@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from pathlib import Path
 import json
 
-app = FastAPI(title="Tecnaria Sinapsi — Q/A", version="1.1.1")
+app = FastAPI(title="Tecnaria Sinapsi — Q/A", version="1.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,14 +13,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# -------------------------------------------------
+# 1) CARICAMENTO DATI
+# -------------------------------------------------
 DATA_PATH = Path("static/data/tecnaria_gold.json")
+
+ITEMS: list[dict] = []
+META: dict = {}
+
 if DATA_PATH.exists():
     with DATA_PATH.open("r", encoding="utf-8") as f:
-        TECNARIA_DATA = json.load(f)
-    ITEMS = TECNARIA_DATA.get("items", [])
+        raw = json.load(f)
+    # il tuo file ha questa forma: { "_meta": {...}, "items": [ ... ] }
+    META = raw.get("_meta", {})
+    ITEMS = raw.get("items", [])
 else:
+    # se proprio non c'è, non esplode: parte vuoto
+    META = {"version": "EMPTY"}
     ITEMS = []
 
+# -------------------------------------------------
+# 2) MODELLI
+# -------------------------------------------------
 class AskRequest(BaseModel):
     question: str
 
@@ -31,31 +45,38 @@ class AskResponse(BaseModel):
     source_id: str | None = None
     mood: str | None = None
 
-
-# 👇👇👇 QUESTA È LA PARTE CHE TI MANCA
+# -------------------------------------------------
+# 3) HOME (per non avere 503)
+# -------------------------------------------------
 @app.get("/")
 def root():
     return {
         "service": "Tecnaria Sinapsi — Q/A",
         "status": "ok",
+        "items_loaded": len(ITEMS),
+        "meta": META,
         "endpoints": {
             "health": "/health",
-            "ask": "/qa/ask"
-        },
-        "items_loaded": len(ITEMS)
+            "ask": "/qa/ask",
+            "docs": "/docs"
+        }
     }
-# ☝️☝️☝️ così / non fa più {"detail":"Not Found"}
 
-
+# -------------------------------------------------
+# 4) CAMILLA: capisce intenzione
+# -------------------------------------------------
 def camilla_oracle(question: str) -> dict:
     q = question.lower()
     mood = "default"
     need_gold = False
     family_hint = None
 
-    if "ctf" in q or "p560" in q or "lamiera" in q or "chiodi" in q:
+    # famiglie
+    if "ctf" in q or "p560" in q or "lamiera" in q or "chiod" in q:
         family_hint = "CTF"
-    elif "ctl" in q or "lamellare" in q:
+    elif "ctl" in q and "maxi" in q:
+        family_hint = "CTL MAXI"
+    elif "ctl" in q:
         family_hint = "CTL"
     elif "ctcem" in q:
         family_hint = "CTCEM"
@@ -65,22 +86,24 @@ def camilla_oracle(question: str) -> dict:
         family_hint = "DIAPASON"
     elif "gts" in q:
         family_hint = "GTS"
+    elif "ordine" in q or "spedizione" in q or "azienda" in q or "sede" in q:
+        family_hint = "COMM"
 
-    if "sbaglio" in q or "errore" in q or "strapp" in q or "rotto" in q or "blocca" in q:
+    # stati
+    if "sbaglio" in q or "errore" in q or "si è strappata" in q or "blocca" in q or "non funziona" in q:
         mood = "alert"
         need_gold = True
     elif "come si posa" in q or "come devo posare" in q or "posa" in q:
         mood = "explanatory"
         need_gold = True
-    elif "differenza" in q or "vs" in q or "meglio" in q:
+    elif "differenza" in q or "vs" in q or "meglio" in q or "confronto" in q:
         mood = "comparative"
         need_gold = True
-    elif "non sono sicuro" in q or "prima del getto" in q or "controllo" in q:
+    elif "non sono sicuro" in q or "prima del getto" in q or "check" in q:
         mood = "check"
         need_gold = True
-    elif "dove si trova tecnaria" in q or "sede tecnaria" in q or "indirizzo tecnaria" in q:
+    elif "dove si trova tecnaria" in q or "sede tecnaria" in q or "pecori giraldi" in q:
         mood = "institutional"
-        need_gold = False
 
     return {
         "mood": mood,
@@ -88,58 +111,60 @@ def camilla_oracle(question: str) -> dict:
         "family_hint": family_hint
     }
 
-
-def format_gold(base_answer: str, mood: str, family: str | None, question: str) -> str:
-    if len(base_answer) > 450:
+# -------------------------------------------------
+# 5) FORMATTORE GOLD (PERFEZIONE)
+# -------------------------------------------------
+def format_gold(base_answer: str, mood: str, family: str | None) -> str:
+    # se hai già scritto tu in formato bello, non tocco
+    if "**Contesto**" in base_answer or "Checklist" in base_answer or "⚠️" in base_answer:
         return base_answer
 
-    family_block = ""
-    if family in ("CTF", "CTL", "CTCEM", "VCEM", "P560"):
-        family_block = f"\n\n**Famiglia coinvolta:** {family}"
+    blocco_fam = f"\n\n**Famiglia coinvolta:** {family}" if family else ""
 
     if mood == "alert":
         return (
             f"⚠️ ATTENZIONE\n{base_answer}\n\n"
             f"**Checklist immediata:**\n"
-            f"- ferma il getto / la posa\n"
-            f"- controlla utensile (potenza P560 / avvitatore)\n"
+            f"- ferma posa / getto\n"
+            f"- controlla utensile (P560 / avvitatore)\n"
             f"- verifica famiglia corretta (CTF acciaio, CTL legno, CTCEM/VCEM laterocemento)\n"
             f"- annota su verbale DL con foto\n"
-            f"{family_block}"
+            f"{blocco_fam}"
         )
 
     if mood == "explanatory":
         return (
-            f"**Contesto**\nStai chiedendo una posa reale di cantiere. Ti do la procedura completa.\n\n"
-            f"**Procedura Tecnaria suggerita**\n{base_answer}\n\n"
-            f"**Note di cantiere:**\n"
-            f"- rete sempre a metà spessore\n"
-            f"- calcestruzzo ≥ C25/30 con vibrazione moderata\n"
-            f"- se c'è lamiera: deve essere serrata\n"
-            f"{family_block}"
+            f"**Contesto**\nDomanda di posa reale in cantiere. Ti do la sequenza completa.\n\n"
+            f"**Istruzioni di posa**\n{base_answer}\n\n"
+            f"**Nota RAG**: risposte filtrate su prodotti Tecnaria, niente marchi terzi."
+            f"{blocco_fam}"
         )
 
     if mood == "comparative":
         return (
             f"🔍 **Confronto richiesto**\n{base_answer}\n\n"
-            f"**Regola veloce:**\n"
-            f"- legno → CTL / CTL MAXI\n"
-            f"- laterocemento → CTCEM / VCEM (a secco, con foro)\n"
+            f"**Regola veloce Tecnaria**\n"
             f"- acciaio → CTF + P560\n"
+            f"- legno → CTL / CTL MAXI\n"
+            f"- laterocemento → CTCEM / VCEM\n"
+            f"{blocco_fam}"
         )
 
     if mood == "check":
         return (
             f"**Check pre-getto / pre-consegna**\n{base_answer}\n\n"
-            f"**Ricorda:** se manca uno di questi controlli → rinvia il getto e ripristina."
+            f"Se manca un punto, rimanda il getto e ripristina."
+            f"{blocco_fam}"
         )
 
     return base_answer
 
-
+# -------------------------------------------------
+# 6) MATCH SUL TUO FILE
+# -------------------------------------------------
 def find_best_match(user_q: str, family_hint: str | None = None):
     user_q_low = user_q.lower()
-    best = None
+    best_item = None
     best_score = 0.0
 
     for item in ITEMS:
@@ -151,27 +176,34 @@ def find_best_match(user_q: str, family_hint: str | None = None):
 
         score = 0.0
 
-        if user_q_low in domanda_low or domanda_low in user_q_low:
-            score += 0.6
+        if user_q_low == domanda_low:
+            score = 1.0
+        elif user_q_low in domanda_low or domanda_low in user_q_low:
+            score += 0.65
 
         for kw in keywords:
             if kw.lower() in user_q_low:
-                score += 0.25
+                score += 0.2
 
         if family_hint and item_family.lower() == family_hint.lower():
-            score += 0.2
+            score += 0.15
 
         if score > best_score:
             best_score = score
-            best = item
+            best_item = item
 
-    return best, best_score
+    return best_item, best_score
 
-
+# -------------------------------------------------
+# 7) ENDPOINTS
+# -------------------------------------------------
 @app.get("/health")
 def health():
-    return {"status": "ok", "items_loaded": len(ITEMS)}
-
+    return {
+        "status": "ok",
+        "items_loaded": len(ITEMS),
+        "meta_version": META.get("version")
+    }
 
 @app.post("/qa/ask", response_model=AskResponse)
 def qa_ask(req: AskRequest):
@@ -184,11 +216,11 @@ def qa_ask(req: AskRequest):
 
     if not item:
         return AskResponse(
-            answer="Non ho trovato una risposta adeguata in Tecnaria Gold. Specifica la famiglia (CTF, CTL, CTCEM, VCEM, P560) o il problema (posa, errore, dopo getto).",
+            answer="Non ho trovato una risposta in Tecnaria Gold. Specifica la famiglia (CTF, CTL, CTL MAXI, CTCEM, VCEM, P560) o il problema (posa, errore, dopo getto).",
             score=0.0,
             family=None,
             source_id=None,
-            mood=cam.get("mood"),
+            mood=cam.get("mood")
         )
 
     base_answer = item.get("risposta") or item.get("answer") or "Risposta non disponibile."
@@ -196,7 +228,7 @@ def qa_ask(req: AskRequest):
     source_id = item.get("id")
 
     if cam.get("need_gold", False):
-        final_answer = format_gold(base_answer, cam.get("mood"), family, q)
+        final_answer = format_gold(base_answer, cam.get("mood"), family)
     else:
         final_answer = base_answer
 
@@ -205,5 +237,5 @@ def qa_ask(req: AskRequest):
         score=round(score, 3),
         family=family,
         source_id=source_id,
-        mood=cam.get("mood"),
+        mood=cam.get("mood")
     )
