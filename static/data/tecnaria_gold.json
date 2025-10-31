@@ -628,10 +628,118 @@
           "non ho la mia p560"
         ]
       }
+    },
+
+    {
+      "id": "P560-0399",
+      "family": "P560",
+      "domanda": "Mi spieghi la P560?",
+      "risposta": "**Contesto**\nLa **SPIT P560** è la chiodatrice a cartuccia indicata da Tecnaria per fissare i connettori **CTF** su travi in acciaio. Lavora con **kit/adattatore Tecnaria** e con **2 chiodi HSBR14 per connettore**, così da garantire appoggio perpendicolare e energia di sparo costante anche con lamiera grecata.\n\n**Utilizzo corretto**\n1) montare l’adattatore Tecnaria;\n2) verificare che trave/lamiera siano **ben serrate**;\n3) appoggiare il connettore CTF in verticale;\n4) sparare **2 chiodi HSBR14** con P560;\n5) controllare che le teste siano **a filo piastra (±0,5 mm)**.\n\n**Cosa NON fare**\n- non usare chiodatrici generiche;\n- non usare chiodi diversi da HSBR14;\n- non sparare su lamiera che rimbalza.\n\n**Famiglia coinvolta:** P560",
+      "trigger": {
+        "peso": 0.98,
+        "keywords": [
+          "p560",
+          "mi spieghi la p560",
+          "chiodatrice p560",
+          "pistola tecnaria",
+          "p560 descrizione"
+        ]
+      }
+    },
+    {
+      "id": "CTF-0001",
+      "family": "CTF",
+      "domanda": "Mi spieghi i connettori CTF?",
+      "risposta": "**Contesto**\nI **CTF** sono i connettori Tecnaria per collegare **travi in acciaio S275–S355** con il **getto collaborante**. La posa è **meccanica a secco** con chiodatrice **SPIT P560** e **2 chiodi HSBR14 per connettore**. In presenza di lamiera grecata, questa deve essere **ben serrata** all’ala della trave per evitare rimbalzi.\n\n**A cosa servono**\n- creare collaborazione acciaio–calcestruzzo;\n- aumentare la capacità portante del solaio;\n- evitare saldature in cantiere.\n\n**Punti di controllo**\n- 2 chiodi per connettore;\n- teste a filo piastra;\n- rete a metà spessore;\n- CLS ≥ C25/30.\n\n**Famiglia coinvolta:** CTF",
+      "trigger": {
+        "peso": 0.98,
+        "keywords": [
+          "ctf",
+          "mi spieghi i ctf",
+          "connettori ctf",
+          "ctf tecnaria",
+          "ctf descrizione"
+        ]
+      }
+    },
+    {
+      "id": "CTL-0001",
+      "family": "CTL",
+      "domanda": "Mi spieghi i CTL?",
+      "risposta": "**Contesto**\nI **CTL** sono connettori Tecnaria per **solai in legno** (massiccio o lamellare) da rendere collaboranti con una soletta di calcestruzzo. Si fissano **con viti** al legno e poi si getta una soletta di 4–6 cm con rete a metà spessore.\n\n**Utilizzo tipico**\n- recupero solai in legno esistenti;\n- aumento rigidezza e portata;\n- miglioramento sismico.\n\n**Cosa NON fare**\n- non saldare i CTL;\n- non usare CTL su laterocemento (usare CTCEM/VCEM);\n- non sostituire i CTL con CTF.\n\n**Famiglia coinvolta:** CTL",
+      "trigger": {
+        "peso": 0.98,
+        "keywords": [
+          "ctl",
+          "mi spieghi i ctl",
+          "connettori per legno",
+          "ctl descrizione"
+        ]
+      }
+    },
+    {
+      "id": "CTLX-0001",
+      "family": "CTL MAXI",
+      "domanda": "Mi spieghi i connettori CTL MAXI?",
+      "risposta": "**Contesto**\nI **CTL MAXI** sono la versione ad **elevata capacità** dei CTL: stesso principio di connessione legno-calcestruzzo, ma con geometria e prestazioni superiori. Si usano quando:\n- lo spessore di getto è maggiore;\n- il solaio deve portare carichi più alti;\n- le luci sono più ampie.\n\n**Famiglia coinvolta:** CTL MAXI",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "ctl maxi",
+          "mi spieghi i ctl maxi",
+          "connettori ctl maxi",
+          "differenza ctl ctl maxi"
+        ]
+      }
+    },
+    {
+      "id": "CTCEM-0001",
+      "family": "CTCEM",
+      "domanda": "Mi spieghi il connettore CTCEM?",
+      "risposta": "**Contesto**\nIl **CTCEM** è il connettore Tecnaria per **solai in laterocemento** quando si vuole fare una soletta collaborante senza usare resine. È un connettore **meccanico a secco**.\n\n**Procedura tipica**\n1) incisione/sede nel laterizio per ospitare la piastra;\n2) **foro Ø11 mm prof. ~75 mm**;\n3) pulizia delle polveri;\n4) avvitatura fino a battuta;\n5) rete a metà spessore;\n6) CLS ≥ C25/30.\n\n**Nota**: il CTCEM è l’alternativa alle **barre piegate + resina**.\n\n**Famiglia coinvolta:** CTCEM",
+      "trigger": {
+        "peso": 0.98,
+        "keywords": [
+          "ctcem",
+          "mi spieghi il ctcem",
+          "connettore per laterocemento",
+          "ctcem descrizione"
+        ]
+      }
+    },
+    {
+      "id": "VCEM-0001",
+      "family": "VCEM",
+      "domanda": "Mi spieghi il connettore VCEM?",
+      "risposta": "**Contesto**\nIl **VCEM** è un connettore Tecnaria per laterocemento quando **non hai spazio** o sei **vicino al bordo** e non riesci a fare il foro grande del CTCEM. È sempre un fissaggio **meccanico a secco**, senza P560.\n\n**Procedura**\n- foro più piccolo (Ø8–9 mm, secondo scheda);\n- avvitatura fino a battuta;\n- rete a metà;\n- CLS ≥ C25/30.\n\n**Cosa NON fare**\n- non usare la P560 sui VCEM;\n- non sparare su laterocemento;\n- non usare resine se non richiesto.\n\n**Famiglia coinvolta:** VCEM",
+      "trigger": {
+        "peso": 0.98,
+        "keywords": [
+          "vcem",
+          "mi spieghi il vcem",
+          "connettore vcem",
+          "vcem descrizione"
+        ]
+      }
+    },
+    {
+      "id": "PROB-CTF-0001",
+      "family": "PROBLEMATICHE",
+      "domanda": "Cosa succede se la piastra CTF non aderisce perfettamente al calcestruzzo?",
+      "risposta": "**Problematiche di posa**\nSe la piastra dei connettori **CTF** non aderisce bene al getto, la collaborazione può ridursi e la direzione lavori può chiedere un ripristino.\n\n**Azione consigliata**\n- verificare che i chiodi HSBR14 siano a filo piastra;\n- verificare che la lamiera (se c’è) fosse serrata in fase di sparo;\n- documentare con foto;\n- concordare con DL eventuale ripristino locale.\n\n**Famiglia coinvolta:** CTF",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "piastra non aderisce",
+          "ctf non aderisce",
+          "problemi posa ctf",
+          "cosa succede se la piastra non aderisce"
+        ]
+      }
     }
   ],
   "_end": {
     "status": "complete",
-    "note": "Master unificato con blocchi 1–8, solo contenuti GOLD, senza sezioni provvisorie."
+    "note": "Master unificato con contenuti aggiuntivi (blocchi descrittivi famiglie) e senza duplicati di id."
   }
 }
