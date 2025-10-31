@@ -1,238 +1,219 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
-from pathlib import Path
+# app.py
+#
+# TECNARIA_GOLD — Sinapsi + Camilla (ripeso intenzione)
+# un solo file dati: static/data/tecnaria_gold.json
+# endpoint: /health, /qa/ask, /ui, /docs
+
 import json
-import re
+import os
+import unicodedata
+from typing import List, Any, Dict, Optional
 
-# =========================================================
-# TECNARIA SINAPSI — Q/A
-# Intenzione → Target (famiglia) → Ricerca pesata → Formato GOLD
-# =========================================================
-app = FastAPI(title="Tecnaria Sinapsi — Q/A", version="4.1.0")
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse, HTMLResponse
+from pydantic import BaseModel
 
-# se True mostra intent/target/score (laboratorio)
-LAB_MODE = True
+# -------------------------------------------------------
+# CONFIG
+# -------------------------------------------------------
+DATA_PATH = os.getenv("TECNARIA_DATA_PATH", "static/data/tecnaria_gold.json")
 
-# CORS (per UI browser)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+app = FastAPI(
+    title="Tecnaria Sinapsi — Q/A",
+    version="1.0.0",
+    description="Router Q/A per prodotti e servizi Tecnaria (CTF, CTL, CTL MAXI, CTCEM, VCEM, P560, DIAPASON, GTS, ACCESSORI, COMM, CONFRONTO, PROBLEMATICHE, KILLER)."
 )
 
-# =========================================================
-# 1. CARICAMENTO DATI
-# =========================================================
-DATA_PATH = Path("static/data/tecnaria_gold.json")
-ITEMS: list[dict] = []
-META: dict = {}
-
-if DATA_PATH.exists():
-    with DATA_PATH.open("r", encoding="utf-8") as f:
-        raw = json.load(f)
-    META = raw.get("_meta", {})
-    ITEMS = raw.get("items", [])
-else:
-    META = {"version": "EMPTY"}
-    ITEMS = []
-
-# =========================================================
-# 2. MODELLI
-# =========================================================
+# -------------------------------------------------------
+# MODELLI
+# -------------------------------------------------------
 class AskRequest(BaseModel):
     question: str
 
 class AskResponse(BaseModel):
     answer: str
     score: float
-    family: str | None = None
-    source_id: str | None = None
-    mood: str | None = None
+    family: str
+    mood: str = "default"
+    intent: str = "descrittivo"
+    target: Optional[str] = None
 
-# =========================================================
-# 3. UTILI
-# =========================================================
-def norm(s: str) -> str:
-    return re.sub(r"\s+", " ", s.lower()).strip()
+# -------------------------------------------------------
+# UTILITY
+# -------------------------------------------------------
+def normalize(text: str) -> str:
+    """minuscole, niente accenti, spazi puliti"""
+    if not text:
+        return ""
+    text = text.strip().lower()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    while "  " in text:
+        text = text.replace("  ", " ")
+    return text
 
-def contains_any(text: str, words: list[str]) -> bool:
-    t = text.lower()
-    return any(w in t for w in words)
+# -------------------------------------------------------
+# CARICAMENTO DATI
+# -------------------------------------------------------
+def load_data(path: str) -> Dict[str, Any]:
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"File dati non trovato: {path}")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-# =========================================================
-# 4. RICONOSCIMENTO INTENZIONE (PEZZO CHIAVE)
-# =========================================================
-def detect_intent_and_target(question: str) -> dict:
-    q = question.lower().strip()
+try:
+    DATA = load_data(DATA_PATH)
+    ITEMS: List[Dict[str, Any]] = DATA.get("items", [])
+    META: Dict[str, Any] = DATA.get("_meta", {})
+except Exception as e:
+    DATA = {"items": [], "_meta": {}}
+    ITEMS = []
+    META = {}
+    print(f"[ERRORE] Caricamento dati: {e}")
 
-    # target/famiglia
-    target = None
-    if "p560" in q or "p 560" in q or "chiodatrice" in q or "spit" in q:
-        target = "P560"
-    elif "ctf" in q:
-        target = "CTF"
-    elif "ctl maxi" in q:
-        target = "CTL MAXI"
-    elif "ctl" in q:
-        target = "CTL"
-    elif "ctcem" in q:
-        target = "CTCEM"
-    elif "vcem" in q:
-        target = "VCEM"
-    elif "diapason" in q:
-        target = "DIAPASON"
-    elif "gts" in q:
-        target = "GTS"
-    elif "dove si trova" in q or "pecori" in q or "bassano" in q:
-        target = "COMM"
+# -------------------------------------------------------
+# CAMILLA — DETECTION INTENTO
+# -------------------------------------------------------
+def detect_intent(q: str) -> str:
+    qn = normalize(q)
+    if qn.startswith("mi spieghi") or "spiegami" in qn:
+        return "intro"
+    if "sbaglio se" in qn or "errore" in qn or "non aderisce" in qn or "non spara" in qn or "non funziona" in qn:
+        return "errore"
+    if "differenza" in qn or " vs " in qn or "confronto" in qn or "meglio" in qn:
+        return "confronto"
+    if "codici" in qn or "codice" in qn or "come ordino" in qn or "ordine" in qn:
+        return "commerciale"
+    return "descrittivo"
 
-    # intenzione
-    if any(k in q for k in ["mi spieghi", "parlami", "cos'è", "a cosa serve", "descrivi", "descrivimi", "spiegami"]):
-        intent = "descrittivo"
-    elif any(k in q for k in ["come si posa", "come si montano", "istruzioni", "posa", "montaggio", "come fissare"]):
-        intent = "posa"
-    elif any(k in q for k in ["sbaglio se", "posso usare", "è corretto se", "va bene se", "si può usare", "posso fissare"]):
-        intent = "errore"
-    elif any(k in q for k in ["differenza", "vs", "meglio", "confronto"]):
-        intent = "comparativo"
-    elif any(k in q for k in ["ordine", "spedizione", "consegna", "azienda", "telefono", "preventivo"]):
-        intent = "commerciale"
-    elif any(k in q for k in ["hanno saldato", "hanno già gettato", "dopo il getto", "si è staccato", "non aderisce"]):
-        intent = "problematiche"
-    else:
-        intent = "generico"
+# -------------------------------------------------------
+# MATCH DI BASE (SINAPSI GREZZO)
+# -------------------------------------------------------
+def base_candidates(user_q: str) -> List[Dict[str, Any]]:
+    """
+    Recupero semplice: cerca parole della domanda
+    in domanda, family, keywords.
+    """
+    qn = normalize(user_q)
+    tokens = set(qn.split())
+    cands = []
 
-    # mood di base
-    if intent in ["errore", "problematiche"]:
-        mood = "alert"
-    elif intent == "posa":
-        mood = "explanatory"
-    elif intent == "comparativo":
-        mood = "comparative"
-    elif intent == "commerciale":
-        mood = "institutional"
-    else:
-        mood = "default"
-
-    return {
-        "intent": intent,
-        "target": target,
-        "mood": mood
-    }
-
-# =========================================================
-# 5. FORMATTORE GOLD (STILE PERFEZIONE)
-# =========================================================
-def format_gold(base_answer: str, mood: str, family: str | None) -> str:
-    # se il testo è già formattato non tocchiamo
-    if any(k in base_answer for k in ["**Contesto**", "**Istruzioni di posa**", "⚠️", "**Checklist**"]):
-        return base_answer
-
-    fam_block = f"\n\n**Famiglia coinvolta:** {family}" if family else ""
-
-    if mood == "alert":
-        return (
-            f"⚠️ **ATTENZIONE**\n{base_answer}\n\n"
-            f"**Checklist immediata**\n"
-            f"- fermare posa / getto\n"
-            f"- controllare utensile e accessori (P560, adattatore, HSBR14)\n"
-            f"- verificare che la famiglia sia corretta (CTF, CTL, CTCEM/VCEM)\n"
-            f"- documentare con foto e DL\n"
-            f"{fam_block}"
-        )
-
-    if mood == "explanatory":
-        return (
-            f"**Contesto**\nDomanda di posa su prodotto Tecnaria.\n\n"
-            f"**Istruzioni di posa**\n{base_answer}\n\n"
-            f"**Alternativa**\nSe la posa meccanica non è possibile, valutare staffe o saldatura secondo indicazioni Tecnaria.\n\n"
-            f"**Checklist**\n- rete a metà spessore ✔︎\n- cls ≥ C25/30 ✔︎\n- lamiera serrata ✔︎\n- niente resine dove non previste ✔︎\n\n"
-            f"**Nota RAG**: risposta filtrata su prodotti Tecnaria.\n"
-            f"{fam_block}"
-        )
-
-    if mood == "comparative":
-        return (
-            f"🔍 **Confronto richiesto**\n{base_answer}\n\n"
-            f"**Regola Tecnaria**\n"
-            f"- Acciaio → CTF + P560\n"
-            f"- Legno → CTL / CTL MAXI\n"
-            f"- Laterocemento → CTCEM / VCEM\n"
-            f"{fam_block}"
-        )
-
-    if mood == "institutional":
-        return base_answer + fam_block
-
-    if mood == "problematiche":
-        return (
-            f"**Problematiche di posa**\n{base_answer}\n\n"
-            f"**Azione consigliata**\n- sospendere il getto\n- ripristinare il fissaggio\n- informare la DL\n"
-            f"{fam_block}"
-        )
-
-    return base_answer + fam_block
-
-# =========================================================
-# 6. MOTORE DI RICERCA PESATA
-# =========================================================
-def find_best_item(question: str, items: list[dict]) -> tuple[dict | None, float, dict]:
-    ctx = detect_intent_and_target(question)
-    intent = ctx["intent"]
-    target = ctx["target"]
-    mood = ctx["mood"]
-    q = question.lower()
-
-    best = None
-    best_score = 0.0
-
-    for item in items:
-        item_q = (item.get("domanda") or item.get("question") or "").lower()
-        item_fam = (item.get("family") or "").lower()
+    for item in ITEMS:
+        domanda = normalize(item.get("domanda", ""))
+        family = normalize(item.get("family", ""))
         trig = item.get("trigger", {})
-        kws = [k.lower() for k in trig.get("keywords", [])]
+        kw = [normalize(k) for k in trig.get("keywords", [])]
 
         score = 0.0
 
-        # 1) match famiglia/target
-        if target and item_fam == target.lower():
-            score += 0.4
+        # match diretto domanda
+        if qn == domanda:
+            score += 3.0
 
-        # 2) match intenzione
-        if intent == "descrittivo" and any(w in item_q for w in ["cos'è", "a cosa serve", "descrizione", "p560", "connettore ctf"]):
-            score += 0.4
-        elif intent == "posa" and any(w in item_q for w in ["posa", "istruzioni", "come si posa", "montaggio"]):
-            score += 0.35
-        elif intent == "errore" and any(w in item_q for w in ["errore", "non usare", "non ammesso", "sbaglio se", "attenzione"]):
-            score += 0.45
-        elif intent == "comparativo" and item_fam == "confronto":
-            score += 0.5
-        elif intent == "commerciale" and item_fam == "comm":
-            score += 0.5
+        # match parziale tokens
+        for t in tokens:
+            if t and t in domanda:
+                score += 0.4
+            if t and t in family:
+                score += 0.3
+            if any(t in k for k in kw):
+                score += 0.4
 
-        # 3) match parole chiave del trigger
-        for kw in kws:
-            if kw and kw in q:
-                score += 0.15
+        # peso trigger
+        score += float(trig.get("peso", 0.0)) * 0.5
 
-        # 4) match testo generico
-        if q in item_q or item_q in q:
-            score += 0.2
+        if score > 0:
+            cands.append((score, item))
 
-        if score > best_score:
-            best = item
-            best_score = score
+    # se proprio non ha trovato niente, restituisco tutti con score minimo
+    if not cands:
+        for it in ITEMS:
+            cands.append((0.1, it))
 
-    return best, best_score, ctx
+    # ordina decrescente (grezzo)
+    cands.sort(key=lambda x: x[0], reverse=True)
+    return cands
 
-# =========================================================
-# 7. ENDPOINTS
-# =========================================================
-@app.get("/")
-def root():
+# -------------------------------------------------------
+# CAMILLA — RIPESO
+# -------------------------------------------------------
+def camilla_rescore(user_q: str, intent: str, candidates: List[Any]) -> List[Any]:
+    qn = normalize(user_q)
+    rescored = []
+
+    for base_score, item in candidates:
+        bonus = 0.0
+        dom = normalize(item.get("domanda", ""))
+        fam = item.get("family", "")
+        trig = item.get("trigger", {})
+        trig_peso = float(trig.get("peso", 0.0))
+
+        # 1) match esatto testo
+        if dom == qn:
+            bonus += 2.5
+
+        # 2) Intent specifici
+        if intent == "intro":
+            # “mi spieghi …” → prendi quelli nati per spiegare
+            if dom.startswith("mi spieghi") or trig_peso >= 0.95:
+                bonus += 1.5
+
+        if intent == "errore":
+            # prendi killer / problematiche
+            if "sbaglio" in dom or "errore" in dom or fam in ("KILLER", "PROBLEMATICHE"):
+                bonus += 1.5
+
+        if intent == "confronto":
+            if fam == "CONFRONTO":
+                bonus += 1.4
+
+        if intent == "commerciale":
+            if fam == "COMM" or "codici" in dom or "ordine" in dom:
+                bonus += 1.4
+
+        # 3) famiglia esplicita nella domanda
+        if "p560" in qn and fam == "P560":
+            bonus += 1.0
+        if "ctf" in qn and fam == "CTF":
+            bonus += 1.0
+        if "ctl maxi" in qn and fam == "CTL MAXI":
+            bonus += 1.0
+        if "ctl" in qn and fam == "CTL":
+            bonus += 0.8
+        if "ctcem" in qn and fam == "CTCEM":
+            bonus += 0.8
+        if "vcem" in qn and fam == "VCEM":
+            bonus += 0.8
+
+        # 4) usa davvero il peso trigger
+        bonus += trig_peso * 0.8
+
+        rescored.append((base_score + bonus, item))
+
+    # ordina per score finale
+    rescored.sort(key=lambda x: x[0], reverse=True)
+    return rescored
+
+# -------------------------------------------------------
+# FORMAT GOLD (stile tuo)
+# -------------------------------------------------------
+def format_gold(item: Dict[str, Any], intent: str) -> str:
+    testo = item.get("risposta", "").strip()
+    fam = item.get("family", "")
+    dom = item.get("domanda", "")
+
+    # se già è narrativo lo lasciamo
+    if "\n" in testo and "**" in testo:
+        return testo
+
+    # fallback breve
+    return f"**{fam}**\n{testo}"
+
+# -------------------------------------------------------
+# ENDPOINTS
+# -------------------------------------------------------
+@app.get("/health")
+def health():
     return {
         "service": "Tecnaria Sinapsi — Q/A",
         "status": "ok",
@@ -242,124 +223,71 @@ def root():
             "health": "/health",
             "ask": "/qa/ask",
             "ui": "/ui",
-            "docs": "/docs",
+            "docs": "/docs"
         }
     }
 
-@app.get("/health")
-def health():
-    return {
-        "status": "ok",
-        "items_loaded": len(ITEMS),
-        "meta_version": META.get("version")
-    }
-
-@app.post("/qa/ask")
+@app.post("/qa/ask", response_model=AskResponse)
 def qa_ask(req: AskRequest):
-    q = req.question.strip()
-    if not q:
-        raise HTTPException(status_code=400, detail="Question is empty")
+    q = req.question
+    if not q or not q.strip():
+        raise HTTPException(status_code=400, detail="Domanda vuota")
 
-    item, score, ctx = find_best_item(q, ITEMS)
+    # 1) Camilla capisce cosa vuoi
+    intent = detect_intent(q)
 
-    if not item:
-        if LAB_MODE:
-            return {
-                "answer": "Non ho trovato una risposta in Tecnaria Gold.",
-                "score": 0.0,
-                "family": None,
-                "mood": ctx.get("mood"),
-                "intent": ctx.get("intent"),
-                "target": ctx.get("target")
-            }
-        return {"answer": "Non ho trovato una risposta in Tecnaria Gold."}
+    # 2) Sinapsi prende i candidati grezzi
+    base = base_candidates(q)
 
-    base_answer = item.get("risposta") or item.get("answer") or "Risposta non disponibile."
-    family = item.get("family")
-    mood = ctx.get("mood", "default")
+    # 3) Camilla li ripesa
+    rescored = camilla_rescore(q, intent, base)
 
-    # se la domanda era di posa/errore/comparativa → applica PERFEZIONE
-    if ctx["intent"] in ["posa", "errore", "comparativo", "problematiche"]:
-        final_answer = format_gold(base_answer, mood, family)
-    else:
-        final_answer = base_answer
+    # 4) prendo il migliore
+    best_score, best_item = rescored[0]
+    answer = format_gold(best_item, intent)
+    family = best_item.get("family", "COMM")
 
-    if LAB_MODE:
-        return {
-            "answer": final_answer,
-            "score": round(min(score, 1.0), 3),
-            "family": family,
-            "mood": mood,
-            "intent": ctx.get("intent"),
-            "target": ctx.get("target")
-        }
+    # mood
+    mood = "default"
+    if intent == "errore" or family in ("KILLER", "PROBLEMATICHE"):
+        mood = "alert"
 
-    # PRODUZIONE: solo testo
-    return {"answer": final_answer}
+    return AskResponse(
+        answer=answer,
+        score=round(float(best_score), 3),
+        family=family,
+        mood=mood,
+        intent=intent,
+        target=family
+    )
 
-# =========================================================
-# 8. INTERFACCIA /ui
-# =========================================================
-@app.get("/ui", response_class=HTMLResponse)
+@app.get("/ui")
 def ui():
-    # in lab mostriamo anche family/score/mood
-    return """
-    <!DOCTYPE html>
-    <html lang="it">
-    <head>
-        <meta charset="utf-8"/>
-        <title>Tecnaria Sinapsi — Q/A</title>
-        <style>
-            body {font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background:#f6f2ee; margin:0;}
-            .wrap{max-width:1000px;margin:40px auto;background:#fff;border-radius:16px;
-                  padding:28px 32px;box-shadow:0 10px 40px rgba(0,0,0,0.06);}
-            h1{color:#c6511d;margin-top:0;font-size:32px;}
-            input[type=text]{width:100%;padding:14px;font-size:17px;border:1px solid #ddd;
-                             border-radius:10px;margin-top:10px;margin-bottom:16px;background:#edf3ff;}
-            button{background:#000;color:#fff;padding:11px 20px;border:none;border-radius:10px;
-                    cursor:pointer;font-size:15px;}
-            .res-box{
-                background:#fff4ec;
-                border-radius:16px;
-                padding:18px 20px;
-                margin-top:20px;
-                border:1px solid #ffe5d2;
-                white-space:pre-wrap;
-                line-height:1.5;
-            }
-            .badge{background:#eee;display:inline-block;padding:4px 10px;border-radius:999px;
-                   margin-right:6px;font-size:12px;}
-        </style>
-    </head>
-    <body>
-        <div class="wrap">
-            <h1>Tecnaria Sinapsi — Q/A</h1>
-            <p>Fai domande naturali: <i>“Mi spieghi la P560?”, “Sbaglio se taro la P560 con un solo tiro?”, “Come si posano i CTF su lamiera?”</i></p>
-            <input id="q" type="text" placeholder="Es. Mi spieghi la P560?"/>
-            <button onclick="ask()">Chiedi a Sinapsi</button>
-            <div id="res" style="margin-top:24px;"></div>
-        </div>
-        <script>
-        async function ask(){
-            const q = document.getElementById('q').value;
-            const resEl = document.getElementById('res');
-            resEl.innerHTML = "Sto chiedendo a Sinapsi...";
-            const resp = await fetch('/qa/ask', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({question: q})
-            });
-            const data = await resp.json();
-            resEl.innerHTML = `
-                <div class="badge">Famiglia: ${data.family || '-'}</div>
-                <div class="badge">Score: ${data.score || '-'}</div>
-                <div class="badge">Mood: ${data.mood || '-'}</div>
-                <div class="badge">Intent: ${data.intent || '-'}</div>
-                <div class="badge">Target: ${data.target || '-'}</div>
-                <div class="res-box">${data.answer}</div>
-            `;
-        }
-        </script>
-    </body>
+    html = """
+    <html>
+      <head><title>Tecnaria Sinapsi — Q/A</title></head>
+      <body style="font-family: sans-serif; padding: 20px;">
+        <h1>Tecnaria Sinapsi — Q/A</h1>
+        <p>Prova una domanda:</p>
+        <ul>
+          <li>Mi spieghi la P560?</li>
+          <li>Come si posano i CTF su lamiera grecata?</li>
+          <li>Posso usare la P560 per i VCEM?</li>
+          <li>Qual è la differenza tra CTL e CTL MAXI?</li>
+          <li>Mi dai i codici dei connettori CTF?</li>
+        </ul>
+        <p>Vai su <a href="/docs">/docs</a> per provare l'API.</p>
+      </body>
     </html>
     """
+    return HTMLResponse(content=html)
+
+# FastAPI già espone /docs
+
+
+# -------------------------------------------------------
+# NOTE PER RENDER
+# -------------------------------------------------------
+# gunicorn/uvicorn command deve puntare a:  app:app
+# e il file DEVE chiamarsi app.py
+# requirements.txt deve avere: fastapi==0.115.0, uvicorn==0.30.6, orjson==3.10.7, pydantic==2.8.0, gunicorn==21.2.0
