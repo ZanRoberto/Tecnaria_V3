@@ -8,11 +8,14 @@ import re
 
 # =========================================================
 # TECNARIA SINAPSI — Q/A
-# Gold style: Contesto → Istruzioni di posa → Alternativa → Checklist → Nota RAG
+# Intenzione → Target (famiglia) → Ricerca pesata → Formato GOLD
 # =========================================================
-app = FastAPI(title="Tecnaria Sinapsi — Q/A", version="4.0.0")
+app = FastAPI(title="Tecnaria Sinapsi — Q/A", version="4.1.0")
 
-# CORS per UI
+# se True mostra intent/target/score (laboratorio)
+LAB_MODE = True
+
+# CORS (per UI browser)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,14 +27,12 @@ app.add_middleware(
 # 1. CARICAMENTO DATI
 # =========================================================
 DATA_PATH = Path("static/data/tecnaria_gold.json")
-
 ITEMS: list[dict] = []
 META: dict = {}
 
 if DATA_PATH.exists():
     with DATA_PATH.open("r", encoding="utf-8") as f:
         raw = json.load(f)
-    # tuo formato: {_meta:{...}, "items":[...]}
     META = raw.get("_meta", {})
     ITEMS = raw.get("items", [])
 else:
@@ -51,9 +52,8 @@ class AskResponse(BaseModel):
     source_id: str | None = None
     mood: str | None = None
 
-
 # =========================================================
-# 3. UTILI PULIZIA TESTO
+# 3. UTILI
 # =========================================================
 def norm(s: str) -> str:
     return re.sub(r"\s+", " ", s.lower()).strip()
@@ -62,122 +62,96 @@ def contains_any(text: str, words: list[str]) -> bool:
     t = text.lower()
     return any(w in t for w in words)
 
-
 # =========================================================
-# 4. CAMILLA — INTENZIONE / A2SR LEGGERO
+# 4. RICONOSCIMENTO INTENZIONE (PEZZO CHIAVE)
 # =========================================================
-def camilla_oracle(question: str) -> dict:
-    q = norm(question)
+def detect_intent_and_target(question: str) -> dict:
+    q = question.lower().strip()
 
-    # default
-    mood = "default"
-    need_gold = False
-    family_hint = None
-    intent = "generic"
-    force_penalty_others = 0.0  # lo usiamo per abbassare roba che non c'entra
-
-    # 4.1 domande chiaramente P560 / chiodatrice
-    if (
-        "p560" in q
-        or "p 560" in q
-        or "chiodatrice" in q
-        or "spit" in q
-        or "sparare" in q
-        or "tiro di prova" in q
-        or "cartucc" in q
-    ):
-        family_hint = "P560"
-        need_gold = True
-        # se sta chiedendo "posso usare un'altra" allora è alert
-        if "posso" in q and ("normale" in q or "altra" in q or "diversa" in q):
-            mood = "alert"
-            intent = "attrezzatura_non_ammessa"
-        else:
-            mood = "explanatory"
-            intent = "attrezzatura"
-        # in ogni caso: le altre famiglie devono perdere punti
-        force_penalty_others = 0.4
-        return {
-            "mood": mood,
-            "need_gold": need_gold,
-            "family_hint": family_hint,
-            "intent": intent,
-            "force_penalty_others": force_penalty_others
-        }
-
-    # 4.2 domande CTF / lamiera / chiodatura
-    if "ctf" in q or "lamiera" in q or ("chiod" in q and "trave" in q):
-        family_hint = "CTF"
-        need_gold = True
-        intent = "posa"
-        if "errore" in q or "sbaglio" in q or "non aderente" in q or "non serrata" in q:
-            mood = "alert"
-            intent = "errore_lamiera"
-        else:
-            mood = "explanatory"
-
-    # 4.3 CTL / legno
+    # target/famiglia
+    target = None
+    if "p560" in q or "p 560" in q or "chiodatrice" in q or "spit" in q:
+        target = "P560"
+    elif "ctf" in q:
+        target = "CTF"
     elif "ctl maxi" in q:
-        family_hint = "CTL MAXI"; need_gold = True; mood = "explanatory"; intent = "posa"
+        target = "CTL MAXI"
     elif "ctl" in q:
-        family_hint = "CTL"; need_gold = True; mood = "explanatory"; intent = "posa"
-
-    # 4.4 CTCEM / VCEM
+        target = "CTL"
     elif "ctcem" in q:
-        family_hint = "CTCEM"; need_gold = True; mood = "explanatory"; intent = "posa"
+        target = "CTCEM"
     elif "vcem" in q:
-        family_hint = "VCEM"; need_gold = True; mood = "explanatory"; intent = "posa"
+        target = "VCEM"
+    elif "diapason" in q:
+        target = "DIAPASON"
+    elif "gts" in q:
+        target = "GTS"
+    elif "dove si trova" in q or "pecori" in q or "bassano" in q:
+        target = "COMM"
 
-    # 4.5 confronto
-    if "vs" in q or "differenza" in q or "meglio" in q or "confronto" in q:
-        mood = "comparative"; need_gold = True; intent = "confronto"
+    # intenzione
+    if any(k in q for k in ["mi spieghi", "parlami", "cos'è", "a cosa serve", "descrivi", "descrivimi", "spiegami"]):
+        intent = "descrittivo"
+    elif any(k in q for k in ["come si posa", "come si montano", "istruzioni", "posa", "montaggio", "come fissare"]):
+        intent = "posa"
+    elif any(k in q for k in ["sbaglio se", "posso usare", "è corretto se", "va bene se", "si può usare", "posso fissare"]):
+        intent = "errore"
+    elif any(k in q for k in ["differenza", "vs", "meglio", "confronto"]):
+        intent = "comparativo"
+    elif any(k in q for k in ["ordine", "spedizione", "consegna", "azienda", "telefono", "preventivo"]):
+        intent = "commerciale"
+    elif any(k in q for k in ["hanno saldato", "hanno già gettato", "dopo il getto", "si è staccato", "non aderisce"]):
+        intent = "problematiche"
+    else:
+        intent = "generico"
 
-    # 4.6 commerciale / sede
-    if "dove si trova tecnaria" in q or "pecori giraldi" in q or "bassano del grappa" in q:
-        family_hint = "COMM"; mood = "institutional"; need_gold = False; intent = "azienda"
-
-    # 4.7 problemi di posa generali
-    if "cosa succede se" in q or "si è staccato" in q or "non aderisce" in q:
-        mood = "alert"; need_gold = True; intent = "problematiche"
+    # mood di base
+    if intent in ["errore", "problematiche"]:
+        mood = "alert"
+    elif intent == "posa":
+        mood = "explanatory"
+    elif intent == "comparativo":
+        mood = "comparative"
+    elif intent == "commerciale":
+        mood = "institutional"
+    else:
+        mood = "default"
 
     return {
-        "mood": mood,
-        "need_gold": need_gold,
-        "family_hint": family_hint,
         "intent": intent,
-        "force_penalty_others": force_penalty_others
+        "target": target,
+        "mood": mood
     }
 
-
 # =========================================================
-# 5. FORMATTORE GOLD (PERFEZIONE)
+# 5. FORMATTORE GOLD (STILE PERFEZIONE)
 # =========================================================
 def format_gold(base_answer: str, mood: str, family: str | None) -> str:
-    # se è già in formato bello non tocco
+    # se il testo è già formattato non tocchiamo
     if any(k in base_answer for k in ["**Contesto**", "**Istruzioni di posa**", "⚠️", "**Checklist**"]):
         return base_answer
 
-    blocco_fam = f"\n\n**Famiglia coinvolta:** {family}" if family else ""
+    fam_block = f"\n\n**Famiglia coinvolta:** {family}" if family else ""
 
     if mood == "alert":
         return (
             f"⚠️ **ATTENZIONE**\n{base_answer}\n\n"
             f"**Checklist immediata**\n"
-            f"- ferma posa / getto\n"
-            f"- controlla utensile e accessori (P560, adattatore, HSBR14)\n"
-            f"- verifica che la famiglia sia quella corretta\n"
-            f"- fotografa e informa DL\n"
-            f"{blocco_fam}"
+            f"- fermare posa / getto\n"
+            f"- controllare utensile e accessori (P560, adattatore, HSBR14)\n"
+            f"- verificare che la famiglia sia corretta (CTF, CTL, CTCEM/VCEM)\n"
+            f"- documentare con foto e DL\n"
+            f"{fam_block}"
         )
 
     if mood == "explanatory":
         return (
             f"**Contesto**\nDomanda di posa su prodotto Tecnaria.\n\n"
             f"**Istruzioni di posa**\n{base_answer}\n\n"
-            f"**Alternativa**\nSe non è possibile la posa meccanica, valutare sistema saldato o staffe Tecnaria.\n\n"
-            f"**Checklist**\n- rete a metà spessore ✔︎\n- cls ≥ C25/30 ✔︎\n- lamiera serrata (se presente) ✔︎\n- niente resine sui CTCEM/VCEM ✔︎\n\n"
-            f"**Nota RAG**: risposte filtrate su prodotti Tecnaria, no marchi terzi.\n"
-            f"{blocco_fam}"
+            f"**Alternativa**\nSe la posa meccanica non è possibile, valutare staffe o saldatura secondo indicazioni Tecnaria.\n\n"
+            f"**Checklist**\n- rete a metà spessore ✔︎\n- cls ≥ C25/30 ✔︎\n- lamiera serrata ✔︎\n- niente resine dove non previste ✔︎\n\n"
+            f"**Nota RAG**: risposta filtrata su prodotti Tecnaria.\n"
+            f"{fam_block}"
         )
 
     if mood == "comparative":
@@ -187,120 +161,148 @@ def format_gold(base_answer: str, mood: str, family: str | None) -> str:
             f"- Acciaio → CTF + P560\n"
             f"- Legno → CTL / CTL MAXI\n"
             f"- Laterocemento → CTCEM / VCEM\n"
-            f"{blocco_fam}"
+            f"{fam_block}"
         )
 
     if mood == "institutional":
-        return base_answer + blocco_fam
+        return base_answer + fam_block
 
     if mood == "problematiche":
         return (
             f"**Problematiche di posa**\n{base_answer}\n\n"
-            f"**Azione consigliata**\n- non procedere col getto finché il fissaggio non è conforme\n- documentare e inviare a Tecnaria\n"
-            f"{blocco_fam}"
+            f"**Azione consigliata**\n- sospendere il getto\n- ripristinare il fissaggio\n- informare la DL\n"
+            f"{fam_block}"
         )
 
-    return base_answer + blocco_fam
-
+    return base_answer + fam_block
 
 # =========================================================
-# 6. MOTORE DI RICERCA OLISTICO
-#    (intenzione → famiglia → trigger → testo)
+# 6. MOTORE DI RICERCA PESATA
 # =========================================================
-def find_best_match(user_q: str, cam: dict):
-    user_q_low = norm(user_q)
-    family_hint = cam.get("family_hint")
-    intent = cam.get("intent")
-    force_penalty_others = cam.get("force_penalty_others", 0.0)
+def find_best_item(question: str, items: list[dict]) -> tuple[dict | None, float, dict]:
+    ctx = detect_intent_and_target(question)
+    intent = ctx["intent"]
+    target = ctx["target"]
+    mood = ctx["mood"]
+    q = question.lower()
 
-    best_item = None
+    best = None
     best_score = 0.0
 
-    for item in ITEMS:
-        domanda = item.get("domanda", "") or item.get("question", "")
-        domanda_low = norm(domanda)
-        trigger = item.get("trigger", {})
-        keywords = trigger.get("keywords", [])
-        item_family = item.get("family", "")
+    for item in items:
+        item_q = (item.get("domanda") or item.get("question") or "").lower()
+        item_fam = (item.get("family") or "").lower()
+        trig = item.get("trigger", {})
+        kws = [k.lower() for k in trig.get("keywords", [])]
 
         score = 0.0
 
-        # 1) se la domanda coincide o è molto simile
-        if user_q_low == domanda_low:
-            score = 1.0
-        elif user_q_low in domanda_low or domanda_low in user_q_low:
-            score += 0.6
+        # 1) match famiglia/target
+        if target and item_fam == target.lower():
+            score += 0.4
 
-        # 2) se le parole chiave combaciano
-        for kw in keywords:
-            if kw and kw.lower() in user_q_low:
-                score += 0.25
+        # 2) match intenzione
+        if intent == "descrittivo" and any(w in item_q for w in ["cos'è", "a cosa serve", "descrizione", "p560", "connettore ctf"]):
+            score += 0.4
+        elif intent == "posa" and any(w in item_q for w in ["posa", "istruzioni", "come si posa", "montaggio"]):
+            score += 0.35
+        elif intent == "errore" and any(w in item_q for w in ["errore", "non usare", "non ammesso", "sbaglio se", "attenzione"]):
+            score += 0.45
+        elif intent == "comparativo" and item_fam == "confronto":
+            score += 0.5
+        elif intent == "commerciale" and item_fam == "comm":
+            score += 0.5
 
-        # 3) se la famiglia è quella suggerita da Camilla
-        if family_hint and item_family.lower() == family_hint.lower():
-            score += 0.25
+        # 3) match parole chiave del trigger
+        for kw in kws:
+            if kw and kw in q:
+                score += 0.15
 
-        # 4) se è una domanda di "attrezzature non ammesse"
-        if intent == "attrezzatura_non_ammessa":
-            if contains_any(domanda_low, ["chiodatrice", "non ammesso", "non usare", "p560 obbligatoria"]):
-                score += 0.4
-
-        # 5) penalizza famiglie non richieste (serve per NON prendere CTF quando vuoi P560)
-        if family_hint and item_family and family_hint.lower() != item_family.lower():
-            score -= force_penalty_others
+        # 4) match testo generico
+        if q in item_q or item_q in q:
+            score += 0.2
 
         if score > best_score:
+            best = item
             best_score = score
-            best_item = item
 
-    return best_item, best_score
-
+    return best, best_score, ctx
 
 # =========================================================
-# 7. ENDPOINT Q/A
+# 7. ENDPOINTS
 # =========================================================
-@app.post("/qa/ask", response_model=AskResponse)
+@app.get("/")
+def root():
+    return {
+        "service": "Tecnaria Sinapsi — Q/A",
+        "status": "ok",
+        "items_loaded": len(ITEMS),
+        "meta": META,
+        "endpoints": {
+            "health": "/health",
+            "ask": "/qa/ask",
+            "ui": "/ui",
+            "docs": "/docs",
+        }
+    }
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "items_loaded": len(ITEMS),
+        "meta_version": META.get("version")
+    }
+
+@app.post("/qa/ask")
 def qa_ask(req: AskRequest):
     q = req.question.strip()
     if not q:
         raise HTTPException(status_code=400, detail="Question is empty")
 
-    cam = camilla_oracle(q)
-    item, score = find_best_match(q, cam)
+    item, score, ctx = find_best_item(q, ITEMS)
 
     if not item:
-        return AskResponse(
-            answer="Non ho trovato una risposta in Tecnaria Gold. Specifica la famiglia (CTF, CTL, CTL MAXI, CTCEM, VCEM, P560) o il problema (posa, errore, dopo getto).",
-            score=0.0,
-            family=None,
-            source_id=None,
-            mood=cam.get("mood")
-        )
+        if LAB_MODE:
+            return {
+                "answer": "Non ho trovato una risposta in Tecnaria Gold.",
+                "score": 0.0,
+                "family": None,
+                "mood": ctx.get("mood"),
+                "intent": ctx.get("intent"),
+                "target": ctx.get("target")
+            }
+        return {"answer": "Non ho trovato una risposta in Tecnaria Gold."}
 
     base_answer = item.get("risposta") or item.get("answer") or "Risposta non disponibile."
     family = item.get("family")
-    source_id = item.get("id")
+    mood = ctx.get("mood", "default")
 
-    # se Camilla ha detto “serve gold”, lo formatto
-    if cam.get("need_gold", False):
-        final_answer = format_gold(base_answer, cam.get("mood"), family)
+    # se la domanda era di posa/errore/comparativa → applica PERFEZIONE
+    if ctx["intent"] in ["posa", "errore", "comparativo", "problematiche"]:
+        final_answer = format_gold(base_answer, mood, family)
     else:
         final_answer = base_answer
 
-    return AskResponse(
-        answer=final_answer,
-        score=round(max(min(score, 1.0), 0.0), 3),
-        family=family,
-        source_id=source_id,
-        mood=cam.get("mood")
-    )
+    if LAB_MODE:
+        return {
+            "answer": final_answer,
+            "score": round(min(score, 1.0), 3),
+            "family": family,
+            "mood": mood,
+            "intent": ctx.get("intent"),
+            "target": ctx.get("target")
+        }
 
+    # PRODUZIONE: solo testo
+    return {"answer": final_answer}
 
 # =========================================================
-# 8. INTERFACCIA WEB /ui
+# 8. INTERFACCIA /ui
 # =========================================================
 @app.get("/ui", response_class=HTMLResponse)
 def ui():
+    # in lab mostriamo anche family/score/mood
     return """
     <!DOCTYPE html>
     <html lang="it">
@@ -332,8 +334,8 @@ def ui():
     <body>
         <div class="wrap">
             <h1>Tecnaria Sinapsi — Q/A</h1>
-            <p>Domande su <b>CTF, CTL/CTL MAXI, CTCEM, VCEM, P560, Diapason, GTS e accessori</b>. Stile <b>PERFEZIONE</b>.</p>
-            <input id="q" type="text" placeholder="Es. Posso posare i CTF con una chiodatrice normale?"/>
+            <p>Fai domande naturali: <i>“Mi spieghi la P560?”, “Sbaglio se taro la P560 con un solo tiro?”, “Come si posano i CTF su lamiera?”</i></p>
+            <input id="q" type="text" placeholder="Es. Mi spieghi la P560?"/>
             <button onclick="ask()">Chiedi a Sinapsi</button>
             <div id="res" style="margin-top:24px;"></div>
         </div>
@@ -352,6 +354,8 @@ def ui():
                 <div class="badge">Famiglia: ${data.family || '-'}</div>
                 <div class="badge">Score: ${data.score || '-'}</div>
                 <div class="badge">Mood: ${data.mood || '-'}</div>
+                <div class="badge">Intent: ${data.intent || '-'}</div>
+                <div class="badge">Target: ${data.target || '-'}</div>
                 <div class="res-box">${data.answer}</div>
             `;
         }
