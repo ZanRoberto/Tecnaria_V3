@@ -12,9 +12,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
 
-# -------------------------------------------------------
-# CONFIG
-# -------------------------------------------------------
 DATA_PATH = os.getenv("TECNARIA_DATA_PATH", "static/data/tecnaria_gold.json")
 
 app = FastAPI(
@@ -23,9 +20,6 @@ app = FastAPI(
     description="Router Q/A per prodotti e servizi Tecnaria (CTF, CTL, CTL MAXI, CTCEM, VCEM, P560, DIAPASON, GTS, ACCESSORI, COMM, CONFRONTO, PROBLEMATICHE, KILLER)."
 )
 
-# -------------------------------------------------------
-# MODELLI
-# -------------------------------------------------------
 class AskRequest(BaseModel):
     question: str
 
@@ -37,9 +31,6 @@ class AskResponse(BaseModel):
     intent: str = "descrittivo"
     target: Optional[str] = None
 
-# -------------------------------------------------------
-# UTILITY
-# -------------------------------------------------------
 def normalize(text: str) -> str:
     if not text:
         return ""
@@ -49,9 +40,6 @@ def normalize(text: str) -> str:
     text = re.sub(r"\s+", " ", text)
     return text
 
-# -------------------------------------------------------
-# CARICAMENTO DATI
-# -------------------------------------------------------
 def load_data(path: str) -> Dict[str, Any]:
     if not os.path.exists(path):
         raise FileNotFoundError(f"File dati non trovato: {path}")
@@ -68,9 +56,7 @@ except Exception as e:
     ITEMS = []
     META = {}
 
-# -------------------------------------------------------
-# OVERRIDE KILLER (PRIMA DI TUTTO)
-# -------------------------------------------------------
+# --------- OVERRIDE KILLER ---------
 OVERRIDE_RULES = [
     {
         "id": "OVR-CTF-CHIODATRICE-001",
@@ -132,9 +118,7 @@ def find_override(q: str) -> Optional[dict]:
     matches.sort(key=lambda x: x[0], reverse=True)
     return matches[0][1]
 
-# -------------------------------------------------------
-# CAMILLA — DETECTION INTENTO
-# -------------------------------------------------------
+# --------- CAMILLA INTENT ---------
 def detect_intent(q: str) -> str:
     qn = normalize(q)
     if qn.startswith("mi spieghi") or "spiegami" in qn:
@@ -147,9 +131,7 @@ def detect_intent(q: str) -> str:
         return "commerciale"
     return "descrittivo"
 
-# -------------------------------------------------------
-# SINAPSI GREZZA
-# -------------------------------------------------------
+# --------- SINAPSI GREZZA ---------
 def base_candidates(user_q: str) -> List[Any]:
     qn = normalize(user_q)
     tokens = set(qn.split())
@@ -184,9 +166,7 @@ def base_candidates(user_q: str) -> List[Any]:
     cands.sort(key=lambda x: x[0], reverse=True)
     return cands
 
-# -------------------------------------------------------
-# CAMILLA — RIPESO
-# -------------------------------------------------------
+# --------- CAMILLA RIPESO ---------
 def camilla_rescore(user_q: str, intent: str, candidates: List[Any]) -> List[Any]:
     qn = normalize(user_q)
     rescored = []
@@ -234,9 +214,6 @@ def camilla_rescore(user_q: str, intent: str, candidates: List[Any]) -> List[Any
     rescored.sort(key=lambda x: x[0], reverse=True)
     return rescored
 
-# -------------------------------------------------------
-# FORMAT GOLD
-# -------------------------------------------------------
 def format_gold(item: Dict[str, Any], intent: str) -> str:
     testo = item.get("risposta", "").strip()
     fam = item.get("family", "")
@@ -244,9 +221,6 @@ def format_gold(item: Dict[str, Any], intent: str) -> str:
         return testo
     return f"**{fam}**\n{testo}"
 
-# -------------------------------------------------------
-# ENDPOINTS
-# -------------------------------------------------------
 @app.get("/health")
 def health():
     return {
@@ -268,7 +242,6 @@ def qa_ask(req: AskRequest):
     if not q or not q.strip():
         raise HTTPException(status_code=400, detail="Domanda vuota")
 
-    # 0) override killer
     override = find_override(q)
     if override:
         return AskResponse(
@@ -280,13 +253,8 @@ def qa_ask(req: AskRequest):
             target=override.get("family", "COMM")
         )
 
-    # 1) intento
     intent = detect_intent(q)
-
-    # 2) candidati
     base = base_candidates(q)
-
-    # 3) ripeso
     rescored = camilla_rescore(q, intent, base)
 
     best_score, best_item = rescored[0]
@@ -308,7 +276,6 @@ def qa_ask(req: AskRequest):
 
 @app.get("/ui")
 def ui():
-    # interfaccia semplice stile Tecnaria
     html = """
     <!doctype html>
     <html lang="it">
@@ -317,83 +284,19 @@ def ui():
       <title>Tecnaria Sinapsi — Q/A</title>
       <meta name="viewport" content="width=device-width,initial-scale=1" />
       <style>
-        body {
-          margin: 0;
-          font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          background: #f5f5f5;
-        }
-        header {
-          background: linear-gradient(90deg, #ff7a00 0%, #000 70%);
-          color: #fff;
-          padding: 18px 32px 12px 32px;
-        }
-        .title {
-          font-size: 1.4rem;
-          font-weight: 600;
-        }
-        .subtitle {
-          font-size: 0.85rem;
-          opacity: 0.8;
-        }
-        .container {
-          display: flex;
-          gap: 20px;
-          padding: 18px 32px;
-        }
-        .left {
-          flex: 0 0 280px;
-        }
-        .right {
-          flex: 1;
-        }
-        .pill {
-          background: #fff;
-          border: 1px solid rgba(0,0,0,0.05);
-          border-left: 4px solid #ff7a00;
-          border-radius: 10px;
-          padding: 10px 12px;
-          margin-bottom: 10px;
-          cursor: pointer;
-          font-size: 0.82rem;
-        }
-        .card {
-          background: #fff;
-          border-radius: 12px;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.04);
-          padding: 20px;
-        }
-        #question {
-          width: 100%;
-          padding: 16px 16px;
-          border-radius: 12px;
-          border: 1px solid rgba(0,0,0,0.08);
-          font-size: 1rem;
-          margin-bottom: 12px;
-        }
-        #sendBtn {
-          background: #ff7a00;
-          border: none;
-          color: #fff;
-          padding: 10px 16px;
-          border-radius: 10px;
-          cursor: pointer;
-          font-weight: 600;
-        }
-        #answerBox {
-          margin-top: 14px;
-          white-space: pre-wrap;
-          line-height: 1.4;
-          font-size: 0.9rem;
-        }
-        .badge {
-          display: inline-block;
-          background: rgba(255,122,0,0.12);
-          color: #ff7a00;
-          padding: 2px 8px;
-          border-radius: 999px;
-          font-size: 0.7rem;
-          margin-right: 6px;
-        }
+        body { margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#f5f5f5; }
+        header { background:linear-gradient(90deg,#ff7a00 0%,#000 70%); color:#fff; padding:18px 32px 12px 32px; }
+        .title { font-size:1.4rem; font-weight:600; }
+        .subtitle { font-size:0.85rem; opacity:0.8; }
+        .container { display:flex; gap:20px; padding:18px 32px; }
+        .left { flex:0 0 280px; }
+        .right { flex:1; }
+        .pill { background:#fff; border:1px solid rgba(0,0,0,0.05); border-left:4px solid #ff7a00; border-radius:10px; padding:10px 12px; margin-bottom:10px; cursor:pointer; font-size:0.82rem; }
+        .card { background:#fff; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.04); padding:20px; min-height:300px; }
+        #question { width:100%; padding:16px 16px; border-radius:12px; border:1px solid rgba(0,0,0,0.08); font-size:1rem; margin-bottom:12px; }
+        #sendBtn { background:#ff7a00; border:none; color:#fff; padding:10px 16px; border-radius:10px; cursor:pointer; font-weight:600; }
+        #answerBox { margin-top:14px; white-space:pre-wrap; line-height:1.4; font-size:0.9rem; }
+        .badge { display:inline-block; background:rgba(255,122,0,0.12); color:#ff7a00; padding:2px 8px; border-radius:999px; font-size:0.7rem; margin-right:6px; }
       </style>
     </head>
     <body>
@@ -404,11 +307,12 @@ def ui():
       <div class="container">
         <div class="left">
           <div class="pill" onclick="fill('Mi spieghi la P560?')">Mi spieghi la P560?</div>
+          <div class="pill" onclick="fill('Sbaglio se taro la P560 con un solo tiro?')">P560 errore taratura</div>
+          <div class="pill" onclick="fill('con riferimento ai connettori CTF Tecnaria si possono posare i connettori usando una normale chiodatrice a sparo?')">CTF con chiodatrice normale</div>
           <div class="pill" onclick="fill('Come si posano i CTF su lamiera grecata?')">CTF su lamiera grecata</div>
           <div class="pill" onclick="fill('Posso usare la P560 per i VCEM?')">P560 su VCEM</div>
           <div class="pill" onclick="fill('Qual è la differenza tra CTL e CTL MAXI?')">CTL vs CTL MAXI</div>
           <div class="pill" onclick="fill('Mi dai i codici dei connettori CTF?')">Codici CTF</div>
-          <div class="pill" onclick="fill('con riferimento ai connettori CTF Tecnaria si possono posare i connettori usando una normale chiodatrice a sparo?')">CTF con chiodatrice normale</div>
         </div>
         <div class="right">
           <div class="card">
@@ -434,10 +338,14 @@ def ui():
           const data = await res.json();
           const box = document.getElementById('answerBox');
           if (data && data.answer) {
-            box.innerHTML = '<div class="badge">'+ (data.family || '') +'</div>' +
-                            '<div class="badge">'+ (data.intent || '') +'</div>' +
-                            (data.mood === 'alert' ? '<div class="badge" style="background:#ffe9e9;color:#b00020;">ALERT</div>' : '') +
-                            '<p style="margin-top:10px;">' + data.answer.replace(/\\n/g, '<br/>') + '</p>';
+            box.innerHTML =
+              '<div class="badge">'+ (data.family || '') +'</div>' +
+              '<div class="badge">'+ (data.intent || '') +'</div>' +
+              (data.mood === 'alert'
+                ? '<div class="badge" style="background:#ffe9e9;color:#b00020;">ALERT</div>'
+                : ''
+              ) +
+              '<p style="margin-top:10px;">' + data.answer.replace(/\\n/g, '<br/>') + '</p>';
           } else {
             box.innerText = 'Nessuna risposta';
           }
