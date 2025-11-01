@@ -1168,6 +1168,89 @@
     }
   }
 ]
+[
+  {
+    "id": "COMM-NUMERI-0001",
+    "family": "COMM",
+    "domanda": "Quali sono le confezioni minime, i pesi indicativi e i tempi di consegna dei connettori Tecnaria?",
+    "risposta": "**Contesto**\nLe confezioni, i pesi e i tempi possono cambiare per famiglia (CTF, CTL, VCEM/CTCEM, P560) e soprattutto per versioni speciali (es. inox, lunghezze fuori standard). Il riferimento ufficiale resta sempre il listino/commerciale Tecnaria.\n\n**Istruzioni**\n1) indica sempre **famiglia e quantità** (es. “CTF per acciaio”, “VCEM per laterocemento”);\n2) per CTF e CTL la confezione è normalmente **a colli/cartoni** con quantità predefinite;\n3) per versioni inox / speciali → **conferma sempre la disponibilità** con l’ufficio Tecnaria;\n4) per tempi → indicare: “**standard 3-5 gg lavorativi Italia**, salvo disponibilità e salvo versioni speciali”;\n5) per il peso → rimanda alla **scheda tecnica del prodotto** perché dipende da lunghezza e finitura.\n\n**Alternativa**\nSe il cliente chiede un codice preciso (es. “CTL MAXI 140 inox”) → inoltrare all’ufficio Tecnaria con codice e quantità.\n\n**Checklist**\n- famiglia indicata?\n- versione standard o inox?\n- quantità?\n- urgenza/consegna?\n\n**Nota RAG**\nUsare questo blocco quando l’utente chiede “confezione minima”, “tempi di consegna”, “peso collo”, “spedite voi?”, e il dato non è nel dataset.",
+    "trigger": {
+      "peso": 0.82,
+      "keywords": [
+        "confezione minima",
+        "pesi indicativi",
+        "tempi di consegna",
+        "quante pezzi a collo",
+        "spedizione tecnaria"
+      ]
+    }
+  },
+  {
+    "id": "CTL-NEW-LAM-0001",
+    "family": "CTL",
+    "domanda": "Posso usare i connettori CTL su travi nuove in legno lamellare o KVH?",
+    "risposta": "**Contesto**\nI connettori **CTL Tecnaria** sono pensati per legno → calcestruzzo in recupero e in nuova costruzione. Su legno lamellare/KVH la posa è anzi più regolare perché il supporto è omogeneo.\n\n**Istruzioni**\n1) scegli CTL (o **CTL MAXI** se la soletta è più spessa);\n2) usa **viti originali Tecnaria**;\n3) mantieni il **passo indicato dal progetto** (non ridurlo a piacere);\n4) se il lamellare è molto duro → fai **preforo Ø4 mm**;\n5) controlla che la testa sia **a battuta** sul piatto.\n\n**Alternativa**\nSe la soletta è > 6-7 cm o con sovraccarichi importanti → preferire CTL MAXI o densificare il passo.\n\n**Checklist**\n- legno = lamellare/KVH?\n- soletta > 6 cm?\n- viti originali?\n- foto per DL?\n\n**Nota RAG**\nServe per rispondere alle domande tipo: “è legno nuovo, non vecchio… va bene lo stesso?”, “ma i CTL non sono solo per recupero?”.",
+    "trigger": {
+      "peso": 0.78,
+      "keywords": [
+        "legno lamellare",
+        "kvh",
+        "ctl su legno nuovo",
+        "ctl anche in nuova costruzione",
+        "ctl maxi su lamellare"
+      ]
+    }
+  },
+  {
+    "id": "COMM-PROGETTO-PRIORITA-0001",
+    "family": "COMM",
+    "domanda": "Se il progetto strutturale dice una cosa e il cantiere ne fa un’altra, cosa vale?",
+    "risposta": "**Contesto**\nNel collaborante acciaio-cls/legno-cls la **priorità assoluta** è sempre del **progetto strutturale** (DL / strutturista / capitolato). Il dataset Tecnaria GOLD dà le **regole di posa generali** ma non può superare un progetto firmato.\n\n**Istruzioni**\n1) se la posa in cantiere **non coincide** con il disegno → segnalare subito alla DL;\n2) se il cantiere ha usato **connettori diversi (es. CTF80 al posto di 60)** → dichiararlo e chiedere se è accettabile;\n3) se manca rete / distanziatori → posa **NON conforme** fino a parere DL;\n4) rispondi sempre: “**vale il progetto**. Le istruzioni Tecnaria valgono in assenza di prescrizioni più restrittive.”\n\n**Alternativa**\nSe non c’è un progetto (piccolo intervento) → seguire **integralmente** le indicazioni del dataset Tecnaria e documentare con foto.\n\n**Checklist**\n- esiste progetto?\n- la posa è diversa?\n- sono stati usati connettori diversi?\n- DL informata?\n\n**Nota RAG**\nQuesto blocco va sparato quando l’utente scrive “ma in cantiere hanno fatto così…”, “l’impresa ha messo altri connettori…”, “non avevano la rete…”.",
+    "trigger": {
+      "peso": 0.9,
+      "keywords": [
+        "vale il progetto",
+        "in cantiere hanno fatto diverso",
+        "il capitolato diceva",
+        "cosa conta di piu",
+        "il direttore lavori vuole"
+      ]
+    }
+  },
+  {
+    "id": "DOC-DIGITALE-0001",
+    "family": "COMM",
+    "domanda": "Dove posso scaricare documenti, disegni CAD, schede tecniche e dichiarazioni di prestazione (DoP) dei connettori Tecnaria?",
+    "risposta": "**Contesto**\nGli elaborati tecnici (schede pdf, DWG/DXF, DoP, ETA) non sono tutti dentro il dataset ma vengono forniti da Tecnaria tramite sito o su richiesta.\n\n**Istruzioni**\n1) indica sempre il **prodotto/famiglia** (CTF, CTL, VCEM, CTCEM, Diapason, GTS…);\n2) chiedi se serve **disegno 2D/3D** o solo scheda;\n3) indirizza a: **ufficio tecnico/commerciale Tecnaria** specificando il prodotto;\n4) per i documenti normativi (ETA, DoP) → dire “**sono disponibili e vengono inviati su richiesta**”.\n\n**Alternativa**\nSe il cliente sta sviluppando un progetto BIM → segnalare che i dati sono disponibili in formato digitale ma vanno richiesti indicando piattaforma e formato.\n\n**Checklist**\n- prodotto indicato?\n- formato richiesto (pdf/dwg)?\n- cliente finale o DL?\n\n**Nota RAG**\nServe a chi chiede “mi mandi il PDF?”, “hai il CAD di questo connettore?”, “mi serve la dichiarazione di prestazione”.",
+    "trigger": {
+      "peso": 0.8,
+      "keywords": [
+        "disegno cad",
+        "scheda tecnica",
+        "dichiarazione di prestazione",
+        "dop",
+        "eta tecnaria"
+      ]
+    }
+  },
+  {
+    "id": "COMM-EXPORT-0001",
+    "family": "COMM",
+    "domanda": "Tecnaria spedisce anche all'estero? Come si gestiscono gli ordini fuori Italia?",
+    "risposta": "**Contesto**\nTecnaria fornisce anche fuori Italia ma le condizioni (trasporto, tempi, imballi, certificazioni richieste) **non** sono le stesse del territorio nazionale.\n\n**Istruzioni**\n1) chiedi **paese di destinazione**;\n2) verifica se servono **documenti aggiuntivi** (es. traduzioni, certificati, marcatura richiesta dal cliente);\n3) indica che la spedizione estero viene gestita dall’ufficio Tecnaria con **quotazione dedicata**;\n4) segnala che i tempi possono essere **più lunghi** rispetto al 3-5 gg Italia.\n\n**Alternativa**\nSe il cliente ha un corriere proprio → indicare che il ritiro è possibile previa conferma magazzino.\n\n**Checklist**\n- paese indicato?\n- incoterm / resa?\n- quantità?\n\n**Nota RAG**\nUsare quando l’utente scrive “spedite in Svizzera?”, “posso avere consegna in Francia?”, “spedizione estero?”.",
+    "trigger": {
+      "peso": 0.77,
+      "keywords": [
+        "spedite all estero",
+        "consegna in francia",
+        "spedizione svizzera",
+        "ordine fuori italia",
+        "export tecnaria"
+      ]
+    }
+  }
+]
+
 
 
 
