@@ -1,357 +1,408 @@
 # app.py
-# TECNARIA_GOLD — Sinapsi + Camilla + Override Killer + UI
-# unico file dati: static/data/tecnaria_gold.json
+# TECNARIA — Sinapsi + Camilla + NLM (COOPERATIVO)
+# --------------------------------------------------------
+# 3 agenti entrano SEMPRE:
+#   1) SINAPSI → regole dure / cantiere / casi killer
+#   2) NLM → semantica, linguaggio naturale
+#   3) CAMILLA → tono, tipo di domanda, famiglia desiderata
+#
+# Poi un FUSION-ENGINE mette insieme i punteggi e sceglie.
+#
+# Avvio:
+#   uvicorn app:app --host 0.0.0.0 --port 8000
+#
+# Requisiti consigliati:
+#   pip install fastapi uvicorn
+#   pip install sentence-transformers torch   (opzionale, ma migliora NLM)
+#
+# File dati:
+#   static/data/tecnaria_gold.json   (il tuo v32)
 
 import os
 import json
-import unicodedata
 import re
-from typing import List, Dict, Any, Optional
+import unicodedata
+from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi import FastAPI
 from pydantic import BaseModel
 
-DATA_PATH = os.getenv("TECNARIA_DATA_PATH", "static/data/tecnaria_gold.json")
 
-app = FastAPI(
-    title="Tecnaria Sinapsi — Q/A",
-    version="1.0.0",
-    description="Router Q/A per prodotti e servizi Tecnaria (CTF, CTL, CTL MAXI, CTCEM, VCEM, P560, DIAPASON, GTS, ACCESSORI, COMM, CONFRONTO, PROBLEMATICHE, KILLER)."
-)
+# --------------------------------------------------------
+# CONFIG
+# --------------------------------------------------------
+DATA_PATH = os.environ.get("TECNARIA_GOLD_PATH", "static/data/tecnaria_gold.json")
 
-class AskRequest(BaseModel):
+# pesi di fusione (puoi alzarli/abbassarli)
+W_SINAPSI = 0.45   # peso del motore regole Tecnaria
+W_NLM     = 0.35   # peso del motore semantico
+W_CAMILLA = 0.20   # peso dell’intento/tono
+
+# se tutti sono bassi → fallback
+FUSION_MIN_SCORE = 0.30
+
+
+# --------------------------------------------------------
+# MODELLI I/O
+# --------------------------------------------------------
+class AskIn(BaseModel):
     question: str
+    lang: Optional[str] = "it"
 
-class AskResponse(BaseModel):
+
+class AskOut(BaseModel):
     answer: str
-    score: float
+    source_id: str
     family: str
-    mood: str = "default"
-    intent: str = "descrittivo"
-    target: Optional[str] = None
+    score: float
+    debug: Dict[str, Any]
 
+
+# --------------------------------------------------------
+# UTILI
+# --------------------------------------------------------
 def normalize(text: str) -> str:
-    if not text:
-        return ""
-    text = text.strip().lower()
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(c for c in text if not unicodedata.combining(c))
-    text = re.sub(r"\s+", " ", text)
+    text = text.lower()
+    text = "".join(
+        c for c in unicodedata.normalize("NFD", text)
+        if unicodedata.category(c) != "Mn"
+    )
+    text = re.sub(r"[^a-z0-9àèéìòùüç\s]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
     return text
 
-def load_data(path: str) -> Dict[str, Any]:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"File dati non trovato: {path}")
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+
+# --------------------------------------------------------
+# CARICAMENTO DATASET
+# --------------------------------------------------------
+if not os.path.exists(DATA_PATH):
+    raise FileNotFoundError(f"File Tecnaria non trovato: {DATA_PATH}")
+
+with open(DATA_PATH, "r", encoding="utf-8") as f:
+    RAW = json.load(f)
+
+ITEMS: List[Dict[str, Any]] = RAW.get("items", [])
+META: Dict[str, Any] = RAW.get("_meta", {})
+
+
+# --------------------------------------------------------
+# NLM (opzionale)
+# --------------------------------------------------------
+embedding_ok = False
+embed_model = None
 
 try:
-    DATA = load_data(DATA_PATH)
-    ITEMS: List[Dict[str, Any]] = DATA.get("items", [])
-    META: Dict[str, Any] = DATA.get("_meta", {})
-except Exception as e:
-    print(f"[ERRORE] Caricamento dati: {e}")
-    DATA = {"items": [], "_meta": {}}
-    ITEMS = []
-    META = {}
+    from sentence_transformers import SentenceTransformer
+    try:
+        embed_model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
+    except Exception:
+        embed_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    embedding_ok = True
+except Exception:
+    embedding_ok = False
 
-# --------- OVERRIDE KILLER ---------
-OVERRIDE_RULES = [
-    {
-        "id": "OVR-CTF-CHIODATRICE-001",
-        "family": "CTF",
-        "patterns": [
-            r"chiodatrice( a sparo)?( generica)?",
-            r"normale chiodatrice",
-            r"posare .*ctf.* con chiodatrice",
-            r"sparare ctf senza p560"
-        ],
-        "answer": "⚠️ **NO.** I connettori **CTF Tecnaria** vanno posati **solo** con chiodatrice **SPIT P560** dotata di **kit/adattatore Tecnaria** e con **2 chiodi HSBR14 per connettore**.\n\n**Perché no chiodatrici generiche?**\n- non garantiscono energia di sparo costante;\n- non assicurano perpendicolarità;\n- con lamiera non serrata causano rimbalzo e chiodi non a filo piastra.\n\n**Procedura corretta (riassunto)**: serrare lamiera → appoggiare CTF in squadra → sparare con P560 + kit → controllare teste a filo (±0,5 mm).",
-        "mood": "alert",
-        "intent": "errore",
-        "priority": 100
-    },
-    {
-        "id": "OVR-P560-TARATURA-001",
-        "family": "P560",
-        "patterns": [
-            r"sbaglio se taro la p560",
-            r"tarare la p560 con un solo tiro",
-            r"p560.*1 tiro",
-            r"p560.*un tiro"
-        ],
-        "answer": "⚠️ **ATTENZIONE**\nSì, è un errore tarare la P560 con un solo tiro. La procedura Tecnaria prevede **2–3 tiri di prova consecutivi** su supporto equivalente e con le stesse cartucce. Verifica che le teste HSBR14 siano **a filo piastra (±0,5 mm)** e registra la taratura sul verbale di cantiere.",
-        "mood": "alert",
-        "intent": "errore",
-        "priority": 100
-    },
-    {
-        "id": "OVR-VCEM-NOP560-001",
-        "family": "VCEM",
-        "patterns": [
-            r"p560.*vcem",
-            r"usare la p560 per i vcem",
-            r"posso usare la p560 per vcem",
-            r"pistola.*vcem"
-        ],
-        "answer": "🔴 **NO.** I **VCEM** non si fissano con P560. Sono connettori meccanici per laterocemento con foro piccolo (Ø8–9 mm) e si avvitano. La P560 è esclusa.\n\n**Procedura VCEM**: foro → pulizia → avvitatura → rete a metà → CLS ≥ C25/30.",
-        "mood": "alert",
-        "intent": "errore",
-        "priority": 100
-    }
+if embedding_ok:
+    import torch
+    for it in ITEMS:
+        trig = it.get("trigger", {})
+        kws = trig.get("keywords", [])
+        rep = it.get("domanda", "") + " " + " ".join(kws)
+        rep = normalize(rep)
+        it["_emb"] = embed_model.encode(rep, convert_to_tensor=True)
+else:
+    for it in ITEMS:
+        it["_emb"] = None
+
+
+# --------------------------------------------------------
+# 1) SINAPSI — motore regole (restituisce PIÙ candidati)
+# --------------------------------------------------------
+# questi sono i “casi killer” e i “tipici cantiere”
+SINAPSI_PATTERNS = [
+    ("KILLER-STRESS-0100", ["vcem con p560", "sparato vcem", "chiodato vcem", "pistola su vcem"], 1.0),
+    ("CTF-STRESS-0001", ["1 chiodo", "un solo chiodo", "secondo chiodo non entra"], 0.95),
+    ("CTF-STRESS-0002", ["lamiera staccata", "5 mm", "lamiera non aderente"], 0.92),
+    ("ACC-STRESS-0001", ["senza distanziatori", "posso gettare lo stesso", "rete giu"], 0.9),
+    ("ACCESSORI-STRESS-0100", ["senza rete", "non ho la rete", "posso evitare la rete"], 0.9),
+    ("P560-NL-0001", ["p560 non sparava", "p560 si inceppa", "pistola non va"], 0.85),
+    ("CTL-STRESS-0100", ["ctl su acciaio", "ho solo ctl", "non ho ctf"], 0.9),
 ]
 
-def find_override(q: str) -> Optional[dict]:
-    qn = normalize(q)
-    matches = []
-    for rule in OVERRIDE_RULES:
-        for pat in rule.get("patterns", []):
-            try:
-                if re.search(pat, qn, flags=re.IGNORECASE):
-                    matches.append((rule.get("priority", 50), rule))
-                    break
-            except re.error:
-                continue
-    if not matches:
-        return None
-    matches.sort(key=lambda x: x[0], reverse=True)
-    return matches[0][1]
-
-# --------- CAMILLA INTENT ---------
-def detect_intent(q: str) -> str:
-    qn = normalize(q)
-    if qn.startswith("mi spieghi") or "spiegami" in qn:
-        return "intro"
-    if "sbaglio se" in qn or "errore" in qn or "non aderisce" in qn or "non funziona" in qn or "non spara" in qn:
-        return "errore"
-    if "differenza" in qn or " vs " in qn or "confronto" in qn or "meglio" in qn:
-        return "confronto"
-    if "codici" in qn or "ordine" in qn or "come ordino" in qn:
-        return "commerciale"
-    return "descrittivo"
-
-# --------- SINAPSI GREZZA ---------
-def base_candidates(user_q: str) -> List[Any]:
-    qn = normalize(user_q)
-    tokens = set(qn.split())
-    cands = []
-    for item in ITEMS:
-        domanda = normalize(item.get("domanda", ""))
-        family = normalize(item.get("family", ""))
-        trig = item.get("trigger", {})
-        kw = [normalize(k) for k in trig.get("keywords", [])]
-        score = 0.0
-
-        if qn == domanda:
-            score += 3.0
-
-        for t in tokens:
-            if t and t in domanda:
-                score += 0.4
-            if t and t in family:
-                score += 0.3
-            if any(t in k for k in kw):
-                score += 0.4
-
-        score += float(trig.get("peso", 0.0)) * 0.5
-
-        if score > 0:
-            cands.append((score, item))
-
+def sinapsi_candidates(q_norm: str, limit: int = 5) -> List[Tuple[float, Dict[str, Any], str]]:
+    """
+    Torna una lista di (score, item, reason) trovati da regole.
+    """
+    cands: List[Tuple[float, Dict[str, Any], str]] = []
+    for pattern_id, words, base_score in SINAPSI_PATTERNS:
+        for w in words:
+            w_norm = normalize(w)
+            if w_norm in q_norm:
+                # trova item con id simile
+                for it in ITEMS:
+                    if pattern_id in it.get("id", ""):
+                        cands.append((base_score, it, f"sinapsi:{pattern_id}"))
+                        break
+    # se non ha trovato niente, prova “famiglia per keyword”
     if not cands:
-        for it in ITEMS:
-            cands.append((0.1, it))
+        # fallback: se trova “ctf” ecc.
+        fam_words = {
+            "ctf": "CTF",
+            "ctl": "CTL",
+            "vcem": "VCEM",
+            "ctcem": "CTCEM",
+            "p560": "P560",
+            "diapason": "DIAPASON",
+            "gts": "GTS",
+        }
+        for token, fam in fam_words.items():
+            if token in q_norm:
+                # prendi il primo item della famiglia
+                for it in ITEMS:
+                    if it.get("family", "").upper() == fam:
+                        cands.append((0.55, it, f"sinapsi:fam:{fam}"))
+                        break
+                break
 
-    cands.sort(key=lambda x: x[0], reverse=True)
-    return cands
+    return cands[:limit]
 
-# --------- CAMILLA RIPESO ---------
-def camilla_rescore(user_q: str, intent: str, candidates: List[Any]) -> List[Any]:
-    qn = normalize(user_q)
-    rescored = []
-    for base_score, item in candidates:
-        bonus = 0.0
-        dom = normalize(item.get("domanda", ""))
-        fam = item.get("family", "")
-        trig = item.get("trigger", {})
-        trig_peso = float(trig.get("peso", 0.0))
 
-        if dom == qn:
-            bonus += 2.5
+# --------------------------------------------------------
+# 2) CAMILLA — tono / tipo / famiglia desiderata
+# --------------------------------------------------------
+def camilla_profile(q_norm: str) -> Dict[str, Any]:
+    """
+    Riconosce il "perché" della domanda.
+    """
+    if any(x in q_norm for x in ["per errore", "ho sbagliato", "mi e scappato", "non entra", "ho chiodato"]):
+        mood = "error"
+    elif any(x in q_norm for x in ["codici", "ordinare", "fornitura", "inox", "versione speciale"]):
+        mood = "comm"
+    else:
+        mood = "ask"
 
-        if intent == "intro":
-            if dom.startswith("mi spieghi") or trig_peso >= 0.95:
-                bonus += 1.5
+    # famiglia desiderata dle tono
+    fam_hint = None
+    if "p560" in q_norm:
+        fam_hint = "P560"
+    elif "lamiera" in q_norm or "chiodo" in q_norm:
+        fam_hint = "CTF"
+    elif "legno" in q_norm or "ctl" in q_norm:
+        fam_hint = "CTL"
+    elif "vcem" in q_norm or "ctcem" in q_norm:
+        fam_hint = "VCEM"
 
-        if intent == "errore":
-            if "sbaglio" in dom or "errore" in dom or fam in ("KILLER", "PROBLEMATICHE"):
-                bonus += 1.5
+    return {
+        "mood": mood,
+        "fam_hint": fam_hint,
+        # bonus che Camilla dà ai candidati che rispettano questo
+        "bonus": 0.12 if mood == "error" else 0.06
+    }
 
-        if intent == "confronto" and fam == "CONFRONTO":
-            bonus += 1.4
 
-        if intent == "commerciale" and (fam == "COMM" or "codici" in dom or "ordine" in dom):
-            bonus += 1.4
+# --------------------------------------------------------
+# 3) NLM — semantico (restituisce PIÙ candidati)
+# --------------------------------------------------------
+def cosine(q_vec, i_vec) -> float:
+    import torch
+    if q_vec is None or i_vec is None:
+        return 0.0
+    return torch.nn.functional.cosine_similarity(q_vec, i_vec, dim=0).item()
 
-        if "p560" in qn and fam == "P560":
-            bonus += 1.0
-        if "ctf" in qn and fam == "CTF":
-            bonus += 1.0
-        if "ctl maxi" in qn and fam == "CTL MAXI":
-            bonus += 1.0
-        if "ctl" in qn and fam == "CTL":
-            bonus += 0.8
-        if "ctcem" in qn and fam == "CTCEM":
-            bonus += 0.8
-        if "vcem" in qn and fam == "VCEM":
-            bonus += 0.8
+def keyword_score(q_norm: str, item: Dict[str, Any]) -> float:
+    trig = item.get("trigger", {})
+    peso = float(trig.get("peso", 0.0))
+    kws = trig.get("keywords", [])
+    best = 0.0
+    for kw in kws:
+        kw_norm = normalize(kw)
+        if kw_norm and kw_norm in q_norm:
+            frac = len(kw_norm) / (len(q_norm) + 1)
+            sc = peso * frac
+            if sc > best:
+                best = sc
+    return best
 
-        bonus += trig_peso * 0.8
+def nlm_candidates(q_raw: str, limit: int = 5) -> List[Tuple[float, Dict[str, Any], str]]:
+    q_norm = normalize(q_raw)
+    q_vec = None
+    if embedding_ok:
+        q_vec = embed_model.encode(q_norm, convert_to_tensor=True)
 
-        rescored.append((base_score + bonus, item))
+    scored: List[Tuple[float, Dict[str, Any], str]] = []
+    for it in ITEMS:
+        ks = keyword_score(q_norm, it)
+        if embedding_ok:
+            cs = cosine(q_vec, it["_emb"])
+        else:
+            cs = 0.0
+        final = (ks * 0.6) + (cs * 0.4)
+        if final > 0.0:
+            scored.append((final, it, "nlm"))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored[:limit]
 
-    rescored.sort(key=lambda x: x[0], reverse=True)
-    return rescored
 
-def format_gold(item: Dict[str, Any], intent: str) -> str:
-    testo = item.get("risposta", "").strip()
-    fam = item.get("family", "")
-    if "\n" in testo:
-        return testo
-    return f"**{fam}**\n{testo}"
+# --------------------------------------------------------
+# 4) FUSION ENGINE — i tre non si escludono, SI AIUTANO
+# --------------------------------------------------------
+def fuse_candidates(
+    q_raw: str,
+    sinapsi_cands: List[Tuple[float, Dict[str, Any], str]],
+    nlm_cands: List[Tuple[float, Dict[str, Any], str]],
+    camilla_ctx: Dict[str, Any]
+) -> Tuple[float, Dict[str, Any], Dict[str, Any]]:
+    """
+    Per ogni candidato visto da uno dei 2 motori, calcoliamo:
+    - score_sinapsi
+    - score_nlm
+    - score_camilla
+    poi facciamo media pesata.
+    Vince chi ha lo score finale più alto.
+    """
+    # mettiamo tutti i candidati in una mappa per id
+    pool: Dict[str, Dict[str, Any]] = {}
+
+    # aggiungi candidati Sinapsi
+    for sc, it, reason in sinapsi_cands:
+        iid = it.get("id", "")
+        pool[iid] = {
+            "item": it,
+            "score_sinapsi": sc,
+            "score_nlm": 0.0,
+            "reasons": [reason]
+        }
+
+    # aggiungi candidati NLM
+    for sc, it, reason in nlm_cands:
+        iid = it.get("id", "")
+        if iid in pool:
+            pool[iid]["score_nlm"] = sc
+            pool[iid]["reasons"].append(reason)
+        else:
+            pool[iid] = {
+                "item": it,
+                "score_sinapsi": 0.0,
+                "score_nlm": sc,
+                "reasons": [reason]
+            }
+
+    # ora calcoliamo il punteggio di Camilla per ciascuno
+    mood = camilla_ctx["mood"]
+    fam_hint = camilla_ctx["fam_hint"]
+    bonus = camilla_ctx["bonus"]
+
+    best_final = 0.0
+    best_entry: Optional[Dict[str, Any]] = None
+
+    for iid, entry in pool.items():
+        it = entry["item"]
+        fam = it.get("family", "").upper()
+
+        # camilla score: se l’utente aveva un “error” e la risposta è una STRESS/KILLER → bonus
+        score_camilla = 0.0
+        if mood == "error":
+            if "STRESS" in iid or "KILLER" in iid:
+                score_camilla = 1.0
+            else:
+                score_camilla = 0.4
+        elif mood == "comm":
+            if fam in ("COMM", "ACCESSORI"):
+                score_camilla = 1.0
+            else:
+                score_camilla = 0.3
+        else:  # ask
+            # se c'è un hint di famiglia e coincide → bonus
+            if fam_hint and fam == fam_hint:
+                score_camilla = 0.9
+            else:
+                score_camilla = 0.4
+
+        # punteggio finale pesato
+        final_score = (
+            entry["score_sinapsi"] * W_SINAPSI +
+            entry["score_nlm"] * W_NLM +
+            score_camilla * W_CAMILLA
+        )
+
+        if final_score > best_final:
+            best_final = final_score
+            best_entry = {
+                "item": it,
+                "score_final": final_score,
+                "sinapsi": entry["score_sinapsi"],
+                "nlm": entry["score_nlm"],
+                "camilla": score_camilla,
+                "reasons": entry["reasons"]
+            }
+
+    return best_final, best_entry, {
+        "mood": mood,
+        "fam_hint": fam_hint,
+        "bonus": bonus
+    }
+
+
+# --------------------------------------------------------
+# 5) REGINA — fallback
+# --------------------------------------------------------
+def regina_fallback(q: str) -> AskOut:
+    return AskOut(
+        answer=(
+            "Non posso confermare al 100% la posa con i dati che hai scritto. "
+            "Manda foto e contesto a Tecnaria S.p.A. (info@tecnaria.com) indicando famiglia, supporto e lamiera."
+        ),
+        source_id="REGINA-FALLBACK",
+        family="COMM",
+        score=0.0,
+        debug={"question": q}
+    )
+
+
+# --------------------------------------------------------
+# FASTAPI
+# --------------------------------------------------------
+app = FastAPI(title="Tecnaria — 3 alleati (Sinapsi + Camilla + NLM)", version="1.0.0")
+
 
 @app.get("/health")
 def health():
     return {
-        "service": "Tecnaria Sinapsi — Q/A",
         "status": "ok",
-        "items_loaded": len(ITEMS),
+        "items": len(ITEMS),
+        "embedding": embedding_ok,
         "meta": META,
-        "endpoints": {
-            "health": "/health",
-            "ask": "/qa/ask",
-            "ui": "/ui",
-            "docs": "/docs"
-        }
+        "mode": "3-allies"
     }
 
-@app.post("/qa/ask", response_model=AskResponse)
-def qa_ask(req: AskRequest):
-    q = req.question
-    if not q or not q.strip():
-        raise HTTPException(status_code=400, detail="Domanda vuota")
 
-    override = find_override(q)
-    if override:
-        return AskResponse(
-            answer=override["answer"],
-            score=float(override.get("priority", 100)),
-            family=override.get("family", "COMM"),
-            mood=override.get("mood", "alert"),
-            intent=override.get("intent", "errore"),
-            target=override.get("family", "COMM")
-        )
+@app.post("/api/ask", response_model=AskOut)
+def api_ask(payload: AskIn):
+    q = payload.question
+    q_norm = normalize(q)
 
-    intent = detect_intent(q)
-    base = base_candidates(q)
-    rescored = camilla_rescore(q, intent, base)
+    # 1) tutti e tre entrano
+    sinapsi_cands = sinapsi_candidates(q_norm, limit=5)
+    nlm_cands = nlm_candidates(q, limit=5)
+    camilla_ctx = camilla_profile(q_norm)
 
-    best_score, best_item = rescored[0]
-    answer = format_gold(best_item, intent)
-    family = best_item.get("family", "COMM")
+    # 2) fusione
+    final_score, best_entry, camilla_used = fuse_candidates(q, sinapsi_cands, nlm_cands, camilla_ctx)
 
-    mood = "default"
-    if intent == "errore" or family in ("KILLER", "PROBLEMATICHE"):
-        mood = "alert"
+    # 3) decisione
+    if not best_entry or final_score < FUSION_MIN_SCORE:
+        return regina_fallback(q)
 
-    return AskResponse(
-        answer=answer,
-        score=round(float(best_score), 3),
-        family=family,
-        mood=mood,
-        intent=intent,
-        target=family
+    item = best_entry["item"]
+    return AskOut(
+        answer=item.get("risposta", "—"),
+        source_id=item.get("id", "UNKNOWN"),
+        family=item.get("family", "UNKNOWN"),
+        score=round(final_score, 4),
+        debug={
+            "sinapsi_score": round(best_entry["sinapsi"], 4),
+            "nlm_score": round(best_entry["nlm"], 4),
+            "camilla_score": round(best_entry["camilla"], 4),
+            "reasons": best_entry["reasons"],
+            "camilla_ctx": camilla_used
+        }
     )
-
-@app.get("/ui")
-def ui():
-    html = """
-    <!doctype html>
-    <html lang="it">
-    <head>
-      <meta charset="utf-8" />
-      <title>Tecnaria Sinapsi — Q/A</title>
-      <meta name="viewport" content="width=device-width,initial-scale=1" />
-      <style>
-        body { margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#f5f5f5; }
-        header { background:linear-gradient(90deg,#ff7a00 0%,#000 70%); color:#fff; padding:18px 32px 12px 32px; }
-        .title { font-size:1.4rem; font-weight:600; }
-        .subtitle { font-size:0.85rem; opacity:0.8; }
-        .container { display:flex; gap:20px; padding:18px 32px; }
-        .left { flex:0 0 280px; }
-        .right { flex:1; }
-        .pill { background:#fff; border:1px solid rgba(0,0,0,0.05); border-left:4px solid #ff7a00; border-radius:10px; padding:10px 12px; margin-bottom:10px; cursor:pointer; font-size:0.82rem; }
-        .card { background:#fff; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.04); padding:20px; min-height:300px; }
-        #question { width:100%; padding:16px 16px; border-radius:12px; border:1px solid rgba(0,0,0,0.08); font-size:1rem; margin-bottom:12px; }
-        #sendBtn { background:#ff7a00; border:none; color:#fff; padding:10px 16px; border-radius:10px; cursor:pointer; font-weight:600; }
-        #answerBox { margin-top:14px; white-space:pre-wrap; line-height:1.4; font-size:0.9rem; }
-        .badge { display:inline-block; background:rgba(255,122,0,0.12); color:#ff7a00; padding:2px 8px; border-radius:999px; font-size:0.7rem; margin-right:6px; }
-      </style>
-    </head>
-    <body>
-      <header>
-        <div class="title">Tecnaria Sinapsi — Q/A</div>
-        <div class="subtitle">CTF · CTL · CTL MAXI · CTCEM · VCEM · P560 · DIAPASON · GTS · ACCESSORI · COMM · CONFRONTO</div>
-      </header>
-      <div class="container">
-        <div class="left">
-          <div class="pill" onclick="fill('Mi spieghi la P560?')">Mi spieghi la P560?</div>
-          <div class="pill" onclick="fill('Sbaglio se taro la P560 con un solo tiro?')">P560 errore taratura</div>
-          <div class="pill" onclick="fill('con riferimento ai connettori CTF Tecnaria si possono posare i connettori usando una normale chiodatrice a sparo?')">CTF con chiodatrice normale</div>
-          <div class="pill" onclick="fill('Come si posano i CTF su lamiera grecata?')">CTF su lamiera grecata</div>
-          <div class="pill" onclick="fill('Posso usare la P560 per i VCEM?')">P560 su VCEM</div>
-          <div class="pill" onclick="fill('Qual è la differenza tra CTL e CTL MAXI?')">CTL vs CTL MAXI</div>
-          <div class="pill" onclick="fill('Mi dai i codici dei connettori CTF?')">Codici CTF</div>
-        </div>
-        <div class="right">
-          <div class="card">
-            <input id="question" placeholder="Fai una domanda su un prodotto Tecnaria…" />
-            <button id="sendBtn" onclick="ask()">Chiedi a Sinapsi</button>
-            <div id="answerBox"></div>
-          </div>
-        </div>
-      </div>
-      <script>
-        function fill(t) {
-          document.getElementById('question').value = t;
-          ask();
-        }
-        async function ask() {
-          const q = document.getElementById('question').value;
-          if (!q) return;
-          const res = await fetch('/qa/ask', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question: q })
-          });
-          const data = await res.json();
-          const box = document.getElementById('answerBox');
-          if (data && data.answer) {
-            box.innerHTML =
-              '<div class="badge">'+ (data.family || '') +'</div>' +
-              '<div class="badge">'+ (data.intent || '') +'</div>' +
-              (data.mood === 'alert'
-                ? '<div class="badge" style="background:#ffe9e9;color:#b00020;">ALERT</div>'
-                : ''
-              ) +
-              '<p style="margin-top:10px;">' + data.answer.replace(/\\n/g, '<br/>') + '</p>';
-          } else {
-            box.innerText = 'Nessuna risposta';
-          }
-        }
-      </script>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html)
