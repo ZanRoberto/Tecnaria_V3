@@ -108,7 +108,6 @@
         ]
       }
     },
-
     {
       "id": "CTF-0100",
       "family": "CTF",
@@ -646,6 +645,7 @@
         ]
       }
     },
+
     {
       "id": "CTF-0001",
       "family": "CTF",
@@ -736,174 +736,177 @@
           "cosa succede se la piastra non aderisce"
         ]
       }
+    },
+
+    {
+      "id": "CTF-CODICI-0001",
+      "family": "CTF",
+      "domanda": "Mi dai i codici dei connettori CTF?",
+      "risposta": "**Contesto**\nI connettori **CTF** sono forniti da Tecnaria in altezze/altezza piastra diverse per adattarsi allo spessore del getto e alla presenza della lamiera grecata. La logica è: **stessa posa (P560 + 2 HSBR14)**, cambia solo **l’altezza del corpo**.\n\n**Codici tipici CTF (serie acciaio)**\n- **CTF40** → altezza connettore ≈ **40 mm** → solette basse / lamiera schiacciata;\n- **CTF50** → altezza ≈ **50 mm** → caso più frequente su travi in acciaio con lamiera ben serrata;\n- **CTF60** → altezza ≈ **60 mm** → quando la greca è un po’ più alta o si vuole più copriferro sopra la piastra;\n- **CTF80** → altezza ≈ **80 mm** → getti più spessi, recuperi o zone con lamiera non perfettamente aderente.\n(Le altezze possono variare secondo listino Tecnaria o commessa.)\n\n**Istruzioni di posa**\n1. Serraggio lamiera → l’ala deve essere in appoggio pieno.\n2. Sparo con **SPIT P560** + **2 chiodi HSBR14** per ogni connettore.\n3. Controllo teste **a filo piastra (±0,5 mm)** su tutti i pezzi.\n4. Rete a **metà spessore**.\n5. CLS **≥ C25/30**.\n\n**Alternativa**\nSe la lamiera non è aderente o non puoi sparare, valuti con Tecnaria il passaggio a sistema **CTCEM/VCEM** sulla parte in laterocemento.\n\n**Checklist (CTF codici)**\n- Hai scelto l’altezza? (40 / 50 / 60 / 80)\n- Hai la P560 con adattatore Tecnaria?\n- Hai i chiodi **HSBR14** in quantità (2×pezzi + 5%)?\n- Hai la rete e i distanziatori?\n\n**Nota RAG**\nDomanda di tipo **commerciale-tecnica**: l’utente sta chiedendo i **codici di fornitura** della famiglia CTF. Rispondi sempre in questo formato: *codice → altezza → uso tipico → posa invariata*.",
+      "trigger": {
+        "peso": 0.99,
+        "keywords": [
+          "codici ctf",
+          "ctf40",
+          "ctf50",
+          "ctf60",
+          "ctf80",
+          "altezza connettore ctf",
+          "listino ctf"
+        ]
+      }
+    },
+    {
+      "id": "CTF-CODICI-0002",
+      "family": "CTF",
+      "domanda": "Qual è la differenza tra CTF40 e CTF60?",
+      "risposta": "**Contesto**\nEntrambi sono **connettori CTF per acciaio** e si posano **con P560 e 2 HSBR14**. Cambia solo **l’altezza del connettore** e quindi lo spessore utile del getto/livello lamiera.\n\n**Confronto rapido**\n- **CTF40** → per lamiera bassa o molto serrata, solette snelle;\n- **CTF60** → per lamiera standard o quando serve più copriferro sopra la piastra.\n\n**Istruzioni di posa**\nUguali per entrambi: lamiera serrata, sparo verticale, controllo teste, rete a metà, CLS ≥ C25/30.\n\n**Checklist**\n- lamiera aderente? → ok\n- potenza P560 tarata con 3 tiri? → ok\n- teste a filo? → ok\n\n**Nota RAG**\nDomanda di **confronto interno alla stessa famiglia**: mantieni sempre la stessa famiglia in risposta (CTF).",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "differenza ctf40 ctf60",
+          "ctf 40 vs 60",
+          "scelta altezza ctf"
+        ]
+      }
+    },
+
+    {
+      "id": "CTL-CODICI-0001",
+      "family": "CTL",
+      "domanda": "Mi dai i codici e le lunghezze dei connettori CTL?",
+      "risposta": "**Contesto**\nI **CTL** sono per **travi in legno o lamellare** e si fissano **con viti Ø10 a battuta** (mai saldare). Le lunghezze cambiano per adattarsi allo spessore della soletta e al tipo di legno.\n\n**Codici tipici CTL**\n- **CTL-100** → lunghezza utile ≈ **100 mm** → solette 4–5 cm su legno pieno;\n- **CTL-120** → lunghezza ≈ **120 mm** → caso più frequente, legno lamellare, soletta 5–6 cm;\n- **CTL-140** → lunghezza ≈ **140 mm** → quando il legno è “morbido” o la soletta è più spessa.\n(Le lunghezze effettive vanno prese a listino/scheda Tecnaria.)\n\n**Istruzioni di posa**\n1. Preforo **4 mm** solo su legni duri.\n2. Avvitare il CTL in **ortogonale** fino a battuta.\n3. Rete a metà spessore.\n4. CLS ≥ C25/30.\n\n**Alternativa**\nSe i carichi sono alti o la soletta è >6 cm, valuta **CTL MAXI**.\n\n**Checklist**\n- legno sano e non marcescente;\n- viti originali o equivalenti;\n- rete e distanziatori presenti;\n- getto programmato dopo i controlli.\n\n**Nota RAG**\nDomanda a scopo **catalogo**: mantieni risposta enumerativa con formato *codice → lunghezza → uso tipico*.",
+      "trigger": {
+        "peso": 0.98,
+        "keywords": [
+          "codici ctl",
+          "lunghezze ctl",
+          "ctl 100",
+          "ctl 120",
+          "ctl 140",
+          "connettori per legno"
+        ]
+      }
+    },
+
+    {
+      "id": "CTLX-CODICI-0001",
+      "family": "CTL MAXI",
+      "domanda": "Mi dai i codici dei CTL MAXI e le loro lunghezze?",
+      "risposta": "**Contesto**\nI **CTL MAXI** sono la versione a **capacità maggiore** dei CTL. Si usano quando la soletta è più spessa (6–8 cm), quando ci sono luci maggiori o richieste sismiche.\n\n**Codici tipici CTL MAXI**\n- **CTL-MAXI-140** → lunghezza ≈ **140 mm** → solette 6 cm;\n- **CTL-MAXI-160** → lunghezza ≈ **160 mm** → solette 6–7 cm e travi importanti;\n- **CTL-MAXI-180** → lunghezza ≈ **180 mm** → solette 7–8 cm o richieste di portata superiori.\n\n**Istruzioni di posa**\nCome CTL: avvitatura con 2 viti Ø10 fino a battuta, rete a metà, CLS ≥ C25/30. **Mai saldare.**\n\n**Alternativa**\nSe il bordo è vicino o lo spessore è irregolare, densifica il passo invece di allungare a dismisura il connettore.\n\n**Checklist**\n- verifica spessore soletta;\n- verifica lunghezza vite disponibile;\n- verifica bordo/trave;\n- verbale DL.\n\n**Nota RAG**\nDomanda di completamento famiglia: rispondi solo con CTL MAXI, non mischiare con CTL standard.",
+      "trigger": {
+        "peso": 0.95,
+        "keywords": [
+          "codici ctl maxi",
+          "lunghezze ctl maxi",
+          "ctl maxi 160",
+          "ctl maxi 180"
+        ]
+      }
+    },
+
+    {
+      "id": "CTCEM-CODICI-0001",
+      "family": "CTCEM",
+      "domanda": "Quali sono i codici dei connettori CTCEM e quali profondità hanno?",
+      "risposta": "**Contesto**\nI **CTCEM** sono connettori meccanici per **laterocemento**. L’elemento critico non è tanto l’altezza ‘fuori’ quanto la **profondità di ancoraggio nel CLS** dopo il foro.\n\n**Codici / profondità tipiche CTCEM**\n- **CTCEM-75** → foro Ø11 mm, **profondità 75 mm** (standard Tecnaria);\n- **CTCEM-90** → per solette un po’ più spesse o laterizi particolari, profondità ≈ **90 mm**;\n- **CTCEM-110** → per esigenze di ancoraggio maggiori o zone critiche.\n\n**Istruzioni di posa**\n1. Incidere/sagomare il laterizio per far alloggiare la piastra.\n2. Forare **Ø11 mm** alla profondità prevista.\n3. Pulire bene le polveri.\n4. Avvitare fino a **battuta**.\n5. Rete a metà.\n6. CLS ≥ C25/30.\n\n**Alternativa**\nSe non hai spazio per Ø11×75 mm → passa a **VCEM**.\n\n**Checklist**\n- foro pulito;\n- profondità rispettata;\n- piastra alloggiata;\n- rete presente.\n\n**Nota RAG**\nDomanda tecnica ‘da cantiere’: l’utente spesso chiede il codice perché non ricorda la **profondità di foro**. Evidenzialo sempre.",
+      "trigger": {
+        "peso": 0.97,
+        "keywords": [
+          "codici ctcem",
+          "ctcem 75",
+          "ctcem 90",
+          "foro 11",
+          "profondità ctcem"
+        ]
+      }
+    },
+
+    {
+      "id": "VCEM-CODICI-0001",
+      "family": "VCEM",
+      "domanda": "Mi elenchi i codici dei VCEM con le loro altezze?",
+      "risposta": "**Contesto**\nI **VCEM** nascono per spessori ridotti, bordi o solette deboli. Quindi le ‘altezze’/profondità sono più piccole rispetto al CTCEM.\n\n**Codici / altezze tipiche VCEM**\n- **VCEM-60** → foro Ø8–9 mm, profondità ≈ **60 mm** → bordo, poco spessore;\n- **VCEM-80** → profondità ≈ **80 mm** → caso più frequente;\n- **VCEM-100** → quando vuoi un po’ più di ancoraggio ma non puoi arrivare ai 75–90 del CTCEM.\n\n**Istruzioni di posa**\n1. Forare Ø8–9 mm alla profondità del codice.\n2. Avvitare fino a battuta.\n3. Rete a metà.\n4. CLS ≥ C25/30.\n\n**Alternativa**\nSe il supporto è acciaio → NON usare VCEM, usa **CTF con P560**.\n\n**Checklist**\n- foro Ø8–9 mm ok;\n- profondità rispettata;\n- rete presente;\n- no P560 sui VCEM.\n\n**Nota RAG**\nDomanda un po’ ‘difensiva’: l’utente deve capire che **VCEM ≠ CTF** e che si fissano per avvitatura.",
+      "trigger": {
+        "peso": 0.96,
+        "keywords": [
+          "codici vcem",
+          "vcem 60",
+          "vcem 80",
+          "vcem 100",
+          "altezza vcem",
+          "foro 8 9 mm"
+        ]
+      }
+    },
+
+    {
+      "id": "P560-CODICI-0001",
+      "family": "P560",
+      "domanda": "Quali codici devo ordinare insieme alla P560 per posare i CTF?",
+      "risposta": "**Contesto**\nLa **SPIT P560** da sola non basta: per posare i CTF in modo conforme Tecnaria servono anche chiodi e adattatore.\n\n**Componenti / codici tipici**\n- **P560-CORPO** → chiodatrice SPIT P560;\n- **KIT-P560-CTF** → adattatore/guida per connettori CTF Tecnaria;\n- **HSBR14** → chiodi (2 per connettore + 5–10% scorta);\n- **CARTUCCE** (gialle/rosse secondo lamiera e acciaio) → per garantire energia costante.\n\n**Istruzioni di posa**\n1. Monta il kit Tecnaria.\n2. Fai **3 tiri di prova** su stessa lamiera/trave.\n3. Posa i connettori CTF con **2 HSBR14**.\n4. Controlla teste a filo.\n\n**Alternativa**\nSe non puoi sparare (spazio, rumore, lamiera non aderente) → passa a sistema meccanico CTCEM/VCEM nella zona critica.\n\n**Checklist**\n- hai il corpo P560?\n- hai il kit per CTF?\n- hai i chiodi HSBR14 sufficienti?\n- hai le cartucce giuste?\n\n**Nota RAG**\nDomanda **logistica-commerciale**: serve perché molte imprese ordinano solo la P560 ma poi non hanno HSBR14 o il kit.",
+      "trigger": {
+        "peso": 0.9,
+        "keywords": [
+          "p560 codici",
+          "kit p560 ctf",
+          "hsbr14",
+          "cartucce p560",
+          "adattatore ctf"
+        ]
+      }
+    },
+
+    {
+      "id": "DIAPASON-CODICI-0001",
+      "family": "DIAPASON",
+      "domanda": "Esistono codici standard per il sistema DIAPASON?",
+      "risposta": "**Contesto**\n**DIAPASON** in Tecnaria viene usato per fissaggi/allineamenti particolari. I codici sono di solito legati a **lunghezza** e **diametro/foro**.\n\n**Codici tipici DIAPASON**\n- **DIAP-100** → lunghezza ≈ **100 mm** → fissaggi standard;\n- **DIAP-140** → lunghezza ≈ **140 mm** → quando c’è un pacchetto più spesso;\n- **DIAP-KIT** → elementi di serraggio e bulloneria dedicata.\n\n**Istruzioni di posa**\n1. Allineare i fori.\n2. Inserire l’elemento DIAPASON.\n3. Serrare con coppia da scheda Tecnaria.\n\n**Checklist**\n- allineamento ok;\n- bulloni originali;\n- coppia dinamometrica presente.\n\n**Nota RAG**\nDomanda rara ma da coprire: spesso viene da chi sta mettendo insieme **CTF + elementi speciali**.",
+      "trigger": {
+        "peso": 0.78,
+        "keywords": [
+          "codici diapason",
+          "diap 100",
+          "diap 140",
+          "fissaggi speciali tecnaria"
+        ]
+      }
+    },
+
+    {
+      "id": "GTS-CODICI-0001",
+      "family": "GTS",
+      "domanda": "Mi dai i codici del sistema GTS e le misure?",
+      "risposta": "**Contesto**\nIl sistema **GTS** usa elementi filettati e bloccaggi con coppia controllata. Cambiano diametro e lunghezza.\n\n**Codici / misure tipiche GTS**\n- **GTS-M12-120** → stelo M12, lunghezza ≈ **120 mm**;\n- **GTS-M12-160** → M12, lunghezza ≈ **160 mm**;\n- **GTS-M16-160** → M16, lunghezza ≈ **160 mm** → per carichi maggiori;\n- **GTS-RONDELLA-ORIG** → rondella originale Tecnaria (obbligatoria).\n\n**Istruzioni di posa**\n1. Montare tutti gli elementi.\n2. Serrare con **chiave dinamometrica 30–40 Nm** (or da scheda).\n3. Registrare il serraggio.\n\n**Checklist**\n- diametro corretto (M12/M16);\n- lunghezza adeguata allo spessore;\n- rondelle originali;\n- serraggio registrato.\n\n**Nota RAG**\nDomanda di **manutenzione/controllo**: includi sempre la coppia di serraggio.",
+      "trigger": {
+        "peso": 0.82,
+        "keywords": [
+          "codici gts",
+          "gts m12",
+          "gts m16",
+          "sistema gts tecnaria",
+          "rondella originale gts"
+        ]
+      }
+    },
+
+    {
+      "id": "ACCESSORI-CODICI-0001",
+      "family": "ACCESSORI",
+      "domanda": "Quali accessori e codici devo prevedere insieme ai connettori Tecnaria?",
+      "risposta": "**Contesto**\nGli accessori servono a **rendere valida la posa**: senza rete, distanziatori e DPI il cantiere rischia di non essere accettato dalla DL.\n\n**Accessori / codici tipici**\n- **RET-MEZZO-SP** → rete elettrosaldata per posizionamento **a metà spessore**;\n- **DIST-50** → distanziatore per soletta **50 mm**;\n- **DIST-70** → distanziatore per soletta **70 mm**;\n- **KIT-DPI-P560** → occhiali, guanti, protezioni per uso P560;\n- **HSBR14-SCORTA** → chiodi extra (5–10%).\n\n**Istruzioni di posa**\n1. Posare i connettori.\n2. Posare la rete su distanziatori.\n3. Gettare CLS ≥ C25/30.\n\n**Checklist**\n- rete presente?\n- distanziatori presenti?\n- DPI presenti?\n- scorta chiodi presente?\n\n**Nota RAG**\nDomanda di tipo **preventivo**: in output metti sempre rete + distanziatori + DPI.",
+      "trigger": {
+        "peso": 0.8,
+        "keywords": [
+          "accessori tecnaria",
+          "codici accessori",
+          "rete",
+          "distanziatori",
+          "dpi",
+          "hsbr14 scorta"
+        ]
+      }
     }
-  ],
-  "_end": {
-    "status": "complete",
-    "note": "Master unificato con contenuti aggiuntivi (blocchi descrittivi famiglie) e senza duplicati di id."
-  }
+  ]
 }
-[
-  {
-    "id": "CTF-CODICI-0001",
-    "family": "CTF",
-    "domanda": "Mi dai i codici dei connettori CTF?",
-    "risposta": "**Contesto**\nI connettori **CTF** sono forniti da Tecnaria in altezze/altezza piastra diverse per adattarsi allo spessore del getto e alla presenza della lamiera grecata. La logica è: **stessa posa (P560 + 2 HSBR14)**, cambia solo **l’altezza del corpo**.\n\n**Codici tipici CTF (serie acciaio)**\n- **CTF40** → altezza connettore ≈ **40 mm** → solette basse / lamiera schiacciata;\n- **CTF50** → altezza ≈ **50 mm** → caso più frequente su travi in acciaio con lamiera ben serrata;\n- **CTF60** → altezza ≈ **60 mm** → quando la greca è un po’ più alta o si vuole più copriferro sopra la piastra;\n- **CTF80** → altezza ≈ **80 mm** → getti più spessi, recuperi o zone con lamiera non perfettamente aderente.\n(Le altezze possono variare secondo listino Tecnaria o commessa.)\n\n**Istruzioni di posa**\n1. Serraggio lamiera → l’ala deve essere in appoggio pieno.\n2. Sparo con **SPIT P560** + **2 chiodi HSBR14** per ogni connettore.\n3. Controllo teste **a filo piastra (±0,5 mm)** su tutti i pezzi.\n4. Rete a **metà spessore**.\n5. CLS **≥ C25/30**.\n\n**Alternativa**\nSe la lamiera non è aderente o non puoi sparare, valuti con Tecnaria il passaggio a sistema **CTCEM/VCEM** sulla parte in laterocemento.\n\n**Checklist (CTF codici)**\n- Hai scelto l’altezza? (40 / 50 / 60 / 80)\n- Hai la P560 con adattatore Tecnaria?\n- Hai i chiodi **HSBR14** in quantità (2×pezzi + 5%)?\n- Hai la rete e i distanziatori?\n\n**Nota RAG**\nDomanda di tipo **commerciale-tecnica**: l’utente sta chiedendo i **codici di fornitura** della famiglia CTF. Rispondi sempre in questo formato: *codice → altezza → uso tipico → posa invariata*.",
-    "trigger": {
-      "peso": 0.99,
-      "keywords": [
-        "codici ctf",
-        "ctf40",
-        "ctf50",
-        "ctf60",
-        "ctf80",
-        "altezza connettore ctf",
-        "listino ctf"
-      ]
-    }
-  },
-  {
-    "id": "CTF-CODICI-0002",
-    "family": "CTF",
-    "domanda": "Qual è la differenza tra CTF40 e CTF60?",
-    "risposta": "**Contesto**\nEntrambi sono **connettori CTF per acciaio** e si posano **con P560 e 2 HSBR14**. Cambia solo **l’altezza del connettore** e quindi lo spessore utile del getto/livello lamiera.\n\n**Confronto rapido**\n- **CTF40** → per lamiera bassa o molto serrata, solette snelle;\n- **CTF60** → per lamiera standard o quando serve più copriferro sopra la piastra.\n\n**Istruzioni di posa**\nUguali per entrambi: lamiera serrata, sparo verticale, controllo teste, rete a metà, CLS ≥ C25/30.\n\n**Checklist**\n- lamiera aderente? → ok\n- potenza P560 tarata con 3 tiri? → ok\n- teste a filo? → ok\n\n**Nota RAG**\nDomanda di **confronto interno alla stessa famiglia**: mantieni sempre la stessa famiglia in risposta (CTF).",
-    "trigger": {
-      "peso": 0.9,
-      "keywords": [
-        "differenza ctf40 ctf60",
-        "ctf 40 vs 60",
-        "scelta altezza ctf"
-      ]
-    }
-  },
-  {
-    "id": "CTL-CODICI-0001",
-    "family": "CTL",
-    "domanda": "Mi dai i codici e le lunghezze dei connettori CTL?",
-    "risposta": "**Contesto**\nI **CTL** sono per **travi in legno o lamellare** e si fissano **con viti Ø10 a battuta** (mai saldare). Le lunghezze cambiano per adattarsi allo spessore della soletta e al tipo di legno.\n\n**Codici tipici CTL**\n- **CTL-100** → lunghezza utile ≈ **100 mm** → solette 4–5 cm su legno pieno;\n- **CTL-120** → lunghezza ≈ **120 mm** → caso più frequente, legno lamellare, soletta 5–6 cm;\n- **CTL-140** → lunghezza ≈ **140 mm** → quando il legno è “morbido” o la soletta è più spessa.\n(Le lunghezze effettive vanno prese a listino/scheda Tecnaria.)\n\n**Istruzioni di posa**\n1. Preforo **4 mm** solo su legni duri.\n2. Avvitare il CTL in **ortogonale** fino a battuta.\n3. Rete a metà spessore.\n4. CLS ≥ C25/30.\n\n**Alternativa**\nSe i carichi sono alti o la soletta è >6 cm, valuta **CTL MAXI**.\n\n**Checklist**\n- legno sano e non marcescente;\n- viti originali o equivalenti;\n- rete e distanziatori presenti;\n- getto programmato dopo i controlli.\n\n**Nota RAG**\nDomanda a scopo **catalogo**: mantieni risposta enumerativa con formato *codice → lunghezza → uso tipico*.",
-    "trigger": {
-      "peso": 0.98,
-      "keywords": [
-        "codici ctl",
-        "lunghezze ctl",
-        "ctl 100",
-        "ctl 120",
-        "ctl 140",
-        "connettori per legno"
-      ]
-    }
-  },
-  {
-    "id": "CTLX-CODICI-0001",
-    "family": "CTL MAXI",
-    "domanda": "Mi dai i codici dei CTL MAXI e le loro lunghezze?",
-    "risposta": "**Contesto**\nI **CTL MAXI** sono la versione a **capacità maggiore** dei CTL. Si usano quando la soletta è più spessa (6–8 cm), quando ci sono luci maggiori o richieste sismiche.\n\n**Codici tipici CTL MAXI**\n- **CTL-MAXI-140** → lunghezza ≈ **140 mm** → solette 6 cm;\n- **CTL-MAXI-160** → lunghezza ≈ **160 mm** → solette 6–7 cm e travi importanti;\n- **CTL-MAXI-180** → lunghezza ≈ **180 mm** → solette 7–8 cm o richieste di portata superiori.\n\n**Istruzioni di posa**\nCome CTL: avvitatura con 2 viti Ø10 fino a battuta, rete a metà, CLS ≥ C25/30. **Mai saldare.**\n\n**Alternativa**\nSe il bordo è vicino o lo spessore è irregolare, densifica il passo invece di allungare a dismisura il connettore.\n\n**Checklist**\n- verifica spessore soletta;\n- verifica lunghezza vite disponibile;\n- verifica bordo/trave;\n- verbale DL.\n\n**Nota RAG**\nDomanda di completamento famiglia: rispondi solo con CTL MAXI, non mischiare con CTL standard.",
-    "trigger": {
-      "peso": 0.95,
-      "keywords": [
-        "codici ctl maxi",
-        "lunghezze ctl maxi",
-        "ctl maxi 160",
-        "ctl maxi 180"
-      ]
-    }
-  },
-  {
-    "id": "CTCEM-CODICI-0001",
-    "family": "CTCEM",
-    "domanda": "Quali sono i codici dei connettori CTCEM e quali profondità hanno?",
-    "risposta": "**Contesto**\nI **CTCEM** sono connettori meccanici per **laterocemento**. L’elemento critico non è tanto l’altezza ‘fuori’ quanto la **profondità di ancoraggio nel CLS** dopo il foro.\n\n**Codici / profondità tipiche CTCEM**\n- **CTCEM-75** → foro Ø11 mm, **profondità 75 mm** (standard Tecnaria);\n- **CTCEM-90** → per solette un po’ più spesse o laterizi particolari, profondità ≈ **90 mm**;\n- **CTCEM-110** → per esigenze di ancoraggio maggiori o zone critiche.\n\n**Istruzioni di posa**\n1. Incidere/sagomare il laterizio per far alloggiare la piastra.\n2. Forare **Ø11 mm** alla profondità prevista.\n3. Pulire bene le polveri.\n4. Avvitare fino a **battuta**.\n5. Rete a metà.\n6. CLS ≥ C25/30.\n\n**Alternativa**\nSe non hai spazio per Ø11×75 mm → passa a **VCEM**.\n\n**Checklist**\n- foro pulito;\n- profondità rispettata;\n- piastra alloggiata;\n- rete presente.\n\n**Nota RAG**\nDomanda tecnica ‘da cantiere’: l’utente spesso chiede il codice perché non ricorda la **profondità di foro**. Evidenzialo sempre.",
-    "trigger": {
-      "peso": 0.97,
-      "keywords": [
-        "codici ctcem",
-        "ctcem 75",
-        "ctcem 90",
-        "foro 11",
-        "profondità ctcem"
-      ]
-    }
-  },
-  {
-    "id": "VCEM-CODICI-0001",
-    "family": "VCEM",
-    "domanda": "Mi elenchi i codici dei VCEM con le loro altezze?",
-    "risposta": "**Contesto**\nI **VCEM** nascono per spessori ridotti, bordi o solette deboli. Quindi le ‘altezze’/profondità sono più piccole rispetto al CTCEM.\n\n**Codici / altezze tipiche VCEM**\n- **VCEM-60** → foro Ø8–9 mm, profondità ≈ **60 mm** → bordo, poco spessore;\n- **VCEM-80** → profondità ≈ **80 mm** → caso più frequente;\n- **VCEM-100** → quando vuoi un po’ più di ancoraggio ma non puoi arrivare ai 75–90 del CTCEM.\n\n**Istruzioni di posa**\n1. Forare Ø8–9 mm alla profondità del codice.\n2. Avvitare fino a battuta.\n3. Rete a metà.\n4. CLS ≥ C25/30.\n\n**Alternativa**\nSe il supporto è acciaio → NON usare VCEM, usa **CTF con P560**.\n\n**Checklist**\n- foro Ø8–9 mm ok;\n- profondità rispettata;\n- rete presente;\n- no P560 sui VCEM.\n\n**Nota RAG**\nDomanda un po’ ‘difensiva’: l’utente deve capire che **VCEM ≠ CTF** e che si fissano per avvitatura.",
-    "trigger": {
-      "peso": 0.96,
-      "keywords": [
-        "codici vcem",
-        "vcem 60",
-        "vcem 80",
-        "vcem 100",
-        "altezza vcem",
-        "foro 8 9 mm"
-      ]
-    }
-  },
-  {
-    "id": "P560-CODICI-0001",
-    "family": "P560",
-    "domanda": "Quali codici devo ordinare insieme alla P560 per posare i CTF?",
-    "risposta": "**Contesto**\nLa **SPIT P560** da sola non basta: per posare i CTF in modo conforme Tecnaria servono anche chiodi e adattatore.\n\n**Componenti / codici tipici**\n- **P560-CORPO** → chiodatrice SPIT P560;\n- **KIT-P560-CTF** → adattatore/guida per connettori CTF Tecnaria;\n- **HSBR14** → chiodi (2 per connettore + 5–10% scorta);\n- **CARTUCCE** (gialle/rosse secondo lamiera e acciaio) → per garantire energia costante.\n\n**Istruzioni di posa**\n1. Monta il kit Tecnaria.\n2. Fai **3 tiri di prova** su stessa lamiera/trave.\n3. Posa i connettori CTF con **2 HSBR14**.\n4. Controlla teste a filo.\n\n**Alternativa**\nSe non puoi sparare (spazio, rumore, lamiera non aderente) → passa a sistema meccanico CTCEM/VCEM nella zona critica.\n\n**Checklist**\n- hai il corpo P560?\n- hai il kit per CTF?\n- hai i chiodi HSBR14 sufficienti?\n- hai le cartucce giuste?\n\n**Nota RAG**\nDomanda **logistica-commerciale**: serve perché molte imprese ordinano solo la P560 ma poi non hanno HSBR14 o il kit.",
-    "trigger": {
-      "peso": 0.9,
-      "keywords": [
-        "p560 codici",
-        "kit p560 ctf",
-        "hsbr14",
-        "cartucce p560",
-        "adattatore ctf"
-      ]
-    }
-  },
-  {
-    "id": "DIAPASON-CODICI-0001",
-    "family": "DIAPASON",
-    "domanda": "Esistono codici standard per il sistema DIAPASON?",
-    "risposta": "**Contesto**\n**DIAPASON** in Tecnaria viene usato per fissaggi/allineamenti particolari. I codici sono di solito legati a **lunghezza** e **diametro/foro**.\n\n**Codici tipici DIAPASON**\n- **DIAP-100** → lunghezza ≈ **100 mm** → fissaggi standard;\n- **DIAP-140** → lunghezza ≈ **140 mm** → quando c’è un pacchetto più spesso;\n- **DIAP-KIT** → elementi di serraggio e bulloneria dedicata.\n\n**Istruzioni di posa**\n1. Allineare i fori.\n2. Inserire l’elemento DIAPASON.\n3. Serrare con coppia da scheda Tecnaria.\n\n**Checklist**\n- allineamento ok;\n- bulloni originali;\n- coppia dinamometrica presente.\n\n**Nota RAG**\nDomanda rara ma da coprire: spesso viene da chi sta mettendo insieme **CTF + elementi speciali**.",
-    "trigger": {
-      "peso": 0.78,
-      "keywords": [
-        "codici diapason",
-        "diap 100",
-        "diap 140",
-        "fissaggi speciali tecnaria"
-      ]
-    }
-  },
-  {
-    "id": "GTS-CODICI-0001",
-    "family": "GTS",
-    "domanda": "Mi dai i codici del sistema GTS e le misure?",
-    "risposta": "**Contesto**\nIl sistema **GTS** usa elementi filettati e bloccaggi con coppia controllata. Cambiano diametro e lunghezza.\n\n**Codici / misure tipiche GTS**\n- **GTS-M12-120** → stelo M12, lunghezza ≈ **120 mm**;\n- **GTS-M12-160** → M12, lunghezza ≈ **160 mm**;\n- **GTS-M16-160** → M16, lunghezza ≈ **160 mm** → per carichi maggiori;\n- **GTS-RONDELLA-ORIG** → rondella originale Tecnaria (obbligatoria).\n\n**Istruzioni di posa**\n1. Montare tutti gli elementi.\n2. Serrare con **chiave dinamometrica 30–40 Nm** (o da scheda).\n3. Registrare il serraggio.\n\n**Checklist**\n- diametro corretto (M12/M16);\n- lunghezza adeguata allo spessore;\n- rondelle originali;\n- serraggio registrato.\n\n**Nota RAG**\nDomanda di **manutenzione/controllo**: includi sempre la coppia di serraggio.",
-    "trigger": {
-      "peso": 0.82,
-      "keywords": [
-        "codici gts",
-        "gts m12",
-        "gts m16",
-        "sistema gts tecnaria",
-        "rondella originale gts"
-      ]
-    }
-  },
-  {
-    "id": "ACCESSORI-CODICI-0001",
-    "family": "ACCESSORI",
-    "domanda": "Quali accessori e codici devo prevedere insieme ai connettori Tecnaria?",
-    "risposta": "**Contesto**\nGli accessori servono a **rendere valida la posa**: senza rete, distanziatori e DPI il cantiere rischia di non essere accettato dalla DL.\n\n**Accessori / codici tipici**\n- **RET-MEZZO-SP** → rete elettrosaldata per posizionamento **a metà spessore**;\n- **DIST-50** → distanziatore per soletta **50 mm**;\n- **DIST-70** → distanziatore per soletta **70 mm**;\n- **KIT-DPI-P560** → occhiali, guanti, protezioni per uso P560;\n- **HSBR14-SCORTA** → chiodi extra (5–10%).\n\n**Istruzioni di posa**\n1. Posare i connettori.\n2. Posare la rete su distanziatori.\n3. Gettare CLS ≥ C25/30.\n\n**Checklist**\n- rete presente?\n- distanziatori presenti?\n- DPI presenti?\n- scorta chiodi presente?\n\n**Nota RAG**\nDomanda di tipo **preventivo**: in output metti sempre rete + distanziatori + DPI.",
-    "trigger": {
-      "peso": 0.8,
-      "keywords": [
-        "accessori tecnaria",
-        "codici accessori",
-        "rete",
-        "distanziatori",
-        "dpi",
-        "hsbr14 scorta"
-      ]
-    }
-  }
-]
 
