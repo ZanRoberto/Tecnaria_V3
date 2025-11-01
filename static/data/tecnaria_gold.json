@@ -1102,6 +1102,73 @@
       ]
     }
   }
+][
+  {
+    "id": "CTF-NL-0001",
+    "family": "CTF",
+    "domanda": "Ho fatto una posa dei CTF non proprio corretta, cosa controllo per primo?",
+    "risposta": "**Contesto**\nQuando l’operatore dice “li ho messi ma non proprio come da libretto” di solito c’è: lamiera non serrata, 1 chiodo solo, colpo debole, piastra non aderente.\n\n**Istruzioni**\n1) conta i chiodi: devono essere **2 HSBR14 per connettore**;\n2) guarda la lamiera: deve essere **aderente all’ala**;\n3) controlla le teste: **a filo piastra (±0,5 mm)**;\n4) se uno di questi 3 punti manca → **posa NON conforme**, segnala e ripeti.\n\n**Alternativa**\nSe in quel punto non riesci a usare la P560 → passa a connettore meccanico (CTCEM/VCEM) e dichiaralo.\n\n**Checklist**\n- lamiera serrata?\n- 2 chiodi presenti?\n- teste a filo?\n- foto per DL?\n\n**Nota RAG**\nDeve rispondere anche se l’utente scrive “li ho messi male”, “non è venuto bene”, “mi è scappato il colpo”.",
+    "trigger": {
+      "peso": 0.75,
+      "keywords": [
+        "li ho messi male",
+        "non proprio corretta",
+        "mi e scappato il colpo",
+        "ctf messi cosi",
+        "li ho posati ma non bene"
+      ]
+    }
+  },
+  {
+    "id": "VCEM-NL-0001",
+    "family": "VCEM",
+    "domanda": "Per errore ho messo un chiodo su un VCEM, cosa devo fare?",
+    "risposta": "**Contesto**\nIl VCEM **non si chioda**: si fora e si avvita. Se hai sparato o chiodato un VCEM, la posa non è conforme.\n\n**Istruzioni**\n1) **mappa la zona** dove è successo;\n2) fai **foto** del connettore chiodato;\n3) **avvisa DL / Tecnaria**;\n4) rifai la posa con foro e avvitatura corretti.\n\n**Motivo**\nIl colpo può avere danneggiato la sede e non garantisce portata.\n\n**Nota RAG**\nDeve scattare con: “per errore ho messo un chiodo su un vcem”, “ho sparato vcem”, “ho fissato vcem con pistola”, “l’ho chiodato”.",
+    "trigger": {
+      "peso": 1.0,
+      "keywords": [
+        "per errore ho messo un chiodo su un vcem",
+        "ho sparato vcem",
+        "ho chiodato vcem",
+        "fissato vcem con pistola",
+        "vcem non si chioda"
+      ]
+    }
+  },
+  {
+    "id": "CTL-NL-0001",
+    "family": "CTL",
+    "domanda": "Ho messo i CTL ma il legno non era bellissimo, va bene lo stesso?",
+    "risposta": "**Contesto**\nNei recuperi il legno è spesso umido, vecchio o un po’ fessurato.\n\n**Istruzioni**\nSe il legno è **sano e non marcio** → CTL ok, meglio con **preforo Ø4 mm** e viti originali.\nSe il legno è **marcio / molto fessurato / con parti mancanti** → prima si **ripristina** (placcaggio, sostituzione, riempimento) e **poi** si mettono i CTL.\n\n**Checklist**\n- legno sano?\n- vite a battuta?\n- foto di dettaglio?\n\n**Nota RAG**\nDa usare quando l’utente non sa descrivere il legno e scrive solo “non era bellissimo”, “legno vecchio”, “trave andata”.",
+    "trigger": {
+      "peso": 0.78,
+      "keywords": [
+        "legno non bellissimo",
+        "legno vecchio",
+        "trave un po andata",
+        "ho messo ctl ma",
+        "ctl su legno brutto"
+      ]
+    }
+  },
+  {
+    "id": "P560-NL-0001",
+    "family": "P560",
+    "domanda": "La P560 oggi non sparava bene e ho comunque posato, è un problema?",
+    "risposta": "**Contesto**\nSe la P560 non ha energia costante tutti i connettori posati in quella fase sono **da controllare**.\n\n**Istruzioni**\n1) ferma la posa;\n2) fai **pulizia/manutenzione** della P560 e usa **solo cartucce corrette**;\n3) rifai i **3 tiri di prova** su lamiera uguale;\n4) controlla i connettori già posati: se le teste **non** sono a filo, li rifai.\n\n**Nota RAG**\nParole chiave: “oggi non sparava bene”, “p560 debole”, “pistola non va”, “ho comunque posato”.",
+    "trigger": {
+      "peso": 0.8,
+      "keywords": [
+        "oggi non sparava bene",
+        "p560 debole",
+        "pistola non va",
+        "ho comunque posato",
+        "p560 problema oggi"
+      ]
+    }
+  }
 ]
+
+
 
 
