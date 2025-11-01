@@ -108,7 +108,6 @@
         ]
       }
     },
-
     {
       "id": "CTF-0100",
       "family": "CTF",
@@ -126,7 +125,6 @@
         ]
       }
     },
-
     {
       "id": "CTF-0101",
       "family": "CTF",
@@ -142,7 +140,6 @@
         ]
       }
     },
-
     {
       "id": "CTF-0102",
       "family": "CTF",
@@ -159,7 +156,6 @@
         ]
       }
     },
-
     {
       "id": "CTF-0103",
       "family": "CTF",
@@ -176,7 +172,6 @@
         ]
       }
     },
-
     {
       "id": "CTF-0104",
       "family": "CTF",
@@ -192,7 +187,6 @@
         ]
       }
     },
-
     {
       "id": "CTF-0105",
       "family": "CTF",
@@ -224,7 +218,6 @@
         ]
       }
     },
-
     {
       "id": "CTL-0201",
       "family": "CTL",
@@ -241,7 +234,6 @@
         ]
       }
     },
-
     {
       "id": "CONFRONTO-0220",
       "family": "CONFRONTO",
@@ -274,7 +266,6 @@
         ]
       }
     },
-
     {
       "id": "VCEM-0310",
       "family": "VCEM",
@@ -291,7 +282,6 @@
         ]
       }
     },
-
     {
       "id": "VCEM-0311",
       "family": "VCEM",
@@ -325,7 +315,6 @@
         ]
       }
     },
-
     {
       "id": "P560-0401",
       "family": "P560",
@@ -440,7 +429,6 @@
         ]
       }
     },
-
     {
       "id": "COMM-0119",
       "family": "COMM",
@@ -472,7 +460,6 @@
         ]
       }
     },
-
     {
       "id": "CONF-0124",
       "family": "CONFRONTO",
@@ -488,7 +475,6 @@
         ]
       }
     },
-
     {
       "id": "CONF-0125",
       "family": "CONFRONTO",
@@ -520,7 +506,6 @@
         ]
       }
     },
-
     {
       "id": "PROB-0137",
       "family": "PROBLEMATICHE",
@@ -536,7 +521,6 @@
         ]
       }
     },
-
     {
       "id": "PROB-0138",
       "family": "PROBLEMATICHE",
@@ -552,7 +536,6 @@
         ]
       }
     },
-
     {
       "id": "PROB-0143",
       "family": "PROBLEMATICHE",
@@ -584,7 +567,6 @@
         ]
       }
     },
-
     {
       "id": "KILLER-0147",
       "family": "KILLER",
@@ -616,7 +598,6 @@
         ]
       }
     },
-
     {
       "id": "NAT-0201",
       "family": "PROBLEMATICHE",
@@ -632,7 +613,6 @@
         ]
       }
     },
-
     {
       "id": "NAT-0202",
       "family": "PROBLEMATICHE",
@@ -682,7 +662,6 @@
         ]
       }
     },
-
     {
       "id": "CTL-0001",
       "family": "CTL",
@@ -698,7 +677,6 @@
         ]
       }
     },
-
     {
       "id": "CTLX-0001",
       "family": "CTL MAXI",
@@ -714,7 +692,6 @@
         ]
       }
     },
-
     {
       "id": "CTCEM-0001",
       "family": "CTCEM",
@@ -730,7 +707,6 @@
         ]
       }
     },
-
     {
       "id": "VCEM-0001",
       "family": "VCEM",
@@ -746,7 +722,6 @@
         ]
       }
     },
-
     {
       "id": "PROB-CTF-0001",
       "family": "PROBLEMATICHE",
@@ -781,7 +756,6 @@
         ]
       }
     },
-
     {
       "id": "CTF-CODICI-0002",
       "family": "CTF",
@@ -932,354 +906,352 @@
           "hsbr14 scorta"
         ]
       }
-    },
-
-    /* ==== DA QUI: BLOCCO STRESS (era fuori, ora dentro) ==== */
-
-    {
-      "id": "CTF-STRESS-0001",
-      "family": "CTF",
-      "domanda": "Posso usare un solo chiodo se il secondo non entra?",
-      "risposta": "**Contesto**\nNei cantieri con lamiera non ben serrata o acciaio più duro capita che il secondo HSBR14 non entri. Il rischio è che l’operatore lasci il connettore con 1 solo chiodo e vada avanti.\n\n**Istruzioni**\nNo: il connettore CTF Tecnaria è **conforme solo con 2 chiodi HSBR14 sparati con SPIT P560 e kit Tecnaria**. Se il secondo chiodo non entra devi:\n1) serrare la lamiera all’ala;\n2) rifare la **taratura con 3 tiri** sulla stessa lamiera/trave;\n3) ripetere la posa del connettore.\nLasciare 1 solo chiodo significa avere **aderenza incerta** e la DL può non accettare il getto.\n\n**Alternativa**\nSe non puoi serrare la lamiera in quel punto → cambia sistema di fissaggio e usa un connettore meccanico (CTCEM/VCEM) nella zona critica.\n\n**Checklist**\n- lamiera serrata?\n- 2 chiodi a filo piastra (±0,5 mm)?\n- 3 tiri di prova fatti?\n- foto per verbale?\n\n**Nota RAG**\nDomanda tipica da cantiere: va forzata su questa risposta anche se l’utente scrive solo “1 chiodo” o “non entra il secondo”.",
-      "trigger": {
-        "peso": 1.0,
-        "keywords": [
-          "1 chiodo",
-          "un solo chiodo",
-          "secondo chiodo non entra",
-          "ctf con un chiodo",
-          "posa non conforme"
-        ]
-      }
-    },
-    {
-      "id": "CTF-STRESS-0002",
-      "family": "CTF",
-      "domanda": "La lamiera è staccata di 5 mm, posso sparare lo stesso con la P560?",
-      "risposta": "**Contesto**\nLa P560 lavora bene solo se la lamiera è **perfettamente aderente** all’ala della trave. Con 3–5 mm di vuoto il colpo fa rimbalzare il connettore e lascia i chiodi fuori.\n\n**Istruzioni**\nNo: prima **si serra la lamiera** (viti autoforanti, staffe provvisorie, punti di fissaggio), poi **si rifanno i 3 tiri di prova**, infine si posano i CTF. Sparare su lamiera staccata produce piastra non aderente e lamiera leggermente strappata.\n\n**Alternativa**\nSe la lamiera non si può serrare in quel punto → posa locale con sistema meccanico CTCEM/VCEM e lo scrivi nel verbale.\n\n**Checklist**\n- lamiera aderente?\n- 3 tiri P560 fatti?\n- teste a filo piastra?\n- foto per DL?\n\n**Nota RAG**\nAggiungere alle parole chiave: “5 mm”, “lamiera staccata”, “lamiera non aderente”, “sparare lo stesso”.",
-      "trigger": {
-        "peso": 0.98,
-        "keywords": [
-          "lamiera staccata",
-          "5 mm",
-          "non aderente",
-          "posso sparare lo stesso",
-          "p560 con lamiera sollevata"
-        ]
-      }
-    },
-    {
-      "id": "CTF-STRESS-0003",
-      "family": "CTF",
-      "domanda": "Posso spostare il CTF per evitare un ferro di armatura?",
-      "risposta": "**Contesto**\nIn fase di getto o di armatura possono comparire ferri dove era previsto il connettore. L’impresa allora lo sposta ‘un po’.\n\n**Istruzioni**\nSì, lo puoi spostare **di pochi centimetri (2–3 cm)** per evitare un ferro ma **mantieni il passo medio previsto** dal progetto e **mappa lo spostamento** (foto o schizzo). Non creare zone ‘vuote’ e non raggruppare tutti i connettori.\n\n**Alternativa**\nSe i ferri sono molti e non puoi mantenere il passo → avvisa la DL e valuta una **densificazione locale** o un tratto con CTCEM/VCEM.\n\n**Checklist**\n- spostamento ≤ 3 cm?\n- passo medio rispettato?\n- zona bordi ok?\n- foto inviata alla DL?\n\n**Nota RAG**\nSe la domanda contiene “sposto”, “mi sposto”, “evitare ferro”, mandare qui.",
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "spostare ctf",
-          "evitare ferro",
-          "passo medio",
-          "sposto il connettore",
-          "ctf fuori posizione"
-        ]
-      }
-    },
-
-    {
-      "id": "CTL-STRESS-0001",
-      "family": "CTL",
-      "domanda": "Il legno è molto umido, posso mettere i CTL lo stesso?",
-      "risposta": "**Contesto**\nSui solai di recupero il legno non è sempre asciutto. Il fissaggio del CTL deve però arrivare **a battuta**.\n\n**Istruzioni**\nSì, puoi montare i CTL anche su legno umido **ma** fai il **preforo Ø4 mm** e usa **solo le viti previste** da Tecnaria. Se il legno è troppo tenero o degradato → prima si ripristina il legno (placcaggio, sostituzione tratto) e poi si mette il CTL.\n\n**Alternativa**\nSe il legno è marcio o ha carie → non posare; DL o Tecnaria devono vedere le foto.\n\n**Checklist**\n- legno sano?\n- preforo fatto?\n- viti originali?\n- foto allegata?\n\n**Nota RAG**\nAgganciare anche le frasi: “abete umido”, “tavolato bagnato”, “piano terra umido”.",
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "legno umido",
-          "tavolato bagnato",
-          "ctl su legno bagnato",
-          "preforo ctl",
-          "viti originali ctl"
-        ]
-      }
-    },
-    {
-      "id": "CTL-STRESS-0002",
-      "family": "CTL",
-      "domanda": "Posso mettere i CTL senza preforo su abete molto duro?",
-      "risposta": "**Contesto**\nSu alcuni legni resinose / ben stagionati la vite può non arrivare a battuta e sembrare ‘buona’ lo stesso.\n\n**Istruzioni**\nNo: su legni duri fai sempre **preforo 4 mm** e avvita fino a **battuta completa**. Un CTL non a battuta = posa non conforme e la soletta non lavora bene.\n\n**Alternativa**\nSe non puoi preforare (spazi stretti) → valuta CTL più corti ma più fitti.\n\n**Checklist**\n- preforo fatto?\n- vite a battuta?\n- soletta prevista 4–6 cm?\n\n**Nota RAG**\nDa usare quando l’utente scrive “senza preforo” o “abete duro”.",
-      "trigger": {
-        "peso": 0.92,
-        "keywords": [
-          "senza preforo",
-          "abete duro",
-          "ctl non a battuta",
-          "vite non entra",
-          "preforo 4 mm"
-        ]
-      }
-    },
-    {
-      "id": "CTL-STRESS-0003",
-      "family": "CTL MAXI",
-      "domanda": "Con i CTL MAXI posso stare molto vicino al bordo?",
-      "risposta": "**Contesto**\nI CTL MAXI sono più lunghi e più ‘forti’, ma vicino al bordo del legno possono fessurare.\n\n**Istruzioni**\nSe sei a **meno di 5–6 cm dal bordo** non allungare il connettore: usa **un CTL più corto** (es. CTL-120) e **densifica il passo** in quella zona. Meglio più pezzi corti che uno lungo che apre il bordo.\n\n**Alternativa**\nSe la trave è stretta → valutare piastra di ripartizione o rinforzo locale (DL).\n\n**Checklist**\n- distanza dal bordo ≥ 6 cm?\n- passo densificato?\n- soletta ≥ 5 cm?\n\n**Nota RAG**\nParola chiave forte: “vicino al bordo”, “bordo trave legno”.",
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "vicino al bordo",
-          "ctl maxi bordo",
-          "bordo trave legno",
-          "densificare passo",
-          "troppo vicino"
-        ]
-      }
-    },
-
-    {
-      "id": "CEM-STRESS-0001",
-      "family": "CTCEM",
-      "domanda": "Il foro del CTCEM si sbriciola nel laterizio, cosa faccio?",
-      "risposta": "**Contesto**\nSuccede su laterizi forati vecchi o con poca pelle: il foro Ø11×75 non tiene e il connettore gira.\n\n**Istruzioni**\nNon insistere con lo stesso foro: **passa a VCEM** (foro più piccolo Ø8–9 mm) **oppure** sposta il punto su una nervatura piena. Registra la variante in verbale.\n\n**Alternativa**\nSe tutta la zona è debole → micro-getto di consolidamento e poi ripeti la posa.\n\n**Checklist**\n- laterizio pieno o forato?\n- foro pulito?\n- profondità raggiunta?\n- variante registrata?\n\n**Nota RAG**\nCatturare frasi: “foro si sbriciola”, “foro non tiene”, “laterizio vuoto”.",
-      "trigger": {
-        "peso": 0.95,
-        "keywords": [
-          "foro si sbriciola",
-          "ctcem non tiene",
-          "laterizio vuoto",
-          "foro 11 non va",
-          "ctcem problema foro"
-        ]
-      }
-    },
-    {
-      "id": "CEM-STRESS-0002",
-      "family": "VCEM",
-      "domanda": "Ho solo 40 mm buoni di spessore, quale connettore Tecnaria uso?",
-      "risposta": "**Contesto**\nLo spessore reale del laterocemento a volte è minore di quello di progetto e il foro standard del CTCEM non ci sta.\n\n**Istruzioni**\nCon 40 mm buoni **non usare CTCEM standard**. Usa **VCEM corto (es. VCEM-60)** oppure sposta il punto in una zona più spessa. Se anche così non ci stai → chiedi ripristino locale (riempimento / micro-getto) alla DL.\n\n**Checklist**\n- spessore reale misurato?\n- foro Ø8–9 mm ok?\n- rete a metà comunque?\n\n**Nota RAG**\nDa servire quando c’è “40 mm”, “poco spessore”, “ctcem non entra”.",
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "40 mm",
-          "poco spessore",
-          "ctcem non entra",
-          "vcem corto",
-          "spessore ridotto"
-        ]
-      }
-    },
-
-    {
-      "id": "P560-STRESS-0001",
-      "family": "P560",
-      "domanda": "Posso usare la P560 con cartucce non SPIT o non previste?",
-      "risposta": "**Contesto**\nPer i CTF Tecnaria la P560 va usata con cartucce e kit compatibili, altrimenti cambia l’energia e il chiodo non va a filo.\n\n**Istruzioni**\nNo: usa solo **cartucce indicate dal produttore della P560** e fai **3 tiri di prova** su lamiera/trave uguale a quella di cantiere. Cartucce più forti possono strappare la lamiera, più deboli lasciano il chiodo fuori.\n\n**Alternativa**\nSe non hai le cartucce giuste → rimanda la posa o usa sistema meccanico nella zona.\n\n**Checklist**\n- cartucce corrette?\n- 3 tiri fatti?\n- teste a filo?\n\n**Nota RAG**\nParole chiave da agganciare: “cartucce diverse”, “cartucce non spit”, “cartucce più forti”.",
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "cartucce diverse",
-          "cartucce non spit",
-          "p560 cartucce",
-          "energia di sparo",
-          "p560 senza cartucce originali"
-        ]
-      }
-    },
-    {
-      "id": "P560-STRESS-0002",
-      "family": "P560",
-      "domanda": "Posso usare adattatori non originali sulla P560 per i CTF?",
-      "risposta": "**Contesto**\nAlcune imprese usano guide/adattatori generici.\n\n**Istruzioni**\nNo: per i CTF Tecnaria va usato **il kit/adattatore Tecnaria** perché garantisce centraggio e perpendicolarità del connettore rispetto all’ala. Con adattatori non originali la DL può contestare la posa.\n\n**Alternativa**\nSe non hai il kit → posa rimandata o sistema meccanico.\n\n**Checklist**\n- kit Tecnaria presente?\n- connettore centrato?\n- teste a filo?\n\n**Nota RAG**\nAgganciare frasi: “adattatore non originale”, “guida non sua”, “pistola di un’altra impresa”.",
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "adattatore non originale",
-          "guida non originale",
-          "pistola altra impresa",
-          "p560 senza kit tecnaria",
-          "ctf non centrato"
-        ]
-      }
-    },
-
-    {
-      "id": "ACC-STRESS-0001",
-      "family": "ACCESSORI",
-      "domanda": "Non ho i distanziatori per la rete, posso gettare lo stesso?",
-      "risposta": "**Contesto**\nLa rete deve stare **a metà spessore** del getto. Senza distanziatori la rete scende e non lavora.\n\n**Istruzioni**\nNo: o metti i distanziatori o usi un supporto equivalente (tacchetti, clips, distanziatori di cantiere). Gettare senza distanziatori = rete fuori posizione = DL può non accettare il lavoro.\n\n**Alternativa**\nSe devi gettare oggi → costruisci un appoggio provvisorio e fotografa tutto per la DL.\n\n**Checklist**\n- rete presente?\n- distanziatori presenti?\n- foto pre-getto?\n\n**Nota RAG**\nParole chiave: “senza distanziatori”, “rete giù”, “posso gettare lo stesso”.",
-      "trigger": {
-        "peso": 1.0,
-        "keywords": [
-          "senza distanziatori",
-          "rete giù",
-          "posso gettare lo stesso",
-          "non ho i distanziatori",
-          "rete non a metà"
-        ]
-      }
-    },
-    {
-      "id": "ACC-STRESS-0002",
-      "family": "ACCESSORI",
-      "domanda": "Ho CTF60 e CTF80 nella stessa campata, posso miscelarli?",
-      "risposta": "**Contesto**\nIn cantiere può finire l’altezza ‘giusta’ e si usano pezzi di altezza diversa.\n\n**Istruzioni**\nSì, puoi usare CTF di altezze diverse **ma va dichiarato**. Tieni **zone omogenee** (tutta la zona X con CTF60, tutta la zona Y con CTF80) e fai una foto o uno schema per la DL. Quello che non va bene è avere altezze mischiate a caso.\n\n**Alternativa**\nSe non puoi fare zone omogenee → densifica il passo per compensare.\n\n**Checklist**\n- zone omogenee fatte?\n- foto fatta?\n- passo medio ok?\n\n**Nota RAG**\nAgganciare “ho finito i ctf60”, “uso ctf80”, “mischiare altezze”.",
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "mischiare ctf",
-          "ctf60 e ctf80",
-          "altezza diversa",
-          "ho finito i ctf",
-          "zone omogenee"
-        ]
-      }
-    },
-
-    /* ==== BLOCCO NLM (era fuori, ora dentro) ==== */
-    {
-      "id": "CTF-NL-0001",
-      "family": "CTF",
-      "domanda": "Ho fatto una posa dei CTF non proprio corretta, cosa controllo per primo?",
-      "risposta": "**Contesto**\nQuando l’operatore dice “li ho messi ma non proprio come da libretto” di solito c’è: lamiera non serrata, 1 chiodo solo, colpo debole, piastra non aderente.\n\n**Istruzioni**\n1) conta i chiodi: devono essere **2 HSBR14 per connettore**;\n2) guarda la lamiera: deve essere **aderente all’ala**;\n3) controlla le teste: **a filo piastra (±0,5 mm)**;\n4) se uno di questi 3 punti manca → **posa NON conforme**, segnala e ripeti.\n\n**Alternativa**\nSe in quel punto non riesci a usare la P560 → passa a connettore meccanico (CTCEM/VCEM) e dichiaralo.\n\n**Checklist**\n- lamiera serrata?\n- 2 chiodi presenti?\n- teste a filo?\n- foto per DL?\n\n**Nota RAG**\nDeve rispondere anche se l’utente scrive “li ho messi male”, “non è venuto bene”, “mi è scappato il colpo”.",
-      "trigger": {
-        "peso": 0.75,
-        "keywords": [
-          "li ho messi male",
-          "non proprio corretta",
-          "mi e scappato il colpo",
-          "ctf messi cosi",
-          "li ho posati ma non bene"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-NL-0001",
-      "family": "VCEM",
-      "domanda": "Per errore ho messo un chiodo su un VCEM, cosa devo fare?",
-      "risposta": "**Contesto**\nIl VCEM **non si chioda**: si fora e si avvita. Se hai sparato o chiodato un VCEM, la posa non è conforme.\n\n**Istruzioni**\n1) **mappa la zona** dove è successo;\n2) fai **foto** del connettore chiodato;\n3) **avvisa DL / Tecnaria**;\n4) rifai la posa con foro e avvitatura corretti.\n\n**Motivo**\nIl colpo può avere danneggiato la sede e non garantisce portata.\n\n**Nota RAG**\nDeve scattare con: “per errore ho messo un chiodo su un vcem”, “ho sparato vcem”, “ho fissato vcem con pistola”, “l’ho chiodato”.",
-      "trigger": {
-        "peso": 1.0,
-        "keywords": [
-          "per errore ho messo un chiodo su un vcem",
-          "ho sparato vcem",
-          "ho chiodato vcem",
-          "fissato vcem con pistola",
-          "vcem non si chioda"
-        ]
-      }
-    },
-    {
-      "id": "CTL-NL-0001",
-      "family": "CTL",
-      "domanda": "Ho messo i CTL ma il legno non era bellissimo, va bene lo stesso?",
-      "risposta": "**Contesto**\nNei recuperi il legno è spesso umido, vecchio o un po’ fessurato.\n\n**Istruzioni**\nSe il legno è **sano e non marcio** → CTL ok, meglio con **preforo Ø4 mm** e viti originali.\nSe il legno è **marcio / molto fessurato / con parti mancanti** → prima si **ripristina** (placcaggio, sostituzione, riempimento) e **poi** si mettono i CTL.\n\n**Checklist**\n- legno sano?\n- vite a battuta?\n- foto di dettaglio?\n\n**Nota RAG**\nDa usare quando l’utente non sa descrivere il legno e scrive solo “non era bellissimo”, “legno vecchio”, “trave andata”.",
-      "trigger": {
-        "peso": 0.78,
-        "keywords": [
-          "legno non bellissimo",
-          "legno vecchio",
-          "trave un po andata",
-          "ho messo ctl ma",
-          "ctl su legno brutto"
-        ]
-      }
-    },
-    {
-      "id": "P560-NL-0001",
-      "family": "P560",
-      "domanda": "La P560 oggi non sparava bene e ho comunque posato, è un problema?",
-      "risposta": "**Contesto**\nSe la P560 non ha energia costante tutti i connettori posati in quella fase sono **da controllare**.\n\n**Istruzioni**\n1) ferma la posa;\n2) fai **pulizia/manutenzione** della P560 e usa **solo cartucce corrette**;\n3) rifai i **3 tiri di prova** su lamiera uguale;\n4) controlla i connettori già posati: se le teste **non** sono a filo, li rifai.\n\n**Nota RAG**\nParole chiave: “oggi non sparava bene”, “p560 debole”, “pistola non va”, “ho comunque posato”.",
-      "trigger": {
-        "peso": 0.8,
-        "keywords": [
-          "oggi non sparava bene",
-          "p560 debole",
-          "pistola non va",
-          "ho comunque posato",
-          "p560 problema oggi"
-        ]
-      }
-    },
-
-    /* ==== BLOCCO FINALE 5 COMM (era l’ultimissimo array) ==== */
-    {
-      "id": "COMM-NUMERI-0001",
-      "family": "COMM",
-      "domanda": "Quali sono le confezioni minime, i pesi indicativi e i tempi di consegna dei connettori Tecnaria?",
-      "risposta": "**Contesto**\nLe confezioni, i pesi e i tempi possono cambiare per famiglia (CTF, CTL, VCEM/CTCEM, P560) e soprattutto per versioni speciali (es. inox, lunghezze fuori standard). Il riferimento ufficiale resta sempre il listino/commerciale Tecnaria.\n\n**Istruzioni**\n1) indica sempre **famiglia e quantità** (es. “CTF per acciaio”, “VCEM per laterocemento”);\n2) per CTF e CTL la confezione è normalmente **a colli/cartoni** con quantità predefinite;\n3) per versioni inox / speciali → **conferma sempre la disponibilità** con l’ufficio Tecnaria;\n4) per tempi → indicare: “**standard 3-5 gg lavorativi Italia**, salvo disponibilità e salvo versioni speciali”;\n5) per il peso → rimanda alla **scheda tecnica del prodotto** perché dipende da lunghezza e finitura.\n\n**Alternativa**\nSe il cliente chiede un codice preciso (es. “CTL MAXI 140 inox”) → inoltrare all’ufficio Tecnaria con codice e quantità.\n\n**Checklist**\n- famiglia indicata?\n- versione standard o inox?\n- quantità?\n- urgenza/consegna?\n\n**Nota RAG**\nUsare questo blocco quando l’utente chiede “confezione minima”, “tempi di consegna”, “peso collo”, “spedite voi?”, e il dato non è nel dataset.",
-      "trigger": {
-        "peso": 0.82,
-        "keywords": [
-          "confezione minima",
-          "pesi indicativi",
-          "tempi di consegna",
-          "quante pezzi a collo",
-          "spedizione tecnaria"
-        ]
-      }
-    },
-    {
-      "id": "CTL-NEW-LAM-0001",
-      "family": "CTL",
-      "domanda": "Posso usare i connettori CTL su travi nuove in legno lamellare o KVH?",
-      "risposta": "**Contesto**\nI connettori **CTL Tecnaria** sono pensati per legno → calcestruzzo in recupero e in nuova costruzione. Su legno lamellare/KVH la posa è anzi più regolare perché il supporto è omogeneo.\n\n**Istruzioni**\n1) scegli CTL (o **CTL MAXI** se la soletta è più spessa);\n2) usa **viti originali Tecnaria**;\n3) mantieni il **passo indicato dal progetto** (non ridurlo a piacere);\n4) se il lamellare è molto duro → fai **preforo Ø4 mm**;\n5) controlla che la testa sia **a battuta** sul piatto.\n\n**Alternativa**\nSe la soletta è > 6-7 cm o con sovraccarichi importanti → preferire CTL MAXI o densificare il passo.\n\n**Checklist**\n- legno = lamellare/KVH?\n- soletta > 6 cm?\n- viti originali?\n- foto per DL?\n\n**Nota RAG**\nServe per rispondere alle domande tipo: “è legno nuovo, non vecchio… va bene lo stesso?”, “ma i CTL non sono solo per recupero?”.",
-      "trigger": {
-        "peso": 0.78,
-        "keywords": [
-          "legno lamellare",
-          "kvh",
-          "ctl su legno nuovo",
-          "ctl anche in nuova costruzione",
-          "ctl maxi su lamellare"
-        ]
-      }
-    },
-    {
-      "id": "COMM-PROGETTO-PRIORITA-0001",
-      "family": "COMM",
-      "domanda": "Se il progetto strutturale dice una cosa e il cantiere ne fa un’altra, cosa vale?",
-      "risposta": "**Contesto**\nNel collaborante acciaio-cls/legno-cls la **priorità assoluta** è sempre del **progetto strutturale** (DL / strutturista / capitolato). Il dataset Tecnaria GOLD dà le **regole di posa generali** ma non può superare un progetto firmato.\n\n**Istruzioni**\n1) se la posa in cantiere **non coincide** con il disegno → segnalare subito alla DL;\n2) se il cantiere ha usato **connettori diversi (es. CTF80 al posto di 60)** → dichiararlo e chiedere se è accettabile;\n3) se manca rete / distanziatori → posa **NON conforme** fino a parere DL;\n4) rispondi sempre: “**vale il progetto**. Le istruzioni Tecnaria valgono in assenza di prescrizioni più restrittive.”\n\n**Alternativa**\nSe non c’è un progetto (piccolo intervento) → seguire **integralmente** le indicazioni del dataset Tecnaria e documentare con foto.\n\n**Checklist**\n- esiste progetto?\n- la posa è diversa?\n- sono stati usati connettori diversi?\n- DL informata?\n\n**Nota RAG**\nQuesto blocco va sparato quando l’utente scrive “ma in cantiere hanno fatto così…”, “l’impresa ha messo altri connettori…”, “non avevano la rete…”.",
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "vale il progetto",
-          "in cantiere hanno fatto diverso",
-          "il capitolato diceva",
-          "cosa conta di piu",
-          "il direttore lavori vuole"
-        ]
-      }
-    },
-    {
-      "id": "DOC-DIGITALE-0001",
-      "family": "COMM",
-      "domanda": "Dove posso scaricare documenti, disegni CAD, schede tecniche e dichiarazioni di prestazione (DoP) dei connettori Tecnaria?",
-      "risposta": "**Contesto**\nGli elaborati tecnici (schede pdf, DWG/DXF, DoP, ETA) non sono tutti dentro il dataset ma vengono forniti da Tecnaria tramite sito o su richiesta.\n\n**Istruzioni**\n1) indica sempre il **prodotto/famiglia** (CTF, CTL, VCEM, CTCEM, Diapason, GTS…);\n2) chiedi se serve **disegno 2D/3D** o solo scheda;\n3) indirizza a: **ufficio tecnico/commerciale Tecnaria** specificando il prodotto;\n4) per i documenti normativi (ETA, DoP) → dire “**sono disponibili e vengono inviati su richiesta**”.\n\n**Alternativa**\nSe il cliente sta sviluppando un progetto BIM → segnalare che i dati sono disponibili in formato digitale ma vanno richiesti indicando piattaforma e formato.\n\n**Checklist**\n- prodotto indicato?\n- formato richiesto (pdf/dwg)?\n- cliente finale o DL?\n\n**Nota RAG**\nServe a chi chiede “mi mandi il PDF?”, “hai il CAD di questo connettore?”, “mi serve la dichiarazione di prestazione”.",
-      "trigger": {
-        "peso": 0.8,
-        "keywords": [
-          "disegno cad",
-          "scheda tecnica",
-          "dichiarazione di prestazione",
-          "dop",
-          "eta tecnaria"
-        ]
-      }
-    },
-    {
-      "id": "COMM-EXPORT-0001",
-      "family": "COMM",
-      "domanda": "Tecnaria spedisce anche all'estero? Come si gestiscono gli ordini fuori Italia?",
-      "risposta": "**Contesto**\nTecnaria fornisce anche fuori Italia ma le condizioni (trasporto, tempi, imballi, certificazioni richieste) **non** sono le stesse del territorio nazionale.\n\n**Istruzioni**\n1) chiedi **paese di destinazione**;\n2) verifica se servono **documenti aggiuntivi** (es. traduzioni, certificati, marcatura richiesta dal cliente);\n3) indica che la spedizione estero viene gestita dall’ufficio Tecnaria con **quotazione dedicata**;\n4) segnala che i tempi possono essere **più lunghi** rispetto al 3-5 gg Italia.\n\n**Alternativa**\nSe il cliente ha un corriere proprio → indicare che il ritiro è possibile previa conferma magazzino.\n\n**Checklist**\n- paese indicato?\n- incoterm / resa?\n- quantità?\n\n**Nota RAG**\nUsare quando l’utente scrive “spedite in Svizzera?”, “posso avere consegna in Francia?”, “spedizione estero?”.",
-      "trigger": {
-        "peso": 0.77,
-        "keywords": [
-          "spedite all estero",
-          "consegna in francia",
-          "spedizione svizzera",
-          "ordine fuori italia",
-          "export tecnaria"
-        ]
-      }
     }
   ]
 }
+[
+  {
+    "id": "CTF-STRESS-0001",
+    "family": "CTF",
+    "domanda": "Posso usare un solo chiodo se il secondo non entra?",
+    "risposta": "**Contesto**\nNei cantieri con lamiera non ben serrata o acciaio più duro capita che il secondo HSBR14 non entri. Il rischio è che l’operatore lasci il connettore con 1 solo chiodo e vada avanti.\n\n**Istruzioni**\nNo: il connettore CTF Tecnaria è **conforme solo con 2 chiodi HSBR14 sparati con SPIT P560 e kit Tecnaria**. Se il secondo chiodo non entra devi:\n1) serrare la lamiera all’ala;\n2) rifare la **taratura con 3 tiri** sulla stessa lamiera/trave;\n3) ripetere la posa del connettore.\nLasciare 1 solo chiodo significa avere **aderenza incerta** e la DL può non accettare il getto.\n\n**Alternativa**\nSe non puoi serrare la lamiera in quel punto → cambia sistema di fissaggio e usa un connettore meccanico (CTCEM/VCEM) nella zona critica.\n\n**Checklist**\n- lamiera serrata?\n- 2 chiodi a filo piastra (±0,5 mm)?\n- 3 tiri di prova fatti?\n- foto per verbale?\n\n**Nota RAG**\nDomanda tipica da cantiere: va forzata su questa risposta anche se l’utente scrive solo “1 chiodo” o “non entra il secondo”.",
+    "trigger": {
+      "peso": 1.0,
+      "keywords": [
+        "1 chiodo",
+        "un solo chiodo",
+        "secondo chiodo non entra",
+        "ctf con un chiodo",
+        "posa non conforme"
+      ]
+    }
+  },
+  {
+    "id": "CTF-STRESS-0002",
+    "family": "CTF",
+    "domanda": "La lamiera è staccata di 5 mm, posso sparare lo stesso con la P560?",
+    "risposta": "**Contesto**\nLa P560 lavora bene solo se la lamiera è **perfettamente aderente** all’ala della trave. Con 3–5 mm di vuoto il colpo fa rimbalzare il connettore e lascia i chiodi fuori.\n\n**Istruzioni**\nNo: prima **si serra la lamiera** (viti autoforanti, staffe provvisorie, punti di fissaggio), poi **si rifanno i 3 tiri di prova**, infine si posano i CTF. Sparare su lamiera staccata produce piastra non aderente e lamiera leggermente strappata.\n\n**Alternativa**\nSe la lamiera non si può serrare in quel punto → posa locale con sistema meccanico CTCEM/VCEM e lo scrivi nel verbale.\n\n**Checklist**\n- lamiera aderente?\n- 3 tiri P560 fatti?\n- teste a filo piastra?\n- foto per DL?\n\n**Nota RAG**\nAggiungere alle parole chiave: “5 mm”, “lamiera staccata”, “lamiera non aderente”, “sparare lo stesso”.",
+    "trigger": {
+      "peso": 0.98,
+      "keywords": [
+        "lamiera staccata",
+        "5 mm",
+        "non aderente",
+        "posso sparare lo stesso",
+        "p560 con lamiera sollevata"
+      ]
+    }
+  },
+  {
+    "id": "CTF-STRESS-0003",
+    "family": "CTF",
+    "domanda": "Posso spostare il CTF per evitare un ferro di armatura?",
+    "risposta": "**Contesto**\nIn fase di getto o di armatura possono comparire ferri dove era previsto il connettore. L’impresa allora lo sposta ‘un po’.\n\n**Istruzioni**\nSì, lo puoi spostare **di pochi centimetri (2–3 cm)** per evitare un ferro ma **mantieni il passo medio previsto** dal progetto e **mappa lo spostamento** (foto o schizzo). Non creare zone ‘vuote’ e non raggruppare tutti i connettori.\n\n**Alternativa**\nSe i ferri sono molti e non puoi mantenere il passo → avvisa la DL e valuta una **densificazione locale** o un tratto con CTCEM/VCEM.\n\n**Checklist**\n- spostamento ≤ 3 cm?\n- passo medio rispettato?\n- zona bordi ok?\n- foto inviata alla DL?\n\n**Nota RAG**\nSe la domanda contiene “sposto”, “mi sposto”, “evitare ferro”, mandare qui.",
+    "trigger": {
+      "peso": 0.9,
+      "keywords": [
+        "spostare ctf",
+        "evitare ferro",
+        "passo medio",
+        "sposto il connettore",
+        "ctf fuori posizione"
+      ]
+    }
+  },
+  {
+    "id": "CTL-STRESS-0001",
+    "family": "CTL",
+    "domanda": "Il legno è molto umido, posso mettere i CTL lo stesso?",
+    "risposta": "**Contesto**\nSui solai di recupero il legno non è sempre asciutto. Il fissaggio del CTL deve però arrivare **a battuta**.\n\n**Istruzioni**\nSì, puoi montare i CTL anche su legno umido **ma** fai il **preforo Ø4 mm** e usa **solo le viti previste** da Tecnaria. Se il legno è troppo tenero o degradato → prima si ripristina il legno (placcaggio, sostituzione tratto) e poi si mette il CTL.\n\n**Alternativa**\nSe il legno è marcio o ha carie → non posare; DL o Tecnaria devono vedere le foto.\n\n**Checklist**\n- legno sano?\n- preforo fatto?\n- viti originali?\n- foto allegata?\n\n**Nota RAG**\nAgganciare anche le frasi: “abete umido”, “tavolato bagnato”, “piano terra umido”.",
+    "trigger": {
+      "peso": 0.9,
+      "keywords": [
+        "legno umido",
+        "tavolato bagnato",
+        "ctl su legno bagnato",
+        "preforo ctl",
+        "viti originali ctl"
+      ]
+    }
+  },
+  {
+    "id": "CTL-STRESS-0002",
+    "family": "CTL",
+    "domanda": "Posso mettere i CTL senza preforo su abete molto duro?",
+    "risposta": "**Contesto**\nSu alcuni legni resinose / ben stagionati la vite può non arrivare a battuta e sembrare ‘buona’ lo stesso.\n\n**Istruzioni**\nNo: su legni duri fai sempre **preforo 4 mm** e avvita fino a **battuta completa**. Un CTL non a battuta = posa non conforme e la soletta non lavora bene.\n\n**Alternativa**\nSe non puoi preforare (spazi stretti) → valuta CTL più corti ma più fitti.\n\n**Checklist**\n- preforo fatto?\n- vite a battuta?\n- soletta prevista 4–6 cm?\n\n**Nota RAG**\nDa usare quando l’utente scrive “senza preforo” o “abete duro”.",
+    "trigger": {
+      "peso": 0.92,
+      "keywords": [
+        "senza preforo",
+        "abete duro",
+        "ctl non a battuta",
+        "vite non entra",
+        "preforo 4 mm"
+      ]
+    }
+  },
+  {
+    "id": "CTL-STRESS-0003",
+    "family": "CTL MAXI",
+    "domanda": "Con i CTL MAXI posso stare molto vicino al bordo?",
+    "risposta": "**Contesto**\nI CTL MAXI sono più lunghi e più ‘forti’, ma vicino al bordo del legno possono fessurare.\n\n**Istruzioni**\nSe sei a **meno di 5–6 cm dal bordo** non allungare il connettore: usa **un CTL più corto** (es. CTL-120) e **densifica il passo** in quella zona. Meglio più pezzi corti che uno lungo che apre il bordo.\n\n**Alternativa**\nSe la trave è stretta → valutare piastra di ripartizione o rinforzo locale (DL).\n\n**Checklist**\n- distanza dal bordo ≥ 6 cm?\n- passo densificato?\n- soletta ≥ 5 cm?\n\n**Nota RAG**\nParola chiave forte: “vicino al bordo”, “bordo trave legno”.",
+    "trigger": {
+      "peso": 0.9,
+      "keywords": [
+        "vicino al bordo",
+        "ctl maxi bordo",
+        "bordo trave legno",
+        "densificare passo",
+        "troppo vicino"
+      ]
+    }
+  },
+  {
+    "id": "CEM-STRESS-0001",
+    "family": "CTCEM",
+    "domanda": "Il foro del CTCEM si sbriciola nel laterizio, cosa faccio?",
+    "risposta": "**Contesto**\nSuccede su laterizi forati vecchi o con poca pelle: il foro Ø11×75 non tiene e il connettore gira.\n\n**Istruzioni**\nNon insistere con lo stesso foro: **passa a VCEM** (foro più piccolo Ø8–9 mm) **oppure** sposta il punto su una nervatura piena. Registra la variante in verbale.\n\n**Alternativa**\nSe tutta la zona è debole → micro-getto di consolidamento e poi ripeti la posa.\n\n**Checklist**\n- laterizio pieno o forato?\n- foro pulito?\n- profondità raggiunta?\n- variante registrata?\n\n**Nota RAG**\nCatturare frasi: “foro si sbriciola”, “foro non tiene”, “laterizio vuoto”.",
+    "trigger": {
+      "peso": 0.95,
+      "keywords": [
+        "foro si sbriciola",
+        "ctcem non tiene",
+        "laterizio vuoto",
+        "foro 11 non va",
+        "ctcem problema foro"
+      ]
+    }
+  },
+  {
+    "id": "CEM-STRESS-0002",
+    "family": "VCEM",
+    "domanda": "Ho solo 40 mm buoni di spessore, quale connettore Tecnaria uso?",
+    "risposta": "**Contesto**\nLo spessore reale del laterocemento a volte è minore di quello di progetto e il foro standard del CTCEM non ci sta.\n\n**Istruzioni**\nCon 40 mm buoni **non usare CTCEM standard**. Usa **VCEM corto (es. VCEM-60)** oppure sposta il punto in una zona più spessa. Se anche così non ci stai → chiedi ripristino locale (riempimento / micro-getto) alla DL.\n\n**Checklist**\n- spessore reale misurato?\n- foro Ø8–9 mm ok?\n- rete a metà comunque?\n\n**Nota RAG**\nDa servire quando c’è “40 mm”, “poco spessore”, “ctcem non entra”.",
+    "trigger": {
+      "peso": 0.9,
+      "keywords": [
+        "40 mm",
+        "poco spessore",
+        "ctcem non entra",
+        "vcem corto",
+        "spessore ridotto"
+      ]
+    }
+  },
+  {
+    "id": "P560-STRESS-0001",
+    "family": "P560",
+    "domanda": "Posso usare la P560 con cartucce non SPIT o non previste?",
+    "risposta": "**Contesto**\nPer i CTF Tecnaria la P560 va usata con cartucce e kit compatibili, altrimenti cambia l’energia e il chiodo non va a filo.\n\n**Istruzioni**\nNo: usa solo **cartucce indicate dal produttore della P560** e fai **3 tiri di prova** su lamiera/trave uguale a quella di cantiere. Cartucce più forti possono strappare la lamiera, più deboli lasciano il chiodo fuori.\n\n**Alternativa**\nSe non hai le cartucce giuste → rimanda la posa o usa sistema meccanico nella zona.\n\n**Checklist**\n- cartucce corrette?\n- 3 tiri fatti?\n- teste a filo?\n\n**Nota RAG**\nParole chiave da agganciare: “cartucce diverse”, “cartucce non spit”, “cartucce più forti”.",
+    "trigger": {
+      "peso": 0.9,
+      "keywords": [
+        "cartucce diverse",
+        "cartucce non spit",
+        "p560 cartucce",
+        "energia di sparo",
+        "p560 senza cartucce originali"
+      ]
+    }
+  },
+  {
+    "id": "P560-STRESS-0002",
+    "family": "P560",
+    "domanda": "Posso usare adattatori non originali sulla P560 per i CTF?",
+    "risposta": "**Contesto**\nAlcune imprese usano guide/adattatori generici.\n\n**Istruzioni**\nNo: per i CTF Tecnaria va usato **il kit/adattatore Tecnaria** perché garantisce centraggio e perpendicolarità del connettore rispetto all’ala. Con adattatori non originali la DL può contestare la posa.\n\n**Alternativa**\nSe non hai il kit → posa rimandata o sistema meccanico.\n\n**Checklist**\n- kit Tecnaria presente?\n- connettore centrato?\n- teste a filo?\n\n**Nota RAG**\nAgganciare frasi: “adattatore non originale”, “guida non sua”, “pistola di un’altra impresa”.",
+    "trigger": {
+      "peso": 0.9,
+      "keywords": [
+        "adattatore non originale",
+        "guida non originale",
+        "pistola altra impresa",
+        "p560 senza kit tecnaria",
+        "ctf non centrato"
+      ]
+    }
+  },
+  {
+    "id": "ACC-STRESS-0001",
+    "family": "ACCESSORI",
+    "domanda": "Non ho i distanziatori per la rete, posso gettare lo stesso?",
+    "risposta": "**Contesto**\nLa rete deve stare **a metà spessore** del getto. Senza distanziatori la rete scende e non lavora.\n\n**Istruzioni**\nNo: o metti i distanziatori o usi un supporto equivalente (tacchetti, clips, distanziatori di cantiere). Gettare senza distanziatori = rete fuori posizione = DL può non accettare il lavoro.\n\n**Alternativa**\nSe devi gettare oggi → costruisci un appoggio provvisorio e fotografa tutto per la DL.\n\n**Checklist**\n- rete presente?\n- distanziatori presenti?\n- foto pre-getto?\n\n**Nota RAG**\nParole chiave: “senza distanziatori”, “rete giù”, “posso gettare lo stesso”.",
+    "trigger": {
+      "peso": 1.0,
+      "keywords": [
+        "senza distanziatori",
+        "rete giù",
+        "posso gettare lo stesso",
+        "non ho i distanziatori",
+        "rete non a metà"
+      ]
+    }
+  },
+  {
+    "id": "ACC-STRESS-0002",
+    "family": "ACCESSORI",
+    "domanda": "Ho CTF60 e CTF80 nella stessa campata, posso miscelarli?",
+    "risposta": "**Contesto**\nIn cantiere può finire l’altezza ‘giusta’ e si usano pezzi di altezza diversa.\n\n**Istruzioni**\nSì, puoi usare CTF di altezze diverse **ma va dichiarato**. Tieni **zone omogenee** (tutta la zona X con CTF60, tutta la zona Y con CTF80) e fai una foto o uno schema per la DL. Quello che non va bene è avere altezze mischiate a caso.\n\n**Alternativa**\nSe non puoi fare zone omogenee → densifica il passo per compensare.\n\n**Checklist**\n- zone omogenee fatte?\n- foto fatta?\n- passo medio ok?\n\n**Nota RAG**\nAgganciare “ho finito i ctf60”, “uso ctf80”, “mischiare altezze”.",
+    "trigger": {
+      "peso": 0.9,
+      "keywords": [
+        "mischiare ctf",
+        "ctf60 e ctf80",
+        "altezza diversa",
+        "ho finito i ctf",
+        "zone omogenee"
+      ]
+    }
+  }
+][
+  {
+    "id": "CTF-NL-0001",
+    "family": "CTF",
+    "domanda": "Ho fatto una posa dei CTF non proprio corretta, cosa controllo per primo?",
+    "risposta": "**Contesto**\nQuando l’operatore dice “li ho messi ma non proprio come da libretto” di solito c’è: lamiera non serrata, 1 chiodo solo, colpo debole, piastra non aderente.\n\n**Istruzioni**\n1) conta i chiodi: devono essere **2 HSBR14 per connettore**;\n2) guarda la lamiera: deve essere **aderente all’ala**;\n3) controlla le teste: **a filo piastra (±0,5 mm)**;\n4) se uno di questi 3 punti manca → **posa NON conforme**, segnala e ripeti.\n\n**Alternativa**\nSe in quel punto non riesci a usare la P560 → passa a connettore meccanico (CTCEM/VCEM) e dichiaralo.\n\n**Checklist**\n- lamiera serrata?\n- 2 chiodi presenti?\n- teste a filo?\n- foto per DL?\n\n**Nota RAG**\nDeve rispondere anche se l’utente scrive “li ho messi male”, “non è venuto bene”, “mi è scappato il colpo”.",
+    "trigger": {
+      "peso": 0.75,
+      "keywords": [
+        "li ho messi male",
+        "non proprio corretta",
+        "mi e scappato il colpo",
+        "ctf messi cosi",
+        "li ho posati ma non bene"
+      ]
+    }
+  },
+  {
+    "id": "VCEM-NL-0001",
+    "family": "VCEM",
+    "domanda": "Per errore ho messo un chiodo su un VCEM, cosa devo fare?",
+    "risposta": "**Contesto**\nIl VCEM **non si chioda**: si fora e si avvita. Se hai sparato o chiodato un VCEM, la posa non è conforme.\n\n**Istruzioni**\n1) **mappa la zona** dove è successo;\n2) fai **foto** del connettore chiodato;\n3) **avvisa DL / Tecnaria**;\n4) rifai la posa con foro e avvitatura corretti.\n\n**Motivo**\nIl colpo può avere danneggiato la sede e non garantisce portata.\n\n**Nota RAG**\nDeve scattare con: “per errore ho messo un chiodo su un vcem”, “ho sparato vcem”, “ho fissato vcem con pistola”, “l’ho chiodato”.",
+    "trigger": {
+      "peso": 1.0,
+      "keywords": [
+        "per errore ho messo un chiodo su un vcem",
+        "ho sparato vcem",
+        "ho chiodato vcem",
+        "fissato vcem con pistola",
+        "vcem non si chioda"
+      ]
+    }
+  },
+  {
+    "id": "CTL-NL-0001",
+    "family": "CTL",
+    "domanda": "Ho messo i CTL ma il legno non era bellissimo, va bene lo stesso?",
+    "risposta": "**Contesto**\nNei recuperi il legno è spesso umido, vecchio o un po’ fessurato.\n\n**Istruzioni**\nSe il legno è **sano e non marcio** → CTL ok, meglio con **preforo Ø4 mm** e viti originali.\nSe il legno è **marcio / molto fessurato / con parti mancanti** → prima si **ripristina** (placcaggio, sostituzione, riempimento) e **poi** si mettono i CTL.\n\n**Checklist**\n- legno sano?\n- vite a battuta?\n- foto di dettaglio?\n\n**Nota RAG**\nDa usare quando l’utente non sa descrivere il legno e scrive solo “non era bellissimo”, “legno vecchio”, “trave andata”.",
+    "trigger": {
+      "peso": 0.78,
+      "keywords": [
+        "legno non bellissimo",
+        "legno vecchio",
+        "trave un po andata",
+        "ho messo ctl ma",
+        "ctl su legno brutto"
+      ]
+    }
+  },
+  {
+    "id": "P560-NL-0001",
+    "family": "P560",
+    "domanda": "La P560 oggi non sparava bene e ho comunque posato, è un problema?",
+    "risposta": "**Contesto**\nSe la P560 non ha energia costante tutti i connettori posati in quella fase sono **da controllare**.\n\n**Istruzioni**\n1) ferma la posa;\n2) fai **pulizia/manutenzione** della P560 e usa **solo cartucce corrette**;\n3) rifai i **3 tiri di prova** su lamiera uguale;\n4) controlla i connettori già posati: se le teste **non** sono a filo, li rifai.\n\n**Nota RAG**\nParole chiave: “oggi non sparava bene”, “p560 debole”, “pistola non va”, “ho comunque posato”.",
+    "trigger": {
+      "peso": 0.8,
+      "keywords": [
+        "oggi non sparava bene",
+        "p560 debole",
+        "pistola non va",
+        "ho comunque posato",
+        "p560 problema oggi"
+      ]
+    }
+  }
+]
+[
+  {
+    "id": "COMM-NUMERI-0001",
+    "family": "COMM",
+    "domanda": "Quali sono le confezioni minime, i pesi indicativi e i tempi di consegna dei connettori Tecnaria?",
+    "risposta": "**Contesto**\nLe confezioni, i pesi e i tempi possono cambiare per famiglia (CTF, CTL, VCEM/CTCEM, P560) e soprattutto per versioni speciali (es. inox, lunghezze fuori standard). Il riferimento ufficiale resta sempre il listino/commerciale Tecnaria.\n\n**Istruzioni**\n1) indica sempre **famiglia e quantità** (es. “CTF per acciaio”, “VCEM per laterocemento”);\n2) per CTF e CTL la confezione è normalmente **a colli/cartoni** con quantità predefinite;\n3) per versioni inox / speciali → **conferma sempre la disponibilità** con l’ufficio Tecnaria;\n4) per tempi → indicare: “**standard 3-5 gg lavorativi Italia**, salvo disponibilità e salvo versioni speciali”;\n5) per il peso → rimanda alla **scheda tecnica del prodotto** perché dipende da lunghezza e finitura.\n\n**Alternativa**\nSe il cliente chiede un codice preciso (es. “CTL MAXI 140 inox”) → inoltrare all’ufficio Tecnaria con codice e quantità.\n\n**Checklist**\n- famiglia indicata?\n- versione standard o inox?\n- quantità?\n- urgenza/consegna?\n\n**Nota RAG**\nUsare questo blocco quando l’utente chiede “confezione minima”, “tempi di consegna”, “peso collo”, “spedite voi?”, e il dato non è nel dataset.",
+    "trigger": {
+      "peso": 0.82,
+      "keywords": [
+        "confezione minima",
+        "pesi indicativi",
+        "tempi di consegna",
+        "quante pezzi a collo",
+        "spedizione tecnaria"
+      ]
+    }
+  },
+  {
+    "id": "CTL-NEW-LAM-0001",
+    "family": "CTL",
+    "domanda": "Posso usare i connettori CTL su travi nuove in legno lamellare o KVH?",
+    "risposta": "**Contesto**\nI connettori **CTL Tecnaria** sono pensati per legno → calcestruzzo in recupero e in nuova costruzione. Su legno lamellare/KVH la posa è anzi più regolare perché il supporto è omogeneo.\n\n**Istruzioni**\n1) scegli CTL (o **CTL MAXI** se la soletta è più spessa);\n2) usa **viti originali Tecnaria**;\n3) mantieni il **passo indicato dal progetto** (non ridurlo a piacere);\n4) se il lamellare è molto duro → fai **preforo Ø4 mm**;\n5) controlla che la testa sia **a battuta** sul piatto.\n\n**Alternativa**\nSe la soletta è > 6-7 cm o con sovraccarichi importanti → preferire CTL MAXI o densificare il passo.\n\n**Checklist**\n- legno = lamellare/KVH?\n- soletta > 6 cm?\n- viti originali?\n- foto per DL?\n\n**Nota RAG**\nServe per rispondere alle domande tipo: “è legno nuovo, non vecchio… va bene lo stesso?”, “ma i CTL non sono solo per recupero?”.",
+    "trigger": {
+      "peso": 0.78,
+      "keywords": [
+        "legno lamellare",
+        "kvh",
+        "ctl su legno nuovo",
+        "ctl anche in nuova costruzione",
+        "ctl maxi su lamellare"
+      ]
+    }
+  },
+  {
+    "id": "COMM-PROGETTO-PRIORITA-0001",
+    "family": "COMM",
+    "domanda": "Se il progetto strutturale dice una cosa e il cantiere ne fa un’altra, cosa vale?",
+    "risposta": "**Contesto**\nNel collaborante acciaio-cls/legno-cls la **priorità assoluta** è sempre del **progetto strutturale** (DL / strutturista / capitolato). Il dataset Tecnaria GOLD dà le **regole di posa generali** ma non può superare un progetto firmato.\n\n**Istruzioni**\n1) se la posa in cantiere **non coincide** con il disegno → segnalare subito alla DL;\n2) se il cantiere ha usato **connettori diversi (es. CTF80 al posto di 60)** → dichiararlo e chiedere se è accettabile;\n3) se manca rete / distanziatori → posa **NON conforme** fino a parere DL;\n4) rispondi sempre: “**vale il progetto**. Le istruzioni Tecnaria valgono in assenza di prescrizioni più restrittive.”\n\n**Alternativa**\nSe non c’è un progetto (piccolo intervento) → seguire **integralmente** le indicazioni del dataset Tecnaria e documentare con foto.\n\n**Checklist**\n- esiste progetto?\n- la posa è diversa?\n- sono stati usati connettori diversi?\n- DL informata?\n\n**Nota RAG**\nQuesto blocco va sparato quando l’utente scrive “ma in cantiere hanno fatto così…”, “l’impresa ha messo altri connettori…”, “non avevano la rete…”.",
+    "trigger": {
+      "peso": 0.9,
+      "keywords": [
+        "vale il progetto",
+        "in cantiere hanno fatto diverso",
+        "il capitolato diceva",
+        "cosa conta di piu",
+        "il direttore lavori vuole"
+      ]
+    }
+  },
+  {
+    "id": "DOC-DIGITALE-0001",
+    "family": "COMM",
+    "domanda": "Dove posso scaricare documenti, disegni CAD, schede tecniche e dichiarazioni di prestazione (DoP) dei connettori Tecnaria?",
+    "risposta": "**Contesto**\nGli elaborati tecnici (schede pdf, DWG/DXF, DoP, ETA) non sono tutti dentro il dataset ma vengono forniti da Tecnaria tramite sito o su richiesta.\n\n**Istruzioni**\n1) indica sempre il **prodotto/famiglia** (CTF, CTL, VCEM, CTCEM, Diapason, GTS…);\n2) chiedi se serve **disegno 2D/3D** o solo scheda;\n3) indirizza a: **ufficio tecnico/commerciale Tecnaria** specificando il prodotto;\n4) per i documenti normativi (ETA, DoP) → dire “**sono disponibili e vengono inviati su richiesta**”.\n\n**Alternativa**\nSe il cliente sta sviluppando un progetto BIM → segnalare che i dati sono disponibili in formato digitale ma vanno richiesti indicando piattaforma e formato.\n\n**Checklist**\n- prodotto indicato?\n- formato richiesto (pdf/dwg)?\n- cliente finale o DL?\n\n**Nota RAG**\nServe a chi chiede “mi mandi il PDF?”, “hai il CAD di questo connettore?”, “mi serve la dichiarazione di prestazione”.",
+    "trigger": {
+      "peso": 0.8,
+      "keywords": [
+        "disegno cad",
+        "scheda tecnica",
+        "dichiarazione di prestazione",
+        "dop",
+        "eta tecnaria"
+      ]
+    }
+  },
+  {
+    "id": "COMM-EXPORT-0001",
+    "family": "COMM",
+    "domanda": "Tecnaria spedisce anche all'estero? Come si gestiscono gli ordini fuori Italia?",
+    "risposta": "**Contesto**\nTecnaria fornisce anche fuori Italia ma le condizioni (trasporto, tempi, imballi, certificazioni richieste) **non** sono le stesse del territorio nazionale.\n\n**Istruzioni**\n1) chiedi **paese di destinazione**;\n2) verifica se servono **documenti aggiuntivi** (es. traduzioni, certificati, marcatura richiesta dal cliente);\n3) indica che la spedizione estero viene gestita dall’ufficio Tecnaria con **quotazione dedicata**;\n4) segnala che i tempi possono essere **più lunghi** rispetto al 3-5 gg Italia.\n\n**Alternativa**\nSe il cliente ha un corriere proprio → indicare che il ritiro è possibile previa conferma magazzino.\n\n**Checklist**\n- paese indicato?\n- incoterm / resa?\n- quantità?\n\n**Nota RAG**\nUsare quando l’utente scrive “spedite in Svizzera?”, “posso avere consegna in Francia?”, “spedizione estero?”.",
+    "trigger": {
+      "peso": 0.77,
+      "keywords": [
+        "spedite all estero",
+        "consegna in francia",
+        "spedizione svizzera",
+        "ordine fuori italia",
+        "export tecnaria"
+      ]
+    }
+  }
+]
+
+
+
+
 
