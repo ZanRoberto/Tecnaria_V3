@@ -1,177 +1,285 @@
 <!doctype html>
 <html lang="it">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
   <title>Tecnaria Sinapsi — Q/A</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root{
-      --bg1:#ff7a18; --bg2:#0f0f0f;
-      --card:#111; --muted:#666; --text:#f5f5f5; --accent:#ffb35c;
-      --chip:#1c1c1c; --ok:#2ecc71; --warn:#f1c40f; --bad:#e74c3c;
-      --shadow:0 10px 30px rgba(0,0,0,.25);
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    :root {
+      --bg: #0f172a;
+      --panel: #ffffff;
+      --accent: #ff7a00;
+      --accent-dark: #7a1f00;
+      --text: #0f172a;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0; color:var(--text);
-      min-height:100dvh;
-      background: linear-gradient(120deg,var(--bg1),var(--bg2));
-      display:flex; flex-direction:column;
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0b1020;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
-    header{
-      padding:28px 24px; display:flex; align-items:center; gap:18px;
+    header {
+      background: linear-gradient(90deg, #ff7a00 0%, #000 65%);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
-    .logo{
-      width:42px; height:42px; border-radius:12px;
-      background: radial-gradient(closest-side,#fff2,transparent), #0008;
-      display:grid; place-items:center; box-shadow:var(--shadow);
-      font-weight:800; letter-spacing:.5px;
+    header h1 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
     }
-    .title h1{margin:0; font-size:22px}
-    .title p{margin:4px 0 0; color:#ddd; font-size:13px}
-    main{
-      display:grid; grid-template-columns: minmax(320px, 740px) 1fr;
-      gap:22px; padding:0 24px 32px; flex:1;
+    header small {
+      opacity: 0.75;
+      font-size: .7rem;
+      display: block;
     }
-    .left{display:flex; flex-direction:column; gap:16px}
-    .search{
-      background: #ffffff10; border:1px solid #ffffff1a; border-radius:16px; padding:14px; backdrop-filter: blur(6px);
-      display:flex; gap:10px; align-items:center; box-shadow:var(--shadow)
+    main {
+      flex: 1;
+      display: flex;
+      gap: 0;
+      height: calc(100vh - 70px);
     }
-    .search input{
-      flex:1; background:transparent; border:none; outline:none; color:var(--text);
-      font-size:16px; padding:8px;
+    .left {
+      width: 40%;
+      min-width: 320px;
+      background: rgba(12, 16, 29, 0.75);
+      border-right: 1px solid rgba(255,255,255,0.04);
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
     }
-    .btn{
-      background:#fff; color:#111; border:none; font-weight:700; border-radius:12px; padding:10px 14px; cursor:pointer;
+    .label {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      margin-bottom: 8px;
+      opacity: .7;
     }
-    .chips{display:flex; flex-wrap:wrap; gap:8px}
-    .chip{
-      background:var(--chip); border:1px solid #ffffff20; border-radius:999px; padding:8px 12px; font-size:13px; cursor:pointer;
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 12px;
+      color: #fff;
+      font-size: .9rem;
+      resize: vertical;
     }
-    .panel{
-      background:#0a0a0a; border:1px solid #ffffff12; border-radius:18px; padding:18px; min-height:220px; box-shadow:var(--shadow)
+    .actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
     }
-    .panel h3{margin:0 0 10px}
-    .meta{font-size:12px; color:var(--muted); display:flex; gap:10px; align-items:center; margin-bottom:10px}
-    .tag{background:#ffffff14; padding:4px 8px; border-radius:999px; font-size:12px}
-    .right{display:flex; flex-direction:column; gap:16px}
-    .card{
-      background:#0b0b0b; border:1px solid #ffffff12; border-radius:18px; padding:18px; box-shadow:var(--shadow)
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 9999px;
+      padding: 10px 18px;
+      font-weight: 600;
+      cursor: pointer;
     }
-    .status-dot{width:10px; height:10px; border-radius:50%;}
-    .ok{background:var(--ok)} .bad{background:var(--bad)}
-    .small{font-size:12px;color:var(--muted)}
-    footer{padding:14px 24px; color:#bbb; font-size:12px}
-    .answer{white-space:pre-wrap; line-height:1.5}
-    .muted{color:#cfcfcf}
+    button.secondary {
+      background: rgba(255,255,255,0.1);
+    }
+    .chips {
+      margin-top: 18px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      background: rgba(255, 122, 0, 0.08);
+      border: 1px solid rgba(255,122,0,0.5);
+      border-radius: 9999px;
+      padding: 6px 12px;
+      font-size: .68rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .right {
+      flex: 1;
+      background: #f5f5f5;
+      color: #0f172a;
+      display: flex;
+      flex-direction: column;
+    }
+    .right-header {
+      padding: 16px 20px 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .right-header h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+    .right-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px 20px 28px;
+    }
+    .answer-box {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid rgba(15,23,42,0.05);
+      padding: 16px 16px 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .meta {
+      margin-top: 10px;
+      font-size: .68rem;
+      opacity: .55;
+      display: flex;
+      gap: 16px;
+    }
+    .error {
+      background: #ffe0e0;
+      color: #7a0c00;
+      border: 1px solid rgba(122,12,0,0.18);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-top: 10px;
+      font-size: .75rem;
+    }
+    @media (max-width: 900px) {
+      main { flex-direction: column; }
+      .left { width: 100%; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); }
+      .right { height: 50vh; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <div class="logo">TS</div>
-    <div class="title">
-      <h1>Trova la soluzione, in linguaggio Tecnaria.</h1>
-      <p>Assistente Q/A ufficiale • solo prodotti Tecnaria • risposte filtrate e curate</p>
+    <div>
+      <h1>Tecnaria Sinapsi — Q/A</h1>
+      <small>Dataset: <strong>tecnaria_gold.json</strong> — Motore: Sinapsi + Camilla + NLM — Stato: ONLINE</small>
+    </div>
+    <div style="font-size:.7rem;opacity:.6">
+      /ask · /api/ask
     </div>
   </header>
-
   <main>
     <section class="left">
-      <div class="search">
-        <input id="q" placeholder="Chiedi a Sinapsi (es. “Mi parli della P560?”)" />
-        <button class="btn" id="askBtn">Chiedi a Sinapsi</button>
+      <div class="label">Chiedi a Sinapsi</div>
+      <textarea id="question" placeholder="es. per errore ho usato la P560 su un VCEM su laterocemento, la posa è valida?"></textarea>
+      <div class="actions">
+        <button onclick="sendQuestion()">Invia</button>
+        <button class="secondary" onclick="ping()">Ping</button>
       </div>
       <div class="chips">
-        <div class="chip" data-q="Mi parli della P560?">P560</div>
-        <div class="chip" data-q="Differenza tra CTL e CTL MAXI?">CTL vs CTL MAXI</div>
-        <div class="chip" data-q="CTF su lamiera 2×1,0 mm: accortezze in posa?">CTF su lamiera</div>
-        <div class="chip" data-q="Codici CTF e come fare un ordine?">Codici / ordini</div>
-        <div class="chip" data-q="Differenza tra CTF e VCEM?">Comparazioni</div>
+        <div class="chip" onclick="setQ('mi dai i codici dei connettori CTF?')">Codici CTF</div>
+        <div class="chip" onclick="setQ('posso usare la P560 sui VCEM?')">P560 su VCEM</div>
+        <div class="chip" onclick="setQ('lamiera non serrata, devo rifare?')">Lamiera non serrata</div>
+        <div class="chip" onclick="setQ('quando devo usare il CTL MAXI?')">CTL MAXI</div>
+        <div class="chip" onclick="setQ('il cantiere ha usato connettori diversi dal progetto, va bene?')">DL vs cantiere</div>
       </div>
-
-      <div class="panel" id="answerPanel">
-        <div class="meta" id="meta"></div>
-        <h3 id="qTitle" class="muted">Fai una domanda per iniziare</h3>
-        <div class="answer" id="answerText"></div>
-      </div>
+      <div id="err" class="error" style="display:none"></div>
     </section>
-
-    <aside class="right">
-      <div class="card">
-        <h3>Impostazioni</h3>
-        <div class="small">Base URL servizio: <code id="baseUrl"></code></div>
-        <div class="small">Endpoint: <code>/qa/ask</code></div>
-        <div class="small">Dataset: <code>static/data/tecnaria_gold.json</code></div>
-        <div class="small" id="healthRow">
-          Stato: <span class="status-dot bad"></span> <span id="healthText">offline</span>
+    <section class="right">
+      <div class="right-header">
+        <h2>Risposta GOLD</h2>
+        <div id="status" style="font-size:.7rem;opacity:.6">in attesa…</div>
+      </div>
+      <div class="right-body">
+        <div class="answer-box" id="answer">
+          Fai una domanda a sinapsi…
+        </div>
+        <div class="meta" id="meta" style="display:none">
+          <div>id: <span id="src"></span></div>
+          <div>match: <span id="match"></span></div>
         </div>
       </div>
-      <div class="card">
-        <h3>Note</h3>
-        <p class="small">Solo prodotti Tecnaria. Le risposte sono filtrate dal knowledge base tecnico e migliorate con narrazione “gold”.</p>
-      </div>
-    </aside>
+    </section>
   </main>
 
-  <footer>© Tecnaria — Sinapsi Q/A • UI stabile (gradiente arancio → nero) • v1</footer>
-
   <script>
-    const askBtn = document.getElementById('askBtn');
-    const qInput = document.getElementById('q');
-    const baseUrl = window.location.origin;
-    document.getElementById('baseUrl').textContent = baseUrl;
+    const BASE = location.origin; // va bene se index.html è servito dallo stesso dominio di app.py
 
-    async function pingHealth(){
-      try{
-        const r = await fetch('/health');
+    function setQ(t) {
+      document.getElementById('question').value = t;
+      sendQuestion();
+    }
+
+    async function ping() {
+      const s = document.getElementById('status');
+      const e = document.getElementById('err');
+      e.style.display = 'none';
+      s.textContent = 'ping...';
+      try {
+        const r = await fetch(BASE + '/ping');
         const j = await r.json();
-        document.querySelector('#healthRow .status-dot').classList.remove('bad');
-        document.querySelector('#healthRow .status-dot').classList.add('ok');
-        document.getElementById('healthText').textContent = `online • items: ${j.items_loaded}`;
-      }catch(e){
-        document.querySelector('#healthRow .status-dot').classList.remove('ok');
-        document.querySelector('#healthRow .status-dot').classList.add('bad');
-        document.getElementById('healthText').textContent = 'offline';
+        s.textContent = `online · items: ${j.items}`;
+      } catch (err) {
+        s.textContent = 'errore ping';
+        e.textContent = err;
+        e.style.display = 'block';
       }
     }
-    pingHealth();
 
-    async function ask(q){
-      const panel = document.getElementById('answerPanel');
+    async function sendQuestion() {
+      const q = document.getElementById('question').value.trim();
+      const out = document.getElementById('answer');
+      const s = document.getElementById('status');
+      const e = document.getElementById('err');
       const meta = document.getElementById('meta');
-      const qTitle = document.getElementById('qTitle');
-      const aText = document.getElementById('answerText');
-      qTitle.textContent = '...';
-      aText.textContent = '';
-      meta.innerHTML = '';
-      try{
-        const r = await fetch('/qa/ask?q=' + encodeURIComponent(q));
-        const j = await r.json();
-        if(j.error){
-          qTitle.textContent = 'Domanda non valida';
-          aText.textContent = (j.error || '') + (j.examples ? `\n\nEsempi:\n- ${j.examples.join('\n- ')}`:'');
+      const src = document.getElementById('src');
+      const match = document.getElementById('match');
+
+      if (!q) {
+        out.textContent = 'Scrivi una domanda prima.';
+        return;
+      }
+
+      e.style.display = 'none';
+      s.textContent = 'Sto chiedendo a Sinapsi…';
+
+      try {
+        const res = await fetch(BASE + '/ask', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({question: q})
+        });
+
+        if (!res.ok) {
+          const txt = await res.text();
+          out.textContent = 'Errore risposta backend.';
+          e.textContent = txt;
+          e.style.display = 'block';
+          s.textContent = 'errore';
+          meta.style.display = 'none';
           return;
         }
-        meta.innerHTML = `<span class="tag">Famiglia: ${j.family || '-'}</span><span class="tag">Score: ${j.score}</span>`;
-        qTitle.textContent = 'Q: ' + j.question;
-        aText.textContent = j.answer || '—';
-      }catch(e){
-        qTitle.textContent = 'Errore di rete';
-        aText.textContent = String(e);
+
+        const data = await res.json();
+        out.textContent = data.answer || 'Nessuna risposta.';
+        src.textContent = data.source_id || '—';
+        match.textContent = (data.matched !== null && data.matched !== undefined) ? data.matched.toFixed(2) : '—';
+        meta.style.display = 'flex';
+        s.textContent = 'ok';
+      } catch (err) {
+        out.textContent = 'Errore di rete.';
+        e.textContent = err;
+        e.style.display = 'block';
+        s.textContent = 'errore';
+        meta.style.display = 'none';
       }
     }
 
-    askBtn.addEventListener('click', ()=> {
-      if(qInput.value.trim()) ask(qInput.value.trim());
-    });
-    qInput.addEventListener('keydown', (e)=> {
-      if(e.key === 'Enter' && qInput.value.trim()) ask(qInput.value.trim());
-    });
-    document.querySelectorAll('.chip').forEach(ch => {
-      ch.addEventListener('click', ()=> ask(ch.dataset.q));
-    });
+    // fai subito un ping
+    ping();
   </script>
 </body>
 </html>
