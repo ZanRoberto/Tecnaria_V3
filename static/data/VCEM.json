@@ -56,21 +56,37 @@
         "Attenzione: i VCEM non si sparano. Usa foratura e avvitatura; colpo dato? togli e ripristina."
       ],
       "paraphrases": [
-        "Posso sparare i VCEM con la P560?",
-        "Pistola sparachiodi su VCEM va bene?",
+        "Come recupero un VCEM dopo averlo sparato?",
+        "Come rimuovere un VCEM sparato?",
+        "Ho colpito un VCEM con la P560",
+        "Ho sparato un VCEM e voglio recuperarlo",
         "Ho sparato un VCEM per errore",
-        "Si spara o si avvita il VCEM?",
-        "P560 e VCEM compatibili?"
+        "Ho usato la P560 sul VCEM per sbaglio, come rimediare?",
+        "P560 e VCEM compatibili?",
+        "Pistola sparachiodi su VCEM va bene?",
+        "Posso riparare un VCEM colpito per errore?",
+        "Posso sparare i VCEM con la P560?",
+        "Recupero VCEM dopo sparo",
+        "Si spara o si avvita il VCEM?"
       ],
       "trigger": {
         "peso": 1.0,
         "keywords": [
-          "p560",
-          "sparare vcem",
           "chiodatrice vcem",
           "colpo p560",
+          "errore posa vcem",
+          "errore sparo",
+          "ho sparato un vcem",
+          "p560",
+          "pistola su vcem",
+          "recupero",
+          "recupero vcem",
+          "rimediare",
+          "rimuovere",
+          "riparare",
           "sparachiodi",
-          "errore posa vcem"
+          "sparare vcem",
+          "vcem sparato"
         ]
       }
     },
@@ -918,12 +934,15 @@
         "Richiesta certificazione VCEM"
       ],
       "trigger": {
-        "peso": 0.85,
+        "peso": 0.8,
         "keywords": [
-          "eta",
           "ce",
           "certificazione",
-          "documentazione",
+          "certificazione eta",
+          "documenti di certificazione",
+          "eta",
+          "eta numero",
+          "marcatura ce",
           "prove"
         ]
       }
