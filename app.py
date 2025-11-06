@@ -1,268 +1,153 @@
-import json
+# app.py — FastAPI "offline" per Tecnaria_V3
+# - Usa SOLO il dataset: static/data/tecnaria_gold.json
+# - Endpoint: /ping, /status, /ask
+# - Nessuna dipendenza esterna (niente OpenAI)
+# - Matching semplice per trigger/keywords + family hints
+
+import json, re, unicodedata, time
 from pathlib import Path
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+from typing import Dict, Any, List, Tuple
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
-app = FastAPI()
+APP_DIR = Path(__file__).parent
+DATA_FILE = APP_DIR / "static" / "data" / "tecnaria_gold.json"  # <<— PERCORSO FISSO
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="Tecnaria Sinapsi — Q/A (offline)")
 
-DATA_FILE = Path("tecnaria_gold.json")
+# ====== UTILS ======
+def normalize(text: str) -> str:
+    if not text: 
+        return ""
+    t = unicodedata.normalize("NFKD", text)
+    t = "".join(ch for ch in t if not unicodedata.combining(ch))
+    t = t.lower()
+    t = re.sub(r"[^a-z0-9àèéìíòóùç\s\-_/]", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
 
-# fallback minimo, così l’interfaccia parte SEMPRE
-FALLBACK_DATA = {
-    "_meta": {
-        "version": "TECNARIA_GOLD-FALLBACK",
-        "project": "TECNARIA_GOLD",
-        "generated_at": "2025-11-02T00:00:00",
-        "language_base": "it",
-        "families_active": [
-            "COMM",
-            "CTF",
-            "CTL",
-            "CTL MAXI",
-            "CTCEM",
-            "VCEM",
-            "P560",
-            "DIAPASON",
-            "GTS",
-            "ACCESSORI",
-            "CONFRONTO",
-            "PROBLEMATICHE",
-            "KILLER",
-        ],
-    },
-    "items": [
-        {
-            "id": "fallback-1",
-            "question": "dove si trova la sede tecnaria?",
-            "family": "COMM",
-            "triggers": ["sede", "tecnaria", "bassano", "contatti", "telefono"],
-            "answer": (
-                "La Tecnaria S.p.A. ha sede in **Viale Pecori Giraldi 55, 36061 Bassano del Grappa (VI)**. "
-                "Tel. **+39 0424 502029** – Email **info@tecnaria.com**. "
-                "Questo è il riferimento unico anche per supporto tecnico su CTF, CTL, VCEM, P560."
-            ),
-        }
-    ],
-}
+def tokenize(text: str) -> List[str]:
+    return normalize(text).split()
 
-LOADED_DATA = FALLBACK_DATA
-LOAD_ERROR = None
+# ====== LOADER CON CACHE ======
+_db_cache: Dict[str, Any] = {}
+_db_mtime: float = 0.0
 
-
-def try_load_dataset():
-    """Prova a caricare tecnaria_gold.json SENZA mangiarlo/riordinarlo.
-    Se fallisce, tiene il fallback ma memorizza l'errore.
-    """
-    global LOADED_DATA, LOAD_ERROR
+def load_db(force: bool = False) -> Dict[str, Any]:
+    global _db_cache, _db_mtime
     if not DATA_FILE.exists():
-        LOAD_ERROR = f"File {DATA_FILE} non trovato."
-        LOADED_DATA = FALLBACK_DATA
-        return
+        raise FileNotFoundError(f"File non trovato: {DATA_FILE}")
+    mtime = DATA_FILE.stat().st_mtime
+    if force or (mtime != _db_mtime) or not _db_cache:
+        raw = DATA_FILE.read_text(encoding="utf-8")
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"JSON NON VALIDO: {e}")
+        if not isinstance(data, dict) or "items" not in data or not isinstance(data["items"], list):
+            raise ValueError("JSON valido ma senza chiave 'items' (lista).")
+        _db_cache = data
+        _db_mtime = mtime
+    return _db_cache
 
-    raw_text = DATA_FILE.read_text(encoding="utf-8")
-    try:
-        data = json.loads(raw_text)
-        # controllo minimo: deve esserci 'items'
-        if "items" not in data:
-            raise ValueError("JSON valido ma senza chiave 'items'.")
-        LOADED_DATA = data
-        LOAD_ERROR = None
-    except Exception as e:
-        # NON mangiamo il file, solo segnaliamo
-        LOAD_ERROR = f"Errore nel JSON: {e}"
-        LOADED_DATA = FALLBACK_DATA
+# ====== RISPOSTORE ======
+FAMILY_HINT_WEIGHT = {
+    "CTF": 1.1, "CTL": 1.1, "CTL MAXI": 1.15, "CTCEM": 1.1,
+    "VCEM": 1.1, "P560": 1.05, "DIAPASON": 1.0, "GTS": 1.0,
+    "ACCESSORI": 1.0, "CONFRONTO": 0.9, "PROBLEMATICHE": 1.0, "KILLER": 1.0, "COMM": 0.85
+}
+FAM_TOKENS = ["ctf","ctl","maxi","ctcem","vcem","p560","diapason","gts","accessori","confronto","problematiche","killer","comm"]
 
+def family_hints_from_text(text_norm: str) -> set:
+    hints = set()
+    for fam in FAM_TOKENS:
+        if fam in text_norm:
+            hints.add(fam.upper() if fam != "maxi" else "CTL MAXI")
+    return hints
 
-try_load_dataset()
+def score_item(question_norm: str, item: Dict[str, Any], family_hints: set) -> Tuple[float, int]:
+    trig = (item.get("trigger") or {})
+    kws = [normalize(k) for k in (trig.get("keywords") or [])]
+    peso = float(trig.get("peso", 1.0))
+    hits = 0
+    q_tokens = tokenize(question_norm)
+    for kw in kws:
+        if kw and (kw in question_norm or any(tok.startswith(kw) or kw.startswith(tok) for tok in q_tokens)):
+            hits += 1
+    fam = (item.get("family") or "").upper()
+    fam_boost = 1.0
+    if fam in FAMILY_HINT_WEIGHT and (fam in family_hints or (fam == "CTL MAXI" and "CTL MAXI" in family_hints)):
+        fam_boost = FAMILY_HINT_WEIGHT[fam]
+    score = (hits * peso) * fam_boost
+    return score, hits
 
+def answer_from_json(question: str) -> Dict[str, Any]:
+    db = load_db()
+    items = db.get("items", [])
+    qn = normalize(question)
+    hints = family_hints_from_text(qn)
 
-def normalize(q: str) -> str:
-    return q.lower().strip()
-
-
-def score_match(user_q: str, item: dict) -> int:
-    """scoring semplice ma efficace per NLM 'sporco':
-    - +50 se la domanda è quasi uguale
-    - +20 per ogni trigger che compare
-    - +10 se il nome famiglia compare
-    """
-    u = normalize(user_q)
-    score = 0
-    # 1) match quasi diretto
-    if "question" in item:
-        base_q = normalize(item["question"])
-        if base_q in u or u in base_q:
-            score += 50
-
-    # 2) trigger
-    for t in item.get("triggers", []):
-        if t and normalize(t) in u:
-            score += 20
-
-    # 3) family
-    fam = item.get("family") or item.get("famiglia")
-    if fam and normalize(fam) in u:
-        score += 10
-
-    # 4) parole chiave tipiche tecnaria
-    tecnaria_words = ["ctf", "ctl", "maxi", "vcem", "ctcem", "p560", "lamiera", "chiodo", "connettori"]
-    for w in tecnaria_words:
-        if w in u:
-            score += 5
-
-    return score
-
-
-def find_best_answer(user_q: str) -> dict:
-    items = LOADED_DATA.get("items", [])
-    if not items:
-        return {
-            "answer": "Nessun item caricato. Controlla il file tecnaria_gold.json.",
-            "item_id": None,
-            "score": 0,
-        }
-
-    best_item = None
-    best_score = -1
+    best = None
+    best_score = -1.0
+    best_hits = 0
     for it in items:
-        s = score_match(user_q, it)
+        s, h = score_item(qn, it, hints)
         if s > best_score:
-            best_score = s
-            best_item = it
+            best_score, best, best_hits = s, it, h
 
-    # se lo score è troppo basso, preferiamo una risposta controllata
-    if best_score < 10:
-        return {
-            "answer": (
-                "La domanda è stata capita solo in parte. "
-                "Prova a specificare se parli di **CTF**, **CTL/CTL MAXI**, **VCEM/CTCEM** "
-                "oppure della **SPIT P560**. "
-                "Se stai parlando di posa su **lamiera non serrata** la risposta è: "
-                "**la lamiera va serrata prima di sparare i CTF**, altrimenti il chiodo può piegarsi."
-            ),
-            "item_id": None,
-            "score": best_score,
+    if best is None or best_score <= 0:
+        # fallback deterministico: prova alcune ID note
+        for fid in ("CTF-0001", "COMM-0001"):
+            cand = next((it for it in items if it.get("id") == fid), None)
+            if cand:
+                best, best_score, best_hits = cand, 0.1, 0
+                break
+
+    resp_text = (best.get("risposta") or best.get("answer") or "").strip()
+    return {
+        "answer": resp_text,
+        "meta": {
+            "best_item": {"id": best.get("id"), "family": best.get("family")},
+            "trigger_hits": best_hits,
+            "score_internal": best_score
         }
-
-    return {
-        "answer": best_item.get("answer", "Nessuna risposta salvata."),
-        "item_id": best_item.get("id"),
-        "score": best_score,
     }
 
+# ====== SCHEMI I/O ======
+class AskInput(BaseModel):
+    question: str
 
-HTML_PAGE = """
-<!doctype html>
-<html lang="it">
-  <head>
-    <meta charset="utf-8" />
-    <title>Tecnaria Sinapsi — Q/A</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <style>
-      body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:#111; color:#fff; }
-      header { background:linear-gradient(90deg,#ff7b00,#000); padding:16px 20px; display:flex; justify-content:space-between; align-items:center; }
-      .title { font-size:1.1rem; font-weight:600; }
-      .status { font-size:0.8rem; padding:4px 10px; border-radius:999px; background:rgba(0,0,0,.2); }
-      main { display:flex; gap:20px; padding:20px; }
-      .left { flex:0 0 420px; }
-      .right { flex:1; background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:16px; min-height:300px; }
-      input[type=text] { width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:rgba(0,0,0,.35); color:#fff; font-size:0.9rem; }
-      button { margin-top:10px; background:#ff7b00; color:#000; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; }
-      .answer { white-space:pre-wrap; line-height:1.5; }
-      .badge-error { background:#ff004d; color:#fff; padding:3px 10px; border-radius:999px; font-size:0.7rem; margin-left:8px; }
-      .hint { font-size:0.7rem; opacity:.6; margin-top:4px; }
-      .pill { display:inline-block; background:rgba(255,255,255,.08); padding:5px 10px; border-radius:999px; font-size:0.7rem; cursor:pointer; margin:4px 6px 0 0; }
-    </style>
-  </head>
-  <body>
-    <header>
-      <div class="title">Tecnaria Sinapsi — Q/A</div>
-      <div id="status" class="status">pronto</div>
-    </header>
-    <main>
-      <div class="left">
-        <label>Chiedi a Sinapsi</label>
-        <input id="q" type="text" placeholder="es. ho bucato un VCEM con la P560, è valido?" />
-        <button onclick="ask()">Invia</button>
-        <div class="hint">Esempi veloci:</div>
-        <div>
-          <span class="pill" onclick="quick('posso usare i CTF su lamiera non serrata?')">CTF su lamiera</span>
-          <span class="pill" onclick="quick('differenza tra CTL e CTL MAXI?')">CTL vs CTL MAXI</span>
-          <span class="pill" onclick="quick('posso sparare VCEM con P560?')">P560 su VCEM</span>
-        </div>
-      </div>
-      <div class="right">
-        <div id="out" class="answer">Fai una domanda su CTF, CTL, VCEM, P560, Diapason, accessori…</div>
-      </div>
-    </main>
-    <script>
-      async function ask() {
-        const q = document.getElementById("q").value;
-        const res = await fetch("/ask", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: q })
-        });
-        const data = await res.json();
-        const out = document.getElementById("out");
-        out.innerHTML = data.answer;
-      }
-      function quick(t) {
-        document.getElementById("q").value = t;
-        ask();
-      }
-    </script>
-  </body>
-</html>
-"""
+# ====== ENDPOINTS ======
+@app.get("/ping")
+def ping():
+    return "alive"
 
-
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    # se c'è errore nel JSON lo mostriamo nel badge
-    html = HTML_PAGE
-    if LOAD_ERROR:
-        # iniettiamo un piccolo js per mostrare l'errore
-        error_js = f"""
-        <script>
-          const st = document.getElementById("status");
-          st.innerHTML = "JSON NON VALIDO";
-          st.className = "status";
-          st.style.background = "#ff004d";
-          st.title = {json.dumps(LOAD_ERROR)};
-        </script>
-        """
-        html = html.replace("</body>", error_js + "</body>")
-    return HTMLResponse(content=html)
-
-
-@app.get("/health")
-async def health():
-    return {
-        "status": "ok" if not LOAD_ERROR else "warn",
-        "message": "Tecnaria GOLD pronto" if not LOAD_ERROR else "Tecnaria GOLD con JSON non valido",
-        "items": len(LOADED_DATA.get("items", [])),
-        "error": LOAD_ERROR,
-    }
-
+@app.get("/status")
+def status():
+    try:
+        db = load_db(force=False)
+        n = len(db.get("items", []))
+        return JSONResponse({"ok": True, "file": str(DATA_FILE), "items": n, "message": "PRONTO"})
+    except FileNotFoundError as e:
+        return JSONResponse({"ok": False, "file": str(DATA_FILE), "items": 0, "message": "FILE NON TROVATO", "error": str(e)}, status_code=500)
+    except ValueError as e:
+        return JSONResponse({"ok": False, "file": str(DATA_FILE), "items": 0, "message": "JSON NON VALIDO", "error": str(e)}, status_code=500)
+    except Exception as e:
+        return JSONResponse({"ok": False, "file": str(DATA_FILE), "items": 0, "message": "ERRORE GENERICO", "error": str(e)}, status_code=500)
 
 @app.post("/ask")
-async def ask(payload: dict):
-    q = payload.get("question") or ""
-    ans = find_best_answer(q)
-    # arricchiamo con info di debug
-    return {
-        "answer": ans["answer"],
-        "score": ans["score"],
-        "item_id": ans["item_id"],
-        "items_total": len(LOADED_DATA.get("items", [])),
-        "json_error": LOAD_ERROR,
-    }
+def ask(body: AskInput):
+    question = (body.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="question mancante")
+    # garantiamo che il JSON sia valido prima
+    st = status()
+    if isinstance(st, JSONResponse):
+        js = st.body
+    try:
+        db = load_db()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Dataset non disponibile: {e}")
+    result = answer_from_json(question)
+    return {"ok": True, "question": question, **result}
