@@ -114,21 +114,6 @@
       }
     },
     {
-      "id": "COMM-0006",
-      "family": "COMM",
-      "domanda": "Posso usare questo dataset come motore Q/A sul mio sito?",
-      "risposta": "Sì, il file è pensato per essere messo in **static/data/tecnaria_gold.json** e servito da una FastAPI (o simile) che espone l’endpoint `/ask`. La struttura domanda/risposta è piatta e già completa di trigger, quindi il frontend deve solo spedire la domanda dell’utente.",
-      "trigger": {
-        "peso": 0.55,
-        "keywords": [
-          "posso metterlo sul sito",
-          "endpoint ask",
-          "fastapi",
-          "static data tecnaria_gold"
-        ]
-      }
-    },
-    {
       "id": "COMM-0007",
       "family": "COMM",
       "domanda": "Qual è il nome del file master che devo usare?",
@@ -189,8 +174,6 @@
         ]
       }
     },
-
-    /* ======================= CTF ======================= */
     {
       "id": "CTF-0001",
       "family": "CTF",
@@ -697,8 +680,6 @@
         ]
       }
     },
-
-    /* ======================= CTL ======================= */
     {
       "id": "CTL-0001",
       "family": "CTL",
@@ -1004,8 +985,6 @@
         ]
       }
     },
-
-    /* ======================= CTL MAXI ======================= */
     {
       "id": "CTLX-0001",
       "family": "CTL MAXI",
@@ -1240,8 +1219,6 @@
         ]
       }
     },
-
-    /* ======================= CTCEM ======================= */
     {
       "id": "CTCEM-0001",
       "family": "CTCEM",
@@ -1480,8 +1457,6 @@
         ]
       }
     },
-
-    /* ======================= VCEM ======================= */
     {
       "id": "VCEM-0001",
       "family": "VCEM",
@@ -1718,8 +1693,6 @@
         ]
       }
     },
-
-    /* ======================= P560 ======================= */
     {
       "id": "P560-0001",
       "family": "P560",
@@ -1892,7 +1865,7 @@
     {
       "id": "P560-0014",
       "family": "P560",
-      "domanda": "Posso usarla per fissare lamiera?',
+      "domanda": "Posso usarla per fissare lamiera?",
       "risposta": "Meglio fissare la lamiera con sistemi dedicati e poi posare i CTF.",
       "trigger": {
         "peso": 0.25,
@@ -1914,8 +1887,6 @@
         ]
       }
     },
-
-    /* ======================= DIAPASON ======================= */
     {
       "id": "DIA-0001",
       "family": "DIAPASON",
@@ -2040,8 +2011,6 @@
         ]
       }
     },
-
-    /* ======================= GTS ======================= */
     {
       "id": "GTS-0001",
       "family": "GTS",
@@ -2141,8 +2110,6 @@
         ]
       }
     },
-
-    /* ======================= ACCESSORI ======================= */
     {
       "id": "ACC-0001",
       "family": "ACCESSORI",
@@ -2272,8 +2239,6 @@
         ]
       }
     },
-
-    /* ======================= CONFRONTO ======================= */
     {
       "id": "CONF-0001",
       "family": "CONFRONTO",
@@ -2430,8 +2395,6 @@
         ]
       }
     },
-
-    /* ======================= PROBLEMATICHE ======================= */
     {
       "id": "PROB-0001",
       "family": "PROBLEMATICHE",
@@ -2594,8 +2557,6 @@
         ]
       }
     },
-
-    /* ======================= KILLER ======================= */
     {
       "id": "KILL-0001",
       "family": "KILLER",
