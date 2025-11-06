@@ -58,10 +58,12 @@
       "paraphrases": [
         "Come recupero un VCEM dopo averlo sparato?",
         "Come rimuovere un VCEM sparato?",
+        "Come sistemare un VCEM sparato per errore",
         "Ho colpito un VCEM con la P560",
         "Ho sparato un VCEM e voglio recuperarlo",
         "Ho sparato un VCEM per errore",
         "Ho usato la P560 sul VCEM per sbaglio, come rimediare?",
+        "Ho usato la chiodatrice sul VCEM, cosa faccio?",
         "P560 e VCEM compatibili?",
         "Pistola sparachiodi su VCEM va bene?",
         "Posso riparare un VCEM colpito per errore?",
@@ -106,20 +108,25 @@
         "VCEM e lamiera non sono compatibili: serve CTF."
       ],
       "paraphrases": [
-        "VCEM su lamiera va bene?",
-        "Ho lamiera grecata: uso VCEM?",
         "Con lamiera meglio CTF o VCEM?",
+        "Ho lamiera grecata: uso VCEM?",
+        "Lamiera interposta e VCEM",
         "Posso ancorare su lamiera con VCEM?",
-        "Lamiera interposta e VCEM"
+        "Posso usare VCEM su lamiera grecata?",
+        "VCEM su lamiera interposta è corretto?",
+        "VCEM su lamiera va bene?"
       ],
       "trigger": {
-        "peso": 0.95,
+        "peso": 1.0,
         "keywords": [
+          "acciaio",
+          "ctf",
+          "grecata",
+          "interposta",
           "lamiera",
           "lamiera grecata",
-          "ctf",
-          "acciaio",
-          "interposta"
+          "lamiera interposta",
+          "trapezoidale"
         ]
       }
     },
@@ -238,20 +245,23 @@
         "Giro a vuoto = presa nulla: sposta e rifai pulito."
       ],
       "paraphrases": [
-        "La vite non prende nel travetto",
-        "Gira a vuoto la vite del VCEM",
-        "Foro molle, che fare?",
         "Filetto non aggancia con VCEM",
+        "Foro molle, che fare?",
+        "Gira a vuoto la vite del VCEM",
+        "La vite del VCEM gira a vuoto, come risolvo?",
+        "La vite non morde nel travetto, cosa fare?",
+        "La vite non prende nel travetto",
         "Presa insufficiente della vite"
       ],
       "trigger": {
-        "peso": 0.95,
+        "peso": 0.96,
         "keywords": [
-          "vite non prende",
-          "gira a vuoto",
           "foro molle",
+          "gira a vuoto",
           "presa nulla",
-          "spostare foro"
+          "spostare foro",
+          "travetto marcio",
+          "vite non prende"
         ]
       }
     },
@@ -303,20 +313,22 @@
         "La pulizia del foro è obbligatoria per una presa efficace."
       ],
       "paraphrases": [
-        "Devo soffiare il foro?",
-        "Pulizia foro prima di avvitare VCEM",
-        "Polvere nella foratura: rischio?",
         "Aspirare il foro è necessario?",
-        "Foro pulito per VCEM"
+        "Devo soffiare il foro?",
+        "Devo soffiare/aspirare il foro prima di avvitare VCEM?",
+        "Foro pulito per VCEM",
+        "Foro sporco riduce la presa dei VCEM?",
+        "Polvere nella foratura: rischio?",
+        "Pulizia foro prima di avvitare VCEM"
       ],
       "trigger": {
-        "peso": 1.0,
+        "peso": 0.98,
         "keywords": [
-          "pulizia foro",
-          "soffiare foro",
           "aspirare foro",
           "polvere foratura",
-          "presa ridotta"
+          "presa ridotta",
+          "pulizia foro",
+          "soffiare foro"
         ]
       }
     },
@@ -336,20 +348,23 @@
         "Classe C25/30 o più: cura compattazione e posizione rete."
       ],
       "paraphrases": [
-        "Quale cls per VCEM?",
         "C25/30 va bene per VCEM?",
         "Che beton usare con i connettori VCEM?",
+        "Che classe di calcestruzzo usare con i VCEM?",
         "Classe calcestruzzo consigliata",
-        "Getto per soletta collaborante VCEM"
+        "Getto per soletta collaborante VCEM",
+        "Quale beton per soletta collaborante VCEM?",
+        "Quale cls per VCEM?"
       ],
       "trigger": {
-        "peso": 0.9,
+        "peso": 0.92,
         "keywords": [
           "c25/30",
           "classe calcestruzzo",
+          "compattazione",
           "getto soletta",
-          "vibrazione leggera",
-          "rete a metà"
+          "rete a metà",
+          "vibrazione leggera"
         ]
       }
     },
@@ -434,20 +449,22 @@
         "Consiglio: lavorare su travetto asciutto per miglior presa."
       ],
       "paraphrases": [
-        "Travetto bagnato e VCEM",
-        "Forare su umido conviene?",
         "Avvitare con umidità presente",
+        "Forare su umido con VCEM, è ok?",
+        "Forare su umido conviene?",
+        "Posso avvitare se il travetto è bagnato?",
+        "Presa su travetto umido",
         "Se il travetto è bagnato cosa fare?",
-        "Presa su travetto umido"
+        "Travetto bagnato e VCEM"
       ],
       "trigger": {
-        "peso": 0.85,
+        "peso": 0.9,
         "keywords": [
-          "umido",
-          "bagnato",
           "asciugatura",
+          "bagnato",
           "corrosione",
-          "presa ridotta"
+          "presa ridotta",
+          "umido"
         ]
       }
     },
@@ -566,19 +583,22 @@
       ],
       "paraphrases": [
         "Distanza minima bordo travetto",
-        "Foro vicino al bordo: ok?",
-        "Quanto margine dal bordo?",
+        "Distanza sicura dal bordo",
         "Evitare spacco vicino al bordo",
-        "Distanza sicura dal bordo"
+        "Foro vicino al bordo con VCEM, è rischioso?",
+        "Foro vicino al bordo: ok?",
+        "Quanto margine dal bordo travetto con VCEM?",
+        "Quanto margine dal bordo?"
       ],
       "trigger": {
-        "peso": 0.9,
+        "peso": 0.92,
         "keywords": [
-          "bordo travetto",
           "10 cm",
-          "spacco",
+          "bordo travetto",
           "cono distacco",
-          "margine"
+          "margine",
+          "margine bordo",
+          "spacco"
         ]
       }
     },
@@ -605,7 +625,7 @@
         "Vita utile sistema VCEM"
       ],
       "trigger": {
-        "peso": 0.85,
+        "peso": 0.8,
         "keywords": [
           "durabilità",
           "vita utile",
@@ -698,19 +718,37 @@
       ],
       "paraphrases": [
         "Dimenticato rete con VCEM",
+        "Gettare senza rete con VCEM è possibile?",
+        "Getto senza rete con VCEM, è possibile?",
+        "Ho dimenticato la rete con i VCEM, posso gettare?",
+        "Ho dimenticato la rete posso fare il getto?",
         "Posso gettare senza rete?",
+        "Rete assente: posso proseguire col getto?",
+        "Rete dimenticata posso gettare?",
         "Rete necessaria per soletta VCEM",
-        "Soletta senza rete: rischio?",
-        "Serve rete per collaborazione"
+        "Rete non posata, come mi comporto?",
+        "Rete scordata prima del getto, ok?",
+        "Serve rete per collaborazione",
+        "Soletta senza rete: rischio?"
       ],
       "trigger": {
-        "peso": 0.95,
+        "peso": 1.0,
         "keywords": [
-          "rete mancante",
-          "obbligatoria",
-          "ripartizione sforzi",
+          "collaborante",
+          "fessurativo",
           "fessurazione",
-          "collaborante"
+          "gettare senza rete",
+          "getto senza rete",
+          "obbligatoria",
+          "rete a metà spessore",
+          "rete assente",
+          "rete dimenticata",
+          "rete mancante",
+          "rete non posata",
+          "rete obbligatoria",
+          "rete scordata",
+          "ripartizione sforzi",
+          "senza rete"
         ]
       }
     },
@@ -763,20 +801,25 @@
         "VCEM non è per acciaio: cambiare famiglia."
       ],
       "paraphrases": [
-        "VCEM su trave acciaio",
-        "Connettori su acciaio: quali?",
-        "Uso VCEM su acciaio?",
         "CTF o VCEM su acciaio",
-        "Sparo o avvito su acciaio"
+        "Connettori su acciaio: quali?",
+        "Posso fissare i VCEM all'acciaio?",
+        "Sparo o avvito su acciaio",
+        "Uso VCEM su acciaio?",
+        "VCEM su trave acciaio",
+        "VCEM su trave in acciaio?"
       ],
       "trigger": {
-        "peso": 0.95,
+        "peso": 0.98,
         "keywords": [
           "acciaio",
-          "trave acciaio",
           "ctf",
+          "ctf su acciaio",
+          "non compatibile",
           "p560",
-          "non compatibile"
+          "p560 acciaio",
+          "profilo acciaio",
+          "trave acciaio"
         ]
       }
     },
@@ -828,20 +871,25 @@
         "Gli sbagli ricorrenti sono 4: pulizia, serraggio, rete, P560."
       ],
       "paraphrases": [
-        "Errori da evitare con VCEM",
-        "Sbagli tipici posa VCEM",
-        "Perché non tiene il giunto?",
+        "Checklist errori VCEM",
         "Difetti ricorrenti VCEM",
-        "Checklist errori VCEM"
+        "Errori comuni con i VCEM",
+        "Errori da evitare con VCEM",
+        "Perché il giunto con VCEM non tiene?",
+        "Perché non tiene il giunto?",
+        "Sbagli tipici posa VCEM"
       ],
       "trigger": {
-        "peso": 0.9,
+        "peso": 0.92,
         "keywords": [
+          "errore posa",
+          "errori posa",
           "foro sporco",
-          "vite non a battuta",
-          "rete fuori spessore",
           "p560",
-          "errori posa"
+          "p560 errata",
+          "rete fuori piano",
+          "rete fuori spessore",
+          "vite non a battuta"
         ]
       }
     },
@@ -861,19 +909,22 @@
         "Serve verifica: contatta l’ufficio tecnico per il dimensionamento."
       ],
       "paraphrases": [
-        "Quanti VCEM devo mettere?",
-        "Passo connettori per metro",
         "Calcolo numero connettori VCEM",
+        "Come calcolo il passo dei VCEM?",
         "Densità punti VCEM",
+        "Passo connettori per metro",
+        "Quanti VCEM devo mettere per metro?",
+        "Quanti VCEM devo mettere?",
         "Tabelle Tecnaria VCEM"
       ],
       "trigger": {
         "peso": 0.9,
         "keywords": [
-          "numero connettori",
           "calcolo",
-          "tabelle tecnaria",
+          "densità punti",
+          "numero connettori",
           "passo per metro",
+          "tabelle tecnaria",
           "verifica tecnica"
         ]
       }
@@ -970,15 +1021,14 @@
         "Kit VCEM"
       ],
       "trigger": {
-        "peso": 0.8,
+        "peso": 0.75,
         "keywords": [
-          "trapano",
-          "punta 6-8",
           "aria compressa",
           "aspirazione",
+          "c25/30",
           "chiave",
-          "rete",
-          "c25/30"
+          "punta 6-8",
+          "trapano"
         ]
       }
     },
@@ -1005,7 +1055,7 @@
         "Cura nel tempo dei VCEM"
       ],
       "trigger": {
-        "peso": 0.85,
+        "peso": 0.8,
         "keywords": [
           "manutenzione",
           "controlli",
