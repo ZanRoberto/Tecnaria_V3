@@ -1,12 +1,12 @@
-# app.py — Tecnaria Sinapsi Q/A (OFFLINE) con UI
-# Rotte: / (stato), /ping, /status, /ask (POST), /ui (interfaccia)
+# app.py — Tecnaria Sinapsi Q/A (OFFLINE) con UI "bella" in homepage
+# Rotte: / (UI), /ping, /status, /ask (POST)
 # Legge SOLO static/data/tecnaria_gold.json
 
 import json, re, unicodedata
 from pathlib import Path
 from typing import Dict, Any, List, Tuple, Set
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
 APP_DIR = Path(__file__).parent
@@ -113,87 +113,6 @@ class AskInput(BaseModel):
     question: str
 
 # ---------- ROUTES ----------
-@app.get("/", response_class=HTMLResponse)
-def home():
-    return """
-    <!doctype html><meta charset="utf-8">
-    <title>Tecnaria — Stato</title>
-    <div style="font-family:system-ui;padding:18px">
-      <h2>Tecnaria Sinapsi — Q/A (offline)</h2>
-      <p>Endpoint: <a href="/ui">/ui</a> · <a href="/status">/status</a> · <a href="/ping">/ping</a></p>
-      <pre id="out" style="background:#111;color:#eee;padding:12px;border-radius:10px;"></pre>
-    </div>
-    <script>fetch('/status').then(r=>r.json()).then(j=>{
-      out.textContent = JSON.stringify(j,null,2);
-    }).catch(e=>{ out.textContent = 'Errore: '+e; });</script>
-    """
-
-@app.get("/ui", response_class=HTMLResponse)
-def ui():
-    return """
-    <!doctype html><meta charset="utf-8">
-    <title>Tecnaria Sinapsi — Q/A</title>
-    <style>
-      body{font-family:system-ui;background:#0b0b0b;color:#eee;margin:0}
-      header{background:linear-gradient(90deg,#ff7a00,#111);padding:16px 20px;font-weight:800}
-      .wrap{max-width:1100px;margin:18px auto;padding:0 12px}
-      .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-      #q{flex:1;min-width:420px;padding:12px;background:#111;border:1px solid #333;border-radius:10px;color:#fff}
-      #go{background:#ff7a00;color:#111;border:0;padding:12px 18px;border-radius:10px;font-weight:800;cursor:pointer}
-      .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#222;color:#ddd;margin-right:8px;font-size:12px}
-      .ans{white-space:pre-wrap;background:#111;border:1px solid #333;border-radius:12px;padding:12px;margin-top:14px}
-      .meta{font-size:12px;color:#aaa;margin-top:6px}
-      a{color:#ffb366}
-    </style>
-    <header>Tekcnaria Sinapsi — Q/A</header>
-    <div class="wrap">
-      <div class="row">
-        <input id="q" placeholder="Scrivi la domanda... es. CTF su lamiera: quanti chiodi?" />
-        <button id="go">Invia</button>
-        <span id="badge" class="pill">Verifica stato…</span>
-      </div>
-      <div style="margin-top:8px">
-        <span class="pill" onclick="ex('CTF su lamiera: quanti chiodi?')">CTF su lamiera</span>
-        <span class="pill" onclick="ex('CTL vs CTL MAXI: differenze?')">CTL vs CTL MAXI</span>
-        <span class="pill" onclick="ex('P560 su VCEM: è valido?')">P560 su VCEM</span>
-      </div>
-      <div id="res" class="ans" style="display:none"></div>
-      <div id="meta" class="meta"></div>
-    </div>
-    <script>
-      async function status(){
-        try{
-          const r = await fetch('/status'); const j = await r.json();
-          const b = document.getElementById('badge');
-          if(j.ok){ b.textContent = 'PRONTO · items: '+j.items; b.style.background='#1b6'; }
-          else { b.textContent = j.message || 'ERRORE'; b.style.background='#c33'; }
-        }catch(e){ badge.textContent='ERRORE STATO'; badge.style.background='#c33'; }
-      }
-      async function ask(q){
-        const r = await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
-        const j = await r.json();
-        const R = document.getElementById('res');
-        const M = document.getElementById('meta');
-        if(j.ok){
-          R.style.display='block';
-          R.textContent = j.answer || '(nessuna risposta)';
-          const m = j.meta||{};
-          M.textContent = `id: ${m.best_item?.id||'-'} · family: ${m.best_item?.family||'-'} · trigger_hits: ${m.trigger_hits} · score: ${m.score_internal}`;
-        }else{
-          R.style.display='block';
-          R.textContent = 'Errore: '+(j.detail||JSON.stringify(j));
-          M.textContent = '';
-        }
-      }
-      document.getElementById('go').onclick = ()=>{
-        const q = document.getElementById('q').value.trim();
-        if(q) ask(q);
-      };
-      function ex(t){ document.getElementById('q').value=t; }
-      status();
-    </script>
-    """
-
 @app.get("/ping")
 def ping():
     return "alive"
@@ -210,9 +129,6 @@ def status():
     except Exception as e:
         return JSONResponse({"ok": False, "file": str(DATA_FILE), "items": 0, "message": "ERRORE GENERICO", "error": str(e)}, status_code=500)
 
-class AskInput(BaseModel):
-    question: str
-
 @app.post("/ask")
 def ask(body: AskInput):
     q = (body.question or "").strip()
@@ -224,3 +140,116 @@ def ask(body: AskInput):
         raise HTTPException(status_code=500, detail=f"Dataset non disponibile: {e}")
     result = answer_from_json(q)
     return {"ok": True, "question": q, **result}
+
+# ---------- UI "bella" in homepage ----------
+@app.get("/", response_class=HTMLResponse)
+def ui():
+    return """
+<!doctype html><meta charset="utf-8" />
+<title>Tecnaria Sinapsi — Q/A</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+:root{--bg:#0b0b0b;--card:#111;--muted:#888;--accent:#ff7a00;--accent2:#ffb366;--ok:#1db56e;--err:#e44848;--text:#eee}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+header{background:linear-gradient(90deg,var(--accent),#111);padding:18px 22px}
+h1{margin:0;font-size:22px;letter-spacing:.3px}
+.wrap{max-width:1120px;margin:18px auto;padding:0 12px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+input#q{flex:1;min-width:360px;padding:14px 16px;border-radius:14px;border:1px solid #2a2a2a;background:var(--card);color:var(--text);outline:none}
+button#go{padding:14px 18px;border-radius:14px;border:none;background:var(--accent);color:#111;font-weight:800;cursor:pointer;transition:transform .05s}
+button#go:active{transform:scale(.98)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:#222;color:#ddd;font-size:12px;margin-right:8px}
+.badge{font-weight:800}
+.examples{margin-top:10px}
+.card{background:var(--card);border:1px solid #222;border-radius:16px;padding:16px;margin-top:14px}
+.meta{font-size:12px;color:#aaa;margin-top:8px}
+a{color:var(--accent2);text-decoration:none}
+.copy{cursor:pointer;font-size:12px;color:#ccc;border:1px solid #333;border-radius:10px;padding:4px 8px;margin-left:8px}
+.footer{opacity:.7;font-size:12px;margin-top:18px}
+.kv{display:inline-block;background:#1a1a1a;border:1px solid #292929;border-radius:10px;padding:8px 10px;margin-right:8px}
+.kv b{color:#ddd}
+</style>
+<header><h1>Tecnaria Sinapsi — Q/A (offline)</h1></header>
+<div class="wrap">
+  <div class="row">
+    <input id="q" placeholder="Scrivi la domanda… es. CTF su lamiera: quanti chiodi?" />
+    <button id="go">Invia</button>
+    <span id="badge" class="pill badge">Verifica stato…</span>
+  </div>
+
+  <div class="examples">
+    <span class="pill" onclick="ex('CTF su lamiera: quanti chiodi?')">CTF su lamiera</span>
+    <span class="pill" onclick="ex('CTL vs CTL MAXI: differenze?')">CTL vs CTL MAXI</span>
+    <span class="pill" onclick="ex('P560 su VCEM: è valido?')">P560 su VCEM</span>
+    <span class="pill" onclick="ex('Come si posano i connettori CTF su trave in acciaio con lamiera grecata?')">Posa CTF + lamiera</span>
+  </div>
+
+  <div id="answerCard" class="card" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="font-weight:700">Risposta</div>
+      <div>
+        <span class="copy" onclick="copyText()">Copia testo</span>
+        <span class="copy" onclick="copyJSON()">Copia JSON</span>
+      </div>
+    </div>
+    <div id="ans" style="white-space:pre-wrap;margin-top:8px;line-height:1.45"></div>
+    <div id="meta" class="meta"></div>
+  </div>
+
+  <div class="footer">
+    Endpoint: <a href="/status">/status</a> · <a href="/ping">/ping</a> · API: <code>POST /ask {"question": "..."}</code>
+  </div>
+</div>
+
+<script>
+async function status(){
+  try{
+    const r = await fetch('/status'); const j = await r.json();
+    const b = document.getElementById('badge');
+    if(j.ok){ b.textContent = 'PRONTO · items: '+j.items; b.style.background='#145f3b'; }
+    else { b.textContent = j.message || 'ERRORE'; b.style.background='#6a1b1b'; }
+  }catch(e){
+    const b = document.getElementById('badge');
+    b.textContent='ERRORE STATO'; b.style.background='#6a1b1b';
+  }
+}
+async function ask(q){
+  const r = await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+  const data = await r.json();
+  const card = document.getElementById('answerCard');
+  const A = document.getElementById('ans');
+  const M = document.getElementById('meta');
+  if(data.ok){
+    card.style.display='block';
+    A.textContent = data.answer || '(nessuna risposta)';
+    const m = data.meta || {};
+    M.innerHTML = `
+      <span class="kv"><b>ID</b> ${m.best_item?.id || '-'}</span>
+      <span class="kv"><b>Family</b> ${m.best_item?.family || '-'}</span>
+      <span class="kv"><b>Trigger</b> ${m.trigger_hits}</span>
+      <span class="kv"><b>Score</b> ${Math.round((m.score_internal||0)*100)/100}</span>
+    `;
+    window.__lastPayload = data;
+  }else{
+    card.style.display='block';
+    A.textContent = 'Errore: '+(data.detail||JSON.stringify(data));
+    M.textContent = '';
+  }
+}
+document.getElementById('go').onclick = ()=>{
+  const v = document.getElementById('q').value.trim();
+  if(v) ask(v);
+};
+function ex(t){ document.getElementById('q').value=t; }
+function copyText(){
+  const A = document.getElementById('ans').textContent;
+  navigator.clipboard.writeText(A);
+}
+function copyJSON(){
+  const payload = window.__lastPayload || {};
+  navigator.clipboard.writeText(JSON.stringify(payload,null,2));
+}
+status();
+</script>
+"""
