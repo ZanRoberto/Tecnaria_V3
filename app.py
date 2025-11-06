@@ -1,25 +1,22 @@
-# app.py — FastAPI "offline" per Tecnaria_V3
-# - Usa SOLO il dataset: static/data/tecnaria_gold.json
-# - Endpoint: /ping, /status, /ask
-# - Nessuna dipendenza esterna (niente OpenAI)
-# - Matching semplice per trigger/keywords + family hints
+# app.py — Tecnaria Sinapsi Q/A (OFFLINE)
+# Rotte: / (home con stato), /ping, /status, /ask (POST)
+# Legge SOLO static/data/tecnaria_gold.json
 
-import json, re, unicodedata, time
+import json, re, unicodedata
 from pathlib import Path
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Set
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
 
 APP_DIR = Path(__file__).parent
-DATA_FILE = APP_DIR / "static" / "data" / "tecnaria_gold.json"  # <<— PERCORSO FISSO
+DATA_FILE = APP_DIR / "static" / "data" / "tecnaria_gold.json"
 
 app = FastAPI(title="Tecnaria Sinapsi — Q/A (offline)")
 
-# ====== UTILS ======
+# ---------- utils ----------
 def normalize(text: str) -> str:
-    if not text: 
-        return ""
+    if not text: return ""
     t = unicodedata.normalize("NFKD", text)
     t = "".join(ch for ch in t if not unicodedata.combining(ch))
     t = t.lower()
@@ -30,16 +27,16 @@ def normalize(text: str) -> str:
 def tokenize(text: str) -> List[str]:
     return normalize(text).split()
 
-# ====== LOADER CON CACHE ======
+# ---------- loader con cache ----------
 _db_cache: Dict[str, Any] = {}
 _db_mtime: float = 0.0
 
-def load_db(force: bool = False) -> Dict[str, Any]:
+def load_db(force: bool=False) -> Dict[str, Any]:
     global _db_cache, _db_mtime
     if not DATA_FILE.exists():
         raise FileNotFoundError(f"File non trovato: {DATA_FILE}")
     mtime = DATA_FILE.stat().st_mtime
-    if force or (mtime != _db_mtime) or not _db_cache:
+    if force or not _db_cache or mtime != _db_mtime:
         raw = DATA_FILE.read_text(encoding="utf-8")
         try:
             data = json.loads(raw)
@@ -51,22 +48,22 @@ def load_db(force: bool = False) -> Dict[str, Any]:
         _db_mtime = mtime
     return _db_cache
 
-# ====== RISPOSTORE ======
-FAMILY_HINT_WEIGHT = {
-    "CTF": 1.1, "CTL": 1.1, "CTL MAXI": 1.15, "CTCEM": 1.1,
-    "VCEM": 1.1, "P560": 1.05, "DIAPASON": 1.0, "GTS": 1.0,
-    "ACCESSORI": 1.0, "CONFRONTO": 0.9, "PROBLEMATICHE": 1.0, "KILLER": 1.0, "COMM": 0.85
+# ---------- matcher ----------
+FAMILY_HINT_WEIGHT: Dict[str, float] = {
+    "CTF":1.1, "CTL":1.1, "CTL MAXI":1.15, "CTCEM":1.1, "VCEM":1.1,
+    "P560":1.05, "DIAPASON":1.0, "GTS":1.0, "ACCESSORI":1.0,
+    "CONFRONTO":0.9, "PROBLEMATICHE":1.0, "KILLER":1.0, "COMM":0.85
 }
 FAM_TOKENS = ["ctf","ctl","maxi","ctcem","vcem","p560","diapason","gts","accessori","confronto","problematiche","killer","comm"]
 
-def family_hints_from_text(text_norm: str) -> set:
-    hints = set()
+def family_hints_from_text(text_norm: str) -> Set[str]:
+    hints: Set[str] = set()
     for fam in FAM_TOKENS:
         if fam in text_norm:
             hints.add(fam.upper() if fam != "maxi" else "CTL MAXI")
     return hints
 
-def score_item(question_norm: str, item: Dict[str, Any], family_hints: set) -> Tuple[float, int]:
+def score_item(question_norm: str, item: Dict[str,Any], family_hints: Set[str]) -> Tuple[float,int]:
     trig = (item.get("trigger") or {})
     kws = [normalize(k) for k in (trig.get("keywords") or [])]
     peso = float(trig.get("peso", 1.0))
@@ -88,18 +85,15 @@ def answer_from_json(question: str) -> Dict[str, Any]:
     qn = normalize(question)
     hints = family_hints_from_text(qn)
 
-    best = None
-    best_score = -1.0
-    best_hits = 0
+    best = None; best_score = -1.0; best_hits = 0
     for it in items:
         s, h = score_item(qn, it, hints)
         if s > best_score:
             best_score, best, best_hits = s, it, h
 
     if best is None or best_score <= 0:
-        # fallback deterministico: prova alcune ID note
-        for fid in ("CTF-0001", "COMM-0001"):
-            cand = next((it for it in items if it.get("id") == fid), None)
+        for fid in ("CTF-0001","COMM-0001"):
+            cand = next((it for it in items if it.get("id")==fid), None)
             if cand:
                 best, best_score, best_hits = cand, 0.1, 0
                 break
@@ -114,11 +108,26 @@ def answer_from_json(question: str) -> Dict[str, Any]:
         }
     }
 
-# ====== SCHEMI I/O ======
+# ---------- I/O ----------
 class AskInput(BaseModel):
     question: str
 
-# ====== ENDPOINTS ======
+# ---------- ROUTES ----------
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return """
+    <!doctype html><meta charset="utf-8">
+    <title>Tecnaria — Stato</title>
+    <div style="font-family:system-ui;padding:18px">
+      <h2>Tecnaria Sinapsi — Q/A (offline)</h2>
+      <p>Endpoint: <a href="/status">/status</a> · <a href="/ping">/ping</a></p>
+      <pre id="out" style="background:#111;color:#eee;padding:12px;border-radius:10px;"></pre>
+    </div>
+    <script>fetch('/status').then(r=>r.json()).then(j=>{
+      out.textContent = JSON.stringify(j,null,2);
+    }).catch(e=>{ out.textContent = 'Errore: '+e; });</script>
+    """
+
 @app.get("/ping")
 def ping():
     return "alive"
@@ -126,9 +135,8 @@ def ping():
 @app.get("/status")
 def status():
     try:
-        db = load_db(force=False)
-        n = len(db.get("items", []))
-        return JSONResponse({"ok": True, "file": str(DATA_FILE), "items": n, "message": "PRONTO"})
+        db = load_db(False)
+        return JSONResponse({"ok": True, "file": str(DATA_FILE), "items": len(db.get("items", [])), "message": "PRONTO"})
     except FileNotFoundError as e:
         return JSONResponse({"ok": False, "file": str(DATA_FILE), "items": 0, "message": "FILE NON TROVATO", "error": str(e)}, status_code=500)
     except ValueError as e:
@@ -138,16 +146,12 @@ def status():
 
 @app.post("/ask")
 def ask(body: AskInput):
-    question = (body.question or "").strip()
-    if not question:
+    q = (body.question or "").strip()
+    if not q:
         raise HTTPException(status_code=400, detail="question mancante")
-    # garantiamo che il JSON sia valido prima
-    st = status()
-    if isinstance(st, JSONResponse):
-        js = st.body
     try:
-        db = load_db()
+        load_db()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Dataset non disponibile: {e}")
-    result = answer_from_json(question)
-    return {"ok": True, "question": question, **result}
+    result = answer_from_json(q)
+    return {"ok": True, "question": q, **result}
