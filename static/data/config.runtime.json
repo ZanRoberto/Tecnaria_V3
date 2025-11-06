@@ -6,7 +6,7 @@
       "variant_seed": 20251106
     },
     "security": {
-      "admin_token_sha256": "50a477f4e8256f1f26870a3b19df8abe53db33afb4e0394afef5472060210595"
+      "admin_token_sha256": ""
     }
   }
 }
