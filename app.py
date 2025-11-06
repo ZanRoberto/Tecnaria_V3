@@ -1,291 +1,357 @@
-# app.py — Tecnaria Sinapsi Q/A (OFFLINE) — Router GOLD con Narration Booster
-# Rotte: / (UI), /ping, /status, /ask (POST)
-# Legge SOLO static/data/tecnaria_gold.json (non modifichiamo il tuo file)
-# Obiettivi:
-# 1) Instradamento per FAMIGLIA -> Item (semantico) con antitemi e pesi come spareggio
-# 2) Gold Narration Booster per risposte "secche" (Contesto → Istruzioni → Alternativa → Checklist → Nota RAG)
+from __future__ import annotations
 
-import json, re, unicodedata, math
+import json
+import re
+import random
+import hashlib
 from pathlib import Path
-from typing import Dict, Any, List, Tuple
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
-from pydantic import BaseModel
+from typing import Dict, Any, List, Optional, Tuple
 
-APP_DIR = Path(__file__).parent
-DATA_FILE = APP_DIR / "static" / "data" / "tecnaria_gold.json"
+from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Tecnaria Sinapsi — Q/A (offline, router GOLD)")
+# === PERCORSI BASE (adatta solo se cambi struttura) ===
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "static" / "data"
+CONFIG_PATH = DATA_DIR / "config.runtime.json"
 
-# ---------- Utils ----------
+# === APP FASTAPI ===
+app = FastAPI(title="Tecnaria Sinapsi — Q/A", version="1.0.0")
 
-def norm(s: str) -> str:
-    s = s.lower()
-    s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
-    s = re.sub(r"[^a-z0-9\s/+-]", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # restringi in produzione se vuoi
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-def cosine(a_tokens: List[str], b_tokens: List[str]) -> float:
-    from collections import Counter
-    a, b = Counter(a_tokens), Counter(b_tokens)
-    ka = set(a); kb = set(b)
-    inter = sum(min(a[k], b[k]) for k in ka & kb)
-    na = math.sqrt(sum(v*v for v in a.values()))
-    nb = math.sqrt(sum(v*v for v in b.values()))
-    return (inter/(na*nb)) if na and nb else 0.0
+# === CACHE SEMPLICE IN MEMORIA (riusa tra richieste) ===
+_families_cache: Dict[str, Dict[str, Any]] = {}
+_config_cache: Dict[str, Any] = {}
+_rr_counters: Dict[str, int] = {}  # round-robin per item id
 
-def tokenize(s: str) -> List[str]:
-    return norm(s).split()
 
-def soft_contains(text: str, words: List[str]) -> bool:
-    t = norm(text)
-    return any(w in t for w in words)
+# ---------------------------
+# Utilità I/O
+# ---------------------------
+def _read_json(path: Path) -> Dict[str, Any]:
+    if not path.exists():
+        raise FileNotFoundError(f"File non trovato: {path}")
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
 
-# ---------- Caricamento dati ----------
-if not DATA_FILE.exists():
-    raise RuntimeError(f"Manca il file dati: {DATA_FILE}")
 
-with open(DATA_FILE, "r", encoding="utf-8") as f:
-    DATA = json.load(f)
-
-ITEMS: List[Dict[str, Any]] = DATA.get("items", [])
-for it in ITEMS:
-    it.setdefault("trigger", {"peso": 0.5, "keywords": []})
-    if isinstance(it["trigger"], dict):
-        it["trigger"].setdefault("keywords", [])
-
-# Mappa famiglie -> parole chiave principali per instradamento
-FAM_ROUTE = {
-    "COMM": ["ordinare","acquistare","sede","indirizzo","telefono","email","listino","preventivo","commerciale"],
-    "CTF":  ["trave acciaio","lamiera","p560","chiodi","hsbr14","sparare","spit"],
-    "CTL":  ["legno","tavolato","soletta su legno","preforo","avvitare"],
-    "CTL MAXI": ["legno","tavolato 2 cm","maxi","dente lungo"],
-    "CTCEM": ["laterocemento","travetto","foro","vite","dentato","boiacca","malta"],
-    "VCEM": ["laterocemento","foro","vite","p560 su vcem","sparato vcem"],
-    "P560": ["p560","spit","chiodatrice","hsbr14","sparo","test di posa"],
-    "DIAPASON": ["diapason","piastra","rinforzo"],
-    "GTS": ["gts","trave solaio","giunzioni"],
-    "ACCESSORI": ["punte","rondelle","adattatori","kit","accessori"],
-    "CONFRONTO": ["differenza","vs","meglio","quale scelgo","confronto"],
-    "PROBLEMATICHE": ["errore","problema","non entra","non risponde","extra data","503"],
-    "KILLER": ["sparato vcem","errore killer","ho sparato","chiodo sbagliato"]
-}
-
-# Antitema: parole che escludono certi item (es. la “sede” non deve rispondere a “ordinare”)
-ANTI = {
-    "COMM-0001": ["ordinare","acquistare","preventivo","listino","prezzo","comprare","ordine"],
-}
-
-# ---------- Gold Narration Booster ----------
-def is_too_short(resp: str) -> bool:
-    # Se la risposta ha meno di 280 caratteri o meno di 3 righe, la consideriamo "secca"
-    return len(resp.strip()) < 280 or resp.count("\n") < 3
-
-def gold_boost(family: str, domanda: str, resp: str) -> str:
-    if not is_too_short(resp):
-        return resp  # già ok
-
-    # Template GOLD sintetici per famiglia
-    templates = {
-        "COMM": {
-            "contesto": "Le richieste COMM riguardano contatti, ordini, listini e supporto istituzionale Tecnaria.",
-            "istruzioni": "Per piccoli ordini invia email a info@tecnaria.com con codice, quantità, cantiere e urgenza; per forniture complesse chiedi conferma disponibilità/tempi all’ufficio commerciale.",
-            "alternativa": "Se non conosci i codici, allega foto o sezione del solaio: il tecnico indica famiglia e misura.",
-            "check": ["codice + quantità","cantiere","tempi richiesti","eventuali accessori (P560/HSBR14/punte)"],
-            "nota": "Ordine piccolo → canale veloce; ordine complesso → validazione tecnica prima."
-        },
-        "CTCEM": {
-            "contesto": "CTCEM è la famiglia per solai in laterocemento con travetti: fissaggio meccanico, non a sparo.",
-            "istruzioni": "Eseguire foro nel travetto, pulizia accurata, avvitatura secondo schema Tecnaria; getto C25/30 con rete a metà.",
-            "alternativa": "Se i travetti sono ammalorati, prevedere ripristino prima della posa.",
-            "check": ["foro pulito","vite corretta","rete a metà spessore","no P560, no resine"],
-            "nota": "CTCEM quando serve più interblocco ‘dentato’ nel travetto."
-        },
-        "VCEM": {
-            "contesto": "VCEM è la soluzione a vite per laterocemento quando serve fissaggio verticale e rapido.",
-            "istruzioni": "Forare, pulire, avvitare secondo schema; getto C25/30 con rete a metà.",
-            "alternativa": "Se hai sparato per errore, rimuovi chiodo, ripristina e posa con vite.",
-            "check": ["no P560","foro pulito","vite idonea","rete a metà"],
-            "nota": "VCEM per fissaggio a vite; se serve più presa nel travetto, valuta CTCEM."
-        },
-        "CTF": {
-            "contesto": "CTF collega travi in acciaio a solette collaboranti, spesso con lamiera grecata.",
-            "istruzioni": "Posa a secco con SPIT P560: 2 chiodi HSBR14 per connettore, lamiera ben serrata.",
-            "alternativa": "Se la lamiera si muove, fissarla prima (viti/saldature puntuali).",
-            "check": ["teste chiodi a filo piastra","perpendicolarità","rete a metà","cls ≥ C25/30"],
-            "nota": "Tarare la P560 con 2–3 tiri di prova sullo stesso pacchetto."
-        },
-        "CTL": {
-            "contesto": "CTL è per travi in legno con soletta collaborante.",
-            "istruzioni": "Preforo guidato se necessario, avvitatura nel legno, posa rete, getto 5 cm circa.",
-            "alternativa": "Tavolato 2 cm o soletta 5–6 cm? valuta CTL MAXI.",
-            "check": ["legno sano","preforo se legno duro","rete a metà","cls C25/30"],
-            "nota": "CTL per legno sano; se serve più dente nel calcestruzzo, CTL MAXI."
+def load_config() -> Dict[str, Any]:
+    global _config_cache
+    try:
+        cfg = _read_json(CONFIG_PATH)
+        _config_cache = cfg
+        return cfg
+    except FileNotFoundError:
+        # default sicuro: CANONICAL
+        default_cfg = {
+            "admin": {
+                "response_policy": {
+                    "mode": "canonical",
+                    "variant_selection": "round_robin",
+                    "variant_seed": 20251106,
+                },
+                "security": {"admin_token_sha256": ""},
+            }
         }
-    }
+        _config_cache = default_cfg
+        return default_cfg
 
-    t = templates.get(family)
-    if not t:
-        # fallback generico
-        t = {
-            "contesto":"Risposta arricchita in stile GOLD.",
-            "istruzioni":"Applica le istruzioni ufficiali di posa e le raccomandazioni di sicurezza Tecnaria.",
-            "alternativa":"Se il caso non rientra nello schema tipico, contatta l’ufficio tecnico.",
-            "check":["coerenza supporto","istruzioni posa rispettate","rete a metà spessore","cls conforme"],
-            "nota":"Instradamento automatico GOLD attivo."
+
+def get_config() -> Dict[str, Any]:
+    # ricarica sempre (così puoi cambiare il file a caldo)
+    return load_config()
+
+
+def load_family(family_name: str) -> Dict[str, Any]:
+    """
+    Carica una famiglia (es. 'VCEM') dal file static/data/VCEM.json
+    """
+    global _families_cache
+    fname = f"{family_name.upper()}.json"
+    path = DATA_DIR / fname
+    data = _read_json(path)
+    # normalizza struttura minima attesa
+    if "family" not in data:
+        data["family"] = family_name.upper()
+    if "response_policy" not in data:
+        data["response_policy"] = {
+            "mode": "inherit",
+            "variant_selection": "inherit",
+            "lock_to_item_core": False,
         }
+    if "items" not in data:
+        data["items"] = []
+    _families_cache[family_name.upper()] = data
+    return data
 
-    chunks = []
-    chunks.append(f"**Contesto:** {t['contesto']}")
-    chunks.append(f"**Istruzioni pratiche:** {t['istruzioni']}")
-    if t.get("alternativa"):
-        chunks.append(f"**Alternativa:** {t['alternativa']}")
-    if t.get("check"):
-        cl = "".join([f"\n- [✔] {c}" for c in t["check"]])
-        chunks.append(f"**Checklist:**{cl}")
-    chunks.append(f"**Nota RAG:** {t['nota']}")
 
-    # inseriamo anche la risposta originale (se c’è qualcosa di utile) in apertura
-    base = resp.strip()
-    if base:
-        base = re.sub(r"\s+\n", "\n", base)
-        base = f"{base}\n\n"
-    return base + "\n".join(chunks)
-
-# ---------- Instradamento domanda -> famiglia ----------
-
-def guess_families(question: str) -> List[str]:
-    qn = norm(question)
-    # punteggio semplice per famiglia
-    scores = []
-    for fam, kws in FAM_ROUTE.items():
-        score = sum(1 for k in kws if k in qn)
-        scores.append((fam, score))
-    # fallback: se non c'è nulla, prova famiglie “CONFRONTO” se compaiono vs/meglio/differenza
-    scores.sort(key=lambda x: x[1], reverse=True)
-    if scores and scores[0][1] > 0:
-        # prendi le top 3 per sicurezza
-        return [s for s,_ in scores[:3] if _>0]
-    # default: tutte (ma CONFRONTO prima se c'è “vs/differenza/meglio”)
-    if any(w in qn for w in ["vs","differenza","meglio","quale scelgo","confronto"]):
-        ordered = ["CONFRONTO"] + [f for f in FAM_ROUTE if f!="CONFRONTO"]
-        return ordered
-    return list(FAM_ROUTE.keys())
-
-def antitheme_exclude(item: Dict[str,Any], question: str) -> bool:
-    # esclude item noti (es: COMM-0001 non deve rispondere a "ordinare")
-    bad = ANTI.get(item.get("id",""), [])
-    return any(w in norm(question) for w in bad)
-
-def pick_item(question: str) -> Dict[str,Any]:
-    fams = guess_families(question)
-    q_tokens = tokenize(question)
-
-    # filtra gli item per famiglie candidate
-    pool = [it for it in ITEMS if it.get("family") in fams]
-    if not pool:
-        pool = ITEMS[:]  # worst case
-
-    # calcola similarità testuale su (domanda + keywords)
-    scored = []
-    for it in pool:
-        if antitheme_exclude(it, question):
-            continue
-        trig = it.get("trigger", {})
-        kw = trig.get("keywords", []) if isinstance(trig, dict) else []
-        it_text = f"{it.get('domanda','')} {' '.join(kw)}"
-        score = cosine(q_tokens, tokenize(it_text))
-        peso = float(trig.get("peso", 0.5)) if isinstance(trig, dict) else 0.5
-        scored.append((score, peso, it))
-
-    if not scored:
-        # nulla di buono: prendi l'item con massima copertura COMM-0002 oppure fallback COMM-0001
-        fallback = [it for it in ITEMS if it.get("id")=="COMM-0002"] or [it for it in ITEMS if it.get("id")=="COMM-0001"]
-        return fallback[0] if fallback else ITEMS[0]
-
-    # ordina: prima similarità, poi peso
-    scored.sort(key=lambda t: (t[0], t[1]), reverse=True)
-    return scored[0][2]
-
-# ---------- API ----------
-
-class AskBody(BaseModel):
-    question: str
-
-UI_HTML = """
-<!doctype html>
-<html lang="it">
-<head>
-  <meta charset="utf-8"/>
-  <title>Tecnaria Sinapsi — Q/A</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <style>
-    body{font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;background:#0d0d0d;color:#eee;margin:0}
-    header{background:linear-gradient(90deg,#ff7a00,#111);padding:24px 16px}
-    h1{margin:0;font-size:20px}
-    .wrap{max-width:980px;margin:0 auto;padding:20px}
-    .card{background:#151515;border:1px solid #222;border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
-    .pill{display:inline-block;background:#262626;border:1px solid #333;padding:6px 10px;border-radius:999px;margin-right:8px;font-size:12px;color:#bbb}
-    input,button{font-size:16px}
-    input{width:100%;padding:14px;border-radius:12px;border:1px solid #333;background:#111;color:#eee}
-    button{padding:12px 16px;border-radius:12px;border:1px solid #444;background:#ff7a00;color:#111;font-weight:700;cursor:pointer}
-    .answer{white-space:pre-wrap;line-height:1.5}
-    .meta{font-size:12px;color:#aaa;margin-top:8px}
-  </style>
-</head>
-<body>
-<header><div class="wrap"><h1>Tecnaria Sinapsi — Q/A (Router GOLD)</h1></div></header>
-<div class="wrap">
-  <div class="card">
-    <div style="margin-bottom:10px;">
-      <span class="pill">Perfezione</span><span class="pill">CTF • CTL • CTCEM • VCEM • P560</span><span class="pill">IT ⇄ EN/FR/DE/ES (runtime)</span>
-    </div>
-    <input id="q" placeholder="Fai una domanda (es. Come faccio un piccolo ordine?)"/>
-    <div style="margin-top:10px;"><button onclick="ask()">Chiedi</button></div>
-    <div id="ans" class="answer" style="margin-top:16px;"></div>
-    <div id="meta" class="meta"></div>
-  </div>
-</div>
-<script>
-async function ask(){
-  const q = document.getElementById('q').value || '';
-  const r = await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
-  const j = await r.json();
-  document.getElementById('ans').textContent = j.answer || '(nessuna risposta)';
-  document.getElementById('meta').textContent = `→ ID ${j.id} • Famiglia ${j.family}`;
+# ---------------------------
+# Normalizzazione e sinonimi
+# ---------------------------
+SINONIMI_MAP = {
+    # attrezzi P560
+    r"\bsparachiodi\b": "p560",
+    r"\bchiodatrice\b": "p560",
+    r"\bpistola\b": "p560",
+    r"\bspit\b": "p560",
+    r"\bcolpo\b": "p560",
+    # materiali
+    r"\bcls\b": "c25/30",
+    r"\bbeton\b": "c25/30",
+    # lavorazioni
+    r"\bsoffiare\b": "pulire",
+    r"\baspirare\b": "pulire",
+    r"\bforatura\b": "foro",
+    r"\bforare\b": "foro",
+    r"\bavvitatura\b": "avvitare",
+    # famiglie
+    r"\blocmente\b": "laterocemento",
 }
-</script>
-</body>
-</html>
-"""
 
-@app.get("/", response_class=HTMLResponse)
-def home():
-    return UI_HTML
+TOKEN_SPLIT = re.compile(r"[^a-z0-9àèéìòùç]+", re.IGNORECASE)
 
-@app.get("/ping", response_class=PlainTextResponse)
-def ping():
-    return "alive"
 
-@app.get("/status", response_class=JSONResponse)
-def status():
-    return {"items": len(ITEMS), "data_file": str(DATA_FILE)}
+def normalize_query(q: str) -> str:
+    q = q.strip().lower()
+    # rimuovi punteggiatura
+    q = re.sub(r"[^\w\sàèéìòùç]", " ", q, flags=re.UNICODE)
+    # sostituzioni sinonimi
+    for pat, repl in SINONIMI_MAP.items():
+        q = re.sub(pat, repl, q)
+    # spazi multipli
+    q = re.sub(r"\s+", " ", q)
+    return q.strip()
 
-@app.post("/ask", response_class=JSONResponse)
-def ask(body: AskBody):
-    q = (body.question or "").strip()
-    if not q:
-        raise HTTPException(400, "question vuota")
-    item = pick_item(q)
-    family = item.get("family","")
-    base_answer = item.get("risposta","").strip()
 
-    # booster GOLD se la risposta è asciutta
-    final_answer = gold_boost(family, q, base_answer)
+def tokenize(q: str) -> List[str]:
+    return [t for t in TOKEN_SPLIT.split(q) if t]
+
+
+# ---------------------------
+# Matching semplice (robusto)
+# ---------------------------
+def kw_score(query_norm: str, item: Dict[str, Any]) -> int:
+    score = 0
+    kws = (item.get("trigger") or {}).get("keywords") or []
+    for kw in kws:
+        kw_norm = kw.lower().strip()
+        if kw_norm and kw_norm in query_norm:
+            score += 1
+    return score
+
+
+def paraphrase_score(query_norm: str, item: Dict[str, Any]) -> float:
+    """
+    Score semplificato: max overlap di token tra query e ogni paraphrase.
+    """
+    paras = item.get("paraphrases") or []
+    if not paras:
+        return 0.0
+    q_tokens = set(tokenize(query_norm))
+    best = 0.0
+    for p in paras:
+        p_norm = normalize_query(p)
+        p_tokens = set(tokenize(p_norm))
+        inter = len(q_tokens & p_tokens)
+        union = max(1, len(q_tokens | p_tokens))
+        jaccard = inter / union
+        if jaccard > best:
+            best = jaccard
+    return best
+
+
+def pick_best_item(query: str, family_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    qn = normalize_query(query)
+    items = family_data.get("items") or []
+    best: Tuple[float, Dict[str, Any]] | None = None
+
+    for it in items:
+        peso = float(((it.get("trigger") or {}).get("peso")) or 0.9)
+        s_kw = kw_score(qn, it)
+        s_pp = paraphrase_score(qn, it)
+        # combinazione semplice: keyword pesa di più
+        score = (s_kw * 1.0 + s_pp * 0.8) * peso
+        if best is None or score > best[0]:
+            best = (score, it)
+
+    if best and best[0] > 0:
+        return best[1]
+    return None
+
+
+# ---------------------------
+# Policy: canonical / dynamic
+# ---------------------------
+def effective_policy(
+    cfg: Dict[str, Any], family: Dict[str, Any], item: Dict[str, Any]
+) -> Dict[str, Any]:
+    # globale
+    g = ((cfg.get("admin") or {}).get("response_policy")) or {}
+    g_mode = g.get("mode", "canonical")
+    g_vs = g.get("variant_selection", "round_robin")
+    # famiglia
+    f = (family.get("response_policy")) or {}
+    f_mode = f.get("mode", "inherit")
+    f_vs = f.get("variant_selection", "inherit")
+    f_lock = bool(f.get("lock_to_item_core", False))
+    # item
+    i = (item.get("response_policy")) or {}
+    i_mode = i.get("mode", "inherit")
+    i_lock = bool(i.get("lock_to_core", False))
+    i_cindex = int(i.get("canonical_index", 0))
+
+    # risali le eredità
+    mode = i_mode if i_mode != "inherit" else (f_mode if f_mode != "inherit" else g_mode)
+    variant_sel = (
+        f_vs if f_vs != "inherit" else g_vs
+    )  # l'item non ridefinisce variant_selection (basta così)
+    lock_core = i_lock or f_lock
 
     return {
-        "id": item.get("id"),
-        "family": family,
-        "answer": final_answer
+        "mode": mode,
+        "variant_selection": variant_sel,
+        "lock_to_core": lock_core,
+        "canonical_index": i_cindex,
     }
+
+
+def select_response_text(
+    item: Dict[str, Any], policy: Dict[str, Any], family_name: str
+) -> Tuple[str, int, str]:
+    """
+    Ritorna (testo, variant_index, mode_usato)
+    """
+    mode = policy["mode"]
+    lock_core = policy["lock_to_core"]
+    variants: List[str] = item.get("response_variants") or []
+    core = (item.get("core_sentence") or "").strip()
+
+    if lock_core:
+        return (core, -1, f"{mode}+lock_core")
+
+    if mode == "canonical":
+        idx = int(policy.get("canonical_index", 0))
+        if variants:
+            idx = max(0, min(idx, len(variants) - 1))
+            return (variants[idx], idx, mode)
+        # fallback se non ci sono varianti
+        return (core or item.get("domanda", ""), -1, mode)
+
+    # mode == dynamic
+    if not variants:
+        return (core or item.get("domanda", ""), -1, mode)
+
+    vs = policy.get("variant_selection", "round_robin")
+    item_key = f"{family_name}:{item.get('id','UNKNOWN')}"
+    if vs == "random":
+        idx = random.randint(0, len(variants) - 1)
+    else:
+        # round-robin
+        c = _rr_counters.get(item_key, -1) + 1
+        _rr_counters[item_key] = c
+        idx = c % len(variants)
+
+    return (variants[idx], idx, mode)
+
+
+# ---------------------------
+# API
+# ---------------------------
+@app.get("/")
+def root():
+    return {"ok": True, "app": "Tecnaria Sinapsi — Q/A", "families_dir": str(DATA_DIR)}
+
+
+class AskPayload(dict):
+    # accettiamo {"q": "...", "family": "VCEM"} oppure querystring / body raw
+    pass
+
+
+@app.post("/api/ask")
+async def api_ask(payload: AskPayload):
+    q = (payload.get("q") or "").strip()
+    family = (payload.get("family") or "VCEM").upper()
+
+    if not q:
+        raise HTTPException(status_code=400, detail="Campo 'q' mancante o vuoto.")
+
+    # carica config + famiglia
+    cfg = get_config()
+    fam = load_family(family)
+
+    # match
+    item = pick_best_item(q, fam)
+    if not item:
+        return {
+            "ok": False,
+            "family": family,
+            "q": q,
+            "text": "Nessuna risposta trovata per questa domanda.",
+        }
+
+    # policy
+    pol = effective_policy(cfg, fam, item)
+    text, vidx, used_mode = select_response_text(item, pol, family)
+
+    return {
+        "ok": True,
+        "family": family,
+        "id": item.get("id"),
+        "mode": used_mode,
+        "variant_index": vidx,
+        "text": text,
+        # opzionale per debug admin (commenta in produzione)
+        # "core": item.get("core_sentence"),
+        # "paraphrases": item.get("paraphrases"),
+        # "trigger": (item.get("trigger") or {}).get("keywords"),
+    }
+
+
+@app.post("/admin/policy/mode")
+async def set_policy_mode(
+    request: Request,
+    mode: str,
+    x_admin_token: Optional[str] = Header(default=None, convert_underscores=False),
+):
+    """
+    Endpoint admin opzionale per cambiare modalita' a runtime (canonical/dynamic).
+    Richiede X-Admin-Token e confronto SHA256 con quanto presente in config.runtime.json
+    """
+    allowed = {"canonical", "dynamic"}
+    if mode not in allowed:
+        raise HTTPException(status_code=400, detail=f"mode deve essere in {allowed}")
+
+    cfg = get_config()
+    sec = ((cfg.get("admin") or {}).get("security")) or {}
+    expected_hash = (sec.get("admin_token_sha256") or "").strip()
+
+    if not expected_hash:
+        raise HTTPException(status_code=403, detail="Admin token non configurato.")
+
+    if not x_admin_token:
+        raise HTTPException(status_code=401, detail="X-Admin-Token mancante.")
+
+    got_hash = hashlib.sha256(x_admin_token.encode("utf-8")).hexdigest()
+    if got_hash != expected_hash:
+        raise HTTPException(status_code=403, detail="Token non valido.")
+
+    # aggiorna in RAM (il file resta invariato)
+    admin = cfg.setdefault("admin", {})
+    pol = admin.setdefault("response_policy", {})
+    pol["mode"] = mode
+    # scrivi subito su file per persistenza
+    try:
+        with CONFIG_PATH.open("w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+    except Exception:
+        # se non riesci a scrivere, resta comunque attivo in RAM
+        pass
+
+    return {"ok": True, "mode": mode}
