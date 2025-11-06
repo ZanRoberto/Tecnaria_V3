@@ -1,5 +1,5 @@
-# app.py — Tecnaria Sinapsi Q/A (OFFLINE)
-# Rotte: / (home con stato), /ping, /status, /ask (POST)
+# app.py — Tecnaria Sinapsi Q/A (OFFLINE) con UI
+# Rotte: / (stato), /ping, /status, /ask (POST), /ui (interfaccia)
 # Legge SOLO static/data/tecnaria_gold.json
 
 import json, re, unicodedata
@@ -120,12 +120,78 @@ def home():
     <title>Tecnaria — Stato</title>
     <div style="font-family:system-ui;padding:18px">
       <h2>Tecnaria Sinapsi — Q/A (offline)</h2>
-      <p>Endpoint: <a href="/status">/status</a> · <a href="/ping">/ping</a></p>
+      <p>Endpoint: <a href="/ui">/ui</a> · <a href="/status">/status</a> · <a href="/ping">/ping</a></p>
       <pre id="out" style="background:#111;color:#eee;padding:12px;border-radius:10px;"></pre>
     </div>
     <script>fetch('/status').then(r=>r.json()).then(j=>{
       out.textContent = JSON.stringify(j,null,2);
     }).catch(e=>{ out.textContent = 'Errore: '+e; });</script>
+    """
+
+@app.get("/ui", response_class=HTMLResponse)
+def ui():
+    return """
+    <!doctype html><meta charset="utf-8">
+    <title>Tecnaria Sinapsi — Q/A</title>
+    <style>
+      body{font-family:system-ui;background:#0b0b0b;color:#eee;margin:0}
+      header{background:linear-gradient(90deg,#ff7a00,#111);padding:16px 20px;font-weight:800}
+      .wrap{max-width:1100px;margin:18px auto;padding:0 12px}
+      .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+      #q{flex:1;min-width:420px;padding:12px;background:#111;border:1px solid #333;border-radius:10px;color:#fff}
+      #go{background:#ff7a00;color:#111;border:0;padding:12px 18px;border-radius:10px;font-weight:800;cursor:pointer}
+      .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#222;color:#ddd;margin-right:8px;font-size:12px}
+      .ans{white-space:pre-wrap;background:#111;border:1px solid #333;border-radius:12px;padding:12px;margin-top:14px}
+      .meta{font-size:12px;color:#aaa;margin-top:6px}
+      a{color:#ffb366}
+    </style>
+    <header>Tekcnaria Sinapsi — Q/A</header>
+    <div class="wrap">
+      <div class="row">
+        <input id="q" placeholder="Scrivi la domanda... es. CTF su lamiera: quanti chiodi?" />
+        <button id="go">Invia</button>
+        <span id="badge" class="pill">Verifica stato…</span>
+      </div>
+      <div style="margin-top:8px">
+        <span class="pill" onclick="ex('CTF su lamiera: quanti chiodi?')">CTF su lamiera</span>
+        <span class="pill" onclick="ex('CTL vs CTL MAXI: differenze?')">CTL vs CTL MAXI</span>
+        <span class="pill" onclick="ex('P560 su VCEM: è valido?')">P560 su VCEM</span>
+      </div>
+      <div id="res" class="ans" style="display:none"></div>
+      <div id="meta" class="meta"></div>
+    </div>
+    <script>
+      async function status(){
+        try{
+          const r = await fetch('/status'); const j = await r.json();
+          const b = document.getElementById('badge');
+          if(j.ok){ b.textContent = 'PRONTO · items: '+j.items; b.style.background='#1b6'; }
+          else { b.textContent = j.message || 'ERRORE'; b.style.background='#c33'; }
+        }catch(e){ badge.textContent='ERRORE STATO'; badge.style.background='#c33'; }
+      }
+      async function ask(q){
+        const r = await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q})});
+        const j = await r.json();
+        const R = document.getElementById('res');
+        const M = document.getElementById('meta');
+        if(j.ok){
+          R.style.display='block';
+          R.textContent = j.answer || '(nessuna risposta)';
+          const m = j.meta||{};
+          M.textContent = `id: ${m.best_item?.id||'-'} · family: ${m.best_item?.family||'-'} · trigger_hits: ${m.trigger_hits} · score: ${m.score_internal}`;
+        }else{
+          R.style.display='block';
+          R.textContent = 'Errore: '+(j.detail||JSON.stringify(j));
+          M.textContent = '';
+        }
+      }
+      document.getElementById('go').onclick = ()=>{
+        const q = document.getElementById('q').value.trim();
+        if(q) ask(q);
+      };
+      function ex(t){ document.getElementById('q').value=t; }
+      status();
+    </script>
     """
 
 @app.get("/ping")
@@ -143,6 +209,9 @@ def status():
         return JSONResponse({"ok": False, "file": str(DATA_FILE), "items": 0, "message": "JSON NON VALIDO", "error": str(e)}, status_code=500)
     except Exception as e:
         return JSONResponse({"ok": False, "file": str(DATA_FILE), "items": 0, "message": "ERRORE GENERICO", "error": str(e)}, status_code=500)
+
+class AskInput(BaseModel):
+    question: str
 
 @app.post("/ask")
 def ask(body: AskInput):
