@@ -1,1 +1,219 @@
+{
+  "family": "CTF",
+  "lock_to_core": true,
+  "variants_strategy": "dynamic",
+  "items": [
 
+    {
+      "id": "CTF-0001",
+      "tags": ["definizione", "cosa-sono"],
+      "questions": [
+        "Cosa sono i connettori CTF?",
+        "Mi spieghi la famiglia CTF?",
+        "A cosa servono i CTF Tecnaria?",
+        "Che tipo di connettore è il CTF?"
+      ],
+      "canonical": "I CTF sono connettori Tecnaria a sparo per solai misti acciaio–calcestruzzo. Collegano lamiera grecata o travi metalliche alla soletta in calcestruzzo, garantendo una collaborazione strutturale certificata.",
+      "response_variants": [
+        "I CTF sono i connettori Tecnaria dedicati ai solai misti acciaio–calcestruzzo: si sparano su lamiera grecata o su travi metalliche per unire il getto alla parte d’acciaio e rendere il solaio collaborante.",
+        "Quando sotto al getto hai acciaio o lamiera grecata, la famiglia CTF è quella giusta: connettori a sparo che collegano i due materiali in modo sicuro e certificato.",
+        "Nel sistema Tecnaria, i CTF sono i protagonisti dei solai misti. Si applicano a sparo su supporti metallici e assicurano un’unione affidabile tra acciaio e calcestruzzo.",
+        "I connettori CTF rappresentano la soluzione Tecnaria per le strutture miste. Offrono prestazioni certificate e vengono posati con pistole a sparo dedicate come la P560.",
+        "Ogni volta che lamiera o acciaio incontrano il calcestruzzo, i CTF trasformano l’unione in un’unica struttura resistente e collaborante."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0002",
+      "tags": ["quando-usarli", "campi-impiego"],
+      "questions": [
+        "Quando si usano i CTF?",
+        "In quali casi scelgo CTF rispetto ad altri connettori?",
+        "Quando CTF è la famiglia giusta?"
+      ],
+      "canonical": "I CTF si usano quando il supporto è metallico: lamiera grecata collaborante, travi in acciaio o piastre su cui si getta una soletta in calcestruzzo. Sono ideali per strutture nuove o interventi di rinforzo su acciaio esistente.",
+      "response_variants": [
+        "Scegli i CTF ogni volta che lavori su acciaio: lamiera grecata, travi metalliche o piastre che devono collaborare con una soletta in calcestruzzo.",
+        "Quando il cantiere prevede una lamiera grecata o una trave d’acciaio sotto il getto, i CTF sono il collegamento corretto tra acciaio e calcestruzzo.",
+        "In caso di nuove strutture miste o di rinforzi su acciaio esistente, i CTF sono la soluzione progettata per assicurare collaborazione strutturale.",
+        "La famiglia CTF entra in gioco ogni volta che devi far lavorare insieme acciaio e calcestruzzo in modo certificato e ripetibile.",
+        "Dove c’è acciaio sotto e getto sopra, il CTF è il linguaggio naturale del sistema Tecnaria."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0003",
+      "tags": ["posa", "pistola", "p560"],
+      "questions": [
+        "Con cosa si sparano i CTF?",
+        "Posso usare la P560 con i CTF?",
+        "Che pistola serve per la posa CTF?",
+        "Come si applicano i CTF in cantiere?"
+      ],
+      "canonical": "I CTF si applicano con pistole a sparo idonee, come la P560 Tecnaria, usando cartucce e regolazioni previste. È obbligatorio seguire le istruzioni di posa e verificare lo spessore dell’acciaio.",
+      "response_variants": [
+        "I CTF lavorano solo con posa a sparo: usa la pistola P560 o un modello approvato, con potenza e cartucce indicate da Tecnaria.",
+        "Per una posa corretta dei CTF serve una pistola a sparo idonea, come la P560, e acciaio conforme alle specifiche: così il fissaggio è sicuro e ripetibile.",
+        "In cantiere i CTF si installano con P560: mai forare o improvvisare. Ogni colpo va dato su acciaio verificato e con cartuccia del colore corretto.",
+        "La posa a sparo dei CTF deve rispettare le istruzioni Tecnaria: parametri di pressione, spessore minimo e test preliminari sul supporto.",
+        "Quando la posa è eseguita con la P560 secondo schema Tecnaria, il collegamento CTF diventa parte strutturale del sistema certificato."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0004",
+      "tags": ["errore-uso", "viti", "no-trapano"],
+      "questions": [
+        "Posso fissare i CTF con viti invece che a sparo?",
+        "Se non ho la P560 posso montare i CTF con trapano?",
+        "CTF avvitati al posto che sparati è accettabile?"
+      ],
+      "canonical": "No. I CTF funzionano solo con posa a sparo. Se non puoi usare la pistola, scegli una famiglia alternativa come VCEM o CTCEM. Ogni posa diversa invalida la prestazione strutturale.",
+      "response_variants": [
+        "I CTF non si avvitano: sono connettori a sparo. Se non puoi sparare, passa a VCEM o CTCEM.",
+        "Niente trapano: la posa CTF richiede il colpo a sparo con pistola P560. Solo così l’ancoraggio è garantito.",
+        "Forare o avvitare un CTF significa uscire dal sistema Tecnaria: il fissaggio non avrebbe valore certificato.",
+        "Un CTF non può essere montato a mano o con viti: serve l’energia controllata del sistema a sparo.",
+        "La differenza non è di comodità ma di principio: la prestazione del CTF nasce dal colpo calibrato a sparo."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0005",
+      "tags": ["lamiera", "compatibilità"],
+      "questions": [
+        "I CTF vanno bene su lamiera grecata?",
+        "Che connettore uso su lamiera grecata collaborante?",
+        "Posso usare VCEM su lamiera o devo usare CTF?"
+      ],
+      "canonical": "Su lamiera grecata collaborante si usano i CTF. I VCEM sono per travetti in calcestruzzo: non sono compatibili con la lamiera.",
+      "response_variants": [
+        "Quando sotto al getto hai lamiera grecata, entra in gioco la famiglia CTF: connettori a sparo progettati per acciaio e lamiera.",
+        "Lamiera grecata = CTF. I VCEM restano dedicati ai travetti in c.a. e non vanno sulla lamiera.",
+        "I CTF sono nati proprio per la lamiera grecata: fissaggio a sparo, rapido e strutturale.",
+        "Per una lamiera collaborante non usare VCEM: serve la tecnologia CTF con P560 e cartucce dedicate.",
+        "Il CTF si lega alla lamiera e trasferisce gli sforzi al getto, creando collaborazione tra i materiali."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0006",
+      "tags": ["spessore-acciaio", "requisiti"],
+      "questions": [
+        "Che spessore minimo serve per sparare i CTF?",
+        "Posso usare CTF su lamiere sottili?",
+        "Quali limiti di acciaio ci sono per i CTF?"
+      ],
+      "canonical": "I CTF richiedono uno spessore minimo di acciaio e qualità idonea per garantire l’ancoraggio. Se la lamiera è troppo sottile, consulta le tabelle Tecnaria o valuta soluzioni alternative.",
+      "response_variants": [
+        "Verifica sempre spessore e qualità dell’acciaio prima di sparare: i CTF lavorano solo su supporti adeguati.",
+        "Lamiera troppo sottile? Meglio fermarsi: il colpo può non ancorare. Segui le tabelle Tecnaria.",
+        "Ogni CTF richiede un minimo di acciaio sotto per agganciare: consulta le istruzioni di posa prima di iniziare.",
+        "Se la lamiera non è conforme, non rischiare: il CTF deve mordere materiale sufficiente per essere efficace.",
+        "Uno spessore corretto garantisce sicurezza e prestazione: è la prima verifica da fare in cantiere."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0014",
+      "tags": ["errore-famiglia", "solaio-calcestruzzo-nudo"],
+      "questions": [
+        "Posso usare i CTF su solaio in calcestruzzo nudo?",
+        "CTF su travetto in c.a. va bene?",
+        "Ho un solaio vecchio in c.a., metto CTF?"
+      ],
+      "canonical": "I CTF non vanno usati su calcestruzzo nudo o su travetti: lì si usano VCEM o CTCEM. I CTF nascono per supporti metallici come lamiera o acciaio.",
+      "response_variants": [
+        "Calcestruzzo nudo? No CTF. Qui entrano in gioco VCEM o CTCEM, pensati per travetti e solai in laterocemento.",
+        "CTF lavora sull’acciaio, non sul calcestruzzo: per travetti o solette serve VCEM.",
+        "Un solaio in c.a. senza acciaio sotto vuole una famiglia a vite, non a sparo.",
+        "Il connettore a sparo CTF ha senso solo se c’è acciaio da collegare.",
+        "Sul calcestruzzo pieno, un colpo CTF non può ancorare: cambia famiglia."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0015",
+      "tags": ["errore-famiglia", "legno"],
+      "questions": [
+        "Posso usare i CTF su travi in legno?",
+        "CTF e legno vanno bene insieme?",
+        "Che connettore uso su legno?"
+      ],
+      "canonical": "CTF e legno non sono compatibili. Per travi in legno servono i connettori CTL o CTL MAXI, specifici per sistemi legno–calcestruzzo.",
+      "response_variants": [
+        "Su legno non sparare CTF: lì servono i CTL o i CTL MAXI, con fissaggi a vite dedicati.",
+        "CTF lavora con acciaio, CTL con legno: due mondi diversi, due famiglie diverse.",
+        "Il legno non sopporta la posa a sparo dei CTF: usa i CTL, nati per questo.",
+        "Per un solaio misto legno–cls serve CTL, non CTF.",
+        "Non confondere i materiali: acciaio = CTF, legno = CTL."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0016",
+      "tags": ["lamiera-zincata", "compatibilità"],
+      "questions": [
+        "Posso usare CTF su lamiera zincata?",
+        "CTF e lamiera zincata sono compatibili?",
+        "Serve qualche accortezza per lamiera zincata?"
+      ],
+      "canonical": "I CTF sono compatibili con lamiere zincate, purché lo spessore e la qualità dell’acciaio rispettino le specifiche Tecnaria. La zincatura non altera il funzionamento.",
+      "response_variants": [
+        "Sì, i CTF si possono sparare su lamiera zincata: la protezione non altera il fissaggio.",
+        "Lamiera zincata? Nessun problema, purché sia dello spessore corretto e conforme alle tabelle Tecnaria.",
+        "La zincatura non influisce sull’ancoraggio dei CTF: basta che l’acciaio sia idoneo.",
+        "CTF lavora bene anche su superfici zincate, ma controlla sempre spessore e compatibilità.",
+        "Non serve togliere la zincatura: il sistema è progettato anche per superfici trattate."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0017",
+      "tags": ["passo", "distanza-connettori"],
+      "questions": [
+        "Quanti CTF devo mettere al metro quadro?",
+        "Qual è il passo dei CTF?",
+        "Posso ridurre il numero dei CTF?"
+      ],
+      "canonical": "Il passo e il numero dei CTF dipendono dal calcolo strutturale e dallo schema di progetto. Tecnaria fornisce tabelle di riferimento da cui partire.",
+      "response_variants": [
+        "Il passo dei CTF non è fisso: dipende dal progetto. Consulta le tabelle Tecnaria per avere indicazioni iniziali.",
+        "Per sapere quanti CTF servono, guarda le tabelle di calcolo o chiedi all’ufficio tecnico: varia in base a luce e carico.",
+        "Non improvvisare il passo: è il progettista che lo definisce, Tecnaria fornisce le basi.",
+        "Ogni solaio ha il suo ritmo di connettori: segui le distanze consigliate dal manuale.",
+        "Meno CTF = meno collaborazione. Meglio chiedere conferma prima di ridurre i punti di fissaggio."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0018",
+      "tags": ["ponte-termico", "isolamento"],
+      "questions": [
+        "I CTF creano ponti termici?",
+        "Posso usare CTF in solai con isolamento?",
+        "CTF interrompe il ponte termico?"
+      ],
+      "canonical": "I CTF sono metallici e passanti, quindi non interrompono il ponte termico. Se serve isolamento termico, valutare soluzioni dedicate in abbinamento.",
+      "response_variants": [
+        "Il CTF non interrompe il ponte termico: è un connettore metallico passante.",
+        "Serve isolamento? Aggiungi strati termici dedicati: il CTF collega strutturalmente, non isola.",
+        "Il ponte termico resta: il CTF garantisce resistenza meccanica, non isolamento.",
+        "In presenza di isolamento, progetta un sistema integrato: il CTF non sostituisce materiali termici.",
+        "L’obiettivo del CTF è strutturale, per la parte termica serve una soluzione complementare."
+      ],
+      "mode": "dynamic"
+    }
+
+  ]
+}
