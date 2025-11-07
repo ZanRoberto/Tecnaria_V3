@@ -1,328 +1,260 @@
-from __future__ import annotations
-
+import os
 import json
-import re
 import random
-import hashlib
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from difflib import SequenceMatcher
+from typing import Dict, Any, List, Optional
 
-from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from starlette.responses import HTMLResponse, FileResponse
+from starlette.staticfiles import StaticFiles
 
-# === PERCORSI BASE ===
+# ============================================================
+# PATH BASE E STATIC
+# ============================================================
+
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "static" / "data"
-CONFIG_PATH = DATA_DIR / "config.runtime.json"
+STATIC_DIR = BASE_DIR / "static"
+FAMILIES_DIR = STATIC_DIR / "data"
 
-# === APP FASTAPI ===
-app = FastAPI(title="Tecnaria Sinapsi — Q/A", version="1.0.0")
+app = FastAPI(title="Tecnaria Sinapsi — Q/A")
 
+# CORS aperto (puoi restringere ai tuoi domini se vuoi)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # restringi in produzione
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# === CACHE IN MEMORIA ===
-_families_cache: Dict[str, Dict[str, Any]] = {}
-_config_cache: Dict[str, Any] = {}
-_rr_counters: Dict[str, int] = {}  # round-robin per item id
-_rng = random.Random(20251106)     # RNG deterministico (puoi variare da config)
+# Serviamo gli asset statici
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# ---------------------------
-# I/O utility
-# ---------------------------
+# Cache in memoria delle famiglie
+_families_cache: Dict[str, Dict[str, Any]] = {}
+
+
+# ============================================================
+# UTILS LETTURA JSON
+# ============================================================
+
 def _read_json(path: Path) -> Dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"File non trovato: {path}")
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
-def load_config() -> Dict[str, Any]:
-    global _config_cache, _rng
-    try:
-        cfg = _read_json(CONFIG_PATH)
-        _config_cache = cfg
-        # opzionale: seed da config
-        seed = (
-            ((cfg.get("admin") or {}).get("response_policy") or {}).get("variant_seed")
-        )
-        if isinstance(seed, int):
-            _rng.seed(seed)
-        return cfg
-    except FileNotFoundError:
-        default_cfg = {
-            "admin": {
-                "response_policy": {
-                    "mode": "canonical",
-                    "variant_selection": "round_robin",
-                    "variant_seed": 20251106,
-                },
-                "security": {"admin_token_sha256": ""},
-            }
-        }
-        _config_cache = default_cfg
-        return default_cfg
 
-def get_config() -> Dict[str, Any]:
-    # Ricarica sempre per permettere switch a caldo editando il file
-    return load_config()
+def load_family(name: str) -> Dict[str, Any]:
+    """
+    Carica una famiglia (VCEM, CTF, CTCEM, ecc.) da FAMILIES_DIR.
+    Si aspetta un file chiamato: <family>.json
+    """
+    if name in _families_cache:
+        return _families_cache[name]
 
-def load_family(family_name: str) -> Dict[str, Any]:
-    """
-    Carica una famiglia (es. 'VCEM') da static/data/VCEM.json
-    """
-    global _families_cache
-    fname = f"{family_name.upper()}.json"
-    path = DATA_DIR / fname
+    path = FAMILIES_DIR / f"{name}.json"
     data = _read_json(path)
-    # normalizzazione minima
-    if "family" not in data:
-        data["family"] = family_name.upper()
-    if "response_policy" not in data:
-        data["response_policy"] = {
-            "mode": "inherit",
-            "variant_selection": "inherit",
-            "lock_to_item_core": False,
-        }
-    if "items" not in data:
-        data["items"] = []
-    _families_cache[family_name.upper()] = data
+
+    # Normalizza il campo family
+    if data.get("family") != name:
+        data["family"] = name
+
+    # Normalizza items come lista
+    items = data.get("items")
+    if not isinstance(items, list):
+        raise ValueError(f"'items' mancante o non lista in {path}")
+    data["items"] = items
+
+    _families_cache[name] = data
     return data
 
-# ---------------------------
-# Normalizzazione & sinonimi
-# ---------------------------
-SINONIMI_MAP = {
-    r"\bsparachiodi\b": "p560",
-    r"\bchiodatrice\b": "p560",
-    r"\bpistola\b": "p560",
-    r"\bspit\b": "p560",
-    r"\bcolpo\b": "p560",
-    r"\bcls\b": "c25/30",
-    r"\bbeton\b": "c25/30",
-    r"\bsoffiare\b": "pulire",
-    r"\baspirare\b": "pulire",
-    r"\bforatura\b": "foro",
-    r"\bforare\b": "foro",
-    r"\bavvitatura\b": "avvitare",
-    r"\blocmente\b": "laterocemento",
-}
 
-TOKEN_SPLIT = re.compile(r"[^a-z0-9àèéìòùç]+", re.IGNORECASE)
+# ============================================================
+# MATCHING LOGIC
+# ============================================================
 
-def normalize_query(q: str) -> str:
-    q = q.strip().lower()
-    q = re.sub(r"[^\w\sàèéìòùç]", " ", q, flags=re.UNICODE)
-    for pat, repl in SINONIMI_MAP.items():
-        q = re.sub(pat, repl, q)
-    q = re.sub(r"\s+", " ", q)
-    return q.strip()
+def _norm(text: str) -> str:
+    return " ".join(str(text).lower().strip().split())
 
-def tokenize(q: str) -> List[str]:
-    return [t for t in TOKEN_SPLIT.split(q) if t]
 
-# ---------------------------
-# Matching (keywords + paraphrases)
-# ---------------------------
-def kw_score(query_norm: str, item: Dict[str, Any]) -> int:
-    score = 0
-    kws = (item.get("trigger") or {}).get("keywords") or []
-    for kw in kws:
-        kw_norm = kw.lower().strip()
-        if kw_norm and kw_norm in query_norm:
-            score += 1
-    return score
-
-def paraphrase_score(query_norm: str, item: Dict[str, Any]) -> float:
+def match_item(user_q: str, family_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Semplice overlap di token (Jaccard) con ogni paraphrase; si prende il massimo.
+    Trova l'item migliore per la domanda:
+    - Usa item['q'] (lista o stringa) se presente
+    - Usa item['questions'] (lista o stringa) se presente
+    - Similarità fuzzy + esatto + contiene
     """
-    paras = item.get("paraphrases") or []
-    if not paras:
-        return 0.0
-    q_tokens = set(tokenize(query_norm))
-    best = 0.0
-    for p in paras:
-        p_norm = normalize_query(p)
-        p_tokens = set(tokenize(p_norm))
-        inter = len(q_tokens & p_tokens)
-        union = max(1, len(q_tokens | p_tokens))
-        jaccard = inter / union
-        if jaccard > best:
-            best = jaccard
-    return best
 
-def pick_best_item(query: str, family_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    qn = normalize_query(query)
-    items = family_data.get("items") or []
-    best: Tuple[float, Dict[str, Any]] | None = None
+    items = family_data.get("items", [])
+    if not items:
+        return None
 
-    for it in items:
-        peso = float(((it.get("trigger") or {}).get("peso")) or 0.9)
-        s_kw = kw_score(qn, it)
-        s_pp = paraphrase_score(qn, it)
-        score = (s_kw * 1.0 + s_pp * 0.8) * peso
-        if best is None or score > best[0]:
-            best = (score, it)
+    qn = _norm(user_q)
+    best_item = None
+    best_score = 0.0
 
-    if best and best[0] > 0:
-        return best[1]
+    for item in items:
+        triggers: List[str] = []
+
+        # Supporta sia "q" che "questions"
+        if "q" in item:
+            if isinstance(item["q"], list):
+                triggers.extend(item["q"])
+            else:
+                triggers.append(item["q"])
+
+        if "questions" in item:
+            if isinstance(item["questions"], list):
+                triggers.extend(item["questions"])
+            else:
+                triggers.append(item["questions"])
+
+        # Se non hai trigger, salta
+        if not triggers:
+            continue
+
+        for t in triggers:
+            tn = _norm(t)
+            if not tn:
+                continue
+
+            # esatto
+            if qn == tn:
+                score = 1.0
+            # contenuto
+            elif tn in qn or qn in tn:
+                score = 0.92
+            else:
+                # fuzzy
+                score = SequenceMatcher(None, qn, tn).ratio()
+
+            if score > best_score:
+                best_score = score
+                best_item = item
+
+    # Soglia minima: sotto questo meglio "nessuna risposta"
+    if best_item and best_score >= 0.55:
+        return best_item
+
     return None
 
-# ---------------------------
-# Policy: canonical / dynamic
-# ---------------------------
-def effective_policy(
-    cfg: Dict[str, Any], family: Dict[str, Any], item: Dict[str, Any]
-) -> Dict[str, Any]:
-    g = ((cfg.get("admin") or {}).get("response_policy")) or {}
-    g_mode = g.get("mode", "canonical")
-    g_vs = g.get("variant_selection", "round_robin")
 
-    f = (family.get("response_policy")) or {}
-    f_mode = f.get("mode", "inherit")
-    f_vs = f.get("variant_selection", "inherit")
-    f_lock = bool(f.get("lock_to_item_core", False))
-
-    i = (item.get("response_policy")) or {}
-    i_mode = i.get("mode", "inherit")
-    i_lock = bool(i.get("lock_to_core", False))
-    i_cindex = int(i.get("canonical_index", 0))
-
-    mode = i_mode if i_mode != "inherit" else (f_mode if f_mode != "inherit" else g_mode)
-    variant_sel = f_vs if f_vs != "inherit" else g_vs
-    lock_core = i_lock or f_lock
-
-    return {
-        "mode": mode,
-        "variant_selection": variant_sel,
-        "lock_to_core": lock_core,
-        "canonical_index": i_cindex,
-    }
-
-def select_response_text(
-    item: Dict[str, Any], policy: Dict[str, Any], family_name: str
-) -> Tuple[str, int, str]:
+def pick_response(item: Dict[str, Any]) -> str:
     """
-    Ritorna (testo, variant_index, mode_usato)
+    Ritorna una risposta GOLD dinamica:
+    - se ci sono response_variants, ne sceglie una a caso
+    - altrimenti usa canonical
     """
-    mode = policy["mode"]
-    lock_core = policy["lock_to_core"]
-    variants: List[str] = item.get("response_variants") or []
-    core = (item.get("core_sentence") or "").strip()
+    variants = item.get("response_variants")
+    canonical = (item.get("canonical") or "").strip()
 
-    if lock_core:
-        return (core, -1, f"{mode}+lock_core")
+    if isinstance(variants, list) and variants:
+        # filtra stringhe non vuote
+        vs = [v.strip() for v in variants if isinstance(v, str) and v.strip()]
+        if vs:
+            return random.choice(vs)
 
-    if mode == "canonical":
-        idx = int(policy.get("canonical_index", 0))
-        if variants:
-            idx = max(0, min(idx, len(variants) - 1))
-            return (variants[idx], idx, mode)
-        return (core or item.get("domanda", ""), -1, mode)
+    if canonical:
+        return canonical
 
-    # dynamic
-    if not variants:
-        return (core or item.get("domanda", ""), -1, mode)
+    return "Risposta non disponibile."
 
-    vs = policy.get("variant_selection", "round_robin")
-    item_key = f"{family_name}:{item.get('id','UNKNOWN')}"
-    if vs == "random":
-        idx = _rng.randint(0, len(variants) - 1)
-    else:
-        c = _rr_counters.get(item_key, -1) + 1
-        _rr_counters[item_key] = c
-        idx = c % len(variants)
-    return (variants[idx], idx, mode)
 
-# ---------------------------
-# MODELLI Pydantic (fix per FastAPI/Python 3.13)
-# ---------------------------
+# ============================================================
+# MODELLI API
+# ============================================================
+
 class AskPayload(BaseModel):
     q: str
-    family: Optional[str] = "VCEM"
+    family: str
 
-# ---------------------------
-# API
-# ---------------------------
-@app.get("/")
-def root():
-    return {"ok": True, "app": "Tecnaria Sinapsi — Q/A", "families_dir": str(DATA_DIR)}
 
-@app.post("/api/ask", response_model=None)
+# ============================================================
+# ENDPOINTS
+# ============================================================
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    """
+    Se esiste un index.html in /static, serve quello.
+    Altrimenti mostra una scritta semplice.
+    """
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    return HTMLResponse("<h1>Tecnaria Sinapsi — Q/A</h1>")
+
+
+@app.get("/api/config")
+async def api_config():
+    """
+    Ritorna info base per health-check lato client.
+    """
+    return {
+        "ok": True,
+        "app": "Tecnaria Sinapsi — Q/A",
+        "families_dir": str(FAMILIES_DIR)
+    }
+
+
+@app.post("/api/ask")
 async def api_ask(payload: AskPayload):
-    q = (payload.q or "").strip()
-    family = (payload.family or "VCEM").upper()
+    """
+    Endpoint principale di Q/A.
+    Usa:
+    - payload.family -> VCEM, CTF, CTCEM, CTL, ...
+    - payload.q -> domanda utente in linguaggio naturale
+    """
+    user_q = payload.q.strip()
+    family = payload.family.strip()
 
-    if not q:
-        raise HTTPException(status_code=400, detail="Campo 'q' mancante o vuoto.")
+    if not user_q:
+        return {
+            "ok": False,
+            "family": family,
+            "q": payload.q,
+            "text": "Domanda vuota."
+        }
 
-    cfg = get_config()
-    fam = load_family(family)
+    try:
+        fam = load_family(family)
+    except FileNotFoundError:
+        return {
+            "ok": False,
+            "family": family,
+            "q": user_q,
+            "text": f"Famiglia '{family}' non disponibile."
+        }
+    except Exception as e:
+        # Log interno, risposta neutra verso l'esterno
+        return {
+            "ok": False,
+            "family": family,
+            "q": user_q,
+            "text": "Errore nella lettura dei dati di questa famiglia."
+        }
 
-    item = pick_best_item(q, fam)
+    item = match_item(user_q, fam)
+
     if not item:
         return {
             "ok": False,
             "family": family,
-            "q": q,
-            "text": "Nessuna risposta trovata per questa domanda.",
+            "q": user_q,
+            "text": "Nessuna risposta trovata per questa domanda."
         }
 
-    pol = effective_policy(cfg, fam, item)
-    text, vidx, used_mode = select_response_text(item, pol, family)
+    text = pick_response(item)
 
     return {
         "ok": True,
         "family": family,
         "id": item.get("id"),
-        "mode": used_mode,
-        "variant_index": vidx,
-        "text": text,
+        "mode": "dynamic",
+        "text": text
     }
-
-@app.post("/admin/policy/mode", response_model=None)
-async def set_policy_mode(
-    request: Request,
-    mode: str,
-    x_admin_token: Optional[str] = Header(default=None, convert_underscores=False),
-):
-    """
-    Cambia modalità (canonical/dynamic) a runtime.
-    Richiede X-Admin-Token (hash in config.runtime.json).
-    """
-    allowed = {"canonical", "dynamic"}
-    if mode not in allowed:
-        raise HTTPException(status_code=400, detail=f"mode deve essere in {allowed}")
-
-    cfg = get_config()
-    sec = ((cfg.get("admin") or {}).get("security")) or {}
-    expected_hash = (sec.get("admin_token_sha256") or "").strip()
-
-    if not expected_hash:
-        raise HTTPException(status_code=403, detail="Admin token non configurato.")
-    if not x_admin_token:
-        raise HTTPException(status_code=401, detail="X-Admin-Token mancante.")
-
-    got_hash = hashlib.sha256(x_admin_token.encode("utf-8")).hexdigest()
-    if got_hash != expected_hash:
-        raise HTTPException(status_code=403, detail="Token non valido.")
-
-    # aggiorna RAM
-    admin = cfg.setdefault("admin", {})
-    pol = admin.setdefault("response_policy", {})
-    pol["mode"] = mode
-
-    # persisti su file (best-effort)
-    try:
-        with CONFIG_PATH.open("w", encoding="utf-8") as f:
-            json.dump(cfg, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
-
-    return {"ok": True, "mode": mode}
