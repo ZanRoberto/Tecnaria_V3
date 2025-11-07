@@ -6,6 +6,460 @@
 
     {
       "id": "CTF-0001",
+      "tags": ["definizione", "cosa-sono", "campo-uso"],
+      "questions": [
+        "Cosa sono i CTF?",
+        "A cosa servono i connettori CTF Tecnaria?",
+        "Per che tipo di solaio si usano i CTF?",
+        "Che famiglia è CTF?",
+        "Quando scelgo i CTF?"
+      ],
+      "canonical": "I CTF sono connettori Tecnaria a sparo per solai misti acciaio–calcestruzzo, da fissare su travi o lamiere in acciaio con la chiodatrice P560. Collegano l’acciaio alla soletta collaborante in cls.",
+      "response_variants": [
+        "I CTF sono i connettori Tecnaria pensati per creare collaborazione tra travi o lamiere in acciaio e la soletta in calcestruzzo.",
+        "Quando hai acciaio sotto e cls sopra, i CTF sono il collegamento strutturale giusto.",
+        "CTF è il linguaggio Tecnaria per i solai misti acciaio–cls con posa a sparo.",
+        "Sono connettori metallici che si fissano direttamente sull’acciaio, senza foratura passante.",
+        "Con i CTF rendi collaborante una trave in acciaio con il getto superiore.",
+        "La famiglia CTF nasce per solai con lamiera grecata o travi in acciaio.",
+        "Se non hai travetto in c.a. ma acciaio, sei nel mondo CTF, non VCEM.",
+        "È il sistema industriale collaudato per solai composti acciaio–cls."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0002",
+      "tags": ["p560", "posa-a-sparo", "strumento"],
+      "questions": [
+        "Come si fissano i CTF?",
+        "I CTF si sparano con la P560?",
+        "Serve per forza la P560 per i CTF?",
+        "Posso usare la P560 con i CTF?"
+      ],
+      "canonical": "I CTF si fissano a sparo con la chiodatrice P560 e cartucce appropriate, direttamente su travi o lamiere in acciaio.",
+      "response_variants": [
+        "Sì: i CTF sono nati per essere fissati a sparo con la P560.",
+        "La combinazione corretta è P560 + CTF su acciaio o lamiera.",
+        "Non servono fori passanti: si spara il connettore sul profilo.",
+        "La P560 garantisce velocità e costanza nel fissaggio dei CTF.",
+        "Usa cartucce e settaggi indicati da Tecnaria per avere colpi puliti.",
+        "Se non hai la P560, valuta il noleggio o il servizio di posa.",
+        "La posa corretta è a contatto pieno con l’acciaio, colpo deciso.",
+        "CTF con P560 è un sistema certificato, non un esperimento."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0003",
+      "tags": ["errore-famiglia", "vcem", "ctcem"],
+      "questions": [
+        "Posso usare i CTF su solai in laterocemento?",
+        "CTF va bene su travetti in c.a. senza lamiera?",
+        "Sono intercambiabili CTF e VCEM?",
+        "Posso mettere CTF al posto dei VCEM?"
+      ],
+      "canonical": "No. I CTF sono per acciaio e lamiera. Su travetti in c.a. dei solai in laterocemento si usano VCEM o CTCEM.",
+      "response_variants": [
+        "CTF su travetto in c.a. nudo non è corretto: lì servono VCEM/CTCEM.",
+        "Ogni volta che hai laterocemento con travetto in cls, non usare CTF.",
+        "CTF e VCEM non sono equivalenti: cambiano supporto, posa e prove.",
+        "Se hai montato CTF su cls nudo, il dettaglio va rivisto.",
+        "Lamiera/acciaio = CTF. Travetto in c.a. = VCEM/CTCEM.",
+        "Non mischiare famiglie per “comodità”: si perdono riferimenti tecnici.",
+        "È uno degli errori più comuni: meglio correggerlo prima del getto.",
+        "In dubbio, chiedi: meglio una mail che un solaio sbagliato."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0004",
+      "tags": ["supporti", "acciaio", "lamiera-grecata"],
+      "questions": [
+        "Su quali supporti posso usare i CTF?",
+        "CTF funziona su lamiera grecata?",
+        "Posso metterli su travi in acciaio?",
+        "Vanno bene su piatti o profili HE/IPE?"
+      ],
+      "canonical": "I CTF sono progettati per l’ancoraggio su lamiere grecate e travi/piani in acciaio idonei. Il supporto deve garantire sufficiente spessore e qualità per il chiodo a sparo.",
+      "response_variants": [
+        "Funzionano su lamiera grecata e travi in acciaio con spessori compatibili.",
+        "Sono perfetti per profili HE, IPE e simili con cls collaborante.",
+        "La lamiera deve essere di tipo strutturale e correttamente appoggiata.",
+        "Su acciai troppo sottili o non strutturali va verificato il fissaggio.",
+        "Il chiodo deve avere abbastanza materiale per ancorarsi.",
+        "Schede Tecnaria indicano spessori minimi e casi ammessi.",
+        "Su supporti dubbi, meglio una prova di sparo e confronto tecnico.",
+        "CTF lavora dove l’acciaio risponde in modo corretto al colpo."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0005",
+      "tags": ["no-legno", "no-cls-nudo"],
+      "questions": [
+        "Posso usare CTF su legno?",
+        "Posso sparare CTF su travetto in c.a. nudo?",
+        "CTF va bene su tavolato?",
+        "Posso usarli su muratura?"
+      ],
+      "canonical": "No. I CTF non sono ammessi su legno, cls nudo o muratura. Sono solo per acciaio/lamiera.",
+      "response_variants": [
+        "Legno = CTL/CTL MAXI, non CTF.",
+        "Travetto in c.a. = VCEM/CTCEM, non CTF.",
+        "Murature, tavolati, intonaci: vietato sparare lì i CTF.",
+        "Sparare su supporti non idonei è pericoloso e fuori sistema.",
+        "Ogni colpo fuori campo può deformare o danneggiare il supporto.",
+        "CTF è un connettore serio: trattalo con rispetto.",
+        "Se vedi CTF in posti strani, fermati e chiedi.",
+        "Famiglia giusta, supporto giusto: è la base."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0006",
+      "tags": ["rete", "soletta", "lamiera"],
+      "questions": [
+        "Come metto la rete con i CTF su lamiera?",
+        "La rete la appoggio ai CTF?",
+        "Serve rete elettrosaldata?"
+      ],
+      "canonical": "La rete va inserita nella soletta secondo il progetto; i CTF collegano lamiera/acciaio al cls, non fanno da distanziatori.",
+      "response_variants": [
+        "Non usare i CTF come supporto per la rete.",
+        "La rete va alla quota indicata, con distanziatori.",
+        "CTF + rete + cls formano un sistema: ognuno ha il suo ruolo.",
+        "Appoggiare la rete sulle teste può alterare il copriferro.",
+        "Segui sempre le tavole del progettista.",
+        "La lamiera funge da cassero e parte tesa, non confondere le funzioni.",
+        "Con CTF la rete va pensata bene per fenditure e fessurazioni.",
+        "Il pacchetto completo garantisce prestazione e durabilità."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0007",
+      "tags": ["spessore-soletta", "misto-acciaio-cls"],
+      "questions": [
+        "Che spessore di soletta serve con i CTF?",
+        "Posso fare una soletta sottile?",
+        "Quanto cls devo mettere sopra lamiera e CTF?"
+      ],
+      "canonical": "Lo spessore della soletta con CTF è definito dal progetto e dalle schede Tecnaria in funzione di lamiera, carichi e luci. Non va ridotto arbitrariamente.",
+      "response_variants": [
+        "Non tagliare lo spessore rispetto al progetto: è parte della sezione composta.",
+        "La soletta minima è indicata nelle schede Tecnaria.",
+        "Una soletta troppo sottile riduce collaborazione e rigidezza.",
+        "Ogni cm in meno è prestazione in meno.",
+        "Spessore, CTF, lamiera: tutto è dimensionato insieme.",
+        "Segui NTC/EC e tabelle Tecnaria, non l’occhio.",
+        "In dubbio, chiedi un check all’ufficio tecnico.",
+        "Meglio adeguare che scoprire dopo che non basta."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0008",
+      "tags": ["cartucce", "potenza", "test-sparo"],
+      "questions": [
+        "Che cartucce uso per i CTF?",
+        "Come scelgo la potenza di sparo?",
+        "Devo fare prove prima dei fissaggi?"
+      ],
+      "canonical": "Si usano cartucce a polvere calibrate per la P560, scelte in base allo spessore e tipo di acciaio. È obbligatorio fare colpi di prova.",
+      "response_variants": [
+        "La scelta della cartuccia segue le tabelle Tecnaria.",
+        "Fai sempre prove su pezzo di scarto prima di partire.",
+        "Colpo troppo forte: deformi la lamiera. Troppo debole: fissaggio incompleto.",
+        "Serve trovare il settaggio che dà penetrazione corretta e testa aderente.",
+        "Cartucce e regolazione sono parte del sistema, non dettaglio marginale.",
+        "Non usare cartucce vecchie o umide.",
+        "Se i chiodi non entrano bene, fermati e verifica.",
+        "Tecnaria può consigliarti combinazione corretta per il tuo caso."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0009",
+      "tags": ["errori-posa", "testa-sollevata"],
+      "questions": [
+        "Se il CTF resta sollevato è valido?",
+        "La testa non appoggia bene, cosa faccio?",
+        "Posso lasciare connettori storti?"
+      ],
+      "canonical": "Un CTF con testa sollevata o storto non è affidabile. Va rimosso e sostituito con un nuovo fissaggio corretto.",
+      "response_variants": [
+        "Testa sollevata = fissaggio non valido.",
+        "Se è storto o ballerino, toglilo e rifai.",
+        "Non “accettare” connettori che non aderiscono bene.",
+        "I connettori difettosi vanno sostituiti, non ignorati.",
+        "È normale scartarne qualcuno: fa parte del lavoro pulito.",
+        "Meglio un foro in più che un punto debole nella soletta.",
+        "Se il problema è diffuso, rivedi cartuccia e settaggio.",
+        "Documenta le correzioni per il collaudo."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0010",
+      "tags": ["vcem-confusione", "p560"],
+      "questions": [
+        "Ho sparato VCEM con la P560 al posto dei CTF",
+        "Se confondo CTF e VCEM cosa succede?",
+        "Posso mescolare famiglie sullo stesso solaio?"
+      ],
+      "canonical": "Sparare VCEM come fossero CTF è un errore. Le famiglie non vanno mescolate senza verifica progettuale.",
+      "response_variants": [
+        "Se hai usato VCEM a sparo, considera quei punti non conformi.",
+        "Non mischiare famiglie per comodità: ognuna ha prove proprie.",
+        "Rimuovi i VCEM sparati e sostituiscili con CTF corretti.",
+        "Mescolare sistemi non certificati insieme crea problemi di responsabilità.",
+        "Segnala sempre l’errore al progettista.",
+        "La regola: P560 solo con CTF e elementi previsti.",
+        "VCEM = foro+vite, CTF = sparo. Non invertire.",
+        "La cosa si sistema, basta non coprirla col cls facendo finta di niente."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0011",
+      "tags": ["zona-sismica", "normativa"],
+      "questions": [
+        "Posso usare CTF in zona sismica?",
+        "Il sistema è ammesso dalle norme?",
+        "Sono compatibili con NTC ed Eurocodici?"
+      ],
+      "canonical": "I solai misti acciaio–cls con CTF sono compatibili con le normative vigenti, se correttamente progettati.",
+      "response_variants": [
+        "Sì, ma sempre dentro un progetto strutturale.",
+        "I CTF sono utilizzati in molti interventi anche in sismica.",
+        "Forniamo i dati necessari per i modelli di calcolo.",
+        "Non è il connettore il limite, ma il modo in cui viene dimensionato.",
+        "Il progettista integra i CTF nel modello di solaio composto.",
+        "È una tecnologia consolidata a livello europeo.",
+        "Nessuna improvvisazione: solo verifiche coerenti.",
+        "Contatta l’ufficio tecnico per i parametri esatti."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0012",
+      "tags": ["certificazioni", "documenti"],
+      "questions": [
+        "I CTF sono certificati?",
+        "Avete prove per CTF?",
+        "Posso avere schede tecniche e relazioni?"
+      ],
+      "canonical": "I CTF sono supportati da prove e documentazione Tecnaria specifica. Tutto il materiale è disponibile su richiesta.",
+      "response_variants": [
+        "Sì, abbiamo prove di laboratorio e schede ufficiali.",
+        "Per capitolati e collaudi forniamo documentazione completa.",
+        "I valori non sono inventati: ci sono test dietro.",
+        "Chiedi le versioni aggiornate delle schede.",
+        "La trasparenza tecnica fa parte del sistema.",
+        "Puoi usare i nostri dati nel modello di calcolo.",
+        "Lavoriamo in modo tracciabile, non a sensazioni.",
+        "Basta una mail e ti mandiamo tutto."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0013",
+      "tags": ["durabilità", "protezione"],
+      "questions": [
+        "I CTF arrugginiscono?",
+        "Quanto durano nel tempo?",
+        "Posso usarli in ambiente umido?"
+      ],
+      "canonical": "I CTF sono protetti per condizioni ordinarie. In ambienti aggressivi serve valutazione e protezioni aggiuntive.",
+      "response_variants": [
+        "In uso standard hanno ottima durabilità.",
+        "Per ambienti marini o industriali serve un check specifico.",
+        "La lamiera, il cls e i dettagli contano quanto il connettore.",
+        "Non lasciare i CTF esposti all’esterno senza protezione.",
+        "Il sistema lavora bene se il pacchetto è ben progettato.",
+        "Possiamo suggerire soluzioni per ambienti severi.",
+        "La corrosione si evita con copriferro e cura del dettaglio.",
+        "CTF non è il punto debole se tutto il resto è fatto bene."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0014",
+      "tags": ["manutenzione", "controllo-posa"],
+      "questions": [
+        "Serve manutenzione ai CTF?",
+        "Cosa controllo a fine posa?",
+        "Come verifico se sono montati bene?"
+      ],
+      "canonical": "I CTF non richiedono manutenzione. A fine posa va verificato l’aderenza, il numero, il passo e l’assenza di pezzi difettosi.",
+      "response_variants": [
+        "Una volta annegati nel cls, non richiedono interventi.",
+        "Il controllo vero è prima del getto.",
+        "Conta che siano tutti appoggiati bene e nel numero giusto.",
+        "Nessuna testa volante, nessun connettore piegato.",
+        "Scatta foto: sono utili in caso di verifiche future.",
+        "Meglio perdere 10 minuti di controllo che rifare un solaio.",
+        "Il collaudo inizia in cantiere, non in ufficio.",
+        "Se noti anomalie, segnalale subito."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0015",
+      "tags": ["produttività", "tempi-posa"],
+      "questions": [
+        "La posa dei CTF è veloce?",
+        "Quanto tempo si perde con i CTF?",
+        "Sono convenienti rispetto ad altre soluzioni?"
+      ],
+      "canonical": "La posa a sparo con P560 rende i CTF molto rapidi rispetto a sistemi tradizionali forati o saldati.",
+      "response_variants": [
+        "Con una squadra organizzata, la posa è estremamente veloce.",
+        "Risparmi tempo rispetto a fori e saldature.",
+        "La velocità è uno dei punti di forza del sistema CTF.",
+        "Meno lavorazioni, più produttività.",
+        "Il costo orario di cantiere si abbassa.",
+        "La costanza del fissaggio riduce rilavorazioni.",
+        "È un sistema pensato per grandi superfici.",
+        "Più standard, meno artigianato improvvisato."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0016",
+      "tags": ["formazione", "uso-p560"],
+      "questions": [
+        "Serve abilitazione per usare la P560 con i CTF?",
+        "Chi può posare i CTF?",
+        "Serve un corso specifico?"
+      ],
+      "canonical": "La P560 va usata da personale formato sulle norme di sicurezza per utensili a sparo. La posa CTF richiede attenzione ma non è complessa.",
+      "response_variants": [
+        "Serve formazione minima sull’uso sicuro della chiodatrice.",
+        "Non è un gioco: l’operatore va istruito.",
+        "Le imprese serie gestiscono facilmente la procedura.",
+        "È buona pratica fare una demo iniziale con Tecnaria.",
+        "La sicurezza viene prima della velocità.",
+        "Una volta imparato, il sistema è semplice.",
+        "Regole chiare, niente improvvisazioni.",
+        "Meglio un briefing da 20 minuti che un incidente."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0017",
+      "tags": ["contatti", "supporto-tecnico"],
+      "questions": [
+        "Se ho dubbi sui CTF chi contatto?",
+        "Potete aiutarmi con un solaio misto?",
+        "Ho bisogno di verifica tecnica, a chi mi rivolgo?"
+      ],
+      "canonical": "Per dubbi su scelta, posa o calcolo dei CTF è disponibile l’ufficio tecnico Tecnaria.",
+      "response_variants": [
+        "Scrivi o chiama l’ufficio tecnico Tecnaria: ti seguono passo passo.",
+        "Possiamo verificare il tuo schema di solaio composto.",
+        "Porta disegni, luci e carichi: ti diamo un riscontro.",
+        "Meglio un confronto all’inizio che varianti in corso d’opera.",
+        "Supporto tecnico incluso nel sistema, usalo.",
+        "Siamo abituati a casi reali di cantiere.",
+        "Ti aiutiamo anche a scegliere tra CTF, VCEM, CTL, ecc.",
+        "Non restare col dubbio: chiedere è parte del metodo."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0018",
+      "tags": ["mix-sistemi", "compatibilità"],
+      "questions": [
+        "Posso usare CTF e VCEM nello stesso edificio?",
+        "È un problema avere più sistemi insieme?",
+        "Posso combinare famiglie diverse?"
+      ],
+      "canonical": "Si possono usare sistemi diversi nello stesso edificio, purché ogni zona utilizzi il connettore corretto per il proprio supporto e tutto sia progettato in modo coerente.",
+      "response_variants": [
+        "Sì, purché ogni solaio abbia il sistema giusto.",
+        "Non mischiare sullo stesso elemento, ma puoi differenziare per zone.",
+        "È normale usare CTF su acciaio e VCEM su laterocemento.",
+        "La chiave è chiarezza nel progetto e nei disegni.",
+        "Attenzione a non confondere in cantiere i materiali.",
+        "Segna bene dove va cosa.",
+        "L’importante è non fare ibridi non previsti.",
+        "Famiglie diverse, ruoli chiari."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0019",
+      "tags": ["acustica", "comfort"],
+      "questions": [
+        "I CTF migliorano il rumore del solaio?",
+        "Il solaio misto con CTF è più rigido?",
+        "Si sente meno vibrazione?"
+      ],
+      "canonical": "Il solaio misto acciaio–cls con CTF è più rigido e spesso più confortevole, ma i CTF non sono una soluzione acustica dedicata.",
+      "response_variants": [
+        "Più rigidezza = meno vibrazioni percepite.",
+        "Si ottiene generalmente un miglior comfort rispetto a lamiera libera.",
+        "Per acustica servono strati dedicati, non solo i connettori.",
+        "Il beneficio è soprattutto strutturale.",
+        "Meno “tamburo”, più solidità.",
+        "Combina CTF con pacchetti fonoisolanti se serve.",
+        "Il sistema è un buon punto di partenza.",
+        "Comfort e struttura viaggiano insieme, ma con strumenti diversi."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTF-0020",
+      "tags": ["errori-comuni", "avvertenze-finali"],
+      "questions": [
+        "Errori da evitare con i CTF?",
+        "Cosa non devo assolutamente fare?",
+        "Quali sono le sviste tipiche in cantiere?"
+      ],
+      "canonical": "Errori tipici: usarli su supporti sbagliati, non fare prove di sparo, accettare connettori storti o sollevati, mescolare famiglie senza criterio.",
+      "response_variants": [
+        "Non usarli su cls nudo, legno o muratura.",
+        "Non accettare teste sollevate o fissaggi dubbiosi.",
+        "Fai sempre prove di potenza prima.",
+        "Non mischiare CTF con altri sistemi sullo stesso dettaglio.",
+        "Non improvvisare cartucce o settaggi.",
+        "Non trascurare la pulizia e l’allineamento.",
+        "Non coprire gli errori sotto il cls facendo finta di nulla.",
+        "Se qualcosa ti sembra strano, fermati e chiedi: è questo il vero “uso professionale” del sistema."
+      ],
+      "mode": "dynamic"
+    }
+
+  ]
+}
+{
+  "family": "CTF",
+  "lock_to_core": true,
+  "variants_strategy": "dynamic",
+  "items": [
+
+    {
+      "id": "CTF-0001",
       "tags": ["definizione", "cosa-sono"],
       "questions": [
         "Cosa sono i connettori CTF?",
