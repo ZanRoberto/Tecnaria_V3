@@ -6,275 +6,382 @@
 
     {
       "id": "CTCEM-0001",
-      "tags": ["definizione", "cosa-sono"],
+      "tags": ["definizione", "cosa-sono", "campo-uso"],
       "questions": [
-        "Cosa sono i connettori CTCEM?",
-        "Mi spieghi la famiglia CTCEM?",
-        "A cosa servono i CTCEM Tecnaria?",
-        "Che differenza c'è tra CTCEM e gli altri connettori Tecnaria?"
+        "Cosa sono i CTCEM?",
+        "A cosa servono i connettori CTCEM?",
+        "Per che tipo di solaio si usa CTCEM?",
+        "Che differenza c'è tra VCEM e CTCEM?",
+        "Mi spieghi la famiglia CTCEM?"
       ],
-      "canonical": "I CTCEM sono connettori Tecnaria per solai in laterocemento che collegano i travetti in calcestruzzo alla nuova soletta collaborante. Hanno un profilo dentato che lavora dentro il travetto, garantendo un efficace trasferimento del taglio senza uso di resine.",
+      "canonical": "I CTCEM sono connettori Tecnaria per solai in laterocemento con travetti in calcestruzzo armato. Hanno geometria dentata per un ingranamento più marcato nel travetto e collegano il vecchio solaio alla nuova soletta collaborante.",
       "response_variants": [
-        "I CTCEM sono connettori meccanici per rendere collaborante una soletta in calcestruzzo con i travetti dei solai in laterocemento: il loro dente entra nel travetto e trasferisce il taglio senza bisogno di resine.",
-        "Quando hai un solaio in laterocemento con travetti e vuoi trasformarlo in un solaio collaborante serio, entra in gioco la famiglia CTCEM: connettori dentati che lavorano nel travetto.",
-        "I CTCEM appartengono al sistema Tecnaria per il consolidamento dei solai in laterocemento: sfruttano un ancoraggio meccanico nel travetto per agganciare la soletta.",
-        "Nel mondo Tecnaria, i CTCEM sono la risposta quando serve un collegamento robusto tra travetto in c.a. e nuova soletta, con un profilo dentato che assicura presa e affidabilità.",
-        "I connettori CTCEM trasformano il travetto da semplice appoggio a vero elemento collaborante: il dente entra nel calcestruzzo e aggancia la soletta in modo controllato."
+        "CTCEM è il connettore Tecnaria per solai in laterocemento con travetti in c.a., quando serve una presa più dentata nel calcestruzzo.",
+        "Rispetto ai VCEM, i CTCEM hanno una geometria che accentua l’ingranamento nel travetto.",
+        "La famiglia CTCEM nasce per collegare in modo deciso travetto esistente e soletta collaborante.",
+        "È un connettore meccanico, non chimico, studiato per laterocemento con cls sano.",
+        "Usi CTCEM quando vuoi un dente più aggressivo sul travetto.",
+        "In pratica: stessa famiglia di problemi dei VCEM, con una risposta più “robusta”.",
+        "Se il progettista chiede CTCEM, sta cercando proprio questo tipo di presa.",
+        "È parte del sistema Tecnaria per il rinforzo dei solai esistenti."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0002",
-      "tags": ["posa", "resine", "errore-resina"],
+      "tags": ["posa", "foratura", "vite", "no-resine"],
       "questions": [
-        "I CTCEM si posano con resine?",
-        "Devo usare ancoranti chimici per i CTCEM?",
-        "Si possono incollare i CTCEM invece di avvitarli?",
-        "Per i CTCEM serve una resina strutturale?"
+        "Come si posano i CTCEM?",
+        "I CTCEM si fissano con vite?",
+        "Servono resine per i CTCEM?",
+        "Si incollano o si avvitano i CTCEM?"
       ],
-      "canonical": "No, i CTCEM non si posano con resine. Il sistema è meccanico: foro nel travetto, inserimento del connettore, fissaggio secondo le istruzioni Tecnaria. L’uso di resine al posto del fissaggio previsto non è conforme né garantito.",
+      "canonical": "I CTCEM si posano con foratura nel travetto in c.a., pulizia del foro e fissaggio meccanico con vite secondo le istruzioni Tecnaria. Non si usano resine in sostituzione del sistema previsto.",
       "response_variants": [
-        "Nessuna resina: i CTCEM funzionano con ancoraggio meccanico nel travetto. Se usi resine al posto del sistema previsto esci dal campo Tecnaria.",
-        "I CTCEM non si incollano. Lavorano grazie al loro dente e al fissaggio meccanico nel travetto, come indicato nelle istruzioni di posa.",
-        "Il cuore del CTCEM è l’ingranamento nel travetto, non la resina: serve rispettare foratura, profondità e serraggio previsti.",
-        "Non trasformare il CTCEM in un tassello chimico: è un connettore strutturale con geometria propria e posa definita.",
-        "Se in cantiere senti parlare di resine per i CTCEM, correggi la rotta: il sistema è stato progettato per funzionare senza."
+        "Si forano i travetti, si pulisce bene il foro e si fissano i CTCEM con vite: niente resine sostitutive.",
+        "CTCEM è un sistema meccanico: foro + vite nel cls del travetto.",
+        "Le resine non rientrano nella configurazione standard CTCEM.",
+        "Conta la pulizia del foro e il serraggio corretto, non il silicone.",
+        "Segui scheda Tecnaria: posizione, passo, fori, serraggio.",
+        "Non trasformare un CTCEM in un tassello chimico improvvisato.",
+        "Un buon foro vale più di un tubo di resina.",
+        "È una posa semplice ma va fatta con metodo."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0003",
-      "tags": ["quando-usarli", "campi-impiego"],
+      "tags": ["resine", "errore", "fake-news"],
       "questions": [
-        "Quando si usano i CTCEM?",
-        "In quali casi conviene scegliere CTCEM?",
-        "CTCEM è adatto per quali solai?",
-        "Meglio CTCEM o VCEM su laterocemento?"
+        "I connettori CTCEM si posano con resine?",
+        "Posso usare ancoranti chimici con CTCEM?",
+        "È obbligatoria la resina per i CTCEM?",
+        "CTCEM + resina va bene?"
       ],
-      "canonical": "I CTCEM si usano sui solai in laterocemento con travetti in calcestruzzo quando serve un collegamento molto efficace tra travetto e soletta, grazie al dente che lavora dentro il travetto. Si preferiscono quando le condizioni del travetto richiedono maggiore presa o quando il progetto lo specifica.",
+      "canonical": "No, i CTCEM non sono connettori chimici. Il sistema Tecnaria prevede fissaggio meccanico. L’uso di resine diverse dal sistema previsto esce dalle prove ufficiali.",
       "response_variants": [
-        "Scegli i CTCEM quando lavori su solai in laterocemento con travetti in c.a. e vuoi un ingranamento più marcato nel travetto rispetto alle soluzioni standard.",
-        "CTCEM è la scelta naturale quando il progettista richiede un connettore dentato che afferri il travetto e garantisca un alto trasferimento di taglio.",
-        "Se il solaio è in laterocemento con travetti ben definiti e vuoi massima efficienza nel collegamento con la soletta, i CTCEM sono perfettamente in target.",
-        "Rispetto ad altre soluzioni, i CTCEM offrono un contatto molto forte con il travetto: ideali nei casi in cui si vuole il “dente” nel calcestruzzo.",
-        "La famiglia CTCEM è pensata proprio per trasformare il travetto in un vero elemento collaborante, là dove il laterocemento ha bisogno di essere valorizzato."
+        "No: i CTCEM non nascono come connettori a resina.",
+        "Il loro funzionamento è basato sul bloccaggio meccanico nel cls, non sull’ancorante chimico.",
+        "Se vuoi usare resine, serve una valutazione specifica del progettista.",
+        "Resina “a sentimento” = fuori sistema Tecnaria.",
+        "Nessuna norma Tecnaria prevede CTCEM incollati al posto della vite.",
+        "Non confondere con tasselli chimici: qui parliamo di connettori strutturali.",
+        "Il messaggio secco: foro + vite, non cartuccia.",
+        "Se qualcuno in cantiere ti dice “li incolliamo”, fermalo."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0004",
-      "tags": ["differenza-vcem", "confronto"],
+      "tags": ["supporti", "laterocemento", "travetto"],
       "questions": [
-        "Che differenza c'è tra CTCEM e VCEM?",
-        "Meglio CTCEM o VCEM?",
-        "Quando uso VCEM e quando CTCEM?"
+        "Su che supporti posso usare CTCEM?",
+        "CTCEM è solo per laterocemento?",
+        "Posso usarli su blocchi in laterizio?",
+        "Serve prendere il travetto?"
       ],
-      "canonical": "VCEM e CTCEM lavorano entrambi su solai in laterocemento con travetti in c.a., ma CTCEM ha un profilo dentato che offre un ingranamento più marcato nel travetto. La scelta dipende dal progetto: se serve più presa nel travetto o dettagli specifici, si preferisce CTCEM.",
+      "canonical": "I CTCEM sono per solai in laterocemento con travetti in c.a. Vanno ancorati nel travetto, non solo nel laterizio.",
       "response_variants": [
-        "VCEM è il connettore “pulito” a vite, CTCEM è la versione dentata che morde il travetto: entrambi per laterocemento, ma con diverso livello di ingranamento.",
-        "Usi VCEM per collegamenti standard su travetti in c.a., scegli CTCEM quando vuoi un contatto più aggressivo nel travetto o quando lo richiede il progettista.",
-        "Non è una gara ma una scelta di aderenza: CTCEM offre un’azione più dentata nel travetto rispetto al VCEM.",
-        "VCEM e CTCEM parlano la stessa lingua (laterocemento), ma CTCEM ha un accento più marcato: più presa nel travetto.",
-        "La famiglia corretta la definisce il progetto: dove serve un ingranamento forte nel travetto, CTCEM è spesso la risposta."
+        "Devono mordere il travetto in calcestruzzo, non il blocco forato.",
+        "Il laterizio è riempimento, il travetto è struttura: CTCEM parla con la struttura.",
+        "Se il foro finisce nel vuoto o nel laterizio, sposta il punto.",
+        "Solaio in laterocemento con travetto sano = sì CTCEM.",
+        "Non usare CTCEM dove non hai cls affidabile dietro.",
+        "Se non trovi il travetto, fai fori pilota e correggi.",
+        "Un CTCEM nel vuoto non lavora.",
+        "L’obiettivo è sempre: acciaio del connettore dentro cls compatto."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0005",
-      "tags": ["p560", "no-sparo"],
+      "tags": ["vcem-vs-ctcem", "scelta"],
       "questions": [
-        "Posso sparare i CTCEM con la P560?",
-        "I CTCEM si fissano a sparo?",
-        "P560 compatibile con CTCEM?",
-        "Uso la pistola a sparo per i CTCEM?"
+        "Meglio CTCEM o VCEM?",
+        "Differenza tra VCEM e CTCEM?",
+        "Quando scegliere CTCEM invece di VCEM?"
       ],
-      "canonical": "No. I CTCEM non sono connettori a sparo. Vanno posati secondo il sistema meccanico previsto (foro e fissaggio nel travetto). L’uso della P560 o di pistole a sparo è errato per i CTCEM.",
+      "canonical": "Entrambi per laterocemento con travetti in c.a.; il CTCEM ha un profilo più dentato. La scelta dipende dalle verifiche strutturali e dalle indicazioni del progettista.",
       "response_variants": [
-        "Niente P560 sui CTCEM: non sono connettori a sparo. Si installano con foratura e fissaggio meccanico nel travetto.",
-        "CTCEM e pistola a sparo non si incrociano: è un sistema diverso dai CTF.",
-        "Se hai sparato un CTCEM, è posa sbagliata: va rimosso e rifatto come da istruzioni.",
-        "I connettori a sparo sono i CTF; i CTCEM seguono un’altra logica di fissaggio.",
-        "Per i CTCEM pensa a foro controllato e posizione corretta, non a colpi di pistola."
+        "CTCEM è come un VCEM con un dente più marcato.",
+        "Se il progettista vuole una presa più aggressiva nel travetto, propone CTCEM.",
+        "In molti casi sono alternative equivalenti, ma decide il calcolo.",
+        "Segui sempre la voce indicata in relazione strutturale.",
+        "Non cambiare CTCEM con VCEM “per comodità” senza verifica.",
+        "Sono due strumenti nella stessa cassetta Tecnaria.",
+        "Se hai dubbi, invia il caso all’ufficio tecnico.",
+        "La differenza non è marketing: sono prestazioni e geometrie diverse."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0006",
-      "tags": ["posa", "fori", "attrezzatura"],
+      "tags": ["errore-famiglia", "ctf", "p560"],
       "questions": [
-        "Come si posano i CTCEM?",
-        "Che attrezzatura serve per i CTCEM?",
-        "Devo fare un foro nel travetto per i CTCEM?",
-        "Qual è la procedura pratica di posa CTCEM?"
+        "Posso sparare i CTCEM con la P560?",
+        "CTCEM funzionano con pistola a sparo?",
+        "Uso P560 con CTCEM, è corretto?"
       ],
-      "canonical": "La posa dei CTCEM prevede: tracciamento, foratura nel travetto secondo diametro e profondità indicati, pulizia del foro, inserimento e serraggio del connettore. Tutto come da istruzioni Tecnaria.",
+      "canonical": "No. I CTCEM non si sparano. La P560 si usa solo con CTF. CTCEM come VCEM: foro + vite.",
       "response_variants": [
-        "Per i CTCEM serve lavorare pulito: marcatura, foro nel travetto, pulizia e serraggio del connettore secondo schema Tecnaria.",
-        "La procedura è semplice ma precisa: foro corretto, nessun detrito, connettore ben alloggiato nel travetto.",
-        "Usa trapano, punte adeguate e chiave: niente improvvisazioni. La resistenza nasce dalla posa fatta secondo manuale.",
-        "Un buon CTCEM è invisibile ma efficace: si sente nella collaborazione, non si vede nell’errore.",
-        "Segui passo-passo le indicazioni Tecnaria: il sistema è pensato per essere ripetibile in cantiere."
+        "P560 → CTF. CTCEM si avvita, non si spara.",
+        "Se li hai sparati, quei punti non sono conformi.",
+        "Va rifatto il fissaggio con la procedura corretta.",
+        "CTCEM con P560 è un cortocircuito tecnico.",
+        "Non mischiare sistemi di posa: perdi riferimenti.",
+        "Ricorda la regola: CTF spara, VCEM/CTCEM avvitano.",
+        "Meglio correggere prima del getto che giustificare dopo.",
+        "Non accettare suggerimenti “creativi” in cantiere."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0007",
-      "tags": ["travetto-debole", "vite-non-prende"],
+      "tags": ["travetto-ammalorato", "cls-degradato"],
       "questions": [
-        "Se il travetto è ammalorato posso usare CTCEM?",
-        "La vite/il connettore non prende bene nel travetto, che faccio?",
-        "Se il foro nel travetto sbriciola, è un problema?"
+        "Posso usare CTCEM su travetti ammalorati?",
+        "Il cls del travetto è scarso, regge CTCEM?",
+        "Se il travetto è fessurato posso mettere CTCEM?"
       ],
-      "canonical": "Se il travetto non offre materiale sano, il CTCEM non può lavorare correttamente. In questi casi va valutato il ripristino del travetto o una soluzione alternativa con l’ufficio tecnico Tecnaria.",
+      "canonical": "Serve travetto in c.a. sano. Se il cls è degradato o fessurato va ripristinato o va valutata un’alternativa.",
       "response_variants": [
-        "CTCEM ha bisogno di travetto sano: se il calcestruzzo si sbriciola, fermati e valuta un ripristino.",
-        "Se il connettore non trova presa, non forzare: il problema non è il CTCEM ma il travetto.",
-        "Travetto ammalorato = collegamento inaffidabile. Prima si cura il supporto, poi si posano i connettori.",
-        "Meglio una verifica in più che un ancoraggio nel vuoto: contatta Tecnaria per i casi critici.",
-        "Il dente del CTCEM lavora solo se ha qualcosa di solido da mordere."
+        "Prima sistema il travetto, poi installi i CTCEM.",
+        "Su cls marcio o polveroso il connettore non ha senso.",
+        "Se i problemi sono diffusi, serve uno strutturista.",
+        "Non usare CTCEM per “nascondere” degrado esistente.",
+        "Fai prove, scrostature, ripristini se serve.",
+        "Il sistema è forte, ma non fa miracoli su materiale malato.",
+        "Se il cls si sbriciola, fermati.",
+        "Meglio una valutazione tecnica che un rinforzo finto."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0008",
-      "tags": ["rete", "quota-rete"],
+      "tags": ["vite-gira-vuoto", "foro-sbagliato"],
       "questions": [
-        "Dove va la rete con i CTCEM?",
-        "La rete la appoggio sui connettori CTCEM?",
-        "Qual è la posizione corretta della rete nella soletta con CTCEM?"
+        "La vite del CTCEM gira a vuoto, che faccio?",
+        "La vite non tira più, posso lasciarla?",
+        "Ho bucato nel vuoto con il CTCEM."
       ],
-      "canonical": "Con CTCEM la rete elettrosaldata va posata nella zona tesa della soletta, in genere a metà o nel terzo superiore, secondo il progetto. Non va appoggiata direttamente sui connettori.",
+      "canonical": "Se la vite gira a vuoto o prende solo laterizio, il CTCEM non lavora. Spostare il punto su cls sano o intervenire sul travetto.",
       "response_variants": [
-        "I CTCEM collegano, la rete arma: la rete sta nella quota prevista dal progetto, non sopra i connettori.",
-        "Evita di usare i connettori come distanziatori: la rete ha la sua posizione strutturale.",
-        "Rete a metà soletta o come da calcolo, CTCEM nel travetto: ruoli separati, prestazione garantita.",
-        "Appoggiare la rete sui CTCEM è un errore: sposta la barra all’altezza giusta con distanziatori dedicati.",
-        "La soletta lavora bene quando connettori e rete fanno il proprio mestiere nelle posizioni corrette."
+        "Vite che gira a vuoto = ancoraggio assente.",
+        "Sposta il connettore di pochi cm in zona sana e rifai.",
+        "Non “lasciarla così tanto qualcosa fa”: non fa.",
+        "Se capita spesso, il problema è del travetto, non del CTCEM.",
+        "Meglio un connettore in più in posizione giusta.",
+        "Segna e correggi subito prima del getto.",
+        "Un CTCEM nel laterizio è solo un pezzo di ferro.",
+        "Non forzare la vite sperando che “prenda qualcosa”."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0009",
-      "tags": ["cls", "classe-calcestruzzo"],
+      "tags": ["rete", "soletta"],
       "questions": [
-        "Che calcestruzzo devo usare con CTCEM?",
-        "Serve un cls specifico con i CTCEM?",
-        "Posso usare calcestruzzo leggero con CTCEM?"
+        "Dove metto la rete con i CTCEM?",
+        "La rete appoggiata sui CTCEM va bene?",
+        "Posizione corretta armatura con CTCEM?"
       ],
-      "canonical": "Il calcestruzzo della soletta con CTCEM deve rispettare le classi minime indicate dalla documentazione Tecnaria e dal progetto (tipicamente almeno C25/30). Eventuali cls leggeri o speciali vanno valutati caso per caso.",
+      "canonical": "La rete non va appoggiata sui CTCEM ma posizionata nella zona tesa della soletta secondo il progetto.",
       "response_variants": [
-        "Resta su un cls strutturale serio, di classe almeno pari a quella indicata da Tecnaria (es. C25/30).",
-        "Il collegamento funziona se anche il calcestruzzo è all’altezza: niente miscele “povere” improvvisate.",
-        "Per cls leggeri o speciali meglio un confronto con l’ufficio tecnico.",
-        "La soletta collaborante merita un calcestruzzo coerente col ruolo strutturale che assume.",
-        "Il CTCEM da solo non basta: la qualità del cls completa il sistema."
+        "CTCEM collega, la rete arma: non fare confusione.",
+        "Usa distanziatori, non le teste dei connettori.",
+        "La rete va alla quota tesa indicata dal progettista.",
+        "Appoggiarla sui CTCEM cambia copriferro e comportamento.",
+        "La collaborazione è travetto+soletta, non rete sulle teste.",
+        "È un errore comune, facile da evitare.",
+        "Segui il disegno: piani distinti, ruoli distinti.",
+        "Una armatura ben posizionata completa il lavoro dei CTCEM."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0010",
-      "tags": ["errore-lamiera", "errore-legno"],
+      "tags": ["spessore-soletta"],
       "questions": [
-        "Posso usare CTCEM su lamiera grecata?",
-        "CTCEM va bene su travi in legno?",
-        "CTCEM si può usare su profili in acciaio?"
+        "Che spessore serve con CTCEM?",
+        "Posso fare soletta sottile con CTCEM?",
+        "Qual è lo spessore minimo?"
       ],
-      "canonical": "No. I CTCEM non sono per lamiera grecata, legno o travi in acciaio: lì lavorano altre famiglie (CTF per acciaio/lamiera, CTL/CTL MAXI per legno). CTCEM è dedicato al travetto in calcestruzzo dei solai in laterocemento.",
+      "canonical": "Lo spessore della soletta collaborante è definito dal progetto e non va ridotto sotto i minimi indicati da Tecnaria per garantire ancoraggio e rigidezza.",
       "response_variants": [
-        "CTCEM resta nel mondo laterocemento: per lamiera serve CTF, per legno serve CTL.",
-        "Non mischiare le famiglie: CTCEM sul travetto, CTF sull’acciaio, CTL sul legno.",
-        "Su lamiera o acciaio non usare CTCEM: cambia tecnologia.",
-        "Se il supporto non è un travetto in c.a., CTCEM non è il connettore giusto.",
-        "Ogni famiglia ha il suo campo: così eviti errori di sistema."
+        "Non tagliare spessore a sensazione.",
+        "I minimi sono nelle schede Tecnaria e nella relazione.",
+        "La soletta è struttura, non rasatura.",
+        "Spessore troppo basso = collaborazione ridotta.",
+        "Ogni cm ha una funzione nel calcolo.",
+        "Segui il progetto: è lì per un motivo.",
+        "Per varianti, servono nuove verifiche.",
+        "Non barattare calcestruzzo con speranza."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0011",
-      "tags": ["passo", "numero-connettori"],
+      "tags": ["numero-connettori", "passo"],
       "questions": [
-        "Quanti CTCEM devo mettere al metro quadro?",
-        "Qual è il passo tra i CTCEM?",
-        "Posso ridurre il numero di CTCEM rispetto allo schema?"
+        "Quanti CTCEM devo mettere?",
+        "Posso diradare i connettori?",
+        "Il passo dei CTCEM lo decido io?"
       ],
-      "canonical": "Il numero e il passo dei CTCEM sono definiti dal calcolo strutturale e dalle indicazioni Tecnaria. Non vanno ridotti arbitrariamente rispetto al progetto.",
+      "canonical": "Numero e passo dei CTCEM sono stabiliti dal calcolo strutturale. Non vanno ridotti senza nuova verifica.",
       "response_variants": [
-        "Il passo dei CTCEM non si indovina: lo fissa il progetto, con il supporto delle tabelle Tecnaria.",
-        "Metterne meno senza verifica significa ridurre la sicurezza della collaborazione.",
-        "Se vuoi modificare il passo, fallo solo dopo confronto con il progettista o Tecnaria.",
-        "Ogni connettore in meno è una parte di taglio che non trasferisci.",
-        "Rispettare il passo è parte integrante del sistema, non un dettaglio opzionale."
+        "Non togliere connettori perché “sembrano troppi”.",
+        "Ogni pezzo è conto nella verifica.",
+        "Il passo lo decide il progettista, non l’occhio.",
+        "Ridurre i CTCEM = ridurre la capacità del solaio.",
+        "Aggiungere può essere prudente, togliere mai senza calcolo.",
+        "Segui lo schema di posa allegato.",
+        "Se non è chiaro, chiedi chiarimenti, non improvvisare.",
+        "È responsabilità tecnica, non estetica."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0012",
-      "tags": ["certificazioni", "documentazione"],
+      "tags": ["zona-sismica", "norme"],
       "questions": [
-        "I CTCEM sono certificati?",
-        "Avete schede tecniche per CTCEM?",
-        "Posso avere documentazione ufficiale dei CTCEM?"
+        "Posso usare CTCEM in zona sismica?",
+        "È un sistema ammesso dalle norme?",
+        "CTCEM compatibile con NTC ed Eurocodici?"
       ],
-      "canonical": "I CTCEM sono supportati da documentazione tecnica ufficiale Tecnaria. Schede, prove e indicazioni aggiornate sono disponibili su richiesta.",
+      "canonical": "I sistemi con CTCEM sono compatibili con le normative vigenti se correttamente dimensionati dal progettista con i dati Tecnaria.",
       "response_variants": [
-        "Sì, i CTCEM hanno documentazione dedicata: richiedi sempre l’ultima versione a Tecnaria.",
-        "Le prestazioni non sono dichiarate a voce: sono supportate da prove e schede ufficiali.",
-        "Per capitolati e collaudi ti forniamo noi tutta la documentazione CTCEM.",
-        "Usare la documentazione aggiornata è parte del corretto impiego del sistema.",
-        "Un sistema serio cammina insieme a carte serie: chiedi pure."
+        "Sì, se inseriti in un progetto strutturale serio.",
+        "I CTCEM sono usati in interventi anche in zona sismica.",
+        "Forniamo parametri per i modelli di calcolo.",
+        "Non sono un ostacolo normativo, sono uno strumento.",
+        "Conta come vengono progettati, non solo il nome.",
+        "Ufficio tecnico disponibile per supporto.",
+        "Nessuna improvvisazione: verifiche, non opinioni.",
+        "Usali come parte di una strategia di miglioramento."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0013",
-      "tags": ["corrosione", "durabilità"],
+      "tags": ["certificazioni", "prove"],
       "questions": [
-        "I CTCEM arrugginiscono?",
-        "Si possono usare in ambienti aggressivi?",
-        "Serve protezione particolare per CTCEM?"
+        "I CTCEM sono certificati?",
+        "Avete prove sperimentali per CTCEM?",
+        "Serve documentazione per il collaudo?"
       ],
-      "canonical": "I CTCEM sono protetti per l’impiego previsto all’interno della soletta collaborante. In ambienti particolarmente aggressivi o con esposizioni speciali, è necessaria una valutazione dedicata.",
+      "canonical": "CTCEM è supportato da documentazione tecnica e prove Tecnaria fornite su richiesta.",
       "response_variants": [
-        "Inseriti e coperti nel cls i CTCEM lavorano in ambiente protetto.",
-        "Se l’ambiente è aggressivo (chimico, marino, ecc.), confronta il caso con Tecnaria.",
-        "Come per tutti gli elementi metallici, la durabilità dipende dal contesto: meglio una verifica mirata.",
-        "La soletta ben eseguita contribuisce a proteggere il connettore nel tempo.",
-        "Segnalare subito ambienti fuori standard aiuta a scegliere la soluzione migliore."
+        "Sì, esistono prove e schede dedicate.",
+        "Per collaudi e capitolati abbiamo materiale ufficiale.",
+        "Tutto tracciabile: valori, modalità di prova, limiti.",
+        "Puoi chiedere i documenti aggiornati.",
+        "Non lavoriamo a sensazione, ma su test reali.",
+        "Il sistema è pensato per chi deve rispondere in collaudo.",
+        "Usa le nostre schede nei tuoi elaborati.",
+        "La trasparenza tecnica fa parte del pacchetto."
       ],
       "mode": "dynamic"
     },
 
     {
       "id": "CTCEM-0014",
-      "tags": ["errore-metà", "taglio-sicurezza"],
+      "tags": ["durabilità"],
       "questions": [
-        "Se metto metà dei CTCEM previsti, regge lo stesso?",
-        "Posso diradare i CTCEM per risparmiare?",
-        "Se salto qualche connettore non succede niente, vero?"
+        "Quanto durano i CTCEM?",
+        "Posso usarli in ambiente umido?",
+        "Problemi di corrosione?"
       ],
-      "canonical": "Ridurre il numero di CTCEM rispetto al progetto significa ridurre la capacità di trasferimento del taglio e quindi la sicurezza. Non è ammesso senza nuova verifica strutturale.",
+      "canonical": "I CTCEM sono protetti per condizioni normali di esercizio. In ambienti aggressivi va valutata la protezione complessiva del sistema.",
       "response_variants": [
-        "No, non è una buona idea: ogni CTCEM fa una parte di lavoro. Togliendoli togli sicurezza.",
-        "Risparmiare togliendo connettori è il modo più rapido per perdere collaborazione.",
-        "Se vuoi modificare lo schema, fallo solo con un progettista: mai a sensazione.",
-        "Una fila in meno oggi può essere un problema domani: meglio rispettare il disegno.",
-        "Il sistema funziona perché è completo, non perché è fatto “a occhio”."
+        "In condizioni standard hanno durabilità elevata.",
+        "Per ambienti marini/industriali serve valutazione specifica.",
+        "Conta anche il cls, il copriferro, i dettagli esecutivi.",
+        "Non lasciare i connettori esposti senza motivo.",
+        "Possiamo suggerire accorgimenti in casi severi.",
+        "CTCEM non è il punto debole se tutto è progettato bene.",
+        "La durabilità è di sistema, non del singolo pezzo.",
+        "Un buon getto protegge bene anche il connettore."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTCEM-0015",
+      "tags": ["controllo-posa", "fine-lavori"],
+      "questions": [
+        "Come verifico la posa dei CTCEM?",
+        "Cosa guardo prima del getto?",
+        "Segnali che qualcosa non va?"
+      ],
+      "canonical": "Prima del getto verificare allineamento sui travetti, serraggio, numero, passo, assenza di connettori nel vuoto o nel solo laterizio.",
+      "response_variants": [
+        "Controlla che ogni CTCEM sia sul travetto, non nel vuoto.",
+        "Verifica che le viti siano serrate, non lasciate lente.",
+        "Confronta numero e passo con il disegno.",
+        "Segna e correggi le anomalie subito.",
+        "Fai foto: servono per memoria e collaudo.",
+        "Un quarto d’ora di controllo vale un solaio tranquillo.",
+        "Se hai dubbi, chiama Tecnaria prima di gettare.",
+        "La qualità del lavoro si vede qui."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTCEM-0016",
+      "tags": ["mix-sistemi", "compatibilita"],
+      "questions": [
+        "Posso usare CTCEM e VCEM nello stesso cantiere?",
+        "È un problema combinare famiglie diverse?",
+        "Posso avere zone con CTCEM e altre con VCEM?"
+      ],
+      "canonical": "Sì, purché ogni zona usi il connettore previsto per il proprio schema. Non mischiare sullo stesso elemento senza verifica.",
+      "response_variants": [
+        "Normale usare più famiglie nello stesso edificio.",
+        "Importante che ogni solaio abbia il suo sistema coerente.",
+        "Non fare ibridi sullo stesso travetto senza progetto.",
+        "Disegni chiari evitano errori in cantiere.",
+        "CTCEM e VCEM possono convivere, non confondersi.",
+        "Segnala bene a chi posa quale famiglia usare dove.",
+        "Famiglia giusta, supporto giusto, zona giusta.",
+        "La combinazione è un punto di forza, se gestita bene."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTCEM-0017",
+      "tags": ["supporto-tecnico"],
+      "questions": [
+        "Se ho dubbi su CTCEM chi contatto?",
+        "Potete aiutarmi a scegliere tra VCEM e CTCEM?",
+        "Serve supporto per il progetto?"
+      ],
+      "canonical": "Per dubbi di scelta, posa o dimensionamento con CTCEM è disponibile l’ufficio tecnico Tecnaria.",
+      "response_variants": [
+        "Sì, l’ufficio tecnico Tecnaria è a disposizione.",
+        "Possiamo confrontare CTCEM e VCEM sul tuo caso reale.",
+        "Porta luci, carichi, sezioni: ti aiutiamo.",
+        "Meglio una chiamata oggi che un problema domani.",
+        "Il supporto è parte del sistema.",
+        "Siamo abituati a casi particolari di solai esistenti.",
+        "Non restare nel dubbio: scrivere costa meno che demolire.",
+        "L’obiettivo è avere un intervento pulito e difendibile."
       ],
       "mode": "dynamic"
     }
 
   ]
 }
-
