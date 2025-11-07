@@ -1,91 +1,205 @@
-<script>
-  const BASE = location.origin; // dominio attuale
-
-  function setQ(t) {
-    document.getElementById('question').value = t;
-    sendQuestion();
-  }
-
-  async function ping() {
-    const s = document.getElementById('status');
-    const e = document.getElementById('err');
-    e.style.display = 'none';
-    s.textContent = 'ping...';
-    try {
-      const r = await fetch(BASE + '/api/config');
-      const j = await r.json();
-      s.textContent = `online · ${j.app}`;
-    } catch (err) {
-      s.textContent = 'errore ping';
-      e.textContent = err;
-      e.style.display = 'block';
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tecnaria Sinapsi — Q/A</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background-color: #0b0d11;
+      color: #fff;
     }
-  }
-
-  async function sendQuestion() {
-    const q = document.getElementById('question').value.trim();
-    const out = document.getElementById('answer');
-    const s = document.getElementById('status');
-    const e = document.getElementById('err');
-    const meta = document.getElementById('meta');
-    const src = document.getElementById('src');
-    const match = document.getElementById('match');
-
-    if (!q) {
-      out.textContent = 'Scrivi una domanda prima.';
-      return;
+    header {
+      background: linear-gradient(90deg, #000, #8b4513);
+      padding: 10px 20px;
+      font-size: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
     }
+    .container {
+      display: flex;
+      flex-direction: row;
+      height: calc(100vh - 50px);
+    }
+    .left {
+      flex: 0 0 45%;
+      padding: 20px;
+      border-right: 2px solid #222;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+    }
+    .right {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      background: #151515;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      background: #000;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 10px;
+      resize: none;
+      font-size: 15px;
+    }
+    button {
+      background-color: #ff7a00;
+      border: none;
+      padding: 10px 20px;
+      margin-right: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #fff;
+      font-weight: bold;
+      font-size: 15px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    button:hover {
+      background-color: #ffa94d;
+    }
+    #answer {
+      white-space: pre-wrap;
+      font-size: 17px;
+      color: #ffb84d;
+    }
+    #err {
+      color: #ff6666;
+      background-color: #330000;
+      padding: 6px;
+      border-radius: 6px;
+      display: none;
+      margin-top: 10px;
+    }
+    #meta {
+      display: none;
+      font-size: 13px;
+      color: #ccc;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div><strong>Tecnaria Sinapsi — Q/A</strong></div>
+    <div id="status">avvio...</div>
+  </header>
 
-    e.style.display = 'none';
-    s.textContent = 'Sto chiedendo a Sinapsi…';
+  <div class="container">
+    <div class="left">
+      <h3>CHIEDI A SINAPSI</h3>
+      <textarea id="question" placeholder="Scrivi la domanda qui..."></textarea>
+      <div>
+        <button onclick="sendQuestion()">Invia</button>
+        <button onclick="ping()">Ping</button>
+      </div>
+      <div id="err"></div>
+    </div>
 
-    try {
-      const res = await fetch(BASE + '/api/ask', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          q: q,
-          family: inferFamilyFromText(q) // deduce la famiglia dalla domanda
-        })
-      });
+    <div class="right">
+      <h3>Risposta GOLD</h3>
+      <div id="answer">—</div>
+      <div id="meta">
+        <div>ID: <span id="src"></span></div>
+        <div>Mode: <span id="match"></span></div>
+      </div>
+    </div>
+  </div>
 
-      if (!res.ok) {
-        const txt = await res.text();
-        out.textContent = 'Errore risposta backend.';
-        e.textContent = txt;
+  <script>
+    const BASE = location.origin;
+
+    async function ping() {
+      const s = document.getElementById('status');
+      const e = document.getElementById('err');
+      e.style.display = 'none';
+      s.textContent = 'ping...';
+      try {
+        const r = await fetch(BASE + '/api/config');
+        const j = await r.json();
+        s.textContent = `ONLINE · ${j.app}`;
+      } catch (err) {
+        s.textContent = 'errore ping';
+        e.textContent = err;
         e.style.display = 'block';
-        s.textContent = 'errore';
-        meta.style.display = 'none';
+      }
+    }
+
+    async function sendQuestion() {
+      const q = document.getElementById('question').value.trim();
+      const out = document.getElementById('answer');
+      const s = document.getElementById('status');
+      const e = document.getElementById('err');
+      const meta = document.getElementById('meta');
+      const src = document.getElementById('src');
+      const match = document.getElementById('match');
+
+      if (!q) {
+        out.textContent = 'Scrivi una domanda prima.';
         return;
       }
 
-      const data = await res.json();
-      out.textContent = data.text || 'Nessuna risposta.';
-      src.textContent = data.id || '—';
-      match.textContent = data.mode || '—';
-      meta.style.display = 'flex';
-      s.textContent = 'ok';
-    } catch (err) {
-      out.textContent = 'Errore di rete.';
-      e.textContent = err;
-      e.style.display = 'block';
-      s.textContent = 'errore';
-      meta.style.display = 'none';
+      e.style.display = 'none';
+      s.textContent = 'Sto chiedendo a Sinapsi…';
+
+      try {
+        const res = await fetch(BASE + '/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            q: q,
+            family: inferFamilyFromText(q)
+          })
+        });
+
+        if (!res.ok) {
+          const txt = await res.text();
+          out.textContent = 'Errore risposta backend.';
+          e.textContent = txt;
+          e.style.display = 'block';
+          s.textContent = 'errore';
+          meta.style.display = 'none';
+          return;
+        }
+
+        const data = await res.json();
+        out.textContent = data.text || 'Nessuna risposta.';
+        src.textContent = data.id || '—';
+        match.textContent = data.mode || '—';
+        meta.style.display = 'block';
+        s.textContent = 'ok';
+      } catch (err) {
+        out.textContent = 'Errore di rete.';
+        e.textContent = err;
+        e.style.display = 'block';
+        s.textContent = 'errore';
+        meta.style.display = 'none';
+      }
     }
-  }
 
-  // piccola funzione per capire la famiglia dal testo (grezza ma utile)
-  function inferFamilyFromText(q) {
-    q = q.toLowerCase();
-    if (q.includes("vct") || q.includes("vcem")) return "VCEM";
-    if (q.includes("ctf")) return "CTF";
-    if (q.includes("ctcem")) return "CTCEM";
-    if (q.includes("ctl maxi")) return "CTL_MAXI";
-    if (q.includes("ctl")) return "CTL";
-    if (q.includes("p560")) return "P560";
-    if (q.includes("diapason")) return "DIAPASON";
-    return "COMM"; // fallback
-  }
+    function inferFamilyFromText(q) {
+      q = q.toLowerCase();
+      if (q.includes("vcem")) return "VCEM";
+      if (q.includes("ctf")) return "CTF";
+      if (q.includes("ctcem")) return "CTCEM";
+      if (q.includes("ctl maxi")) return "CTL_MAXI";
+      if (q.includes("ctl")) return "CTL";
+      if (q.includes("p560")) return "P560";
+      if (q.includes("diapason")) return "DIAPASON";
+      return "COMM";
+    }
 
-  ping();
-</script>
+    ping();
+  </script>
+</body>
+</html>
