@@ -1,1 +1,280 @@
+{
+  "family": "CTL_MAXI",
+  "lock_to_core": true,
+  "variants_strategy": "dynamic",
+  "items": [
+
+    {
+      "id": "CTLMAXI-0001",
+      "tags": ["definizione", "cosa-sono"],
+      "questions": [
+        "Cosa sono i CTL MAXI?",
+        "Mi spieghi la famiglia CTL MAXI?",
+        "A cosa servono i CTL MAXI Tecnaria?",
+        "Che differenza hanno i CTL MAXI rispetto ai CTL normali?"
+      ],
+      "canonical": "I CTL MAXI sono connettori Tecnaria per solai misti legno–calcestruzzo ad alte prestazioni. Hanno geometria e capacità maggiori rispetto ai CTL standard e sono pensati per luci più ampie, carichi elevati o solette più spesse.",
+      "response_variants": [
+        "I CTL MAXI sono la versione potenziata dei CTL: connettori per legno–calcestruzzo studiati per portate superiori, luci maggiori e solette più importanti.",
+        "Quando un semplice CTL non basta perché il solaio deve lavorare di più, entra in gioco CTL MAXI: stesso principio, capacità aumentata.",
+        "CTL MAXI è il fratello “muscoloso” del CTL standard: nasce per interventi strutturalmente impegnativi su solai in legno.",
+        "Nel sistema Tecnaria, CTL MAXI copre le situazioni dove servono collegamenti più robusti tra travi in legno e soletta in cls.",
+        "Se parli di solaio misto legno–cls con prestazioni spinte, è naturale valutare i CTL MAXI come soluzione dedicata."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0002",
+      "tags": ["quando-usarli", "ctl-vs-ctlmaxi"],
+      "questions": [
+        "Quando usare CTL MAXI invece di CTL?",
+        "Meglio CTL o CTL MAXI?",
+        "In quali casi conviene CTL MAXI?",
+        "Come scelgo tra CTL e CTL MAXI?"
+      ],
+      "canonical": "Si usa CTL MAXI quando il progetto richiede maggior capacità: luci più grandi, carichi elevati, sezione collaborante più spessa o solai con prestazioni strutturali più spinte. La scelta è guidata dal calcolo.",
+      "response_variants": [
+        "Scegli CTL per casi standard; passa a CTL MAXI quando le verifiche sono tirate o servono luci e carichi più importanti.",
+        "CTL MAXI entra in gioco quando vuoi spremere il massimo dal sistema legno–cls senza cambiare filosofia di intervento.",
+        "Se il solaio deve portare molto o flettere poco, il progettista spesso sceglie CTL MAXI per sicurezza e margine.",
+        "Non è marketing ma capacità: CTL MAXI ha valori superiori, quindi è la scelta naturale in scenari più severi.",
+        "Il confine lo fa il calcolo: se con CTL sei al limite, CTL MAXI è la risposta pulita."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0003",
+      "tags": ["fissaggio", "no-sparo", "no-resina"],
+      "questions": [
+        "I CTL MAXI si sparano con P560?",
+        "Posso usare pistole a sparo per CTL MAXI?",
+        "Si montano con resine i CTL MAXI?",
+        "Posso incollare i CTL MAXI invece di avvitarli?"
+      ],
+      "canonical": "I CTL MAXI non si sparano e non si incollano. Sono connettori a fissaggio meccanico su legno, con viti dedicate e schema di posa Tecnaria.",
+      "response_variants": [
+        "No P560: CTL MAXI, come i CTL, si installa solo con viti nel legno secondo le indicazioni Tecnaria.",
+        "Nessuna resina strutturale in sostituzione del fissaggio meccanico: CTL MAXI lavora grazie all’ancoraggio delle viti.",
+        "Se qualcuno propone di sparare o incollare un CTL MAXI, fermalo: esce dal sistema certificato.",
+        "Il principio è chiaro: connettore CTL MAXI + vite su legno + soletta in cls = solaio collaborante.",
+        "Le prestazioni dichiarate di CTL MAXI valgono solo con la posa meccanica prevista, non con soluzioni inventate in cantiere."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0004",
+      "tags": ["posa", "schema", "inclinazione"],
+      "questions": [
+        "Come si posano i CTL MAXI?",
+        "Che inclinazione devono avere i CTL MAXI?",
+        "Serve uno schema di posa specifico per CTL MAXI?",
+        "Ci sono differenze di posa tra CTL e CTL MAXI?"
+      ],
+      "canonical": "La posa dei CTL MAXI segue uno schema definito: viti con inclinazione, profondità e passo specifici, per sfruttare la maggiore capacità del connettore. È fondamentale rispettare le indicazioni Tecnaria.",
+      "response_variants": [
+        "CTL MAXI richiede una posa precisa: inclinazione corretta, viti dedicate, profondità controllata.",
+        "La differenza non è solo “più grande”: anche lo schema di posa è tarato per sfruttare le sue prestazioni.",
+        "Segui pedissequamente le tavole Tecnaria: posizione, inclinazione e numero sono parte del sistema.",
+        "Piccole tolleranze sono tollerabili, cambi sostanziali no: CTL MAXI va posato come progettato.",
+        "Se hai dubbi sullo schema, meglio chiedere una tavola di dettaglio piuttosto che improvvisare."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0005",
+      "tags": ["spessore-soletta", "carichi-elevati"],
+      "questions": [
+        "Che spessore di soletta si abbina ai CTL MAXI?",
+        "Posso usare CTL MAXI con soletta più spessa?",
+        "CTL MAXI è per carichi elevati?"
+      ],
+      "canonical": "I CTL MAXI sono pensati per solette collaboranti anche più spesse e per carichi maggiori rispetto ai CTL standard. Gli spessori sono definiti dal progetto e dalle tabelle Tecnaria.",
+      "response_variants": [
+        "CTL MAXI permette di lavorare con solette più importanti rispetto ai CTL, se il progetto lo richiede.",
+        "Quando crescono spessori e carichi, il CTL MAXI è il partner naturale del progettista.",
+        "La soletta la dimensiona il calcolo: CTL MAXI ti dà margine per aumentare capacità.",
+        "Non fissarti su un numero fisso: guarda le schede e il calcolo per accoppiare spessore e connettore.",
+        "Più spessore, più inerzia, più lavoro: CTL MAXI è fatto per questo scenario."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0006",
+      "tags": ["tipi-legno", "travi-grandi"],
+      "questions": [
+        "Posso usare CTL MAXI su travi lamellari grandi?",
+        "È adatto per solai nuovi in legno importanti?",
+        "CTL MAXI funziona su travi di grande sezione?"
+      ],
+      "canonical": "CTL MAXI è adatto a travi e strutture in legno di maggiore sezione, sia in interventi su esistente che in nuove costruzioni, purché il legno sia strutturale e idoneo al fissaggio.",
+      "response_variants": [
+        "Sì, CTL MAXI è ideale quando lavori con travi lamellari o massicce di sezione importante.",
+        "Su solai nuovi in legno con richieste elevate, CTL MAXI dà coerenza tra dimensioni del legno e del collegamento.",
+        "Più è grande la trave, più ha senso usare un connettore in grado di accompagnarla: CTL MAXI.",
+        "Serve sempre legno strutturale e sano: CTL MAXI non compensa un materiale scadente.",
+        "La combinazione travi robuste + CTL MAXI + soletta ben dimensionata è una soluzione molto performante."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0007",
+      "tags": ["errori-posa", "meno-connettori"],
+      "questions": [
+        "Se metto meno CTL MAXI del previsto regge lo stesso?",
+        "Posso diradare i CTL MAXI per risparmiare?",
+        "Se salto qualche connettore CTL MAXI succede qualcosa?"
+      ],
+      "canonical": "Ridurre il numero di CTL MAXI rispetto allo schema di progetto significa ridurre la capacità del solaio collaborante. Non è ammesso senza una nuova verifica strutturale.",
+      "response_variants": [
+        "No, non è una buona idea: ogni CTL MAXI trasferisce una quota importante di sforzo.",
+        "Diradare i connettori senza calcolo vuol dire buttare via parte del potenziale del sistema.",
+        "Se vuoi ottimizzare, fallo con il progettista, non con la logica “ne metto qualcuno in meno”.",
+        "Un buco nello schema è un buco nella collaborazione.",
+        "Connettori MAXI = responsabilità MAXI: niente tagli arbitrari."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0008",
+      "tags": ["compatibilita-vcem-ctf-ctcem", "errore-famiglia"],
+      "questions": [
+        "Posso usare CTL MAXI su lamiera grecata?",
+        "CTL MAXI va bene su travi in acciaio?",
+        "Posso usare CTL MAXI su solaio in laterocemento?",
+        "È intercambiabile con VCEM, CTF o CTCEM?"
+      ],
+      "canonical": "No. CTL MAXI è dedicato ai solai legno–calcestruzzo. Su lamiera, acciaio o laterocemento si usano altre famiglie (CTF, VCEM, CTCEM). Non è intercambiabile.",
+      "response_variants": [
+        "CTL MAXI resta nel mondo legno–cls: per lamiera e acciaio c’è CTF, per laterocemento VCEM/CTCEM.",
+        "Ogni famiglia ha il suo campo: CTL MAXI non sostituisce CTF o VCEM.",
+        "Non usare CTL MAXI su supporti metallici o laterocemento: è fuori sistema.",
+        "Legno = CTL / CTL MAXI, acciaio = CTF, laterocemento = VCEM/CTCEM: semplice e pulito.",
+        "Mischiare famiglie a caso crea solo problemi di responsabilità."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0009",
+      "tags": ["cls", "rete", "soletta"],
+      "questions": [
+        "Che cls usare con CTL MAXI?",
+        "La rete come la metto con CTL MAXI?",
+        "Ci sono differenze rispetto a CTL sulla soletta?"
+      ],
+      "canonical": "Con CTL MAXI si usa un calcestruzzo strutturale conforme al progetto. La rete va posizionata nella zona tesa della soletta, secondo le indicazioni di calcolo, come per CTL.",
+      "response_variants": [
+        "Le regole base non cambiano: cls strutturale adeguato e rete in posizione corretta.",
+        "CTL MAXI consente solette più performanti, ma sempre con materiali e posizioni studiate.",
+        "Non appoggiare la rete sui connettori: restano validi i distanziatori dedicati.",
+        "Il progettista adatta spessore e armatura alle prestazioni offerte da CTL MAXI.",
+        "La differenza è nella capacità del connettore, non nello stravolgimento delle buone regole."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0010",
+      "tags": ["legno-ammalorato", "verifica-supporto"],
+      "questions": [
+        "Se il legno è vecchio posso usare CTL MAXI?",
+        "Se la vite non prende bene nel legno con CTL MAXI?",
+        "CTL MAXI compensa un legno debole?"
+      ],
+      "canonical": "Anche CTL MAXI richiede legno sano. Se la vite non ancora correttamente o il legno è degradato, va cambiata posizione o previsto un intervento di ripristino: il connettore non può compensare un supporto inadeguato.",
+      "response_variants": [
+        "CTL MAXI non è una cura per il legno marcio: se il supporto è debole, va sistemato prima.",
+        "Se la vite non morde, non insistere: spostati in zona sana o valuta rinforzi.",
+        "La capacità MAXI ha senso solo se ancorata a legno strutturalmente valido.",
+        "Su edifici storici serve sempre una verifica dello stato del legno prima di parlare di CTL MAXI.",
+        "Non scaricare sul connettore problemi che nascono dal supporto."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0011",
+      "tags": ["certificazioni", "documentazione"],
+      "questions": [
+        "CTL MAXI è certificato?",
+        "Avete schede tecniche CTL MAXI?",
+        "Posso avere documentazione ufficiale per CTL MAXI?"
+      ],
+      "canonical": "Il sistema CTL MAXI è supportato da documentazione tecnica e prove specifiche. Schede aggiornate e dati sono disponibili presso Tecnaria.",
+      "response_variants": [
+        "Sì, CTL MAXI ha documentazione dedicata: richiedi le schede Tecnaria aggiornate.",
+        "Le prestazioni dei CTL MAXI poggiano su prove, non su promesse.",
+        "Per capitolati e collaudi mettiamo a disposizione i documenti ufficiali.",
+        "Lavorare con CTL MAXI significa lavorare con dati tracciabili.",
+        "Documentazione tecnica sempre disponibile: è parte del sistema."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0012",
+      "tags": ["zona-sismica", "progetto"],
+      "questions": [
+        "Posso usare CTL MAXI in zona sismica?",
+        "È ammesso dalle norme il sistema con CTL MAXI?",
+        "Serve un progetto specifico in sismica?"
+      ],
+      "canonical": "CTL MAXI può essere utilizzato anche in zona sismica, all'interno di un progetto strutturale conforme alle normative vigenti. È necessario un corretto dimensionamento da parte del progettista.",
+      "response_variants": [
+        "Sì, ma sempre con un progetto sismico dedicato che utilizza i dati CTL MAXI.",
+        "In zona sismica non si improvvisa: CTL MAXI offre capacità, il progettista la governa.",
+        "Il sistema è compatibile con la progettazione moderna se inserito correttamente nei modelli di calcolo.",
+        "I dati di resistenza ci sono, vanno usati dentro un progetto normato.",
+        "Con CTL MAXI hai margine, ma anche più responsabilità progettuale."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0013",
+      "tags": ["isolamento", "ponti-termici", "acustica"],
+      "questions": [
+        "CTL MAXI migliora l’isolamento acustico?",
+        "I CTL MAXI interrompono i ponti termici?",
+        "Come si combinano con strati isolanti?"
+      ],
+      "canonical": "CTL MAXI è un sistema strutturale. L’isolamento acustico e termico va ottenuto con materiali e strati dedicati integrati nel pacchetto solaio.",
+      "response_variants": [
+        "Il lavoro dei CTL MAXI è strutturale: per acustica e termico servono strati aggiuntivi.",
+        "Non interrompono il ponte termico: i connettori sono metallici.",
+        "Si integrano facilmente con pacchetti isolanti, ma non li sostituiscono.",
+        "Progetta sempre isolamento e struttura insieme, non uno al posto dell’altro.",
+        "Il vantaggio dei CTL MAXI è la prestazione meccanica, non l’isolamento."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "CTLMAXI-0014",
+      "tags": ["manutenzione", "durabilità"],
+      "questions": [
+        "Serve manutenzione per CTL MAXI?",
+        "Quanto durano i CTL MAXI nel tempo?",
+        "La durabilità del sistema con CTL MAXI è buona?"
+      ],
+      "canonical": "Una volta inglobati nella soletta e con legno adeguatamente protetto, i CTL MAXI lavorano in ambiente controllato. La durabilità dipende dalla corretta esecuzione dei dettagli costruttivi.",
+      "response_variants": [
+        "Non richiedono manutenzioni dirette: va mantenuto sano il sistema legno–cls.",
+        "Proteggere il legno e prevenire infiltrazioni è la chiave della durabilità.",
+        "CTL MAXI è pensato per lavori di lunga durata, se il pacchetto è realizzato correttamente.",
+        "I problemi arrivano più da acqua e incuria che dal connettore.",
+        "Buona esecuzione oggi = lunga vita al solaio misto legno–cls domani."
+      ],
+      "mode": "dynamic"
+    }
+
+  ]
+}
 
