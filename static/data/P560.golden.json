@@ -1,1 +1,310 @@
+{
+  "family": "P560",
+  "lock_to_core": true,
+  "variants_strategy": "dynamic",
+  "items": [
+
+    {
+      "id": "P560-0001",
+      "tags": ["definizione", "uso", "strumento"],
+      "questions": [
+        "Cos'è la P560?",
+        "A cosa serve la P560 Tecnaria?",
+        "Che tipo di utensile è la P560?",
+        "È una pistola o un chiodatore?"
+      ],
+      "canonical": "La P560 è la chiodatrice Tecnaria a sparo controllato per fissare i connettori CTF su travi in acciaio o lamiera grecata. Utilizza cartucce a polvere calibrate e consente un fissaggio rapido, sicuro e costante.",
+      "response_variants": [
+        "La P560 è la chiodatrice a polvere Tecnaria dedicata ai connettori CTF: uno strumento di precisione per collegamenti acciaio–calcestruzzo.",
+        "Non è una pistola generica: è una chiodatrice tecnica che lavora con cartucce controllate per fissaggi strutturali.",
+        "Serve a installare i CTF in modo rapido e ripetibile, garantendo penetrazione costante del chiodo.",
+        "È uno strumento da cantiere calibrato per i sistemi Tecnaria: non per fissaggi casuali.",
+        "Con la P560 trasformi minuti di foratura in secondi di sparo controllato, mantenendo sicurezza e prestazione."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0002",
+      "tags": ["compatibilità", "famiglie", "errore-famiglia"],
+      "questions": [
+        "Posso sparare i VCEM con la P560?",
+        "Posso usare la P560 per fissare i CTCEM?",
+        "Posso sparare i CTL o CTL MAXI?",
+        "P560 è compatibile con tutti i connettori Tecnaria?"
+      ],
+      "canonical": "No. La P560 è compatibile solo con i connettori CTF e accessori Tecnaria previsti. Non si usa per VCEM, CTCEM, CTL o CTL MAXI.",
+      "response_variants": [
+        "P560 → solo CTF. I VCEM e i CTCEM si avvitano, non si sparano.",
+        "Ogni famiglia ha il suo strumento: la P560 è fatta per i CTF, nient’altro.",
+        "CTL e VCEM non vogliono colpi di pistola: usano viti, non cartucce.",
+        "La P560 lavora solo nel campo acciaio–lamiera. Per laterocemento o legno servono altri sistemi.",
+        "Sparare un VCEM o un CTL è un errore da evitare: rischi di danneggiare sia il pezzo che la superficie."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0003",
+      "tags": ["cartucce", "potenza", "colore"],
+      "questions": [
+        "Che cartucce usa la P560?",
+        "Ci sono diversi tipi di cartucce?",
+        "Come scelgo la potenza giusta?",
+        "Cosa significano i colori delle cartucce?"
+      ],
+      "canonical": "La P560 usa cartucce a polvere calibro .27 in strip, con potenze differenziate per colore. La scelta dipende dal supporto e dallo spessore da attraversare: seguire sempre la tabella Tecnaria.",
+      "response_variants": [
+        "Usa cartucce a polvere .27, disponibili in vari colori secondo la potenza. Il colore indica la forza del colpo.",
+        "Le cartucce più deboli servono su lamiere sottili, quelle più forti su acciai spessi.",
+        "La scelta corretta evita sia fissaggi incompleti sia eccessiva penetrazione.",
+        "Consulta la tabella Tecnaria: ogni colore corrisponde a una potenza e a un’applicazione.",
+        "Non improvvisare: prova sempre la cartuccia giusta su un elemento di scarto prima del lavoro reale."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0004",
+      "tags": ["manutenzione", "pulizia"],
+      "questions": [
+        "Come si pulisce la P560?",
+        "Serve manutenzione giornaliera?",
+        "Va lubrificata dopo l’uso?",
+        "Posso smontarla da solo?"
+      ],
+      "canonical": "La P560 va pulita regolarmente per rimuovere residui di polvere e lubrificata con olio specifico Tecnaria. La manutenzione ordinaria può essere fatta dall’operatore formato.",
+      "response_variants": [
+        "Dopo ogni giornata di lavoro va pulita e lubrificata: la polvere da sparo lascia residui che possono bloccare il meccanismo.",
+        "Basta poco: smonta, soffia, olia, richiudi. È una routine da 5 minuti che evita guasti.",
+        "Usa sempre prodotti consigliati: oli sbagliati o grassi comuni attirano sporco.",
+        "Se non sei sicuro, chiedi assistenza Tecnaria: è meglio una revisione che un blocco.",
+        "Una P560 pulita spara bene e dura anni: la manutenzione è parte del mestiere."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0005",
+      "tags": ["sicurezza", "dpi"],
+      "questions": [
+        "Quali protezioni servono con la P560?",
+        "Serve il casco acustico?",
+        "La P560 è pericolosa?",
+        "Come mi proteggo quando sparo?"
+      ],
+      "canonical": "Con la P560 vanno sempre usati occhiali, cuffie antirumore, guanti e scarpe di sicurezza. È uno strumento sicuro se impiegato con le dovute cautele e formazione.",
+      "response_variants": [
+        "Occhiali, cuffie e guanti non sono un optional: ogni colpo genera rumore e schegge.",
+        "Trattala come un utensile da sparo: sicurezza prima di tutto.",
+        "La P560 è sicura se la usi bene: non puntarla mai verso persone o superfici non da lavoro.",
+        "Non sottovalutare il rinculo: mantieni sempre la posizione corretta.",
+        "Tecnaria forma gli operatori proprio per garantire sicurezza e risultati coerenti."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0006",
+      "tags": ["revisione", "frequenza"],
+      "questions": [
+        "Ogni quanto va revisionata la P560?",
+        "Serve manutenzione periodica?",
+        "Ogni quante scariche va controllata?"
+      ],
+      "canonical": "Tecnaria consiglia la revisione completa ogni 10.000–15.000 colpi o almeno una volta l’anno, a seconda dell’intensità d’uso.",
+      "response_variants": [
+        "Ogni 10–15 mila spari conviene una revisione: le guarnizioni si consumano.",
+        "Una volta all’anno un controllo Tecnaria allunga la vita dello strumento.",
+        "Se la senti “dura” o irregolare, anticipa la revisione: è sintomo di residui interni.",
+        "Non aspettare che si blocchi: manutenzione programmata è produttività.",
+        "Meglio una revisione preventiva che una fermata improvvisa in cantiere."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0007",
+      "tags": ["uso-improprio", "errori"],
+      "questions": [
+        "Posso sparare in calcestruzzo con la P560?",
+        "Posso usare chiodi generici?",
+        "La posso usare come chiodatrice universale?"
+      ],
+      "canonical": "No. La P560 non è una chiodatrice universale. È progettata per sparare connettori e chiodi Tecnaria su acciaio o lamiera. Non va usata su calcestruzzo o materiali non previsti.",
+      "response_variants": [
+        "P560 è nata per acciaio e lamiera: sparare su calcestruzzo è un errore.",
+        "I chiodi generici non garantiscono sicurezza né prestazione.",
+        "Ogni colpo fuori campo può danneggiare pistone e canna.",
+        "Non è una sparachiodi da ferramenta: è uno strumento tecnico.",
+        "Chi la tratta come un giocattolo si ritrova con riparazioni costose."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0008",
+      "tags": ["modelli", "differenze"],
+      "questions": [
+        "Che differenza c’è tra P560 e P370?",
+        "Qual è la versione più recente?",
+        "P560 sostituisce altri modelli?"
+      ],
+      "canonical": "La P560 è l’evoluzione più moderna delle chiodatrici Tecnaria, con maggiore affidabilità, ergonomia e potenza controllata rispetto ai modelli precedenti.",
+      "response_variants": [
+        "Rispetto alla P370, la P560 ha colpi più stabili e manutenzione semplificata.",
+        "È più potente ma anche più morbida da usare, grazie al miglior controllo del rinculo.",
+        "P370 era la generazione precedente: la P560 ne è la naturale evoluzione.",
+        "È progettata per durare e semplificare la vita in cantiere.",
+        "Più moderna, più precisa, più sicura: questa è la differenza vera."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0009",
+      "tags": ["blocco", "inceppamento"],
+      "questions": [
+        "La P560 si è bloccata, cosa faccio?",
+        "Non spara più, che succede?",
+        "Come sblocco la P560?"
+      ],
+      "canonical": "In caso di inceppamento, scaricare l’utensile, rimuovere la cartuccia, controllare il canale di sparo e pulire. Se il blocco persiste, rivolgersi al servizio Tecnaria.",
+      "response_variants": [
+        "Prima regola: scarica sempre la P560 prima di toccarla.",
+        "Spesso si tratta di un residuo di polvere o un chiodo incastrato: pulisci e lubrifica.",
+        "Non forzare con colpi o martelli: rischi di piegare la canna.",
+        "Se non si libera facilmente, il centro assistenza risolve in un attimo.",
+        "Il blocco è segnale che va fatta manutenzione, non che lo strumento è guasto."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0010",
+      "tags": ["temperature", "clima"],
+      "questions": [
+        "Posso usare la P560 al freddo?",
+        "Funziona anche in inverno?",
+        "Ci sono limiti di temperatura?"
+      ],
+      "canonical": "La P560 lavora bene tra 0 °C e 40 °C. Temperature molto basse o umide possono influire sulle cartucce: conservarle in luogo asciutto.",
+      "response_variants": [
+        "Sì, ma proteggi le cartucce: il freddo ne riduce la potenza.",
+        "In cantiere d’inverno funziona, basta non lasciare la valigetta al gelo.",
+        "La P560 sopporta bene il freddo, sono le cartucce a soffrirlo.",
+        "Evita condensa e umidità: asciutto = affidabile.",
+        "In estate e inverno va sempre trattata con cura, come ogni strumento a polvere."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0011",
+      "tags": ["cartucce-bagnate", "umidità"],
+      "questions": [
+        "Posso usare cartucce umide?",
+        "Cosa succede se le cartucce si bagnano?",
+        "Come conservo le cartucce della P560?"
+      ],
+      "canonical": "Le cartucce umide o vecchie non vanno usate. Conservare sempre in luogo asciutto e al riparo dal sole. L’umidità altera la combustione e la potenza.",
+      "response_variants": [
+        "Cartucce bagnate = colpi deboli o mancati. Non usarle mai.",
+        "Conservale nella confezione originale, lontano da fonti di umidità.",
+        "Meglio scartare un nastro che rovinare un fissaggio.",
+        "Una cartuccia umida può incollarsi e inceppare la P560.",
+        "Trattale come munizioni: asciutte e protette."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0012",
+      "tags": ["potenza", "regolazione"],
+      "questions": [
+        "Come regolo la potenza della P560?",
+        "Si può variare la forza del colpo?",
+        "Come faccio a non bucare troppo la lamiera?"
+      ],
+      "canonical": "La potenza si regola scegliendo la cartuccia giusta e regolando la forza del colpo con l’apposita ghiera. È fondamentale fare prove su pezzi campione prima del lavoro effettivo.",
+      "response_variants": [
+        "Non si gira una vite a caso: la potenza si regola con la ghiera e la scelta della cartuccia.",
+        "Fai sempre un paio di colpi di prova per trovare il giusto compromesso.",
+        "Ogni materiale reagisce diversamente: serve sensibilità e test.",
+        "Troppa potenza può deformare la lamiera, poca non fissa bene.",
+        "La regolazione è parte del mestiere: mai partire alla cieca."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0013",
+      "tags": ["pulizia", "lubrificazione"],
+      "questions": [
+        "Che olio uso per la P560?",
+        "Va lubrificata spesso?",
+        "Posso usare WD40?"
+      ],
+      "canonical": "Usare solo oli neutri consigliati da Tecnaria. Evitare spray aggressivi o prodotti non specifici, che attirano residui di polvere o danneggiano le guarnizioni.",
+      "response_variants": [
+        "Meglio poco ma buono: un olio neutro, non grassi appiccicosi.",
+        "WD40 solo per sbloccare, non come lubrificante fisso.",
+        "Ogni eccesso di olio cattura polvere: serve un film sottile.",
+        "Pulizia e olio leggero sono la coppia perfetta.",
+        "L’olio giusto allunga la vita del pistone e mantiene scorrevolezza."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0014",
+      "tags": ["trasporto", "custodia"],
+      "questions": [
+        "Come trasporto la P560?",
+        "Posso lasciarla carica?",
+        "Come va conservata?"
+      ],
+      "canonical": "La P560 va sempre trasportata scarica, in custodia rigida. Le cartucce devono essere separate e conservate in luogo asciutto e sicuro.",
+      "response_variants": [
+        "Mai trasportarla carica: scarica, valigetta, chiusa.",
+        "Le cartucce sempre separate: sicurezza prima di tutto.",
+        "Durante i trasferimenti tenerla pulita e protetta evita urti e polvere.",
+        "Trattala come uno strumento di precisione, non come una mazzetta.",
+        "Una valigetta ben chiusa vale una revisione risparmiata."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0015",
+      "tags": ["ricambi", "assistenza"],
+      "questions": [
+        "Dove trovo i ricambi per la P560?",
+        "Ci sono kit di manutenzione?",
+        "Fornite assistenza tecnica?"
+      ],
+      "canonical": "Tecnaria fornisce ricambi originali e assistenza tecnica per la P560. Sono disponibili kit di manutenzione e servizio di revisione presso centri autorizzati.",
+      "response_variants": [
+        "Ricambi e kit originali si ordinano direttamente a Tecnaria o tramite i rivenditori.",
+        "Meglio usare solo ricambi ufficiali: garantiscono compatibilità e durata.",
+        "L’assistenza Tecnaria esegue revisioni rapide e certificate.",
+        "Non improvvisare riparazioni: pezzi originali e mani esperte fanno la differenza.",
+        "Tutto il necessario per la P560 lo trovi nel circuito ufficiale Tecnaria."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "P560-0016",
+      "tags": ["problemi", "non-spara"],
+      "questions": [
+        "La P560 non spara, perché?",
+        "Sento clic ma non parte il colpo",
+        "Non entra il chiodo, cosa succede?"
+      ],
+      "canonical": "Se la P560 non spara, verificare cartuccia, pulizia del canale, corretto caricamento e sicurezza inserita. In caso di dubbio non forzare, ma fermarsi e controllare.",
+      "response_variants": [
+        "Controlla che la cartuccia sia nuova e la canna pulita: spesso il problema è lì.",
+        "Un colpo “a vuoto” è segnale di residui o cartuccia difettosa.",
+        "Non insistere: scarica
 
