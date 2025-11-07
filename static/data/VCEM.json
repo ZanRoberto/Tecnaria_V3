@@ -3,1641 +3,214 @@
   "lock_to_core": true,
   "variants_strategy": "dynamic",
   "items": [
-
     {
       "id": "VCEM-0001",
-      "tags": ["definizione", "cosa-sono", "campo-uso"],
+      "tags": ["definizione", "cosa-sono", "laterocemento"],
       "questions": [
-        "Cosa sono i VCEM?",
+        "Che cosa sono i VCEM?",
         "A cosa servono i connettori VCEM?",
-        "In che casi si usano i VCEM Tecnaria?",
-        "Mi spieghi la famiglia VCEM?",
-        "Che tipo di connettore è il VCEM?",
-        "VCEM per che solaio è pensato?",
-        "Quando scelgo i VCEM?",
-        "VCEM è per solai in laterocemento?"
+        "Quando uso i VCEM su solaio in laterocemento?"
       ],
-      "canonical": "I VCEM sono connettori Tecnaria per solai in laterocemento con travetti in calcestruzzo armato. Collegano il travetto esistente alla nuova soletta collaborante in cls tramite foro e vite, aumentando rigidezza e capacità portante.",
+      "canonical": "I VCEM sono connettori Tecnaria per solai in laterocemento o calcestruzzo alleggerito che devono diventare collaboranti con una nuova soletta in cls. Si fissano con foro e vite, non con P560.",
       "response_variants": [
-        "I VCEM sono i connettori Tecnaria dedicati ai solai in laterocemento con travetti in c.a.: creano collaborazione tra travetto esistente e nuova soletta in calcestruzzo.",
-        "Quando hai travetti in calcestruzzo e vuoi trasformare il solaio in laterocemento in solaio collaborante, i VCEM sono la scelta naturale.",
-        "VCEM è il connettore meccanico che fa lavorare insieme travetto e soletta, senza soluzioni improvvisate.",
-        "Con i VCEM sfrutti il travetto esistente e aggiungi una soletta strutturale che irrigidisce il solaio.",
-        "Pensali come il dente che aggancia il vecchio solaio in laterocemento al nuovo getto.",
-        "La famiglia VCEM esiste per un caso preciso: travetto in c.a. + blocchi laterizi + soletta collaborante.",
-        "Se il solaio è in laterocemento con travetto sano, il linguaggio Tecnaria è VCEM.",
-        "È il sistema certificato per collegare in modo pulito e ripetibile le strutture in laterocemento."
+        "I VCEM collegano il vecchio solaio in laterocemento alla nuova soletta collaborante, con fissaggio meccanico a vite.",
+        "Sono i connettori Tecnaria dedicati ai solai in laterocemento: foro nel travetto, vite, soletta sopra.",
+        "Pensali come i connettori ‘standard’ per laterocemento: semplici, robusti, con posa a foro + vite.",
+        "L’obiettivo del VCEM è trasformare il solaio esistente in una sezione collaborante travetto+soletta.",
+        "Non è un tassello chimico: è un connettore strutturale certificato per questo uso.",
+        "Dove leggi laterocemento + soletta collaborante, il VCEM è quasi sempre sul tavolo."
       ],
       "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0002",
-      "tags": ["p560", "errore-famiglia", "fissaggio", "sparo", "avvitatura"],
-      "questions": [
-        "Posso sparare i VCEM con la P560?",
-        "Uso la P560 per fissare i VCEM, va bene?",
-        "Ho sparato un VCEM per errore, cosa faccio?",
-        "Si spara o si avvita il VCEM?",
-        "Meglio chiodi o vite per VCEM?",
-        "P560 sui VCEM è corretto?",
-        "Posso usare la chiodatrice per i VCEM?",
-        "Ho colpito un VCEM con la P560, è un problema?",
-        "Come fisso i VCEM: sparo o avvito?",
-        "Posso usare pistole a sparo sui VCEM?"
-      ],
-      "canonical": "I VCEM non si sparano. Si fissano con foro e vite nel travetto in calcestruzzo, secondo le istruzioni Tecnaria. La P560 si usa solo per i connettori CTF.",
-      "response_variants": [
-        "No: P560 → CTF. I VCEM si fissano con foro e vite nel travetto in c.a. Se hai sparato un VCEM, estrailo e rifai il punto correttamente.",
-        "I VCEM non sono connettori a sparo: sono progettati per il fissaggio meccanico con vite. Usare la P560 li mette fuori dal sistema Tecnaria.",
-        "CTF si spara, VCEM si avvita. Confondere i due significa perdere controllo sul fissaggio e sulle verifiche.",
-        "Il valore del VCEM nasce dal foro calibrato e dalla vite nel travetto, non dalla cartuccia della P560.",
-        "Se in cantiere qualcuno li ha sparati per comodità: rimuovi, controlla il travetto, rifai con foro + vite.",
-        "P560 e VCEM non vanno insieme: la chiodatrice è solo per i CTF su acciaio o lamiera.",
-        "Il sistema VCEM è certificato per avvitatura. Spararlo equivale a uscire dalla copertura Tecnaria.",
-        "Ogni connettore ha il suo metodo: VCEM = laterocemento + vite; CTF = acciaio/lamiera + P560.",
-        "Usare la P560 sui VCEM è un errore tecnico e di responsabilità: correggilo sempre.",
-        "Se ti trovi un VCEM sparato, trattalo come non conforme: toglilo e rifai secondo scheda."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0003",
-      "tags": ["lamiera-grecata", "errore-supporto"],
-      "questions": [
-        "Posso usare i VCEM su lamiera grecata?",
-        "VCEM va bene su lamiera?",
-        "Ho un solaio misto acciaio-lamiera, metto VCEM?",
-        "VCEM su solaio con lamiera collaborante è corretto?"
-      ],
-      "canonical": "No. Su lamiera grecata o travi in acciaio si usano i CTF. I VCEM lavorano solo su travetti in c.a. senza lamiera interposta.",
-      "response_variants": [
-        "Su lamiera grecata il riferimento è CTF, non VCEM.",
-        "I VCEM hanno bisogno del travetto in calcestruzzo: con lamiera interposta non lavorano correttamente.",
-        "Se hai acciaio o lamiera, cambia famiglia: usa CTF.",
-        "VCEM su lamiera è fuori campo Tecnaria: non ammesso.",
-        "Lamiera grecata = CTF; laterocemento con travetto in c.a. = VCEM.",
-        "Non usare VCEM dove non possono mordere il calcestruzzo del travetto.",
-        "Con lamiera la P560 e i CTF sono il sistema previsto.",
-        "Se hai già montato VCEM su lamiera, va rivisto il dettaglio con l’ufficio tecnico."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0004",
-      "tags": ["supporti-compatibili", "travetto", "laterocemento"],
-      "questions": [
-        "Su quali supporti posso usare i VCEM?",
-        "VCEM funziona solo su travetti in c.a.?",
-        "Posso usarli su blocchi in laterizio?",
-        "VCEM prende anche nel laterizio?"
-      ],
-      "canonical": "I VCEM vanno ancorati nel travetto in calcestruzzo armato dei solai in laterocemento. Non sono progettati per ancorarsi solo nel laterizio.",
-      "response_variants": [
-        "Il VCEM lavora quando morde il travetto in c.a., non il solo laterizio.",
-        "Devi centrare il travetto: laterizio e vuoti non garantiscono l’ancoraggio.",
-        "Se la vite prende solo nel blocco, il connettore è inefficace.",
-        "I VCEM sono per solai in laterocemento con travetti in cls: è lì che danno il meglio.",
-        "Non usarli su supporti friabili o solo laterizi: serve cls sano sotto.",
-        "Se non trovi il travetto, sposta il foro: l’obiettivo è il calcestruzzo.",
-        "Laterizio = riempimento, travetto = struttura. I VCEM parlano con la struttura.",
-        "Un VCEM nel vuoto non è un VCEM funzionante."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0005",
-      "tags": ["vcem-vs-ctcem", "differenza"],
-      "questions": [
-        "Differenza tra VCEM e CTCEM?",
-        "Meglio VCEM o CTCEM?",
-        "Quando si usa CTCEM invece di VCEM?"
-      ],
-      "canonical": "VCEM e CTCEM sono entrambi per solai in laterocemento con travetti in c.a. Il CTCEM ha una geometria più dentata per un ingranamento diverso nel travetto. La scelta è progettuale.",
-      "response_variants": [
-        "Entrambi lavorano su travetti in c.a.; CTCEM ha un profilo più “dentato”.",
-        "Se il progettista richiede una presa più marcata nel travetto, sceglie CTCEM.",
-        "In molti casi VCEM e CTCEM sono alternative progettuali: segui la verifica strutturale.",
-        "Non è una gara: sono due strumenti per sfumature diverse dello stesso problema.",
-        "Se hai un capitolato che cita CTCEM, non sostituirlo con VCEM senza verifica.",
-        "VCEM è molto versatile; CTCEM nasce per esigenze più specifiche.",
-        "Chiedi all’ufficio tecnico se hai dubbio tra i due.",
-        "La differenza è nella geometria e nella prestazione di taglio: va valutata."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0006",
-      "tags": ["vcem-vs-ctf", "errore-famiglia"],
-      "questions": [
-        "Meglio VCEM o CTF?",
-        "Posso usare VCEM al posto dei CTF?",
-        "Sono equivalenti VCEM e CTF?"
-      ],
-      "canonical": "No. CTF è per acciaio e lamiera con posa a sparo; VCEM è per travetti in c.a. con posa a vite. Non sono intercambiabili.",
-      "response_variants": [
-        "CTF lavora su acciaio/lamiera, VCEM su travetti in calcestruzzo: mondi diversi.",
-        "Non sostituire CTF con VCEM su lamiera e viceversa.",
-        "La scelta dipende dal supporto: se sbagli famiglia, sbagli dettaglio strutturale.",
-        "VCEM con foro + vite; CTF con P560. È la regola base.",
-        "Non esiste un “va bene lo stesso”: ogni sistema è testato sul proprio campo.",
-        "Scambiare famiglie compromette le prove di laboratorio.",
-        "Dubbi? Meglio una mail a Tecnaria che un errore in cantiere.",
-        "Ricorda: supporto giusto = famiglia giusta."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0007",
-      "tags": ["vite-gira-vuoto", "leggero-ammalorato"],
-      "questions": [
-        "La vite del VCEM gira a vuoto nel travetto, che faccio?",
-        "La vite non prende bene, è un problema?",
-        "Se la vite non morde il cls posso lasciarla?"
-      ],
-      "canonical": "Se la vite gira a vuoto il travetto non garantisce ancoraggio. Spostare il connettore su cls sano o valutare ripristino. Non lasciare VCEM su supporto debole.",
-      "response_variants": [
-        "Se gira a vuoto, lì il connettore non lavora: spostati di qualche cm su cls integro.",
-        "Non forzare: una vite che non prende segnala un problema del supporto.",
-        "Meglio un foro nuovo in zona sana che un VCEM finto.",
-        "Se il fenomeno è diffuso, serve una valutazione del solaio.",
-        "Non accettare ancoraggi “così così”: la collaborazione richiede aggancio vero.",
-        "Segnala sempre queste situazioni al progettista o a Tecnaria.",
-        "Un VCEM che non morde il cls è decorativo, non strutturale.",
-        "In dubbio, aggiungi un connettore in posizione corretta."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0008",
-      "tags": ["travetto-ammalorato", "cls-rovinato"],
-      "questions": [
-        "Posso usare VCEM su travetti ammalorati?",
-        "Se il cls è rovinato regge il connettore?",
-        "Cosa faccio se il travetto è fessurato?"
-      ],
-      "canonical": "Il VCEM richiede travetto in c.a. sano. Se il cls è degradato va ripristinato prima della posa o va rivista la soluzione.",
-      "response_variants": [
-        "Prima si cura il travetto, poi si installa il VCEM.",
-        "Un connettore su cls marcio non ha senso: intervieni sul supporto.",
-        "Se trovi cls polveroso o fessurato, valuta un ripristino strutturale.",
-        "Meglio consolidare bene una volta che affidarsi a un aggancio debole.",
-        "Le prove sono fatte su cls sano: fuori da lì servono verifiche.",
-        "Non nascondere i problemi sotto la soletta: affrontali.",
-        "In caso di degrado serio, contatta l’ufficio tecnico.",
-        "Il VCEM è potente, ma solo se appoggia su materiale affidabile."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0009",
-      "tags": ["resine", "ancoranti-chimici"],
-      "questions": [
-        "Posso usare resine con i VCEM?",
-        "Meglio resina o vite per VCEM?",
-        "Posso incollare i VCEM per fare prima?"
-      ],
-      "canonical": "I VCEM sono progettati per fissaggio meccanico a vite. L’uso di resine al posto del sistema previsto non è coperto dalle prove Tecnaria.",
-      "response_variants": [
-        "No, niente resine al posto del fissaggio meccanico: cambieresti il sistema.",
-        "Il VCEM lavora grazie alla vite nel cls, non a un cordolo di resina.",
-        "Ancoranti chimici diversi da quelli previsti escono dalla validazione Tecnaria.",
-        "Resina = altra tecnologia. Qui parliamo di connettori meccanici.",
-        "Se vuoi usare resine, serve una verifica specifica.",
-        "Non trasformare il VCEM in qualcosa che non è.",
-        "Meglio un buon foro pulito che un ibrido senza dati.",
-        "Attieniti al metodo indicato nelle schede: foro + vite."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0010",
-      "tags": ["posa-pratica", "procedura"],
-      "questions": [
-        "Come si posano i VCEM?",
-        "Qual è la procedura pratica per i VCEM?",
-        "Che attrezzi servono per i VCEM?"
-      ],
-      "canonical": "La posa prevede tracciamento, foratura nel travetto, pulizia del foro, inserimento e serraggio della vite, quindi getto della soletta con rete a quota corretta.",
-      "response_variants": [
-        "Traccia l’asse del travetto, fora, pulisci, avvita: semplice ma va fatto bene.",
-        "Attrezzi base: trapano, punte adeguate, aria/aspirazione, avvitatore, rete, cls.",
-        "La pulizia del foro è fondamentale per la tenuta della vite.",
-        "Non serve attrezzatura speciale, serve precisione.",
-        "Una posa ordinata oggi evita sorprese domani.",
-        "Segui sempre gli schemi di passo e disposizione indicati.",
-        "Se non sei sicuro dell’asse del travetto, fai fori pilota.",
-        "VCEM è semplice, ma non è “a occhio”: segui il disegno."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0011",
-      "tags": ["cls", "classe", "soletta"],
-      "questions": [
-        "Che calcestruzzo devo usare con i VCEM?",
-        "Posso usare un cls leggero?",
-        "Serve cls strutturale per la soletta?"
-      ],
-      "canonical": "Per i VCEM si utilizza calcestruzzo strutturale conforme al progetto (tipicamente almeno C25/30). Miscela e classe sono parte del dimensionamento.",
-      "response_variants": [
-        "Sì: cls strutturale, non massetto.",
-        "La soletta collaborante va trattata come elemento strutturale.",
-        "Cls leggeri o speciali solo se il progettista li verifica.",
-        "La qualità del cls è parte integrante del sistema VCEM.",
-        "Non risparmiare sul calcestruzzo se vuoi un solaio serio.",
-        "Segui indicazioni di progetto e schede Tecnaria.",
-        "Più che il nome, contano i parametri meccanici richiesti.",
-        "In dubbio, chiedi al progettista o all’ufficio tecnico."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0012",
-      "tags": ["rete", "posizione-rete"],
-      "questions": [
-        "Dove va la rete con i VCEM?",
-        "La rete la appoggio sui connettori?",
-        "Quota corretta rete elettrosaldata?"
-      ],
-      "canonical": "La rete va posata nella zona tesa della soletta, generalmente a metà o nel terzo superiore, non appoggiata sui connettori.",
-      "response_variants": [
-        "I VCEM collegano, la rete arma: non appoggiarla sulle teste.",
-        "Usa distanziatori per mettere la rete alla quota giusta.",
-        "Rete troppo bassa = soletta meno efficace.",
-        "Non trasformare i VCEM in supporti per armatura.",
-        "Segui il disegno strutturale per la quota esatta.",
-        "Rete e connettori lavorano insieme ma su piani diversi.",
-        "L’errore “rete sui connettori” è da evitare.",
-        "Una buona posizione della rete fa la differenza."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0013",
-      "tags": ["spessore-soletta"],
-      "questions": [
-        "Qual è lo spessore minimo della soletta con VCEM?",
-        "Posso fare una soletta molto sottile?",
-        "Che spessore consigliate sopra i VCEM?"
-      ],
-      "canonical": "Lo spessore della soletta collaborante è definito dal progetto e non deve scendere sotto i minimi indicati da Tecnaria per garantire ancoraggio e rigidezza.",
-      "response_variants": [
-        "Non andare sotto gli spessori minimi di scheda: perderesti prestazione.",
-        "La soletta non è un massetto estetico: è struttura.",
-        "Spessori troppo ridotti limitano la collaborazione.",
-        "Ogni cm ha un peso ma anche un contributo strutturale.",
-        "Meglio verificare che indovinare.",
-        "I minimi sono indicati nelle documentazioni ufficiali.",
-        "Se il progetto prevede uno spessore, rispettalo.",
-        "Non tagliare lo spessore “per comodità” in cantiere."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0014",
-      "tags": ["numero-connettori", "passo"],
-      "questions": [
-        "Quanti VCEM devo mettere?",
-        "Qual è il passo dei VCEM?",
-        "Posso metterne meno di quelli previsti?"
-      ],
-      "canonical": "Numero e passo dei VCEM sono determinati dal calcolo strutturale. Non vanno ridotti senza nuova verifica.",
-      "response_variants": [
-        "Ogni VCEM è parte del progetto: toglierli non è ammesso.",
-        "Il passo non si decide in cantiere “a sensazione”.",
-        "Vuoi risparmiare connettori? Fallo con un nuovo calcolo.",
-        "Ridurre i VCEM riduce la capacità del solaio.",
-        "Segui sempre lo schema di posa fornito.",
-        "Meglio un connettore in più che uno in meno.",
-        "Non modificare la maglia perché “tiene lo stesso”.",
-        "La responsabilità è di chi cambia il progetto, non del connettore."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0015",
-      "tags": ["predalles", "alveolari"],
-      "questions": [
-        "Posso usare VCEM su predalles?",
-        "VCEM va bene su solai alveolari?",
-        "È compatibile con prefabbricati cavi?"
-      ],
-      "canonical": "L’uso di VCEM su predalles o elementi alveolari va valutato caso per caso. Serve garantire ancoraggio nel cls pieno, non nel vuoto.",
-      "response_variants": [
-        "Se c’è cls pieno sufficiente, si può studiare il dettaglio.",
-        "Su alveolari e predalles non improvvisare: serve verifica tecnica.",
-        "Il connettore non deve finire nel vuoto interno.",
-        "Ogni sistema prefabbricato ha regole proprie: coinvolgi il progettista.",
-        "Possiamo proporre soluzioni dedicate se ci mandi il caso reale.",
-        "Non trattare un alveolare come un travetto pieno.",
-        "Il concetto resta: serve cls compatto attorno al VCEM.",
-        "Quando il supporto è speciale, serve un progetto speciale."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0016",
-      "tags": ["isolamento", "pacco-solaio"],
-      "questions": [
-        "Posso mettere isolamento sopra i VCEM?",
-        "VCEM è compatibile con pannelli isolanti?",
-        "Il sistema influisce sui ponti termici?"
-      ],
-      "canonical": "VCEM è un sistema strutturale. Isolamento e pacchetto finito vanno progettati a parte, compatibili con la soletta collaborante.",
-      "response_variants": [
-        "Puoi aggiungere isolanti sopra la soletta, rispettando le altezze.",
-        "I VCEM non sono elementi termoisolanti.",
-        "Ponti termici e acustica si risolvono con il pacchetto, non con il connettore.",
-        "La compatibilità è ottima: basta seguire il progetto.",
-        "Non coprire problemi strutturali con materiali isolanti.",
-        "Prima si fa lavorare bene il solaio, poi si isola.",
-        "VCEM non limita l’uso di isolanti, anzi lo permette su base solida.",
-        "In caso di dubbio sulle stratigrafie, confrontati con il progettista."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0017",
-      "tags": ["zona-sismica", "norme"],
-      "questions": [
-        "Posso usare VCEM in zona sismica?",
-        "Il sistema è ammesso dalle NTC?",
-        "VCEM è compatibile con Eurocodici?"
-      ],
-      "canonical": "I sistemi con VCEM sono compatibili con la progettazione secondo NTC ed EC, se dimensionati correttamente dal progettista.",
-      "response_variants": [
-        "Sì, ma sempre con un progetto strutturale serio.",
-        "In zona sismica il calcolo con VCEM va fatto con attenzione.",
-        "Non è il connettore il limite, ma come lo metti a progetto.",
-        "Diamo i dati tecnici necessari al progettista.",
-        "È una tecnologia consolidata anche in contesti sismici.",
-        "Nessuna improvvisazione: solo verifiche.",
-        "Il sistema è usato in molti interventi di miglioramento.",
-        "Chiedi supporto tecnico se devi inserirlo in modelli complessi."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0018",
-      "tags": ["certificazioni", "documentazione"],
-      "questions": [
-        "I VCEM sono certificati?",
-        "Avete schede tecniche e prove?",
-        "Serve documentazione per collaudo?"
-      ],
-      "canonical": "I VCEM sono supportati da documentazione tecnica, prove sperimentali e schede ufficiali Tecnaria disponibili su richiesta.",
-      "response_variants": [
-        "Sì, tutte le prove e le schede sono disponibili.",
-        "Per capitolati e collaudi ti forniamo documentazione ufficiale.",
-        "Le prestazioni VCEM derivano da test reali.",
-        "Usare i VCEM significa lavorare con dati tracciabili.",
-        "Basta chiedere e ti inviamo il materiale aggiornato.",
-        "Documentazione chiara = responsabilità chiara.",
-        "Non basiamo nulla su sensazioni, solo su numeri.",
-        "Le schede sono parte integrante del sistema."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0019",
-      "tags": ["durabilità", "ambiente"],
-      "questions": [
-        "Quanto dura il sistema VCEM?",
-        "Sono protetti dalla corrosione?",
-        "Posso usarli in ambiente umido?"
-      ],
-      "canonical": "I VCEM sono protetti per uso in normali condizioni di esercizio. In ambienti aggressivi serve valutazione specifica.",
-      "response_variants": [
-        "In condizioni ordinarie hanno durabilità elevata.",
-        "Per ambienti marini o chimicamente aggressivi, chiedi valutazione.",
-        "La protezione superficiale è studiata per l’uso tipico in edilizia.",
-        "Come sempre, niente ristagni d’acqua e dettagli fatti male.",
-        "La durabilità dipende anche da cls, copri ferro e dettagli.",
-        "Possiamo indicare soluzioni specifiche per casi severi.",
-        "VCEM funziona bene se il solaio è progettato bene.",
-        "Non lasciare il connettore esposto oltre il necessario."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0020",
-      "tags": ["controllo-posa", "fine-lavori"],
-      "questions": [
-        "Come verifico se i VCEM sono posati bene?",
-        "Cosa controllo a fine posa?",
-        "Segnali di errori evidenti?"
-      ],
-      "canonical": "A fine posa verificare l’allineamento sui travetti, il serraggio delle viti, l’assenza di connettori nel vuoto o storti, il rispetto del passo previsto.",
-      "response_variants": [
-        "Controlla che ogni VCEM sia sul travetto, diritto e serrato.",
-        "Nessun connettore infilato nel laterizio vuoto.",
-        "Verifica a campione passo e numero con il disegno.",
-        "Segna e correggi subito gli elementi fuori posto.",
-        "Meglio fare foto di cantiere per tracciabilità.",
-        "Un controllo finale evita discussioni future.",
-        "Se qualcosa non torna, chiama il tecnico prima del getto.",
-        "Il collaudo inizia da come hai posato i connettori."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0021",
-      "tags": ["domande-sbagliate", "correzione-famiglia"],
-      "questions": [
-        "Posso usare VCEM su legno?",
-        "Li metto su trave in legno?",
-        "Uso VCEM per solaio legno-cls?"
-      ],
-      "canonical": "No. Su legno si usano CTL o CTL MAXI. VCEM è solo per travetti in calcestruzzo.",
-      "response_variants": [
-        "Legno = CTL / CTL MAXI, non VCEM.",
-        "VCEM su legno è fuori campo: cambia famiglia.",
-        "Se sei su tavole o travi lignee, vai sui sistemi dedicati.",
-        "Ogni materiale ha il suo connettore.",
-        "Non forzare VCEM dove non è previsto.",
-        "Possiamo aiutarti a scegliere il sistema giusto.",
-        "È una delle correzioni più frequenti.",
-        "Chiarito questo, si lavora sereni."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0022",
-      "tags": ["domande-sbagliate", "ctf-confusione"],
-      "questions": [
-        "Ho messo CTF invece di VCEM sul laterocemento, va bene?",
-        "Posso usare CTF su travetto in c.a. senza lamiera?",
-        "Ho sbagliato famiglia, è un problema?"
-      ],
-      "canonical": "CTF su travetto in c.a. nudo non è corretto. Serve VCEM/CTCEM. Occorre adeguare il sistema.",
-      "response_variants": [
-        "CTF è nato per lamiera/acciaio: su cls nudo non è il suo posto.",
-        "Se hai usato CTF dove servivano VCEM, va rivista la soluzione.",
-        "Non lasciare dettagli non coerenti col progetto.",
-        "Meglio correggere prima del getto.",
-        "Contatta l’ufficio tecnico con foto e schema.",
-        "Non tutto è da demolire, ma va valutato.",
-        "È un errore classico: si corregge, ma non si ignora.",
-        "Famiglia giusta = responsabilità chiara."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0023",
-      "tags": ["produttività", "posa-rapida"],
-      "questions": [
-        "I VCEM fanno perdere tempo?",
-        "Sono lenti da montare?",
-        "Quanto incide la posa dei VCEM?"
-      ],
-      "canonical": "I VCEM hanno posa rapida e ripetibile: con squadra organizzata l’impatto sui tempi è contenuto rispetto al beneficio strutturale.",
-      "response_variants": [
-        "Una squadra rodata posa VCEM in modo molto veloce.",
-        "È un tempo ben speso: guadagni rigidezza e sicurezza.",
-        "La procedura è semplice: dopo pochi pezzi si va spediti.",
-        "Rispetto a soluzioni artigianali, sei più veloce e tracciabile.",
-        "Il rapporto tempo/beneficio è nettamente a favore del sistema.",
-        "Con la giusta organizzazione il “costo” è minimo.",
-        "La ripetitività aiuta: niente lavorazioni complicate.",
-        "È uno strumento industriale, non un esperimento."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0024",
-      "tags": ["formazione", "chi-li-monta"],
-      "questions": [
-        "Serve personale specializzato per i VCEM?",
-        "Chi può montarli?",
-        "Serve un tecnico certificato?"
-      ],
-      "canonical": "I VCEM possono essere posati da normali imprese edili con minima formazione sulle istruzioni Tecnaria.",
-      "response_variants": [
-        "Non serve un patentino: serve leggere due pagine di istruzioni.",
-        "Qualsiasi impresa organizzata li posa senza problemi.",
-        "Il tecnico serve per il progetto, non per avvitare.",
-        "La semplicità del sistema riduce gli errori.",
-        "Una breve spiegazione iniziale basta.",
-        "Meglio comunque un confronto iniziale con Tecnaria.",
-        "L’importante è rispettare disegno e buona pratica.",
-        "Se il cantiere ascolta, il sistema funziona."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0025",
-      "tags": ["supporto-tecnico", "contatti"],
-      "questions": [
-        "Se ho dubbi sui VCEM chi contatto?",
-        "Potete aiutarmi con il dimensionamento?",
-        "Avete un ufficio tecnico?"
-      ],
-      "canonical": "Per dubbi di scelta, posa o dimensionamento dei VCEM è disponibile l’ufficio tecnico Tecnaria.",
-      "response_variants": [
-        "Sì, l’ufficio tecnico Tecnaria è a disposizione con schede e supporto.",
-        "Meglio una telefonata prima che un errore dopo.",
-        "Possiamo verificare il tuo caso specifico.",
-        "Ti aiutiamo a scegliere tra VCEM, CTCEM, CTF, CTL, ecc.",
-        "Supporto tecnico e commerciale lavorano insieme.",
-        "Porta disegni, foto, dati: ti rispondiamo con criterio.",
-        "Non sei solo in cantiere: sfrutta il supporto.",
-        "Il sistema funziona ancora meglio se lo progettiamo insieme."
-      ],
-      "mode": "dynamic"
-    }
-
-  ]
-}
-{
-  "family": "VCEM",
-  "response_policy": {
-    "mode": "inherit",
-    "variant_selection": "round_robin",
-    "lock_to_item_core": false
-  },
-  "items": [
-    {
-      "id": "VCEM-0001",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Come si posa il VCEM?",
-      "core_sentence": "I VCEM si installano con foro pulito e avvitatura; rete a metà spessore e getto C25/30.",
-      "response_variants": [
-        "Foro Ø idoneo, pulizia del foro, avvitatura a battuta; poi rete a metà e getto C25/30.",
-        "Procedura: forare, pulire, avvitare il VCEM; posare la rete e gettare C25/30.",
-        "In pratica: foro pulito → vite a battuta → rete a metà → C25/30."
-      ],
-      "paraphrases": [
-        "Come si montano i VCEM?",
-        "Istruzioni posa VCEM",
-        "Installazione connettore VCEM",
-        "Come avvitare un VCEM",
-        "Procedura VCEM passo-passo"
-      ],
-      "trigger": {
-        "peso": 0.95,
-        "keywords": [
-          "posa vcem",
-          "installare vcem",
-          "foratura vcem",
-          "avvitatura vcem",
-          "rete a metà",
-          "c25/30"
-        ]
-      }
     },
     {
       "id": "VCEM-0002",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Posso usare la SPIT P560 per i VCEM?",
-      "core_sentence": "No. La P560 è per i CTF su acciaio; i VCEM richiedono foro e avvitatura (mai a sparo).",
-      "response_variants": [
-        "Vietato: P560 → CTF. VCEM = foro + vite. Se hai sparato, estrai e ripristina prima di avvitare.",
-        "La P560 lavora su acciaio (CTF): con VCEM si fora e si avvita; rimuovi eventuali chiodi e ripara.",
-        "Attenzione: i VCEM non si sparano. Usa foratura e avvitatura; colpo dato? togli e ripristina."
-      ],
-      "paraphrases": [
-        "Come recupero un VCEM dopo averlo sparato?",
-        "Come rimuovere un VCEM sparato?",
-        "Come sistemare un VCEM sparato per errore",
-        "Ho colpito un VCEM con la P560",
-        "Ho sparato un VCEM e voglio recuperarlo",
-        "Ho sparato un VCEM per errore",
-        "Ho usato la P560 sul VCEM per sbaglio, come rimediare?",
-        "Ho usato la chiodatrice sul VCEM, cosa faccio?",
-        "P560 e VCEM compatibili?",
-        "Pistola sparachiodi su VCEM va bene?",
-        "Posso riparare un VCEM colpito per errore?",
+      "tags": ["p560", "errore-posa", "vietato-sparo"],
+      "questions": [
+        "La P560 la posso usare per posare i VCEM?",
         "Posso sparare i VCEM con la P560?",
-        "Recupero VCEM dopo sparo",
-        "Si spara o si avvita il VCEM?"
+        "Pistola a sparo su VCEM va bene?",
+        "Ho sparato un VCEM, è un problema?",
+        "Uso P560 su VCEM?"
       ],
-      "trigger": {
-        "peso": 1.0,
-        "keywords": [
-          "chiodatrice vcem",
-          "colpo p560",
-          "errore posa vcem",
-          "errore sparo",
-          "ho sparato un vcem",
-          "p560",
-          "pistola su vcem",
-          "recupero",
-          "recupero vcem",
-          "rimediare",
-          "rimuovere",
-          "riparare",
-          "sparachiodi",
-          "sparare vcem",
-          "vcem sparato"
-        ]
-      }
+      "canonical": "No. La P560 è solo per i connettori CTF su acciaio. I VCEM si fissano con foro e vite. Un VCEM sparato non è conforme e va corretto.",
+      "response_variants": [
+        "Assolutamente no: P560 solo per CTF. Il VCEM lavora con foro + vite.",
+        "Non si spara mai un VCEM. Se è stato fatto, quel punto va ripristinato.",
+        "VCEM sparato = ancoraggio non valido. Rimuovi, ripristina e posa con vite.",
+        "Regola secca: CTF → P560; VCEM → foro e vite; CTCEM → foro e vite.",
+        "È uno degli errori più frequenti in cantiere: meglio bloccarlo subito.",
+        "Non fidarti del “tiene lo stesso”: il sistema è provato con la vite, non col chiodo.",
+        "Se trovi VCEM sparati, segnali e rifai prima del getto.",
+        "Meglio un foro in più corretto che un collaudo imbarazzante."
+      ],
+      "mode": "dynamic"
     },
     {
       "id": "VCEM-0003",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Posso usare VCEM su solaio con lamiera grecata?",
-      "core_sentence": "No: con lamiera grecata si usano i CTF; i VCEM lavorano su travetto in calcestruzzo senza lamiera.",
+      "tags": ["errore-sparo", "ripristino"],
+      "questions": [
+        "Se per errore ho messo un chiodo su un VCEM cosa faccio?",
+        "Ho sparato un VCEM, come lo recupero?",
+        "Ho usato P560 su VCEM per sbaglio."
+      ],
+      "canonical": "Rimuovi il chiodo, ripristina il punto (stucco/malta idonea), fora nella posizione corretta e posa il VCEM con la sua vite.",
       "response_variants": [
-        "Lamiera = CTF. VCEM solo su travetto in c.a. nudo, senza lamiera interposta.",
-        "Se c’è lamiera grecata, passa a CTF con P560; i VCEM sono per laterocemento senza lamiera.",
-        "VCEM e lamiera non sono compatibili: serve CTF."
+        "Togli il chiodo, chiudi il foro e rifai il fissaggio con foro + vite.",
+        "Non lasciare VCEM sparati: correggi prima del getto.",
+        "Segna l’errore e rifai il punto in modo conforme.",
+        "Meglio sistemare subito che discutere al collaudo.",
+        "Il VCEM funziona solo se posato secondo schema Tecnaria.",
+        "Un chiodo sbagliato non rovina il lavoro se lo correggi in tempo."
       ],
-      "paraphrases": [
-        "Con lamiera meglio CTF o VCEM?",
-        "Ho lamiera grecata: uso VCEM?",
-        "Lamiera interposta e VCEM",
-        "Posso ancorare su lamiera con VCEM?",
-        "Posso usare VCEM su lamiera grecata?",
-        "VCEM su lamiera interposta è corretto?",
-        "VCEM su lamiera va bene?"
-      ],
-      "trigger": {
-        "peso": 1.0,
-        "keywords": [
-          "acciaio",
-          "ctf",
-          "grecata",
-          "interposta",
-          "lamiera",
-          "lamiera grecata",
-          "lamiera interposta",
-          "trapezoidale"
-        ]
-      }
+      "mode": "dynamic"
     },
     {
       "id": "VCEM-0004",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Posso usare i VCEM su travetti prefabbricati?",
-      "core_sentence": "Sì, se il travetto è sano e forabile: verifica copriferro, fora, pulisci e avvita a battuta.",
+      "tags": ["differenza-vcem-ctcem", "scelta"],
+      "questions": [
+        "Qual è la differenza tra VCEM e CTCEM?",
+        "Meglio VCEM o CTCEM?",
+        "Quando scelgo VCEM e quando CTCEM?"
+      ],
+      "canonical": "Entrambi sono per laterocemento. VCEM è più semplice per fissaggi verticali; CTCEM ha un profilo più dentato per presa marcata nel travetto. La scelta la fa il progettista in base ai calcoli.",
       "response_variants": [
-        "Su prefabbricato in c.a. va bene se puoi forare e avvitare senza colpire ferri.",
-        "Prefabbricato ok se compatto: controlla copriferro, foro pulito e vite a battuta.",
-        "Consentito su travetto prefabbricato sano e forabile."
+        "VCEM è il connettore ‘universale’ per laterocemento; CTCEM ha geometria più aggressiva.",
+        "Se vuoi qualcosa di più dentato nel travetto, il progettista può preferire CTCEM.",
+        "In molti casi vanno bene entrambi: decide la relazione strutturale.",
+        "Non cambiare famiglia in autonomia: chiedi conferma all’ufficio tecnico.",
+        "Pensa al CTCEM come variante più ‘mordente’ del VCEM.",
+        "La differenza non è commerciale, è prestazionale.",
+        "Sempre leggere cosa c’è scritto nel progetto prima di sostituire.",
+        "Se hai dubbi, manda il caso con schema del solaio."
       ],
-      "paraphrases": [
-        "VCEM su travetto prefabbricato?",
-        "Prefabbricato in c.a. e VCEM",
-        "Posso forare un prefabbricato per VCEM?",
-        "Copriferro e VCEM su prefabbricato",
-        "Foro su travetto prefabbricato"
-      ],
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "prefabbricato",
-          "copriferro",
-          "forabile",
-          "travetto prefabbricato",
-          "vite a battuta"
-        ]
-      }
+      "mode": "dynamic"
     },
     {
       "id": "VCEM-0005",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Quando uso VCEM e quando CTCEM?",
-      "core_sentence": "VCEM: vite verticale rapida su travetti regolari; CTCEM: presa dentata su travetti vecchi o irregolari.",
+      "tags": ["supporto", "laterocemento", "travetto"],
+      "questions": [
+        "Su che supporto posso usare i VCEM?",
+        "I VCEM vanno bene su laterizio forato?",
+        "Devo prendere il travetto con i VCEM?"
+      ],
+      "canonical": "I VCEM lavorano se ancorati alla parte resistente: travetto in c.a. o calcestruzzo compatto. Non basta il solo laterizio.",
       "response_variants": [
-        "Regolare e sano → VCEM; irregolare/ammalorato → CTCEM (più presa nel travetto).",
-        "Se vuoi velocità su travetto compatto usa VCEM; per maggior interblocco su travetto irregolare usa CTCEM.",
-        "Criterio: qualità del travetto. Compatto→VCEM; disomogeneo→CTCEM."
+        "L’ancoraggio vero è nel travetto o nel cls, non nella tavella vuota.",
+        "Se la vite prende solo laterizio, sposta il punto.",
+        "VCEM su vuoto = connettore che non lavora.",
+        "Fai sempre fori pilota per ‘sentire’ il travetto.",
+        "Su supporti dubbi, meglio aumento numero + verifica tecnica.",
+        "Laterizio forato da solo non è sufficiente.",
+        "Il messaggio chiave: cerca sempre il cls sano dietro.",
+        "Non barattare velocità con ancoraggio finto."
       ],
-      "paraphrases": [
-        "Meglio VCEM o CTCEM?",
-        "Differenza VCEM CTCEM",
-        "Quando conviene CTCEM rispetto a VCEM?",
-        "Scelta connettore tra VCEM e CTCEM",
-        "Presa dentata o vite: cosa uso?"
-      ],
-      "trigger": {
-        "peso": 1.0,
-        "keywords": [
-          "vcem vs ctcem",
-          "differenza",
-          "travetto irregolare",
-          "presa dentata",
-          "vite verticale"
-        ]
-      }
+      "mode": "dynamic"
     },
     {
       "id": "VCEM-0006",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Che diametro di foro serve per i VCEM?",
-      "core_sentence": "Usa punta Ø 6–8 mm in base alla vite; foro troppo largo riduce presa, troppo stretto rischia spacco.",
+      "tags": ["rete", "soletta"],
+      "questions": [
+        "Dove metto la rete con i VCEM?",
+        "La rete la appoggio sui VCEM?",
+        "Come posizionare l’armatura con VCEM?"
+      ],
+      "canonical": "La rete va nella zona tesa della soletta, non appoggiata sui VCEM. Usa distanziatori.",
       "response_variants": [
-        "Punta 6–8 mm secondo specifica; test su campione prima di iniziare.",
-        "Foro corretto: 6–8 mm a seconda della vite; mai largo o sottodimensionato.",
-        "Adegua il diametro alla vite: range tipico 6–8 mm."
+        "I VCEM non sono cavalletti per la rete.",
+        "La rete è alla quota tesa indicata dal progetto.",
+        "Appoggiare la rete sulle teste dei VCEM è un errore.",
+        "Usa distanziatori: rete e connettori hanno ruoli diversi.",
+        "È un dettaglio semplice che fa una grande differenza.",
+        "Armonizza posa con il disegno esecutivo.",
+        "Se non sei sicuro, chiedi all’ingegnere.",
+        "Rete giusta posizione = comportamento giusto."
       ],
-      "paraphrases": [
-        "Quale punta per VCEM?",
-        "Che foro fare per VCEM?",
-        "Diametro corretto foro VCEM",
-        "Devo usare 6 o 8 mm?",
-        "Foratura per avvitare VCEM"
-      ],
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "diametro foro",
-          "punta 6",
-          "punta 8",
-          "foratura vcem",
-          "trapano"
-        ]
-      }
+      "mode": "dynamic"
     },
     {
       "id": "VCEM-0007",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "La vite gira a vuoto, che faccio?",
-      "core_sentence": "Fermati: sposta il punto su materiale sano (3–4 cm) o passa a CTCEM; non forzare.",
+      "tags": ["soletta", "spessore"],
+      "questions": [
+        "Che spessore di soletta abbino ai VCEM?",
+        "Posso fare una soletta più sottile con VCEM?",
+        "Spessore minimo con VCEM?"
+      ],
+      "canonical": "Lo spessore della soletta collaborante con VCEM è definito dal progetto; tipicamente 5–6 cm con rete a metà, ma non va ridotto senza verifica.",
       "response_variants": [
-        "Non insistere: cambia posizione di pochi cm o usa CTCEM per più presa.",
-        "Se non morde, il travetto/foro non è idoneo: spostati o cambia connettore.",
-        "Giro a vuoto = presa nulla: sposta e rifai pulito."
+        "Di solito sei nell’ordine dei 5–6 cm, rete a metà.",
+        "Non assottigliare la soletta a sensazione.",
+        "Ogni cm in meno è capacità in meno.",
+        "Segui relazione strutturale e schede Tecnaria.",
+        "Se ti chiedono di ridurre, serve nuovo calcolo.",
+        "La soletta non è una rasatura estetica.",
+        "Spessore e VCEM lavorano insieme.",
+        "Meglio spiegare che tagliare a caso."
       ],
-      "paraphrases": [
-        "Filetto non aggancia con VCEM",
-        "Foro molle, che fare?",
-        "Gira a vuoto la vite del VCEM",
-        "La vite del VCEM gira a vuoto, come risolvo?",
-        "La vite non morde nel travetto, cosa fare?",
-        "La vite non prende nel travetto",
-        "Presa insufficiente della vite"
-      ],
-      "trigger": {
-        "peso": 0.96,
-        "keywords": [
-          "foro molle",
-          "gira a vuoto",
-          "presa nulla",
-          "spostare foro",
-          "travetto marcio",
-          "vite non prende"
-        ]
-      }
+      "mode": "dynamic"
     },
     {
       "id": "VCEM-0008",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Posso avvitare i VCEM con la rete già posata?",
-      "core_sentence": "Sì, ma solleva la maglia: marca i punti, fora, avvita e riposiziona la rete a metà spessore.",
+      "tags": ["passo", "quanti-vcem"],
+      "questions": [
+        "Quanti VCEM devo mettere?",
+        "Che passo devo usare per i VCEM?",
+        "Posso diradarli un po’?",
+        "I VCEM mi sembrano troppi."
+      ],
+      "canonical": "Numero e passo dei VCEM sono fissati dal calcolo strutturale. Non vanno ridotti senza nuova verifica.",
       "response_variants": [
-        "Si può, alzando la rete per liberare la foratura; poi riportala a metà.",
-        "Rete già posata: solleva, fora e avvita; quindi riposiziona correttamente.",
-        "Ok, purché la rete non ostacoli foro e avvitatura."
+        "Non togliere VCEM perché “sembrano tanti”: sono calcolati.",
+        "Passo e quantità non sono decorazione.",
+        "Puoi aggiungerne, non puoi toglierne senza ingegnere.",
+        "Schema di posa = parte integrante del progetto.",
+        "Ridurre i VCEM significa ridurre sicurezza.",
+        "Ogni VCEM ha un ruolo nel trasferimento di taglio.",
+        "Se il cantiere protesta, spiegagli che sono numeri, non opinioni.",
+        "Meglio un connettore in più che un solaio in meno."
       ],
-      "paraphrases": [
-        "VCEM con rete già stesa",
-        "La rete mi blocca il foro, come fare?",
-        "Forare con rete posata",
-        "Interferenza rete e VCEM",
-        "Spostare rete per avvitare VCEM"
-      ],
-      "trigger": {
-        "peso": 0.85,
-        "keywords": [
-          "rete posata",
-          "sollevare rete",
-          "interferenza rete",
-          "riposizionare rete"
-        ]
-      }
+      "mode": "dynamic"
     },
     {
       "id": "VCEM-0009",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Serve pulire il foro prima di avvitare?",
-      "core_sentence": "Sì: la polvere riduce attrito e resistenza; soffia o aspira sempre prima di avvitare.",
+      "tags": ["foro", "pulizia", "attrezzatura"],
+      "questions": [
+        "Come foro per i VCEM?",
+        "Che attrezzatura serve per i VCEM?",
+        "Serve pulire il foro per i VCEM?"
+      ],
+      "canonical": "Serve trapano con punta idonea, foro alla profondità prevista, pulizia accurata e serraggio corretto della vite.",
       "response_variants": [
-        "Sempre pulire: aria compressa o aspirazione prima della vite.",
-        "Foro sporco = presa bassa: rimuovi polvere e residui.",
-        "La pulizia del foro è obbligatoria per una presa efficace."
+        "Trapano, punta giusta, soffiare il foro, vite ben tirata.",
+        "La polvere nel foro riduce la presa: pulisci sempre.",
+        "Non servono attrezzi speciali, serve farlo bene.",
+        "Meglio una punta in più che una presa in meno.",
+        "Segui diametri indicati Tecnaria.",
+        "Foro sbragato = ancoraggio debole.",
+        "Se il cls è duro, adegua punte e velocità.",
+        "La cura nel foro è parte del sistema."
       ],
-      "paraphrases": [
-        "Aspirare il foro è necessario?",
-        "Devo soffiare il foro?",
-        "Devo soffiare/aspirare il foro prima di avvitare VCEM?",
-        "Foro pulito per VCEM",
-        "Foro sporco riduce la presa dei VCEM?",
-        "Polvere nella foratura: rischio?",
-        "Pulizia foro prima di avvitare VCEM"
-      ],
-      "trigger": {
-        "peso": 0.98,
-        "keywords": [
-          "aspirare foro",
-          "polvere foratura",
-          "presa ridotta",
-          "pulizia foro",
-          "soffiare foro"
-        ]
-      }
+      "mode": "dynamic"
     },
     {
       "id": "VCEM-0010",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Che calcestruzzo serve con i VCEM?",
-      "core_sentence": "Usa C25/30 o superiore; getto compatto con vibrazione leggera e rete a metà spessore.",
+      "tags": ["ambiente", "durabilità"],
+      "questions": [
+        "Quanto durano i VCEM?",
+        "Posso usare i VCEM in ambiente umido?",
+        "Problemi di corrosione per VCEM?"
+      ],
+      "canonical": "In condizioni ordinarie i VCEM, inglobati in cls conforme, non richiedono manutenzione particolare. In ambienti aggressivi serve valutazione specifica.",
       "response_variants": [
-        "C25/30 consigliato: compattare bene e mantenere la rete a metà.",
-        "Cls C25/30: garantisce trasferimento sforzi tra vite e soletta.",
-        "Classe C25/30 o più: cura compattazione e posizione rete."
+        "In un solaio ben gettato i VCEM sono protetti.",
+        "Il punto è l’ambiente globale, non solo il pezzo di acciaio.",
+        "Per ambienti aggressivi confronta con il progettista.",
+        "Zero manutenzione ordinaria se il cls rimane sano.",
+        "Niente esposizione diretta = niente problemi tipici.",
+        "Durabilità è tema di dettaglio progettuale.",
+        "Possiamo supportarti caso per caso.",
+        "Non sono l’anello debole se l’opera è fatta bene."
       ],
-      "paraphrases": [
-        "C25/30 va bene per VCEM?",
-        "Che beton usare con i connettori VCEM?",
-        "Che classe di calcestruzzo usare con i VCEM?",
-        "Classe calcestruzzo consigliata",
-        "Getto per soletta collaborante VCEM",
-        "Quale beton per soletta collaborante VCEM?",
-        "Quale cls per VCEM?"
-      ],
-      "trigger": {
-        "peso": 0.92,
-        "keywords": [
-          "c25/30",
-          "classe calcestruzzo",
-          "compattazione",
-          "getto soletta",
-          "rete a metà",
-          "vibrazione leggera"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0011",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Quanto deve essere profondo il foro?",
-      "core_sentence": "Profondità pari alla vite utile + 5 mm: usare stop di profondità per precisione.",
-      "response_variants": [
-        "Foro = lunghezza vite + circa 5 mm.",
-        "Usa lo stop per non sballare la profondità del foro.",
-        "Profondità sufficiente perché la vite arrivi a battuta."
-      ],
-      "paraphrases": [
-        "Quanto foro devo fare?",
-        "Profondità corretta per foro VCEM",
-        "Stop profondità foro VCEM",
-        "Vite a battuta: quanto forare?",
-        "Misura foro per VCEM"
-      ],
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "profondità foro",
-          "stop profondità",
-          "vite a battuta",
-          "lunghezza vite"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0012",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Ho spanato la vite, cosa faccio?",
-      "core_sentence": "Estrai la vite e rifora 2–3 cm più in là (o leggermente più largo) su materiale sano; usa vite nuova.",
-      "response_variants": [
-        "Vite spanata: togli e sposta il punto di ancoraggio su zona compatta.",
-        "Rimuovi la vite e ripeti su materiale integro; evita di allargare nello stesso punto.",
-        "Soluzione: nuovo foro su travetto sano e vite nuova."
-      ],
-      "paraphrases": [
-        "Vite spanata su VCEM",
-        "Filetto rovinato VCEM",
-        "La vite non stringe più",
-        "Come recupero una vite spanata?",
-        "Avvitatura rovinata VCEM"
-      ],
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "vite spanata",
-          "filetto rovinato",
-          "nuovo foro",
-          "zona sana",
-          "vite nuova"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0013",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Posso avvitare se il travetto è umido?",
-      "core_sentence": "Meglio no: l’umidità riduce attrito e può favorire corrosione; attendi asciugatura superficiale.",
-      "response_variants": [
-        "Evita di forare/avvitare su bagnato: attendi che asciughi.",
-        "Umido = presa peggiore: asciuga e poi avvita.",
-        "Consiglio: lavorare su travetto asciutto per miglior presa."
-      ],
-      "paraphrases": [
-        "Avvitare con umidità presente",
-        "Forare su umido con VCEM, è ok?",
-        "Forare su umido conviene?",
-        "Posso avvitare se il travetto è bagnato?",
-        "Presa su travetto umido",
-        "Se il travetto è bagnato cosa fare?",
-        "Travetto bagnato e VCEM"
-      ],
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "asciugatura",
-          "bagnato",
-          "corrosione",
-          "presa ridotta",
-          "umido"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0014",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Ho messo un VCEM fuori passo: è un problema?",
-      "core_sentence": "Tolleranza ±5 cm se il passo medio resta regolare; mantieni almeno 10 cm dal bordo travetto.",
-      "response_variants": [
-        "Errore singolo tollerato se il resto è regolare.",
-        "Mantieni passo omogeneo e distanza bordo ≥ 10 cm.",
-        "Un punto fuori passo non compromette se non è sistematico."
-      ],
-      "paraphrases": [
-        "Errore passo connettori VCEM",
-        "Passo irregolare: rischio?",
-        "Quanto posso sbagliare il passo?",
-        "Distanza minima dal bordo travetto",
-        "Regolarità passo VCEM"
-      ],
-      "trigger": {
-        "peso": 0.85,
-        "keywords": [
-          "passo vcem",
-          "tolleranza passo",
-          "bordo travetto 10 cm",
-          "irregolarità"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0015",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Come verifico i VCEM dopo il getto?",
-      "core_sentence": "Dopo 7 giorni verifica assenza di fessure e movimento; soletta e travetto devono risultare solidali.",
-      "response_variants": [
-        "Controlla che non ci siano fessure o giochi nei punti.",
-        "Ispezione post-getto: nessun movimento, adesione regolare.",
-        "Verifica visiva e tattile dopo indurimento iniziale."
-      ],
-      "paraphrases": [
-        "Collaudo VCEM post-getto",
-        "Verifica collaborazione dopo getto",
-        "Come controllo i punti VCEM",
-        "Fessure dopo il getto",
-        "Soletta solidale al travetto"
-      ],
-      "trigger": {
-        "peso": 0.85,
-        "keywords": [
-          "post getto",
-          "verifica fessure",
-          "solidale",
-          "indurimento",
-          "collaudo"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0016",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Posso usare VCEM su laterizio vuoto?",
-      "core_sentence": "Solo se la vite ancora nel travetto pieno: evitare fori nel vuoto dei laterizi.",
-      "response_variants": [
-        "Sì, ma il foro deve interessare il travetto in c.a., non la pignatta vuota.",
-        "No foro nel vuoto: mordi il travetto pieno.",
-        "Serve ancoraggio nel calcestruzzo, non nel laterizio forato."
-      ],
-      "paraphrases": [
-        "Laterizio forato e VCEM",
-        "Pignatta vuota: posso avvitare?",
-        "Ancoraggio nel travetto o pignatta?",
-        "Foro cade nel vuoto: rischio?",
-        "Dove forare con VCEM su laterizio"
-      ],
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "laterizio forato",
-          "pignatta",
-          "vuoto",
-          "ancoraggio travetto",
-          "foro corretto"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0017",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Quanto distante dal bordo devo forare?",
-      "core_sentence": "Almeno 10 cm dal bordo del travetto per evitare rotture e coni di distacco.",
-      "response_variants": [
-        "Tenere ≥10 cm dal bordo del travetto.",
-        "Distanza bordo 10 cm: riduce rischio di spacco.",
-        "Non avvicinarti troppo ai bordi del travetto."
-      ],
-      "paraphrases": [
-        "Distanza minima bordo travetto",
-        "Distanza sicura dal bordo",
-        "Evitare spacco vicino al bordo",
-        "Foro vicino al bordo con VCEM, è rischioso?",
-        "Foro vicino al bordo: ok?",
-        "Quanto margine dal bordo travetto con VCEM?",
-        "Quanto margine dal bordo?"
-      ],
-      "trigger": {
-        "peso": 0.92,
-        "keywords": [
-          "10 cm",
-          "bordo travetto",
-          "cono distacco",
-          "margine",
-          "margine bordo",
-          "spacco"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0018",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Quanto dura un VCEM nel tempo?",
-      "core_sentence": "Decenni se inglobato in cls sano: protezione da ossigeno e umidità garantisce alta durabilità.",
-      "response_variants": [
-        "In condizioni normali >50 anni: il cls protegge l’acciaio.",
-        "Lunga vita utile se il calcestruzzo resta integro.",
-        "Durabilità elevata grazie all’inglobamento nel cls."
-      ],
-      "paraphrases": [
-        "Durata VCEM",
-        "Quanto durano i connettori?",
-        "Corrosione nel tempo VCEM",
-        "Protezione del cls sui connettori",
-        "Vita utile sistema VCEM"
-      ],
-      "trigger": {
-        "peso": 0.8,
-        "keywords": [
-          "durabilità",
-          "vita utile",
-          "corrosione",
-          "cls sano",
-          "protezione"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0019",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Come conservo i VCEM in magazzino?",
-      "core_sentence": "Ambiente asciutto e ventilato, confezione originale chiusa, lontano da umidità.",
-      "response_variants": [
-        "Tenere all’asciutto, scatola chiusa, evitare condensa.",
-        "Magazzino ventilato e privo di umidità per evitare ossidi.",
-        "Non esporre i VCEM all’acqua prima della posa."
-      ],
-      "paraphrases": [
-        "Stoccaggio connettori VCEM",
-        "Conservazione in magazzino",
-        "Umidità in magazzino: rischi?",
-        "Come evitare ossidi sui VCEM",
-        "Imballo originale e conservazione"
-      ],
-      "trigger": {
-        "peso": 0.8,
-        "keywords": [
-          "stoccaggio",
-          "magazzino",
-          "umidità",
-          "confezione originale",
-          "ossidi"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0020",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Posso riutilizzare i VCEM?",
-      "core_sentence": "No: un connettore avvitato non va riutilizzato; la vite deformata non garantisce nuova presa.",
-      "response_variants": [
-        "Mai riutilizzare: usa sempre connettori e viti nuovi.",
-        "Riutilizzo sconsigliato: perdita di prestazione meccanica.",
-        "Ogni punto deve essere nuovo per garantire presa."
-      ],
-      "paraphrases": [
-        "Posso smontare e rimontare un VCEM?",
-        "Riutilizzo connettori: è ammesso?",
-        "Rimontare una vite già usata",
-        "Secondo uso dei VCEM",
-        "Connettori usati: si possono riusare?"
-      ],
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "riutilizzo",
-          "vite usata",
-          "perdita presa",
-          "nuovo punto",
-          "prestazioni"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0021",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Ho dimenticato la rete: posso gettare lo stesso?",
-      "core_sentence": "No: la rete è parte del sistema collaborante; senza rete mancano ripartizione e controllo fessurativo.",
-      "response_variants": [
-        "Senza rete non si ottiene collaborazione efficace.",
-        "La rete è obbligatoria: riposiziona e poi getta.",
-        "Rete mancante = sistema monco: non gettare."
-      ],
-      "paraphrases": [
-        "Dimenticato rete con VCEM",
-        "Gettare senza rete con VCEM è possibile?",
-        "Getto senza rete con VCEM, è possibile?",
-        "Ho dimenticato la rete con i VCEM, posso gettare?",
-        "Ho dimenticato la rete posso fare il getto?",
-        "Posso gettare senza rete?",
-        "Rete assente: posso proseguire col getto?",
-        "Rete dimenticata posso gettare?",
-        "Rete necessaria per soletta VCEM",
-        "Rete non posata, come mi comporto?",
-        "Rete scordata prima del getto, ok?",
-        "Serve rete per collaborazione",
-        "Soletta senza rete: rischio?"
-      ],
-      "trigger": {
-        "peso": 1.0,
-        "keywords": [
-          "collaborante",
-          "fessurativo",
-          "fessurazione",
-          "gettare senza rete",
-          "getto senza rete",
-          "obbligatoria",
-          "rete a metà spessore",
-          "rete assente",
-          "rete dimenticata",
-          "rete mancante",
-          "rete non posata",
-          "rete obbligatoria",
-          "rete scordata",
-          "ripartizione sforzi",
-          "senza rete"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0022",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Quanto tempo posso aspettare prima del getto?",
-      "core_sentence": "Meglio gettare entro 24 ore: polvere e ossidazione su viti esposte possono ridurre la prestazione.",
-      "response_variants": [
-        "Consigliato il getto a breve: entro il giorno.",
-        "Non lasciare a lungo le viti esposte; getta presto.",
-        "Riduci l’attesa tra avvitatura e getto."
-      ],
-      "paraphrases": [
-        "Tempo tra posa VCEM e getto",
-        "Attesa massima prima del getto",
-        "Viti esposte quanto tempo?",
-        "Quando gettare dopo i VCEM",
-        "Intervallo posa-getto"
-      ],
-      "trigger": {
-        "peso": 0.85,
-        "keywords": [
-          "entro 24 ore",
-          "ossidazione",
-          "polvere",
-          "attesa getto",
-          "viti esposte"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0023",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Posso fissare VCEM su una trave in acciaio?",
-      "core_sentence": "No: su acciaio usa CTF; i VCEM lavorano nel calcestruzzo del travetto.",
-      "response_variants": [
-        "Acciaio → CTF. VCEM solo in c.a.",
-        "Per travi in acciaio usare CTF con P560.",
-        "VCEM non è per acciaio: cambiare famiglia."
-      ],
-      "paraphrases": [
-        "CTF o VCEM su acciaio",
-        "Connettori su acciaio: quali?",
-        "Posso fissare i VCEM all'acciaio?",
-        "Sparo o avvito su acciaio",
-        "Uso VCEM su acciaio?",
-        "VCEM su trave acciaio",
-        "VCEM su trave in acciaio?"
-      ],
-      "trigger": {
-        "peso": 0.98,
-        "keywords": [
-          "acciaio",
-          "ctf",
-          "ctf su acciaio",
-          "non compatibile",
-          "p560",
-          "p560 acciaio",
-          "profilo acciaio",
-          "trave acciaio"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0024",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Il rumore in foratura indica qualcosa?",
-      "core_sentence": "Rumore maggiore di foratura spesso indica travetto compatto: è un buon segnale.",
-      "response_variants": [
-        "Se il trapano 'canta', il travetto è compatto.",
-        "Rumore secco = materiale sano; continua tranquillo.",
-        "Più rumore, più compattezza del calcestruzzo."
-      ],
-      "paraphrases": [
-        "Foratura rumorosa: normale?",
-        "Il trapano fa rumore: bene o male?",
-        "Segnali di travetto sano durante foro",
-        "Suono del trapano e qualità",
-        "Rumore in foro VCEM"
-      ],
-      "trigger": {
-        "peso": 0.8,
-        "keywords": [
-          "rumore foratura",
-          "trapano canta",
-          "compatto",
-          "materiale sano"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0025",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Quali sono gli errori più comuni con i VCEM?",
-      "core_sentence": "Foro sporco, vite non a battuta, rete fuori spessore e uso improprio di P560.",
-      "response_variants": [
-        "Top errori: foro sporco, serraggio incompleto, rete alta/bassa, P560.",
-        "Evita polvere nel foro, vite lenta, rete fuori piano e P560.",
-        "Gli sbagli ricorrenti sono 4: pulizia, serraggio, rete, P560."
-      ],
-      "paraphrases": [
-        "Checklist errori VCEM",
-        "Difetti ricorrenti VCEM",
-        "Errori comuni con i VCEM",
-        "Errori da evitare con VCEM",
-        "Perché il giunto con VCEM non tiene?",
-        "Perché non tiene il giunto?",
-        "Sbagli tipici posa VCEM"
-      ],
-      "trigger": {
-        "peso": 0.92,
-        "keywords": [
-          "errore posa",
-          "errori posa",
-          "foro sporco",
-          "p560",
-          "p560 errata",
-          "rete fuori piano",
-          "rete fuori spessore",
-          "vite non a battuta"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0026",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Come calcolo quanti VCEM servono?",
-      "core_sentence": "Riferisciti alle tabelle/criteri di progetto Tecnaria o richiedi verifica all’ufficio tecnico.",
-      "response_variants": [
-        "Il numero nasce dal calcolo strutturale: chiedi le tabelle Tecnaria.",
-        "Usa i criteri di progetto: carichi, passo, rigidezza richiesta.",
-        "Serve verifica: contatta l’ufficio tecnico per il dimensionamento."
-      ],
-      "paraphrases": [
-        "Calcolo numero connettori VCEM",
-        "Come calcolo il passo dei VCEM?",
-        "Densità punti VCEM",
-        "Passo connettori per metro",
-        "Quanti VCEM devo mettere per metro?",
-        "Quanti VCEM devo mettere?",
-        "Tabelle Tecnaria VCEM"
-      ],
-      "trigger": {
-        "peso": 0.9,
-        "keywords": [
-          "calcolo",
-          "densità punti",
-          "numero connettori",
-          "passo per metro",
-          "tabelle tecnaria",
-          "verifica tecnica"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0027",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Come lavora il VCEM sotto carico?",
-      "core_sentence": "Trasforma lo scorrimento tra travetto e soletta in taglio collaborante tramite vite e cls.",
-      "response_variants": [
-        "Il VCEM lega travetto e soletta, limitando lo scorrimento.",
-        "Con il VCEM il taglio si trasferisce attraverso vite e cls.",
-        "Funzione: ridurre scorrimento e creare collaborazione."
-      ],
-      "paraphrases": [
-        "Comportamento VCEM",
-        "Meccanismo di lavoro VCEM",
-        "Taglio collaborante con VCEM",
-        "Scorrimento travetto-soletta",
-        "Effetto del VCEM sul solaio"
-      ],
-      "trigger": {
-        "peso": 0.85,
-        "keywords": [
-          "taglio collaborante",
-          "scorrimento",
-          "trasferimento sforzi",
-          "vite e cls",
-          "collaborazione"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0028",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "I VCEM hanno certificazione ETA?",
-      "core_sentence": "Sì: documentazione e prove disponibili su richiesta Tecnaria.",
-      "response_variants": [
-        "Disponibili ETA/CE su richiesta.",
-        "Tecnaria fornisce certificazioni e report di prova.",
-        "Documentazione tecnica fornita su richiesta."
-      ],
-      "paraphrases": [
-        "Certificazioni VCEM",
-        "ETA VCEM disponibile?",
-        "Documenti CE per VCEM",
-        "Prove di laboratorio VCEM",
-        "Richiesta certificazione VCEM"
-      ],
-      "trigger": {
-        "peso": 0.8,
-        "keywords": [
-          "ce",
-          "certificazione",
-          "certificazione eta",
-          "documenti di certificazione",
-          "eta",
-          "eta numero",
-          "marcatura ce",
-          "prove"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0029",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Quali strumenti servono per posare VCEM?",
-      "core_sentence": "Trapano a percussione leggera, punta Ø 6–8 mm, aria o aspirazione, chiave per vite, rete e cls C25/30.",
-      "response_variants": [
-        "Occorrono trapano, punte 6–8, aria/aspirazione, chiave, rete, cls.",
-        "Strumenti: trapano, punta idonea, pulizia foro, rete e C25/30.",
-        "Kit base: trapano, punte, aria, chiave, rete, calcestruzzo."
-      ],
-      "paraphrases": [
-        "Accessori per VCEM",
-        "Strumenti necessari VCEM",
-        "Cosa serve in cantiere per VCEM",
-        "Attrezzatura posa VCEM",
-        "Kit VCEM"
-      ],
-      "trigger": {
-        "peso": 0.75,
-        "keywords": [
-          "aria compressa",
-          "aspirazione",
-          "c25/30",
-          "chiave",
-          "punta 6-8",
-          "trapano"
-        ]
-      }
-    },
-    {
-      "id": "VCEM-0030",
-      "family": "VCEM",
-      "response_policy": {
-        "mode": "inherit",
-        "canonical_index": 0,
-        "lock_to_core": false
-      },
-      "domanda": "Serve manutenzione ai VCEM nel tempo?",
-      "core_sentence": "No, se inglobati in cls integro: non richiedono manutenzione periodica.",
-      "response_variants": [
-        "Nessuna manutenzione se il calcestruzzo resta sano.",
-        "Connettori inglobati: non serve controllo periodico.",
-        "Zero manutenzione ordinaria in condizioni normali."
-      ],
-      "paraphrases": [
-        "Devo controllare i VCEM ogni tanto?",
-        "Manutenzione connettori VCEM",
-        "Serve manutenzione alla soletta collaborante?",
-        "Ispezioni periodiche VCEM",
-        "Cura nel tempo dei VCEM"
-      ],
-      "trigger": {
-        "peso": 0.8,
-        "keywords": [
-          "manutenzione",
-          "controlli",
-          "inglobati",
-          "cls integro",
-          "periodico"
-        ]
-      }
+      "mode": "dynamic"
     }
   ]
 }
