@@ -1,1 +1,329 @@
+{
+  "family": "DIAPASON",
+  "lock_to_core": true,
+  "variants_strategy": "dynamic",
+  "items": [
+
+    {
+      "id": "DIA-0001",
+      "tags": ["definizione", "cosa-sono"],
+      "questions": [
+        "Cos’è il sistema Diapason?",
+        "A cosa serve Diapason Tecnaria?",
+        "Che tipo di connettore è il Diapason?",
+        "Mi spieghi il concetto di Diapason?"
+      ],
+      "canonical": "DIAPASON è il sistema Tecnaria per il rinforzo e la riqualificazione di solai in laterocemento esistenti, senza demolizione completa. Permette di realizzare una soletta collaborante leggera e strutturalmente efficace.",
+      "response_variants": [
+        "DIAPASON è il connettore per il recupero dei solai in laterocemento: unisce travetti, laterizio e nuova soletta in modo pulito e controllato.",
+        "Quando il solaio è vecchio ma recuperabile, entra in gioco Diapason: crea collaborazione senza demolire.",
+        "È una soluzione di consolidamento leggera e certificata, dedicata ai solai in laterocemento esistenti.",
+        "Con Diapason rinforzi il solaio mantenendo il laterizio, riducendo peso e tempi di intervento.",
+        "Diapason nasce per far lavorare insieme vecchio e nuovo cls in un’unica sezione collaborante."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0002",
+      "tags": ["campo-uso", "quando-usarlo"],
+      "questions": [
+        "Quando si usa Diapason?",
+        "In quali casi conviene scegliere Diapason?",
+        "Quando è consigliato Diapason?"
+      ],
+      "canonical": "Si usa Diapason quando il solaio in laterocemento è sano ma sottodimensionato, o necessita di irrigidimento senza demolizione. Ideale per recupero strutturale di edifici esistenti.",
+      "response_variants": [
+        "Diapason si sceglie quando vuoi rinforzare un solaio in laterocemento senza rifarlo da zero.",
+        "È perfetto per interventi di miglioramento strutturale o sismico dove il solaio è ancora recuperabile.",
+        "Lo usi quando il laterizio è integro e si vuole aumentare rigidezza e portata.",
+        "In cantiere si adotta Diapason quando si preferisce evitare demolizioni pesanti.",
+        "Ogni volta che pensi “consolidare, non rifare”, Diapason è la risposta."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0003",
+      "tags": ["differenze", "vcem", "ctcem"],
+      "questions": [
+        "Meglio VCEM o Diapason?",
+        "Qual è la differenza tra Diapason e CTCEM?",
+        "Quando usare Diapason invece di VCEM?"
+      ],
+      "canonical": "Diapason è pensato per il recupero di solai esistenti, VCEM e CTCEM per solai nuovi o ripristinati. Se non si vuole demolire e il travetto è sano, si preferisce Diapason.",
+      "response_variants": [
+        "VCEM e CTCEM nascono per solai nuovi; Diapason per solai da recuperare.",
+        "Usa Diapason quando vuoi consolidare senza demolire: lavora sopra il laterizio esistente.",
+        "CTCEM si ancora nel travetto, Diapason lavora a ponte sopra: è la differenza chiave.",
+        "Nel recupero strutturale Diapason riduce interventi invasivi e tempi.",
+        "VCEM è chirurgico, Diapason è conservativo: due filosofie diverse ma complementari."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0004",
+      "tags": ["tipologia-solaio"],
+      "questions": [
+        "Su che solai funziona Diapason?",
+        "È solo per laterocemento?",
+        "Posso usarlo su solai con travetti prefabbricati?"
+      ],
+      "canonical": "Diapason è specifico per solai in laterocemento con travetti in c.a. e blocchi in laterizio. Non è adatto a solai in acciaio o legno.",
+      "response_variants": [
+        "Funziona su solai in laterocemento tradizionale, anche prefabbricati se il travetto è in cls.",
+        "Non va usato su acciaio o legno: lì ci sono altre famiglie Tecnaria.",
+        "Il suo campo naturale è il laterocemento, nuovo o esistente.",
+        "Su travetti in cls con blocchi laterizi è perfetto: nasce per quello.",
+        "Non è un tuttofare: legno e acciaio hanno i propri sistemi."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0005",
+      "tags": ["posa", "schema"],
+      "questions": [
+        "Come si installano i connettori Diapason?",
+        "Serve forare i travetti?",
+        "Come si esegue la posa di Diapason?"
+      ],
+      "canonical": "I connettori Diapason si posano sulla superficie del solaio, ancorati al travetto mediante vite o tassello specifico Tecnaria, seguendo lo schema di posa indicato nelle schede tecniche.",
+      "response_variants": [
+        "La posa è semplice: pulisci, fora il travetto e fissa il connettore secondo lo schema.",
+        "Si installano a secco prima del getto, rispettando passo e allineamento.",
+        "Niente resine o colpi di pistola: fissaggio meccanico controllato.",
+        "Ogni connettore va fissato in asse al travetto e ben ancorato.",
+        "Il rispetto del passo di posa garantisce collaborazione e rigidezza."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0006",
+      "tags": ["rete", "armatura"],
+      "questions": [
+        "La rete va sopra o sotto i Diapason?",
+        "Serve rete elettrosaldata?",
+        "Dove posizionare la rete nella soletta?"
+      ],
+      "canonical": "La rete elettrosaldata va posata nella parte superiore della nuova soletta, non sopra i connettori. Serve a distribuire gli sforzi e controllare le fessurazioni.",
+      "response_variants": [
+        "Rete sempre nella zona superiore della soletta, non sui connettori.",
+        "I Diapason collegano, la rete distribuisce: hanno ruoli diversi.",
+        "Usa distanziatori per mantenere la quota corretta della rete.",
+        "Non appoggiare la rete sui connettori: rischi di indebolire il getto.",
+        "La posizione della rete influenza la prestazione del solaio misto."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0007",
+      "tags": ["cls", "calcestruzzo"],
+      "questions": [
+        "Che tipo di calcestruzzo usare con Diapason?",
+        "Serve cls strutturale?",
+        "Posso usare un cls leggero?"
+      ],
+      "canonical": "Usare calcestruzzo strutturale conforme al progetto (almeno C25/30). Calcestruzzi leggeri o non strutturali sono ammessi solo se verificati dal progettista.",
+      "response_variants": [
+        "Il cls dev’essere strutturale: il solaio lavora anche grazie a lui.",
+        "Niente massetti alleggeriti: qui serve un vero calcestruzzo.",
+        "Le prestazioni si ottengono solo con cls di classe adeguata.",
+        "Il progettista definisce classe e granulometria in base al solaio.",
+        "Un cls leggero può andar bene solo con verifica tecnica."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0008",
+      "tags": ["errori-posa", "distanze"],
+      "questions": [
+        "Cosa succede se non rispetto le distanze dei Diapason?",
+        "Posso metterne qualcuno in meno?",
+        "Serve rispettare lo schema di posa?"
+      ],
+      "canonical": "Le distanze tra i connettori sono parte del dimensionamento. Ridurli o variarli altera il comportamento strutturale e non è ammesso senza verifica.",
+      "response_variants": [
+        "Ogni connettore partecipa al trasferimento: toglierne cambia il progetto.",
+        "Rispettare lo schema è garanzia di rigidezza e sicurezza.",
+        "Saltare dei pezzi significa indebolire la collaborazione.",
+        "Il passo di posa non è casuale ma calcolato.",
+        "Meglio chiedere al progettista che improvvisare in cantiere."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0009",
+      "tags": ["compatibilità", "materiali"],
+      "questions": [
+        "Posso usare Diapason su legno?",
+        "Va bene su travi in acciaio?",
+        "È compatibile con solai misti?"
+      ],
+      "canonical": "No. Diapason è solo per laterocemento. Su legno o acciaio si usano le altre famiglie Tecnaria (CTL/CTF).",
+      "response_variants": [
+        "Diapason nasce per laterocemento: legno e acciaio hanno i propri sistemi.",
+        "Non confonderlo con CTL o CTF: campi d’uso diversi.",
+        "È un sistema specifico per travetti in cls e blocchi laterizi.",
+        "Su supporti metallici o lignei non lavora correttamente.",
+        "Ogni materiale ha il suo linguaggio: Diapason parla laterocemento."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0010",
+      "tags": ["alternative", "scelta"],
+      "questions": [
+        "Quando preferire CTCEM invece di Diapason?",
+        "Quando non conviene usare Diapason?",
+        "Diapason è sempre la scelta migliore?"
+      ],
+      "canonical": "Se il travetto è da ricostruire o si prevede una nuova soletta integrale, meglio CTCEM. Diapason è per recuperi conservativi.",
+      "response_variants": [
+        "Usa CTCEM quando rifai i travetti o crei un solaio nuovo.",
+        "Diapason serve a consolidare, non a rifare: è questa la differenza.",
+        "Quando il solaio è troppo danneggiato, passa a CTCEM o VCEM.",
+        "Diapason funziona solo se il supporto esistente è affidabile.",
+        "Ogni sistema ha il suo contesto: Diapason nel recupero, CTCEM nel nuovo."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0011",
+      "tags": ["certificazioni", "prove"],
+      "questions": [
+        "Diapason è certificato?",
+        "Avete documentazione tecnica Diapason?",
+        "Ci sono prove di laboratorio?"
+      ],
+      "canonical": "Il sistema Diapason è supportato da documentazione tecnica e prove sperimentali presso laboratori qualificati. Le schede aggiornate sono disponibili su richiesta.",
+      "response_variants": [
+        "Sì, Diapason è documentato con prove ufficiali e schede aggiornate.",
+        "Le prestazioni derivano da test reali, non da stime.",
+        "Per capitolati e gare forniamo documenti ufficiali Tecnaria.",
+        "La certificazione è parte integrante del sistema.",
+        "Basta chiedere: tutta la documentazione è disponibile."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0012",
+      "tags": ["spessore-soletta", "minimo"],
+      "questions": [
+        "Che spessore di soletta serve con Diapason?",
+        "Posso fare un getto sottile?",
+        "Esiste uno spessore minimo?"
+      ],
+      "canonical": "Lo spessore della soletta collaborante è definito dal progetto, ma non deve essere inferiore ai minimi indicati da Tecnaria per garantire ancoraggio e rigidezza.",
+      "response_variants": [
+        "Non scendere sotto gli spessori minimi: il sistema perderebbe efficacia.",
+        "La soletta deve essere continua e ben connessa, anche se leggera.",
+        "Ogni mm in meno riduce rigidezza: segui il progetto.",
+        "I valori minimi sono riportati nelle schede Tecnaria.",
+        "Meglio un cm in più che un solaio poco collaborante."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0013",
+      "tags": ["ripristino-travetti"],
+      "questions": [
+        "Serve ripristinare i travetti prima di montare Diapason?",
+        "Posso installarlo su travetti ammalorati?",
+        "Cosa faccio se il travetto è rovinato?"
+      ],
+      "canonical": "Il travetto deve essere in buone condizioni. Se è ammalorato, va ripristinato prima della posa del connettore, per garantire l’ancoraggio.",
+      "response_variants": [
+        "Prima si ripara, poi si collega: il travetto deve essere strutturalmente sano.",
+        "Un Diapason su travetto marcio non lavora: il rinforzo parte dal supporto.",
+        "Il ripristino del cls è parte dell’intervento, non un optional.",
+        "Non forzare il connettore in cls deteriorato: rifai prima la zona.",
+        "Meglio consolidare bene una volta che rincorrere crepe dopo."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0014",
+      "tags": ["armatura-extra", "ferri"],
+      "questions": [
+        "Serve armatura aggiuntiva con Diapason?",
+        "Posso aggiungere ferri tra i connettori?",
+        "La rete basta da sola?"
+      ],
+      "canonical": "L’eventuale armatura aggiuntiva è valutata dal progettista in base al carico e alla geometria. Diapason non sostituisce ferri o reti, ma lavora in sinergia con essi.",
+      "response_variants": [
+        "Spesso basta la rete, ma se il carico cresce servono ferri extra.",
+        "Diapason collega, i ferri resistono: lavorano insieme.",
+        "Non eliminare ferri previsti pensando che bastino i connettori.",
+        "L’armatura è parte del progetto: non va semplificata.",
+        "Segui sempre la tavola strutturale, non l’intuito di cantiere."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0015",
+      "tags": ["preparazione", "pulizia"],
+      "questions": [
+        "Serve pulire il solaio prima di posare?",
+        "Posso installare Diapason su superficie sporca?",
+        "Che preparazione serve prima della posa?"
+      ],
+      "canonical": "Prima della posa va rimossa la parte incoerente del vecchio intonaco o del cls superficiale e pulita la superficie per garantire l’aderenza della soletta.",
+      "response_variants": [
+        "Pulizia e rimozione parti friabili sono fondamentali: la collaborazione nasce dal contatto.",
+        "Niente polvere o grassi sotto il getto: compromettono l’aderenza.",
+        "In cantiere si spazzola, si aspira e poi si monta.",
+        "Un’ora di pulizia evita problemi strutturali dopo.",
+        "Tratta il solaio come una superficie da incollare: serve pulizia perfetta."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0016",
+      "tags": ["comfort", "rumore"],
+      "questions": [
+        "Diapason riduce il rumore del solaio?",
+        "Migliora il comfort abitativo?",
+        "Fa differenza sul comportamento acustico?"
+      ],
+      "canonical": "L’aumento di massa e rigidezza del solaio con Diapason riduce le vibrazioni e migliora il comfort, ma non è una soluzione acustica dedicata.",
+      "response_variants": [
+        "Un solaio più rigido vibra meno: il comfort percepito migliora.",
+        "Non nasce per l’acustica, ma un po’ di beneficio arriva sempre.",
+        "Più massa e collaborazione significano meno risonanze.",
+        "Per prestazioni acustiche vere serve un pacchetto isolante dedicato.",
+        "Il comfort strutturale è il primo passo verso il comfort abitativo."
+      ],
+      "mode": "dynamic"
+    },
+
+    {
+      "id": "DIA-0017",
+      "tags": ["stagionatura", "getto"],
+      "questions": [
+        "Quando posso disarmare dopo il getto?",
+        "Dopo quanti giorni indurisce la soletta?",
+        "Serve maturazione lunga del cls?"
+      ],
+      "canonical": "Il tempo di maturazione del cls è definito dal progettista. In generale servono 7–10 giorni prima di rimuovere i puntelli, in base alle condizioni ambientali.",
+      "response_variants": [
+        "Lascia maturare almeno una settimana prima di togliere i puntelli.",
+        "In inverno o con umidità alta attendi anche 10–12 giorni.",
+        "La maturazione fa parte della sicurezza: non avere fretta.",
+        "Controlla sempre che il cls abbia raggiunto la resistenza minima.",
+        "Meglio un giorno in più che una fessura imprevista."
+      ],
+      "mode":
 
