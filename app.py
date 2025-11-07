@@ -1,26 +1,27 @@
 import os
 import json
 import random
-from pathlib import Path
-from typing import Dict, Any, List, Optional
+import re
+from functools import lru_cache
+from typing import List, Dict, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from starlette.responses import HTMLResponse, FileResponse
-from starlette.staticfiles import StaticFiles
-from difflib import SequenceMatcher
 
-# ============================================================
-# CONFIGURAZIONE BASE
-# ============================================================
 
-BASE_DIR = Path(__file__).resolve().parent
-STATIC_DIR = BASE_DIR / "static"
-DATA_DIR = STATIC_DIR / "data"
+# =========================
+# CONFIGURAZIONE DI BASE
+# =========================
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_FAMILIES_DIR = os.path.join(BASE_DIR, "static", "data")
+
+CONFIG_PATH = os.path.join(DEFAULT_FAMILIES_DIR, "config.runtime.json")
 
 app = FastAPI(title="Tecnaria Sinapsi — Q/A")
 
+# CORS aperto per interfaccia web
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,348 +30,340 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# Cache famiglie in memoria
-_FAMILY_CACHE: Dict[str, Dict[str, Any]] = {}
-
-# ============================================================
-# UTILITA' LETTURA JSON
-# ============================================================
-
-def _read_json(path: Path) -> Dict[str, Any]:
-    if not path.exists():
-        raise FileNotFoundError(f"File non trovato: {path}")
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def load_family(name: str) -> Dict[str, Any]:
-    """
-    Carica una famiglia (VCEM, CTF, CTL, ecc.) da static/data/<NAME>.json
-    e la tiene in cache.
-    """
-    if name in _FAMILY_CACHE:
-        return _FAMILY_CACHE[name]
-
-    path = DATA_DIR / f"{name}.json"
-    data = _read_json(path)
-
-    # normalizza struttura minima
-    if data.get("family") != name:
-        data["family"] = name
-
-    items = data.get("items")
-    if not isinstance(items, list):
-        raise ValueError(f"'items' mancante o non lista in {path}")
-
-    data["items"] = items
-    _FAMILY_CACHE[name] = data
-    return data
-
-# ============================================================
-# NLM LITE: NORMALIZZAZIONE & MATCHING
-# ============================================================
-
-# parole vuote che non aiutano il match
-STOPWORDS = {
-    "i", "il", "lo", "la", "l", "gli", "le",
-    "un", "uno", "una",
-    "di", "dei", "degli", "del", "della", "delle",
-    "per", "con", "su", "nel", "nello", "nella", "nelle", "nei",
-    "da", "al", "ai", "agli", "alle",
-    "e", "ed", "o",
-    "che", "come", "quale", "quali",
-    "posso", "può", "puoi", "si", "sono", "sia", "siano",
-    "devo", "serve", "mi", "ti", "ci", "vi",
-    "riguardo", "riferimento", "parli", "parlami",
-    "uso", "usare", "usati", "usato",
-    "quando", "dove",
-    "ctf", "vсem", "ctl", "ctcem", "p560", "tecnaria"  # brand/famiglie li gestiamo via tag
-}
-
-# booster semantici: frasi naturali → concetti
-PHRASE_MAP = [
-    ("dove posso usare", " applicazioni utilizzo campo-uso "),
-    ("dove si usano", " applicazioni utilizzo campo-uso "),
-    ("per che tipo di solaio", " applicazioni solaio campo-uso "),
-    ("per quali solai", " applicazioni solaio campo-uso "),
-    ("quando scelgo", " scelta campo-uso applicazioni "),
-    ("quando usare", " scelta campo-uso applicazioni "),
-    ("a cosa servono", " funzione scopo utilizzo "),
-    ("a cosa serve", " funzione scopo utilizzo "),
-    ("mi parli dei", " cosa-sono descrizione "),
-    ("mi parli del", " cosa-sono descrizione "),
-    ("cosa sono", " cosa-sono definizione "),
-    ("che cosa sono", " cosa-sono definizione "),
-    ("come funzionano", " funzionamento principio "),
-    ("come funziona", " funzionamento principio "),
-    ("come vengono fissati", " come si fissano fissaggio posa "),
-    ("come vengono montati", " come si fissano fissaggio posa "),
-    ("come vengono installati", " come si fissano fissaggio posa "),
-    ("posa dei", " fissaggio posa installazione "),
-    ("modo di fissaggio", " fissaggio posa installazione "),
-]
-
-# sinonimi passivo/attivo per verbi tipici
-VERB_EQ = {
-    "vengono fissati": "si fissano",
-    "viene fissato": "si fissa",
-    "vengono montati": "si fissano",
-    "viene montato": "si fissa",
-    "vengono installati": "si fissano",
-    "viene installato": "si fissa",
-    "vengono posati": "si posano",
-    "viene posato": "si posa",
-    "vengono usati": "si usano",
-    "viene usato": "si usa",
-    "vengono impiegati": "si usano",
-    "viene impiegato": "si usa",
-    "vengono applicati": "si usano",
-    "viene applicato": "si usa"
-}
-
-
-def _norm(text: str) -> str:
-    """Normalizza testo per il matching semantico leggero."""
-    s = str(text).lower()
-
-    # attivo/passivo → forma base
-    for old, new in VERB_EQ.items():
-        if old in s:
-            s = s.replace(old, new)
-
-    # frasi → concetti (booster)
-    for old, new in PHRASE_MAP:
-        if old in s:
-            s = s.replace(old, new)
-
-    # spazi puliti
-    return " ".join(s.strip().split())
-
-
-def _tokens(text: str) -> set:
-    """Token significativi (senza stopwords)."""
-    return {t for t in _norm(text).split() if t and t not in STOPWORDS}
-
-
-def _item_trigger_texts(item: Dict[str, Any]) -> List[str]:
-    """
-    Costruisce tutti i testi che rappresentano il "significato"
-    dell'item: domande, q, tag, pezzo di canonical.
-    """
-    triggers: List[str] = []
-
-    # campi legacy
-    q_field = item.get("q")
-    if isinstance(q_field, list):
-        triggers.extend(q_field)
-    elif isinstance(q_field, str):
-        triggers.append(q_field)
-
-    # campo ufficiale
-    qs_field = item.get("questions")
-    if isinstance(qs_field, list):
-        triggers.extend(qs_field)
-    elif isinstance(qs_field, str):
-        triggers.append(qs_field)
-
-    # tag come indizi semantici
-    tags = item.get("tags") or []
-    if isinstance(tags, list) and tags:
-        triggers.append(" ".join(str(t) for t in tags))
-
-    # un estratto della canonical per dare contesto
-    canon = (item.get("canonical") or "").strip()
-    if canon:
-        triggers.append(canon[:260])
-
-    # pulizia
-    out = []
-    for t in triggers:
-        t = str(t).strip()
-        if t:
-            out.append(t)
-    return out
-
-
-def match_item(user_q: str, family_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Trova l'item GOLD più coerente con la domanda naturale."""
-    items = family_data.get("items", [])
-    if not items:
-        return None
-
-    qn = _norm(user_q)
-    q_tokens = _tokens(user_q)
-
-    best_item = None
-    best_score = 0.0
-
-    for item in items:
-        trigger_texts = _item_trigger_texts(item)
-        if not trigger_texts:
-            continue
-
-        for t in trigger_texts:
-            tn = _norm(t)
-            if not tn:
-                continue
-
-            t_tokens = _tokens(t)
-
-            # similarità di forma
-            base = SequenceMatcher(None, qn, tn).ratio()
-
-            # overlap di parole chiave
-            overlap = 0.0
-            if t_tokens:
-                overlap = len(q_tokens & t_tokens) / max(len(t_tokens), 1)
-
-            bonus = 0.0
-
-            # bonus se domanda parla esplicitamente di utilizzo/campo-uso
-            key_use = {"campo-uso", "applicazioni", "utilizzo"}
-            if q_tokens & key_use and ("campo-uso" in tn or "applicazioni" in tn):
-                bonus += 0.18
-
-            # bonus se coincide o contiene
-            if qn == tn:
-                bonus += 0.30
-            elif tn in qn or qn in tn:
-                bonus += 0.18
-
-            # leggera penalizzazione per trigger troppo corti (tipo solo 1 parola)
-            if len(tn) < 25:
-                bonus -= 0.06
-
-            score = 0.55 * base + 0.35 * overlap + bonus
-
-            if score > best_score:
-                best_score = score
-                best_item = item
-
-    # soglia: tarata per non perdere domande naturali ma evitare accoppiamenti assurdi
-    if best_item and best_score >= 0.40:
-        return best_item
-
-    return None
-
-# ============================================================
-# SELEZIONE RISPOSTA GOLD (DINAMICA SERIA)
-# ============================================================
-
-def pick_response(item: Dict[str, Any]) -> str:
-    """
-    Sceglie una risposta GOLD:
-    - preferisce varianti lunghe e complete,
-    - se non ci sono, usa la canonical,
-    - mai moncherini ridicoli.
-    """
-    canonical = (item.get("canonical") or "").strip()
-    variants = item.get("response_variants") or []
-
-    rich_variants: List[str] = []
-    if isinstance(variants, list):
-        for v in variants:
-            if not isinstance(v, str):
-                continue
-            txt = v.strip()
-            # consideriamo GOLD solo testi con un minimo di corpo
-            if len(txt) >= 140:
-                rich_variants.append(txt)
-
-    if rich_variants:
-        return random.choice(rich_variants)
-
-    if canonical:
-        return canonical
-
-    # fallback: se qualcuno ha lasciato varianti corte le usiamo solo se non c'è altro
-    fallback = [v.strip() for v in variants if isinstance(v, str) and v.strip()]
-    if fallback:
-        return random.choice(fallback)
-
-    return "Risposta non disponibile."
-
-# ============================================================
-# MODELLI RICHIESTA
-# ============================================================
+# =========================
+# MODELLI
+# =========================
 
 class AskPayload(BaseModel):
     q: str
-    family: str
+    family: Optional[str] = None   # es. "VCEM", "CTF", etc.
+    vs: Optional[str] = None       # "canonical" | "dynamic" | None
 
-# ============================================================
+
+# =========================
+# UTILITY JSON
+# =========================
+
+def _read_json(path: str) -> Dict:
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"File non trovato: {path}")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+@lru_cache(maxsize=64)
+def get_config() -> Dict:
+    if os.path.exists(CONFIG_PATH):
+        try:
+            return _read_json(CONFIG_PATH)
+        except Exception:
+            return {}
+    return {}
+
+
+def get_families_dir() -> str:
+    cfg = get_config()
+    d = cfg.get("families_dir") or DEFAULT_FAMILIES_DIR
+    return d
+
+
+# =========================
+# SINONIMI + NORMALIZZAZIONE
+# =========================
+
+# Dizionario minimo di sinonimi tecnici / linguaggio naturale.
+# Espandibile senza toccare il codice.
+SYNONYMS = {
+    # azioni generiche
+    "usare": ["utilizzare", "impiegare", "adoperare"],
+    "posare": ["installare", "montare", "fissare", "mettere"],
+    "fissare": ["ancorare", "avvitare"],
+    "sparare": ["chiodare", "pistola", "sparachiodi"],
+    "errore": ["sbaglio", "sbagliato", "errato"],
+    # oggetti
+    "vcem": ["vcem"],
+    "ctf": ["ctf"],
+    "ctl": ["ctl"],
+    "ctcem": ["ctcem"],
+    "p560": ["p560"],
+    "diapason": ["diapason"],
+    # concetti
+    "dove": ["dove", "in quali casi", "in che casi"],
+    "certificazione": ["certificazioni", "eta", "ce", "marcatura"],
+    "prova": ["prove", "test", "sperimentale"],
+    "soletta": ["soletta", "getto", "cls", "calcestruzzo"],
+    "acciaio": ["trave", "profilato", "heb", "hea", "lamaiera", "lamiera"],
+    "laterocemento": ["laterocemento", "travetto"],
+}
+
+# parole che non aiutano nel matching
+STOPWORDS = {
+    "il", "lo", "la", "i", "gli", "le",
+    "un", "una", "uno",
+    "di", "a", "da", "in", "con", "su", "per",
+    "che", "cosa", "come", "quando", "dove", "quale", "quali",
+    "posso", "puoi", "devo", "si", "no",
+    "tecnaria",
+    "connettori", "connettore"
+}
+
+
+def normalize_text(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"[^\wàèéìòùç]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def expand_synonyms(tokens: List[str]) -> List[str]:
+    """Sostituisce/aggiunge sinonimi base per robustezza."""
+    expanded = []
+    for t in tokens:
+        expanded.append(t)
+        for base, syns in SYNONYMS.items():
+            if t == base or t in syns:
+                expanded.append(base)
+    return expanded
+
+
+def tokenize(text: str) -> List[str]:
+    norm = normalize_text(text)
+    tokens = [t for t in norm.split(" ") if t and t not in STOPWORDS]
+    return expand_synonyms(tokens)
+
+
+def jaccard_score(a: List[str], b: List[str]) -> float:
+    if not a or not b:
+        return 0.0
+    sa, sb = set(a), set(b)
+    inter = len(sa & sb)
+    if inter == 0:
+        return 0.0
+    union = len(sa | sb)
+    return inter / union
+
+
+def tag_bonus(q_norm_tokens: List[str], item: Dict) -> float:
+    bonus = 0.0
+    tags = item.get("tags") or []
+    if not tags:
+        return 0.0
+    qset = set(q_norm_tokens)
+    for tag in tags:
+        tnorm = normalize_text(tag)
+        if tnorm and tnorm in qset:
+            bonus += 0.04  # piccolo boost per ogni tag centrato
+    # massimo bonus limitato
+    return min(bonus, 0.15)
+
+
+# =========================
+# CARICAMENTO FAMIGLIE
+# =========================
+
+@lru_cache(maxsize=64)
+def load_family(family: str) -> Dict:
+    family = (family or "").strip()
+    if not family:
+        raise HTTPException(status_code=400, detail="Parametro 'family' mancante.")
+
+    families_dir = get_families_dir()
+
+    # Strategia: cerco prima Family.json, poi *.golden.json se esiste
+    candidates = [
+        os.path.join(families_dir, f"{family}.json"),
+        os.path.join(families_dir, f"{family}.golden.json"),
+        os.path.join(families_dir, f"{family}.sinapsi.gold.json"),
+    ]
+
+    for path in candidates:
+        if os.path.exists(path):
+            data = _read_json(path)
+            # normalizza struttura minima
+            if "items" not in data:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Formato JSON famiglia '{family}' non valido (manca 'items')."
+                )
+            return data
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Famiglia '{family}' non trovata in {families_dir}."
+    )
+
+
+# =========================
+# MOTORE DI MATCHING NLM-LITE
+# =========================
+
+def match_item(user_q: str, family_data: Dict) -> Optional[Dict]:
+    """
+    Cerca l'item migliore nella famiglia usando:
+    - tokenizzazione + sinonimi
+    - jaccard tra domanda utente e domande/descrizioni note
+    - bonus dai tag
+    Restituisce item con 'best_mode' e 'best_variant_index'
+    """
+    q_tokens = tokenize(user_q)
+    if not q_tokens:
+        return None
+
+    best = None
+    best_score = 0.0
+
+    items = family_data.get("items", [])
+
+    for item in items:
+        # costruiamo lista di testi da confrontare: domande note + canonical
+        texts = []
+        texts.extend(item.get("questions") or [])
+        canonical = item.get("canonical")
+        if canonical:
+            texts.append(canonical)
+
+        item_best_local = 0.0
+
+        for txt in texts:
+            cand_tokens = tokenize(txt)
+            base = jaccard_score(q_tokens, cand_tokens)
+            if base == 0:
+                continue
+            bonus = tag_bonus(q_tokens, item)
+            score = base + bonus
+            if score > item_best_local:
+                item_best_local = score
+
+        if item_best_local > best_score:
+            best_score = item_best_local
+            best = item
+
+    # soglie:
+    # > 0.32 = match sicuro
+    # 0.22–0.32 = match soft, accettato se abbiamo almeno domande/tag coerenti
+    if best and best_score >= 0.32:
+        return best
+
+    if best and best_score >= 0.22:
+        # match morbido accettato per evitare buchi su domande naturali
+        return best
+
+    return None
+
+
+def choose_answer(item: Dict, vs: Optional[str]) -> (str, str, int):
+    """
+    Restituisce (testo, mode, variant_index).
+    mode: 'canonical' o 'dynamic'
+    variant_index: indice nella lista (per debug UI), -1 se canonical puro.
+    """
+    variants = item.get("response_variants") or []
+    canonical = item.get("canonical") or ""
+
+    # Se l'utente chiede esplicitamente canonical
+    if vs == "canonical":
+        if not canonical:
+            # fallback: prima variant
+            if variants:
+                return variants[0], "canonical", 0
+            return "", "canonical", -1
+        return canonical, "canonical", -1
+
+    # Modalità dinamica / default
+    if vs == "dynamic" or vs is None:
+        pool = []
+        # diamo più peso al canonical ma includiamo varianti
+        if canonical:
+            pool.append(("canonical", canonical))
+        for i, v in enumerate(variants):
+            pool.append((f"v{i}", v))
+
+        if not pool:
+            return "", "dynamic", -1
+
+        label, text = random.choice(pool)
+        if label == "canonical":
+            return text, "dynamic", -1
+        else:
+            idx = int(label[1:])
+            return text, "dynamic", idx
+
+    # fallback strano
+    if canonical:
+        return canonical, "canonical", -1
+    if variants:
+        return variants[0], "canonical", 0
+    return "", "canonical", -1
+
+
+# =========================
 # ENDPOINTS
-# ============================================================
+# =========================
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    index_path = STATIC_DIR / "index.html"
-    if index_path.exists():
-        return FileResponse(index_path)
-    return HTMLResponse("<h1>Tecnaria Sinapsi — Q/A</h1>")
+@app.get("/")
+def root():
+    return {
+        "app": "Tecnaria Sinapsi — Q/A",
+        "status": "OK",
+        "families_dir": get_families_dir()
+    }
 
 
 @app.get("/api/config")
-async def api_config():
+def api_config():
     return {
         "ok": True,
         "app": "Tecnaria Sinapsi — Q/A",
-        "families_dir": str(DATA_DIR)
+        "families_dir": get_families_dir()
     }
 
 
 @app.post("/api/ask")
-async def api_ask(payload: AskPayload):
-    user_q = (payload.q or "").strip()
-    fam_name = (payload.family or "").strip()
+def api_ask(payload: AskPayload):
+    q = (payload.q or "").strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="Domanda vuota.")
 
-    if not user_q:
-        return {
-            "ok": False,
-            "family": fam_name,
-            "q": payload.q,
-            "text": "Domanda vuota."
-        }
+    if not payload.family:
+        raise HTTPException(status_code=400, detail="Parametro 'family' obbligatorio.")
 
-    # carica famiglia
+    family_name = payload.family.strip().upper()
+
     try:
-        fam = load_family(fam_name)
-    except FileNotFoundError:
-        return {
-            "ok": False,
-            "family": fam_name,
-            "q": user_q,
-            "text": f"Famiglia '{fam_name}' non disponibile."
-        }
-    except Exception:
-        return {
-            "ok": False,
-            "family": fam_name,
-            "q": user_q,
-            "text": "Errore nella lettura dei dati di questa famiglia."
-        }
+        family_data = load_family(family_name)
+    except HTTPException as e:
+        # Errore già formattato
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    # matching semantico
-    item = match_item(user_q, fam)
+    item = match_item(q, family_data)
 
     if not item:
+        # Nessun match convincente: risposta controllata
         return {
             "ok": False,
-            "family": fam_name,
-            "q": user_q,
+            "family": family_name,
+            "q": q,
             "text": "Nessuna risposta trovata per questa domanda."
         }
 
-    # risposta GOLD dinamica
-    text = pick_response(item)
+    text, mode, vidx = choose_answer(item, payload.vs)
+
+    if not text:
+        return {
+            "ok": False,
+            "family": family_name,
+            "q": q,
+            "text": "Nessuna risposta trovata per questa domanda."
+        }
 
     return {
         "ok": True,
-        "family": fam_name,
+        "family": family_name,
         "id": item.get("id"),
-        "mode": "dynamic",
-        "text": text
+        "mode": mode,
+        "variant_index": vidx,
+        "text": text.strip()
     }
