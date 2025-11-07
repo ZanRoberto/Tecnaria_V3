@@ -1,285 +1,91 @@
-<!doctype html>
-<html lang="it">
-<head>
-  <meta charset="utf-8" />
-  <title>Tecnaria Sinapsi — Q/A</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root {
-      --bg: #0f172a;
-      --panel: #ffffff;
-      --accent: #ff7a00;
-      --accent-dark: #7a1f00;
-      --text: #0f172a;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0b1020;
-      color: #fff;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    header {
-      background: linear-gradient(90deg, #ff7a00 0%, #000 65%);
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    header h1 {
-      margin: 0;
-      font-size: 1.2rem;
-      font-weight: 700;
-    }
-    header small {
-      opacity: 0.75;
-      font-size: .7rem;
-      display: block;
-    }
-    main {
-      flex: 1;
-      display: flex;
-      gap: 0;
-      height: calc(100vh - 70px);
-    }
-    .left {
-      width: 40%;
-      min-width: 320px;
-      background: rgba(12, 16, 29, 0.75);
-      border-right: 1px solid rgba(255,255,255,0.04);
-      display: flex;
-      flex-direction: column;
-      padding: 20px;
-    }
-    .label {
-      font-size: .75rem;
-      text-transform: uppercase;
-      letter-spacing: .12em;
-      margin-bottom: 8px;
-      opacity: .7;
-    }
-    textarea {
-      width: 100%;
-      min-height: 160px;
-      background: rgba(0,0,0,0.35);
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 12px;
-      padding: 12px;
-      color: #fff;
-      font-size: .9rem;
-      resize: vertical;
-    }
-    .actions {
-      margin-top: 10px;
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    button {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 9999px;
-      padding: 10px 18px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    button.secondary {
-      background: rgba(255,255,255,0.1);
-    }
-    .chips {
-      margin-top: 18px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .chip {
-      background: rgba(255, 122, 0, 0.08);
-      border: 1px solid rgba(255,122,0,0.5);
-      border-radius: 9999px;
-      padding: 6px 12px;
-      font-size: .68rem;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .right {
-      flex: 1;
-      background: #f5f5f5;
-      color: #0f172a;
-      display: flex;
-      flex-direction: column;
-    }
-    .right-header {
-      padding: 16px 20px 10px;
-      border-bottom: 1px solid rgba(0,0,0,0.08);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-    .right-header h2 {
-      margin: 0;
-      font-size: 1rem;
-    }
-    .right-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 18px 20px 28px;
-    }
-    .answer-box {
-      background: #fff;
-      border-radius: 12px;
-      border: 1px solid rgba(15,23,42,0.05);
-      padding: 16px 16px 12px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-    }
-    .meta {
-      margin-top: 10px;
-      font-size: .68rem;
-      opacity: .55;
-      display: flex;
-      gap: 16px;
-    }
-    .error {
-      background: #ffe0e0;
-      color: #7a0c00;
-      border: 1px solid rgba(122,12,0,0.18);
-      border-radius: 8px;
-      padding: 8px 10px;
-      margin-top: 10px;
-      font-size: .75rem;
-    }
-    @media (max-width: 900px) {
-      main { flex-direction: column; }
-      .left { width: 100%; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); }
-      .right { height: 50vh; }
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <div>
-      <h1>Tecnaria Sinapsi — Q/A</h1>
-      <small>Dataset: <strong>tecnaria_gold.json</strong> — Motore: Sinapsi + Camilla + NLM — Stato: ONLINE</small>
-    </div>
-    <div style="font-size:.7rem;opacity:.6">
-      /ask · /api/ask
-    </div>
-  </header>
-  <main>
-    <section class="left">
-      <div class="label">Chiedi a Sinapsi</div>
-      <textarea id="question" placeholder="es. per errore ho usato la P560 su un VCEM su laterocemento, la posa è valida?"></textarea>
-      <div class="actions">
-        <button onclick="sendQuestion()">Invia</button>
-        <button class="secondary" onclick="ping()">Ping</button>
-      </div>
-      <div class="chips">
-        <div class="chip" onclick="setQ('mi dai i codici dei connettori CTF?')">Codici CTF</div>
-        <div class="chip" onclick="setQ('posso usare la P560 sui VCEM?')">P560 su VCEM</div>
-        <div class="chip" onclick="setQ('lamiera non serrata, devo rifare?')">Lamiera non serrata</div>
-        <div class="chip" onclick="setQ('quando devo usare il CTL MAXI?')">CTL MAXI</div>
-        <div class="chip" onclick="setQ('il cantiere ha usato connettori diversi dal progetto, va bene?')">DL vs cantiere</div>
-      </div>
-      <div id="err" class="error" style="display:none"></div>
-    </section>
-    <section class="right">
-      <div class="right-header">
-        <h2>Risposta GOLD</h2>
-        <div id="status" style="font-size:.7rem;opacity:.6">in attesa…</div>
-      </div>
-      <div class="right-body">
-        <div class="answer-box" id="answer">
-          Fai una domanda a sinapsi…
-        </div>
-        <div class="meta" id="meta" style="display:none">
-          <div>id: <span id="src"></span></div>
-          <div>match: <span id="match"></span></div>
-        </div>
-      </div>
-    </section>
-  </main>
+<script>
+  const BASE = location.origin; // dominio attuale
 
-  <script>
-    const BASE = location.origin; // va bene se index.html è servito dallo stesso dominio di app.py
+  function setQ(t) {
+    document.getElementById('question').value = t;
+    sendQuestion();
+  }
 
-    function setQ(t) {
-      document.getElementById('question').value = t;
-      sendQuestion();
+  async function ping() {
+    const s = document.getElementById('status');
+    const e = document.getElementById('err');
+    e.style.display = 'none';
+    s.textContent = 'ping...';
+    try {
+      const r = await fetch(BASE + '/api/config');
+      const j = await r.json();
+      s.textContent = `online · ${j.app}`;
+    } catch (err) {
+      s.textContent = 'errore ping';
+      e.textContent = err;
+      e.style.display = 'block';
+    }
+  }
+
+  async function sendQuestion() {
+    const q = document.getElementById('question').value.trim();
+    const out = document.getElementById('answer');
+    const s = document.getElementById('status');
+    const e = document.getElementById('err');
+    const meta = document.getElementById('meta');
+    const src = document.getElementById('src');
+    const match = document.getElementById('match');
+
+    if (!q) {
+      out.textContent = 'Scrivi una domanda prima.';
+      return;
     }
 
-    async function ping() {
-      const s = document.getElementById('status');
-      const e = document.getElementById('err');
-      e.style.display = 'none';
-      s.textContent = 'ping...';
-      try {
-        const r = await fetch(BASE + '/ping');
-        const j = await r.json();
-        s.textContent = `online · items: ${j.items}`;
-      } catch (err) {
-        s.textContent = 'errore ping';
-        e.textContent = err;
-        e.style.display = 'block';
-      }
-    }
+    e.style.display = 'none';
+    s.textContent = 'Sto chiedendo a Sinapsi…';
 
-    async function sendQuestion() {
-      const q = document.getElementById('question').value.trim();
-      const out = document.getElementById('answer');
-      const s = document.getElementById('status');
-      const e = document.getElementById('err');
-      const meta = document.getElementById('meta');
-      const src = document.getElementById('src');
-      const match = document.getElementById('match');
+    try {
+      const res = await fetch(BASE + '/api/ask', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          q: q,
+          family: inferFamilyFromText(q) // deduce la famiglia dalla domanda
+        })
+      });
 
-      if (!q) {
-        out.textContent = 'Scrivi una domanda prima.';
-        return;
-      }
-
-      e.style.display = 'none';
-      s.textContent = 'Sto chiedendo a Sinapsi…';
-
-      try {
-        const res = await fetch(BASE + '/ask', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({question: q})
-        });
-
-        if (!res.ok) {
-          const txt = await res.text();
-          out.textContent = 'Errore risposta backend.';
-          e.textContent = txt;
-          e.style.display = 'block';
-          s.textContent = 'errore';
-          meta.style.display = 'none';
-          return;
-        }
-
-        const data = await res.json();
-        out.textContent = data.answer || 'Nessuna risposta.';
-        src.textContent = data.source_id || '—';
-        match.textContent = (data.matched !== null && data.matched !== undefined) ? data.matched.toFixed(2) : '—';
-        meta.style.display = 'flex';
-        s.textContent = 'ok';
-      } catch (err) {
-        out.textContent = 'Errore di rete.';
-        e.textContent = err;
+      if (!res.ok) {
+        const txt = await res.text();
+        out.textContent = 'Errore risposta backend.';
+        e.textContent = txt;
         e.style.display = 'block';
         s.textContent = 'errore';
         meta.style.display = 'none';
+        return;
       }
-    }
 
-    // fai subito un ping
-    ping();
-  </script>
-</body>
-</html>
+      const data = await res.json();
+      out.textContent = data.text || 'Nessuna risposta.';
+      src.textContent = data.id || '—';
+      match.textContent = data.mode || '—';
+      meta.style.display = 'flex';
+      s.textContent = 'ok';
+    } catch (err) {
+      out.textContent = 'Errore di rete.';
+      e.textContent = err;
+      e.style.display = 'block';
+      s.textContent = 'errore';
+      meta.style.display = 'none';
+    }
+  }
+
+  // piccola funzione per capire la famiglia dal testo (grezza ma utile)
+  function inferFamilyFromText(q) {
+    q = q.toLowerCase();
+    if (q.includes("vct") || q.includes("vcem")) return "VCEM";
+    if (q.includes("ctf")) return "CTF";
+    if (q.includes("ctcem")) return "CTCEM";
+    if (q.includes("ctl maxi")) return "CTL_MAXI";
+    if (q.includes("ctl")) return "CTL";
+    if (q.includes("p560")) return "P560";
+    if (q.includes("diapason")) return "DIAPASON";
+    return "COMM"; // fallback
+  }
+
+  ping();
+</script>
