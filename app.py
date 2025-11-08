@@ -24,7 +24,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "families_dir": str(DATA_DIR),
     "supported_langs": ["it", "en", "fr", "de", "es"],
     "fallback_lang": "en",
-    "translation": False,  # nessuna chiamata esterna qui
+    "translation": False,
 }
 
 if CONFIG_PATH.exists():
@@ -42,7 +42,7 @@ CONFIG: Dict[str, Any] = {**DEFAULT_CONFIG, **FILE_CONF}
 # APP
 # =========================
 
-app = FastAPI(title="Tecnaria Sinapsi — Q/A", version="3.0")
+app = FastAPI(title="Tecnaria Sinapsi — Q/A", version="3.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,7 +61,7 @@ if STATIC_DIR.exists():
 
 class AskPayload(BaseModel):
     q: str
-    family: Optional[str] = None  # opzionale, usata solo come BOOST se presente
+    family: Optional[str] = None  # opzionale, usata solo come "hint"
 
 
 # =========================
@@ -95,8 +95,6 @@ def normalize(text: str) -> str:
 
 def guess_lang(text: str) -> str:
     t = text.lower()
-
-    # euristiche semplici, sufficienti per routing lingua
     if any(x in t for x in [" il ", " lo ", " la ", " dei ", " delle ", " connettori ", " soletta ", " calcestruzzo "]):
         return "it"
     if any(x in t for x in [" the ", " can i ", " beam", " slab", " steel "]):
@@ -107,8 +105,6 @@ def guess_lang(text: str) -> str:
         return "de"
     if any(x in t for x in [" el ", " los ", " las ", " hormigón", " acero "]):
         return "es"
-
-    # default: italiano nel contesto Tecnaria
     return "it"
 
 
@@ -118,7 +114,6 @@ def resolve_family_key(fam: Optional[str]) -> Optional[str]:
     fam = fam.strip().upper()
     if not fam:
         return None
-
     aliases = {
         "VCEM": "VCEM",
         "CTF": "CTF",
@@ -138,22 +133,13 @@ def read_json(path: Path) -> Dict[str, Any]:
 
 
 def iter_items(data: Any) -> Iterable[Dict[str, Any]]:
-    """
-    Supporta varie strutture:
-      - {"items":[...]}
-      - {"blocks":[...]}
-      - lista diretta [...]
-      - fallback: dict nidificati
-    """
     if data is None:
         return
-
     if isinstance(data, list):
         for it in data:
             if isinstance(it, dict):
                 yield it
         return
-
     if isinstance(data, dict):
         if "items" in data and isinstance(data["items"], list):
             for it in data["items"]:
@@ -165,34 +151,15 @@ def iter_items(data: Any) -> Iterable[Dict[str, Any]]:
                 if isinstance(it, dict):
                     yield it
             return
-        # fallback: tutti i valori che sono dict
         for v in data.values():
             if isinstance(v, dict):
                 yield v
 
 
 def collect_patterns(item: Dict[str, Any]) -> List[str]:
-    """
-    Raccoglie tutte le possibili forme di domanda / trigger
-    da un item, indipendentemente da come è scritto il JSON.
-    """
     out: List[str] = []
-
-    scalar_keys = [
-        "q",
-        "question",
-        "domanda",
-        "title",
-        "label",
-    ]
-    list_keys = [
-        "q_list",
-        "questions",
-        "patterns",
-        "triggers",
-        "variants",
-        "synonyms",
-    ]
+    scalar_keys = ["q", "question", "domanda", "title", "label"]
+    list_keys = ["q_list", "questions", "patterns", "triggers", "variants", "synonyms"]
 
     for k in scalar_keys:
         v = item.get(k)
@@ -206,7 +173,7 @@ def collect_patterns(item: Dict[str, Any]) -> List[str]:
                 if isinstance(e, str) and e.strip():
                     out.append(e.strip())
 
-    # fallback: usa pancia della risposta se non c'è nient'altro
+    # fallback: se non c'è niente, usa uno spezzone di testo risposta
     if not out:
         txt = extract_any_answer_text(item)
         if txt:
@@ -216,17 +183,10 @@ def collect_patterns(item: Dict[str, Any]) -> List[str]:
 
 
 def extract_any_answer_text(item: Dict[str, Any]) -> str:
-    """
-    Estrae un testo risposta da varie strutture:
-    - item["answer"] (str o dict)
-    - item["answers"][lang]
-    - item["text"], item["it"], item["en"], ecc.
-    """
     ans = item.get("answer")
     if isinstance(ans, str) and ans.strip():
         return ans.strip()
     if isinstance(ans, dict):
-        # preferisci IT, poi EN, poi qualsiasi
         for k in ["it", "IT", "ita", "en", "EN"]:
             v = ans.get(k)
             if isinstance(v, str) and v.strip():
@@ -254,20 +214,13 @@ def extract_any_answer_text(item: Dict[str, Any]) -> str:
 
 
 def choose_answer(item: Dict[str, Any], lang: str) -> Tuple[Optional[str], str]:
-    """
-    Sceglie la risposta nella lingua della domanda se possibile,
-    altrimenti fallback in cascata (config), altrimenti qualunque testo valido.
-    """
     supported = CONFIG["supported_langs"]
     fallback = CONFIG["fallback_lang"]
 
     ans = item.get("answer")
-
-    # answer = stringa
     if isinstance(ans, str) and ans.strip():
         return ans.strip(), lang
 
-    # answer = dict per lingua
     if isinstance(ans, dict):
         if lang in ans and isinstance(ans[lang], str) and ans[lang].strip():
             return ans[lang].strip(), lang
@@ -280,7 +233,6 @@ def choose_answer(item: Dict[str, Any], lang: str) -> Tuple[Optional[str], str]:
             if isinstance(v, str) and v.strip():
                 return v.strip(), lang
 
-    # answers = dict
     answers = item.get("answers")
     if isinstance(answers, dict):
         if lang in answers and isinstance(answers[lang], str) and answers[lang].strip():
@@ -294,7 +246,6 @@ def choose_answer(item: Dict[str, Any], lang: str) -> Tuple[Optional[str], str]:
             if isinstance(v, str) and v.strip():
                 return v.strip(), lang
 
-    # chiavi dirette o text
     for key in [lang, fallback, "it", "en", "fr", "de", "es", "text"]:
         v = item.get(key)
         if isinstance(v, str) and v.strip():
@@ -304,34 +255,38 @@ def choose_answer(item: Dict[str, Any], lang: str) -> Tuple[Optional[str], str]:
 
 
 def match_score(q_norm: str, patt_norm: str) -> float:
-    """
-    Score semplice basato su overlap token.
-    Niente cosine, niente magia fragile.
-    """
     if not q_norm or not patt_norm:
         return 0.0
-
     q_tokens = q_norm.split()
     p_tokens = patt_norm.split()
     if not q_tokens or not p_tokens:
         return 0.0
-
     q_set = set(q_tokens)
     p_set = set(p_tokens)
-
     inter = len(q_set & p_set)
     if inter == 0:
         return 0.0
-
     overlap_q = inter / len(q_set)
     overlap_p = inter / len(p_set)
-
     score = 0.7 * overlap_q + 0.3 * overlap_p
-    if score < 0:
-        score = 0.0
-    if score > 1:
-        score = 1.0
-    return float(score)
+    return max(0.0, min(1.0, float(score)))
+
+
+def family_boost(query: str, family: str) -> float:
+    q = query.upper()
+    fam = family.upper()
+    boost = 0.0
+    if "VCEM" in q and "VCEM" in fam:
+        boost += 0.25
+    if "CTF" in q and "CTF" in fam:
+        boost += 0.25
+    if "CTL" in q and "CTL" in fam:
+        boost += 0.25
+    if "P560" in q and "P560" in fam:
+        boost += 0.25
+    if "DIAPASON" in q and "DIAPASON" in fam:
+        boost += 0.25
+    return boost
 
 
 # =========================
@@ -372,8 +327,7 @@ async def api_ask(payload: AskPayload):
     if not q:
         raise HTTPException(status_code=400, detail="Domanda vuota.")
 
-    # family è opzionale: se c'è è solo un BOOST, non un filtro
-    selected_family = resolve_family_key(payload.family)
+    hint_family = resolve_family_key(payload.family)
     lang = guess_lang(q)
     q_norm = normalize(q)
 
@@ -381,10 +335,9 @@ async def api_ask(payload: AskPayload):
     best_family: Optional[str] = None
     best_score: float = 0.0
 
-    # Scansiona TUTTI i JSON in /static/data
+    # Scansiona tutti i JSON
     for path in DATA_DIR.glob("*.json"):
         stem = path.stem.upper()
-        # salta config o file non di dominio se ne hai
         if "CONFIG" in stem:
             continue
 
@@ -399,6 +352,10 @@ async def api_ask(payload: AskPayload):
                 continue
 
         for item in iter_items(data):
+            # SCARTA blocchi senza risposta valida
+            if not extract_any_answer_text(item):
+                continue
+
             patterns = collect_patterns(item)
             if not patterns:
                 continue
@@ -408,32 +365,35 @@ async def api_ask(payload: AskPayload):
                 if s <= 0.0:
                     continue
 
-                # piccolo bonus se coincide con famiglia suggerita
-                if selected_family and (
-                    stem == selected_family or selected_family in stem
-                ):
-                    s += 0.03
+                # boost famiglia suggerita (se passato)
+                if hint_family and (stem == hint_family or hint_family in stem):
+                    s += 0.20
+
+                # boost famiglia coerente col testo
+                s += family_boost(q, stem)
 
                 if s > best_score:
                     best_score = s
                     best_item = item
                     best_family = stem
 
-    # Soglia unica globale
+    # soglia
     if not best_item or best_score < 0.35:
         return {
             "ok": False,
-            "family": selected_family or None,
+            "family": hint_family or None,
             "q": q,
             "lang": lang,
             "text": (
                 "Per questa domanda non è ancora presente una risposta GOLD nei contenuti Tecnaria. "
-                "Se è una casistica reale di cantiere, aggiungere il blocco corrispondente nel JSON."
+                "Se è una casistica reale di cantiere, aggiungi il blocco corrispondente nel JSON appropriato."
             ),
         }
 
     answer, used_lang = choose_answer(best_item, lang)
     if not answer:
+        # non dovrebbe più succedere perché scartiamo i blocchi senza risposta,
+        # ma nel dubbio restituiamo messaggio chiaro
         return {
             "ok": False,
             "family": best_family,
@@ -452,6 +412,6 @@ async def api_ask(payload: AskPayload):
         "lang": used_lang,
         "id": best_item.get("id"),
         "mode": best_item.get("mode", "dynamic"),
-        "score": round(float(best_score), 3),
+        "score": round(best_score, 3),
         "text": answer,
     }
