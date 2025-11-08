@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse
 # CONFIG OPENAI (NLM IBRIDO)
 # ============================================================
 
-USE_OPENAI = True  # se vuoi spegnere la parte generativa, metti False
+USE_OPENAI = True  # metti False se vuoi disattivare la parte generativa
 
 try:
     from openai import OpenAI
@@ -22,7 +22,7 @@ except Exception:
     openai_client = None
 
 # ============================================================
-# PATH DI LAVORO
+# PATH
 # ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -34,9 +34,8 @@ app = FastAPI(title="Tecnaria Sinapsi — Q/A")
 
 _family_cache: Dict[str, List[Dict[str, Any]]] = {}
 
-
 # ============================================================
-# UTILITY LETTURA JSON FAMIGLIE
+# LETTURA JSON FAMIGLIE
 # ============================================================
 
 def safe_read_json(path: Path) -> Any:
@@ -45,32 +44,23 @@ def safe_read_json(path: Path) -> Any:
 
 
 def extract_blocks(data: Any) -> List[Dict[str, Any]]:
-    """
-    Rende robusta la lettura:
-    - lista diretta di blocchi
-    - { "items": [...] }
-    - { "blocks": [...] }
-    - { "data": [...] }
-    - { "ID1": {...}, "ID2": {...} }
-    """
     blocks: List[Dict[str, Any]] = []
 
     if isinstance(data, list):
         blocks = [b for b in data if isinstance(b, dict)]
 
     elif isinstance(data, dict):
-        # contenitore esplicito
+        # contenitori standard
         for key in ("items", "blocks", "data"):
             if key in data and isinstance(data[key], list):
                 blocks = [b for b in data[key] if isinstance(b, dict)]
                 break
         else:
-            # dizionario di blocchi
+            # dict di blocchi
             vals = list(data.values())
             if vals and all(isinstance(v, dict) for v in vals):
                 blocks = vals
 
-    # assegna id se manca
     for i, b in enumerate(blocks):
         if "id" not in b:
             b["id"] = b.get("ID", f"BLK-{i:04d}")
@@ -112,55 +102,37 @@ def list_all_families() -> List[str]:
 
 
 # ============================================================
-# ESTRAZIONE RISPOSTA GOLD DA BLOCCO
+# ESTRAZIONE RISPOSTA GOLD
 # ============================================================
 
 def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
-    """
-    Estrae la miglior risposta disponibile dal blocco.
-    Ordine:
-    - answers[lang]
-    - answer_{lang}
-    - answer
-    - text
-    - campo lingua diretto (it/en)
-    - response_variants (unione)
-    """
-    # answers.{lang}
     answers = block.get("answers")
     if isinstance(answers, dict):
-        # prova lingua richiesta
         for key in (lang, lang.lower(), lang.upper()):
             v = answers.get(key)
             if isinstance(v, str) and v.strip():
                 return v.strip()
-        # fallback: qualunque stringa valida
         for v in answers.values():
             if isinstance(v, str) and v.strip():
                 return v.strip()
 
-    # answer_{lang}
     for k, v in block.items():
         if isinstance(v, str) and v.strip() and k.lower() == f"answer_{lang}".lower():
             return v.strip()
 
-    # answer singolo
     v = block.get("answer")
     if isinstance(v, str) and v.strip():
         return v.strip()
 
-    # text
     v = block.get("text")
     if isinstance(v, str) and v.strip():
         return v.strip()
 
-    # campo lingua diretto
     for key in (lang, lang.lower(), lang.upper(), "it", "en", "IT", "EN"):
         v = block.get(key)
         if isinstance(v, str) and v.strip():
             return v.strip()
 
-    # response_variants
     rv = block.get("response_variants")
     if isinstance(rv, dict):
         parts = [txt for txt in rv.values() if isinstance(txt, str) and txt.strip()]
@@ -171,7 +143,7 @@ def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
 
 
 # ============================================================
-# DOMANDE / TRIGGER DA BLOCCO
+# DOMANDE / TRIGGER
 # ============================================================
 
 def extract_queries(block: Dict[str, Any]) -> List[str]:
@@ -213,7 +185,6 @@ def score_block(query: str, block: Dict[str, Any]) -> float:
         return 0.0
 
     best = 0.0
-
     for cand in queries:
         c = norm(cand)
         if not c:
@@ -225,7 +196,7 @@ def score_block(query: str, block: Dict[str, Any]) -> float:
             best = max(best, 0.9 + 0.1 * s)
             continue
 
-        # overlap parole
+        # overlap parole (Jaccard)
         sq = set(q.split())
         sc = set(c.split())
         inter = len(sq & sc)
@@ -235,9 +206,9 @@ def score_block(query: str, block: Dict[str, Any]) -> float:
             if j > best:
                 best = j
 
-    # boost keyword tecniche
     full = norm(json.dumps(block, ensure_ascii=False))
-    for kw in ("vcem", "ctf", "ctl", "ctl maxi", "ctcem", "diapason", "p560", "lamiera", "soletta", "calcestruzzo"):
+    for kw in ("vcem", "ctf", "ctl", "ctl maxi", "ctcem", "diapason", "p560",
+               "lamiera", "soletta", "calcestruzzo", "cemento armato"):
         if kw in q and kw in full:
             best += 0.15
 
@@ -279,14 +250,14 @@ def find_best_block(query: str, families: Optional[List[str]] = None, lang: str 
 
 
 # ============================================================
-# RILEVAMENTO LINGUA (SEMPLICE)
+# LINGUA
 # ============================================================
 
 def detect_lang(query: str) -> str:
     q = query.lower()
-    if any(w in q for w in [" il ", " lo ", " la ", " connettore", "soletta", "calcestruzzo", "trave", "travetto"]):
+    if any(w in q for w in [" il ", " lo ", " la ", " connettore", "soletta", "calcestruzzo", "cemento armato", "trave", "travetto"]):
         return "it"
-    if any(w in q for w in [" can i ", " beam", "steel", "slab", "use "]):
+    if any(w in q for w in [" can i ", " beam", "steel", "slab", "use ", "connector"]):
         return "en"
     if any(w in q for w in [" ¿", " qué ", " hormigón", "conectores"]):
         return "es"
@@ -298,7 +269,7 @@ def detect_lang(query: str) -> str:
 
 
 # ============================================================
-# GENERAZIONE GOLD (NLM IBRIDO)
+# GENERAZIONE GOLD (NLM)
 # ============================================================
 
 def generate_gold_answer(
@@ -308,10 +279,6 @@ def generate_gold_answer(
     family: str,
     lang: str,
 ) -> str:
-    """
-    Riscrive la risposta in modo tecnico-narrativo, usando SOLO il contenuto del blocco.
-    Se OpenAI non è disponibile o fallisce, restituisce base_answer.
-    """
     if not USE_OPENAI or openai_client is None:
         return base_answer
 
@@ -323,20 +290,18 @@ def generate_gold_answer(
     system_msg = (
         "Sei SINAPSI, assistente tecnico-commerciale ufficiale Tecnaria. "
         "Rispondi solo con le informazioni presenti nel CONTENUTO fornito. "
-        "Nessuna invenzione. "
-        "Stile: chiaro, completo, professionale, tono umano. "
-        "Scrivi 'cemento armato', non 'c.a.'. "
-        "Se manca un dato nel contenuto, dillo chiaramente."
+        "Nessuna invenzione. Stile chiaro, completo, professionale, umano. "
+        "Scrivi sempre 'cemento armato', non 'c.a.'. "
+        "Usa 'chiodi idonei Tecnaria' per la P560, mai 'perni'. "
     )
 
     user_msg = (
         f"LINGUA: {lang}\n"
         f"FAMIGLIA: {family}\n"
         f"DOMANDA: {question}\n\n"
-        f"CONTENUTO GOLD:\n{context}\n\n"
-        f"BASE ANSWER:\n{base_answer}\n\n"
-        "Genera una risposta unica, completa e fluida, coerente con Tecnaria. "
-        "Non citare JSON, blocchi, sistemi interni."
+        f"CONTENUTO GOLD (blocchi rilevanti):\n{context}\n\n"
+        f"RISPOSTA BASE:\n{base_answer}\n\n"
+        "Riscrivi una risposta unica, fluida, coerente con Tecnaria, senza citare JSON o sistemi interni."
     )
 
     try:
@@ -371,14 +336,18 @@ def api_config():
 
 
 # ============================================================
-# API: ASK (ROBUSTO, SENZA Pydantic)
+# API: ASK (PARSING MANUALE ROBUSTO)
 # ============================================================
 
 @app.post("/api/ask")
 async def api_ask(request: Request):
-    # lettura JSON robusta
+    # 👇 NIENTE request.json(): leggo il body grezzo e faccio json.loads io
+    raw = await request.body()
     try:
-        payload = await request.json()
+        text = raw.decode("utf-8").strip()
+        if not text:
+            raise ValueError("Body vuoto")
+        payload = json.loads(text)
         if not isinstance(payload, dict):
             raise ValueError("Body JSON non è un oggetto.")
     except Exception:
@@ -410,6 +379,7 @@ async def api_ask(request: Request):
         }
 
     family = best.get("_family") or (family_req.strip().upper() if isinstance(family_req, str) else None)
+
     base = (
         extract_answer(best, lang=lang)
         or extract_answer(best, lang="it")
