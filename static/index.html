@@ -2,204 +2,660 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tecnaria Sinapsi — Q/A</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    :root {
+      --bg: #050816;
+      --bg-soft: #0b1020;
+      --accent: #00e0ff;
+      --accent-soft: rgba(0, 224, 255, 0.12);
+      --danger: #ff3366;
+      --text: #f5f5f5;
+      --muted: #8f9bb3;
+      --radius-xl: 22px;
+      --radius-md: 14px;
+      --border-soft: rgba(255,255,255,0.06);
+      --shadow-soft: 0 14px 40px rgba(0,0,0,0.42);
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", -sans-serif;
+      --transition-fast: 0.18s ease-out;
+    }
+
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      font-family: "Segoe UI", Roboto, sans-serif;
-      background-color: #0b0d11;
-      color: #fff;
+      padding: 0;
+      font-family: var(--font);
+      background: radial-gradient(circle at top, #151b30 0, #050816 40%, #000000 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
     }
-    header {
-      background: linear-gradient(90deg, #000, #8b4513);
-      padding: 10px 20px;
-      font-size: 18px;
+
+    .app {
+      width: 100%;
+      max-width: 1200px;
+      margin: 26px auto;
+      padding: 20px;
+    }
+
+    .app-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      gap: 16px;
+      margin-bottom: 18px;
     }
-    .container {
-      display: flex;
-      flex-direction: row;
-      height: calc(100vh - 50px);
-    }
-    .left {
-      flex: 0 0 45%;
-      padding: 20px;
-      border-right: 2px solid #222;
-      background: #111;
+
+    .brand {
       display: flex;
       flex-direction: column;
+      gap: 2px;
     }
-    .right {
+
+    .brand-title {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-pill {
+      font-size: 10px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(0, 224, 255, 0.32);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .status {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 10px;
+      border: 1px solid var(--border-soft);
+      background: rgba(8,12,24,0.96);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #00ff9d;
+      box-shadow: 0 0 10px #00ff9d;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(260px, 1.4fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .status { align-items: flex-start; }
+    }
+
+    .chat {
+      background: rgba(5, 10, 22, 0.98);
+      border-radius: var(--radius-xl);
+      padding: 14px 14px 12px;
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: min(76vh, 620px);
+    }
+
+    .chat-messages {
       flex: 1;
-      padding: 20px;
+      overflow-y: auto;
+      padding-right: 4px;
       display: flex;
       flex-direction: column;
-      background: #151515;
+      gap: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent-soft) transparent;
     }
-    textarea {
-      width: 100%;
-      height: 200px;
-      background: #000;
-      color: #fff;
-      border: 1px solid #444;
-      border-radius: 6px;
-      padding: 10px;
-      resize: none;
-      font-size: 15px;
+
+    .chat-messages::-webkit-scrollbar {
+      width: 4px;
     }
-    button {
-      background-color: #ff7a00;
-      border: none;
-      padding: 10px 20px;
-      margin-right: 10px;
-      margin-top: 10px;
-      border-radius: 6px;
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: var(--accent-soft);
+      border-radius: 999px;
+    }
+
+    .msg {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      animation: fadeIn 0.18s ease-out;
+    }
+
+    .msg.user {
+      justify-content: flex-end;
+    }
+
+    .msg-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    .msg.user .msg-avatar {
+      background: rgba(0, 224, 255, 0.24);
+      color: var(--accent);
+    }
+
+    .msg-bubble {
+      max-width: 92%;
+      padding: 7px 9px;
+      border-radius: 16px;
+      font-size: 12px;
+      line-height: 1.5;
+      border: 1px solid transparent;
+      background: #0c1324;
+      color: var(--text);
+    }
+
+    .msg.user .msg-bubble {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: rgba(0, 224, 255, 0.38);
+    }
+
+    .msg-meta {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+      font-size: 9px;
+      color: var(--muted);
+      opacity: 0.86;
+    }
+
+    .msg-tag {
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px);}
+      to { opacity: 1; transform: translateY(0);}
+    }
+
+    .chat-input-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .top-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .select-family {
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: #050816;
+      border: 1px solid var(--border-soft);
+      color: var(--accent);
+      font-size: 10px;
+      outline: none;
+    }
+
+    .select-mode {
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: transparent;
+      color: var(--muted);
+      font-size: 9px;
       cursor: pointer;
-      color: #fff;
-      font-weight: bold;
-      font-size: 15px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: var(--transition-fast);
     }
-    button:hover {
-      background-color: #ffa94d;
+
+    .select-mode.active {
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-color: rgba(0, 224, 255, 0.45);
     }
-    #answer {
-      white-space: pre-wrap;
-      font-size: 17px;
-      color: #ffb84d;
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
     }
-    #err {
-      color: #ff6666;
-      background-color: #330000;
-      padding: 6px;
-      border-radius: 6px;
-      display: none;
-      margin-top: 10px;
+
+    .chat-input {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: #050816;
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+      transition: var(--transition-fast);
     }
-    #meta {
-      display: none;
-      font-size: 13px;
-      color: #ccc;
-      margin-top: 20px;
+
+    .chat-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(0, 224, 255, 0.2);
+    }
+
+    .btn-send {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: none;
+      background: var(--accent);
+      color: #020308;
+      font-weight: 600;
+      font-size: 11px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 6px 18px rgba(0, 224, 255, 0.3);
+      transition: var(--transition-fast);
+      flex-shrink: 0;
+    }
+
+    .btn-send:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 9px 24px rgba(0, 224, 255, 0.4);
+    }
+
+    .btn-send:active {
+      transform: translateY(1px);
+      box-shadow: 0 4px 10px rgba(0, 224, 255, 0.25);
+    }
+
+    .side {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card {
+      background: rgba(5, 10, 22, 0.98);
+      border-radius: var(--radius-xl);
+      padding: 10px 11px;
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-soft);
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 8px;
+      border: 1px solid rgba(255,255,255,0.14);
+      color: var(--muted);
+      margin-right: 3px;
+      margin-top: 2px;
+    }
+
+    .hint-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 4px 0 0;
+      display: grid;
+      gap: 2px;
+    }
+
+    .hint-list li {
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 8px;
+      transition: var(--transition-fast);
+      border: 1px solid transparent;
+      color: var(--muted);
+    }
+
+    .hint-list li:hover {
+      border-color: var(--accent-soft);
+      color: var(--accent);
+      background: rgba(0, 224, 255, 0.03);
+    }
+
+    .small-label {
+      font-size: 8px;
+      opacity: 0.7;
+    }
+
+    .danger {
+      color: var(--danger);
     }
   </style>
 </head>
 <body>
-  <header>
-    <div><strong>Tecnaria Sinapsi — Q/A</strong></div>
-    <div id="status">avvio...</div>
-  </header>
-
-  <div class="container">
-    <div class="left">
-      <h3>CHIEDI A SINAPSI</h3>
-      <textarea id="question" placeholder="Scrivi la domanda qui..."></textarea>
-      <div>
-        <button onclick="sendQuestion()">Invia</button>
-        <button onclick="ping()">Ping</button>
+  <div class="app">
+    <div class="app-header">
+      <div class="brand">
+        <div class="brand-title">
+          Tecnaria Sinapsi
+          <span class="brand-pill">Q/A GOLD • NLM-v3</span>
+        </div>
+        <div class="brand-sub">
+          Assistente tecnico-commerciale per connettori collaboranti Tecnaria.
+        </div>
       </div>
-      <div id="err"></div>
+      <div class="status">
+        <div class="status-pill">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-text">Verifica connessione...</span>
+        </div>
+        <div class="small-label">
+          Backend: <code>/api/ask</code> • Config: <code>/api/config</code>
+        </div>
+      </div>
     </div>
 
-    <div class="right">
-      <h3>Risposta GOLD</h3>
-      <div id="answer">—</div>
-      <div id="meta">
-        <div>ID: <span id="src"></span></div>
-        <div>Mode: <span id="match"></span></div>
+    <div class="layout">
+      <!-- CHAT -->
+      <div class="chat">
+        <div class="chat-messages" id="messages"></div>
+
+        <div class="chat-input-wrap">
+          <div class="top-row">
+            <select id="family" class="select-family">
+              <option value="VCEM">VCEM — Laterocemento</option>
+              <option value="CTCEM">CTCEM — Travetti pieni</option>
+              <option value="CTF">CTF — Lamiera grecata / acciaio</option>
+              <option value="CTL">CTL — Legno-calcestruzzo</option>
+              <option value="CTL_MAXI">CTL MAXI — Legno heavy duty</option>
+              <option value="DIAPASON">DIAPASON — Recupero laterocemento</option>
+              <option value="P560">P560 — Pistola e chiodi</option>
+              <option value="COMM">COMM — Contatti / azienda</option>
+            </select>
+
+            <button id="mode-gold" class="select-mode active">
+              <span>GOLD dynamic</span>
+            </button>
+            <div class="small-label">
+              Scrivi in linguaggio naturale. Il sistema riconosce la lingua (IT/EN/FR/DE/ES).
+            </div>
+          </div>
+
+          <div class="input-row">
+            <input id="q" class="chat-input" placeholder="Fai una domanda sui connettori Tecnaria..." autocomplete="off" />
+            <button class="btn-send" id="send">
+              <span>Invia</span>
+              <span>➜</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIDE PANEL -->
+      <div class="side">
+        <div class="card">
+          <div class="card-title">Famiglie supportate</div>
+          <div>
+            <span class="pill">VCEM</span>
+            <span class="pill">CTCEM</span>
+            <span class="pill">CTF</span>
+            <span class="pill">CTL / CTL MAXI</span>
+            <span class="pill">DIAPASON</span>
+            <span class="pill">P560</span>
+            <span class="pill">COMM</span>
+          </div>
+          <p style="margin-top:6px;">
+            Ogni risposta è estratta da basi GOLD curate, non da fantasia. Se non trovi risposta, è un segnale per arricchire il JSON,
+            non per inventare.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Esempi di domande</div>
+          <ul class="hint-list" id="hints">
+            <li data-q="Posso sparare i VCEM con la P560?">Posso sparare i VCEM con la P560?</li>
+            <li data-q="Dove posso usare i connettori CTF?">Dove posso usare i connettori CTF?</li>
+            <li data-q="Come si posano i CTL su solaio in legno esistente?">Come si posano i CTL su solaio in legno esistente?</li>
+            <li data-q="Differenza tra VCEM e CTCEM?">Differenza tra VCEM e CTCEM?</li>
+            <li data-q="Quando usare DIAPASON invece dei VCEM?">Quando usare DIAPASON invece dei VCEM?</li>
+            <li data-q="Che manutenzione richiede la P560?">Che manutenzione richiede la P560?</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Legend risposta</div>
+          <p>
+            Ogni risposta mostra:
+          </p>
+          <ul class="hint-list">
+            <li><strong>ID</strong>: blocco logico (es. VCEM-0002).</li>
+            <li><strong>Mode</strong>: canonical / dynamic.</li>
+            <li><strong>Lang</strong>: lingua rilevata / risposta.</li>
+            <li><strong>Note</strong>: se manca, il JSON va esteso.</li>
+          </ul>
+          <p class="danger" style="margin-top:4px;">
+            Se leggi “Nessuna risposta trovata”, NON è colpa del frontend:
+            va aggiunto contenuto nella famiglia JSON corrispondente.
+          </p>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    const BASE = location.origin;
+    const messagesEl = document.getElementById("messages");
+    const inputEl = document.getElementById("q");
+    const sendBtn = document.getElementById("send");
+    const familyEl = document.getElementById("family");
+    const hintsEl = document.getElementById("hints");
+    const statusDot = document.getElementById("status-dot");
+    const statusText = document.getElementById("status-text");
+    const modeGoldBtn = document.getElementById("mode-gold");
 
-    async function ping() {
-      const s = document.getElementById('status');
-      const e = document.getElementById('err');
-      e.style.display = 'none';
-      s.textContent = 'ping...';
+    let backendOK = false;
+    let mode = "dynamic"; // per ora solo informativo
+
+    async function checkConfig() {
       try {
-        const r = await fetch(BASE + '/api/config');
-        const j = await r.json();
-        s.textContent = `ONLINE · ${j.app}`;
-      } catch (err) {
-        s.textContent = 'errore ping';
-        e.textContent = err;
-        e.style.display = 'block';
+        const res = await fetch("/api/config");
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        statusDot.style.background = "#00ff9d";
+        statusText.textContent = `${data.app || "Sinapsi"} online • JSON: ${data.families_dir || "static/data"}`;
+        backendOK = true;
+      } catch (e) {
+        statusDot.style.background = "#ff3366";
+        statusDot.style.boxShadow = "0 0 10px #ff3366";
+        statusText.textContent = "Backend non raggiungibile /api/config";
+        backendOK = false;
       }
     }
 
-    async function sendQuestion() {
-      const q = document.getElementById('question').value.trim();
-      const out = document.getElementById('answer');
-      const s = document.getElementById('status');
-      const e = document.getElementById('err');
-      const meta = document.getElementById('meta');
-      const src = document.getElementById('src');
-      const match = document.getElementById('match');
+    function appendMessage(text, from = "bot", meta = null) {
+      const wrap = document.createElement("div");
+      wrap.className = "msg " + (from === "user" ? "user" : "bot");
 
-      if (!q) {
-        out.textContent = 'Scrivi una domanda prima.';
+      const avatar = document.createElement("div");
+      avatar.className = "msg-avatar";
+      avatar.textContent = from === "user" ? "TU" : "AI";
+
+      const bubble = document.createElement("div");
+      bubble.className = "msg-bubble";
+      bubble.textContent = text;
+
+      if (meta) {
+        const metaEl = document.createElement("div");
+        metaEl.className = "msg-meta";
+        if (meta.id) {
+          const id = document.createElement("div");
+          id.className = "msg-tag";
+          id.textContent = meta.id;
+          metaEl.appendChild(id);
+        }
+        if (meta.mode) {
+          const md = document.createElement("div");
+          md.className = "msg-tag";
+          md.textContent = meta.mode;
+          metaEl.appendChild(md);
+        }
+        if (meta.lang) {
+          const lg = document.createElement("div");
+          lg.className = "msg-tag";
+          lg.textContent = meta.lang;
+          metaEl.appendChild(lg);
+        }
+        if (meta.note) {
+          const nt = document.createElement("div");
+          nt.className = "msg-tag";
+          nt.textContent = meta.note;
+          metaEl.appendChild(nt);
+        }
+        bubble.appendChild(metaEl);
+      }
+
+      wrap.appendChild(avatar);
+      wrap.appendChild(bubble);
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function ask() {
+      const q = inputEl.value.trim();
+      if (!q) return;
+      if (!backendOK) {
+        appendMessage("Backend non raggiungibile. Verifica /api/config e riprova.", "bot", {
+          mode: "error"
+        });
         return;
       }
 
-      e.style.display = 'none';
-      s.textContent = 'Sto chiedendo a Sinapsi…';
+      const family = familyEl.value || "VCEM";
+
+      appendMessage(q, "user");
+      inputEl.value = "";
+      inputEl.focus();
 
       try {
-        const res = await fetch(BASE + '/api/ask', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            q: q,
-            family: inferFamilyFromText(q)
-          })
+        const res = await fetch("/api/ask", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ q, family })
         });
 
         if (!res.ok) {
-          const txt = await res.text();
-          out.textContent = 'Errore risposta backend.';
-          e.textContent = txt;
-          e.style.display = 'block';
-          s.textContent = 'errore';
-          meta.style.display = 'none';
+          appendMessage("Errore dal server (" + res.status + "). Controlla app.py o i JSON.", "bot", {
+            mode: "server-error"
+          });
           return;
         }
 
         const data = await res.json();
-        out.textContent = data.text || 'Nessuna risposta.';
-        src.textContent = data.id || '—';
-        match.textContent = data.mode || '—';
-        meta.style.display = 'block';
-        s.textContent = 'ok';
+
+        if (!data.ok) {
+          appendMessage(data.text || "Nessuna risposta trovata per questa domanda.", "bot", {
+            id: family,
+            mode: "no-match",
+            lang: data.lang || "it",
+            note: "Arricchire JSON di famiglia " + family
+          });
+          return;
+        }
+
+        appendMessage(data.text || "", "bot", {
+          id: data.id || family,
+          mode: data.mode || "dynamic",
+          lang: data.lang || "it"
+        });
+
       } catch (err) {
-        out.textContent = 'Errore di rete.';
-        e.textContent = err;
-        e.style.display = 'block';
-        s.textContent = 'errore';
-        meta.style.display = 'none';
+        appendMessage("Errore di connessione a /api/ask. Controlla il deploy.", "bot", {
+          mode: "network-error"
+        });
       }
     }
 
-    function inferFamilyFromText(q) {
-      q = q.toLowerCase();
-      if (q.includes("vcem")) return "VCEM";
-      if (q.includes("ctf")) return "CTF";
-      if (q.includes("ctcem")) return "CTCEM";
-      if (q.includes("ctl maxi")) return "CTL_MAXI";
-      if (q.includes("ctl")) return "CTL";
-      if (q.includes("p560")) return "P560";
-      if (q.includes("diapason")) return "DIAPASON";
-      return "COMM";
+    sendBtn.addEventListener("click", ask);
+    inputEl.addEventListener("keydown", e => {
+      if (e.key === "Enter") ask();
+    });
+
+    if (hintsEl) {
+      hintsEl.addEventListener("click", e => {
+        const li = e.target.closest("li");
+        if (!li) return;
+        inputEl.value = li.dataset.q || li.textContent.trim();
+        inputEl.focus();
+      });
     }
 
-    ping();
+    modeGoldBtn.addEventListener("click", () => {
+      // solo estetico per ora, il mode reale lo decide il backend in base al JSON
+      mode = "dynamic";
+      modeGoldBtn.classList.add("active");
+    });
+
+    // messaggio iniziale
+    appendMessage(
+      "Benvenuto in Tecnaria Sinapsi — Q/A.\nSeleziona la famiglia in alto a sinistra e fai una domanda in linguaggio naturale. Le risposte arrivano solo dai contenuti GOLD che hai caricato, niente inventato.",
+      "bot",
+      { mode: "intro", lang: "it" }
+    );
+
+    checkConfig();
   </script>
 </body>
 </html>
