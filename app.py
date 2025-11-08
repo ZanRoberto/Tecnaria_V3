@@ -1,406 +1,432 @@
-import os
 import json
-import re
-from functools import lru_cache
-from typing import Dict, Any, List, Optional
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-APP_NAME = "Tecnaria Sinapsi — Q/A"
+# OpenAI client (usa OPENAI_API_KEY dall'ambiente)
+USE_OPENAI = True  # se vuoi spegnere NLM metti False
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FAMILIES_DIR = os.path.join(BASE_DIR, "static", "data")
-RUNTIME_CONFIG = os.path.join(FAMILIES_DIR, "config.runtime.json")
+try:
+    from openai import OpenAI
+    _openai_client = OpenAI() if USE_OPENAI and os.getenv("OPENAI_API_KEY") else None
+except Exception:
+    _openai_client = None
 
-DEFAULT_SUPPORTED_LANGS = ["it", "en", "fr", "de", "es"]
-DEFAULT_FALLBACK_LANG = "en"
+# -------------------------------------------------
+# PATH
+# -------------------------------------------------
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+DATA_DIR = STATIC_DIR / "data"
+INDEX_HTML = STATIC_DIR / "index.html"
 
-app = FastAPI(title=APP_NAME)
+app = FastAPI(title="Tecnaria Sinapsi — Q/A")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
+# -------------------------------------------------
+# MODELLO REQUEST
+# -------------------------------------------------
 class AskPayload(BaseModel):
     q: str
-    family: Optional[str] = None  # opzionale: se assente, instradamento automatico
+    family: Optional[str] = None  # opzionale; se presente, forza famiglia
 
 
-# -----------------------
-# Utility di base
-# -----------------------
+# -------------------------------------------------
+# CACHE FAMIGLIE
+# -------------------------------------------------
+_family_cache: Dict[str, List[Dict[str, Any]]] = {}
 
-def _safe_read_json(path: str) -> Any:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"File non trovato: {path}")
-    with open(path, "r", encoding="utf-8") as f:
+
+def _safe_read_json(path: Path) -> Any:
+    with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def _load_runtime_config() -> Dict[str, Any]:
-    cfg: Dict[str, Any] = {}
-    if os.path.exists(RUNTIME_CONFIG):
-        try:
-            cfg = _safe_read_json(RUNTIME_CONFIG)
-        except Exception:
-            cfg = {}
-    return {
-        "supported_langs": cfg.get("supported_langs", DEFAULT_SUPPORTED_LANGS),
-        "fallback_lang": cfg.get("fallback_lang", DEFAULT_FALLBACK_LANG),
-        "translation": bool(cfg.get("translation", False)),
-    }
-
-
-@lru_cache(maxsize=1)
-def get_config_cached() -> Dict[str, Any]:
-    cfg = _load_runtime_config()
-    cfg["families_dir"] = FAMILIES_DIR
-    return cfg
-
-
-def detect_lang_from_text(text: str, supported: List[str]) -> str:
+def _extract_blocks(data: Any) -> List[Dict[str, Any]]:
     """
-    Riconoscimento super-semplificato.
-    Se non riconosciamo in modo sensato, usiamo 'it' come default logico
-    (dato il dominio) e gestiamo fallback a livello di risposta.
+    Supporta:
+    - lista diretta di blocchi
+    - { "items": [...] }
+    - { "blocks": [...] }
+    - { "data": [...] }
+    - { "ID1": {...}, "ID2": {...} }
     """
-    t = text.lower()
+    blocks: List[Dict[str, Any]] = []
 
-    # euristiche minime
-    if any(ch in t for ch in ["è", "ò", "à", "ì", "ù"]):
-        return "it"
-    if re.search(r"\b(the|and|can|use|with|on|steel|beam|beams)\b", t):
-        return "en"
-    if re.search(r"\b(le|les|des|avec|peut|utiliser)\b", t):
-        return "fr"
-    if re.search(r"\b(der|die|das|und|mit|kann)\b", t):
-        return "de"
-    if re.search(r"\b(el|los|las|con|puedo|usar)\b", t):
-        return "es"
+    if isinstance(data, list):
+        blocks = [b for b in data if isinstance(b, dict)]
 
-    # default dominio
-    if "it" in supported:
-        return "it"
-    return supported[0] if supported else "it"
-
-
-def normalize_family_name(name: str) -> str:
-    return name.strip().upper()
-
-
-@lru_cache(maxsize=None)
-def list_family_files() -> Dict[str, str]:
-    """
-    Mappa: NOME_FAMIGLIA -> path file json
-    Usa il nome file (senza estensione) come family.
-    """
-    if not os.path.isdir(FAMILIES_DIR):
-        raise RuntimeError(f"Directory families non trovata: {FAMILIES_DIR}")
-
-    mapping: Dict[str, str] = {}
-    for fname in os.listdir(FAMILIES_DIR):
-        if not fname.lower().endswith(".json"):
-            continue
-        if fname == os.path.basename(RUNTIME_CONFIG):
-            continue
-        family = os.path.splitext(fname)[0].upper()
-        mapping[family] = os.path.join(FAMILIES_DIR, fname)
-    return mapping
-
-
-@lru_cache(maxsize=None)
-def load_family_data(family: str) -> List[Dict[str, Any]]:
-    family_norm = normalize_family_name(family)
-    files = list_family_files()
-    if family_norm not in files:
-        raise FileNotFoundError(f"Family JSON non trovato per: {family_norm}")
-    raw = _safe_read_json(files[family_norm])
-
-    # Supporta array diretto, { "blocks": [...] }, { "data": [...] }
-    if isinstance(raw, list):
-        items = raw
-    elif isinstance(raw, dict):
-        if "blocks" in raw and isinstance(raw["blocks"], list):
-            items = raw["blocks"]
-        elif "data" in raw and isinstance(raw["data"], list):
-            items = raw["data"]
+    elif isinstance(data, dict):
+        for key in ("items", "blocks", "data"):
+            if key in data and isinstance(data[key], list):
+                blocks = [b for b in data[key] if isinstance(b, dict)]
+                break
         else:
-            # Se è un dict generico, prendiamo i valori che sono dict
-            items = []
-            for v in raw.values():
-                if isinstance(v, dict):
-                    items.append(v)
-    else:
-        items = []
+            vals = list(data.values())
+            if vals and all(isinstance(v, dict) for v in vals):
+                blocks = vals
 
-    # Normalizzazione minima
-    norm_items: List[Dict[str, Any]] = []
-    for idx, it in enumerate(items):
-        if not isinstance(it, dict):
+    for i, b in enumerate(blocks):
+        if "id" not in b:
+            b["id"] = b.get("ID", f"BLK-{i:04d}")
+
+    return blocks
+
+
+def load_family(family: str) -> List[Dict[str, Any]]:
+    fam = family.upper()
+    if fam in _family_cache:
+        return _family_cache[fam]
+
+    candidates = [
+        DATA_DIR / f"{fam}.json",
+        DATA_DIR / f"{fam}.golden.json",
+        DATA_DIR / f"{fam}.gold.json",
+    ]
+
+    path = next((p for p in candidates if p.exists()), None)
+    if not path:
+        raise HTTPException(status_code=404, detail=f"File JSON per famiglia '{family}' non trovato.")
+
+    data = _safe_read_json(path)
+    blocks = _extract_blocks(data)
+    _family_cache[fam] = blocks
+    return blocks
+
+
+def list_all_families() -> List[str]:
+    fams: List[str] = []
+    if not DATA_DIR.exists():
+        return fams
+    for f in DATA_DIR.glob("*.json"):
+        if f.name.lower() == "config.runtime.json":
             continue
-        item = dict(it)
-        item.setdefault("id", item.get("ID", f"{family_norm}-{idx:04d}"))
-        item.setdefault("family", family_norm)
-        norm_items.append(item)
-
-    return norm_items
+        fams.append(f.stem.upper())
+    return fams
 
 
-# -----------------------
-# Estrazione testo risposta
-# -----------------------
-
-def extract_answer_text(item: Dict[str, Any], lang: str, fallback_lang: str) -> Optional[str]:
+# -------------------------------------------------
+# ESTRAZIONE RISPOSTA DAL BLOCCO
+# -------------------------------------------------
+def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
     """
-    Cerca la miglior risposta leggibile nel blocco.
+    Cerca una risposta GOLD robusta.
     Ordine:
     - answers[lang]
-    - answers[fallback_lang]
-    - answers[it]
+    - answer_{lang}
     - answer
     - text
-    - canonical / dynamic (solo se stringa chiara, NON etichette)
-    - it / en diretti (se stringhe)
-    Se non trova nulla o solo vuoto → None.
+    - campo lingua diretto (it/en)
+    - response_variants (concat)
     """
-    def clean(s: Any) -> str:
-        return s.strip() if isinstance(s, str) else ""
-
-    answers = item.get("answers") or item.get("answer_map") or {}
+    # 1) answers.{lang}
+    answers = block.get("answers")
     if isinstance(answers, dict):
-        txt = clean(answers.get(lang))
-        if txt:
-            return txt
-        txt = clean(answers.get(fallback_lang))
-        if txt:
-            return txt
-        txt = clean(answers.get("it"))
-        if txt:
-            return txt
-        # qualsiasi lingua disponibile
+        for key in (lang, lang.lower(), lang.upper()):
+            v = answers.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
         for v in answers.values():
-            txt = clean(v)
-            if txt:
-                return txt
+            if isinstance(v, str) and v.strip():
+                return v.strip()
 
-    # campi diretti
-    for key in ["answer", "text", "it", "en"]:
-        txt = clean(item.get(key))
-        if txt:
-            return txt
+    # 2) answer_{lang}
+    for k, v in block.items():
+        if isinstance(v, str) and v.strip() and k.lower() == f"answer_{lang}".lower():
+            return v.strip()
 
-    # se canonical/dynamic sono usati come vere risposte testuali
-    for key in ["canonical", "dynamic"]:
-        val = item.get(key)
-        txt = clean(val)
-        if txt and not re.fullmatch(r"(canonical|dynamic)", txt.lower()):
-            return txt
+    # 3) answer singolo
+    v = block.get("answer")
+    if isinstance(v, str) and v.strip():
+        return v.strip()
+
+    # 4) text generico
+    v = block.get("text")
+    if isinstance(v, str) and v.strip():
+        return v.strip()
+
+    # 5) campo lingua diretto
+    for key in (lang, lang.lower(), lang.upper(), "it", "en", "IT", "EN"):
+        v = block.get(key)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+
+    # 6) response_variants: unione tecnica/narrativa/cantiere
+    rv = block.get("response_variants")
+    if isinstance(rv, dict):
+        parts = [txt for txt in rv.values() if isinstance(txt, str) and txt.strip()]
+        if parts:
+            return " ".join(parts).strip()
 
     return None
 
 
-# -----------------------
-# Scoring / matching
-# -----------------------
+# -------------------------------------------------
+# ESTRAZIONE QUERY / PATTERN
+# -------------------------------------------------
+def extract_queries(block: Dict[str, Any]) -> List[str]:
+    out: List[str] = []
 
-WORD_RE = re.compile(r"[a-z0-9àèéìòóùç]+")
+    scalar_keys = ["q", "question", "domanda", "title", "label"]
+    list_keys = ["questions", "q_list", "patterns", "triggers", "variants", "synonyms", "paraphrases"]
 
-def tokenize(text: str) -> List[str]:
-    return WORD_RE.findall(text.lower())
+    for k in scalar_keys:
+        v = block.get(k)
+        if isinstance(v, str) and v.strip():
+            out.append(v.strip())
+
+    for k in list_keys:
+        v = block.get(k)
+        if isinstance(v, list):
+            for e in v:
+                if isinstance(e, str) and e.strip():
+                    out.append(e.strip())
+
+    return out
 
 
-def item_score(q: str, item: Dict[str, Any]) -> float:
-    """
-    Scoring robusto ma semplice.
-    - overlap parole domanda/risposta/patterns
-    - boost se matcha patterns
-    - nessuna soglia assassina: se c'è match, usiamo il best.
-    """
-    q_tokens = set(tokenize(q))
-    if not q_tokens:
+def _norm(s: str) -> str:
+    return " ".join(s.lower().strip().split())
+
+
+# -------------------------------------------------
+# MATCHING DOMANDA -> BLOCCO
+# -------------------------------------------------
+def score_block(query: str, block: Dict[str, Any]) -> float:
+    q = _norm(query)
+    if not q:
         return 0.0
 
-    score = 0.0
+    queries = extract_queries(block)
+    if not queries:
+        return 0.0
 
-    # patterns (trigger espliciti)
-    patterns = item.get("patterns") or item.get("tags") or []
-    if isinstance(patterns, str):
-        patterns = [patterns]
-    if isinstance(patterns, list):
-        for p in patterns:
-            if not isinstance(p, str):
-                continue
-            p_low = p.lower().strip()
-            if not p_low:
-                continue
-            # se il pattern appare nella domanda → forte boost
-            if p_low in q.lower():
-                score += 2.0
+    best = 0.0
 
-    # Consideriamo testo domanda (se presente nel blocco)
-    for key in ["q", "question"]:
-        txt = item.get(key)
-        if isinstance(txt, str) and txt.strip():
-            itoks = set(tokenize(txt))
-            common = q_tokens & itoks
-            if common:
-                score += len(common) / max(len(itoks), 1)
+    for cand in queries:
+        c = _norm(cand)
+        if not c:
+            continue
 
-    # Consideriamo anche un po' il testo risposta come contesto
-    # (solo per raffinare, non per inventare).
-    answer_for_score = ""
-    if isinstance(item.get("answer"), str):
-        answer_for_score = item["answer"]
-    elif isinstance(item.get("text"), str):
-        answer_for_score = item["text"]
+        # Match forte: substring
+        if c in q or q in c:
+            s = min(len(q), len(c)) / max(len(q), len(c))
+            best = max(best, 0.9 + 0.1 * s)
+            continue
 
-    if answer_for_score:
-        atoks = set(tokenize(answer_for_score))
-        common = q_tokens & atoks
-        if common:
-            score += 0.3 * (len(common) / max(len(q_tokens), 1))
+        # Overlap parole
+        sq = set(q.split())
+        sc = set(c.split())
+        inter = len(sq & sc)
+        if inter > 0:
+            union = len(sq | sc)
+            j = inter / union if union else 0.0
+            if j > best:
+                best = j
 
-    # Se contiene riferimenti molto chiari (VCEM, P560, CTF etc.)
-    strong_keywords = ["vcem", "p560", "ctf", "ctl", "ctcem", "diapason"]
-    for kw in strong_keywords:
-        if kw in q.lower():
-            # se anche l'item parla di quel kw → bonus
-            txt_full = json.dumps(item, ensure_ascii=False).lower()
-            if kw in txt_full:
-                score += 0.7
+    # Boost keyword tecniche
+    full = _norm(json.dumps(block, ensure_ascii=False))
+    for kw in ("vcem", "p560", "ctf", "ctl", "ctl maxi", "ctcem", "diapason", "lamiera", "calcestruzzo", "soletta"):
+        if kw in q and kw in full:
+            best += 0.15
 
-    return score
+    return best
 
 
-def choose_best_block(q: str, lang: str, fallback_lang: str,
-                      families: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
-    """
-    Cerca il miglior blocco tra le famiglie richieste (o tutte).
-    Scarta in automatico i blocchi senza testo risposta.
-    Nessuna soglia rigida: se c'è almeno 1 blocco con score > 0, usiamo il top.
-    """
+def find_best_block(query: str, families: Optional[List[str]] = None, lang: str = "it") -> Optional[Dict[str, Any]]:
     if families is None:
-        families = list(list_family_files().keys())
+        families = list_all_families()
 
-    q_stripped = q.strip()
-    if not q_stripped:
-        return None
-
-    best = None
+    best_block = None
+    best_family = None
     best_score = 0.0
 
     for fam in families:
         try:
-            items = load_family_data(fam)
-        except FileNotFoundError:
+            blocks = load_family(fam)
+        except HTTPException:
             continue
 
-        for item in items:
-            # prendo subito la risposta; se non c'è, scarto
-            answer_text = extract_answer_text(item, lang, fallback_lang)
-            if not answer_text:
+        for b in blocks:
+            ans = extract_answer(b, lang=lang)
+            if not ans:
                 continue
 
-            s = item_score(q_stripped, item)
+            s = score_block(query, b)
             if s > best_score:
                 best_score = s
-                best = {
-                    "family": fam,
-                    "id": str(item.get("id", "")),
-                    "mode": infer_mode(item),
-                    "lang": lang,
-                    "text": answer_text,
-                }
+                best_block = b
+                best_family = fam
 
-    if best_score <= 0.0:
+    if not best_block or best_score <= 0.0:
         return None
-    return best
+
+    best_block = dict(best_block)
+    best_block["_family"] = best_family
+    best_block["_score"] = round(best_score, 3)
+    return best_block
 
 
-def infer_mode(item: Dict[str, Any]) -> str:
+# -------------------------------------------------
+# LINGUA (semplice)
+# -------------------------------------------------
+def detect_lang(query: str) -> str:
+    q = query.lower()
+    if any(w in q for w in [" il ", " lo ", " la ", " connettore", "soletta", "calcestruzzo", "trave", "travi"]):
+        return "it"
+    if any(w in q for w in [" the ", " can i ", " beam", "steel", "slab"]):
+        return "en"
+    if any(w in q for w in [" ¿", " qué ", " conectores", "hormigón"]):
+        return "es"
+    if any(w in q for w in [" quel ", " béton", "connecteurs"]):
+        return "fr"
+    if any(w in q for w in [" welche ", "verbinder", "beton"]):
+        return "de"
+    return "it"
+
+
+# -------------------------------------------------
+# GENERAZIONE NLM (ibrida)
+# -------------------------------------------------
+def generate_gold_answer(
+    question: str,
+    base_answer: str,
+    block: Dict[str, Any],
+    family: str,
+    lang: str
+) -> str:
     """
-    canonical / dynamic per leggenda frontend.
+    Usa OpenAI per riscrivere la risposta in modo tecnico-narrativo,
+    restando fedele al contenuto del blocco.
+    Se qualcosa va storto, torna base_answer.
     """
-    mode = item.get("mode") or item.get("answer_type") or ""
-    if isinstance(mode, str):
-        m = mode.lower()
-        if "canon" in m:
-            return "canonical"
-        if "dyn" in m:
-            return "dynamic"
-    # euristiche minime
-    if "canonical" in item:
-        return "canonical"
-    if "dynamic" in item:
-        return "dynamic"
-    return "dynamic"
+    if not USE_OPENAI or _openai_client is None:
+        return base_answer
+
+    # Context: tutto quello che sappiamo dal blocco
+    context = json.dumps(block, ensure_ascii=False)
+
+    if lang not in ("it", "en", "fr", "de", "es"):
+        lang = "en"
+
+    system_msg = (
+        "Sei SINAPSI, assistente tecnico-commerciale ufficiale Tecnaria. "
+        "Rispondi SOLO usando le informazioni fornite nel CONTENUTO GOLD, "
+        "senza inventare dati nuovi. "
+        "Stile: chiaro, completo, professionale, con tono umano, "
+        "coerente con manuali Tecnaria e assistenza tecnica. "
+        "Non usare sigle non spiegate (scrivi 'cemento armato', non 'c.a.'). "
+        "Se il contenuto non copre la domanda, dillo esplicitamente."
+    )
+
+    # Prompt utente per il modello
+    user_msg = (
+        f"LINGUA RISPOSTA: {lang}\n"
+        f"FAMIGLIA: {family}\n"
+        f"DOMANDA UTENTE: {question}\n\n"
+        f"CONTENUTO GOLD (da rispettare, base_answer inclusa):\n{context}\n\n"
+        f"BASE_ANSWER (risposta sintetica):\n{base_answer}\n\n"
+        "Scrivi una risposta unica, completa e fluida, usando SOLO queste informazioni. "
+        "Includi indicazioni pratiche e, se utili, note di sicurezza o riferimento a casi tipici. "
+        "Non menzionare il processo interno o il fatto che esistono 'blocchi' o 'JSON'."
+    )
+
+    try:
+        resp = _openai_client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg},
+            ],
+            temperature=0.35,
+            max_tokens=420,
+        )
+        txt = (resp.choices[0].message.content or "").strip()
+        if not txt:
+            return base_answer
+        return txt
+    except Exception:
+        return base_answer
 
 
-# -----------------------
-# API
-# -----------------------
-
+# -------------------------------------------------
+# API: CONFIG
+# -------------------------------------------------
 @app.get("/api/config")
 def api_config():
-    cfg = get_config_cached()
     return {
-        "app": APP_NAME,
-        "status": "OK",
-        "families_dir": cfg["families_dir"],
-        "supported_langs": cfg["supported_langs"],
-        "fallback_lang": cfg["fallback_lang"],
-        "translation": cfg["translation"],
+        "ok": True,
+        "app": "Tecnaria Sinapsi — Q/A",
+        "families_dir": str(DATA_DIR),
+        "nlm": bool(_openai_client is not None and USE_OPENAI),
     }
 
 
+# -------------------------------------------------
+# API: ASK
+# -------------------------------------------------
 @app.post("/api/ask")
 def api_ask(payload: AskPayload):
-    cfg = get_config_cached()
-    supported = cfg["supported_langs"]
-    fallback_lang = cfg["fallback_lang"]
-
     q = (payload.q or "").strip()
     if not q:
         raise HTTPException(status_code=400, detail="Domanda vuota.")
 
-    lang = detect_lang_from_text(q, supported)
-    if lang not in supported:
-        lang = fallback_lang
+    lang = detect_lang(q)
 
-    # Se family è specificata, cerco solo lì.
     families = None
-    family_norm = None
+    fam = None
     if payload.family:
-        family_norm = normalize_family_name(payload.family)
-        if family_norm not in list_family_files():
-            raise HTTPException(status_code=404, detail=f"Famiglia '{payload.family}' non trovata.")
-        families = [family_norm]
+        fam = payload.family.upper()
+        families = [fam]
 
-    best = choose_best_block(q, lang, fallback_lang, families=families)
+    best = find_best_block(q, families=families, lang=lang)
 
     if not best:
-        # nessun match GOLD trovato
         return {
             "ok": False,
-            "family": family_norm,
             "q": q,
             "lang": lang,
-            "text": "Per questa domanda non è ancora presente una risposta GOLD nei contenuti Tecnaria. "
-                    "Se è una casistica reale di cantiere, aggiungi il blocco corrispondente nel JSON appropriato."
+            "family": fam,
+            "text": "Per questa domanda non è ancora presente una risposta GOLD nei contenuti Tecnaria."
         }
+
+    base = extract_answer(best, lang=lang) or extract_answer(best, lang="it") or extract_answer(best, lang="en")
+    if not base:
+        return {
+            "ok": False,
+            "q": q,
+            "lang": lang,
+            "family": best.get("_family"),
+            "id": best.get("id"),
+            "text": "Blocco GOLD individuato ma senza testo risposta valido. Controllare il file JSON."
+        }
+
+    family = best.get("_family", fam or "")
+    score = best.get("_score", 0.0)
+
+    # Generazione NLM ibrida
+    final_text = generate_gold_answer(q, base, best, family, lang)
 
     return {
         "ok": True,
-        "family": best["family"],
-        "id": best["id"],
-        "mode": best["mode"],
-        "lang": best["lang"],
-        "text": best["text"],
+        "q": q,
+        "lang": lang,
+        "family": family,
+        "id": best.get("id"),
+        "mode": "dynamic_nlm" if USE_OPENAI and _openai_client else "dynamic",
+        "score": score,
+        "text": final_text,
     }
+
+
+# -------------------------------------------------
+# UI ROOT
+# -------------------------------------------------
+@app.get("/", response_class=HTMLResponse)
+def root():
+    if INDEX_HTML.exists():
+        return HTMLResponse(INDEX_HTML.read_text(encoding="utf-8"))
+    return HTMLResponse("<h1>Tecnaria Sinapsi — Q/A</h1>", status_code=200)
