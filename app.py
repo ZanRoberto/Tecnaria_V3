@@ -1,27 +1,293 @@
 import os
 import json
 import random
-import re
+import unicodedata
 from functools import lru_cache
-from typing import List, Dict, Optional
+from typing import Dict, Any, List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+# =========================================================
+# CONFIG
+# =========================================================
 
-# =========================
-# CONFIGURAZIONE DI BASE
-# =========================
-
+APP_NAME = "Tecnaria Sinapsi — Q/A"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_FAMILIES_DIR = os.path.join(BASE_DIR, "static", "data")
 
-CONFIG_PATH = os.path.join(DEFAULT_FAMILIES_DIR, "config.runtime.json")
+SUPPORTED_LANGS = ["it", "en", "fr", "de", "es"]
+FALLBACK_LANG = "en"  # per lingue non supportate → rispondiamo in inglese
 
-app = FastAPI(title="Tecnaria Sinapsi — Q/A")
 
-# CORS aperto per interfaccia web
+# =========================================================
+# UTILS
+# =========================================================
+
+def _normalize_text(s: str) -> str:
+    if not s:
+        return ""
+    s = s.lower()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    # togliamo caratteri non alfanumerici base (manteniamo spazio)
+    cleaned = []
+    for ch in s:
+        if ch.isalnum() or ch.isspace():
+            cleaned.append(ch)
+        # altrimenti skip
+    return " ".join("".join(cleaned).split())
+
+
+def _tokenize(s: str) -> List[str]:
+    s = _normalize_text(s)
+    if not s:
+        return []
+    return [t for t in s.split() if len(t) > 1]
+
+
+def _read_json(path: str) -> Any:
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"File non trovato: {path}")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _safe_get(d: Dict, key: str, default=None):
+    v = d.get(key, default)
+    return v if v is not None else default
+
+
+# =========================================================
+# LINGUA: RICONOSCIMENTO + TRADUZIONE DINAMICA
+# =========================================================
+
+def detect_language(text: str) -> str:
+    """
+    Rilevamento molto semplice:
+    - se prevalgono parole tipiche di it/en/fr/de/es → quella lingua
+    - se caratteri cirillici/altro → considerata 'other'
+    - se dubbio → 'it'
+    """
+    if not text:
+        return "it"
+
+    # check caratteri non latini
+    for ch in text:
+        if "\u0400" <= ch <= "\u04FF":
+            return "other"  # es. russo
+        if "\u4E00" <= ch <= "\u9FFF":
+            return "other"  # cinese
+        if "\u0600" <= ch <= "\u06FF":
+            return "other"  # arabo
+        if "\u0590" <= ch <= "\u05FF":
+            return "other"  # ebraico
+
+    txt = _normalize_text(text)
+    tokens = set(txt.split())
+
+    # Liste minimaliste per hint linguistico
+    it_words = {"che", "cosa", "posso", "come", "quando", "dove", "non", "uso", "connettori", "soletta"}
+    en_words = {"what", "can", "use", "how", "when", "where", "not", "connector", "slab"}
+    fr_words = {"quoi", "puis", "utiliser", "comment", "quand", "ou", "non", "connecteur"}
+    de_words = {"was", "kann", "verwenden", "wie", "wann", "wo", "nicht", "verbinder"}
+    es_words = {"que", "puedo", "usar", "como", "cuando", "donde", "no", "conector"}
+
+    scores = {
+        "it": len(tokens & it_words),
+        "en": len(tokens & en_words),
+        "fr": len(tokens & fr_words),
+        "de": len(tokens & de_words),
+        "es": len(tokens & es_words),
+    }
+
+    best_lang = max(scores, key=scores.get)
+    if scores[best_lang] == 0:
+        # niente match credibile → consideriamo "other"
+        return "other"
+
+    return best_lang
+
+
+def translate_dynamic(text: str, target_lang: str) -> str:
+    """
+    Stub traduzione dinamica.
+
+    Logica:
+    - se target_lang == "it": torna il testo così com'è.
+    - se target_lang in {en, fr, de, es}:
+        QUI puoi integrare una chiamata all'API OpenAI / traduttore esterno.
+        Per ora, se non configurato, restituiamo lo stesso testo
+        (per non rompere il servizio).
+    - se target_lang non supportata: rispondiamo in inglese.
+    """
+    if not text:
+        return text
+
+    if target_lang == "it":
+        return text
+
+    if target_lang not in SUPPORTED_LANGS:
+        # fallback hard → english
+        target_lang = FALLBACK_LANG
+
+    # QUI puoi innestare il vero motore di traduzione.
+    # Per ora lasciamo il testo in italiano per evitare errori
+    # ma l'architettura è pronta.
+    # Esempio (pseudo):
+    # return external_translate(text, target_lang)
+
+    return text  # placeholder: da sostituire con traduzione reale
+
+
+def choose_language(q: str) -> str:
+    lang = detect_language(q)
+    if lang in SUPPORTED_LANGS:
+        return lang
+    # se è lingua non supportata → fallback in inglese
+    return FALLBACK_LANG
+
+
+# =========================================================
+# CARICAMENTO FAMIGLIE / NLM MATCH
+# =========================================================
+
+def get_families_dir() -> str:
+    # permette override via env / config.runtime.json
+    cfg_path = os.path.join(DEFAULT_FAMILIES_DIR, "config.runtime.json")
+    if os.path.isfile(cfg_path):
+        try:
+            cfg = _read_json(cfg_path)
+            d = cfg.get("families_dir")
+            if d:
+                return d
+        except Exception:
+            pass
+    return DEFAULT_FAMILIES_DIR
+
+
+@lru_cache(maxsize=128)
+def load_family(family: str) -> Dict[str, Any]:
+    families_dir = get_families_dir()
+    filename = f"{family}.json"
+    path = os.path.join(families_dir, filename)
+    data = _read_json(path)
+
+    # Normalizziamo struttura
+    items = data.get("items", [])
+    for item in items:
+        # normalizza campi mancanti
+        item.setdefault("questions", [])
+        item.setdefault("tags", [])
+        item.setdefault("canonical", "")
+        item.setdefault("response_variants", [])
+        item.setdefault("mode", data.get("variants_strategy", "dynamic"))
+    return data
+
+
+def score_item(q_tokens: List[str], item: Dict[str, Any]) -> float:
+    """
+    Matching semplice:
+    - considera domande, tags, canonical
+    - calcola overlap token / boosting su domande
+    """
+    if not q_tokens:
+        return 0.0
+
+    # costruiamo un set di testo indicizzato
+    bag: List[str] = []
+
+    for qq in item.get("questions", []):
+        bag.extend(_tokenize(qq))
+
+    for tg in item.get("tags", []):
+        bag.extend(_tokenize(tg))
+
+    bag.extend(_tokenize(item.get("canonical", "")))
+
+    if not bag:
+        return 0.0
+
+    bag_set = set(bag)
+    q_set = set(q_tokens)
+
+    inter = len(bag_set & q_set)
+    if inter == 0:
+        return 0.0
+
+    # ratio semplice
+    score = inter / len(q_set)
+
+    # se c'è match forte su una domanda, boost
+    for qq in item.get("questions", []):
+        qq_tokens = set(_tokenize(qq))
+        if len(qq_tokens & q_set) >= max(2, int(0.6 * len(q_set))):
+            score += 0.5
+            break
+
+    return score
+
+
+def pick_best_item(family_data: Dict[str, Any], q: str) -> Optional[Dict[str, Any]]:
+    items = family_data.get("items", [])
+    if not items:
+        return None
+
+    q_tokens = _tokenize(q)
+    if not q_tokens:
+        return None
+
+    best = None
+    best_score = 0.0
+
+    for item in items:
+        s = score_item(q_tokens, item)
+        if s > best_score:
+            best_score = s
+            best = item
+
+    # soglia minima: se troppo basso, meglio dire nessuna risposta
+    if best is None or best_score < 0.18:
+        return None
+
+    return best
+
+
+def pick_response_text(item: Dict[str, Any]) -> str:
+    mode = item.get("mode", "dynamic")
+    canonical = item.get("canonical", "").strip()
+    variants = item.get("response_variants") or []
+
+    if mode == "canonical":
+        return canonical or (variants[0].strip() if variants else "")
+
+    if mode == "dynamic":
+        pool = []
+        if canonical:
+            pool.append(canonical)
+        pool.extend([v for v in variants if isinstance(v, str) and v.strip()])
+        if not pool:
+            return ""
+        return random.choice(pool).strip()
+
+    # fallback
+    return canonical or (variants[0].strip() if variants else "")
+
+
+# =========================================================
+# API
+# =========================================================
+
+class AskPayload(BaseModel):
+    q: str
+    family: str
+    # opzionale: permetti override lingua manuale se mai servirà
+    lang: Optional[str] = None
+
+
+app = FastAPI(title=APP_NAME)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,280 +297,10 @@ app.add_middleware(
 )
 
 
-# =========================
-# MODELLI
-# =========================
-
-class AskPayload(BaseModel):
-    q: str
-    family: Optional[str] = None   # es. "VCEM", "CTF", etc.
-    vs: Optional[str] = None       # "canonical" | "dynamic" | None
-
-
-# =========================
-# UTILITY JSON
-# =========================
-
-def _read_json(path: str) -> Dict:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"File non trovato: {path}")
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-@lru_cache(maxsize=64)
-def get_config() -> Dict:
-    if os.path.exists(CONFIG_PATH):
-        try:
-            return _read_json(CONFIG_PATH)
-        except Exception:
-            return {}
-    return {}
-
-
-def get_families_dir() -> str:
-    cfg = get_config()
-    d = cfg.get("families_dir") or DEFAULT_FAMILIES_DIR
-    return d
-
-
-# =========================
-# SINONIMI + NORMALIZZAZIONE
-# =========================
-
-# Dizionario minimo di sinonimi tecnici / linguaggio naturale.
-# Espandibile senza toccare il codice.
-SYNONYMS = {
-    # azioni generiche
-    "usare": ["utilizzare", "impiegare", "adoperare"],
-    "posare": ["installare", "montare", "fissare", "mettere"],
-    "fissare": ["ancorare", "avvitare"],
-    "sparare": ["chiodare", "pistola", "sparachiodi"],
-    "errore": ["sbaglio", "sbagliato", "errato"],
-    # oggetti
-    "vcem": ["vcem"],
-    "ctf": ["ctf"],
-    "ctl": ["ctl"],
-    "ctcem": ["ctcem"],
-    "p560": ["p560"],
-    "diapason": ["diapason"],
-    # concetti
-    "dove": ["dove", "in quali casi", "in che casi"],
-    "certificazione": ["certificazioni", "eta", "ce", "marcatura"],
-    "prova": ["prove", "test", "sperimentale"],
-    "soletta": ["soletta", "getto", "cls", "calcestruzzo"],
-    "acciaio": ["trave", "profilato", "heb", "hea", "lamaiera", "lamiera"],
-    "laterocemento": ["laterocemento", "travetto"],
-}
-
-# parole che non aiutano nel matching
-STOPWORDS = {
-    "il", "lo", "la", "i", "gli", "le",
-    "un", "una", "uno",
-    "di", "a", "da", "in", "con", "su", "per",
-    "che", "cosa", "come", "quando", "dove", "quale", "quali",
-    "posso", "puoi", "devo", "si", "no",
-    "tecnaria",
-    "connettori", "connettore"
-}
-
-
-def normalize_text(text: str) -> str:
-    text = text.lower()
-    text = re.sub(r"[^\wàèéìòùç]+", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
-def expand_synonyms(tokens: List[str]) -> List[str]:
-    """Sostituisce/aggiunge sinonimi base per robustezza."""
-    expanded = []
-    for t in tokens:
-        expanded.append(t)
-        for base, syns in SYNONYMS.items():
-            if t == base or t in syns:
-                expanded.append(base)
-    return expanded
-
-
-def tokenize(text: str) -> List[str]:
-    norm = normalize_text(text)
-    tokens = [t for t in norm.split(" ") if t and t not in STOPWORDS]
-    return expand_synonyms(tokens)
-
-
-def jaccard_score(a: List[str], b: List[str]) -> float:
-    if not a or not b:
-        return 0.0
-    sa, sb = set(a), set(b)
-    inter = len(sa & sb)
-    if inter == 0:
-        return 0.0
-    union = len(sa | sb)
-    return inter / union
-
-
-def tag_bonus(q_norm_tokens: List[str], item: Dict) -> float:
-    bonus = 0.0
-    tags = item.get("tags") or []
-    if not tags:
-        return 0.0
-    qset = set(q_norm_tokens)
-    for tag in tags:
-        tnorm = normalize_text(tag)
-        if tnorm and tnorm in qset:
-            bonus += 0.04  # piccolo boost per ogni tag centrato
-    # massimo bonus limitato
-    return min(bonus, 0.15)
-
-
-# =========================
-# CARICAMENTO FAMIGLIE
-# =========================
-
-@lru_cache(maxsize=64)
-def load_family(family: str) -> Dict:
-    family = (family or "").strip()
-    if not family:
-        raise HTTPException(status_code=400, detail="Parametro 'family' mancante.")
-
-    families_dir = get_families_dir()
-
-    # Strategia: cerco prima Family.json, poi *.golden.json se esiste
-    candidates = [
-        os.path.join(families_dir, f"{family}.json"),
-        os.path.join(families_dir, f"{family}.golden.json"),
-        os.path.join(families_dir, f"{family}.sinapsi.gold.json"),
-    ]
-
-    for path in candidates:
-        if os.path.exists(path):
-            data = _read_json(path)
-            # normalizza struttura minima
-            if "items" not in data:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Formato JSON famiglia '{family}' non valido (manca 'items')."
-                )
-            return data
-
-    raise HTTPException(
-        status_code=404,
-        detail=f"Famiglia '{family}' non trovata in {families_dir}."
-    )
-
-
-# =========================
-# MOTORE DI MATCHING NLM-LITE
-# =========================
-
-def match_item(user_q: str, family_data: Dict) -> Optional[Dict]:
-    """
-    Cerca l'item migliore nella famiglia usando:
-    - tokenizzazione + sinonimi
-    - jaccard tra domanda utente e domande/descrizioni note
-    - bonus dai tag
-    Restituisce item con 'best_mode' e 'best_variant_index'
-    """
-    q_tokens = tokenize(user_q)
-    if not q_tokens:
-        return None
-
-    best = None
-    best_score = 0.0
-
-    items = family_data.get("items", [])
-
-    for item in items:
-        # costruiamo lista di testi da confrontare: domande note + canonical
-        texts = []
-        texts.extend(item.get("questions") or [])
-        canonical = item.get("canonical")
-        if canonical:
-            texts.append(canonical)
-
-        item_best_local = 0.0
-
-        for txt in texts:
-            cand_tokens = tokenize(txt)
-            base = jaccard_score(q_tokens, cand_tokens)
-            if base == 0:
-                continue
-            bonus = tag_bonus(q_tokens, item)
-            score = base + bonus
-            if score > item_best_local:
-                item_best_local = score
-
-        if item_best_local > best_score:
-            best_score = item_best_local
-            best = item
-
-    # soglie:
-    # > 0.32 = match sicuro
-    # 0.22–0.32 = match soft, accettato se abbiamo almeno domande/tag coerenti
-    if best and best_score >= 0.32:
-        return best
-
-    if best and best_score >= 0.22:
-        # match morbido accettato per evitare buchi su domande naturali
-        return best
-
-    return None
-
-
-def choose_answer(item: Dict, vs: Optional[str]) -> (str, str, int):
-    """
-    Restituisce (testo, mode, variant_index).
-    mode: 'canonical' o 'dynamic'
-    variant_index: indice nella lista (per debug UI), -1 se canonical puro.
-    """
-    variants = item.get("response_variants") or []
-    canonical = item.get("canonical") or ""
-
-    # Se l'utente chiede esplicitamente canonical
-    if vs == "canonical":
-        if not canonical:
-            # fallback: prima variant
-            if variants:
-                return variants[0], "canonical", 0
-            return "", "canonical", -1
-        return canonical, "canonical", -1
-
-    # Modalità dinamica / default
-    if vs == "dynamic" or vs is None:
-        pool = []
-        # diamo più peso al canonical ma includiamo varianti
-        if canonical:
-            pool.append(("canonical", canonical))
-        for i, v in enumerate(variants):
-            pool.append((f"v{i}", v))
-
-        if not pool:
-            return "", "dynamic", -1
-
-        label, text = random.choice(pool)
-        if label == "canonical":
-            return text, "dynamic", -1
-        else:
-            idx = int(label[1:])
-            return text, "dynamic", idx
-
-    # fallback strano
-    if canonical:
-        return canonical, "canonical", -1
-    if variants:
-        return variants[0], "canonical", 0
-    return "", "canonical", -1
-
-
-# =========================
-# ENDPOINTS
-# =========================
-
 @app.get("/")
 def root():
     return {
-        "app": "Tecnaria Sinapsi — Q/A",
+        "app": APP_NAME,
         "status": "OK",
         "families_dir": get_families_dir()
     }
@@ -314,8 +310,10 @@ def root():
 def api_config():
     return {
         "ok": True,
-        "app": "Tecnaria Sinapsi — Q/A",
-        "families_dir": get_families_dir()
+        "app": APP_NAME,
+        "families_dir": get_families_dir(),
+        "supported_langs": SUPPORTED_LANGS,
+        "fallback_lang": FALLBACK_LANG
     }
 
 
@@ -325,45 +323,63 @@ def api_ask(payload: AskPayload):
     if not q:
         raise HTTPException(status_code=400, detail="Domanda vuota.")
 
-    if not payload.family:
-        raise HTTPException(status_code=400, detail="Parametro 'family' obbligatorio.")
+    family = (payload.family or "").strip().upper()
+    if not family:
+        raise HTTPException(status_code=400, detail="Famiglia mancante.")
 
-    family_name = payload.family.strip().upper()
+    # rileva lingua
+    if payload.lang:
+        lang = payload.lang.lower()
+        if lang not in SUPPORTED_LANGS:
+            lang = FALLBACK_LANG
+    else:
+        lang = choose_language(q)
 
     try:
-        family_data = load_family(family_name)
-    except HTTPException as e:
-        # Errore già formattato
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        fam = load_family(family)
+    except FileNotFoundError:
+        return {
+            "ok": False,
+            "family": family,
+            "q": q,
+            "lang": lang,
+            "text": "Nessuna base conoscitiva disponibile per questa famiglia."
+        }
 
-    item = match_item(q, family_data)
-
+    item = pick_best_item(fam, q)
     if not item:
-        # Nessun match convincente: risposta controllata
+        # nessun match adeguato
+        msg_it = "Nessuna risposta trovata per questa domanda."
+        text = translate_dynamic(msg_it, lang)
         return {
             "ok": False,
-            "family": family_name,
+            "family": family,
             "q": q,
-            "text": "Nessuna risposta trovata per questa domanda."
+            "lang": lang,
+            "text": text
         }
 
-    text, mode, vidx = choose_answer(item, payload.vs)
-
-    if not text:
+    base_text = pick_response_text(item)
+    if not base_text:
+        msg_it = "Contenuto non disponibile per questa voce."
+        text = translate_dynamic(msg_it, lang)
         return {
             "ok": False,
-            "family": family_name,
+            "family": family,
             "q": q,
-            "text": "Nessuna risposta trovata per questa domanda."
+            "lang": lang,
+            "id": item.get("id"),
+            "text": text
         }
+
+    final_text = translate_dynamic(base_text, lang)
 
     return {
         "ok": True,
-        "family": family_name,
+        "family": family,
+        "q": q,
+        "lang": lang,
         "id": item.get("id"),
-        "mode": mode,
-        "variant_index": vidx,
-        "text": text.strip()
+        "mode": item.get("mode", "dynamic"),
+        "text": final_text
     }
