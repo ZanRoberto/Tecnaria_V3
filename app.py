@@ -7,6 +7,8 @@ from typing import Dict, Any, List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 # =========================================================
@@ -20,7 +22,7 @@ DEFAULT_FAMILIES_DIR = os.path.join(BASE_DIR, "static", "data")
 SUPPORTED_LANGS = ["it", "en", "fr", "de", "es"]
 FALLBACK_LANG = "en"  # per lingue non supportate → rispondiamo in inglese
 
-# OpenAI per traduzioni
+# OpenAI per traduzioni (opzionale)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
 
@@ -69,16 +71,10 @@ def _read_json(path: str) -> Any:
 # =========================================================
 
 def detect_language(text: str) -> str:
-    """
-    Rilevamento semplice:
-    - controlla script (cirillico, arabo, ecc.)
-    - heuristics su parole chiave
-    - se nulla di chiaro → 'other'
-    """
     if not text:
         return "it"
 
-    # script non latino → other
+    # script non latino
     for ch in text:
         if "\u0400" <= ch <= "\u04FF":
             return "other"  # cirillico
@@ -121,7 +117,7 @@ def choose_language(q: str) -> str:
 
 
 # =========================================================
-# TRADUZIONI DINAMICHE (DOMANDA + RISPOSTA)
+# TRADUZIONI (OPZIONALI)
 # =========================================================
 
 def _call_openai_translate(prompt_system: str, target_lang: str, text: str) -> Optional[str]:
@@ -147,51 +143,32 @@ def _call_openai_translate(prompt_system: str, target_lang: str, text: str) -> O
 
 
 def translate_question_to_it(q: str) -> str:
-    """
-    Traduci la domanda in italiano per il matching.
-    Se qualcosa va storto → restituisce la domanda originale.
-    """
     if not q or openai_client is None:
         return q
-
-    # se è già italiano, non toccare
     if detect_language(q) == "it":
         return q
 
     system_msg = (
-        "Sei un traduttore tecnico. Traduci il testo seguente in ITALIANO in modo preciso, "
-        "mantenendo il significato strutturale e i nomi dei prodotti. "
-        "Rispondi solo con la frase tradotta, senza aggiunte."
+        "Sei un traduttore tecnico. Traduci il testo seguente in ITALIANO, "
+        "mantieni significato e nomi prodotti. Solo testo tradotto."
     )
     translated = _call_openai_translate(system_msg, "it", q)
     return translated or q
 
 
 def translate_dynamic_answer(text: str, target_lang: str) -> str:
-    """
-    Traduci la RISPOSTA nella lingua dell'utente.
-    - se target_lang == it → restituisce text
-    - se target_lang supportata → traduce
-    - se target_lang non supportata → traduce in FALLBACK_LANG
-    - se non disponibile OpenAI → restituisce text
-    """
     if not text:
         return text
-
     if target_lang == "it":
         return text
-
     if target_lang not in SUPPORTED_LANGS:
         target_lang = FALLBACK_LANG
-
     if openai_client is None:
         return text
 
     system_msg = (
         "You are a precise technical translator for structural engineering Q&A. "
-        "Translate the following answer from Italian to the target language. "
-        "Mantieni intatti nomi propri (Tecnaria, VCEM, CTF, CTCEM, CTL, P560, Diapason, ecc.) "
-        "e il tono professionale. Non aggiungere testo extra."
+        "Translate from Italian to target language. Keep product names (Tecnaria, VCEM, CTF, CTCEM, CTL, P560, Diapason)."
     )
 
     translated = _call_openai_translate(system_msg, target_lang, text)
@@ -199,7 +176,7 @@ def translate_dynamic_answer(text: str, target_lang: str) -> str:
 
 
 # =========================================================
-# CARICAMENTO FAMIGLIE / NLM MATCH
+# CARICAMENTO FAMIGLIE / MATCHING NLM
 # =========================================================
 
 def get_families_dir() -> str:
@@ -228,6 +205,7 @@ def load_family(family: str) -> Dict[str, Any]:
         item.setdefault("tags", [])
         item.setdefault("canonical", "")
         item.setdefault("response_variants", [])
+        # se non specificato, di default dynamic
         item.setdefault("mode", data.get("variants_strategy", "dynamic"))
     return data
 
@@ -254,7 +232,7 @@ def score_item(q_tokens: List[str], item: Dict[str, Any]) -> float:
 
     score = inter / len(q_set)
 
-    # boost se domanda molto simile
+    # boost se molto simile a una delle domande note
     for qq in item.get("questions", []):
         qq_tokens = set(_tokenize(qq))
         if len(qq_tokens & q_set) >= max(2, int(0.6 * len(q_set))):
@@ -282,6 +260,7 @@ def pick_best_item(family_data: Dict[str, Any], q: str) -> Optional[Dict[str, An
             best_score = s
             best = item
 
+    # soglia: se troppo basso → nessuna risposta
     if best is None or best_score < 0.18:
         return None
 
@@ -320,6 +299,11 @@ class AskPayload(BaseModel):
 
 app = FastAPI(title=APP_NAME)
 
+# Static files (per sicurezza, se ti servono asset futuri)
+static_dir = os.path.join(BASE_DIR, "static")
+if os.path.isdir(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -329,13 +313,18 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-def root():
-    return {
-        "app": APP_NAME,
-        "status": "OK",
-        "families_dir": get_families_dir()
-    }
+@app.get("/", response_class=HTMLResponse)
+def serve_index():
+    """
+    Serve l'interfaccia HTML principale.
+    Se index.html non c'è, mostra solo info base JSON.
+    """
+    index_path = os.path.join(BASE_DIR, "index.html")
+    if os.path.isfile(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
+            return f.read()
+    # fallback se manca l'HTML
+    return f"""<pre>{APP_NAME}\nstatus: OK\nfamilies_dir: {get_families_dir()}</pre>"""
 
 
 @app.get("/api/config")
@@ -346,7 +335,7 @@ def api_config():
         "families_dir": get_families_dir(),
         "supported_langs": SUPPORTED_LANGS,
         "fallback_lang": FALLBACK_LANG,
-        "translation": bool(openai_client is not None)
+        "translation": bool(openai_client is not None),
     }
 
 
@@ -362,17 +351,18 @@ def api_ask(payload: AskPayload):
 
     # lingua target risposta
     if payload.lang:
-        lang = payload.lang.lower()
+        lang = (payload.lang or "").lower()
         if lang not in SUPPORTED_LANGS:
             lang = FALLBACK_LANG
     else:
         lang = choose_language(original_q)
 
-    # traduciamo la domanda in IT per il matching (se serve)
+    # Domanda per il matching (in IT se necessario)
     q_for_match = original_q
     if detect_language(original_q) != "it":
         q_for_match = translate_question_to_it(original_q)
 
+    # Carica famiglia
     try:
         fam = load_family(family)
     except FileNotFoundError:
@@ -383,9 +373,10 @@ def api_ask(payload: AskPayload):
             "family": family,
             "q": original_q,
             "lang": lang,
-            "text": text
+            "text": text,
         }
 
+    # Match NLM
     item = pick_best_item(fam, q_for_match)
     if not item:
         msg_it = "Nessuna risposta trovata per questa domanda."
@@ -395,7 +386,7 @@ def api_ask(payload: AskPayload):
             "family": family,
             "q": original_q,
             "lang": lang,
-            "text": text
+            "text": text,
         }
 
     base_text_it = pick_response_text(item)
@@ -408,7 +399,7 @@ def api_ask(payload: AskPayload):
             "q": original_q,
             "lang": lang,
             "id": item.get("id"),
-            "text": text
+            "text": text,
         }
 
     final_text = translate_dynamic_answer(base_text_it, lang)
@@ -420,5 +411,5 @@ def api_ask(payload: AskPayload):
         "lang": lang,
         "id": item.get("id"),
         "mode": item.get("mode", "dynamic"),
-        "text": final_text
+        "text": final_text,
     }
