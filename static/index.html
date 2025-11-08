@@ -7,85 +7,79 @@
   <style>
     :root {
       --bg: #050816;
-      --bg-soft: #0b1020;
-      --accent: #00e0ff;
-      --accent-soft: rgba(0, 224, 255, 0.12);
-      --danger: #ff3366;
-      --text: #f5f5f5;
-      --muted: #8f9bb3;
-      --radius-xl: 22px;
-      --radius-md: 14px;
-      --border-soft: rgba(255,255,255,0.06);
-      --shadow-soft: 0 14px 40px rgba(0,0,0,0.42);
-      --font: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", -sans-serif;
+      --card: #0f172a;
+      --accent: #22c55e;
+      --accent-soft: rgba(34, 197, 94, 0.12);
+      --border: rgba(148, 163, 253, 0.18);
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --error: #f97316;
+      --radius-xl: 18px;
+      --radius-xxl: 26px;
+      --shadow-soft: 0 18px 45px rgba(15,23,42,0.85);
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+              -system-ui, sans-serif;
       --transition-fast: 0.18s ease-out;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
-      padding: 0;
-      font-family: var(--font);
-      background: radial-gradient(circle at top, #151b30 0, #050816 40%, #000000 100%);
-      color: var(--text);
       min-height: 100vh;
+      padding: 32px 16px;
+      font-family: var(--font);
+      background: radial-gradient(circle at top, #111827 0, #020817 52%, #000 100%);
+      color: var(--text);
       display: flex;
       justify-content: center;
-      align-items: stretch;
+      align-items: flex-start;
     }
 
     .app {
       width: 100%;
-      max-width: 1200px;
-      margin: 26px auto;
-      padding: 20px;
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
     }
 
-    .app-header {
+    .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      margin-bottom: 18px;
+      gap: 12px;
     }
 
-    .brand {
+    .title-block {
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
 
-    .brand-title {
+    .title {
       font-size: 22px;
       font-weight: 600;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.03em;
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .brand-pill {
-      font-size: 10px;
-      padding: 4px 9px;
+    .title span.brand {
+      padding: 4px 10px;
       border-radius: 999px;
-      background: var(--accent-soft);
-      color: var(--accent);
-      border: 1px solid rgba(0, 224, 255, 0.32);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .brand-sub {
+      background: linear-gradient(to right, #22c55e22, #38bdf822);
+      border: 1px solid rgba(148,163,253,0.24);
       font-size: 11px;
-      color: var(--muted);
+      font-weight: 500;
+      color: var(--accent);
     }
 
-    .status {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 4px;
+    .subtitle {
       font-size: 11px;
       color: var(--muted);
     }
@@ -94,568 +88,419 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 9px;
+      padding: 5px 11px;
       border-radius: 999px;
+      background: rgba(15,23,42,0.98);
+      border: 1px solid rgba(148,163,253,0.28);
+      box-shadow: 0 10px 28px rgba(15,23,42,0.75);
       font-size: 10px;
-      border: 1px solid var(--border-soft);
-      background: rgba(8,12,24,0.96);
+      color: var(--muted);
+      backdrop-filter: blur(18px);
     }
 
     .status-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 999px;
-      background: #00ff9d;
-      box-shadow: 0 0 10px #00ff9d;
+      background: #22c55e;
+      box-shadow: 0 0 14px #22c55e;
     }
 
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 3fr) minmax(260px, 1.4fr);
-      gap: 16px;
-    }
-
-    @media (max-width: 900px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-      .status { align-items: flex-start; }
-    }
-
-    .chat {
-      background: rgba(5, 10, 22, 0.98);
-      border-radius: var(--radius-xl);
-      padding: 14px 14px 12px;
-      border: 1px solid var(--border-soft);
-      box-shadow: var(--shadow-soft);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      height: min(76vh, 620px);
-    }
-
-    .chat-messages {
-      flex: 1;
-      overflow-y: auto;
-      padding-right: 4px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      scrollbar-width: thin;
-      scrollbar-color: var(--accent-soft) transparent;
-    }
-
-    .chat-messages::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    .chat-messages::-webkit-scrollbar-thumb {
-      background: var(--accent-soft);
-      border-radius: 999px;
-    }
-
-    .msg {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-      animation: fadeIn 0.18s ease-out;
-    }
-
-    .msg.user {
-      justify-content: flex-end;
-    }
-
-    .msg-avatar {
-      width: 20px;
-      height: 20px;
-      border-radius: 999px;
-      background: var(--accent-soft);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      flex-shrink: 0;
-    }
-
-    .msg.user .msg-avatar {
-      background: rgba(0, 224, 255, 0.24);
+    .status-label span {
       color: var(--accent);
-    }
-
-    .msg-bubble {
-      max-width: 92%;
-      padding: 7px 9px;
-      border-radius: 16px;
-      font-size: 12px;
-      line-height: 1.5;
-      border: 1px solid transparent;
-      background: #0c1324;
-      color: var(--text);
-    }
-
-    .msg.user .msg-bubble {
-      background: var(--accent-soft);
-      color: var(--accent);
-      border-color: rgba(0, 224, 255, 0.38);
-    }
-
-    .msg-meta {
-      display: flex;
-      gap: 8px;
-      margin-top: 4px;
+      font-weight: 500;
+      text-transform: uppercase;
       font-size: 9px;
-      color: var(--muted);
-      opacity: 0.86;
-    }
-
-    .msg-tag {
-      padding: 2px 6px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.12);
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px);}
-      to { opacity: 1; transform: translateY(0);}
-    }
-
-    .chat-input-wrap {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-top: 4px;
-    }
-
-    .top-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      font-size: 10px;
-      color: var(--muted);
-    }
-
-    .select-family {
-      padding: 6px 9px;
-      border-radius: 999px;
-      background: #050816;
-      border: 1px solid var(--border-soft);
-      color: var(--accent);
-      font-size: 10px;
-      outline: none;
-    }
-
-    .select-mode {
-      padding: 5px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--border-soft);
-      background: transparent;
-      color: var(--muted);
-      font-size: 9px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      transition: var(--transition-fast);
-    }
-
-    .select-mode.active {
-      color: var(--accent);
-      background: var(--accent-soft);
-      border-color: rgba(0, 224, 255, 0.45);
-    }
-
-    .input-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .chat-input {
-      flex: 1;
-      padding: 8px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border-soft);
-      background: #050816;
-      color: var(--text);
-      font-size: 12px;
-      outline: none;
-      transition: var(--transition-fast);
-    }
-
-    .chat-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 12px rgba(0, 224, 255, 0.2);
-    }
-
-    .btn-send {
-      padding: 8px 14px;
-      border-radius: 999px;
-      border: none;
-      background: var(--accent);
-      color: #020308;
-      font-weight: 600;
-      font-size: 11px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      box-shadow: 0 6px 18px rgba(0, 224, 255, 0.3);
-      transition: var(--transition-fast);
-      flex-shrink: 0;
-    }
-
-    .btn-send:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 9px 24px rgba(0, 224, 255, 0.4);
-    }
-
-    .btn-send:active {
-      transform: translateY(1px);
-      box-shadow: 0 4px 10px rgba(0, 224, 255, 0.25);
-    }
-
-    .side {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+      letter-spacing: 0.09em;
     }
 
     .card {
-      background: rgba(5, 10, 22, 0.98);
-      border-radius: var(--radius-xl);
-      padding: 10px 11px;
-      border: 1px solid var(--border-soft);
+      background: radial-gradient(circle at top left, #111827 0, #020817 55%);
+      border-radius: var(--radius-xxl);
+      padding: 18px 18px 14px;
       box-shadow: var(--shadow-soft);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: -20%;
+      opacity: 0.03;
+      background:
+        radial-gradient(circle at top, #22c55e 0, transparent 55%),
+        radial-gradient(circle at right, #38bdf8 0, transparent 40%);
+      pointer-events: none;
+    }
+
+    .label {
       font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .label span.dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(148,163,253,0.9);
+    }
+
+    .qa-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      position: relative;
+      z-index: 2;
+    }
+
+    .input-wrap {
+      flex: 1;
+      position: relative;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 52px;
+      max-height: 120px;
+      resize: vertical;
+      padding: 10px 11px 10px 11px;
+      border-radius: 16px;
+      border: 1px solid rgba(148,163,253,0.35);
+      background: radial-gradient(circle at top, #020817, #020817);
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.4;
+      outline: none;
+      box-shadow: 0 10px 30px rgba(15,23,42,0.9);
+      transition: border var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+    }
+
+    textarea::placeholder {
+      color: #6b7280;
+      font-size: 11px;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 18px 45px rgba(22,163,74,0.22);
+      background: #020817;
+    }
+
+    .ask-btn {
+      width: 86px;
+      border: none;
+      border-radius: 16px;
+      background: linear-gradient(to right, #22c55e, #22c55e);
+      color: #020817;
+      font-weight: 600;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      box-shadow: 0 14px 34px rgba(22,163,74,0.45);
+      transition: all var(--transition-fast);
+      padding: 0 10px;
+      white-space: nowrap;
+    }
+
+    .ask-btn span.icon {
+      font-size: 12px;
+    }
+
+    .ask-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 20px 45px rgba(22,163,74,0.55);
+    }
+
+    .ask-btn:active {
+      transform: translateY(1px) scale(0.98);
+      box-shadow: 0 10px 26px rgba(22,163,74,0.35);
+    }
+
+    .answer-wrap {
+      margin-top: 4px;
+      padding: 10px 11px;
+      border-radius: 16px;
+      background: radial-gradient(circle at top left, rgba(34,197,94,0.06), #020817);
+      border: 1px solid rgba(148,163,253,0.22);
+      box-shadow: 0 14px 40px rgba(15,23,42,0.9);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .answer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 9px;
       color: var(--muted);
     }
 
-    .card-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--accent);
-      margin-bottom: 4px;
+    .answer-header-left {
       display: flex;
       align-items: center;
       gap: 6px;
     }
 
     .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
       padding: 2px 7px;
       border-radius: 999px;
+      border: 1px solid rgba(148,163,253,0.4);
       font-size: 8px;
-      border: 1px solid rgba(255,255,255,0.14);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      background: rgba(5,6,18,0.98);
+    }
+
+    .meta-small {
+      font-size: 8px;
       color: var(--muted);
-      margin-right: 3px;
+    }
+
+    .answer-text {
+      color: var(--text);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .hint-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 2px;
+      font-size: 8px;
+      color: var(--muted);
+    }
+
+    .hint-pill {
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: rgba(15,23,42,1);
+      border: 1px solid rgba(75,85,99,0.9);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .hint-pill:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 8px 20px rgba(15,23,42,0.9);
+    }
+
+    .error-text {
+      color: var(--error);
+      font-size: 9px;
       margin-top: 2px;
     }
 
-    .hint-list {
-      list-style: none;
-      padding-left: 0;
-      margin: 4px 0 0;
-      display: grid;
-      gap: 2px;
-    }
-
-    .hint-list li {
-      cursor: pointer;
-      padding: 3px 6px;
-      border-radius: 8px;
-      transition: var(--transition-fast);
-      border: 1px solid transparent;
-      color: var(--muted);
-    }
-
-    .hint-list li:hover {
-      border-color: var(--accent-soft);
-      color: var(--accent);
-      background: rgba(0, 224, 255, 0.03);
-    }
-
-    .small-label {
-      font-size: 8px;
-      opacity: 0.7;
-    }
-
-    .danger {
-      color: var(--danger);
+    @media (max-width: 720px) {
+      body {
+        padding: 18px 10px;
+      }
+      .card {
+        padding: 14px 12px 10px;
+      }
+      .ask-btn {
+        width: 72px;
+        font-size: 10px;
+      }
+      textarea {
+        font-size: 11px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <div class="app-header">
-      <div class="brand">
-        <div class="brand-title">
-          Tecnaria Sinapsi
-          <span class="brand-pill">Q/A GOLD • NLM-v3</span>
+    <div class="header">
+      <div class="title-block">
+        <div class="title">
+          Tecnaria Sinapsi — Q/A
+          <span class="brand">GOLD · STRUCTURAL ASSISTANT</span>
         </div>
-        <div class="brand-sub">
-          Assistente tecnico-commerciale per connettori collaboranti Tecnaria.
+        <div class="subtitle">
+          Motore dedicato ai connettori Tecnaria. Domande libere, risposte GOLD tecniche e commerciali, in linguaggio naturale.
         </div>
       </div>
-      <div class="status">
-        <div class="status-pill">
-          <span class="status-dot" id="status-dot"></span>
-          <span id="status-text">Verifica connessione...</span>
-        </div>
-        <div class="small-label">
-          Backend: <code>/api/ask</code> • Config: <code>/api/config</code>
+      <div class="status-pill" id="status-pill">
+        <div class="status-dot"></div>
+        <div class="status-label">
+          <span>ONLINE</span>
+          <div class="meta-small" id="families-label">check...</div>
         </div>
       </div>
     </div>
 
-    <div class="layout">
-      <!-- CHAT -->
-      <div class="chat">
-        <div class="chat-messages" id="messages"></div>
-
-        <div class="chat-input-wrap">
-          <div class="top-row">
-            <select id="family" class="select-family">
-              <option value="VCEM">VCEM — Laterocemento</option>
-              <option value="CTCEM">CTCEM — Travetti pieni</option>
-              <option value="CTF">CTF — Lamiera grecata / acciaio</option>
-              <option value="CTL">CTL — Legno-calcestruzzo</option>
-              <option value="CTL_MAXI">CTL MAXI — Legno heavy duty</option>
-              <option value="DIAPASON">DIAPASON — Recupero laterocemento</option>
-              <option value="P560">P560 — Pistola e chiodi</option>
-              <option value="COMM">COMM — Contatti / azienda</option>
-            </select>
-
-            <button id="mode-gold" class="select-mode active">
-              <span>GOLD dynamic</span>
-            </button>
-            <div class="small-label">
-              Scrivi in linguaggio naturale. Il sistema riconosce la lingua (IT/EN/FR/DE/ES).
-            </div>
-          </div>
-
-          <div class="input-row">
-            <input id="q" class="chat-input" placeholder="Fai una domanda sui connettori Tecnaria..." autocomplete="off" />
-            <button class="btn-send" id="send">
-              <span>Invia</span>
-              <span>➜</span>
-            </button>
-          </div>
-        </div>
+    <div class="card">
+      <div class="label">
+        <span class="dot"></span>
+        Domanda libera
+        <span style="color:var(--accent);">→</span>
+        instradamento automatico su tutte le famiglie Tecnaria
       </div>
 
-      <!-- SIDE PANEL -->
-      <div class="side">
-        <div class="card">
-          <div class="card-title">Famiglie supportate</div>
-          <div>
-            <span class="pill">VCEM</span>
-            <span class="pill">CTCEM</span>
-            <span class="pill">CTF</span>
-            <span class="pill">CTL / CTL MAXI</span>
-            <span class="pill">DIAPASON</span>
-            <span class="pill">P560</span>
-            <span class="pill">COMM</span>
+      <div class="qa-input-row">
+        <div class="input-wrap">
+          <textarea
+            id="question"
+            placeholder="Esempi: “Posso sparare i VCEM con la P560?”, “Dove uso i CTF su lamiera grecata?”, “Quando scelgo CTL invece di VCEM?”"
+          ></textarea>
+        </div>
+        <button class="ask-btn" id="ask-btn">
+          <span class="icon">➜</span>
+          Chiedi
+        </button>
+      </div>
+
+      <div class="hint-row">
+        <div class="hint-pill" data-q="Posso sparare i VCEM con la P560?">VCEM &amp; P560</div>
+        <div class="hint-pill" data-q="Dove posso usare i connettori CTF?">Uso CTF</div>
+        <div class="hint-pill" data-q="Differenza tra CTL e CTL MAXI?">CTL vs CTL MAXI</div>
+        <div class="hint-pill" data-q="Quando è meglio usare i DIAPASON?">Uso DIAPASON</div>
+        <div class="hint-pill" data-q="Che requisiti ha la P560 per l’utilizzo in cantiere?">Info P560</div>
+      </div>
+
+      <div id="answer-box" class="answer-wrap" style="display:none;">
+        <div class="answer-header">
+          <div class="answer-header-left">
+            <div class="pill" id="answer-mode">GOLD</div>
+            <div class="meta-small" id="answer-id"></div>
           </div>
-          <p style="margin-top:6px;">
-            Ogni risposta è estratta da basi GOLD curate, non da fantasia. Se non trovi risposta, è un segnale per arricchire il JSON,
-            non per inventare.
-          </p>
+          <div class="meta-small" id="answer-meta"></div>
         </div>
-
-        <div class="card">
-          <div class="card-title">Esempi di domande</div>
-          <ul class="hint-list" id="hints">
-            <li data-q="Posso sparare i VCEM con la P560?">Posso sparare i VCEM con la P560?</li>
-            <li data-q="Dove posso usare i connettori CTF?">Dove posso usare i connettori CTF?</li>
-            <li data-q="Come si posano i CTL su solaio in legno esistente?">Come si posano i CTL su solaio in legno esistente?</li>
-            <li data-q="Differenza tra VCEM e CTCEM?">Differenza tra VCEM e CTCEM?</li>
-            <li data-q="Quando usare DIAPASON invece dei VCEM?">Quando usare DIAPASON invece dei VCEM?</li>
-            <li data-q="Che manutenzione richiede la P560?">Che manutenzione richiede la P560?</li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <div class="card-title">Legend risposta</div>
-          <p>
-            Ogni risposta mostra:
-          </p>
-          <ul class="hint-list">
-            <li><strong>ID</strong>: blocco logico (es. VCEM-0002).</li>
-            <li><strong>Mode</strong>: canonical / dynamic.</li>
-            <li><strong>Lang</strong>: lingua rilevata / risposta.</li>
-            <li><strong>Note</strong>: se manca, il JSON va esteso.</li>
-          </ul>
-          <p class="danger" style="margin-top:4px;">
-            Se leggi “Nessuna risposta trovata”, NON è colpa del frontend:
-            va aggiunto contenuto nella famiglia JSON corrispondente.
-          </p>
-        </div>
+        <div class="answer-text" id="answer-text"></div>
+        <div class="error-text" id="answer-error" style="display:none;"></div>
       </div>
     </div>
   </div>
 
   <script>
-    const messagesEl = document.getElementById("messages");
-    const inputEl = document.getElementById("q");
-    const sendBtn = document.getElementById("send");
-    const familyEl = document.getElementById("family");
-    const hintsEl = document.getElementById("hints");
-    const statusDot = document.getElementById("status-dot");
-    const statusText = document.getElementById("status-text");
-    const modeGoldBtn = document.getElementById("mode-gold");
+    const apiBase = window.location.origin;
+    const statusPill = document.getElementById("status-pill");
+    const familiesLabel = document.getElementById("families-label");
+    const questionEl = document.getElementById("question");
+    const askBtn = document.getElementById("ask-btn");
+    const answerBox = document.getElementById("answer-box");
+    const answerMode = document.getElementById("answer-mode");
+    const answerId = document.getElementById("answer-id");
+    const answerMeta = document.getElementById("answer-meta");
+    const answerText = document.getElementById("answer-text");
+    const answerError = document.getElementById("answer-error");
 
-    let backendOK = false;
-    let mode = "dynamic"; // per ora solo informativo
-
-    async function checkConfig() {
+    async function pingConfig() {
       try {
-        const res = await fetch("/api/config");
-        if (!res.ok) throw new Error();
+        const res = await fetch(apiBase + "/api/config");
         const data = await res.json();
-        statusDot.style.background = "#00ff9d";
-        statusText.textContent = `${data.app || "Sinapsi"} online • JSON: ${data.families_dir || "static/data"}`;
-        backendOK = true;
+        if (data && data.ok) {
+          familiesLabel.textContent = "dataset: " + (data.families_dir || "loaded");
+        } else {
+          familiesLabel.textContent = "config non allineata";
+        }
       } catch (e) {
-        statusDot.style.background = "#ff3366";
-        statusDot.style.boxShadow = "0 0 10px #ff3366";
-        statusText.textContent = "Backend non raggiungibile /api/config";
-        backendOK = false;
+        familiesLabel.textContent = "offline / errore";
+        statusPill.querySelector(".status-dot").style.background = "#f97316";
+        statusPill.querySelector(".status-dot").style.boxShadow = "0 0 10px #f97316";
       }
-    }
-
-    function appendMessage(text, from = "bot", meta = null) {
-      const wrap = document.createElement("div");
-      wrap.className = "msg " + (from === "user" ? "user" : "bot");
-
-      const avatar = document.createElement("div");
-      avatar.className = "msg-avatar";
-      avatar.textContent = from === "user" ? "TU" : "AI";
-
-      const bubble = document.createElement("div");
-      bubble.className = "msg-bubble";
-      bubble.textContent = text;
-
-      if (meta) {
-        const metaEl = document.createElement("div");
-        metaEl.className = "msg-meta";
-        if (meta.id) {
-          const id = document.createElement("div");
-          id.className = "msg-tag";
-          id.textContent = meta.id;
-          metaEl.appendChild(id);
-        }
-        if (meta.mode) {
-          const md = document.createElement("div");
-          md.className = "msg-tag";
-          md.textContent = meta.mode;
-          metaEl.appendChild(md);
-        }
-        if (meta.lang) {
-          const lg = document.createElement("div");
-          lg.className = "msg-tag";
-          lg.textContent = meta.lang;
-          metaEl.appendChild(lg);
-        }
-        if (meta.note) {
-          const nt = document.createElement("div");
-          nt.className = "msg-tag";
-          nt.textContent = meta.note;
-          metaEl.appendChild(nt);
-        }
-        bubble.appendChild(metaEl);
-      }
-
-      wrap.appendChild(avatar);
-      wrap.appendChild(bubble);
-      messagesEl.appendChild(wrap);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
     async function ask() {
-      const q = inputEl.value.trim();
-      if (!q) return;
-      if (!backendOK) {
-        appendMessage("Backend non raggiungibile. Verifica /api/config e riprova.", "bot", {
-          mode: "error"
-        });
+      const q = (questionEl.value || "").trim();
+      if (!q) {
         return;
       }
 
-      const family = familyEl.value || "VCEM";
-
-      appendMessage(q, "user");
-      inputEl.value = "";
-      inputEl.focus();
+      askBtn.disabled = true;
+      askBtn.textContent = "…";
+      answerBox.style.display = "block";
+      answerText.textContent = "";
+      answerError.style.display = "none";
+      answerError.textContent = "";
+      answerId.textContent = "";
+      answerMeta.textContent = "";
 
       try {
-        const res = await fetch("/api/ask", {
+        const res = await fetch(apiBase + "/api/ask", {
           method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({ q, family })
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            q: q,
+            family: ""   // niente filtro, auto-routing totale lato backend
+          })
         });
-
-        if (!res.ok) {
-          appendMessage("Errore dal server (" + res.status + "). Controlla app.py o i JSON.", "bot", {
-            mode: "server-error"
-          });
-          return;
-        }
 
         const data = await res.json();
 
         if (!data.ok) {
-          appendMessage(data.text || "Nessuna risposta trovata per questa domanda.", "bot", {
-            id: family,
-            mode: "no-match",
-            lang: data.lang || "it",
-            note: "Arricchire JSON di famiglia " + family
-          });
+          answerMode.textContent = "NO GOLD";
+          answerMode.style.color = "#f97316";
+          answerMode.style.borderColor = "#f97316";
+          answerText.textContent = "";
+          answerError.style.display = "block";
+          answerError.textContent = data.text || "Nessuna risposta GOLD trovata per questa domanda.";
+          answerId.textContent = "";
+          answerMeta.textContent = "";
           return;
         }
 
-        appendMessage(data.text || "", "bot", {
-          id: data.id || family,
-          mode: data.mode || "dynamic",
-          lang: data.lang || "it"
-        });
+        answerMode.textContent = (data.mode || "GOLD").toUpperCase();
+        answerMode.style.color = "#22c55e";
+        answerMode.style.borderColor = "rgba(34,197,94,0.9)";
 
+        answerText.textContent = data.text || "";
+        answerId.textContent = data.id ? ("ID: " + data.id + (data.family ? " • " + data.family : "")) : (data.family || "");
+        const metaParts = [];
+        if (data.lang) metaParts.push("lang: " + data.lang);
+        if (typeof data.score === "number") metaParts.push("score: " + data.score);
+        answerMeta.textContent = metaParts.join("  •  ");
       } catch (err) {
-        appendMessage("Errore di connessione a /api/ask. Controlla il deploy.", "bot", {
-          mode: "network-error"
-        });
+        answerMode.textContent = "ERRORE";
+        answerMode.style.color = "#f97316";
+        answerMode.style.borderColor = "#f97316";
+        answerText.textContent = "";
+        answerError.style.display = "block";
+        answerError.textContent = "Errore di comunicazione con il motore Sinapsi.";
+      } finally {
+        askBtn.disabled = false;
+        askBtn.textContent = "Chiedi";
       }
     }
 
-    sendBtn.addEventListener("click", ask);
-    inputEl.addEventListener("keydown", e => {
-      if (e.key === "Enter") ask();
+    askBtn.addEventListener("click", ask);
+    questionEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        ask();
+      }
     });
 
-    if (hintsEl) {
-      hintsEl.addEventListener("click", e => {
-        const li = e.target.closest("li");
-        if (!li) return;
-        inputEl.value = li.dataset.q || li.textContent.trim();
-        inputEl.focus();
+    document.querySelectorAll(".hint-pill").forEach(pill => {
+      pill.addEventListener("click", () => {
+        const q = pill.getAttribute("data-q") || "";
+        questionEl.value = q;
+        questionEl.focus();
       });
-    }
-
-    modeGoldBtn.addEventListener("click", () => {
-      // solo estetico per ora, il mode reale lo decide il backend in base al JSON
-      mode = "dynamic";
-      modeGoldBtn.classList.add("active");
     });
 
-    // messaggio iniziale
-    appendMessage(
-      "Benvenuto in Tecnaria Sinapsi — Q/A.\nSeleziona la famiglia in alto a sinistra e fai una domanda in linguaggio naturale. Le risposte arrivano solo dai contenuti GOLD che hai caricato, niente inventato.",
-      "bot",
-      { mode: "intro", lang: "it" }
-    );
-
-    checkConfig();
+    pingConfig();
   </script>
 </body>
 </html>
