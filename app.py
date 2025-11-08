@@ -20,9 +20,21 @@ DEFAULT_FAMILIES_DIR = os.path.join(BASE_DIR, "static", "data")
 SUPPORTED_LANGS = ["it", "en", "fr", "de", "es"]
 FALLBACK_LANG = "en"  # per lingue non supportate → rispondiamo in inglese
 
+# OpenAI per traduzioni
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
+
+openai_client = None
+if OPENAI_API_KEY:
+    try:
+        from openai import OpenAI
+        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    except Exception:
+        openai_client = None
+
 
 # =========================================================
-# UTILS
+# UTILS TESTO
 # =========================================================
 
 def _normalize_text(s: str) -> str:
@@ -31,12 +43,10 @@ def _normalize_text(s: str) -> str:
     s = s.lower()
     s = unicodedata.normalize("NFKD", s)
     s = "".join(ch for ch in s if not unicodedata.combining(ch))
-    # togliamo caratteri non alfanumerici base (manteniamo spazio)
     cleaned = []
     for ch in s:
         if ch.isalnum() or ch.isspace():
             cleaned.append(ch)
-        # altrimenti skip
     return " ".join("".join(cleaned).split())
 
 
@@ -54,29 +64,24 @@ def _read_json(path: str) -> Any:
         return json.load(f)
 
 
-def _safe_get(d: Dict, key: str, default=None):
-    v = d.get(key, default)
-    return v if v is not None else default
-
-
 # =========================================================
-# LINGUA: RICONOSCIMENTO + TRADUZIONE DINAMICA
+# LINGUA: RICONOSCIMENTO
 # =========================================================
 
 def detect_language(text: str) -> str:
     """
-    Rilevamento molto semplice:
-    - se prevalgono parole tipiche di it/en/fr/de/es → quella lingua
-    - se caratteri cirillici/altro → considerata 'other'
-    - se dubbio → 'it'
+    Rilevamento semplice:
+    - controlla script (cirillico, arabo, ecc.)
+    - heuristics su parole chiave
+    - se nulla di chiaro → 'other'
     """
     if not text:
         return "it"
 
-    # check caratteri non latini
+    # script non latino → other
     for ch in text:
         if "\u0400" <= ch <= "\u04FF":
-            return "other"  # es. russo
+            return "other"  # cirillico
         if "\u4E00" <= ch <= "\u9FFF":
             return "other"  # cinese
         if "\u0600" <= ch <= "\u06FF":
@@ -87,12 +92,11 @@ def detect_language(text: str) -> str:
     txt = _normalize_text(text)
     tokens = set(txt.split())
 
-    # Liste minimaliste per hint linguistico
-    it_words = {"che", "cosa", "posso", "come", "quando", "dove", "non", "uso", "connettori", "soletta"}
-    en_words = {"what", "can", "use", "how", "when", "where", "not", "connector", "slab"}
-    fr_words = {"quoi", "puis", "utiliser", "comment", "quand", "ou", "non", "connecteur"}
-    de_words = {"was", "kann", "verwenden", "wie", "wann", "wo", "nicht", "verbinder"}
-    es_words = {"que", "puedo", "usar", "como", "cuando", "donde", "no", "conector"}
+    it_words = {"che", "cosa", "posso", "come", "quando", "dove", "non", "uso", "connettori", "soletta", "travetto"}
+    en_words = {"what", "can", "use", "how", "when", "where", "not", "connector", "slab", "beam", "steel"}
+    fr_words = {"quoi", "puis", "utiliser", "comment", "quand", "ou", "non", "connecteur", "dalle"}
+    de_words = {"was", "kann", "verwenden", "wie", "wann", "wo", "nicht", "verbinder", "platte", "stahl"}
+    es_words = {"que", "puedo", "usar", "como", "cuando", "donde", "no", "conector", "losa", "viga"}
 
     scores = {
         "it": len(tokens & it_words),
@@ -104,23 +108,72 @@ def detect_language(text: str) -> str:
 
     best_lang = max(scores, key=scores.get)
     if scores[best_lang] == 0:
-        # niente match credibile → consideriamo "other"
         return "other"
 
     return best_lang
 
 
-def translate_dynamic(text: str, target_lang: str) -> str:
-    """
-    Stub traduzione dinamica.
+def choose_language(q: str) -> str:
+    lang = detect_language(q)
+    if lang in SUPPORTED_LANGS:
+        return lang
+    return FALLBACK_LANG  # es. russo → en
 
-    Logica:
-    - se target_lang == "it": torna il testo così com'è.
-    - se target_lang in {en, fr, de, es}:
-        QUI puoi integrare una chiamata all'API OpenAI / traduttore esterno.
-        Per ora, se non configurato, restituiamo lo stesso testo
-        (per non rompere il servizio).
-    - se target_lang non supportata: rispondiamo in inglese.
+
+# =========================================================
+# TRADUZIONI DINAMICHE (DOMANDA + RISPOSTA)
+# =========================================================
+
+def _call_openai_translate(prompt_system: str, target_lang: str, text: str) -> Optional[str]:
+    if openai_client is None:
+        return None
+    try:
+        resp = openai_client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": prompt_system},
+                {
+                    "role": "user",
+                    "content": f"Target language: {target_lang}\n\n{text}"
+                }
+            ],
+            temperature=0.2,
+            max_tokens=800,
+        )
+        out = resp.choices[0].message.content.strip()
+        return out or None
+    except Exception:
+        return None
+
+
+def translate_question_to_it(q: str) -> str:
+    """
+    Traduci la domanda in italiano per il matching.
+    Se qualcosa va storto → restituisce la domanda originale.
+    """
+    if not q or openai_client is None:
+        return q
+
+    # se è già italiano, non toccare
+    if detect_language(q) == "it":
+        return q
+
+    system_msg = (
+        "Sei un traduttore tecnico. Traduci il testo seguente in ITALIANO in modo preciso, "
+        "mantenendo il significato strutturale e i nomi dei prodotti. "
+        "Rispondi solo con la frase tradotta, senza aggiunte."
+    )
+    translated = _call_openai_translate(system_msg, "it", q)
+    return translated or q
+
+
+def translate_dynamic_answer(text: str, target_lang: str) -> str:
+    """
+    Traduci la RISPOSTA nella lingua dell'utente.
+    - se target_lang == it → restituisce text
+    - se target_lang supportata → traduce
+    - se target_lang non supportata → traduce in FALLBACK_LANG
+    - se non disponibile OpenAI → restituisce text
     """
     if not text:
         return text
@@ -129,24 +182,20 @@ def translate_dynamic(text: str, target_lang: str) -> str:
         return text
 
     if target_lang not in SUPPORTED_LANGS:
-        # fallback hard → english
         target_lang = FALLBACK_LANG
 
-    # QUI puoi innestare il vero motore di traduzione.
-    # Per ora lasciamo il testo in italiano per evitare errori
-    # ma l'architettura è pronta.
-    # Esempio (pseudo):
-    # return external_translate(text, target_lang)
+    if openai_client is None:
+        return text
 
-    return text  # placeholder: da sostituire con traduzione reale
+    system_msg = (
+        "You are a precise technical translator for structural engineering Q&A. "
+        "Translate the following answer from Italian to the target language. "
+        "Mantieni intatti nomi propri (Tecnaria, VCEM, CTF, CTCEM, CTL, P560, Diapason, ecc.) "
+        "e il tono professionale. Non aggiungere testo extra."
+    )
 
-
-def choose_language(q: str) -> str:
-    lang = detect_language(q)
-    if lang in SUPPORTED_LANGS:
-        return lang
-    # se è lingua non supportata → fallback in inglese
-    return FALLBACK_LANG
+    translated = _call_openai_translate(system_msg, target_lang, text)
+    return translated or text
 
 
 # =========================================================
@@ -154,7 +203,6 @@ def choose_language(q: str) -> str:
 # =========================================================
 
 def get_families_dir() -> str:
-    # permette override via env / config.runtime.json
     cfg_path = os.path.join(DEFAULT_FAMILIES_DIR, "config.runtime.json")
     if os.path.isfile(cfg_path):
         try:
@@ -174,10 +222,8 @@ def load_family(family: str) -> Dict[str, Any]:
     path = os.path.join(families_dir, filename)
     data = _read_json(path)
 
-    # Normalizziamo struttura
     items = data.get("items", [])
     for item in items:
-        # normalizza campi mancanti
         item.setdefault("questions", [])
         item.setdefault("tags", [])
         item.setdefault("canonical", "")
@@ -187,23 +233,14 @@ def load_family(family: str) -> Dict[str, Any]:
 
 
 def score_item(q_tokens: List[str], item: Dict[str, Any]) -> float:
-    """
-    Matching semplice:
-    - considera domande, tags, canonical
-    - calcola overlap token / boosting su domande
-    """
     if not q_tokens:
         return 0.0
 
-    # costruiamo un set di testo indicizzato
     bag: List[str] = []
-
     for qq in item.get("questions", []):
         bag.extend(_tokenize(qq))
-
     for tg in item.get("tags", []):
         bag.extend(_tokenize(tg))
-
     bag.extend(_tokenize(item.get("canonical", "")))
 
     if not bag:
@@ -211,15 +248,13 @@ def score_item(q_tokens: List[str], item: Dict[str, Any]) -> float:
 
     bag_set = set(bag)
     q_set = set(q_tokens)
-
     inter = len(bag_set & q_set)
     if inter == 0:
         return 0.0
 
-    # ratio semplice
     score = inter / len(q_set)
 
-    # se c'è match forte su una domanda, boost
+    # boost se domanda molto simile
     for qq in item.get("questions", []):
         qq_tokens = set(_tokenize(qq))
         if len(qq_tokens & q_set) >= max(2, int(0.6 * len(q_set))):
@@ -247,7 +282,6 @@ def pick_best_item(family_data: Dict[str, Any], q: str) -> Optional[Dict[str, An
             best_score = s
             best = item
 
-    # soglia minima: se troppo basso, meglio dire nessuna risposta
     if best is None or best_score < 0.18:
         return None
 
@@ -256,7 +290,7 @@ def pick_best_item(family_data: Dict[str, Any], q: str) -> Optional[Dict[str, An
 
 def pick_response_text(item: Dict[str, Any]) -> str:
     mode = item.get("mode", "dynamic")
-    canonical = item.get("canonical", "").strip()
+    canonical = (item.get("canonical") or "").strip()
     variants = item.get("response_variants") or []
 
     if mode == "canonical":
@@ -271,7 +305,6 @@ def pick_response_text(item: Dict[str, Any]) -> str:
             return ""
         return random.choice(pool).strip()
 
-    # fallback
     return canonical or (variants[0].strip() if variants else "")
 
 
@@ -282,8 +315,7 @@ def pick_response_text(item: Dict[str, Any]) -> str:
 class AskPayload(BaseModel):
     q: str
     family: str
-    # opzionale: permetti override lingua manuale se mai servirà
-    lang: Optional[str] = None
+    lang: Optional[str] = None  # override manuale opzionale
 
 
 app = FastAPI(title=APP_NAME)
@@ -313,71 +345,78 @@ def api_config():
         "app": APP_NAME,
         "families_dir": get_families_dir(),
         "supported_langs": SUPPORTED_LANGS,
-        "fallback_lang": FALLBACK_LANG
+        "fallback_lang": FALLBACK_LANG,
+        "translation": bool(openai_client is not None)
     }
 
 
 @app.post("/api/ask")
 def api_ask(payload: AskPayload):
-    q = (payload.q or "").strip()
-    if not q:
+    original_q = (payload.q or "").strip()
+    if not original_q:
         raise HTTPException(status_code=400, detail="Domanda vuota.")
 
     family = (payload.family or "").strip().upper()
     if not family:
         raise HTTPException(status_code=400, detail="Famiglia mancante.")
 
-    # rileva lingua
+    # lingua target risposta
     if payload.lang:
         lang = payload.lang.lower()
         if lang not in SUPPORTED_LANGS:
             lang = FALLBACK_LANG
     else:
-        lang = choose_language(q)
+        lang = choose_language(original_q)
+
+    # traduciamo la domanda in IT per il matching (se serve)
+    q_for_match = original_q
+    if detect_language(original_q) != "it":
+        q_for_match = translate_question_to_it(original_q)
 
     try:
         fam = load_family(family)
     except FileNotFoundError:
+        msg_it = "Nessuna base conoscitiva disponibile per questa famiglia."
+        text = translate_dynamic_answer(msg_it, lang)
         return {
             "ok": False,
             "family": family,
-            "q": q,
-            "lang": lang,
-            "text": "Nessuna base conoscitiva disponibile per questa famiglia."
-        }
-
-    item = pick_best_item(fam, q)
-    if not item:
-        # nessun match adeguato
-        msg_it = "Nessuna risposta trovata per questa domanda."
-        text = translate_dynamic(msg_it, lang)
-        return {
-            "ok": False,
-            "family": family,
-            "q": q,
+            "q": original_q,
             "lang": lang,
             "text": text
         }
 
-    base_text = pick_response_text(item)
-    if not base_text:
-        msg_it = "Contenuto non disponibile per questa voce."
-        text = translate_dynamic(msg_it, lang)
+    item = pick_best_item(fam, q_for_match)
+    if not item:
+        msg_it = "Nessuna risposta trovata per questa domanda."
+        text = translate_dynamic_answer(msg_it, lang)
         return {
             "ok": False,
             "family": family,
-            "q": q,
+            "q": original_q,
+            "lang": lang,
+            "text": text
+        }
+
+    base_text_it = pick_response_text(item)
+    if not base_text_it:
+        msg_it = "Contenuto non disponibile per questa voce."
+        text = translate_dynamic_answer(msg_it, lang)
+        return {
+            "ok": False,
+            "family": family,
+            "q": original_q,
             "lang": lang,
             "id": item.get("id"),
             "text": text
         }
 
-    final_text = translate_dynamic(base_text, lang)
+    final_text = translate_dynamic_answer(base_text_it, lang)
 
     return {
         "ok": True,
         "family": family,
-        "q": q,
+        "q": original_q,
         "lang": lang,
         "id": item.get("id"),
         "mode": item.get("mode", "dynamic"),
