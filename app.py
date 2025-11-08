@@ -1,54 +1,48 @@
 import json
-import os
-import unicodedata
+import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Iterable, Tuple
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
-import difflib
 
-# -------------------------------------------------------
+# =========================
 # PATH & CONFIG
-# -------------------------------------------------------
+# =========================
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "static" / "data"
-INDEX_FILE = BASE_DIR / "static" / "index.html"
-CONFIG_FILE = DATA_DIR / "config.runtime.json"
+STATIC_DIR = BASE_DIR / "static"
+DATA_DIR = STATIC_DIR / "data"
+INDEX_FILE = STATIC_DIR / "index.html"
+CONFIG_PATH = DATA_DIR / "config.runtime.json"
 
-FAMILY_CACHE: Dict[str, Dict[str, Any]] = {}
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "app": "Tecnaria Sinapsi — Q/A",
+    "families_dir": str(DATA_DIR),
+    "supported_langs": ["it", "en", "fr", "de", "es"],
+    "fallback_lang": "en",
+    "translation": False,  # nessuna chiamata esterna qui
+}
 
-DEFAULT_SUPPORTED_LANGS = ["it", "en", "fr", "de", "es"]
-DEFAULT_FALLBACK_LANG = "en"
+if CONFIG_PATH.exists():
+    try:
+        with CONFIG_PATH.open("r", encoding="utf-8") as f:
+            FILE_CONF = json.load(f)
+    except Exception:
+        FILE_CONF = {}
+else:
+    FILE_CONF = {}
 
+CONFIG: Dict[str, Any] = {**DEFAULT_CONFIG, **FILE_CONF}
 
-def load_config() -> Dict[str, Any]:
-    if CONFIG_FILE.is_file():
-        try:
-            with CONFIG_FILE.open("r", encoding="utf-8") as f:
-                cfg = json.load(f)
-        except Exception:
-            cfg = {}
-    else:
-        cfg = {}
+# =========================
+# APP
+# =========================
 
-    cfg.setdefault("supported_langs", DEFAULT_SUPPORTED_LANGS)
-    cfg.setdefault("fallback_lang", DEFAULT_FALLBACK_LANG)
-    # flag per traduzione automatica (se un domani vuoi attivarla)
-    cfg.setdefault("translation", False)
-    return cfg
-
-
-CONFIG = load_config()
-
-# -------------------------------------------------------
-# FASTAPI SETUP
-# -------------------------------------------------------
-
-app = FastAPI(title="Tecnaria Sinapsi — Q/A")
+app = FastAPI(title="Tecnaria Sinapsi — Q/A", version="3.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,299 +52,319 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static (solo per index/html/css/js già presenti)
-if (BASE_DIR / "static").is_dir():
-    app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+# =========================
+# MODELS
+# =========================
 
 class AskPayload(BaseModel):
     q: str
-    family: Optional[str] = None  # es. "VCEM", "CTF", "CTL", "P560", ...
+    family: Optional[str] = None  # opzionale, usata solo come BOOST se presente
 
 
-# -------------------------------------------------------
+# =========================
+# CACHE
+# =========================
+
+FAMILY_CACHE: Dict[str, Dict[str, Any]] = {}
+
+# =========================
 # UTILS
-# -------------------------------------------------------
+# =========================
+
+_nonword_re = re.compile(r"[^\w]+", re.UNICODE)
+
 
 def normalize(text: str) -> str:
     if not text:
         return ""
-    text = text.lower().strip()
-    text = "".join(
-        c for c in unicodedata.normalize("NFKD", text)
-        if not unicodedata.combining(c)
+    text = text.lower()
+    text = (
+        text.replace("à", "a")
+        .replace("è", "e")
+        .replace("é", "e")
+        .replace("ì", "i")
+        .replace("ò", "o")
+        .replace("ù", "u")
     )
+    text = _nonword_re.sub(" ", text)
     return " ".join(text.split())
 
 
-def guess_lang(q: str) -> str:
-    q_norm = q.lower()
-    # euristiche semplici ma sufficienti per routing lingua
-    if any(w in q_norm for w in [" il ", " lo ", " la ", " dei ", "della ", "connettori", "soletta", "calcestruzzo"]):
+def guess_lang(text: str) -> str:
+    t = text.lower()
+
+    # euristiche semplici, sufficienti per routing lingua
+    if any(x in t for x in [" il ", " lo ", " la ", " dei ", " delle ", " connettori ", " soletta ", " calcestruzzo "]):
         return "it"
-    if any(w in q_norm for w in [" the ", " can i ", " steel ", "beam", "slab"]):
+    if any(x in t for x in [" the ", " can i ", " beam", " slab", " steel "]):
         return "en"
-    if any(w in q_norm for w in [" le ", " les ", "avec ", "béton", "acier"]):
+    if any(x in t for x in [" le ", " des ", " béton", " acier", "avec "]):
         return "fr"
-    if any(w in q_norm for w in [" der ", "die ", "das ", "verbund", "beton", "stahl"]):
+    if any(x in t for x in [" der ", " die ", " das ", "verbund", "stahl", "beton"]):
         return "de"
-    if any(w in q_norm for w in [" el ", " los ", "las ", "hormigón", "acero"]):
+    if any(x in t for x in [" el ", " los ", " las ", " hormigón", " acero "]):
         return "es"
-    # default: italiano (contesto Tecnaria)
+
+    # default: italiano nel contesto Tecnaria
     return "it"
 
 
-def resolve_family_key(raw: str) -> str:
-    """Normalizza il nome famiglia in una chiave tipo 'VCEM', 'CTF', ecc."""
-    if not raw:
-        return ""
-    key = raw.upper().strip()
-    key = key.replace(" ", "").replace("/", "_")
-    return key
-
-
-def resolve_family_path(family_key: str) -> Optional[Path]:
-    """Trova il file JSON relativo alla famiglia."""
-    if not family_key:
+def resolve_family_key(fam: Optional[str]) -> Optional[str]:
+    if not fam:
+        return None
+    fam = fam.strip().upper()
+    if not fam:
         return None
 
-    key = family_key.upper()
-
-    # candidati diretti
-    candidates = [
-        DATA_DIR / f"{key}.json",
-        DATA_DIR / f"{key}.golden.json",
-        DATA_DIR / f"{key.lower()}.json",
-        DATA_DIR / f"{key.lower()}.golden.json",
-    ]
-    for c in candidates:
-        if c.is_file():
-            return c
-
-    # fallback: cerca per prefisso / contenuto nome
-    for p in DATA_DIR.glob("*.json"):
-        stem = p.stem.upper()
-        if stem == key or key in stem:
-            return p
-
-    return None
+    aliases = {
+        "VCEM": "VCEM",
+        "CTF": "CTF",
+        "CTL": "CTL",
+        "CTL_MAXI": "CTL_MAXI",
+        "CTCEM": "CTCEM",
+        "DIAPASON": "DIAPASON",
+        "P560": "P560",
+        "COMM": "COMM",
+    }
+    return aliases.get(fam, fam)
 
 
 def read_json(path: Path) -> Dict[str, Any]:
-    if not path or not path.is_file():
-        raise FileNotFoundError(f"File non trovato: {path}")
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def load_family(family_key: str) -> Dict[str, Any]:
-    """Carica (con cache) il JSON di una famiglia."""
-    key = resolve_family_key(family_key)
-    if not key:
-        raise FileNotFoundError("Chiave famiglia vuota.")
+def iter_items(data: Any) -> Iterable[Dict[str, Any]]:
+    """
+    Supporta varie strutture:
+      - {"items":[...]}
+      - {"blocks":[...]}
+      - lista diretta [...]
+      - fallback: dict nidificati
+    """
+    if data is None:
+        return
 
-    if key in FAMILY_CACHE:
-        return FAMILY_CACHE[key]
-
-    path = resolve_family_path(key)
-    if not path:
-        raise FileNotFoundError(f"Nessun JSON trovato per famiglia '{family_key}'.")
-
-    data = read_json(path)
-    FAMILY_CACHE[key] = data
-    return data
-
-
-def iter_items(data: Dict[str, Any]) -> List[Dict[str, Any]]:
-    items = data.get("items")
-    if isinstance(items, list):
-        return items
-    # supporta anche formato piatto: lista top-level
     if isinstance(data, list):
-        return data
-    return []
+        for it in data:
+            if isinstance(it, dict):
+                yield it
+        return
+
+    if isinstance(data, dict):
+        if "items" in data and isinstance(data["items"], list):
+            for it in data["items"]:
+                if isinstance(it, dict):
+                    yield it
+            return
+        if "blocks" in data and isinstance(data["blocks"], list):
+            for it in data["blocks"]:
+                if isinstance(it, dict):
+                    yield it
+            return
+        # fallback: tutti i valori che sono dict
+        for v in data.values():
+            if isinstance(v, dict):
+                yield v
 
 
 def collect_patterns(item: Dict[str, Any]) -> List[str]:
-    patterns: List[str] = []
+    """
+    Raccoglie tutte le possibili forme di domanda / trigger
+    da un item, indipendentemente da come è scritto il JSON.
+    """
+    out: List[str] = []
 
-    # vari possibili campi usati nei tuoi JSON
-    for key in ["q", "qs", "questions", "patterns", "triggers"]:
+    scalar_keys = [
+        "q",
+        "question",
+        "domanda",
+        "title",
+        "label",
+    ]
+    list_keys = [
+        "q_list",
+        "questions",
+        "patterns",
+        "triggers",
+        "variants",
+        "synonyms",
+    ]
+
+    for k in scalar_keys:
+        v = item.get(k)
+        if isinstance(v, str) and v.strip():
+            out.append(v.strip())
+
+    for k in list_keys:
+        v = item.get(k)
+        if isinstance(v, list):
+            for e in v:
+                if isinstance(e, str) and e.strip():
+                    out.append(e.strip())
+
+    # fallback: usa pancia della risposta se non c'è nient'altro
+    if not out:
+        txt = extract_any_answer_text(item)
+        if txt:
+            out.append(txt[:120])
+
+    return out
+
+
+def extract_any_answer_text(item: Dict[str, Any]) -> str:
+    """
+    Estrae un testo risposta da varie strutture:
+    - item["answer"] (str o dict)
+    - item["answers"][lang]
+    - item["text"], item["it"], item["en"], ecc.
+    """
+    ans = item.get("answer")
+    if isinstance(ans, str) and ans.strip():
+        return ans.strip()
+    if isinstance(ans, dict):
+        # preferisci IT, poi EN, poi qualsiasi
+        for k in ["it", "IT", "ita", "en", "EN"]:
+            v = ans.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        for v in ans.values():
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+
+    answers = item.get("answers")
+    if isinstance(answers, dict):
+        for k in ["it", "en"]:
+            v = answers.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        for v in answers.values():
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+
+    for key in ["text", "it", "en", "fr", "de", "es"]:
         v = item.get(key)
-        if isinstance(v, str):
-            patterns.append(v)
-        elif isinstance(v, list):
-            patterns.extend(str(x) for x in v if x)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
 
-    # se non c'è nulla, usa testo risposta come ultimo fallback
-    if not patterns:
-        for key in ["prompt", "title"]:
-            if key in item and isinstance(item[key], str):
-                patterns.append(item[key])
+    return ""
 
-    return [p for p in patterns if p.strip()]
+
+def choose_answer(item: Dict[str, Any], lang: str) -> Tuple[Optional[str], str]:
+    """
+    Sceglie la risposta nella lingua della domanda se possibile,
+    altrimenti fallback in cascata (config), altrimenti qualunque testo valido.
+    """
+    supported = CONFIG["supported_langs"]
+    fallback = CONFIG["fallback_lang"]
+
+    ans = item.get("answer")
+
+    # answer = stringa
+    if isinstance(ans, str) and ans.strip():
+        return ans.strip(), lang
+
+    # answer = dict per lingua
+    if isinstance(ans, dict):
+        if lang in ans and isinstance(ans[lang], str) and ans[lang].strip():
+            return ans[lang].strip(), lang
+        if fallback in ans and isinstance(ans[fallback], str) and ans[fallback].strip():
+            return ans[fallback].strip(), fallback
+        for lg in supported:
+            if lg in ans and isinstance(ans[lg], str) and ans[lg].strip():
+                return ans[lg].strip(), lg
+        for v in ans.values():
+            if isinstance(v, str) and v.strip():
+                return v.strip(), lang
+
+    # answers = dict
+    answers = item.get("answers")
+    if isinstance(answers, dict):
+        if lang in answers and isinstance(answers[lang], str) and answers[lang].strip():
+            return answers[lang].strip(), lang
+        if fallback in answers and isinstance(answers[fallback], str) and answers[fallback].strip():
+            return answers[fallback].strip(), fallback
+        for lg in supported:
+            if lg in answers and isinstance(answers[lg], str) and answers[lg].strip():
+                return answers[lg].strip(), lg
+        for v in answers.values():
+            if isinstance(v, str) and v.strip():
+                return v.strip(), lang
+
+    # chiavi dirette o text
+    for key in [lang, fallback, "it", "en", "fr", "de", "es", "text"]:
+        v = item.get(key)
+        if isinstance(v, str) and v.strip():
+            return v.strip(), (key if key in supported else lang)
+
+    return None, lang
 
 
 def match_score(q_norm: str, patt_norm: str) -> float:
+    """
+    Score semplice basato su overlap token.
+    Niente cosine, niente magia fragile.
+    """
     if not q_norm or not patt_norm:
         return 0.0
-    return difflib.SequenceMatcher(None, q_norm, patt_norm).ratio()
+
+    q_tokens = q_norm.split()
+    p_tokens = patt_norm.split()
+    if not q_tokens or not p_tokens:
+        return 0.0
+
+    q_set = set(q_tokens)
+    p_set = set(p_tokens)
+
+    inter = len(q_set & p_set)
+    if inter == 0:
+        return 0.0
+
+    overlap_q = inter / len(q_set)
+    overlap_p = inter / len(p_set)
+
+    score = 0.7 * overlap_q + 0.3 * overlap_p
+    if score < 0:
+        score = 0.0
+    if score > 1:
+        score = 1.0
+    return float(score)
 
 
-def extract_answers(item: Dict[str, Any]) -> Dict[str, str]:
-    """
-    Normalizza le risposte in un dict {lang: text}.
-    Supporta vari layout (answer, answers, text, ecc.).
-    """
-    # già dict multilingua
-    if isinstance(item.get("answers"), dict):
-        return {k: str(v) for k, v in item["answers"].items()}
-
-    # singola risposta con campo lingua
-    if "answer" in item:
-        ans = item["answer"]
-        if isinstance(ans, dict):
-            return {k: str(v) for k, v in ans.items()}
-        lang = item.get("lang", "it")
-        return {lang: str(ans)}
-
-    if "text" in item:
-        ans = item["text"]
-        if isinstance(ans, dict):
-            return {k: str(v) for k, v in ans.items()}
-        lang = item.get("lang", "it")
-        return {lang: str(ans)}
-
-    if "a" in item:
-        ans = item["a"]
-        if isinstance(ans, dict):
-            return {k: str(v) for k, v in ans.items()}
-        lang = item.get("lang", "it")
-        return {lang: str(ans)}
-
-    # niente trovato → vuoto
-    return {}
-
-
-def choose_answer(item: Dict[str, Any], q_lang: str) -> Tuple[Optional[str], str]:
-    """
-    Sceglie la risposta nella lingua più adatta alla domanda.
-    Se la lingua non è disponibile, usa fallback_lang o qualsiasi.
-    """
-    answers = extract_answers(item)
-    if not answers:
-        return None, q_lang
-
-    # se c'è la lingua della domanda, usa quella
-    if q_lang in answers:
-        return answers[q_lang], q_lang
-
-    # se c'è italiano e la domanda è it-like
-    if q_lang == "it" and "it" in answers:
-        return answers["it"], "it"
-
-    # fallback globale da config
-    fb = CONFIG.get("fallback_lang", DEFAULT_FALLBACK_LANG)
-    if fb in answers:
-        return answers[fb], fb
-
-    # altrimenti prendi la prima disponibile
-    lang, txt = next(iter(answers.items()))
-    return txt, lang
-
-
-def find_best_item(family_data: Dict[str, Any], q: str) -> Optional[Tuple[Dict[str, Any], float]]:
-    """Trova il miglior item dentro una singola famiglia."""
-    q_norm = normalize(q)
-    best_item = None
-    best_score = 0.0
-
-    for item in iter_items(family_data):
-        for patt in collect_patterns(item):
-            s = match_score(q_norm, normalize(patt))
-            if s > best_score:
-                best_score = s
-                best_item = item
-
-    if best_item and best_score >= 0.35:
-        return best_item, best_score
-
-    return None
-
-
-def find_best_item_any_family(exclude_family: str, q: str) -> Optional[Tuple[str, Dict[str, Any], float]]:
-    """
-    Cerca la risposta migliore in tutte le famiglie (tranne quella esclusa).
-    Serve per auto-routing: es. domanda P560 mentre sei su VCEM.
-    """
-    q_norm = normalize(q)
-    best_family = None
-    best_item = None
-    best_score = 0.0
-
-    exclude_key = resolve_family_key(exclude_family)
-
-    for path in DATA_DIR.glob("*.json"):
-        stem_key = path.stem.upper()
-        # salta config e roba non di dominio
-        if "CONFIG" in stem_key:
-            continue
-
-        # evita la stessa famiglia
-        if exclude_key and (stem_key == exclude_key or exclude_key in stem_key):
-            continue
-
-        # carica famiglia (con cache)
-        if stem_key in FAMILY_CACHE:
-            data = FAMILY_CACHE[stem_key]
-        else:
-            try:
-                data = read_json(path)
-                FAMILY_CACHE[stem_key] = data
-            except Exception:
-                continue
-
-        for item in iter_items(data):
-            for patt in collect_patterns(item):
-                s = match_score(q_norm, normalize(patt))
-                if s > best_score:
-                    best_score = s
-                    best_item = item
-                    best_family = stem_key
-
-    if best_item and best_score >= 0.40:
-        return best_family, best_item, best_score
-
-    return None
-
-
-# -------------------------------------------------------
-# ENDPOINTS
-# -------------------------------------------------------
+# =========================
+# ROOT & CONFIG
+# =========================
 
 @app.get("/")
-async def root():
-    # Se c'è l'index nuovo, servilo; altrimenti info base JSON
-    if INDEX_FILE.is_file():
-        return StaticFiles(directory=str(BASE_DIR / "static")).lookup_path("index.html")[0]
+def root():
+    if INDEX_FILE.exists():
+        return FileResponse(str(INDEX_FILE))
     return {
-        "app": "Tecnaria Sinapsi — Q/A",
+        "app": CONFIG["app"],
         "status": "OK",
-        "families_dir": str(DATA_DIR),
+        "families_dir": CONFIG["families_dir"],
     }
 
 
 @app.get("/api/config")
-async def api_config():
+def api_config():
     return {
         "ok": True,
-        "app": "Tecnaria Sinapsi — Q/A",
-        "families_dir": str(DATA_DIR),
-        "supported_langs": CONFIG.get("supported_langs", DEFAULT_SUPPORTED_LANGS),
-        "fallback_lang": CONFIG.get("fallback_lang", DEFAULT_FALLBACK_LANG),
+        "app": CONFIG["app"],
+        "families_dir": CONFIG["families_dir"],
+        "supported_langs": CONFIG["supported_langs"],
+        "fallback_lang": CONFIG["fallback_lang"],
         "translation": CONFIG.get("translation", False),
+        "status": "OK",
     }
 
+
+# =========================
+# CORE: /api/ask
+# =========================
 
 @app.post("/api/ask")
 async def api_ask(payload: AskPayload):
@@ -358,64 +372,86 @@ async def api_ask(payload: AskPayload):
     if not q:
         raise HTTPException(status_code=400, detail="Domanda vuota.")
 
-    raw_family = payload.family or ""
-    family = resolve_family_key(raw_family)
+    # family è opzionale: se c'è è solo un BOOST, non un filtro
+    selected_family = resolve_family_key(payload.family)
     lang = guess_lang(q)
+    q_norm = normalize(q)
 
-    # 1) prova nella famiglia selezionata
-    primary_item = None
-    primary_score = 0.0
+    best_item: Optional[Dict[str, Any]] = None
+    best_family: Optional[str] = None
+    best_score: float = 0.0
 
-    if family:
-        try:
-            fam_data = load_family(family)
-            found = find_best_item(fam_data, q)
-            if found:
-                primary_item, primary_score = found
-        except FileNotFoundError:
-            fam_data = None
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Errore famiglia {family}: {e}")
+    # Scansiona TUTTI i JSON in /static/data
+    for path in DATA_DIR.glob("*.json"):
+        stem = path.stem.upper()
+        # salta config o file non di dominio se ne hai
+        if "CONFIG" in stem:
+            continue
 
-    if primary_item:
-        answer, used_lang = choose_answer(primary_item, lang)
-        if answer:
-            return {
-                "ok": True,
-                "family": family,
-                "q": q,
-                "lang": used_lang,
-                "id": primary_item.get("id"),
-                "mode": primary_item.get("mode", "dynamic"),
-                "score": round(float(primary_score), 3),
-                "text": answer,
-            }
+        # cache
+        if stem in FAMILY_CACHE:
+            data = FAMILY_CACHE[stem]
+        else:
+            try:
+                data = read_json(path)
+                FAMILY_CACHE[stem] = data
+            except Exception:
+                continue
 
-    # 2) se non ha trovato in quella famiglia, cerca in tutte (auto-routing NLM)
-    fallback = find_best_item_any_family(exclude_family=family, q=q)
-    if fallback:
-        fb_family, fb_item, fb_score = fallback
-        answer, used_lang = choose_answer(fb_item, lang)
-        if answer:
-            return {
-                "ok": True,
-                "family": fb_family,
-                "q": q,
-                "lang": used_lang,
-                "id": fb_item.get("id"),
-                "mode": fb_item.get("mode", "dynamic"),
-                "score": round(float(fb_score), 3),
-                "text": answer,
-            }
+        for item in iter_items(data):
+            patterns = collect_patterns(item)
+            if not patterns:
+                continue
 
-    # 3) nessun GOLD trovato da nessuna parte → messaggio pulito
+            for patt in patterns:
+                s = match_score(q_norm, normalize(patt))
+                if s <= 0.0:
+                    continue
+
+                # piccolo bonus se coincide con famiglia suggerita
+                if selected_family and (
+                    stem == selected_family or selected_family in stem
+                ):
+                    s += 0.03
+
+                if s > best_score:
+                    best_score = s
+                    best_item = item
+                    best_family = stem
+
+    # Soglia unica globale
+    if not best_item or best_score < 0.35:
+        return {
+            "ok": False,
+            "family": selected_family or None,
+            "q": q,
+            "lang": lang,
+            "text": (
+                "Per questa domanda non è ancora presente una risposta GOLD nei contenuti Tecnaria. "
+                "Se è una casistica reale di cantiere, aggiungere il blocco corrispondente nel JSON."
+            ),
+        }
+
+    answer, used_lang = choose_answer(best_item, lang)
+    if not answer:
+        return {
+            "ok": False,
+            "family": best_family,
+            "q": q,
+            "lang": lang,
+            "text": (
+                "È stato individuato un blocco logico ma senza testo risposta valido. "
+                f"Verifica il file JSON della famiglia {best_family} (ID: {best_item.get('id')})."
+            ),
+        }
+
     return {
-        "ok": False,
-        "family": family or None,
+        "ok": True,
+        "family": best_family,
         "q": q,
-        "lang": lang,
-        "text": (
-            "Per questa domanda non è ancora presente una risposta GOLD nei contenuti Tecnaria. "
-            "Contatta l’ufficio tecnico o arricchisci il JSON della famiglia pertinente."
-        ),
+        "lang": used_lang,
+        "id": best_item.get("id"),
+        "mode": best_item.get("mode", "dynamic"),
+        "score": round(float(best_score), 3),
+        "text": answer,
     }
