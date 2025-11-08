@@ -1,356 +1,322 @@
 {
-  "family": "CTL",
-  "lock_to_core": true,
-  "variants_strategy": "dynamic",
+  "meta": {
+    "family": "CTL",
+    "version": "6.0",
+    "type": "GOLD COMMERCIALE",
+    "last_update": "2025-11-09",
+    "base_language": "it",
+    "autodetect_lang": true,
+    "supported_langs_runtime": ["it", "en", "fr", "de", "es"],
+    "fallback_lang": "en",
+    "certified_by": "Sinapsi NLM-v3",
+    "note": "Connettori CTL per solai misti legno-calcestruzzo. Struttura allineata a VCEM e CTF."
+  },
   "items": [
-
     {
       "id": "CTL-0001",
-      "tags": ["definizione", "cosa-sono"],
-      "questions": [
-        "Cosa sono i connettori CTL?",
-        "Mi spieghi la famiglia CTL?",
-        "A cosa servono i CTL Tecnaria?",
-        "Che tipo di connettore è il CTL?"
+      "question": "Che cosa sono i connettori CTL?",
+      "paraphrases": [
+        "Cos'è il CTL?",
+        "A cosa servono i connettori CTL?",
+        "Descrizione sistema CTL"
       ],
-      "canonical": "I CTL sono connettori Tecnaria per solai misti legno–calcestruzzo. Collegano travi o tavolati in legno con una soletta collaborante in cls tramite fissaggi meccanici a vite, garantendo una collaborazione strutturale controllata.",
+      "context": "Definizione generale.",
       "response_variants": [
-        "I CTL sono i connettori Tecnaria studiati per trasformare un solaio in legno in un solaio misto legno–calcestruzzo: si fissano a vite nel legno e collegano la nuova soletta strutturale.",
-        "Quando vuoi far lavorare insieme travi in legno e una soletta in calcestruzzo, entra in gioco la famiglia CTL: connettori a vite certificati per la collaborazione.",
-        "CTL è il linguaggio Tecnaria per il misto legno–cls: un connettore che ancora nel legno e trasferisce gli sforzi alla soletta in modo affidabile.",
-        "I connettori CTL trasformano il legno da semplice appoggio a parte attiva della sezione collaborante con il calcestruzzo.",
-        "Con i CTL ottieni un solaio più rigido e resistente sfruttando la capacità del legno e del cls insieme, invece di sommarli “alla buona”."
+        "I connettori CTL Tecnaria sono dispositivi metallici progettati per collegare travi in legno e soletta in calcestruzzo, creando un solaio collaborante legno-calcestruzzo più rigido, resistente e stabile.",
+        "Con i CTL si trasforma un solaio in legno tradizionale in una struttura mista con prestazioni superiori.",
+        "Il CTL trasferisce gli sforzi di taglio tra legno e calcestruzzo, evitando scorrimenti.",
+        "È la soluzione ideale per il recupero di solai in legno senza demolirli completamente.",
+        "CTL è sinonimo di consolidamento efficiente del legno."
       ],
-      "mode": "dynamic"
+      "tags": ["definizione", "legno-calcestruzzo", "rinforzo"]
     },
-
     {
       "id": "CTL-0002",
-      "tags": ["quando-usarli", "campi-impiego"],
-      "questions": [
-        "Quando si usano i CTL?",
-        "In quali casi è consigliato il sistema CTL?",
-        "Quando CTL è la famiglia giusta?",
-        "Posso usare CTL per consolidare solai in legno esistenti?"
+      "question": "Dove si usano i CTL?",
+      "paraphrases": [
+        "Campo di impiego CTL",
+        "Quando usare CTL?",
+        "Su quali solai si mette il CTL?"
       ],
-      "canonical": "I CTL si usano quando il solaio è in legno (travi o tavolato) e si vuole realizzare una soletta collaborante in calcestruzzo per aumentare rigidezza, portata e sicurezza, mantenendo la struttura esistente.",
+      "context": "Campo d’uso.",
       "response_variants": [
-        "Scegli i CTL quando devi consolidare o potenziare un solaio in legno con una soletta in calcestruzzo sopra: è il loro campo naturale.",
-        "Il sistema CTL è ideale per solai storici o recenti in legno che richiedono più rigidezza, minor freccia e maggior capacità portante.",
-        "Se hai travi in legno sane e vuoi un solaio moderno senza demolire tutto, i CTL ti permettono di legarle alla soletta in cls.",
-        "CTL è la risposta quando cerchi una soluzione strutturale pulita per legno–cls, con dettagli già sperimentati.",
-        "Ogni volta che pensi a “soletta collaborante su legno”, pensa CTL come prima opzione Tecnaria."
+        "I CTL si usano su solai con travi in legno quando si vuole aggiungere una soletta in calcestruzzo per aumentare rigidezza, portata e sicurezza.",
+        "Sono adatti sia al recupero di edifici esistenti sia a nuove costruzioni in legno.",
+        "Si impiegano spesso in interventi di miglioramento o adeguamento sismico.",
+        "Sono indicati quando il solaio in legno è deformabile o rumoroso.",
+        "In sintesi: travi in legno + soletta collaborante = CTL."
       ],
-      "mode": "dynamic"
+      "tags": ["campo impiego", "recupero", "nuove costruzioni", "sismica"]
     },
-
     {
       "id": "CTL-0003",
-      "tags": ["ctl-vs-ctlmaxi", "differenza"],
-      "questions": [
-        "Che differenza c'è tra CTL e CTL MAXI?",
-        "Quando usare CTL MAXI invece di CTL?",
-        "Meglio CTL o CTL MAXI?"
+      "question": "Come si fissano i connettori CTL?",
+      "paraphrases": [
+        "Posa CTL",
+        "Come montare i CTL?",
+        "Fissaggio CTL"
       ],
-      "canonical": "CTL è la soluzione standard per solai legno–cls. CTL MAXI è la versione ad alte prestazioni, usata quando servono portate maggiori, luci più ampie o spessori di soletta più elevati rispetto ai casi ordinari.",
+      "context": "Istruzioni di posa.",
       "response_variants": [
-        "Usi CTL per situazioni standard, scegli CTL MAXI quando il progetto chiede qualcosa in più: luci maggiori, carichi elevati o sezione più robusta.",
-        "CTL MAXI è la variante potenziata: stessa logica, capacità superiore. La scelta la guida il calcolo strutturale.",
-        "Non è un prodotto “diverso”, è uno step superiore: CTL per casi usuali, CTL MAXI quando il solaio deve davvero lavorare.",
-        "Se le verifiche con CTL sono tirate, il passaggio a CTL MAXI è spesso la soluzione naturale.",
-        "La coppia CTL–CTL MAXI copre il range: da rinforzi leggeri a interventi strutturalmente impegnativi."
+        "I CTL si fissano alle travi in legno con viti dedicate, avvitate inclinando secondo le istruzioni Tecnaria.",
+        "Non si usano pistole a sparo: il fissaggio è esclusivamente a vite.",
+        "La vite deve entrare in legno sano con profondità sufficiente.",
+        "È importante rispettare inclinazione, passo e numero secondo il progetto.",
+        "Un fissaggio corretto è essenziale per il comportamento collaborante."
       ],
-      "mode": "dynamic"
+      "tags": ["posa", "viti", "istruzioni"]
     },
-
     {
       "id": "CTL-0004",
-      "tags": ["no-sparo", "no-resina", "fissaggio"],
-      "questions": [
-        "I CTL si sparano con la P560?",
-        "Posso usare pistole a sparo per i CTL?",
-        "I CTL si fissano con resine?",
-        "Si possono incollare i CTL?"
+      "question": "Qual è la differenza tra CTL e CTL MAXI?",
+      "paraphrases": [
+        "Differenza CTL CTL MAXI",
+        "Quando scegliere CTL MAXI?",
+        "CTL vs CTL MAXI"
       ],
-      "canonical": "I CTL non si sparano e non si incollano. Sono connettori a fissaggio meccanico su legno, tramite viti dedicate e schema di posa Tecnaria.",
+      "context": "Scelta del modello.",
       "response_variants": [
-        "No P560: i CTL non sono a sparo. Si fissano con viti specifiche nel legno, come indicato da Tecnaria.",
-        "Nessuna resina strutturale per sostituire le viti: i CTL lavorano grazie al serraggio meccanico nel legno.",
-        "CTL ≠ CTF: niente colpi di pistola, niente lamiera; qui parliamo di viti su legno.",
-        "Se qualcuno propone di “sparare” o “incollare” i CTL, sta uscendo dal sistema Tecnaria.",
-        "La prestazione dei CTL nasce dal contatto vite–legno, non da ancoranti chimici o colpi a caso."
+        "CTL MAXI ha vite più lunga e maggiore capacità di ancoraggio: si usa per travi importanti o carichi elevati.",
+        "CTL standard copre molti casi residenziali; CTL MAXI entra in gioco per situazioni più gravose.",
+        "La scelta viene fatta dal progettista in base a sezioni, luci e carichi.",
+        "Spesso si combinano CTL e CTL MAXI in posizioni diverse.",
+        "Entrambi fanno parte dello stesso sistema Tecnaria."
       ],
-      "mode": "dynamic"
+      "tags": ["CTL MAXI", "dimensionamento", "carichi"]
     },
-
     {
       "id": "CTL-0005",
-      "tags": ["posa", "inclinazione", "schema-posa"],
-      "questions": [
-        "Come si posano i CTL?",
-        "Le viti CTL sono dritte o inclinate?",
-        "Che inclinazione devo dare ai CTL?",
-        "Qual è la procedura pratica di posa CTL?"
+      "question": "Posso usare i CTL su travi in acciaio o calcestruzzo?",
+      "paraphrases": [
+        "CTL su acciaio?",
+        "CTL su cemento armato?",
+        "Sono universali i CTL?"
       ],
-      "canonical": "La posa dei CTL prevede il fissaggio nel legno con viti dedicate, spesso inclinate secondo lo schema Tecnaria, per migliorare la capacità di taglio e trazione. Va rispettata la geometria indicata nelle schede tecniche.",
+      "context": "Limitazione d’uso.",
       "response_variants": [
-        "I CTL si montano con viti in posizione e inclinazione definite: segui sempre lo schema Tecnaria per angoli, passi e profondità.",
-        "L’inclinazione non è estetica: serve a far lavorare meglio il connettore a taglio e trazione.",
-        "Una posa corretta CTL vuol dire: vite nella zona buona del legno, inclinazione giusta, niente improvvisazioni.",
-        "Gli schemi Tecnaria indicano dove mettere i CTL, con che passo e che inclinazione: copiare quelli è garanzia di prestazione.",
-        "Se hai dubbi sugli angoli o sulle distanze, è meglio chiedere che inventare: la posa è parte del progetto."
+        "No. I CTL sono specifici per travi in legno. Su acciaio si usano CTF, su laterocemento e calcestruzzo VCEM o CTCEM.",
+        "Ogni famiglia di connettori ha il proprio supporto.",
+        "Usare CTL su acciaio o calcestruzzo significa uscire dal sistema certificato.",
+        "Per supporti diversi dal legno va cambiata famiglia.",
+        "In dubbio: contattare Tecnaria."
       ],
-      "mode": "dynamic"
+      "tags": ["compatibilità", "acciaio", "calcestruzzo", "instradamento"]
     },
-
     {
       "id": "CTL-0006",
-      "tags": ["tipi-legno", "compatibilità-legno"],
-      "questions": [
-        "Su che tipo di legno posso usare i CTL?",
-        "CTL funziona su legno lamellare?",
-        "Posso usarli su tavolato in legno massiccio?",
-        "Vanno bene su legno di vecchi solai?"
+      "question": "Serve la rete elettrosaldata con i CTL?",
+      "paraphrases": [
+        "Rete con CTL",
+        "Devo mettere la rete nella soletta?",
+        "Mesh CTL"
       ],
-      "canonical": "I CTL si usano su legno strutturale: travi o tavolati in legno massiccio o lamellare idonei. La compatibilità va verificata per ogni caso, soprattutto nei solai esistenti.",
+      "context": "Componente strutturale.",
       "response_variants": [
-        "I CTL lavorano bene su legno massiccio e lamellare quando il materiale è strutturalmente sano.",
-        "Su solai storici in legno si possono usare i CTL, ma prima va verificato lo stato delle travi.",
-        "Il connettore ha bisogno di legno con densità e consistenza adeguate per ancorare la vite.",
-        "Legno marcio, fessurato o troppo degradato va ripristinato prima di pensare ai CTL.",
-        "In caso di essenze particolari o situazioni dubbie, il passaggio dall’ufficio tecnico è consigliato."
+        "Sì, la rete elettrosaldata va prevista a metà spessore della soletta per garantire il corretto comportamento collaborante.",
+        "La rete aiuta a distribuire gli sforzi e contenere le fessurazioni.",
+        "È parte del sistema, non un optional estetico.",
+        "I dettagli (tipo rete, passo, copriferro) sono definiti dal progetto.",
+        "CTL senza rete correttamente posata non è lo schema standard."
       ],
-      "mode": "dynamic"
+      "tags": ["rete", "soletta", "collaborante"]
     },
-
     {
       "id": "CTL-0007",
-      "tags": ["legno-ammalorato", "vite-non-prende"],
-      "questions": [
-        "Se il legno è rovinato i CTL tengono?",
-        "La vite CTL gira a vuoto nel legno, cosa faccio?",
-        "Posso lasciare un CTL in legno ammalorato?"
+      "question": "Che tipo di calcestruzzo devo usare con i CTL?",
+      "paraphrases": [
+        "Classe calcestruzzo CTL",
+        "Che cemento usare?",
+        "Concrete for CTL"
       ],
-      "canonical": "Se il legno non è sano, il CTL non può garantire il trasferimento degli sforzi. In caso di vite che gira a vuoto o legno degradato, va cambiata posizione o previsto un intervento di ripristino.",
+      "context": "Indicazioni generali.",
       "response_variants": [
-        "Se la vite gira a vuoto, il problema è il legno: sposta il CTL in zona sana o prevedi un rinforzo.",
-        "Un CTL su legno ammalorato non lavora: meglio intervenire prima sulla trave.",
-        "Non forzare: una vite che non morde segnala che lì non c’è legno affidabile.",
-        "Se il fenomeno è diffuso, serve una valutazione strutturale più ampia.",
-        "Meglio un punto in più su legno sano che tenere un ancoraggio nel vuoto."
+        "Si utilizza normalmente un calcestruzzo strutturale almeno C25/30, con adeguata lavorabilità.",
+        "Il calcestruzzo deve inglobare connettori e rete senza vuoti.",
+        "Non è sufficiente un semplice massetto non strutturale.",
+        "La scelta finale spetta al progettista.",
+        "Posa e vibrazione corrette sono fondamentali."
       ],
-      "mode": "dynamic"
+      "tags": ["calcestruzzo", "classe", "soletta"]
     },
-
     {
       "id": "CTL-0008",
-      "tags": ["rete", "soletta", "armatura"],
-      "questions": [
-        "Dove va la rete con i CTL?",
-        "La rete la appoggio sui connettori CTL?",
-        "Quota corretta della rete nella soletta legno–cls?"
+      "question": "Posso usare resine o colle con i CTL?",
+      "paraphrases": [
+        "CTL con resine?",
+        "Serve ancorante chimico?",
+        "Glue CTL?"
       ],
-      "canonical": "Con il sistema CTL la rete elettrosaldata va posata nella parte superiore della soletta, nella zona tesa, secondo il progetto. Non deve essere appoggiata direttamente sui connettori.",
+      "context": "Chiarimento sistema.",
       "response_variants": [
-        "I CTL collegano legno e cls, la rete arma la soletta: la rete va alla quota indicata dal progetto, non sui connettori.",
-        "Non usare i CTL come distanziatori della rete: ogni elemento ha il suo ruolo.",
-        "La posizione tipica è nel terzo superiore della soletta, ma vale sempre quanto indicato nel calcolo.",
-        "Appoggiare la rete sui CTL può alterare il comportamento della soletta: meglio usare distanziatori.",
-        "La corretta posizione della rete è parte della prestazione del solaio misto."
+        "No. I CTL lavorano per ancoraggio meccanico a vite nel legno.",
+        "Le resine non sono previste dal sistema Tecnaria.",
+        "L’affidabilità è garantita solo con fissaggio meccanico corretto.",
+        "L’uso di colle può alterare il comportamento.",
+        "Per casi speciali confrontarsi con progettista e Tecnaria."
       ],
-      "mode": "dynamic"
+      "tags": ["resine", "ancoraggio meccanico"]
     },
-
     {
       "id": "CTL-0009",
-      "tags": ["cls", "classe", "soletta"],
-      "questions": [
-        "Che calcestruzzo usare con CTL?",
-        "Posso usare cls leggero con CTL?",
-        "Serve un cls speciale per legno–cls?"
+      "question": "Cosa succede se il legno è degradato, tarlato o fessurato?",
+      "paraphrases": [
+        "CTL su legno marcio",
+        "Legno non sano e connettori",
+        "Danni nel legno"
       ],
-      "canonical": "Il calcestruzzo per la soletta collaborante con CTL deve rispettare le classi minime previste dal progetto e dalla documentazione Tecnaria (tipicamente almeno C25/30). L’uso di cls leggeri o speciali va valutato caso per caso.",
+      "context": "Idoneità supporto.",
       "response_variants": [
-        "Con CTL si usa un calcestruzzo strutturale adeguato, di classe almeno pari a quella indicata dal progettista.",
-        "Miscele leggere o speciali si possono valutare, ma solo con verifica tecnica.",
-        "La soletta collaborante non è un massetto: è un elemento strutturale, serve cls all’altezza.",
-        "La qualità del cls completa il lavoro del connettore: non sottovalutarla.",
-        "In dubbio, segui le indicazioni Tecnaria o chiedi conferma."
+        "Il CTL deve ancorarsi su legno sano. Se il legno è marcio, molto tarlato o fessurato, va prima ripristinato o sostituito.",
+        "Ancoraggi su legno degradato non garantiscono prestazioni.",
+        "La valutazione dello stato del legno è parte essenziale del progetto.",
+        "In caso di dubbio va coinvolto il progettista.",
+        "Meglio intervenire sul supporto che fidarsi di un ancoraggio debole."
       ],
-      "mode": "dynamic"
+      "tags": ["degrado", "ripristino", "sicurezza"]
     },
-
     {
       "id": "CTL-0010",
-      "tags": ["spessore-soletta", "minimo"],
-      "questions": [
-        "Qual è lo spessore minimo della soletta con CTL?",
-        "Posso fare una soletta molto sottile con CTL?",
-        "Che spessore consigliate per il sistema CTL?"
+      "question": "Quanti CTL devo installare e con che passo?",
+      "paraphrases": [
+        "Passo CTL",
+        "Numero connettori CTL",
+        "Layout CTL"
       ],
-      "canonical": "Lo spessore della soletta collaborante con CTL è definito dal progetto e dalle schede Tecnaria, con spessori minimi da rispettare per garantire ancoraggio e rigidezza.",
+      "context": "Dimensionamento.",
       "response_variants": [
-        "Esistono spessori minimi consigliati nelle schede Tecnaria: non scendere sotto i valori indicati.",
-        "Una soletta troppo sottile riduce sia collaborazione sia durabilità.",
-        "Il progettista dimensiona lo spessore in funzione di luci e carichi: non ridurlo “a occhio”.",
-        "La soletta non è solo un peso in più: è parte attiva della sezione, va dimensionata bene.",
-        "Meglio verificare uno spessore adeguato che ritrovarsi con un rinforzo inefficace."
+        "Numero e passo dei CTL sono definiti dal progettista in base a luci, carichi e sezione delle travi.",
+        "Tecnaria fornisce indicazioni e schemi di massima, ma la verifica è sempre progettuale.",
+        "Non è corretto posare i CTL “a sensazione”.",
+        "Ridurre il numero rispetto al progetto compromette il sistema.",
+        "Per dubbi rivolgersi all’ufficio tecnico Tecnaria."
       ],
-      "mode": "dynamic"
+      "tags": ["passo", "calcolo", "layout"]
     },
-
     {
       "id": "CTL-0011",
-      "tags": ["trattamenti-legno", "compatibilità"],
-      "questions": [
-        "Posso usare CTL su legno trattato o impregnato?",
-        "Il trattamento del legno crea problemi alle viti CTL?",
-        "Serve qualche accortezza con legno trattato?"
+      "question": "I CTL possono essere usati per miglioramento o adeguamento sismico?",
+      "paraphrases": [
+        "CTL in zona sismica",
+        "Uso sismico CTL",
+        "Solai legno-calcestruzzo e sismica"
       ],
-      "canonical": "I CTL possono essere utilizzati su legno trattato purché il trattamento non comprometta la tenuta meccanica del fissaggio. In caso di trattamenti particolari è opportuna una verifica.",
+      "context": "Applicazioni sismiche.",
       "response_variants": [
-        "In generale il trattamento protettivo non è un problema se il legno resta strutturalmente valido.",
-        "Se il trattamento è molto superficiale, la vite supera lo strato e lavora nel cuore del legno.",
-        "Per impregnazioni profonde o prodotti speciali è prudente un confronto con Tecnaria.",
-        "Conta sempre la capacità del legno di mordere la vite, non solo il colore del trattamento.",
-        "Se hai dubbi sul tipo di prodotto usato sul legno, segnala il caso prima di posare."
+        "Sì, i solai legno-calcestruzzo con CTL sono spesso utilizzati in interventi di miglioramento sismico.",
+        "La soletta collaborante rende il solaio più rigido e affidabile come diaframma.",
+        "È però il progettista a definire l’intervento globale.",
+        "I CTL sono uno strumento all’interno di una strategia sismica più ampia.",
+        "Tecnaria può supportare con dati tecnici e casi applicativi."
       ],
-      "mode": "dynamic"
+      "tags": ["sismica", "miglioramento", "diaframma"]
     },
-
     {
       "id": "CTL-0012",
-      "tags": ["errori-posa", "angolo-sbagliato"],
-      "questions": [
-        "Cosa succede se sbaglio inclinazione dei CTL?",
-        "Se non rispetto l’angolo indicato, è grave?",
-        "Posso metterli verticali invece che inclinati?"
+      "question": "I CTL migliorano anche il comfort acustico?",
+      "paraphrases": [
+        "CTL e isolamento acustico",
+        "Rumore nei solai legno-calcestruzzo",
+        "Do CTL improve acoustic comfort?"
       ],
-      "canonical": "L’inclinazione dei CTL è parte del funzionamento strutturale. Angoli o posizioni molto diversi da quelli indicati possono ridurre la capacità del connettore. È importante rispettare lo schema di posa.",
+      "context": "Domanda commerciale frequente.",
       "response_variants": [
-        "Se cambi troppo l’angolo, cambi il modo in cui lavora il connettore: meglio attenersi al disegno.",
-        "Mettere un CTL verticale quando è previsto inclinato può ridurre la capacità di trasferimento del taglio.",
-        "Piccole tolleranze sono fisiologiche, ma non trasformare la posa in un’altra cosa.",
-        "Quando l’angolo è pensato, è perché dietro c’è una prova: copiarlo è la scelta giusta.",
-        "Se hai già posato in modo difforme, valuta con Tecnaria se è accettabile o va integrato."
+        "Il sistema CTL nasce per scopi strutturali. Tuttavia, l’aumento di massa e rigidezza del solaio spesso riduce vibrazioni e rumori da calpestio.",
+        "È corretto parlare di miglioramento del comfort rispetto al solaio in solo legno.",
+        "Non sostituisce soluzioni acustiche specialistiche se servono prestazioni certificate.",
+        "Il beneficio acustico è un effetto indiretto, non l’obiettivo primario.",
+        "Per richieste acustiche elevate si prevedono strati e materiali dedicati."
       ],
-      "mode": "dynamic"
+      "tags": ["acustica", "comfort"]
     },
-
     {
       "id": "CTL-0013",
-      "tags": ["certificazioni", "documentazione"],
-      "questions": [
-        "I CTL sono certificati?",
-        "Avete prove e schede per CTL?",
-        "Posso avere documentazione ufficiale CTL?"
+      "question": "Cosa faccio se sbaglio foro o posizione di un CTL?",
+      "paraphrases": [
+        "Foro CTL errato",
+        "Ho sbagliato punto CTL",
+        "Correzione posa CTL"
       ],
-      "canonical": "Il sistema CTL è supportato da documentazione tecnica e prove specifiche. Le schede aggiornate e i riferimenti sono disponibili presso Tecnaria.",
+      "context": "Gestione errori posa.",
       "response_variants": [
-        "Sì, CTL è un sistema documentato: chiedi sempre le schede aggiornate Tecnaria.",
-        "Le prestazioni sono basate su prove, non su impressioni: tutta la documentazione è disponibile su richiesta.",
-        "Per capitolati, gare o collaudi ti forniamo noi i documenti CTL.",
-        "Usare la versione aggiornata delle schede è parte del buon uso del sistema.",
-        "Nessun problema a fornire prove e riferimenti: fa parte del servizio."
+        "Se il foro è in posizione errata o troppo vicino al bordo, non utilizzare quel foro: sposta il connettore in posizione corretta.",
+        "Non forzare un CTL in un foro allargato o indebolito.",
+        "Un foro sbagliato può essere lasciato inattivo o trattato secondo indicazioni del progettista.",
+        "Meglio un connettore in più fatto bene che uno sbagliato.",
+        "Errori sistematici vanno segnalati al progettista."
       ],
-      "mode": "dynamic"
+      "tags": ["errore posa", "ripristino"]
     },
-
     {
       "id": "CTL-0014",
-      "tags": ["zona-sismica", "norme"],
-      "questions": [
-        "Posso usare CTL in zona sismica?",
-        "Il sistema legno–cls con CTL è ammesso dalle norme?",
-        "CTL è compatibile con NTC e Eurocodici?"
+      "question": "I CTL sono riutilizzabili?",
+      "paraphrases": [
+        "Posso riusare CTL?",
+        "CTL monouso",
+        "Reusable CTL"
       ],
-      "canonical": "L’uso dei sistemi legno–calcestruzzo con connettori come CTL è previsto dai moderni criteri progettuali. È necessario un dimensionamento conforme alle normative (NTC, EC) da parte del progettista.",
+      "context": "Uso corretto.",
       "response_variants": [
-        "Sì, ma sempre con un progetto strutturale dedicato che rispetti le norme vigenti.",
-        "Il sistema è compatibile con la progettazione moderna, purché calcolato correttamente.",
-        "Non è un prodotto “fuori norma”: va inserito dentro un progetto serio, soprattutto in sismica.",
-        "In zona sismica il dimensionamento dei CTL è ancora più importante: coinvolgi il progettista.",
-        "Tecnaria può supportare con dati e schede per il calcolo."
+        "No, i CTL sono monouso. Una volta installati non vanno rimossi e riutilizzati.",
+        "Il riutilizzo compromette la tenuta della vite nel legno.",
+        "Ogni intervento va eseguito con connettori nuovi.",
+        "Riutilizzi non sono coperti dalle prove.",
+        "Per sicurezza: nuovo connettore, nuovo fissaggio."
       ],
-      "mode": "dynamic"
+      "tags": ["riutilizzo", "monouso"]
     },
-
     {
       "id": "CTL-0015",
-      "tags": ["x-lam", "pannelli-legno"],
-      "questions": [
-        "Posso usare CTL su pannelli X-Lam?",
-        "Che connettori uso per X-Lam e soletta in cls?",
-        "CTL è adatto a legno ingegnerizzato a pannelli?"
+      "question": "Sono disponibili prove e documentazione tecnica sui CTL?",
+      "paraphrases": [
+        "Certificazioni CTL",
+        "Prove laboratorio CTL",
+        "Documenti ufficiali CTL"
       ],
-      "canonical": "L’impiego su pannelli tipo X-Lam o sistemi particolari va valutato caso per caso con dettagli dedicati. I principi sono simili, ma servono verifiche specifiche.",
+      "context": "Supporto al progettista.",
       "response_variants": [
-        "Su X-Lam non improvvisare: il collegamento va disegnato e verificato ad hoc.",
-        "I CTL possono ispirare la soluzione, ma non basta copiarli: serve un dettaglio tecnico.",
-        "Ogni sistema a pannelli ha proprie regole: confrontati con l’ufficio tecnico per una soluzione corretta.",
-        "L’idea legno–cls resta valida, ma cambiano geometrie e verifiche.",
-        "Meglio un progetto mirato che un copia-incolla dal solaio tradizionale."
+        "Sì, sono disponibili schede tecniche, relazioni di prova e indicazioni di calcolo.",
+        "Il progettista può utilizzare dati ufficiali per le proprie verifiche.",
+        "La documentazione è fornita su richiesta o scaricabile dai canali ufficiali.",
+        "È parte integrante del sistema CTL.",
+        "Supporto completo dalla fase di studio al cantiere."
       ],
-      "mode": "dynamic"
+      "tags": ["documentazione", "prove", "certificazioni"]
     },
-
     {
       "id": "CTL-0016",
-      "tags": ["isolamento-termico", "isolamento-acustico"],
-      "questions": [
-        "Il sistema CTL migliora l’isolamento acustico?",
-        "CTL interrompe i ponti termici?",
-        "Come si combina CTL con strati isolanti?"
+      "question": "Potete aiutarmi a progettare un solaio con CTL?",
+      "paraphrases": [
+        "Supporto tecnico CTL",
+        "Aiuto dimensionamento CTL",
+        "Design service CTL"
       ],
-      "canonical": "Il sistema CTL nasce come soluzione strutturale. L’isolamento acustico e termico va progettato con strati dedicati (massetti, isolanti, ecc.) integrati al pacchetto.",
+      "context": "Servizio tecnico.",
       "response_variants": [
-        "Il vantaggio dei CTL è strutturale; per l’acustica e il termico servono materiali specifici nel pacchetto solaio.",
-        "I CTL non sono elementi isolanti: si inseriscono in un sistema che può includere isolanti acustici e termici.",
-        "Si possono abbinare tranquillamente a strati fonoassorbenti e isolanti.",
-        "Ponti termici e acustica si gestiscono con il pacchetto completo, non con il solo connettore.",
-        "Tecnaria può indicare soluzioni compatibili, ma la progettazione termo-acustica resta dedicata."
+        "Sì, l’ufficio tecnico Tecnaria può supportare il progettista nella definizione del sistema con CTL.",
+        "Fornendo i dati del solaio, è possibile ottenere suggerimenti su numero di connettori, spessori e configurazioni.",
+        "Il supporto tecnico aiuta a evitare errori e a scegliere la soluzione più efficiente.",
+        "È un servizio pensato per progettisti e imprese.",
+        "Fa parte del valore aggiunto del sistema Tecnaria."
       ],
-      "mode": "dynamic"
+      "tags": ["supporto tecnico", "servizio", "progetto"]
     },
-
     {
       "id": "CTL-0017",
-      "tags": ["manutenzione", "durabilità"],
-      "questions": [
-        "Serve manutenzione sui CTL?",
-        "I CTL sono protetti nel tempo?",
-        "La durabilità del sistema legno–cls con CTL è buona?"
+      "question": "Come riassumeresti l’uso corretto dei CTL?",
+      "paraphrases": [
+        "Sintesi CTL",
+        "Linee guida CTL",
+        "Quando scelgo CTL?"
       ],
-      "canonical": "Una volta inglobati nella soletta, i CTL lavorano in ambiente protetto. La durabilità dipende dalla corretta esecuzione del pacchetto (protezione del legno, corretta posa, assenza di infiltrazioni).",
+      "context": "Messaggio chiave.",
       "response_variants": [
-        "I CTL, una volta dentro al sistema, non richiedono manutenzione diretta: va protetto l’insieme legno–cls.",
-        "La chiave è evitare infiltrazioni e degrado del legno: il connettore lavora se il sistema resta sano.",
-        "La durabilità è ottima se si rispettano dettagli costruttivi e protezione dagli agenti.",
-        "Non è un elemento “a vista”: il controllo è più sulla struttura nel suo complesso.",
-        "Buona esecuzione oggi = meno problemi domani per il solaio misto."
+        "Usa i CTL quando hai travi in legno e vuoi realizzare una soletta collaborante in calcestruzzo che aumenti prestazioni e sicurezza, rispettando progetto e istruzioni Tecnaria.",
+        "Non usarli su acciaio o laterocemento: lì entrano in gioco CTF e VCEM.",
+        "Pretendi legno sano, posa corretta, rete e calcestruzzo adeguati.",
+        "In dubbio, chiedi supporto: è parte del sistema.",
+        "CTL è un sistema strutturale serio, non un semplice accessorio."
       ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "CTL-0018",
-      "tags": ["passo", "numero-connettori"],
-      "questions": [
-        "Quanti CTL devo usare?",
-        "Qual è il passo tra i CTL?",
-        "Posso ridurre il numero di CTL previsti?"
-      ],
-      "canonical": "Il numero e il passo dei CTL sono definiti dal calcolo strutturale e dagli schemi Tecnaria. Non vanno ridotti arbitrariamente.",
-      "response_variants": [
-        "Il passo dei CTL lo definisce il progetto: segue carichi, luci e tipo di solaio.",
-        "Ridurre i CTL rispetto a quanto previsto significa abbassare il livello di collaborazione.",
-        "Ogni connettore partecipa al trasferimento: toglierli senza verifica non è ammesso.",
-        "Se vuoi ottimizzare, fallo con il progettista, non in cantiere a sensazione.",
-        "Lo schema di passo è parte integrante del sistema CTL, non un optional."
-      ],
-      "mode": "dynamic"
+      "tags": ["riassunto", "linee guida", "messaggio chiave"]
     }
-
   ]
 }
-
