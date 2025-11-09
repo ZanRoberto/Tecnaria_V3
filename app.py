@@ -92,7 +92,6 @@ def load_family(family: str) -> List[Dict[str, Any]]:
     if fam in _family_cache:
         return _family_cache[fam]
 
-    # file standard
     candidates = [
         DATA_DIR / f"{fam}.json",
         DATA_DIR / f"{fam}.gold.json",
@@ -100,7 +99,6 @@ def load_family(family: str) -> List[Dict[str, Any]]:
     ]
     path: Optional[Path] = next((p for p in candidates if p.exists()), None)
 
-    # fallback: qualsiasi FAM*.json
     if path is None and DATA_DIR.exists():
         for f in DATA_DIR.glob(f"{fam}*.json"):
             name_up = f.name.upper()
@@ -145,7 +143,6 @@ def extract_queries(block: Dict[str, Any]) -> List[str]:
     """
     out: List[str] = []
 
-    # Campi singoli
     for key in ("q", "question", "domanda", "title", "label"):
         v = block.get(key)
         if isinstance(v, str):
@@ -153,7 +150,6 @@ def extract_queries(block: Dict[str, Any]) -> List[str]:
             if v:
                 out.append(v)
 
-    # Liste
     for key in ("questions", "paraphrases", "variants", "triggers"):
         v = block.get(key)
         if isinstance(v, list):
@@ -163,7 +159,6 @@ def extract_queries(block: Dict[str, Any]) -> List[str]:
                     if e:
                         out.append(e)
 
-    # Tag
     tags = block.get("tags")
     if isinstance(tags, list):
         for t in tags:
@@ -172,7 +167,6 @@ def extract_queries(block: Dict[str, Any]) -> List[str]:
                 if t:
                     out.append(t)
 
-    # Canonical (accorciato)
     canon = block.get("canonical")
     if isinstance(canon, str):
         c = canon.strip()
@@ -295,7 +289,6 @@ def score_block_routed(query: str,
     fam_u = fam.upper()
     q_low = query.lower()
 
-    # Lock esplicito
     if explicit_fams:
         if fam_u in explicit_fams:
             base *= 8.0
@@ -303,28 +296,24 @@ def score_block_routed(query: str,
             base *= 0.05
         return base
 
-    # Heuristica P560
     if any(k in q_low for k in ["p560", "pistola", "chiodatrice", "sparo", "cartuccia", "cartucce", "nail gun"]):
         if fam_u == "P560":
             base *= 5.0
         else:
             base *= 0.4
 
-    # Heuristica CTL/CTL_MAXI → legno
     if any(k in q_low for k in ["legno", "trave in legno", "travi in legno", "timber", "wood beam"]):
         if fam_u in ["CTL", "CTL_MAXI"]:
             base *= 3.0
         elif fam_u in ["CTF", "VCEM", "CTCEM", "P560", "DIAPASON"]:
             base *= 0.4
 
-    # Heuristica VCEM/CTCEM/DIAPASON → laterocemento
     if any(k in q_low for k in ["laterocemento", "travetto", "travetti", "hollow block slab"]):
         if fam_u in ["VCEM", "CTCEM", "DIAPASON"]:
             base *= 3.0
         elif fam_u in ["CTF", "CTL", "CTL_MAXI", "P560"]:
             base *= 0.4
 
-    # Domanda molto generica "tutte le notizie sulla P560" → preferisci definizione
     if "p560" in q_low and "tutte" in q_low:
         tags = block.get("tags") or []
         if any(isinstance(t, str) and "definizione" in t for t in tags):
@@ -347,7 +336,6 @@ def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
     """
     pieces: List[str] = []
 
-    # answers multilingua
     answers = block.get("answers")
     if isinstance(answers, dict):
         for key in (lang, lang.lower(), lang.upper()):
@@ -361,19 +349,16 @@ def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
                     pieces.append(v.strip())
                     break
 
-    # answer_it
     answer_it = block.get("answer_it")
     if isinstance(answer_it, str) and answer_it.strip():
         if all(answer_it.strip() not in p for p in pieces):
             pieces.append(answer_it.strip())
 
-    # canonical
     canonical = block.get("canonical")
     if isinstance(canonical, str) and canonical.strip():
         if all(canonical.strip() not in p for p in pieces):
             pieces.append(canonical.strip())
 
-    # response_variants
     variants_raw = block.get("response_variants")
     variants: List[str] = []
 
@@ -396,7 +381,6 @@ def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
                 if len(" ".join(pieces)) > 400:
                     break
 
-    # fallback legacy
     if not pieces:
         for key in ("answer", "risposta", "text", "content"):
             v = block.get(key)
@@ -419,7 +403,6 @@ def generate_gold_answer(question: str,
                          family: str,
                          lang: str) -> str:
     """
-    BLINDATA:
     - Se OpenAI disponibile → GOLD dinamica vera (lingua = lang).
     - Se OpenAI non disponibile / errore → fallback interno ricco,
       mai una riga secca.
@@ -429,9 +412,7 @@ def generate_gold_answer(question: str,
         parts: List[str] = []
 
         fam = (family or block.get("_family") or "").upper()
-        q_low = question.lower()
 
-        # Apertura mirata per alcune famiglie chiave
         if fam == "P560":
             parts.append(
                 "La P560 è la chiodatrice Tecnaria a sparo controllato dedicata "
@@ -452,7 +433,6 @@ def generate_gold_answer(question: str,
             if base:
                 parts.append(base.strip())
 
-        # Varianti extra dal blocco
         variants = []
         rv = block.get("response_variants")
         if isinstance(rv, list):
@@ -476,7 +456,6 @@ def generate_gold_answer(question: str,
         if extra:
             parts.append(" ".join(extra))
 
-        # Wrap-up finale tecnico
         if len(" ".join(parts)) < 400:
             parts.append(
                 "In pratica, fai sempre riferimento alla documentazione Tecnaria, usa solo connettori e accessori "
@@ -485,10 +464,8 @@ def generate_gold_answer(question: str,
             )
 
         text = " ".join(parts).strip()
-        # Ultima difesa: se proprio non è riuscito a costruire nulla, torna base (ma qui è già ricco)
         return text or (base or "").strip()
 
-    # Se OpenAI disponibile → GOLD dinamica
     if USE_OPENAI and openai_client is not None:
         try:
             resp = openai_client.chat.completions.create(
@@ -524,11 +501,55 @@ def generate_gold_answer(question: str,
             if text:
                 return text
         except Exception:
-            # Se qualcosa va storto con OpenAI, usiamo il fallback interno
             pass
 
-    # Fallback GOLD interno: mai canonical secca
     return build_fallback_gold()
+
+# =======================================
+# TRADUZIONE FINALE (STESSA LINGUA DELL’UTENTE)
+# =======================================
+
+def translate_text(text: str, target_lang: str) -> str:
+    """
+    Traduce il testo GOLD nella lingua richiesta (EN/FR/DE/ES),
+    senza toccare la logica GOLD.
+    Se OpenAI non è disponibile, restituisce il testo originale.
+    """
+    if not text:
+        return text
+
+    tl = (target_lang or "it").lower()
+    if tl == "it":
+        return text
+
+    if not (USE_OPENAI and openai_client is not None):
+        # Nessun motore disponibile: meglio risposta corretta in IT
+        return text
+
+    try:
+        resp = openai_client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            temperature=0.2,
+            max_tokens=1500,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a precise technical translator for structural engineering content. "
+                        "Translate the following answer into the target language, preserving all "
+                        "technical terms, brand names, and safety nuances. Do NOT add explanations."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Target language: {tl}\n\nText:\n{text}",
+                },
+            ],
+        )
+        out = (resp.choices[0].message.content or "").strip()
+        return out or text
+    except Exception:
+        return text
 
 # =======================================
 # SELEZIONE MIGLIOR BLOCCO
@@ -541,7 +562,6 @@ def find_best_block(query: str,
     forced_fams = [f.upper() for f in families] if families else None
     target_lang = (lang or "it").lower()
 
-    # famiglie candidate
     if explicit_fams:
         if forced_fams:
             fams = [f for f in forced_fams if f in explicit_fams] or explicit_fams
@@ -561,7 +581,6 @@ def find_best_block(query: str,
             continue
 
         for b in blocks:
-            # fattore lingua: se il blocco dichiara lang, preferisci target
             block_lang = str(b.get("lang", "")).lower().strip()
             lang_factor = 1.0
             if block_lang:
@@ -570,7 +589,6 @@ def find_best_block(query: str,
                 elif block_lang != target_lang:
                     lang_factor = 0.25
 
-            # deve avere contenuto utilizzabile
             ans = extract_answer(b, lang) or extract_answer(b, "it") or extract_answer(b, "en")
             if not ans:
                 continue
@@ -582,14 +600,12 @@ def find_best_block(query: str,
                 best_block = b
                 best_family = fam
 
-    # soglie
     if explicit_fams:
         min_score = 0.05
     else:
         min_score = 0.25
 
     if not best_block or best_score < min_score:
-        # se cercavamo lingua non-IT e non troviamo nulla forte, fallback a IT
         if target_lang != "it":
             return find_best_block(query, families, lang="it")
         return None
@@ -659,6 +675,9 @@ async def api_ask(request: Request):
         lang,
     )
 
+    # Traduzione finale nella lingua della domanda (se diversa da IT)
+    text = translate_text(text, lang)
+
     return {
         "ok": True,
         "q": q,
@@ -674,9 +693,6 @@ def api_ask_get(
     q: str = Query(..., description="Domanda"),
     family: Optional[str] = Query(None)
 ):
-    """
-    GET per test rapido: /api/ask?q=...&family=CTF
-    """
     lang = detect_lang(q)
     fams = [family.upper()] if family else None
 
@@ -705,6 +721,9 @@ def api_ask_get(
         best.get("_family", family) or "",
         lang,
     )
+
+    # Traduzione finale anche per il GET di test
+    text = translate_text(text, lang)
 
     return {
         "ok": True,
