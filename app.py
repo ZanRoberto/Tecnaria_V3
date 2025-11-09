@@ -1,20 +1,21 @@
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.responses import HTMLResponse
-import re
 
 # =======================================
-# CONFIG NLM / OPENAI (GOLD)
+# CONFIG OPENAI (per GOLD dinamico + traduzioni)
 # =======================================
 
 USE_OPENAI = True
 
 try:
     from openai import OpenAI
+
     if USE_OPENAI and os.getenv("OPENAI_API_KEY"):
         openai_client = OpenAI()
     else:
@@ -33,8 +34,10 @@ INDEX_HTML = STATIC_DIR / "index.html"
 
 app = FastAPI(title="Tecnaria Sinapsi — Q/A")
 
+# cache famiglie
 _family_cache: Dict[str, List[Dict[str, Any]]] = {}
 
+# mappa parole chiave -> famiglia
 FAMILY_KEYWORDS = {
     "ctf": "CTF",
     "ctl maxi": "CTL_MAXI",
@@ -48,7 +51,7 @@ FAMILY_KEYWORDS = {
 }
 
 # =======================================
-# UTILS LETTURA / JSON
+# UTILS LETTURA JSON
 # =======================================
 
 def safe_read_json(path: Path) -> Any:
@@ -86,6 +89,7 @@ def load_family(family: str) -> List[Dict[str, Any]]:
     path: Optional[Path] = next((p for p in candidates if p.exists()), None)
 
     if path is None and DATA_DIR.exists():
+        # fallback: primo file che inizia così
         for f in DATA_DIR.glob(f"{fam}*.json"):
             name_up = f.name.upper()
             if "CONFIG.RUNTIME" in name_up:
@@ -117,7 +121,7 @@ def list_all_families() -> List[str]:
     return sorted(set(fams))
 
 # =======================================
-# MATCHING / LINGUA
+# NORMALIZZAZIONE / MATCHING BASE
 # =======================================
 
 def norm(s: str) -> str:
@@ -126,6 +130,7 @@ def norm(s: str) -> str:
 def extract_queries(block: Dict[str, Any]) -> List[str]:
     out: List[str] = []
 
+    # campi singoli
     for key in ("q", "question", "domanda", "title", "label"):
         v = block.get(key)
         if isinstance(v, str):
@@ -133,6 +138,7 @@ def extract_queries(block: Dict[str, Any]) -> List[str]:
             if v:
                 out.append(v)
 
+    # liste di varianti
     for key in ("questions", "paraphrases", "variants", "triggers"):
         v = block.get(key)
         if isinstance(v, list):
@@ -142,6 +148,7 @@ def extract_queries(block: Dict[str, Any]) -> List[str]:
                     if e:
                         out.append(e)
 
+    # tags
     tags = block.get("tags")
     if isinstance(tags, list):
         for t in tags:
@@ -150,6 +157,7 @@ def extract_queries(block: Dict[str, Any]) -> List[str]:
                 if t:
                     out.append(t)
 
+    # canonical
     canon = block.get("canonical")
     if isinstance(canon, str):
         c = canon.strip()
@@ -199,32 +207,36 @@ def base_similarity(query: str, block: Dict[str, Any]) -> float:
 
     return float(best)
 
+# =======================================
+# LINGUA + FAMIGLIE
+# =======================================
+
 def detect_lang(query: str) -> str:
     q = query.lower()
 
-    # English
+    # english
     if "nail gun" in q or "shear connector" in q or "composite beam" in q:
         return "en"
-    if re.search(r"\b(what|which|where|when|why|how|can|could|should|would|maintenance|safety)\b", q):
-        if not any(t in q for t in [" calcestruzzo", " soletta", " lamiera", " trav", " laterocemento"]):
+    if re.search(r"\b(what|which|where|when|why|how|can|could|should|would|safety|maintenance)\b", q):
+        if not any(t in q for t in [" soletta", " calcestruzzo", " laterocemento", " travi "]):
             return "en"
 
-    # French
-    if any(x in q for x in ["plancher", "béton", "connecteur", "acier", "chantier"]):
+    # french
+    if any(x in q for x in ["plancher", "béton", "connecteur", "chantier"]):
         return "fr"
 
-    # Spanish
-    if any(x in q for x in ["forjado", "hormigón", "conector", "viga de madera", "obra"]):
+    # spanish
+    if any(x in q for x in ["forjado", "hormigón", "conector", "obra"]):
         return "es"
 
-    # German
-    if any(x in q for x in ["verbinder", "beton", "stahlträger", "holzdecken", "baustelle"]):
+    # german
+    if any(x in q for x in ["verbunddecke", "holz-beton", "baustelle", "verbinder"]):
         return "de"
 
-    # Italian
+    # italian (default tecnico)
     if any(x in q for x in [
-        "soletta", "calcestruzzo", "trave", "travetto", "lamiera",
-        "pistola", "cartucce", "connettore", "cantiere", "laterocemento"
+        "soletta", "calcestruzzo", "trave", "travetto",
+        "lamiera", "laterocemento", "chiodatrice", "connettore"
     ]):
         return "it"
 
@@ -234,6 +246,7 @@ def detect_explicit_families(query: str) -> List[str]:
     q = query.lower()
     hits: List[str] = []
 
+    # ctl maxi esplicito
     if "ctl maxi" in q or "ctl_maxi" in q:
         hits.append("CTL_MAXI")
 
@@ -257,6 +270,7 @@ def score_block_routed(query: str,
     fam_u = fam.upper()
     q_low = query.lower()
 
+    # se famiglia esplicita: fortissima priorità
     if explicit_fams:
         if fam_u in explicit_fams:
             base *= 8.0
@@ -264,38 +278,38 @@ def score_block_routed(query: str,
             base *= 0.05
         return base
 
-    if any(k in q_low for k in ["p560", "pistola", "chiodatrice", "sparo", "cartuccia", "cartucce", "nail gun"]):
-        if fam_u == "P560":
-            base *= 5.0
-        else:
-            base *= 0.4
+    # regole soft per parole chiave
+    if any(k in q_low for k in ["p560", "chiodatrice", "nail gun", "cartuccia", "cartucce"]):
+        base *= 5.0 if fam_u == "P560" else 0.3
 
-    if any(k in q_low for k in ["legno", "trave in legno", "travi in legno", "timber", "wood beam"]):
-        if fam_u in ["CTL", "CTL_MAXI"]:
+    if any(k in q_low for k in ["legno", "trav", "holz", "timber", "wood"]):
+        if fam_u in ["CTL", "CTL_MAXI", "CTCEM"]:
             base *= 3.0
-        elif fam_u in ["CTF", "VCEM", "CTCEM", "P560", "DIAPASON"]:
+        elif fam_u in ["CTF", "VCEM", "P560"]:
             base *= 0.4
 
-    if any(k in q_low for k in ["laterocemento", "travetto", "travetti", "hollow block slab"]):
+    if any(k in q_low for k in ["laterocemento", "travetto", "latero", "hollow block"]):
         if fam_u in ["VCEM", "CTCEM", "DIAPASON"]:
             base *= 3.0
         elif fam_u in ["CTF", "CTL", "CTL_MAXI", "P560"]:
             base *= 0.4
 
-    if "p560" in q_low and "tutte" in q_low:
-        tags = block.get("tags") or []
-        if any(isinstance(t, str) and "definizione" in t for t in tags):
-            base *= 2.5
+    if any(k in q_low for k in ["acciaio", "steel", "lamiera"]):
+        if fam_u in ["CTF", "P560"]:
+            base *= 3.0
+        elif fam_u in ["VCEM", "CTL", "CTL_MAXI"]:
+            base *= 0.5
 
     return base
 
 # =======================================
-# COSTRUZIONE BASE GOLD
+# ESTRAZIONE RISPOSTA BASE (GOLD SOURCE)
 # =======================================
 
 def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
     pieces: List[str] = []
 
+    # answers multilingua
     answers = block.get("answers")
     if isinstance(answers, dict):
         for key in (lang, lang.lower(), lang.upper()):
@@ -309,38 +323,40 @@ def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
                     pieces.append(v.strip())
                     break
 
+    # risposta italiana specifica
     answer_it = block.get("answer_it")
     if isinstance(answer_it, str) and answer_it.strip():
         if all(answer_it.strip() not in p for p in pieces):
             pieces.append(answer_it.strip())
 
+    # canonical come materiale base GOLD, non secca
     canonical = block.get("canonical")
     if isinstance(canonical, str) and canonical.strip():
         if all(canonical.strip() not in p for p in pieces):
             pieces.append(canonical.strip())
 
-    variants_raw = block.get("response_variants")
+    # varianti GOLD
+    rv = block.get("response_variants")
     variants: List[str] = []
-
-    if isinstance(variants_raw, list):
-        variants = [v.strip() for v in variants_raw if isinstance(v, str) and v.strip()]
-    elif isinstance(variants_raw, dict):
-        for v in variants_raw.values():
-            if isinstance(v, list):
-                for e in v:
+    if isinstance(rv, list):
+        variants = [v.strip() for v in rv if isinstance(v, str) and v.strip()]
+    elif isinstance(rv, dict):
+        for vv in rv.values():
+            if isinstance(vv, list):
+                for e in vv:
                     if isinstance(e, str) and e.strip():
                         variants.append(e.strip())
-            elif isinstance(v, str) and v.strip():
-                variants.append(v.strip())
+            elif isinstance(vv, str) and vv.strip():
+                variants.append(vv.strip())
 
     if variants:
-        variants_sorted = sorted(variants, key=len, reverse=True)
-        for v in variants_sorted:
+        for v in sorted(variants, key=len, reverse=True):
+            if len(" ".join(pieces)) > 400:
+                break
             if not any(v in p or p in v for p in pieces):
                 pieces.append(v)
-                if len(" ".join(pieces)) > 400:
-                    break
 
+    # fallback altri campi
     if not pieces:
         for key in ("answer", "risposta", "text", "content"):
             v = block.get(key)
@@ -354,7 +370,7 @@ def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
     return " ".join(pieces).strip()
 
 # =======================================
-# TRADUZIONE TECNICA (solo se OpenAI disponibile)
+# TRADUZIONE (solo se modello disponibile)
 # =======================================
 
 def translate_text(text: str, target_lang: str) -> str:
@@ -377,9 +393,9 @@ def translate_text(text: str, target_lang: str) -> str:
                 {
                     "role": "system",
                     "content": (
-                        "You are a precise technical translator for structural engineering content. "
-                        "Translate into the target language, preserving technical meaning, "
-                        "brand names and safety constraints. Do NOT add explanations."
+                        "You are a precise technical translator for structural engineering Q&A. "
+                        "Translate into the target language, keep Tecnaria terminology and safety constraints. "
+                        "Do NOT add comments."
                     ),
                 },
                 {
@@ -394,7 +410,7 @@ def translate_text(text: str, target_lang: str) -> str:
         return text
 
 # =======================================
-# GOLD GENERATION (sempre GOLD, monolingua corretta)
+# GOLD GENERATION (sempre GOLD, monolingua)
 # =======================================
 
 def generate_gold_answer(question: str,
@@ -402,15 +418,10 @@ def generate_gold_answer(question: str,
                          block: Dict[str, Any],
                          family: str,
                          lang: str) -> str:
-    """
-    1. Se OpenAI disponibile: GOLD dinamica direttamente nella lingua richiesta.
-    2. Se non disponibile: GOLD interna, MA nella lingua della domanda.
-       Nessun mix IT + altra lingua.
-    """
     target_lang = (lang or "it").lower()
     fam = (family or block.get("_family") or "").upper()
 
-    # ---------- 1) GOLD dinamica con modello ----------
+    # -------- 1) GOLD dinamico con modello, direttamente nella lingua giusta --------
     if USE_OPENAI and openai_client is not None:
         try:
             resp = openai_client.chat.completions.create(
@@ -426,7 +437,7 @@ def generate_gold_answer(question: str,
                             "Stile GOLD dinamico: completo, tecnico, chiaro, con esempi di cantiere. "
                             "Rispetta rigorosamente il campo di impiego della famiglia indicata "
                             "e i contenuti del blocco dati fornito. "
-                            "Non inventare prodotti o usi non previsti."
+                            "Non inventare usi o prodotti non previsti."
                         ),
                     },
                     {
@@ -435,8 +446,8 @@ def generate_gold_answer(question: str,
                             f"LINGUA: {target_lang}\n"
                             f"FAMIGLIA: {fam}\n"
                             f"DOMANDA: {question}\n\n"
-                            f"BLOCCO DATI (JSON): {json.dumps(block, ensure_ascii=False)}\n\n"
-                            f"TESTO DI BASE (da rifinire in stile GOLD): {base}"
+                            f"DATI BLOCCO (JSON): {json.dumps(block, ensure_ascii=False)}\n\n"
+                            f"TESTO BASE GOLD DA RIFINIRE: {base}"
                         ),
                     },
                 ],
@@ -447,8 +458,8 @@ def generate_gold_answer(question: str,
         except Exception:
             pass
 
-    # ---------- 2) Fallback interno senza modello ----------
-    # Prima costruiamo la miglior versione italiana possibile
+    # -------- 2) Fallback interno: costruiamo prima in IT, poi adattiamo per lingua --------
+
     def build_it_gold() -> str:
         parts: List[str] = []
         if base:
@@ -474,138 +485,115 @@ def generate_gold_answer(question: str,
                 if not any(v in p or p in v for p in parts):
                     parts.append(v)
 
-        if len(" ".join(parts)) < 300:
+        if len(" ".join(parts)) < 260:
             parts.append(
-                "In pratica, utilizza sempre il connettore della famiglia corretta per il tipo di solaio, "
-                "rispetta le istruzioni Tecnaria su fori, passi, spessori e campi di impiego, "
-                "e in caso di dubbio confrontati con il progettista strutturale o con il servizio tecnico Tecnaria."
+                "Usa sempre il connettore della famiglia corretta per il tipo di solaio, "
+                "rispetta schemi di posa, diametri, passi e limiti indicati da Tecnaria "
+                "e confrontati con il progettista o con il servizio tecnico Tecnaria per i dettagli di calcolo."
             )
 
         return " ".join(parts).strip()
 
     it_gold = build_it_gold()
 
-    # Ora adattiamo in base alla lingua richiesta SENZA mischiare.
-
-    # --- Italiano: usiamo direttamente il GOLD IT ---
+    # --- IT: usiamo direttamente la versione GOLD italiana ---
     if target_lang == "it":
         return it_gold
 
-    # --- Inglese: risposte focalizzate per le famiglie principali ---
+    # --- EN/FR/ES/DE: testi compatti per famiglie, senza mischiare lingue ---
+
     if target_lang == "en":
         if fam == "P560":
             return (
                 "When using the P560 on site, you must always wear safety glasses, hearing protection, "
                 "protective gloves and safety footwear. Treat the P560 as a controlled-shot professional tool: "
-                "never aim it at people or non-working surfaces, check that the tool is clean and maintained, "
-                "use only the correct Tecnaria cartridges and CTF connectors, and follow the official operating "
-                "and training instructions to ensure consistent and safe fastening."
+                "never aim it at people or non-working surfaces, keep it clean and maintained, use only "
+                "Tecnaria-approved cartridges and CTF connectors, and follow Tecnaria's official safety instructions."
+            )
+        if fam == "CTL" or fam == "CTL_MAXI":
+            return (
+                "For timber–concrete composite slabs with timber beams you must use CTL or CTL MAXI connectors. "
+                "They are screwed at the specified inclination into sound timber and embedded in the concrete topping "
+                "to create full composite action. Do not use VCEM or CTF on timber; each family has its own certified field."
             )
         if fam == "CTF":
             return (
-                "CTF connectors are Tecnaria shear studs for steel–concrete composite beams and slabs. "
-                "They are welded or shot-fixed onto steel beams (often through profiled sheeting) and then "
-                "embedded in the concrete slab to prevent slip and provide full composite action. "
-                "Use CTF only on steel structures, follow the specified spacing, edge distances and slab thickness, "
-                "and always comply with the design and ETA documentation."
+                "CTF connectors are Tecnaria shear studs for steel–concrete composite beams or slabs. "
+                "They are fixed on steel beams (often through decking) and embedded in the slab to prevent slip "
+                "and ensure composite behaviour according to design and ETA documentation."
             )
         if fam == "VCEM":
             return (
-                "VCEM connectors are designed for strengthening existing hollow-block or concrete slabs. "
-                "They mechanically connect the new concrete topping to the existing slab, improving stiffness, "
-                "load-bearing capacity and seismic behaviour without demolition. They must be installed following "
-                "Tecnaria’s drilling, spacing and tightening instructions."
-            )
-        if fam in ("CTL", "CTL_MAXI"):
-            return (
-                "CTL and CTL MAXI connectors are dedicated to timber–concrete composite slabs. "
-                "They are screwed into sound timber beams at the specified inclination and spacing, "
-                "then embedded in the concrete topping to create a composite section. CTL MAXI is used "
-                "for higher loads or larger sections. Do not use VCEM or CTF on timber: each family has its own field of use."
+                "VCEM connectors are used to strengthen existing hollow-block or concrete slabs by connecting "
+                "the new concrete topping to the existing slab. They are mechanically installed following Tecnaria "
+                "specifications to improve stiffness, load capacity and seismic behaviour."
             )
         if fam == "CTCEM":
             return (
-                "CTCEM connectors are designed for hollow-block slabs with reinforced concrete joists. "
-                "They are mechanically fixed into the joist to connect the new concrete topping and create a composite action. "
-                "They are not bonded with random resins but installed according to Tecnaria’s specifications "
-                "for drilling, cleaning and tightening."
+                "CTCEM connectors are designed for hollow-block slabs with reinforced concrete ribs. "
+                "They are mechanically screwed into the rib after proper drilling and cleaning; generic resins "
+                "or improvised anchors are not allowed."
             )
         if fam == "DIAPASON":
             return (
-                "The DIAPASON system is used for advanced strengthening of existing slabs where higher performance, "
-                "seismic upgrade or severe degradation issues require a more integrated solution than simple connectors. "
-                "Use it according to the dedicated design guidelines and technical documentation."
+                "The DIAPASON system is adopted when a higher structural and seismic upgrade is required for existing slabs, "
+                "offering an engineered, certified solution beyond simple connectors."
             )
-        # fallback generico in EN
         return (
-            "This answer refers to a specific Tecnaria connector family. "
-            "Use each connector only in its certified field of application and follow Tecnaria’s official "
-            "design and installation instructions for a safe composite action."
+            "Use each Tecnaria connector only in its certified field of application and follow Tecnaria's "
+            "official technical documentation and installation guidelines."
         )
 
-    # --- Francese (versioni sintetiche, niente italiano) ---
     if target_lang == "fr":
         if fam == "P560":
             return (
-                "Avec la P560, le port de lunettes de protection, protection auditive, gants et chaussures de sécurité "
-                "est obligatoire. C’est un outil à tir contrôlé pour les connecteurs CTF : ne jamais le diriger vers "
-                "des personnes ou des surfaces non prévues et respecter les instructions Tecnaria."
+                "Avec la P560, le port de lunettes, protection auditive, gants et chaussures de sécurité est obligatoire. "
+                "C'est un outil à tir contrôlé pour les connecteurs CTF, à utiliser uniquement selon les instructions Tecnaria."
             )
         return (
-            "Utilisez chaque connecteur Tecnaria uniquement dans son domaine d’emploi certifié et suivez "
-            "les instructions techniques officielles pour garantir un comportement collaborant sûr."
+            "Chaque connecteur Tecnaria doit être utilisé uniquement dans son domaine d'emploi certifié, "
+            "en respectant la documentation technique officielle."
         )
 
-    # --- Spagnolo ---
     if target_lang == "es":
         if fam == "P560":
             return (
-                "Al utilizar la P560 en obra, es obligatorio llevar gafas de seguridad, protección auditiva, "
-                "guantes y calzado de seguridad. Trátala como una herramienta de disparo controlado profesional "
-                "y sigue siempre las instrucciones de Tecnaria."
+                "Al utilizar la P560 en obra es obligatorio llevar gafas de seguridad, protección auditiva, guantes "
+                "y calzado de seguridad. Trátala como una herramienta de disparo controlado profesional y sigue "
+                "las instrucciones de Tecnaria."
             )
         return (
-            "Cada conector Tecnaria debe utilizarse sólo en su campo de aplicación certificado, siguiendo las "
-            "instrucciones de montaje y diseño para garantizar la seguridad estructural."
+            "Utiliza cada conector Tecnaria solo en su campo de aplicación certificado y siguiendo las "
+            "instrucciones técnicas oficiales."
         )
 
-    # --- Tedesco ---
     if target_lang == "de":
         if fam == "P560":
             return (
                 "Bei der Verwendung der P560 auf der Baustelle sind Schutzbrille, Gehörschutz, Schutzhandschuhe "
-                "und Sicherheitsschuhe zwingend erforderlich. Behandle das Gerät als kontrolliertes Bolzenschusswerkzeug "
-                "und beachte strikt die Anweisungen von Tecnaria."
+                "und Sicherheitsschuhe zwingend erforderlich. Behandeln Sie das Gerät als professionelles "
+                "Bolzenschusswerkzeug und beachten Sie strikt die Tecnaria-Anweisungen."
             )
         return (
             "Verwenden Sie jeden Tecnaria-Verbinder nur in seinem zertifizierten Anwendungsbereich und beachten Sie "
             "die technischen Unterlagen und Einbauhinweise."
         )
 
-    # Se lingua non mappata: restituiamo inglese tecnico generico
+    # fallback generico se lingua non prevista
     return (
         "Use each Tecnaria connector only in its certified field of application and follow the official "
         "Tecnaria technical documentation and installation instructions."
     )
 
 # =======================================
-# SELEZIONE MIGLIOR BLOCCO
+# CORE: TROVA MIGLIOR BLOCCO (con fallback lingue + semantico)
 # =======================================
 
-def find_best_block(query: str,
-                    families: Optional[List[str]] = None,
-                    lang: str = "it") -> Optional[Dict[str, Any]]:
+def _find_best_block_core(query: str,
+                          fams: List[str],
+                          lang: str) -> (Optional[Dict[str, Any]], Optional[str], float):
     explicit_fams = detect_explicit_families(query)
-    forced_fams = [f.upper() for f in families] if families else None
     target_lang = (lang or "it").lower()
-
-    if explicit_fams:
-        if forced_fams:
-            fams = [f for f in forced_fams if f in explicit_fams] or explicit_fams
-        else:
-            fams = explicit_fams
-    else:
-        fams = forced_fams or list_all_families()
 
     best_block: Optional[Dict[str, Any]] = None
     best_family: Optional[str] = None
@@ -623,8 +611,9 @@ def find_best_block(query: str,
             if block_lang:
                 if block_lang == target_lang:
                     lang_factor = 2.0
-                elif block_lang != target_lang:
-                    lang_factor = 0.25
+                elif block_lang != target_lang and target_lang != "it":
+                    # penalizza se lingue diverse (ma non azzera: abbiamo fallback dopo)
+                    lang_factor = 0.4
 
             ans = extract_answer(b, lang) or extract_answer(b, "it") or extract_answer(b, "en")
             if not ans:
@@ -637,17 +626,67 @@ def find_best_block(query: str,
                 best_block = b
                 best_family = fam
 
-    min_score = 0.05 if explicit_fams else 0.25
+    return best_block, best_family, best_score
 
-    if not best_block or best_score < min_score:
-        if target_lang != "it":
-            return find_best_block(query, families, lang="it")
-        return None
+def find_best_block(query: str,
+                    families: Optional[List[str]] = None,
+                    lang: str = "it") -> Optional[Dict[str, Any]]:
+    target_lang = (lang or "it").lower()
+    explicit_fams = detect_explicit_families(query)
 
-    bb = dict(best_block)
-    bb["_family"] = best_family
-    bb["_score"] = best_score
-    return bb
+    if families:
+        fams = [f.upper() for f in families]
+    else:
+        fams = list_all_families()
+
+    # 1) primo tentativo nella lingua target
+    best_block, best_family, best_score = _find_best_block_core(query, fams, target_lang)
+
+    min_score = 0.25 if not explicit_fams else 0.05
+
+    # se buono, restituisci
+    if best_block and best_score >= min_score:
+        bb = dict(best_block)
+        bb["_family"] = best_family
+        bb["_score"] = best_score
+        return bb
+
+    # 2) fallback cross-lingua: se non ha trovato in EN/FR/ES/DE, prova sui dati IT
+    if target_lang in ("en", "fr", "es", "de"):
+        best_block_it, best_family_it, best_score_it = _find_best_block_core(query, fams, "it")
+        if best_block_it and best_score_it >= min_score:
+            bb = dict(best_block_it)
+            bb["_family"] = best_family_it
+            bb["_score"] = best_score_it
+            return bb
+
+    # 3) fallback semantico: deduci famiglia da parole chiave e riprova
+    q = query.lower()
+    sem_family: Optional[str] = None
+
+    if any(w in q for w in ["p560", "nail gun", "chiodatrice"]):
+        sem_family = "P560"
+    elif any(w in q for w in ["legno", "holz", "timber", "wood"]):
+        # solai misti legno-calcestruzzo: CTL/CTL MAXI
+        if "maxi" in q:
+            sem_family = "CTL_MAXI"
+        else:
+            sem_family = "CTL"
+    elif any(w in q for w in ["laterocemento", "latero", "hollow block"]):
+        sem_family = "VCEM"
+    elif any(w in q for w in ["acciaio", "steel", "lamiera"]):
+        sem_family = "CTF"
+
+    if sem_family:
+        best_block2, best_family2, best_score2 = _find_best_block_core(query, [sem_family], "it")
+        if best_block2:
+            bb = dict(best_block2)
+            bb["_family"] = best_family2
+            bb["_score"] = best_score2
+            return bb
+
+    # 4) nessun match davvero: NO GOLD
+    return None
 
 # =======================================
 # ENDPOINTS
@@ -706,8 +745,6 @@ async def api_ask(request: Request):
         lang,
     )
 
-    # Se il modello c'è, questo eventualmente rifinisce la traduzione;
-    # se non c'è, generate_gold_answer ha già garantito monolingua.
     if lang != "it":
         text = translate_text(text, lang)
 
@@ -724,7 +761,7 @@ async def api_ask(request: Request):
 @app.get("/api/ask")
 def api_ask_get(
     q: str = Query(..., description="Domanda"),
-    family: Optional[str] = Query(None)
+    family: Optional[str] = Query(None),
 ):
     lang = detect_lang(q)
     fams = [family.upper()] if family else None
