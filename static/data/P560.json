@@ -3,10 +3,13 @@
   "lock_to_core": true,
   "variants_strategy": "dynamic",
   "items": [
-
     {
       "id": "P560-0001",
-      "tags": ["definizione", "uso", "strumento"],
+      "tags": [
+        "definizione",
+        "uso",
+        "strumento"
+      ],
       "questions": [
         "Cos'è la P560?",
         "A cosa serve la P560 Tecnaria?",
@@ -23,10 +26,13 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0002",
-      "tags": ["compatibilità", "famiglie", "errore-famiglia"],
+      "tags": [
+        "compatibilità",
+        "famiglie",
+        "errore-famiglia"
+      ],
       "questions": [
         "Posso sparare i VCEM con la P560?",
         "Posso usare la P560 per fissare i CTCEM?",
@@ -43,10 +49,13 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0003",
-      "tags": ["cartucce", "potenza", "colore"],
+      "tags": [
+        "cartucce",
+        "potenza",
+        "colore"
+      ],
       "questions": [
         "Che cartucce usa la P560?",
         "Ci sono diversi tipi di cartucce?",
@@ -63,10 +72,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0004",
-      "tags": ["manutenzione", "pulizia"],
+      "tags": [
+        "manutenzione",
+        "pulizia"
+      ],
       "questions": [
         "Come si pulisce la P560?",
         "Serve manutenzione giornaliera?",
@@ -83,10 +94,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0005",
-      "tags": ["sicurezza", "dpi"],
+      "tags": [
+        "sicurezza",
+        "dpi"
+      ],
       "questions": [
         "Quali protezioni servono con la P560?",
         "Serve il casco acustico?",
@@ -103,10 +116,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0006",
-      "tags": ["revisione", "frequenza"],
+      "tags": [
+        "revisione",
+        "frequenza"
+      ],
       "questions": [
         "Ogni quanto va revisionata la P560?",
         "Serve manutenzione periodica?",
@@ -122,10 +137,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0007",
-      "tags": ["uso-improprio", "errori"],
+      "tags": [
+        "uso-improprio",
+        "errori"
+      ],
       "questions": [
         "Posso sparare in calcestruzzo con la P560?",
         "Posso usare chiodi generici?",
@@ -141,10 +158,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0008",
-      "tags": ["modelli", "differenze"],
+      "tags": [
+        "modelli",
+        "differenze"
+      ],
       "questions": [
         "Che differenza c’è tra P560 e P370?",
         "Qual è la versione più recente?",
@@ -160,10 +179,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0009",
-      "tags": ["blocco", "inceppamento"],
+      "tags": [
+        "blocco",
+        "inceppamento"
+      ],
       "questions": [
         "La P560 si è bloccata, cosa faccio?",
         "Non spara più, che succede?",
@@ -179,10 +200,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0010",
-      "tags": ["temperature", "clima"],
+      "tags": [
+        "temperature",
+        "clima"
+      ],
       "questions": [
         "Posso usare la P560 al freddo?",
         "Funziona anche in inverno?",
@@ -198,10 +221,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0011",
-      "tags": ["cartucce-bagnate", "umidità"],
+      "tags": [
+        "cartucce-bagnate",
+        "umidità"
+      ],
       "questions": [
         "Posso usare cartucce umide?",
         "Cosa succede se le cartucce si bagnano?",
@@ -217,10 +242,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0012",
-      "tags": ["potenza", "regolazione"],
+      "tags": [
+        "potenza",
+        "regolazione"
+      ],
       "questions": [
         "Come regolo la potenza della P560?",
         "Si può variare la forza del colpo?",
@@ -236,10 +263,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0013",
-      "tags": ["pulizia", "lubrificazione"],
+      "tags": [
+        "pulizia",
+        "lubrificazione"
+      ],
       "questions": [
         "Che olio uso per la P560?",
         "Va lubrificata spesso?",
@@ -255,10 +284,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0014",
-      "tags": ["trasporto", "custodia"],
+      "tags": [
+        "trasporto",
+        "custodia"
+      ],
       "questions": [
         "Come trasporto la P560?",
         "Posso lasciarla carica?",
@@ -274,10 +305,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0015",
-      "tags": ["ricambi", "assistenza"],
+      "tags": [
+        "ricambi",
+        "assistenza"
+      ],
       "questions": [
         "Dove trovo i ricambi per la P560?",
         "Ci sono kit di manutenzione?",
@@ -293,10 +326,12 @@
       ],
       "mode": "dynamic"
     },
-
     {
       "id": "P560-0016",
-      "tags": ["problemi", "non-spara"],
+      "tags": [
+        "problemi",
+        "non-spara"
+      ],
       "questions": [
         "La P560 non spara, perché?",
         "Sento clic ma non parte il colpo",
@@ -309,6 +344,31 @@
         "Non insistere: scarica l’utensile, rimuovi la cartuccia e verifica che il meccanismo sia libero.",
         "Se la P560 fa clic ma non parte, probabilmente serve una pulizia profonda o revisione.",
         "Mai forzare: la sicurezza Tecnaria funziona solo se l’operatore rispetta le procedure."
+      ],
+      "mode": "dynamic"
+    },
+    {
+      "id": "P560-0017",
+      "tags": [
+        "errore posa",
+        "chiodo sporgente",
+        "correzione",
+        "controllo in cantiere",
+        "CTF",
+        "posa"
+      ],
+      "questions": [
+        "Durante la posa dei connettori CTF con la P560 un chiodo non entra completamente, cosa devo fare?",
+        "Se un chiodo rimane parzialmente fuori posso lasciarlo così?",
+        "Come correggere un chiodo CTF sparato male con P560?",
+        "Cosa fare se il chiodo non è completamente inserito nella posa dei CTF?"
+      ],
+      "canonical": "Se durante la posa dei connettori CTF con la P560 un chiodo non risulta completamente inserito, non va ignorato: va rimossa la fissazione errata e ripetuta la posa per garantire sicurezza e conformità del sistema misto acciaio–calcestruzzo.",
+      "response_variants": [
+        "Durante la posa dei connettori CTF con la pistola P560 può capitare che un chiodo non entri completamente o resti parzialmente fuori. In questi casi non bisogna lasciarlo così: il chiodo non assicurerebbe la capacità a taglio necessaria. L’operatore deve effettuare una verifica visiva, rimuovere il chiodo difettoso con strumenti idonei, riposizionare il connettore e sparare un nuovo chiodo con la P560 ben calibrata. Un controllo finale garantisce la perfetta aderenza e la sicurezza dell’intervento.",
+        "Se un chiodo rimane sporgente, va rimosso e sostituito: un fissaggio incompleto riduce la prestazione del connettore. Dopo la rimozione si ripete lo sparo con la P560, controllando la taratura e la scelta della cartuccia. Questo assicura che il connettore CTF sia pienamente efficace e che la struttura mista acciaio–calcestruzzo lavori come previsto.",
+        "Un chiodo CTF non completamente inserito è da considerarsi non conforme. È necessario estrarlo, verificare che la trave o la lamiera non siano danneggiate, riposizionare il connettore e procedere con un nuovo fissaggio. L’attenzione a questi dettagli in cantiere evita problemi di sicurezza e garantisce la prestazione del sistema Tecnaria.",
+        "La corretta gestione dei chiodi non inseriti completamente è parte della posa professionale: non bisogna mai tollerare un fissaggio dubbio. Solo un nuovo sparo ben eseguito con la P560 certificata assicura il comportamento previsto e la validità tecnica dell’intervento."
       ],
       "mode": "dynamic"
     }
