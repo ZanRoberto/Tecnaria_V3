@@ -1,224 +1,649 @@
-{
-  "family": "P560",
-  "lock_to_core": true,
-  "variants_strategy": "dynamic",
-  "items": [
-    {
-      "id": "P560-0001",
-      "tags": ["definizione", "cosa è", "pistola", "sistema ctf"],
-      "questions": [
-        "Che cos'è la P560?",
-        "A cosa serve la P560 Tecnaria?",
-        "La P560 è obbligatoria per i CTF?",
-        "Perché usate la P560 per i connettori CTF?"
-      ],
-      "canonical": "La P560 è la chiodatrice a polvere dedicata al sistema CTF Tecnaria, studiata per il fissaggio controllato di connettori e chiodi idonei su travi in acciaio o lamiera grecata.",
-      "response_variants": [
-        "La P560 è la chiodatrice a polvere di riferimento per il sistema CTF Tecnaria: non è una semplice pistola generica, ma l'elemento che garantisce che ogni chiodo venga sparato con l’energia corretta, nella posizione corretta, con la ripetibilità necessaria per un solaio misto acciaio-calcestruzzo certificato. Insieme ai chiodi idonei Tecnaria e ai connettori CTF forma un sistema unico, verificato e documentato.",
-        "Quando parliamo di P560 non parliamo di un accessorio opzionale, ma della macchina che permette di trasferire in cantiere le prestazioni verificate in prova per i connettori CTF. Usare P560 significa avere controllo sul fissaggio, ridurre la variabilità e poter dimostrare, in caso di verifica tecnica, che è stato adottato il sistema previsto da Tecnaria."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0002",
-      "tags": ["uso", "obbligo", "ctf", "solo p560", "chiodatrice"],
-      "questions": [
-        "Posso usare una chiodatrice qualsiasi per i CTF?",
-        "Con i CTF posso usare una normale pistola a sparo?",
-        "È obbligatorio usare la P560 con i connettori CTF?",
-        "Can I install CTF connectors with any generic powder-actuated tool?"
-      ],
-      "canonical": "No, i CTF non vanno mai posati con chiodatrici generiche. Devono essere utilizzati esclusivamente con la P560 Tecnaria e i chiodi idonei previsti dal sistema.",
-      "response_variants": [
-        "No. I connettori CTF Tecnaria non possono essere posati con una chiodatrice a polvere qualsiasi. Il sistema è certificato per l’uso esclusivo della P560 Tecnaria, equipaggiata con gli accessori e i chiodi idonei forniti o approvati da Tecnaria. Utilizzare macchine diverse o chiodi non idonei significa uscire dal perimetro tecnico del sistema CTF, con fissaggi non verificati e prestazioni non garantite.",
-        "Per i CTF la regola è semplice: solo P560 Tecnaria con chiodi idonei Tecnaria. La P560 è tarata per fornire l’energia di sparo corretta, limitare i rimbalzi, garantire penetrazione adeguata nell’acciaio e ripetibilità del fissaggio. Una chiodatrice generica, anche se apparentemente simile, non ha queste condizioni controllate e può portare a fissaggi incompleti, connettori instabili e problemi in fase di collaudo.",
-        "Quando un progettista o una direzione lavori chiede conferma sul sistema di posa dei CTF, la risposta tecnica corretta è: connettori CTF originali, P560 Tecnaria, chiodi idonei Tecnaria e rispetto delle istruzioni ufficiali. Tutto il resto è una variante non supportata."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0003",
-      "tags": ["campo di impiego", "supporti", "acciaio", "lamiera grecata"],
-      "questions": [
-        "Su quali supporti posso usare la P560?",
-        "La P560 è adatta solo per acciaio?",
-        "Posso usare la P560 su lamiera grecata?",
-        "Dove lavora correttamente la P560?"
-      ],
-      "canonical": "La P560 è progettata per il fissaggio su travi in acciaio e lamiere grecate idonee, secondo le indicazioni Tecnaria.",
-      "response_variants": [
-        "La P560 lavora nel contesto per cui è stata pensata: fissaggi controllati su travi in acciaio e lamiere grecate strutturali compatibili, in abbinamento ai connettori CTF e ai chiodi idonei Tecnaria. In queste condizioni garantisce profondità corretta, tenuta meccanica e ripetibilità del risultato.",
-        "Non va considerata una chiodatrice “tuttofare”: il suo impiego va limitato ai supporti indicati da Tecnaria. Prima di usarla su lamiere o profili particolari è sempre opportuno verificare compatibilità, spessori, qualità del supporto e schema di posa previsto."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0004",
-      "tags": ["usi impropri", "calcestruzzo", "muratura"],
-      "questions": [
-        "Posso usare la P560 su calcestruzzo o muratura?",
-        "La P560 è adatta per fissaggi diretti nel cls?",
-        "È una chiodatrice universale per tutti i materiali?"
-      ],
-      "canonical": "La P560 non è una chiodatrice universale. L’uso diretto su calcestruzzo o muratura non rientra nel sistema certificato Tecnaria per i CTF.",
-      "response_variants": [
-        "La P560 nel contesto Tecnaria è parte del sistema per i connettori CTF su acciaio o lamiera. Non è progettata né autorizzata, nell’ottica del sistema CTF, per fissaggi strutturali diretti su calcestruzzo o muratura. Utilizzi fuori specifica vanno valutati separatamente e non rientrano nelle prestazioni garantite da Tecnaria.",
-        "Considerarla una chiodatrice universale sarebbe fuorviante: per i connettori CTF e per la documentazione Tecnaria, il suo ruolo è preciso e circoscritto. Se in cantiere qualcuno propone di usarla in modi diversi, è corretto fermarsi e verificare con il produttore."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0005",
-      "tags": ["legno", "ctl", "ctl maxi", "uso vietato"],
-      "questions": [
-        "Posso usare la P560 su travi in legno?",
-        "La P560 funziona anche sui solai in legno?",
-        "Come fisso i connettori Tecnaria al legno?",
-        "Can I use P560 on timber beams?"
-      ],
-      "canonical": "La P560 non va usata sul legno. Per solai in legno si usano connettori CTL o CTL MAXI con viti dedicate.",
-      "response_variants": [
-        "No, la P560 non va usata per fissare connettori su travi in legno. Il colpo a polvere non è compatibile con il comportamento fibroso del legno e non garantisce un ancoraggio strutturale affidabile. Per i solai in legno Tecnaria ha sviluppato connettori CTL e CTL MAXI, posati con viti specifiche, senza sparo.",
-        "Se ti trovi davanti a travi in legno e qualcuno propone di usare la P560 “per fare prima”, la risposta corretta è no. Si passa alla famiglia CTL / CTL MAXI con le viti previste, seguendo le indicazioni delle schede tecniche. Questo mantiene coerenza tecnica, sicurezza e tracciabilità delle prestazioni.",
-        "In sintesi: P560 = sistema CTF su acciaio. Legno = CTL / CTL MAXI con viti. Mescolare i due mondi significa uscire dalla logica di prodotto Tecnaria."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0006",
-      "tags": ["laterocemento", "vcem", "ctcem", "compatibilità"],
-      "questions": [
-        "La P560 si usa anche per VCEM o CTCEM?",
-        "Posso sparare connettori su laterocemento con la P560?",
-        "Per i solai in laterocemento uso P560?"
-      ],
-      "canonical": "No, VCEM e CTCEM hanno sistemi di posa differenti. La P560 è legata al sistema CTF su acciaio.",
-      "response_variants": [
-        "Per i solai in laterocemento con connettori VCEM o CTCEM non si usa la P560. Questi sistemi hanno modalità di posa proprie (perforazione, avvitamento, incastri dentati) che non prevedono l’uso della chiodatrice a polvere. La P560 rimane specifica per l’installazione dei connettori CTF su acciaio.",
-        "Usare la P560 dove non è prevista, ad esempio su travetti in laterocemento, significherebbe creare un fissaggio non documentato e tecnicamente non difendibile. Ogni famiglia Tecnaria ha la sua tecnologia di posa: rispettarla è parte integrante del sistema."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0007",
-      "tags": ["cantiere", "uso corretto", "procedura"],
-      "questions": [
-        "Come si usa correttamente la P560 in cantiere?",
-        "Qual è la procedura base per la posa con P560?",
-        "Che accortezze devo avere quando lavoro con la P560?"
-      ],
-      "canonical": "La P560 va utilizzata seguendo le istruzioni Tecnaria e del costruttore: scelta corretta delle cartucce, appoggio stabile, prova su campione e controllo visivo dei fissaggi.",
-      "response_variants": [
-        "In cantiere la P560 si usa con metodo: si scelgono le cartucce idonee, si eseguono alcune prove su pezzi campione per verificare che i chiodi idonei Tecnaria penetrino correttamente nell’acciaio, si controlla che il connettore sia ben appoggiato e che la testa del chiodo non resti alta o inclinata. Solo dopo queste verifiche si procede in produzione.",
-        "Ogni colpo va dato con l’attrezzo ben perpendicolare al supporto, senza appoggi instabili o superfici sporche. Se un fissaggio risulta dubbio, storto o incompleto, non si accetta ‘come viene’: si valuta, si rimuove e si ripete. Questo è il modo professionale di usare la P560 all’interno del sistema CTF.",
-        "Seguire le istruzioni riportate nel manuale Tecnaria e nel libretto della P560 non è formalità burocratica: è la garanzia che il solaio misto costruito oggi sarà difendibile domani."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0008",
-      "tags": ["sicurezza", "dpi", "norme"],
-      "questions": [
-        "Che DPI servono con la P560?",
-        "Quali regole di sicurezza devo seguire usando la P560?",
-        "La P560 è pericolosa?"
-      ],
-      "canonical": "L’uso della P560 richiede DPI, formazione adeguata e rispetto rigoroso delle istruzioni di sicurezza.",
-      "response_variants": [
-        "La P560 è una chiodatrice a polvere: va trattata come un utensile potente, non come un attrezzo qualsiasi. Sono obbligatori occhiali o visiera, protezione acustica, guanti adeguati e calzature antinfortunistiche. L’operatore deve essere formato, capire il funzionamento dell’attrezzo, le modalità di caricamento e scarico e le procedure in caso di inceppamento.",
-        "Mai puntare la P560 verso persone, mai colpire a vuoto per gioco, mai lavorare in aree affollate senza delimitazione. La zona di sparo va tenuta sgombra e sotto controllo. Tutte queste indicazioni sono riportate nel manuale Tecnaria e nel manuale della macchina e vanno rispettate integralmente.",
-        "Un uso corretto rende la P560 uno strumento efficiente e sicuro. Un uso superficiale la trasforma in un rischio inutile: la scelta sta nell’organizzazione del cantiere."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0009",
-      "tags": ["inceppamenti", "problemi", "risoluzione"],
-      "questions": [
-        "Cosa faccio se la P560 si inceppa?",
-        "Come gestisco un colpo che non parte o resta bloccato?",
-        "La P560 non spara, come procedo?"
-      ],
-      "canonical": "Gli inceppamenti vanno gestiti seguendo le procedure del manuale, senza manomissioni.",
-      "response_variants": [
-        "Se la P560 si inceppa o un colpo non parte, la gestione corretta è: mettere in sicurezza l’attrezzo, seguire la procedura di scarico indicata dal costruttore, non forzare mai con colpi improvvisati o utensili non previsti. Una volta liberata, verificare lo stato della canna, del pistone e dei chiodi.",
-        "In caso di problemi ripetuti è opportuno fermare l’uso, controllare pulizia, lubrificazione, cartucce utilizzate e, se necessario, rivolgersi all’assistenza o al referente Tecnaria. Manomissioni o soluzioni ‘creative’ possono compromettere sicurezza e validità del sistema.",
-        "Segnare gli eventi anomali e gestirli con metodo aiuta a mantenere la P560 efficiente e dimostra attenzione professionale."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0010",
-      "tags": ["manutenzione", "pulizia"],
-      "questions": [
-        "Ogni quanto va pulita la P560?",
-        "Come si effettua la manutenzione ordinaria della P560?",
-        "Serve una pulizia speciale in cantiere?"
-      ],
-      "canonical": "Una pulizia regolare mantiene costante l’efficienza della P560.",
-      "response_variants": [
-        "La P560 lavora in ambienti difficili: polvere di cemento, residui metallici, umidità. Una manutenzione ordinaria curata è fondamentale. A fine giornata è buona pratica rimuovere i residui visibili, controllare la zona di scorrimento del pistone, la canna e le parti soggette a attrito.",
-        "Non servono interventi complicati: pochi minuti di attenzione costante valgono più di una riparazione tardiva. Seguire il piano di manutenzione indicato nel manuale significa ridurre gli inceppamenti, avere colpi più regolari e prolungare la vita dell’attrezzo.",
-        "Una P560 pulita e ben tenuta è anche un segnale di serietà del cantiere agli occhi di direzioni lavori e committenti."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0013",
-      "tags": ["lubrificazione", "oli", "wd40", "requisiti cantiere"],
-      "questions": [
-        "Che requisiti ha la P560 per l’utilizzo in cantiere?",
-        "Che olio usare per la P560?",
-        "Posso usare WD40 sulla P560?",
-        "Come mantengo scorrevole il pistone della P560?"
-      ],
-      "canonical": "Usare solo oli neutri consigliati da Tecnaria, evitare spray aggressivi e lubrificanti che attirano sporco o danneggiano le guarnizioni.",
-      "response_variants": [
-        "Per lavorare bene in cantiere la P560 ha bisogno di poche cose chiare: pulizia regolare, lubrificante corretto e rispetto delle istruzioni. La lubrificazione va eseguita con un olio neutro leggero consigliato da Tecnaria, applicato in piccole quantità sulle parti mobili dopo la pulizia. Questo mantiene il pistone scorrevole, riduce gli attriti e allunga la vita dell’attrezzo.",
-        "Prodotti come il WD40 possono essere utilizzati solo in modo mirato per sbloccare temporaneamente un componente, ma non sono lubrificanti permanenti adeguati: se usati come unico trattamento tendono ad attirare polvere e residui, con il rischio di peggiorare il funzionamento nel tempo. Dopo un eventuale uso, è corretto pulire e riportare la P560 a una lubrificazione con olio neutro.",
-        "Un attrezzo ben lubrificato non significa unto o gocciolante: bastano pochi punti mirati. Esagerare con lubrificanti sbagliati porta a misfire, incrostazioni e usura precoce delle guarnizioni. Seguire le indicazioni Tecnaria tiene sotto controllo questi aspetti.",
-        "In sintesi: olio neutro leggero approvato, niente spray aggressivi come soluzione stabile, manutenzione costante. Questi requisiti rendono la P560 un alleato affidabile per tutta la durata del cantiere."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0015",
-      "tags": ["documentazione", "manuale", "istruzioni"],
-      "questions": [
-        "Dove trovo le istruzioni ufficiali per la P560?",
-        "Ci sono manuali o schede Tecnaria sulla P560?",
-        "Come dimostro di aver usato correttamente la P560?"
-      ],
-      "canonical": "Tecnaria fornisce manuali, istruzioni e schede tecniche per l’uso corretto della P560 e del sistema CTF.",
-      "response_variants": [
-        "Le istruzioni ufficiali per l’uso della P560 e per la posa dei connettori CTF sono disponibili nella documentazione Tecnaria: manuali, schede tecniche, istruzioni di posa. Allegare questi documenti al progetto e conservarli nel fascicolo tecnico dell’opera è una buona pratica.",
-        "In caso di verifiche o contestazioni, poter dimostrare che sono stati usati connettori CTF originali, P560 Tecnaria, chiodi idonei e procedure ufficiali è un argomento forte a favore della qualità dell’intervento. È parte della logica di sistema: prodotto + attrezzatura + posa documentata."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0017",
-      "tags": ["messaggio chiave", "sintesi", "gold"],
-      "questions": [
-        "Riassumi in poche regole come usare correttamente la P560.",
-        "Quali sono i punti chiave da ricordare sulla P560?"
-      ],
-      "canonical": "Usa la P560 solo nel sistema CTF Tecnaria, con chiodi idonei, manutenzione corretta e pieno rispetto delle istruzioni.",
-      "response_variants": [
-        "Pochi punti fermi: la P560 è parte del sistema CTF Tecnaria, non una chiodatrice generica. Si usa solo con chiodi idonei Tecnaria su travi in acciaio o lamiera compatibile, seguendo le istruzioni ufficiali. Niente improvvisazioni su legno, laterocemento o supporti non previsti.",
-        "La P560 lavora bene se è pulita, lubrificata con olio neutro, usata da personale formato e dotato dei DPI necessari. Ogni fissaggio va controllato a vista: se qualcosa non convince, si rifà.",
-        "Usare la P560 “in modalità GOLD” significa trattarla come parte di un sistema strutturale serio: scelta corretta, posa controllata, documentazione disponibile. Così i connettori CTF non sono solo prodotti, ma soluzioni difendibili nel tempo."
-      ],
-      "mode": "dynamic"
-    }
-  ],
-  "meta": {
-    "version": "v2-gold",
-    "language": "it",
-    "supported_langs": ["it", "en", "fr", "de", "es"],
-    "fallback_lang": "en",
-    "certified_by": "Sinapsi NLM v3",
-    "coverage": "full",
-    "note": "P560 GOLD completo: solo uso corretto nel sistema CTF, vincolo esclusivo P560 per CTF, no chiodatrice generica, no legno, no laterocemento. Testi estesi per app.py GOLD-only."
-  }
+from __future__ import annotations
+
+import json
+import os
+import re
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from fastapi import FastAPI, HTTPException, Request, Query
+from fastapi.responses import HTMLResponse
+
+# =========================
+# CONFIG
+# =========================
+
+USE_OPENAI = True
+
+try:
+    from openai import OpenAI
+
+    if USE_OPENAI and os.getenv("OPENAI_API_KEY"):
+        openai_client = OpenAI()
+    else:
+        openai_client = None
+except Exception:
+    openai_client = None
+
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+DATA_DIR = STATIC_DIR / "data"
+INDEX_HTML = STATIC_DIR / "index.html"
+
+RUNTIME_CONFIG_PATH = DATA_DIR / "config.runtime.json"
+
+
+def safe_read_json(path: Path) -> Any:
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+# Carico ma NON uso per cambiare modalità: siamo GOLD fisso
+RUNTIME_CONFIG: Dict[str, Any] = {}
+if RUNTIME_CONFIG_PATH.exists():
+    try:
+        RUNTIME_CONFIG = safe_read_json(RUNTIME_CONFIG_PATH)
+    except Exception:
+        RUNTIME_CONFIG = {}
+
+app = FastAPI(title="Tecnaria Sinapsi — Q/A")
+
+# Solo GOLD
+DEFAULT_ANSWER_MODE: str = "gold"
+
+# Cache famiglie
+_family_cache: Dict[str, List[Dict[str, Any]]] = {}
+
+FAMILY_KEYWORDS = {
+    "ctf": "CTF",
+    "ctl maxi": "CTL_MAXI",
+    "ctl_maxi": "CTL_MAXI",
+    "ctl": "CTL",
+    "vcem": "VCEM",
+    "ctcem": "CTCEM",
+    "p560": "P560",
+    "diapason": "DIAPASON",
+    "comm": "COMM",
 }
+
+# =========================
+# LETTURA JSON / FAMIGLIE
+# =========================
+
+def extract_blocks(data: Any) -> List[Dict[str, Any]]:
+    if isinstance(data, list):
+        blocks = [b for b in data if isinstance(b, dict)]
+    elif isinstance(data, dict):
+        blocks = []
+        for key in ("items", "blocks", "data"):
+            v = data.get(key)
+            if isinstance(v, list):
+                blocks = [b for b in v if isinstance(b, dict)]
+                break
+    else:
+        blocks = []
+
+    for i, b in enumerate(blocks):
+        if "id" not in b:
+            b["id"] = f"AUTO-{i:04d}"
+    return blocks
+
+
+def load_family(family: str) -> List[Dict[str, Any]]:
+    fam = family.upper()
+    if fam in _family_cache:
+        return _family_cache[fam]
+
+    candidates = [
+        DATA_DIR / f"{fam}.json",
+        DATA_DIR / f"{fam}.gold.json",
+        DATA_DIR / f"{fam}.golden.json",
+    ]
+
+    path: Optional[Path] = next((p for p in candidates if p.exists()), None)
+
+    if path is None and DATA_DIR.exists():
+        for f in DATA_DIR.glob(f"{fam}*.json"):
+            name_up = f.name.upper()
+            if "CONFIG.RUNTIME" in name_up:
+                continue
+            path = f
+            break
+
+    if path is None:
+        raise HTTPException(
+            status_code=404, detail=f"File JSON per famiglia '{family}' non trovato."
+        )
+
+    data = safe_read_json(path)
+    blocks = extract_blocks(data)
+    _family_cache[fam] = blocks
+    return blocks
+
+
+def list_all_families() -> List[str]:
+    fams: List[str] = []
+    if not DATA_DIR.exists():
+        return fams
+
+    for f in DATA_DIR.glob("*.json"):
+        name = f.stem.upper()
+        if "config.runtime".upper() in name:
+            continue
+        if name.endswith(".GOLD"):
+            name = name[:-5]
+        fams.append(name)
+
+    return sorted(set(fams))
+
+# =========================
+# MATCHING / HEURISTICHE
+# =========================
+
+def norm(s: str) -> str:
+    return " ".join(s.lower().strip().split())
+
+
+def extract_queries(block: Dict[str, Any]) -> List[str]:
+    out: List[str] = []
+
+    for key in ("q", "question", "domanda", "title", "label"):
+        v = block.get(key)
+        if isinstance(v, str):
+            v = v.strip()
+            if v:
+                out.append(v)
+
+    for key in ("questions", "paraphrases", "variants", "triggers"):
+        v = block.get(key)
+        if isinstance(v, list):
+            for e in v:
+                if isinstance(e, str):
+                    e = e.strip()
+                    if e:
+                        out.append(e)
+
+    tags = block.get("tags")
+    if isinstance(tags, list):
+        for t in tags:
+            if isinstance(t, str):
+                t = t.strip()
+                if t:
+                    out.append(t)
+
+    canon = block.get("canonical")
+    if isinstance(canon, str):
+        c = canon.strip()
+        if c:
+            out.append(c[:220])
+
+    return out
+
+
+def base_similarity(query: str, block: Dict[str, Any]) -> float:
+    q = norm(query)
+    if not q:
+        return 0.0
+
+    queries = extract_queries(block)
+    if not queries:
+        return 0.0
+
+    sq = set(q.split())
+    if not sq:
+        return 0.0
+
+    best = 0.0
+
+    for cand in queries:
+        c = norm(cand)
+        if not c:
+            continue
+
+        if q == c:
+            return 1.0
+
+        if q in c or c in q:
+            best = max(best, 0.9)
+            continue
+
+        sc = set(c.split())
+        if not sc:
+            continue
+
+        inter = len(sq & sc)
+        if inter == 0:
+            continue
+
+        j = inter / float(len(sq | sc))
+        if j > best:
+            best = j
+
+    return best
+
+
+def detect_lang(query: str) -> str:
+    q = query.strip()
+    q_low = q.lower()
+
+    it_markers = [
+        " soletta", "connettore", "connettori", "trave", "travetto",
+        "calcestruzzo", "laterocemento", "lamiera", "pistola", "cartucce",
+        "chiodatrice", "posa", "cemento armato"
+    ]
+    if any(m in q_low for m in it_markers):
+        return "it"
+
+    en_markers = [
+        " beam", " beams", "steel", "timber", "composite", "deck",
+        "slab", "connector", "connectors", "use", "which", "what",
+        "how many", "can i", "design", "load", "capacity"
+    ]
+    if all(ord(c) < 128 for c in q) and any(m in q_low for m in en_markers):
+        return "en"
+
+    fr_markers = ["béton", "connecteur", "plancher", "poutre", "acier"]
+    if any(m in q_low for m in fr_markers):
+        return "fr"
+
+    es_markers = ["hormigón", "forjado", "viga de madera", "conectores", "losa"]
+    if any(m in q_low for m in es_markers):
+        return "es"
+
+    de_markers = ["verbinder", "beton", "holz", "decken", "stahlträger"]
+    if any(m in q_low for m in de_markers):
+        return "de"
+
+    if all(ord(c) < 128 for c in q):
+        return "en"
+    return "it"
+
+
+def detect_explicit_families(query: str) -> List[str]:
+    q = query.lower()
+    hits: List[str] = []
+
+    if "ctl maxi" in q or "ctl_maxi" in q:
+        hits.append("CTL_MAXI")
+
+    for key, fam in FAMILY_KEYWORDS.items():
+        if key in ("ctl maxi", "ctl_maxi"):
+            continue
+        if re.search(r"\b" + re.escape(key) + r"\b", q):
+            if fam not in hits:
+                hits.append(fam)
+
+    return hits
+
+
+def score_block_routed(
+    query: str,
+    block: Dict[str, Any],
+    fam: str,
+    explicit_fams: List[str]
+) -> float:
+    base = base_similarity(query, block)
+    if base <= 0:
+        return 0.0
+
+    fam_u = fam.upper()
+    q_low = query.lower()
+
+    if explicit_fams:
+        if fam_u in explicit_fams:
+            base *= 8.0
+        else:
+            base *= 0.05
+        return base
+
+    if any(k in q_low for k in ["p560", "pistola", "chiodatrice", "sparo", "cartuccia", "cartucce"]):
+        if fam_u == "P560":
+            base *= 5.0
+        else:
+            base *= 0.4
+
+    if "legno" in q_low or "trave in legno" in q_low:
+        if fam_u in ["CTL", "CTL_MAXI"]:
+            base *= 3.0
+        elif fam_u in ["CTF", "VCEM", "CTCEM", "P560", "DIAPASON"]:
+            base *= 0.4
+
+    if any(k in q_low for k in ["laterocemento", "travetto", "travetti"]):
+        if fam_u in ["VCEM", "CTCEM", "DIAPASON"]:
+            base *= 3.0
+        elif fam_u in ["CTF", "CTL", "CTL_MAXI", "P560"]:
+            base *= 0.4
+
+    return base
+
+# =========================
+# EXTRACT ANSWER (GOLD ONLY)
+# =========================
+
+def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
+    """
+    GOLD ONLY:
+    - Usa response_variants, answers, answer_it.
+    - canonical solo come ultimo fallback se non c'è nient'altro.
+    """
+    primary: List[str] = []
+    gold_candidates: List[str] = []
+    fallback: List[str] = []
+
+    answers = block.get("answers")
+    if isinstance(answers, dict):
+        for key in (lang, lang.lower(), lang.upper()):
+            v = answers.get(key)
+            if isinstance(v, str) and v.strip():
+                primary.append(v.strip())
+                break
+        if not primary:
+            for v in answers.values():
+                if isinstance(v, str) and v.strip():
+                    primary.append(v.strip())
+                    break
+
+    answer_it = block.get("answer_it")
+    if isinstance(answer_it, str) and answer_it.strip():
+        primary.append(answer_it.strip())
+
+    variants_raw = block.get("response_variants")
+    if isinstance(variants_raw, list):
+        gold_candidates.extend(
+            [v.strip() for v in variants_raw if isinstance(v, str) and v.strip()]
+        )
+    elif isinstance(variants_raw, dict):
+        for v in variants_raw.values():
+            if isinstance(v, list):
+                for e in v:
+                    if isinstance(e, str) and e.strip():
+                        gold_candidates.append(e.strip())
+            elif isinstance(v, str) and v.strip():
+                gold_candidates.append(v.strip())
+
+    canonical = block.get("canonical")
+    if isinstance(canonical, str) and canonical.strip():
+        fallback.append(canonical.strip())
+
+    for key in ("answer", "risposta", "text", "content"):
+        v = block.get(key)
+        if isinstance(v, str) and v.strip():
+            fallback.append(v.strip())
+            break
+
+    if gold_candidates:
+        rich = [t for t in gold_candidates if len(t) >= 160]
+        source = rich if rich else gold_candidates
+        return max(source, key=len).strip()
+
+    if primary:
+        return max(primary, key=len).strip()
+
+    if fallback:
+        return max(fallback, key=len).strip()
+
+    return None
+
+# =========================
+# GOLD REFINE + MULTILINGUA
+# =========================
+
+def generate_gold_answer(
+    question: str,
+    base: str,
+    block: Dict[str, Any],
+    family: str,
+    lang: str,
+) -> str:
+    if not USE_OPENAI or openai_client is None:
+        return base
+
+    if lang == "en":
+        target_lang = "inglese"
+    elif lang == "fr":
+        target_lang = "francese"
+    elif lang == "es":
+        target_lang = "spagnolo"
+    elif lang == "de":
+        target_lang = "tedesco"
+    else:
+        target_lang = "italiano"
+        lang = "it"
+
+    try:
+        resp = openai_client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            temperature=0.35,
+            max_tokens=2000,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        f"Sei Sinapsi, assistente tecnico-commerciale di Tecnaria. "
+                        f"Rispondi SEMPRE nella lingua richiesta ({target_lang}). "
+                        "Usa un tono GOLD: completo, tecnico, chiaro, narrativo ma professionale. "
+                        "NON modificare i dati tecnici, non cambiare i prodotti, "
+                        "non allargare i campi di impiego rispetto al blocco JSON fornito. "
+                        "Rispetta vincoli come l'uso esclusivo della P560 dove indicato. "
+                        "Se il testo base è in italiano e la lingua richiesta è diversa, "
+                        "traduce fedelmente mantenendo struttura e contenuti."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"LINGUA RICHIESTA: {target_lang}\n"
+                        f"FAMIGLIA: {family}\n"
+                        f"DOMANDA UTENTE: {question}\n\n"
+                        "Di seguito hai il blocco dati ufficiale in JSON e il testo base estratto.\n"
+                        "Riscrivi il testo in stile GOLD, nella lingua richiesta, "
+                        "senza cambiare le informazioni tecniche e senza accorciare troppo.\n\n"
+                        f"BLOCCO DATI JSON:\n{json.dumps(block, ensure_ascii=False)}\n\n"
+                        f"TESTO BASE:\n{base}"
+                    ),
+                },
+            ],
+        )
+
+        text = (resp.choices[0].message.content or "").strip()
+
+        if len(text) < len(base) * 0.7:
+            return base
+
+        return text
+
+    except Exception as e:
+        print(f"[generate_gold_answer] Errore: {e}")
+        return base
+
+# =========================
+# SELEZIONE BLOCCO
+# =========================
+
+def find_best_block(
+    query: str, families: Optional[List[str]], lang: str
+) -> Optional[Dict[str, Any]]:
+    explicit_fams = detect_explicit_families(query)
+    forced_fams = [f.upper() for f in families] if families else None
+
+    if explicit_fams:
+        if forced_fams:
+            fams = [f for f in forced_fams if f in explicit_fams] or explicit_fams
+        else:
+            fams = explicit_fams
+    else:
+        fams = forced_fams or list_all_families()
+
+    best_block: Optional[Dict[str, Any]] = None
+    best_family: Optional[str] = None
+    best_score: float = 0.0
+
+    for fam in fams:
+        try:
+            blocks = load_family(fam)
+        except HTTPException:
+            continue
+
+        for b in blocks:
+            ans = extract_answer(b, lang)
+            if not ans:
+                continue
+
+            s = score_block_routed(query, b, fam, explicit_fams)
+            if s > best_score:
+                best_score = s
+                best_block = b
+                best_family = fam
+
+    min_score = 0.05 if explicit_fams else 0.25
+
+    if not best_block or best_score < min_score:
+        return None
+
+    bb = dict(best_block)
+    bb["_family"] = best_family
+    bb["_score"] = best_score
+    return bb
+
+# =========================
+# ENDPOINTS
+# =========================
+
+@app.get("/api/config")
+def api_config():
+    return {
+        "app": "Tecnaria Sinapsi — Q/A",
+        "status": "OK",
+        "families_dir": str(DATA_DIR),
+        "families": list_all_families(),
+        "nlm": bool(openai_client is not None and USE_OPENAI),
+        "answer_mode": "gold",
+    }
+
+@app.post("/api/ask")
+async def api_ask_post(request: Request):
+    raw = await request.body()
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Body JSON non valido. Atteso: {\"q\":..., \"family\":...}",
+        )
+
+    q = str(data.get("q", "")).strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="Campo 'q' mancante o vuoto.")
+
+    family = str(data.get("family", "")).strip().upper() if data.get("family") else None
+
+    lang = detect_lang(q)
+    fams = [family] if family else None
+
+    best = find_best_block(q, fams, lang)
+
+    if not best:
+        return {
+            "ok": False,
+            "q": q,
+            "lang": lang,
+            "mode": "gold",
+            "family": family,
+            "text": "Nessuna risposta trovata per questa domanda con i dati disponibili.",
+        }
+
+    base = (
+        extract_answer(best, lang)
+        or extract_answer(best, "it")
+        or extract_answer(best, "en")
+    )
+
+    if not base:
+        return {
+            "ok": False,
+            "q": q,
+            "lang": lang,
+            "mode": "gold",
+            "family": best.get("_family", family),
+            "id": best.get("id"),
+            "text": "Blocco trovato ma privo di contenuto utilizzabile.",
+        }
+
+    text = generate_gold_answer(
+        q, base, best, best.get("_family", family) or "", lang
+    )
+
+    text = re.sub(r"\bperni?\b", "chiodi idonei Tecnaria", text, flags=re.IGNORECASE)
+
+    return {
+        "ok": True,
+        "q": q,
+        "lang": lang,
+        "mode": "gold",
+        "family": best.get("_family", family),
+        "id": best.get("id"),
+        "score": best.get("_score", 0.0),
+        "text": text,
+    }
+
+@app.get("/api/ask")
+def api_ask_get(
+    q: str = Query(..., description="Domanda"),
+    family: Optional[str] = Query(None),
+    mode: Optional[str] = Query(None, description="ignorato, sempre gold"),
+):
+    q = q.strip()
+    lang = detect_lang(q)
+    fams = [family.upper()] if family else None
+
+    best = find_best_block(q, fams, lang)
+
+    if not best:
+        return {
+            "ok": False,
+            "q": q,
+            "lang": lang,
+            "mode": "gold",
+            "family": family,
+            "text": "Nessuna risposta trovata per questa domanda con i dati disponibili.",
+        }
+
+    base = (
+        extract_answer(best, lang)
+        or extract_answer(best, "it")
+        or extract_answer(best, "en")
+    )
+
+    if not base:
+        return {
+            "ok": False,
+            "q": q,
+            "lang": lang,
+            "mode": "gold",
+            "family": best.get("_family", family),
+            "id": best.get("id"),
+            "text": "Blocco trovato ma privo di contenuto utilizzabile.",
+        }
+
+    text = generate_gold_answer(
+        q, base, best, best.get("_family", family) or "", lang
+    )
+
+    text = re.sub(r"\bperni?\b", "chiodi idonei Tecnaria", text, flags=re.IGNORECASE)
+
+    return {
+        "ok": True,
+        "q": q,
+        "lang": lang,
+        "mode": "gold",
+        "family": best.get("_family", family),
+        "id": best.get("id"),
+        "score": best.get("_score", 0.0),
+        "text": text,
+    }
+
+@app.get("/", response_class=HTMLResponse)
+def root():
+    if INDEX_HTML.exists():
+        return HTMLResponse(INDEX_HTML.read_text(encoding="utf-8"))
+    return HTMLResponse("<h1>Tecnaria Sinapsi — Q/A</h1>", status_code=200)
