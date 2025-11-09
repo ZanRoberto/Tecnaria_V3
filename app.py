@@ -8,10 +8,9 @@ from fastapi.responses import HTMLResponse
 import re
 
 # =======================================
-# CONFIGURAZIONE NLM / OPENAI (GOLD)
+# CONFIG NLM / OPENAI (GOLD)
 # =======================================
 
-# Sempre TRUE lato logica: se la chiave c'è, usiamo il modello.
 USE_OPENAI = True
 
 try:
@@ -34,10 +33,8 @@ INDEX_HTML = STATIC_DIR / "index.html"
 
 app = FastAPI(title="Tecnaria Sinapsi — Q/A")
 
-# Cache famiglie
 _family_cache: Dict[str, List[Dict[str, Any]]] = {}
 
-# Mappa parole chiave → famiglie
 FAMILY_KEYWORDS = {
     "ctf": "CTF",
     "ctl maxi": "CTL_MAXI",
@@ -59,11 +56,6 @@ def safe_read_json(path: Path) -> Any:
         return json.load(f)
 
 def extract_blocks(data: Any) -> List[Dict[str, Any]]:
-    """
-    Estrae blocchi informativi dai JSON:
-    - { "items": [...] }, { "blocks": [...] }, { "data": [...] }
-    - oppure lista diretta.
-    """
     blocks: List[Dict[str, Any]] = []
 
     if isinstance(data, list):
@@ -82,12 +74,6 @@ def extract_blocks(data: Any) -> List[Dict[str, Any]]:
     return blocks
 
 def load_family(family: str) -> List[Dict[str, Any]]:
-    """
-    Carica il dataset di una famiglia.
-    Priorità:
-      FAM.json, FAM.gold.json, FAM.golden.json.
-    Se non trovati, primo FAM*.json (esclude CONFIG.RUNTIME).
-    """
     fam = family.upper()
     if fam in _family_cache:
         return _family_cache[fam]
@@ -138,9 +124,6 @@ def norm(s: str) -> str:
     return " ".join(s.lower().strip().split())
 
 def extract_queries(block: Dict[str, Any]) -> List[str]:
-    """
-    Testi usati per il matching.
-    """
     out: List[str] = []
 
     for key in ("q", "question", "domanda", "title", "label"):
@@ -176,9 +159,6 @@ def extract_queries(block: Dict[str, Any]) -> List[str]:
     return out
 
 def base_similarity(query: str, block: Dict[str, Any]) -> float:
-    """
-    Similarità testuale semplice (token overlap).
-    """
     q = norm(query)
     if not q:
         return 0.0
@@ -220,46 +200,37 @@ def base_similarity(query: str, block: Dict[str, Any]) -> float:
     return float(best)
 
 def detect_lang(query: str) -> str:
-    """
-    Riconoscimento lingua minimale:
-    IT / EN / FR / ES / DE.
-    Serve a dire al modello in che lingua rispondere.
-    """
     q = query.lower()
 
-    # Inglese
+    # English
     if "nail gun" in q or "shear connector" in q or "composite beam" in q:
         return "en"
     if re.search(r"\b(what|which|where|when|why|how|can|could|should|would|maintenance|safety)\b", q):
         if not any(t in q for t in [" calcestruzzo", " soletta", " lamiera", " trav", " laterocemento"]):
             return "en"
 
-    # Francese
+    # French
     if any(x in q for x in ["plancher", "béton", "connecteur", "acier", "chantier"]):
         return "fr"
 
-    # Spagnolo
+    # Spanish
     if any(x in q for x in ["forjado", "hormigón", "conector", "viga de madera", "obra"]):
         return "es"
 
-    # Tedesco
+    # German
     if any(x in q for x in ["verbinder", "beton", "stahlträger", "holzdecken", "baustelle"]):
         return "de"
 
-    # Italiano
+    # Italian (parole chiave tipiche)
     if any(x in q for x in [
         "soletta", "calcestruzzo", "trave", "travetto", "lamiera",
         "pistola", "cartucce", "connettore", "cantiere", "laterocemento"
     ]):
         return "it"
 
-    # Default contesto Tecnaria
     return "it"
 
 def detect_explicit_families(query: str) -> List[str]:
-    """
-    Se l'utente cita esplicitamente famiglie, blocchiamo la ricerca su quelle.
-    """
     q = query.lower()
     hits: List[str] = []
 
@@ -279,9 +250,6 @@ def score_block_routed(query: str,
                        block: Dict[str, Any],
                        fam: str,
                        explicit_fams: List[str]) -> float:
-    """
-    Similarità + routing per famiglia (P560, CTF, VCEM, CTL, ecc).
-    """
     base = base_similarity(query, block)
     if base <= 0:
         return 0.0
@@ -322,18 +290,10 @@ def score_block_routed(query: str,
     return base
 
 # =======================================
-# COSTRUZIONE BASE GOLD (da JSON)
+# COSTRUZIONE BASE GOLD
 # =======================================
 
 def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
-    """
-    Costruisce una base GOLD combinando:
-    - answers[lang]
-    - answer_it
-    - canonical
-    - response_variants (più significative)
-    Mai singola riga secca se possiamo evitarlo.
-    """
     pieces: List[str] = []
 
     answers = block.get("answers")
@@ -394,127 +354,10 @@ def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
     return " ".join(pieces).strip()
 
 # =======================================
-# GOLD GENERATION (MAI SOLO CANONICO)
-# =======================================
-
-def generate_gold_answer(question: str,
-                         base: str,
-                         block: Dict[str, Any],
-                         family: str,
-                         lang: str) -> str:
-    """
-    - Se OpenAI disponibile → GOLD dinamica vera (lingua = lang).
-    - Se OpenAI non disponibile / errore → fallback interno ricco,
-      mai una riga secca.
-    """
-
-    def build_fallback_gold() -> str:
-        parts: List[str] = []
-
-        fam = (family or block.get("_family") or "").upper()
-
-        if fam == "P560":
-            parts.append(
-                "La P560 è la chiodatrice Tecnaria a sparo controllato dedicata "
-                "al fissaggio dei connettori CTF su travi in acciaio o lamiera grecata. "
-                "È uno strumento professionale che richiede uso corretto, manutenzione regolare e rispetto rigoroso delle norme di sicurezza."
-            )
-        elif fam == "CTF":
-            parts.append(
-                "I connettori CTF Tecnaria sono pioli a taglio per strutture miste acciaio–calcestruzzo. "
-                "Realizzano il collegamento meccanico tra trave in acciaio e soletta in calcestruzzo, "
-                "impedendo lo scorrimento relativo e aumentando rigidezza e capacità portante del solaio."
-            )
-        elif fam in ("VCEM", "CTCEM", "CTL", "CTL_MAXI", "DIAPASON"):
-            canon = block.get("canonical") or base
-            if canon:
-                parts.append(canon.strip())
-        else:
-            if base:
-                parts.append(base.strip())
-
-        variants = []
-        rv = block.get("response_variants")
-        if isinstance(rv, list):
-            variants = [v.strip() for v in rv if isinstance(v, str) and v.strip()]
-        elif isinstance(rv, dict):
-            for vv in rv.values():
-                if isinstance(vv, list):
-                    for e in vv:
-                        if isinstance(e, str) and e.strip():
-                            variants.append(e.strip())
-                elif isinstance(vv, str) and vv.strip():
-                    variants.append(vv.strip())
-
-        extra = []
-        for v in sorted(variants, key=len, reverse=True):
-            if len(extra) >= 3:
-                break
-            if not any(v in p or p in v for p in parts):
-                extra.append(v)
-
-        if extra:
-            parts.append(" ".join(extra))
-
-        if len(" ".join(parts)) < 400:
-            parts.append(
-                "In pratica, fai sempre riferimento alla documentazione Tecnaria, usa solo connettori e accessori "
-                "della famiglia corretta per il tipo di solaio, rispetta i campi di impiego certificati "
-                "e, in caso di dubbio, confrontati con il progettista strutturale o con il servizio tecnico Tecnaria."
-            )
-
-        text = " ".join(parts).strip()
-        return text or (base or "").strip()
-
-    if USE_OPENAI and openai_client is not None:
-        try:
-            resp = openai_client.chat.completions.create(
-                model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-                temperature=0.35,
-                max_tokens=1500,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "Sei Sinapsi, assistente tecnico-commerciale di Tecnaria. "
-                            "Rispondi SEMPRE nella stessa lingua indicata come LINGUA. "
-                            "Stile GOLD dinamico: completo, tecnico, chiaro, con esempi di cantiere reali. "
-                            "Rispetta rigorosamente il campo di impiego della famiglia indicata "
-                            "e i contenuti del blocco dati fornito. "
-                            "Non inventare prodotti o usi non previsti. "
-                            "Non limitarti a ripetere il canonical: integra, collega le varianti e organizza in modo naturale."
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": (
-                            f"LINGUA: {lang}\n"
-                            f"FAMIGLIA: {family}\n"
-                            f"DOMANDA: {question}\n\n"
-                            f"BLOCCO DATI (JSON): {json.dumps(block, ensure_ascii=False)}\n\n"
-                            f"TESTO DI BASE (da rifinire in stile GOLD, senza stravolgere): {base}"
-                        ),
-                    },
-                ],
-            )
-            text = (resp.choices[0].message.content or "").strip()
-            if text:
-                return text
-        except Exception:
-            pass
-
-    return build_fallback_gold()
-
-# =======================================
-# TRADUZIONE FINALE (STESSA LINGUA DELL’UTENTE)
+# TRADUZIONE (USATA SOLO SE OPENAI DISPONIBILE)
 # =======================================
 
 def translate_text(text: str, target_lang: str) -> str:
-    """
-    Traduce il testo GOLD nella lingua richiesta (EN/FR/DE/ES),
-    senza toccare la logica GOLD.
-    Se OpenAI non è disponibile, restituisce il testo originale.
-    """
     if not text:
         return text
 
@@ -523,8 +366,7 @@ def translate_text(text: str, target_lang: str) -> str:
         return text
 
     if not (USE_OPENAI and openai_client is not None):
-        # Nessun motore disponibile: meglio risposta corretta in IT
-        return text
+        return text  # fallback: meglio IT corretto che nulla
 
     try:
         resp = openai_client.chat.completions.create(
@@ -536,8 +378,8 @@ def translate_text(text: str, target_lang: str) -> str:
                     "role": "system",
                     "content": (
                         "You are a precise technical translator for structural engineering content. "
-                        "Translate the following answer into the target language, preserving all "
-                        "technical terms, brand names, and safety nuances. Do NOT add explanations."
+                        "Translate into the target language, preserving technical meaning, "
+                        "brand names and safety constraints. Do NOT add explanations."
                     ),
                 },
                 {
@@ -550,6 +392,136 @@ def translate_text(text: str, target_lang: str) -> str:
         return out or text
     except Exception:
         return text
+
+# =======================================
+# GOLD GENERATION (SEMPE GOLD, MULTILINGUA)
+# =======================================
+
+def generate_gold_answer(question: str,
+                         base: str,
+                         block: Dict[str, Any],
+                         family: str,
+                         lang: str) -> str:
+    """
+    1. Se OpenAI disponibile: risposta GOLD dinamica nella lingua richiesta.
+    2. Se non disponibile: fallback GOLD interno, ma ADATTATO alla lingua (IT/EN/FR/DE/ES).
+    Mai tornare alla risposta secca/canonical.
+    """
+    target_lang = (lang or "it").lower()
+    fam = (family or block.get("_family") or "").upper()
+
+    # ---------- 1) GOLD con OpenAI ----------
+    if USE_OPENAI and openai_client is not None:
+        try:
+            resp = openai_client.chat.completions.create(
+                model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+                temperature=0.35,
+                max_tokens=1500,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Sei Sinapsi, assistente tecnico-commerciale di Tecnaria. "
+                            "Rispondi SEMPRE nella lingua indicata come LINGUA. "
+                            "Stile GOLD dinamico: completo, tecnico, chiaro, con esempi di cantiere. "
+                            "Rispetta rigorosamente il campo di impiego della famiglia indicata "
+                            "e i contenuti del blocco dati fornito. "
+                            "Non inventare prodotti o usi non previsti. "
+                            "Non limitarti a ripetere il canonical: integra le varianti."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"LINGUA: {target_lang}\n"
+                            f"FAMIGLIA: {fam}\n"
+                            f"DOMANDA: {question}\n\n"
+                            f"BLOCCO DATI (JSON): {json.dumps(block, ensure_ascii=False)}\n\n"
+                            f"TESTO DI BASE (da rifinire in stile GOLD): {base}"
+                        ),
+                    },
+                ],
+            )
+            text = (resp.choices[0].message.content or "").strip()
+            if text:
+                return text
+        except Exception:
+            pass
+
+    # ---------- 2) Fallback GOLD interno MULTILINGUA ----------
+    # Qui non c'è modello: costruiamo una risposta robusta e
+    # la adattiamo manualmente in base alla lingua e alla famiglia.
+
+    def it_core() -> str:
+        # costruisce la versione italiana ricca
+        parts: List[str] = []
+        if base:
+            parts.append(base.strip())
+
+        rv = block.get("response_variants")
+        variants: List[str] = []
+        if isinstance(rv, list):
+            variants = [v.strip() for v in rv if isinstance(v, str) and v.strip()]
+        elif isinstance(rv, dict):
+            for vv in rv.values():
+                if isinstance(vv, list):
+                    for e in vv:
+                        if isinstance(e, str) and e.strip():
+                            variants.append(e.strip())
+                elif isinstance(vv, str) and vv.strip():
+                    variants.append(vv.strip())
+        if variants:
+            for v in sorted(variants, key=len, reverse=True):
+                if len(" ".join(parts)) > 400:
+                    break
+                if not any(v in p or p in v for p in parts):
+                    parts.append(v)
+
+        if len(" ".join(parts)) < 300:
+            parts.append(
+                "In pratica, utilizza sempre il connettore della famiglia corretta per il tipo di solaio, "
+                "rispetta le istruzioni Tecnaria su fori, passi, spessori e campi di impiego, "
+                "e in caso di dubbio confrontati con il progettista strutturale o con il servizio tecnico Tecnaria."
+            )
+
+        return " ".join(parts).strip()
+
+    it_text = it_core()
+
+    # Mini-mappa di resa multilingua per fallback (solo adattamento, niente banalizzazione)
+    if target_lang == "it":
+        return it_text
+
+    # Semplificata ma chiara, per non lasciarti mai la risposta nella lingua sbagliata
+    # se il modello non è disponibile.
+    header_map = {
+        "en": {
+            "P560": "The P560 is Tecnaria's controlled-shot fastening tool for CTF connectors on steel beams or profiled sheeting.",
+            "CTF":  "CTF connectors are Tecnaria shear studs for composite steel–concrete beams and slabs.",
+            "VCEM": "VCEM connectors are designed for strengthening existing hollow-block or concrete slabs.",
+            "CTCEM":"CTCEM connectors are mechanical devices for hollow-block slabs with concrete joists.",
+            "CTL":  "CTL connectors are dedicated to timber–concrete composite slabs.",
+            "CTL_MAXI": "CTL MAXI is the high-capacity version of CTL for demanding timber applications.",
+            "DIAPASON": "The DIAPASON system is a specialized solution for advanced slab strengthening.",
+        },
+        "fr": {
+            "P560": "La P560 est le cloueur à tir contrôlé Tecnaria pour les connecteurs CTF sur poutres acier ou bac collaborant.",
+        },
+        "es": {
+            "P560": "La P560 es la clavadora de disparo controlado de Tecnaria para conectores CTF sobre vigas de acero o chapa colaborante.",
+        },
+        "de": {
+            "P560": "Die P560 ist das kontrollierte Bolzenschussgerät von Tecnaria für CTF-Verbinder auf Stahlträgern oder Trapezblech.",
+        },
+    }
+
+    if target_lang in header_map and fam in header_map[target_lang]:
+        lead = header_map[target_lang][fam]
+        # molto semplice: testo italiano + testa localizzata
+        return f"{lead} {it_text}"
+
+    # Se non abbiamo una mappatura specifica, restituiamo comunque il GOLD IT (meglio IT corretto che vuoto)
+    return it_text
 
 # =======================================
 # SELEZIONE MIGLIOR BLOCCO
@@ -600,10 +572,7 @@ def find_best_block(query: str,
                 best_block = b
                 best_family = fam
 
-    if explicit_fams:
-        min_score = 0.05
-    else:
-        min_score = 0.25
+    min_score = 0.05 if explicit_fams else 0.25
 
     if not best_block or best_score < min_score:
         if target_lang != "it":
@@ -635,10 +604,7 @@ async def api_ask(request: Request):
     try:
         data = json.loads(raw.decode("utf-8"))
     except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail="Body JSON non valido. Atteso: {\"q\":..., \"family\":...}",
-        )
+        raise HTTPException(status_code=400, detail="Body JSON non valido.")
 
     q = str(data.get("q", "")).strip()
     family = str(data.get("family", "")).strip().upper() if data.get("family") else None
@@ -675,8 +641,9 @@ async def api_ask(request: Request):
         lang,
     )
 
-    # Traduzione finale nella lingua della domanda (se diversa da IT)
-    text = translate_text(text, lang)
+    # Se il modello è disponibile, rifiniamo la lingua con translate_text
+    if lang != "it":
+        text = translate_text(text, lang)
 
     return {
         "ok": True,
@@ -722,8 +689,8 @@ def api_ask_get(
         lang,
     )
 
-    # Traduzione finale anche per il GET di test
-    text = translate_text(text, lang)
+    if lang != "it":
+        text = translate_text(text, lang)
 
     return {
         "ok": True,
