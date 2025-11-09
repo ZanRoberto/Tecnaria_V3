@@ -1,590 +1,361 @@
-from __future__ import annotations
-
 import json
-import re
-import unicodedata
+import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+import re
 
-# ============================================================
-# PERCORSI
-# ============================================================
+# =========================
+# CONFIGURAZIONE BASE
+# =========================
+
+USE_OPENAI = True  # Sinapsi attivo se c'è la chiave
+
+try:
+    from openai import OpenAI
+    if USE_OPENAI and os.getenv("OPENAI_API_KEY"):
+        openai_client = OpenAI()
+    else:
+        openai_client = None
+except Exception:
+    openai_client = None
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 DATA_DIR = STATIC_DIR / "data"
-CONFIG_PATH = DATA_DIR / "config.runtime.json"
+INDEX_HTML = STATIC_DIR / "index.html"
 
-# ============================================================
-# APP
-# ============================================================
+app = FastAPI(title="Tecnaria Sinapsi — Q/A")
 
-app = FastAPI(
-    title="Tecnaria Sinapsi — Q/A",
-    version="GOLD-TEC-2025-11-09"
-)
+# Cache famiglie
+_family_cache: Dict[str, List[Dict[str, Any]]] = {}
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # restringere in produzione se serve
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Mappa famiglie per lock
+FAMILY_KEYWORDS = {
+    "ctf": "CTF",
+    "ctl maxi": "CTL MAXI",
+    "ctl": "CTL",
+    "vcem": "VCEM",
+    "ctcem": "CTCEM",
+    "p560": "P560",
+    "diapason": "DIAPASON",
+}
 
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+# =========================
+# UTILS LETTURA / KB
+# =========================
 
-# ============================================================
-# CACHE (in RAM per processo)
-# ============================================================
-
-_families_cache: Dict[str, Dict[str, Any]] = {}
-_config_cache: Dict[str, Any] = {}
-
-# ============================================================
-# MODELLI INPUT
-# ============================================================
-
-class AskPayload(BaseModel):
-    q: str
-    family: Optional[str] = None
-
-# ============================================================
-# UTILITY LETTURA CONFIG
-# ============================================================
-
-def _read_json(path: Path) -> Any:
-    if not path.exists():
-        raise FileNotFoundError(str(path))
+def safe_read_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
-def load_config() -> Dict[str, Any]:
+def extract_blocks(data: Any) -> List[Dict[str, Any]]:
     """
-    Legge config.runtime.json se presente.
-    Se manca, usa default GOLD: dynamic + longest.
+    Estrae blocchi da:
+    {
+      "items": [...]
+    }
+    oppure liste nude ecc.
     """
-    global _config_cache
-    try:
-        cfg = _read_json(CONFIG_PATH)
-    except FileNotFoundError:
-        cfg = {
-            "admin": {
-                "response_policy": {
-                    "mode": "dynamic",
-                    "variant_selection": "longest",
-                    "variant_seed": 20251106
-                },
-                "security": {
-                    "admin_token_sha256": ""
-                }
-            }
-        }
-    _config_cache = cfg
-    return cfg
+    blocks: List[Dict[str, Any]] = []
+    if isinstance(data, list):
+        blocks = [b for b in data if isinstance(b, dict)]
+    elif isinstance(data, dict):
+        for key in ("items", "blocks", "data"):
+            if key in data and isinstance(data[key], list):
+                blocks = [b for b in data[key] if isinstance(b, dict)]
+                break
+    for i, b in enumerate(blocks):
+        if "id" not in b:
+            b["id"] = f"AUTO-{i:04d}"
+    return blocks
 
-def get_config() -> Dict[str, Any]:
-    # rilettura sempre dal file: se cambi config in produzione, si aggiorna
-    return load_config()
+def load_family(family: str) -> List[Dict[str, Any]]:
+    fam = family.upper()
+    if fam in _family_cache:
+        return _family_cache[fam]
 
-# ============================================================
-# GESTIONE FAMIGLIE
-# ============================================================
+    candidates = [
+        DATA_DIR / f"{fam}.json",
+        DATA_DIR / f"{fam}.gold.json",
+        DATA_DIR / f"{fam}.golden.json",
+    ]
+    path = next((p for p in candidates if p.exists()), None)
+    if not path:
+        raise HTTPException(status_code=404, detail=f"File JSON per famiglia '{family}' non trovato.")
 
-def list_families() -> List[str]:
-    """
-    Ritorna i nomi delle famiglie attive.
-    Regole:
-    - tutti i *.json in DATA_DIR
-    - esclusi config.runtime.json
-    - esclusi file marcati .off.json / .bak.json
-    """
-    if not DATA_DIR.exists():
-        return []
+    data = safe_read_json(path)
+    blocks = extract_blocks(data)
+    _family_cache[fam] = blocks
+    return blocks
 
+def list_all_families() -> List[str]:
     fams: List[str] = []
-    for p in DATA_DIR.glob("*.json"):
-        name = p.name
-        low = name.lower()
-        if "config.runtime" in low:
+    if not DATA_DIR.exists():
+        return fams
+    for f in DATA_DIR.glob("*.json"):
+        name = f.stem.upper()
+        if "CONFIG.RUNTIME" in name:
             continue
-        if low.endswith(".off.json") or low.endswith(".bak.json"):
-            continue
-        fams.append(p.stem.upper())
-
+        if name.endswith(".GOLD"):
+            name = name[:-5]
+        fams.append(name)
     return sorted(set(fams))
 
-def load_family(family_name: str) -> Dict[str, Any]:
+# =========================
+# MATCHING / SCORING
+# =========================
+
+def norm(s: str) -> str:
+    return " ".join(s.lower().strip().split())
+
+def extract_queries(block: Dict[str, Any]) -> List[str]:
     """
-    Carica una famiglia (GOLD o legacy tollerata):
-    - static/data/{FAMILY}.json
-
-    Supporta:
-    - formato GOLD: { "family": "...", "items": [...] }
-    - formato legacy: [ {...}, {...} ]
+    Testi usati per matching:
+    - question / questions / paraphrases / tags
+    - canonical (GOLD)
     """
-    global _families_cache
-    key = family_name.upper()
-
-    if key in _families_cache:
-        return _families_cache[key]
-
-    path = DATA_DIR / f"{key}.json"
-    data = _read_json(path)
-
-    if isinstance(data, dict):
-        data.setdefault("family", key)
-        items = data.get("items")
-        if not isinstance(items, list):
-            if isinstance(data.get("data"), list):
-                data["items"] = data["data"]
-            else:
-                data["items"] = []
-    elif isinstance(data, list):
-        data = {
-            "family": key,
-            "items": data,
-        }
-    else:
-        raise HTTPException(status_code=500, detail=f"Formato JSON non valido per famiglia {family_name}")
-
-    # assegna ID mancanti
-    for i, item in enumerate(data.get("items", [])):
-        if isinstance(item, dict) and "id" not in item:
-            item["id"] = f"{key}-{i:04d}"
-
-    _families_cache[key] = data
-    return data
-
-def get_family_items(family_name: str) -> List[Dict[str, Any]]:
-    fam = load_family(family_name)
-    items = fam.get("items", [])
-    return [it for it in items if isinstance(it, dict)]
-
-# ============================================================
-# NORMALIZZAZIONE TESTO / LINGUA
-# ============================================================
-
-SINONIMI_MAP = {
-    r"\bsparachiodi\b": "p560",
-    r"\bchiodatrice\b": "p560",
-    r"\bpistola\b": "p560",
-    r"\bspit\b": "p560",
-    r"\bperni?\b": "chiodi idonei tecnaria",  # output normalizzato
-}
-
-FAMILY_ALIASES = {
-    "P560": ["p560", "sparachiodi", "pistola", "spit"],
-    "CTF": ["ctf"],
-    "CTL": ["ctl"],
-    "CTL_MAXI": ["ctl maxi", "ctlmaxi", "maxi ctl"],
-    "VCEM": ["vcem"],
-    "CTCEM": ["ctcem"],
-    "DIAPASON": ["diapason"],
-    "COMM": ["comm", "commerciale", "info tecnaria"],
-}
-
-def normalize(text: str) -> str:
-    if not text:
-        return ""
-    text = unicodedata.normalize("NFKD", text)
-    text = text.encode("ascii", "ignore").decode("ascii", "ignore")
-    text = text.lower()
-    for pattern, repl in SINONIMI_MAP.items():
-        text = re.sub(pattern, repl, text)
-    text = re.sub(r"[^a-z0-9\s]", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-def detect_lang(q: str) -> str:
-    ql = q.lower()
-    if any(w in ql for w in [" the ", " connector ", "steel", "beam"]):
-        return "en"
-    if any(w in ql for w in [" que ", " hormigon", "conectores"]):
-        return "es"
-    if any(w in ql for w in [" beton", "connecteur"]):
-        return "fr"
-    if any(w in ql for w in [" beton", "verbinder", "stahl"]):
-        return "de"
-    return "it"
-
-# ============================================================
-# TRIGGER DAI BLOCCHI
-# ============================================================
-
-def extract_trigger_texts(item: Dict[str, Any]) -> List[str]:
     out: List[str] = []
 
-    # liste di domande / parafrasi
-    for key in ("questions", "paraphrases", "triggers", "variants"):
-        v = item.get(key)
+    # Singole
+    for key in ("q", "question", "domanda", "title", "label"):
+        v = block.get(key)
+        if isinstance(v, str):
+            v = v.strip()
+            if v:
+                out.append(v)
+
+    # Liste
+    for key in ("questions", "paraphrases", "variants", "triggers"):
+        v = block.get(key)
         if isinstance(v, list):
             for e in v:
-                if isinstance(e, str) and e.strip():
-                    out.append(e.strip())
+                if isinstance(e, str):
+                    e = e.strip()
+                    if e:
+                        out.append(e)
 
-    # singoli campi
-    for key in ("q", "question", "domanda", "title", "label", "context"):
-        v = item.get(key)
-        if isinstance(v, str) and v.strip():
-            out.append(v.strip())
-
-    # tags
-    tags = item.get("tags")
+    # Tags
+    tags = block.get("tags")
     if isinstance(tags, list):
         for t in tags:
-            if isinstance(t, str) and t.strip():
-                out.append(t.strip())
+            if isinstance(t, str):
+                t = t.strip()
+                if t:
+                    out.append(t)
 
-    # canonical / answer_it come supporto semantico
-    if isinstance(item.get("canonical"), str):
-        out.append(item["canonical"])
-    if isinstance(item.get("answer_it"), str):
-        out.append(item["answer_it"])
+    # Canonical come contesto
+    canon = block.get("canonical")
+    if isinstance(canon, str):
+        c = canon.strip()
+        if c:
+            out.append(c[:220])
 
     return out
 
-# ============================================================
-# MATCHING / SCORING
-# ============================================================
-
-def jaccard(a: List[str], b: List[str]) -> float:
-    if not a or not b:
-        return 0.0
-    sa, sb = set(a), set(b)
-    inter = len(sa & sb)
-    if inter == 0:
-        return 0.0
-    return inter / float(len(sa | sb))
-
-def detect_family_mentions(nq: str) -> List[str]:
-    found: List[str] = []
-    for fam, aliases in FAMILY_ALIASES.items():
-        for a in aliases:
-            if a in nq:
-                found.append(fam)
-                break
-    return found
-
-def score_item(query: str, item: Dict[str, Any], family: str) -> float:
+def base_similarity(query: str, block: Dict[str, Any]) -> float:
     """
-    Scoring robusto:
-    - jaccard tra query e triggers
-    - match forte su substring
-    - boost se la query nomina esplicitamente la famiglia corretta
-    - penalità se nomina un'altra famiglia
+    Similarità semplice deterministica.
     """
-    nq = normalize(query)
-    if not nq:
+    q = norm(query)
+    if not q:
         return 0.0
 
-    q_tokens = nq.split()
-    triggers = extract_trigger_texts(item)
-    if not triggers:
+    queries = extract_queries(block)
+    if not queries:
+        return 0.0
+
+    sq = set(q.split())
+    if not sq:
         return 0.0
 
     best = 0.0
-    for t in triggers:
-        nt = normalize(t)
-        if not nt:
+
+    for cand in queries:
+        c = norm(cand)
+        if not c:
             continue
 
-        if nq == nt:
+        # match forte
+        if q == c:
             return 1.0
 
-        if nq in nt or nt in nq:
-            if 0.9 > best:
-                best = 0.9
-
-        t_tokens = nt.split()
-        if not t_tokens:
+        if q in c or c in q:
+            best = max(best, 0.9)
             continue
 
-        j = jaccard(q_tokens, t_tokens)
+        sc = set(c.split())
+        if not sc:
+            continue
+
+        inter = len(sq & sc)
+        if inter == 0:
+            continue
+        j = inter / len(sq | sc)
         if j > best:
             best = j
 
-    mentioned = detect_family_mentions(nq)
-    fam = family.upper()
-
-    if mentioned:
-        if fam in mentioned:
-            # parla proprio di questa famiglia → alza
-            best = max(best, 0.85)
-        else:
-            # cita altra famiglia → riduci rilevanza
-            best *= 0.6
-
     return float(best)
 
-# ============================================================
-# POLICY & COSTRUZIONE TESTO
-# ============================================================
+def detect_lang(query: str) -> str:
+    q = query.lower()
+    if any(x in q for x in [" soletta", "connettore", "trave", "calcestruzzo", "lamiera", "pistola", "cartucce"]):
+        return "it"
+    if any(x in q for x in ["beam", "steel", "composite", "connector"]):
+        return "en"
+    if any(x in q for x in ["béton", "connecteur"]):
+        return "fr"
+    if any(x in q for x in ["conectores", "hormigón"]):
+        return "es"
+    if any(x in q for x in ["verbinder", "beton"]):
+        return "de"
+    return "it"
 
-def _merge_policy(cfg: Dict[str, Any]) -> Tuple[str, str]:
-    admin = (cfg.get("admin") or {})
-    pol = (admin.get("response_policy") or {})
-
-    mode = pol.get("mode", "dynamic")
-    if mode not in ("canonical", "dynamic"):
-        mode = "dynamic"
-
-    vs = pol.get("variant_selection", "longest")
-    if vs not in ("longest", "first"):
-        vs = "longest"
-
-    return mode, vs
-
-def _get_item_text_sources(item: Dict[str, Any]) -> Dict[str, Any]:
+def detect_explicit_families(query: str) -> List[str]:
     """
-    Supporta:
-    - GOLD: canonical + response_variants (lista)
-    - legacy: response_variants come dict → usa tutti i valori
-    - legacy: answer_it come canonical/extra
-    - altri campi testuali come extra
+    Se l'utente scrive CTF, VCEM, P560, ecc.
+    queste famiglie diventano prioritarie assolute.
     """
-    canonical = item.get("canonical")
-    if isinstance(canonical, str):
-        canonical = canonical.strip()
-    else:
-        canonical = None
+    q = query.lower()
+    hits: List[str] = []
 
-    variants: List[str] = []
-    rv = item.get("response_variants")
+    if "ctl maxi" in q:
+        hits.append("CTL MAXI")
 
-    if isinstance(rv, list):
-        for v in rv:
-            if isinstance(v, str) and v.strip():
-                variants.append(v.strip())
-    elif isinstance(rv, dict):
-        for v in rv.values():
-            if isinstance(v, str) and v.strip():
-                variants.append(v.strip())
+    for key, fam in FAMILY_KEYWORDS.items():
+        if key == "ctl maxi":
+            continue
+        if re.search(r"\b" + re.escape(key) + r"\b", q):
+            if fam not in hits:
+                hits.append(fam)
 
-    extras: List[str] = []
+    return hits
 
-    # answer_it: se non c'è canonical, lo usa; altrimenti extra
-    answer_it = item.get("answer_it")
-    if isinstance(answer_it, str) and answer_it.strip():
-        if not canonical:
-            canonical = answer_it.strip()
+def score_block_routed(query: str, block: Dict[str, Any], fam: str, explicit_fams: List[str]) -> float:
+    """
+    Punteggio con:
+    - base_similarity
+    - family lock
+    - heuristiche leggere (pistola, legno, laterocemento)
+    """
+    base = base_similarity(query, block)
+    if base <= 0:
+        return 0.0
+
+    fam_u = fam.upper()
+    q_low = query.lower()
+
+    # 1) Famiglia nominata esplicitamente → lock duro
+    if explicit_fams:
+        if fam_u in explicit_fams:
+            base *= 8.0
         else:
-            extras.append(answer_it.strip())
+            base *= 0.05
+        return base
 
-    # altri campi legacy
-    for key in ("answer", "risposta", "text", "content"):
-        v = item.get(key)
-        if isinstance(v, str) and v.strip():
-            extras.append(v.strip())
+    # 2) Heuristiche se NON c'è esplicito
 
-    answers = item.get("answers")
+    # P560: pistola/chiodatrice/sparo/cartucce
+    if any(k in q_low for k in ["p560", "pistola", "chiodatrice", "sparo", "cartuccia", "cartucce"]):
+        if fam_u == "P560":
+            base *= 5.0
+        else:
+            base *= 0.4
+
+    # CTL / CTL MAXI: legno
+    if "legno" in q_low or "trave in legno" in q_low:
+        if fam_u in ["CTL", "CTL MAXI"]:
+            base *= 3.0
+        elif fam_u in ["CTF", "VCEM", "CTCEM", "P560", "DIAPASON"]:
+            base *= 0.4
+
+    # VCEM / CTCEM / DIAPASON: laterocemento, travetti
+    if any(k in q_low for k in ["laterocemento", "travetto", "travetti"]):
+        if fam_u in ["VCEM", "CTCEM", "DIAPASON"]:
+            base *= 3.0
+        elif fam_u in ["CTF", "CTL", "CTL MAXI", "P560"]:
+            base *= 0.4
+
+    return base
+
+# =========================
+# COSTRUZIONE RISPOSTA GOLD
+# =========================
+
+def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
+    """
+    GOLD RULE:
+    - Mai restituire solo canonical secco.
+    - Sempre risposta 'ricca':
+      answers[lang] / answer_it / canonical + response_variants.
+    - Questa è la base che Sinapsi (OpenAI) può rifinire.
+    """
+    pieces: List[str] = []
+
+    # 1) answers multilingua (se presenti)
+    answers = block.get("answers")
     if isinstance(answers, dict):
-        for v in answers.values():
+        # lingua richiesta
+        for key in (lang, lang.lower(), lang.upper()):
+            v = answers.get(key)
             if isinstance(v, str) and v.strip():
-                extras.append(v.strip())
+                pieces.append(v.strip())
+                break
+        # fallback prima stringa utile
+        if not pieces:
+            for v in answers.values():
+                if isinstance(v, str) and v.strip():
+                    pieces.append(v.strip())
+                    break
 
-    return {
-        "canonical": canonical,
-        "variants": variants,
-        "extras": extras,
-    }
+    # 2) answer_it
+    answer_it = block.get("answer_it")
+    if isinstance(answer_it, str) and answer_it.strip():
+        if all(answer_it.strip() not in p for p in pieces):
+            pieces.append(answer_it.strip())
 
-def _pick_longest(texts: List[str]) -> Optional[str]:
-    if not texts:
-        return None
-    rich = [t for t in texts if len(t) >= 80]
-    base = rich if rich else texts
-    return max(base, key=len)
+    # 3) canonical (solo come parte del discorso, non unica voce)
+    canonical = block.get("canonical")
+    if isinstance(canonical, str) and canonical.strip():
+        if all(canonical.strip() not in p for p in pieces):
+            pieces.append(canonical.strip())
 
-def pick_response_text(item: Dict[str, Any], cfg: Dict[str, Any]) -> Optional[str]:
-    """
-    Applica policy GOLD:
-    - dynamic + longest → sempre la risposta più ricca disponibile
-    - compatibile con GOLD e legacy CTL/CTF
-    """
-    mode, variant_selection = _merge_policy(cfg)
-    src = _get_item_text_sources(item)
+    # 4) response_variants (lista o dict)
+    variants_raw = block.get("response_variants")
+    variants: List[str] = []
 
-    canonical = src["canonical"]
-    variants = src["variants"]
-    extras = src["extras"]
-
-    # modalita canonical: usata solo se forzata da config
-    if mode == "canonical":
-        if canonical:
-            return canonical
-        return _pick_longest(variants + extras)
-
-    # modalita dynamic: scegli il massimo
-    candidate_texts: List[str] = []
+    if isinstance(variants_raw, list):
+        variants = [v.strip() for v in variants_raw
+                    if isinstance(v, str) and v.strip()]
+    elif isinstance(variants_raw, dict):
+        for v in variants_raw.values():
+            if isinstance(v, list):
+                for e in v:
+                    if isinstance(e, str) and e.strip():
+                        variants.append(e.strip())
+            elif isinstance(v, str) and v.strip():
+                variants.append(v.strip())
 
     if variants:
-        if variant_selection == "first":
-            candidate_texts.append(variants[0])
-        else:
-            v = _pick_longest(variants)
-            if v:
-                candidate_texts.append(v)
+        # ordina per lunghezza: prendiamo la più "corposa"
+        variants_sorted = sorted(variants, key=len, reverse=True)
+        for v in variants_sorted:
+            if not any(v in p or p in v for p in pieces):
+                pieces.append(v)
+                break  # ne basta una GOLD
 
-    if canonical:
-        candidate_texts.append(canonical)
+    # 5) legacy fallback
+    if not pieces:
+        for key in ("answer", "risposta", "text", "content"):
+            v = block.get(key)
+            if isinstance(v, str) and v.strip():
+                pieces.append(v.strip())
+                break
 
-    candidate_texts.extend(extras)
-    candidate_texts = [t for t in candidate_texts if t and t.strip()]
-
-    if not candidate_texts:
+    if not pieces:
         return None
 
-    return _pick_longest(candidate_texts)
-
-# ============================================================
-# TROVA MIGLIOR BLOCCO
-# ============================================================
-
-def find_best_item(
-    question: str,
-    family_hint: Optional[str] = None,
-) -> Tuple[Optional[Dict[str, Any]], Optional[str], float]:
-    """
-    Se family_hint è valorizzata → cerca solo lì.
-    Se no → scorri tutte le famiglie attive.
-    """
-    if family_hint:
-        families = [family_hint.upper()]
-    else:
-        families = list_families()
-
-    best_item: Optional[Dict[str, Any]] = None
-    best_family: Optional[str] = None
-    best_score: float = 0.0
-
-    for fam in families:
-        try:
-            items = get_family_items(fam)
-        except FileNotFoundError:
-            continue
-
-        for it in items:
-            s = score_item(question, it, fam)
-            if s > best_score:
-                best_score = s
-                best_item = it
-                best_family = fam
-
-    return best_item, best_family, float(best_score)
-
-# ============================================================
-# ENDPOINTS
-# ============================================================
-
-@app.get("/api/config")
-def api_config():
-    cfg = get_config()
-    mode, vs = _merge_policy(cfg)
-    return {
-        "ok": True,
-        "app": "Tecnaria Sinapsi — Q/A",
-        "version": app.version,
-        "families_dir": str(DATA_DIR),
-        "families": list_families(),
-        "policy": {
-            "mode": mode,
-            "variant_selection": vs,
-        },
-    }
-
-@app.post("/api/ask")
-async def api_ask(payload: AskPayload):
-    q = (payload.q or "").strip()
-    if not q:
-        raise HTTPException(status_code=400, detail="Campo 'q' obbligatorio.")
-
-    family = payload.family.upper().strip() if payload.family else None
-    cfg = get_config()
-
-    item, fam, score = find_best_item(q, family)
-
-    # soglia minima per evitare abbinamenti fuori fuoco
-    if not item or not fam or score < 0.25:
-        return {
-            "ok": False,
-            "q": q,
-            "family": family,
-            "lang": detect_lang(q),
-            "score": float(score),
-            "text": "Nessuna risposta trovata."
-        }
-
-    text = pick_response_text(item, cfg)
-
-    if not text:
-        # caso limite: blocco senza testo valido
-        return {
-            "ok": False,
-            "q": q,
-            "family": fam,
-            "lang": detect_lang(q),
-            "id": item.get("id"),
-            "score": float(score),
-            "text": "Blocco trovato ma senza risposta valida."
-        }
-
-    # regola lessicale dura: mai "perni"
-    text = re.sub(r"\bperni?\b", "chiodi idonei Tecnaria", text, flags=re.IGNORECASE)
-
-    return {
-        "ok": True,
-        "q": q,
-        "family": fam,
-        "lang": detect_lang(q),
-        "id": item.get("id"),
-        "score": float(score),
-        "text": text
-    }
-
-# ============================================================
-# ROOT / HEALTHCHECK
-# ============================================================
-
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    """
-    Se esiste static/index.html → serve l'interfaccia.
-    Altrimenti pagina di stato semplice.
-    """
-    index_html = STATIC_DIR / "index.html"
-    if index_html.exists():
-        return HTMLResponse(index_html.read_text(encoding="utf-8"))
-    cfg = get_config()
-    mode, vs = _merge_policy(cfg)
-    html = f"""
-    <h1>Tecnaria Sinapsi — Q/A</h1>
-    <p>Backend attivo.</p>
-    <p>Policy: mode={mode}, variant_selection={vs}</p>
-    <p>Famiglie attive: {', '.join(list_families())}</p>
-    """
-    return HTMLResponse(html, status_code=200)
-
-# ============================================================
-# LOG AVVIO (Render friendly)
-# ============================================================
-
-@app.on_event("startup")
-async def on_startup():
-    try:
-        cfg = get_config()
-        mode, vs = _merge_policy(cfg)
-        fams = list_families()
-        print("🟢 SINAPSI GOLD AVVIATA")
-        print(f"📂 DATA_DIR: {DATA_DIR}")
-        print(f"📦 Famiglie attive: {fams}")
-        print(f"⚙️  Policy: mode={mode}, variant_selection={vs}")
-    except Exception as e:
-        print("🔴 ERRORE STARTUP SINAPSI:", e)
+    # 6) risposta GOLD compatta ma ricca (max 2 pezzi)
+    base = " ".join(pieces[:2]).str
