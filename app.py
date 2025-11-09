@@ -203,17 +203,52 @@ def base_similarity(query: str, block: Dict[str, Any]) -> float:
     return float(best)
 
 def detect_lang(query: str) -> str:
-    q = query.lower()
-    if any(x in q for x in [" soletta", "connettore", "trave", "calcestruzzo", "lamiera", "pistola", "cartucce"]):
+    """
+    Heuristica robusta ma semplice:
+    - Italiano riconosciuto da lessico tecnico tipico.
+    - Inglese se ASCII + parole chiave english.
+    - FR / ES / DE con marker di lingua.
+    - Fallback: se ASCII → en, altrimenti it.
+    """
+    q = query.strip()
+    q_low = q.lower()
+
+    # italiano: termini tecnici tipici
+    it_markers = [
+        " soletta", "connettore", "connettori", "trave", "travetto",
+        "calcestruzzo", "laterocemento", "lamiera", "pistola", "cartucce",
+        "chiodatrice", "posa", "cemento armato"
+    ]
+    if any(m in q_low for m in it_markers):
         return "it"
-    if any(x in q for x in ["beam", "steel", "composite", "connector"]):
+
+    # inglese: solo caratteri ASCII + marker tipici
+    en_markers = [
+        " beam", " beams", "steel", "timber", "composite", "deck",
+        "slab", "connector", "connectors", "use", "which", "what",
+        "how many", "can i", "design", "load", "capacity"
+    ]
+    if all(ord(c) < 128 for c in q) and any(m in q_low for m in en_markers):
         return "en"
-    if any(x in q for x in ["béton", "connecteur"]):
+
+    # francese
+    fr_markers = ["béton", "connecteur", "plancher", "poutre", "acier"]
+    if any(m in q_low for m in fr_markers):
         return "fr"
-    if any(x in q for x in ["conectores", "hormigón"]):
+
+    # spagnolo
+    es_markers = ["hormigón", "forjado", "viga de madera", "conectores", "losa"]
+    if any(m in q_low for m in es_markers):
         return "es"
-    if any(x in q for x in ["verbinder", "beton"]):
+
+    # tedesco
+    de_markers = ["verbinder", "beton", "holz", "decken", "stahlträger"]
+    if any(m in q_low for m in de_markers):
         return "de"
+
+    # fallback: se tutto ASCII → probabile EN, altrimenti IT
+    if all(ord(c) < 128 for c in q):
+        return "en"
     return "it"
 
 def detect_explicit_families(query: str) -> List[str]:
@@ -276,11 +311,12 @@ def score_block_routed(query: str,
 
 def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
     """
-    Costruisce SEMPRE la risposta più ricca possibile.
-    Regola:
-    - raccogliamo tutte le fonti (answers, answer_it, canonical, response_variants, fallback)
-    - scegliamo il testo PIÙ LUNGO e strutturato.
-    - se esistono varianti GOLD, NON torniamo una canonica secca.
+    Restituisce SEMPRE la versione più ricca disponibile.
+    Logica:
+    - raccoglie tutte le sorgenti (answers, answer_it, canonical, response_variants, fallback)
+    - privilegia i testi lunghi (>=160 char) se esistono
+    - sceglie il testo più lungo e strutturato
+    - non si limita alla canonical se esistono varianti GOLD sensate
     """
     candidates: List[str] = []
 
@@ -319,12 +355,12 @@ def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
             elif isinstance(v, str) and v.strip():
                 variants.append(v.strip())
 
-    # 4) canonical (aggiunta solo se non rimaniamo secchi)
+    # 4) canonical
     canonical = block.get("canonical")
     if isinstance(canonical, str) and canonical.strip():
         candidates.append(canonical.strip())
 
-    # 5) aggiungi varianti dopo canonical così hanno spazio di essere le più lunghe
+    # 5) aggiungi le varianti tra i candidati
     candidates.extend(variants)
 
     # 6) fallback legacy
@@ -338,11 +374,10 @@ def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
     if not candidates:
         return None
 
-    # preferisci testi già "ricchi"
+    # privilegia GOLD: testi con una certa lunghezza
     rich = [t for t in candidates if len(t) >= 160]
     source = rich if rich else candidates
 
-    # scegli il più lungo = GOLD
     best = max(source, key=len).strip()
     return best or None
 
@@ -355,8 +390,8 @@ def generate_gold_answer(question: str,
     Se OpenAI è attivo:
     - rifinisce in tono GOLD,
     - NON deve accorciare in modo sostanziale,
-    - non cambia i vincoli tecnici (es. P560 unica, campi d'impiego).
-    Se non attivo: restituisce la base.
+    - NON cambia vincoli tecnici (P560, campi d'impiego, ecc.).
+    Se non attivo: restituisce il base.
     """
     if not USE_OPENAI or openai_client is None:
         return base
@@ -371,10 +406,10 @@ def generate_gold_answer(question: str,
                     "role": "system",
                     "content": (
                         "Sei Sinapsi, assistente tecnico-commerciale di Tecnaria. "
-                        "Usa tono GOLD: completo, chiaro, tecnico, narrativo. "
-                        "NON accorciare in modo eccessivo il contenuto fornito. "
+                        "Rispondi in tono GOLD: completo, chiaro, tecnico, concreto. "
+                        "Non accorciare in modo eccessivo il testo fornito. "
                         "Rispetta rigorosamente il blocco dati: campi di impiego, vincoli (es. solo P560), "
-                        "nessuna invenzione o mitigazione delle esclusioni."
+                        "nessuna invenzione, nessuna apertura dove il blocco è chiuso."
                     ),
                 },
                 {
@@ -390,7 +425,6 @@ def generate_gold_answer(question: str,
             ],
         )
         text = (resp.choices[0].message.content or "").strip()
-        # se per qualche motivo il modello restituisce meno del base, tieni il base
         if len(text) < len(base) * 0.8:
             return base
         return text
@@ -515,7 +549,7 @@ async def api_ask_post(request: Request):
         lang,
     )
 
-    # regola di stile: mai 'perni'
+    # regola di stile globale
     text = re.sub(r"\bperni?\b", "chiodi idonei Tecnaria", text, flags=re.IGNORECASE)
 
     return {
