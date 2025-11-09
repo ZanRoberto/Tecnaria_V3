@@ -1,16 +1,13 @@
 {
-  "meta": {
-    "family": "CTL",
-    "version": "6.0",
-    "type": "GOLD COMMERCIALE",
-    "last_update": "2025-11-09",
-    "base_language": "it",
-    "autodetect_lang": true,
-    "supported_langs_runtime": ["it", "en", "fr", "de", "es"],
-    "fallback_lang": "en",
-    "certified_by": "Sinapsi NLM-v3",
-    "note": "Connettori CTL per solai misti legno-calcestruzzo. Struttura allineata a VCEM e CTF."
-  },
+  "family": "CTL",
+  "version": "6.0",
+  "type": "GOLD COMMERCIALE",
+  "last_update": "2025-11-09",
+  "base_language": "it",
+  "autodetect_lang": true,
+  "supported_langs_runtime": ["it", "en", "fr", "de", "es"],
+  "fallback_lang": "en",
+  "note": "Connettori CTL per solai misti legno-calcestruzzo. Struttura allineata a VCEM e CTF.",
   "items": [
     {
       "id": "CTL-0001",
