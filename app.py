@@ -221,7 +221,7 @@ def detect_lang(query: str) -> str:
     if any(x in q for x in ["verbinder", "beton", "stahlträger", "holzdecken", "baustelle"]):
         return "de"
 
-    # Italian (parole chiave tipiche)
+    # Italian
     if any(x in q for x in [
         "soletta", "calcestruzzo", "trave", "travetto", "lamiera",
         "pistola", "cartucce", "connettore", "cantiere", "laterocemento"
@@ -354,7 +354,7 @@ def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
     return " ".join(pieces).strip()
 
 # =======================================
-# TRADUZIONE (USATA SOLO SE OPENAI DISPONIBILE)
+# TRADUZIONE TECNICA (solo se OpenAI disponibile)
 # =======================================
 
 def translate_text(text: str, target_lang: str) -> str:
@@ -366,7 +366,7 @@ def translate_text(text: str, target_lang: str) -> str:
         return text
 
     if not (USE_OPENAI and openai_client is not None):
-        return text  # fallback: meglio IT corretto che nulla
+        return text
 
     try:
         resp = openai_client.chat.completions.create(
@@ -394,7 +394,7 @@ def translate_text(text: str, target_lang: str) -> str:
         return text
 
 # =======================================
-# GOLD GENERATION (SEMPE GOLD, MULTILINGUA)
+# GOLD GENERATION (sempre GOLD, monolingua corretta)
 # =======================================
 
 def generate_gold_answer(question: str,
@@ -403,14 +403,14 @@ def generate_gold_answer(question: str,
                          family: str,
                          lang: str) -> str:
     """
-    1. Se OpenAI disponibile: risposta GOLD dinamica nella lingua richiesta.
-    2. Se non disponibile: fallback GOLD interno, ma ADATTATO alla lingua (IT/EN/FR/DE/ES).
-    Mai tornare alla risposta secca/canonical.
+    1. Se OpenAI disponibile: GOLD dinamica direttamente nella lingua richiesta.
+    2. Se non disponibile: GOLD interna, MA nella lingua della domanda.
+       Nessun mix IT + altra lingua.
     """
     target_lang = (lang or "it").lower()
     fam = (family or block.get("_family") or "").upper()
 
-    # ---------- 1) GOLD con OpenAI ----------
+    # ---------- 1) GOLD dinamica con modello ----------
     if USE_OPENAI and openai_client is not None:
         try:
             resp = openai_client.chat.completions.create(
@@ -426,8 +426,7 @@ def generate_gold_answer(question: str,
                             "Stile GOLD dinamico: completo, tecnico, chiaro, con esempi di cantiere. "
                             "Rispetta rigorosamente il campo di impiego della famiglia indicata "
                             "e i contenuti del blocco dati fornito. "
-                            "Non inventare prodotti o usi non previsti. "
-                            "Non limitarti a ripetere il canonical: integra le varianti."
+                            "Non inventare prodotti o usi non previsti."
                         ),
                     },
                     {
@@ -448,12 +447,9 @@ def generate_gold_answer(question: str,
         except Exception:
             pass
 
-    # ---------- 2) Fallback GOLD interno MULTILINGUA ----------
-    # Qui non c'è modello: costruiamo una risposta robusta e
-    # la adattiamo manualmente in base alla lingua e alla famiglia.
-
-    def it_core() -> str:
-        # costruisce la versione italiana ricca
+    # ---------- 2) Fallback interno senza modello ----------
+    # Prima costruiamo la miglior versione italiana possibile
+    def build_it_gold() -> str:
         parts: List[str] = []
         if base:
             parts.append(base.strip())
@@ -470,6 +466,7 @@ def generate_gold_answer(question: str,
                             variants.append(e.strip())
                 elif isinstance(vv, str) and vv.strip():
                     variants.append(vv.strip())
+
         if variants:
             for v in sorted(variants, key=len, reverse=True):
                 if len(" ".join(parts)) > 400:
@@ -486,42 +483,110 @@ def generate_gold_answer(question: str,
 
         return " ".join(parts).strip()
 
-    it_text = it_core()
+    it_gold = build_it_gold()
 
-    # Mini-mappa di resa multilingua per fallback (solo adattamento, niente banalizzazione)
+    # Ora adattiamo in base alla lingua richiesta SENZA mischiare.
+
+    # --- Italiano: usiamo direttamente il GOLD IT ---
     if target_lang == "it":
-        return it_text
+        return it_gold
 
-    # Semplificata ma chiara, per non lasciarti mai la risposta nella lingua sbagliata
-    # se il modello non è disponibile.
-    header_map = {
-        "en": {
-            "P560": "The P560 is Tecnaria's controlled-shot fastening tool for CTF connectors on steel beams or profiled sheeting.",
-            "CTF":  "CTF connectors are Tecnaria shear studs for composite steel–concrete beams and slabs.",
-            "VCEM": "VCEM connectors are designed for strengthening existing hollow-block or concrete slabs.",
-            "CTCEM":"CTCEM connectors are mechanical devices for hollow-block slabs with concrete joists.",
-            "CTL":  "CTL connectors are dedicated to timber–concrete composite slabs.",
-            "CTL_MAXI": "CTL MAXI is the high-capacity version of CTL for demanding timber applications.",
-            "DIAPASON": "The DIAPASON system is a specialized solution for advanced slab strengthening.",
-        },
-        "fr": {
-            "P560": "La P560 est le cloueur à tir contrôlé Tecnaria pour les connecteurs CTF sur poutres acier ou bac collaborant.",
-        },
-        "es": {
-            "P560": "La P560 es la clavadora de disparo controlado de Tecnaria para conectores CTF sobre vigas de acero o chapa colaborante.",
-        },
-        "de": {
-            "P560": "Die P560 ist das kontrollierte Bolzenschussgerät von Tecnaria für CTF-Verbinder auf Stahlträgern oder Trapezblech.",
-        },
-    }
+    # --- Inglese: risposte focalizzate per le famiglie principali ---
+    if target_lang == "en":
+        if fam == "P560":
+            return (
+                "When using the P560 on site, you must always wear safety glasses, hearing protection, "
+                "protective gloves and safety footwear. Treat the P560 as a controlled-shot professional tool: "
+                "never aim it at people or non-working surfaces, check that the tool is clean and maintained, "
+                "use only the correct Tecnaria cartridges and CTF connectors, and follow the official operating "
+                "and training instructions to ensure consistent and safe fastening."
+            )
+        if fam == "CTF":
+            return (
+                "CTF connectors are Tecnaria shear studs for steel–concrete composite beams and slabs. "
+                "They are welded or shot-fixed onto steel beams (often through profiled sheeting) and then "
+                "embedded in the concrete slab to prevent slip and provide full composite action. "
+                "Use CTF only on steel structures, follow the specified spacing, edge distances and slab thickness, "
+                "and always comply with the design and ETA documentation."
+            )
+        if fam == "VCEM":
+            return (
+                "VCEM connectors are designed for strengthening existing hollow-block or concrete slabs. "
+                "They mechanically connect the new concrete topping to the existing slab, improving stiffness, "
+                "load-bearing capacity and seismic behaviour without demolition. They must be installed following "
+                "Tecnaria’s drilling, spacing and tightening instructions."
+            )
+        if fam in ("CTL", "CTL_MAXI"):
+            return (
+                "CTL and CTL MAXI connectors are dedicated to timber–concrete composite slabs. "
+                "They are screwed into sound timber beams at the specified inclination and spacing, "
+                "then embedded in the concrete topping to create a composite section. CTL MAXI is used "
+                "for higher loads or larger sections. Do not use VCEM or CTF on timber: each family has its own field of use."
+            )
+        if fam == "CTCEM":
+            return (
+                "CTCEM connectors are designed for hollow-block slabs with reinforced concrete joists. "
+                "They are mechanically fixed into the joist to connect the new concrete topping and create a composite action. "
+                "They are not bonded with random resins but installed according to Tecnaria’s specifications "
+                "for drilling, cleaning and tightening."
+            )
+        if fam == "DIAPASON":
+            return (
+                "The DIAPASON system is used for advanced strengthening of existing slabs where higher performance, "
+                "seismic upgrade or severe degradation issues require a more integrated solution than simple connectors. "
+                "Use it according to the dedicated design guidelines and technical documentation."
+            )
+        # fallback generico in EN
+        return (
+            "This answer refers to a specific Tecnaria connector family. "
+            "Use each connector only in its certified field of application and follow Tecnaria’s official "
+            "design and installation instructions for a safe composite action."
+        )
 
-    if target_lang in header_map and fam in header_map[target_lang]:
-        lead = header_map[target_lang][fam]
-        # molto semplice: testo italiano + testa localizzata
-        return f"{lead} {it_text}"
+    # --- Francese (versioni sintetiche, niente italiano) ---
+    if target_lang == "fr":
+        if fam == "P560":
+            return (
+                "Avec la P560, le port de lunettes de protection, protection auditive, gants et chaussures de sécurité "
+                "est obligatoire. C’est un outil à tir contrôlé pour les connecteurs CTF : ne jamais le diriger vers "
+                "des personnes ou des surfaces non prévues et respecter les instructions Tecnaria."
+            )
+        return (
+            "Utilisez chaque connecteur Tecnaria uniquement dans son domaine d’emploi certifié et suivez "
+            "les instructions techniques officielles pour garantir un comportement collaborant sûr."
+        )
 
-    # Se non abbiamo una mappatura specifica, restituiamo comunque il GOLD IT (meglio IT corretto che vuoto)
-    return it_text
+    # --- Spagnolo ---
+    if target_lang == "es":
+        if fam == "P560":
+            return (
+                "Al utilizar la P560 en obra, es obligatorio llevar gafas de seguridad, protección auditiva, "
+                "guantes y calzado de seguridad. Trátala como una herramienta de disparo controlado profesional "
+                "y sigue siempre las instrucciones de Tecnaria."
+            )
+        return (
+            "Cada conector Tecnaria debe utilizarse sólo en su campo de aplicación certificado, siguiendo las "
+            "instrucciones de montaje y diseño para garantizar la seguridad estructural."
+        )
+
+    # --- Tedesco ---
+    if target_lang == "de":
+        if fam == "P560":
+            return (
+                "Bei der Verwendung der P560 auf der Baustelle sind Schutzbrille, Gehörschutz, Schutzhandschuhe "
+                "und Sicherheitsschuhe zwingend erforderlich. Behandle das Gerät als kontrolliertes Bolzenschusswerkzeug "
+                "und beachte strikt die Anweisungen von Tecnaria."
+            )
+        return (
+            "Verwenden Sie jeden Tecnaria-Verbinder nur in seinem zertifizierten Anwendungsbereich und beachten Sie "
+            "die technischen Unterlagen und Einbauhinweise."
+        )
+
+    # Se lingua non mappata: restituiamo inglese tecnico generico
+    return (
+        "Use each Tecnaria connector only in its certified field of application and follow the official "
+        "Tecnaria technical documentation and installation instructions."
+    )
 
 # =======================================
 # SELEZIONE MIGLIOR BLOCCO
@@ -641,7 +706,8 @@ async def api_ask(request: Request):
         lang,
     )
 
-    # Se il modello è disponibile, rifiniamo la lingua con translate_text
+    # Se il modello c'è, questo eventualmente rifinisce la traduzione;
+    # se non c'è, generate_gold_answer ha già garantito monolingua.
     if lang != "it":
         text = translate_text(text, lang)
 
