@@ -277,7 +277,7 @@ def score_block_routed(query: str,
     if any(k in q_low for k in ["laterocemento", "travetto", "travetti"]):
         if fam_u in ["VCEM", "CTCEM", "DIAPASON"]:
             base *= 3.0
-        elif fam_u in ["CTF", "CTL", "CTL MAXI", "P560"]:
+        elif fam_u in ["CTF", "CTL", "CTL_MAXI", "P560"]:
             base *= 0.4
 
     return base
@@ -311,7 +311,7 @@ def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
 
     # 2) answer_it
     answer_it = block.get("answer_it")
-    if isinstance(answer_it, str) and answer_it.strip():
+    if isinstance(answer_it, str)) and answer_it.strip():
         if all(answer_it.strip() not in p for p in pieces):
             pieces.append(answer_it.strip())
 
@@ -375,7 +375,7 @@ def generate_gold_answer(question: str,
         resp = openai_client.chat.completions.create(
             model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
             temperature=0.35,
-            max_tokens=400,
+            max_tokens=900,  # <<< UNICA MODIFICA: aumentato per evitare troncamenti
             messages=[
                 {
                     "role": "system",
@@ -415,7 +415,6 @@ def find_best_block(query: str,
     explicit_fams = detect_explicit_families(query)
     forced_fams = [f.upper() for f in families] if families else None
 
-    # quali famiglie considerare
     if explicit_fams:
         if forced_fams:
             fams = [f for f in forced_fams if f in explicit_fams] or explicit_fams
