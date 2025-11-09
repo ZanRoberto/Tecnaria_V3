@@ -143,11 +143,21 @@
 
     {
       "id": "CTCEM-0008",
-      "tags": ["vite-gira-vuoto", "foro-sbagliato", "correzione"],
+      "tags": [
+        "vite-gira-vuoto",
+        "foro-sbagliato",
+        "correzione",
+        "getto",
+        "verifiche-prima-getto"
+      ],
       "questions": [
         "La vite del CTCEM gira a vuoto, che faccio?",
         "La vite non tira più, posso lasciarla?",
-        "Ho bucato nel vuoto con il CTCEM."
+        "Ho bucato nel vuoto con il CTCEM?",
+        "La vite del CTCEM gira a vuoto nel foro, cosa devo fare?",
+        "Durante la posa dei CTCEM, se la vite del connettore gira a vuoto nel foro cosa succede?",
+        "Cosa devo verificare se la vite del CTCEM gira a vuoto prima del getto?",
+        "Durante la posa dei CTCEM in un solaio in laterocemento, cosa succede se la vite del connettore gira a vuoto nel foro e quali verifiche si devono fare prima del getto?"
       ],
       "canonical": "Se la vite gira a vuoto, prende solo laterizio o il foro è troppo largo, l’ancoraggio del CTCEM non è valido. Bisogna spostare il connettore su calcestruzzo sano o ripristinare correttamente.",
       "response_variants": [
