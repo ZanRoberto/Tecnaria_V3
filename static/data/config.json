@@ -1,8 +1,8 @@
 {
   "admin": {
     "response_policy": {
-      "mode": "canonical",
-      "variant_selection": "round_robin",
+      "mode": "dynamic",
+      "variant_selection": "longest",
       "variant_seed": 20251106
     },
     "security": {
