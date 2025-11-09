@@ -1,1 +1,17 @@
+{
+  "family": "COMM",
+  "items": [
+    {
+      "id": "COMM-0001",
+      "tags": ["ordini", "commerciale", "contatti"],
+      "questions": [
+        "Come posso fare un ordine?",
+        "A chi mando la richiesta di offerta?",
+        "Quali sono i riferimenti commerciali Tecnaria?"
+      ],
+      "canonical": "Per ordini e richieste di offerta puoi contattare direttamente l'ufficio commerciale Tecnaria o rivolgerti ai distributori autorizzati indicati nelle schede tecniche e nella sezione contatti del sito Tecnaria.",
+      "mode": "canonical"
+    }
+  ]
+}
 
