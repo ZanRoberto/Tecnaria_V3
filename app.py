@@ -7,12 +7,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
-# OpenAI client (v2 style: from openai import OpenAI)
+# OpenAI client (opzionale, solo per traduzioni)
 try:
     from openai import OpenAI  # type: ignore
-except Exception:  # se manca la lib, il backend funziona lo stesso senza traduzioni
+except Exception:
     OpenAI = None  # type: ignore
 
 # ---------------------------------------------------------
@@ -20,7 +21,8 @@ except Exception:  # se manca la lib, il backend funziona lo stesso senza traduz
 # ---------------------------------------------------------
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "static", "data")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+DATA_DIR = os.path.join(STATIC_DIR, "data")
 CONFIG_PATH = os.path.join(DATA_DIR, "config.runtime.json")
 
 # ---------------------------------------------------------
@@ -37,6 +39,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# monta /static per index.html, css, logo, json, ecc.
+if os.path.isdir(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 # ---------------------------------------------------------
 # Stato globale / cache
 # ---------------------------------------------------------
@@ -44,14 +50,11 @@ app.add_middleware(
 _family_cache: Dict[str, Dict[str, Any]] = {}
 _config_cache: Optional[Dict[str, Any]] = None
 
-# Modalità di risposta:
-# - GOLD  => usa varianti narrative / dynamic
-# - CANONICAL => usa canonical / risposte secche
 MODE_GOLD = "gold"
 MODE_CANONICAL = "canonical"
-_current_mode: str = MODE_GOLD  # default: GOLD sempre
+_current_mode: str = MODE_GOLD  # default: sempre GOLD
 
-# OpenAI (opzionale per traduzioni)
+# OpenAI (solo se API key presente)
 USE_OPENAI = bool(os.getenv("OPENAI_API_KEY")) and OpenAI is not None
 openai_client: Optional[OpenAI] = None
 if USE_OPENAI:
@@ -62,16 +65,19 @@ if USE_OPENAI:
         USE_OPENAI = False
 
 # ---------------------------------------------------------
-# Modelli Pydantic
+# Modelli
 # ---------------------------------------------------------
+
+from pydantic import BaseModel
+
 
 class AskRequest(BaseModel):
     q: str
-    family: Optional[str] = None  # opzionale, la UI spesso lo manda già
+    family: Optional[str] = None
 
 
 # ---------------------------------------------------------
-# Utilità base
+# Utilità
 # ---------------------------------------------------------
 
 def normalize(text: str) -> str:
@@ -85,9 +91,7 @@ def normalize(text: str) -> str:
 
 
 def safe_family_filename(family: str) -> str:
-    # I file reali sono tipo CTF.json, VCEM.json, ecc.
-    base = family.upper()
-    return f"{base}.json"
+    return f"{family.upper()}.json"
 
 
 def load_config() -> Dict[str, Any]:
@@ -95,7 +99,6 @@ def load_config() -> Dict[str, Any]:
     if _config_cache is not None:
         return _config_cache
 
-    # default sicuro
     cfg: Dict[str, Any] = {
         "admin": {
             "response_policy": {
@@ -116,7 +119,6 @@ def load_config() -> Dict[str, Any]:
     except FileNotFoundError:
         pass
     except Exception:
-        # se il file è rotto, andiamo con i default
         pass
 
     _config_cache = cfg
@@ -136,7 +138,6 @@ def list_families() -> List[str]:
         if not fname.lower().endswith(".json"):
             continue
         base = fname.rsplit(".", 1)[0]
-        # escludi file di config
         if base.lower().startswith("config.runtime"):
             continue
         fams.append(base.upper())
@@ -157,7 +158,6 @@ def load_family(family: str) -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error loading family '{family}': {e}")
 
-    # normalizza struttura
     if isinstance(data, list):
         items = data
         data = {"family": family, "items": items}
@@ -174,7 +174,7 @@ def load_family(family: str) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------
-# Riconoscimento famiglia dalla domanda (instradamento automatico)
+# Instradamento famiglie
 # ---------------------------------------------------------
 
 FAMILY_SYNONYMS: Dict[str, List[str]] = {
@@ -186,6 +186,7 @@ FAMILY_SYNONYMS: Dict[str, List[str]] = {
     "P560": ["p560", "spit p560"],
     "DIAPASON": ["diapason"],
 }
+
 
 def guess_families_from_text(text: str) -> List[str]:
     t = text.lower()
@@ -199,50 +200,32 @@ def guess_families_from_text(text: str) -> List[str]:
 
 
 # ---------------------------------------------------------
-# Language detection & translation (semplice ma efficace)
+# Lingua & traduzioni
 # ---------------------------------------------------------
 
 SUPPORTED_LANGS = ["it", "en", "fr", "de", "es"]
 
+
 def detect_lang(text: str) -> str:
-    """
-    Heuristics leggere: basta per capire se rispondere in it/en/fr/de/es.
-    Se dubbio → it.
-    """
     t = text.strip()
     if not t:
         return "it"
     low = t.lower()
 
-    # inglese
     if re.search(r"\b(what|which|can i|how|where|why)\b", low):
         return "en"
-
-    # spagnolo
-    if re.search(r"\b(qué|dónde|cómo|cuándo|por qué)\b", low):
+    if re.search(r"\b(qué|dónde|como|cómo|cuándo|por qué)\b", low):
         return "es"
-
-    # francese
     if re.search(r"\b(quel|quelle|quels|quelles|comment|pourquoi|où)\b", low):
         return "fr"
-
-    # tedesco
     if re.search(r"\b(was|wie|warum|wo|welche|welcher|welches)\b", low):
         return "de"
-
-    # italiano (accenti tipici)
     if re.search(r"[àèéìòù]", low):
         return "it"
-
-    # fallback
     return "it"
 
 
 def openai_translate(text: str, target_lang: str, source_lang: Optional[str] = None) -> str:
-    """
-    Traduzione tecnica con OpenAI (se disponibile).
-    Se qualcosa va storto → restituisce il testo originale.
-    """
     if not text or not USE_OPENAI or not openai_client:
         return text
 
@@ -258,35 +241,25 @@ def openai_translate(text: str, target_lang: str, source_lang: Optional[str] = N
                     "role": "system",
                     "content": (
                         f"Sei un traduttore tecnico. Traduci il testo nella lingua '{target_lang}'. "
-                        "Mantieni invariati marchi, sigle e nomi dei prodotti Tecnaria. "
-                        "Rispondi SOLO con il testo tradotto."
+                        "Mantieni marchi, sigle e nomi dei prodotti Tecnaria invariati. "
+                        "Rispondi solo con il testo tradotto."
                     ),
                 },
-                {
-                    "role": "user",
-                    "content": text,
-                },
+                {"role": "user", "content": text},
             ],
             max_tokens=800,
         )
-        out = completion.choices[0].message.content or ""
-        out = out.strip()
+        out = (completion.choices[0].message.content or "").strip()
         return out or text
     except Exception:
         return text
 
 
 # ---------------------------------------------------------
-# Selezione variante GOLD vs CANONICO
+# GOLD vs CANONICO
 # ---------------------------------------------------------
 
 def pick_best_variant(variants: Any) -> str:
-    """
-    variants può essere:
-    - lista di stringhe
-    - dict {chiave: stringa o lista}
-    Restituisce la variante più lunga (stile GOLD) o random se da policy.
-    """
     texts: List[str] = []
 
     if isinstance(variants, list):
@@ -294,9 +267,9 @@ def pick_best_variant(variants: Any) -> str:
     elif isinstance(variants, dict):
         for v in variants.values():
             if isinstance(v, str):
-                v = v.strip()
-                if v:
-                    texts.append(v)
+                s = v.strip()
+                if s:
+                    texts.append(s)
             elif isinstance(v, list):
                 for s in v:
                     if isinstance(s, str):
@@ -315,16 +288,10 @@ def pick_best_variant(variants: Any) -> str:
         rnd = random.Random(seed or None)
         return rnd.choice(texts)
 
-    # default: longest = più ricca, stile GOLD
     return max(texts, key=len)
 
 
 def extract_answer(block: Dict[str, Any], lang: str, mode: str) -> str:
-    """
-    mode:
-      - MODE_GOLD      => usa response_variants (GOLD), fallback canonical
-      - MODE_CANONICAL => usa canonical/answer_xx, fallback varianti
-    """
     lang = (lang or "it").lower()
 
     variants = block.get("response_variants")
@@ -332,7 +299,6 @@ def extract_answer(block: Dict[str, Any], lang: str, mode: str) -> str:
     answer_lang = block.get(f"answer_{lang}")
     answer_it = block.get("answer_it")
 
-    # CANONICO: priorità a canonical / answer_lang
     if mode == MODE_CANONICAL:
         if answer_lang:
             base = answer_lang
@@ -344,7 +310,7 @@ def extract_answer(block: Dict[str, Any], lang: str, mode: str) -> str:
             base = pick_best_variant(variants)
         return (base or "").strip()
 
-    # GOLD (dynamic): priorità varianti narrative
+    # GOLD
     base = ""
     if variants:
         base = pick_best_variant(variants)
@@ -361,12 +327,11 @@ def extract_answer(block: Dict[str, Any], lang: str, mode: str) -> str:
 
 
 # ---------------------------------------------------------
-# Matching domanda → item JSON
+# Matching domanda → item
 # ---------------------------------------------------------
 
 def collect_item_text(item: Dict[str, Any]) -> str:
     parts: List[str] = []
-
     for key in ("questions", "q", "question", "paraphrases", "tags"):
         v = item.get(key)
         if isinstance(v, str):
@@ -374,7 +339,6 @@ def collect_item_text(item: Dict[str, Any]) -> str:
         elif isinstance(v, list):
             parts.extend([s for s in v if isinstance(s, str)])
 
-    # includo anche canonical e varianti per allargare il match
     for key in ("canonical", "answer_it"):
         v = item.get(key)
         if isinstance(v, str):
@@ -396,7 +360,6 @@ def score_item(q_norm: str, item: Dict[str, Any]) -> float:
     overlap = q_terms & hay_terms
     if not overlap:
         return 0.0
-    # piccolo boost se troviamo molte parole in comune
     return len(overlap) / len(q_terms)
 
 
@@ -408,9 +371,9 @@ def find_best_block(query_it: str, families: Optional[List[str]] = None) -> Tupl
     if not families:
         families = list_families()
 
-    best_item: Optional[Dict[str, Any]] = None
-    best_family: Optional[str] = None
-    best_score: float = 0.0
+    best_item = None
+    best_family = None
+    best_score = 0.0
 
     for fam in families:
         try:
@@ -425,7 +388,6 @@ def find_best_block(query_it: str, families: Optional[List[str]] = None) -> Tupl
                 best_item = item
                 best_family = fam
 
-    # soglia minima per evitare abbinamenti stupidi
     if best_score < 0.15:
         return (None, None, 0.0)
 
@@ -433,11 +395,18 @@ def find_best_block(query_it: str, families: Optional[List[str]] = None) -> Tupl
 
 
 # ---------------------------------------------------------
-# API
+# ROUTES
 # ---------------------------------------------------------
 
-@app.get("/")
-async def root():
+@app.get("/", include_in_schema=False)
+async def root_page():
+    """
+    Se esiste static/index.html → serve l'interfaccia.
+    Altrimenti restituisce info JSON (utile per debug).
+    """
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
     return {
         "ok": True,
         "message": "TECNARIA Sinapsi backend attivo",
@@ -466,15 +435,12 @@ async def api_ask(payload: AskRequest):
     if not raw_q:
         raise HTTPException(status_code=400, detail="Missing 'q' in request body")
 
-    # -------------------------------------------------
-    # Gestione comandi GOLD: / CANONICO: persistenti
-    # -------------------------------------------------
     txt = raw_q.lstrip()
     low = txt.lower()
 
+    # comandi persistenti
     if low.startswith("gold:"):
         _current_mode = MODE_GOLD
-        # rimuovi il prefisso dalla domanda
         txt = txt[5:].strip()
     elif low.startswith("canonico:") or low.startswith("canonical:"):
         _current_mode = MODE_CANONICAL
@@ -482,7 +448,6 @@ async def api_ask(payload: AskRequest):
         txt = txt[idx + 1 :].strip()
 
     if not txt:
-        # se l'utente ha scritto solo GOLD: o CANONICO:
         return {
             "ok": True,
             "message": f"Modalità aggiornata a '{_current_mode}'. Inserisci la domanda successiva.",
@@ -491,34 +456,22 @@ async def api_ask(payload: AskRequest):
 
     mode = _current_mode
 
-    # -------------------------------------------------
-    # Lingua della domanda
-    # -------------------------------------------------
+    # lingua domanda
     user_lang = detect_lang(txt)
 
-    # Testo per il matching: lavoriamo in italiano.
+    # per il match lavoriamo in IT
     query_for_match = txt
     if user_lang != "it":
-        # se hai la key, traduciamo in it per agganciare i JSON
         query_for_match = openai_translate(txt, "it", source_lang=user_lang)
 
-    # -------------------------------------------------
-    # Famiglie candidate
-    # -------------------------------------------------
-    families: Optional[List[str]] = None
-
+    # famiglie candidate
     if payload.family:
         families = [payload.family.upper()]
     else:
         guessed = guess_families_from_text(txt)
-        if guessed:
-            families = guessed
-        else:
-            families = None  # tutte
+        families = guessed or None
 
-    # -------------------------------------------------
-    # Matching
-    # -------------------------------------------------
+    # match
     item, fam, score = find_best_block(query_for_match, families)
 
     if not item or not fam:
@@ -529,9 +482,7 @@ async def api_ask(payload: AskRequest):
             "mode": mode,
         }
 
-    # -------------------------------------------------
-    # Estrazione risposta (sempre IT come base)
-    # -------------------------------------------------
+    # risposta base (sempre IT)
     base_it = extract_answer(item, "it", mode)
     if not base_it:
         return {
@@ -543,9 +494,7 @@ async def api_ask(payload: AskRequest):
             "mode": mode,
         }
 
-    # -------------------------------------------------
-    # Traduzione finale nella lingua dell'utente
-    # -------------------------------------------------
+    # traduzione finale
     if user_lang == "it":
         final_text = base_it
     else:
