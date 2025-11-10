@@ -1,3 +1,453 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tecnaria Sinapsi • Assistente Tecnico</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --tec-black: #111111;
+      --tec-orange: #f26623;
+      --tec-orange-soft: #ffb48a;
+      --tec-bg: #0b0c10;
+      --tec-panel: rgba(14, 17, 23, 0.98);
+      --tec-border: rgba(255, 255, 255, 0.06);
+      --text-main: #e5e7eb;
+      --text-soft: #9ca3af;
+      --radius-xl: 18px;
+      --radius-md: 10px;
+      --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.5);
+      --font-main: system-ui, -apple-system, BlinkMacSystemFont, -sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-main);
+      background:
+        radial-gradient(circle at top left, rgba(242,102,35,0.16) 0, transparent 55%),
+        radial-gradient(circle at top right, rgba(255,255,255,0.03) 0, transparent 50%),
+        #050608;
+      color: var(--text-main);
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 14px 26px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+      overflow: hidden;
+    }
+
+    .brand-logo img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .brand-text-title {
+      font-weight: 700;
+      font-size: 19px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #ffffff;
+    }
+
+    .brand-text-sub {
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 10px;
+      color: var(--text-soft);
+    }
+
+    .mode-pill {
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 9px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(242,102,35,0.12);
+      color: var(--tec-orange);
+      border: 1px solid rgba(242,102,35,0.4);
+    }
+
+    .mode-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--tec-orange);
+    }
+
+    .badge-mode {
+      display: inline-flex;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,253,0.24);
+      font-size: 9px;
+      gap: 5px;
+      align-items: center;
+      color: var(--text-soft);
+      background: rgba(15,23,42,0.68);
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #22c55e;
+    }
+
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 2.2fr) minmax(260px, 0.9fr);
+      gap: 16px;
+      padding: 4px 22px 18px;
+    }
+
+    @media (max-width: 900px) {
+      .main {
+        grid-template-columns: 1fr;
+        padding: 4px 10px 14px;
+      }
+    }
+
+    .panel {
+      background: var(--tec-panel);
+      border-radius: var(--radius-xl);
+      padding: 14px 14px 10px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid var(--tec-border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel-title span.sub {
+      display: block;
+      font-size: 9px;
+      font-weight: 400;
+      color: var(--text-soft);
+    }
+
+    .mode-toggle {
+      display: inline-flex;
+      padding: 2px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.96);
+      gap: 3px;
+      align-items: center;
+      border: 1px solid rgba(75,85,99,0.8);
+    }
+
+    .mode-btn {
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 8px;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-soft);
+      transition: all 0.16s ease;
+    }
+
+    .mode-btn.active {
+      background: var(--tec-orange);
+      color: #111827;
+      font-weight: 600;
+      box-shadow: 0 4px 10px rgba(242,102,35,0.5);
+    }
+
+    .qa-list {
+      flex: 1;
+      min-height: 170px;
+      max-height: 56vh;
+      overflow-y: auto;
+      padding-right: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      scroll-behavior: smooth;
+    }
+
+    .msg {
+      padding: 7px 9px;
+      border-radius: 12px;
+      font-size: 10px;
+      line-height: 1.55;
+      max-width: 100%;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.45);
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: rgba(242,102,35,0.16);
+      color: var(--text-main);
+      border: 1px solid rgba(242,102,35,0.5);
+      border-top-right-radius: 4px;
+    }
+
+    .msg.bot {
+      align-self: flex-start;
+      background: #0c0f16;
+      border-left: 3px solid var(--tec-orange);
+      border-radius: 10px;
+    }
+
+    .msg-meta {
+      font-size: 7px;
+      color: var(--text-soft);
+      margin-top: 3px;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .input-box {
+      flex: 1;
+      background: #05070b;
+      border-radius: 999px;
+      padding: 6px 11px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(75,85,99,0.9);
+    }
+
+    .input-box input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 10px;
+      color: var(--text-main);
+    }
+
+    .input-box input::placeholder {
+      color: var(--text-soft);
+    }
+
+    .send-btn {
+      padding: 6px 13px;
+      border-radius: 999px;
+      border: none;
+      font-size: 9px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--tec-orange);
+      color: #111111;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 6px 14px rgba(242,102,35,0.55);
+      transition: all 0.16s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .send-btn:hover {
+      background: #ff7b32;
+      transform: translateY(-1px);
+      box-shadow: 0 9px 20px rgba(242,102,35,0.7);
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .side-card {
+      background: rgba(9, 11, 16, 0.98);
+      border-radius: var(--radius-xl);
+      padding: 9px 9px 8px;
+      border: 1px solid var(--tec-border);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.65);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .side-title {
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--tec-orange-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .pill-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 2px;
+    }
+
+    .pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(75,85,99,0.9);
+      font-size: 8px;
+      color: var(--text-main);
+      background: #080b10;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      white-space: nowrap;
+    }
+
+    .pill:hover {
+      background: rgba(242,102,35,0.16);
+      border-color: var(--tec-orange);
+      color: var(--tec-orange-soft);
+      box-shadow: 0 6px 16px rgba(242,102,35,0.4);
+    }
+
+    .hint-text {
+      font-size: 8px;
+      color: var(--text-soft);
+    }
+
+    .footer-note {
+      font-size: 7px;
+      color: var(--text-soft);
+      text-align: right;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="brand">
+      <div class="brand-logo">
+        <img src="/static/img/tecnaria-logo.png" alt="Tecnaria"
+             onerror="this.style.display='none';">
+      </div>
+      <div>
+        <div class="brand-text-title">TECNARIA SINAPSI</div>
+        <div class="brand-text-sub">Assistente GOLD strutturale • connettori & sistemi misti</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="mode-pill" id="modePill">
+        <div class="mode-dot"></div>
+        <span id="modePillText">Modalità GOLD attiva</span>
+      </div>
+      <div class="badge-mode">
+        <div class="badge-dot"></div>
+        backend online
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="panel">
+      <div class="panel-title">
+        <div>
+          Motore Q/A Tecnaria
+          <span class="sub">
+            Instradamento automatico su CTF, VCEM, CTCEM, CTL, CTL MAXI, DIAPASON, P560 • risposte GOLD
+          </span>
+        </div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="btnGold">GOLD</button>
+          <button class="mode-btn" id="btnCanonico">CANONICO</button>
+        </div>
+      </div>
+
+      <div class="qa-list" id="chat"></div>
+
+      <div class="input-row">
+        <div class="input-box">
+          <input id="questionInput" type="text"
+                 placeholder="Scrivi la tua domanda (es. 'Dove posso usare i connettori CTF?' oppure 'Can I use P560 on steel beams?')" />
+        </div>
+        <button class="send-btn" id="sendBtn">
+          <span>Chiedi</span><span>➜</span>
+        </button>
+      </div>
+      <div class="footer-note">
+        GOLD = spiegazione completa • CANONICO = risposta tecnica sintetica
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <div class="side-card">
+        <div class="side-title">Domande veloci</div>
+        <div class="pill-grid">
+          <div class="pill" data-q="Dove posso usare i connettori CTF?">Uso CTF</div>
+          <div class="pill" data-q="Quando scegliere VCEM o CTCEM per un solaio in laterocemento?">VCEM vs CTCEM</div>
+          <div class="pill" data-q="Differenza tra CTL e CTL MAXI?">CTL vs CTL MAXI</div>
+          <div class="pill" data-q="Quando è corretto usare i connettori DIAPASON?">Uso DIAPASON</div>
+          <div class="pill" data-q="Posso usare la P560 per posare i CTF?">P560 &amp; CTF</div>
+          <div class="pill" data-q="Come contatto Tecnaria per assistenza tecnica in cantiere?">Supporto Tecnaria</div>
+        </div>
+        <div class="hint-text">
+          Clicca una pill, modificala se serve e invia.
+        </div>
+      </div>
+
+      <div class="side-card">
+        <div class="side-title">Indicazioni</div>
+        <div class="hint-text">
+          • Le risposte sono basate sui contenuti ufficiali Tecnaria e strutturate in logica GOLD.<br>
+          • L'instradamento individua automaticamente la famiglia corretta (CTF, VCEM, CTCEM, CTL, CTL MAXI, DIAPASON, P560).<br>
+          • Per risposte sintetiche da capitolato, passa a CANONICO con il toggle in alto.
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
 <script>
   const chatEl = document.getElementById("chat");
   const inputEl = document.getElementById("questionInput");
@@ -6,7 +456,7 @@
   const btnCanonico = document.getElementById("btnCanonico");
   const modePillText = document.getElementById("modePillText");
 
-  let currentMode = "gold"; // parte allineato col backend
+  let currentMode = "gold";
 
   function appendMessage(text, type, meta) {
     const msg = document.createElement("div");
@@ -39,7 +489,6 @@
     const text = (rawText || inputEl.value || "").trim();
     if (!text) return;
 
-    // Mostra domanda utente solo se non è un comando puro GOLD:/CANONICO:
     if (!/^gold:$/i.test(text) && !/^canonico:$/i.test(text) && !/^canonical:$/i.test(text)) {
       appendMessage(text, "user");
     }
@@ -47,7 +496,6 @@
 
     let q = text;
 
-    // Se l'utente non ha messo GOLD:/CANONICO:, aggiungiamo il comando in base al toggle corrente
     if (!/^gold:/i.test(text) && !/^canonico:/i.test(text) && !/^canonical:/i.test(text)) {
       if (currentMode === "gold") {
         q = "GOLD: " + text;
@@ -65,13 +513,9 @@
 
       const data = await res.json();
 
-      // Se la risposta è solo un cambio modalità (ha message ma non ha text)
       if (data.ok && !data.text && data.message) {
-        if (data.mode === "canonical") {
-          setModeUI("canonical");
-        } else if (data.mode === "gold") {
-          setModeUI("gold");
-        }
+        if (data.mode === "canonical") setModeUI("canonical");
+        if (data.mode === "gold") setModeUI("gold");
         appendMessage(data.message, "bot", "Sistema • mode: " + (data.mode || "").toUpperCase());
         return;
       }
@@ -81,11 +525,8 @@
         return;
       }
 
-      if (data.mode === "canonical") {
-        setModeUI("canonical");
-      } else {
-        setModeUI("gold");
-      }
+      if (data.mode === "canonical") setModeUI("canonical");
+      else setModeUI("gold");
 
       const metaParts = [];
       if (data.family) metaParts.push("Famiglia: " + data.family);
@@ -122,7 +563,6 @@
     });
   });
 
-  // Messaggio iniziale
   appendMessage(
     "Benvenuto in Tecnaria Sinapsi. Modalità GOLD attiva: puoi chiedere tutto su CTF, VCEM, CTCEM, CTL, CTL MAXI, DIAPASON e P560. " +
     "Per risposte sintetiche passa a CANONICO con il toggle in alto.",
@@ -130,3 +570,5 @@
     "Sistema • init • mode: GOLD"
   );
 </script>
+</body>
+</html>
