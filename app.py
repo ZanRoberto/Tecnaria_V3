@@ -327,40 +327,88 @@ def extract_answer(block: Dict[str, Any], lang: str, mode: str) -> str:
 
 
 # ---------------------------------------------------------
-# Matching domanda → item
+# Matching domanda → item (migliorato)
 # ---------------------------------------------------------
 
-def collect_item_text(item: Dict[str, Any]) -> str:
-    parts: List[str] = []
-    for key in ("questions", "q", "question", "paraphrases", "tags"):
+STOPWORDS = {
+    "dove", "dov", "posso", "puo", "puoi",
+    "si", "no", "come", "quando", "quanto", "quanti",
+    "quale", "quali",
+    "il", "lo", "la", "i", "gli", "le",
+    "un", "una", "uno",
+    "di", "del", "della", "dei", "degli",
+    "da", "in", "su", "per", "con",
+    "e", "ed", "oppure", "o",
+    "any", "can", "do", "use",
+    "utilizzare", "usare",
+    "please", "por", "que", "quel", "quelle", "etc"
+}
+
+
+def collect_item_text(item: Dict[str, Any]) -> Tuple[str, str]:
+    """
+    full_text: tutto il contenuto utile (domande + risposte brevi)
+    questions_text: solo testi di domanda/parafrasi per dare extra peso
+    """
+    q_parts: List[str] = []
+    all_parts: List[str] = []
+
+    for key in ("questions", "q", "question", "paraphrases"):
         v = item.get(key)
         if isinstance(v, str):
-            parts.append(v)
+            q_parts.append(v)
         elif isinstance(v, list):
-            parts.extend([s for s in v if isinstance(s, str)])
+            q_parts.extend([s for s in v if isinstance(s, str)])
 
-    for key in ("canonical", "answer_it"):
+    for key in ("questions", "q", "question", "paraphrases", "tags", "canonical", "answer_it"):
         v = item.get(key)
         if isinstance(v, str):
-            parts.append(v)
+            all_parts.append(v)
+        elif isinstance(v, list):
+            all_parts.extend([s for s in v if isinstance(s, str)])
 
-    return " ".join(parts)
+    return " ".join(all_parts), " ".join(q_parts)
 
 
 def score_item(q_norm: str, item: Dict[str, Any]) -> float:
+    """
+    - rimuove stopwords dalla query
+    - calcola overlap con tutto il testo
+    - aggiunge bonus se l'overlap è forte sulle 'questions'
+    Questo riduce i falsi agganci (es. domanda sul campo d'impiego CTF
+    che finisce sul blocco P560).
+    """
     if not q_norm:
         return 0.0
-    hay = normalize(collect_item_text(item))
-    if not hay:
-        return 0.0
-    q_terms = set(q_norm.split())
+
+    q_terms = [t for t in q_norm.split() if t and t not in STOPWORDS]
     if not q_terms:
         return 0.0
-    hay_terms = set(hay.split())
-    overlap = q_terms & hay_terms
-    if not overlap:
+    q_set = set(q_terms)
+
+    full_text, questions_text = collect_item_text(item)
+    full_norm = normalize(full_text)
+    if not full_norm:
         return 0.0
-    return len(overlap) / len(q_terms)
+    full_set = set(full_norm.split())
+
+    overlap_full = q_set & full_set
+    if not overlap_full:
+        return 0.0
+
+    base_score = len(overlap_full) / len(q_set)
+
+    # bonus domande specifiche
+    if questions_text:
+        q_norm_q = normalize(questions_text)
+        q_q_set = set(q_norm_q.split())
+        if q_q_set:
+            overlap_q = q_set & q_q_set
+            if overlap_q:
+                bonus = len(overlap_q) / len(q_set)
+                base_score += 0.25 * bonus
+
+    return base_score
 
 
 def find_best_block(query_it: str, families: Optional[List[str]] = None) -> Tuple[Optional[Dict[str, Any]], Optional[str], float]:
@@ -438,7 +486,7 @@ async def api_ask(payload: AskRequest):
     txt = raw_q.lstrip()
     low = txt.lower()
 
-    # comandi persistenti
+    # comandi persistenti GOLD / CANONICO
     if low.startswith("gold:"):
         _current_mode = MODE_GOLD
         txt = txt[5:].strip()
@@ -447,6 +495,7 @@ async def api_ask(payload: AskRequest):
         idx = low.find(":")
         txt = txt[idx + 1 :].strip()
 
+    # se è solo comando, niente blocco: rispondiamo stato
     if not txt:
         return {
             "ok": True,
