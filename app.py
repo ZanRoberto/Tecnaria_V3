@@ -7,13 +7,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 # =========================
 # CONFIG
 # =========================
 
-USE_OPENAI = True
+USE_OPENAI = True  # se non hai la key, userà solo i testi dei JSON
 
 try:
     from openai import OpenAI
@@ -38,7 +38,7 @@ def safe_read_json(path: Path) -> Any:
         return json.load(f)
 
 
-# Carico ma NON uso per cambiare modalità: siamo GOLD fisso
+# Eventuale config runtime, NON cambia la logica delle risposte
 RUNTIME_CONFIG: Dict[str, Any] = {}
 if RUNTIME_CONFIG_PATH.exists():
     try:
@@ -48,8 +48,12 @@ if RUNTIME_CONFIG_PATH.exists():
 
 app = FastAPI(title="Tecnaria Sinapsi — Q/A")
 
-# Solo GOLD
-DEFAULT_ANSWER_MODE: str = "gold"
+# =========================
+# MODALITÀ GLOBALE PERSISTENTE
+# =========================
+# Parte in GOLD e resta GOLD finché non riceve CANONICO:
+# Passa in CANONICO e resta CANONICO finché non riceve GOLD:
+CURRENT_MODE: str = "gold"
 
 # Cache famiglie
 _family_cache: Dict[str, List[Dict[str, Any]]] = {}
@@ -112,7 +116,8 @@ def load_family(family: str) -> List[Dict[str, Any]]:
 
     if path is None:
         raise HTTPException(
-            status_code=404, detail=f"File JSON per famiglia '{family}' non trovato."
+            status_code=404,
+            detail=f"File JSON per famiglia '{family}' non trovato.",
         )
 
     data = safe_read_json(path)
@@ -128,7 +133,7 @@ def list_all_families() -> List[str]:
 
     for f in DATA_DIR.glob("*.json"):
         name = f.stem.upper()
-        if "config.runtime".upper() in name:
+        if "CONFIG.RUNTIME".upper() in name:
             continue
         if name.endswith(".GOLD"):
             name = name[:-5]
@@ -137,7 +142,7 @@ def list_all_families() -> List[str]:
     return sorted(set(fams))
 
 # =========================
-# MATCHING / HEURISTICHE
+# UTILITY
 # =========================
 
 def norm(s: str) -> str:
@@ -145,31 +150,35 @@ def norm(s: str) -> str:
 
 
 def extract_queries(block: Dict[str, Any]) -> List[str]:
+    """
+    Testi per il matching del blocco.
+    canonical qui è SOLO per agganciare, NON per rispondere in GOLD.
+    """
     out: List[str] = []
 
     for key in ("q", "question", "domanda", "title", "label"):
         v = block.get(key)
         if isinstance(v, str):
-            v = v.strip()
-            if v:
-                out.append(v)
+            t = v.strip()
+            if t:
+                out.append(t)
 
     for key in ("questions", "paraphrases", "variants", "triggers"):
         v = block.get(key)
         if isinstance(v, list):
             for e in v:
                 if isinstance(e, str):
-                    e = e.strip()
-                    if e:
-                        out.append(e)
+                    t = e.strip()
+                    if t:
+                        out.append(t)
 
     tags = block.get("tags")
     if isinstance(tags, list):
         for t in tags:
             if isinstance(t, str):
-                t = t.strip()
-                if t:
-                    out.append(t)
+                tt = t.strip()
+                if tt:
+                    out.append(tt)
 
     canon = block.get("canonical")
     if isinstance(canon, str):
@@ -221,26 +230,82 @@ def base_similarity(query: str, block: Dict[str, Any]) -> float:
 
     return best
 
+# =========================
+# RILEVAMENTO LINGUA
+# =========================
 
 def detect_lang(query: str) -> str:
+    """
+    Regole:
+    - Se la frase INIZIA chiaramente in una lingua straniera (FR/EN/ES/DE) => quella lingua.
+    - Altrimenti controlla marker tecnici / parole chiave.
+    - Default assoluto: IT (il tuo dominio è italiano-centrico).
+    """
     q = query.strip()
+    if not q:
+        return "it"
+
     q_low = q.lower()
 
+    # Prima parola / token iniziale per riconoscere lingua
+    # (ignoro eventuali ? ! iniziali tipo spagnolo)
+    stripped = q_low.lstrip("¿¡?!.,;: ")
+    first_token = stripped.split()[0] if stripped.split() else ""
+
+    # ---- FRANCESE (inizio frase) ----
+    fr_starters = {
+        "bonjour", "bonsoir", "salut",
+        "puis-je", "est-ce", "est-ce-que",
+        "comment", "pourquoi", "quel", "quelle", "quels", "quelles",
+        "je", "nous", "vous", "ils", "elles",
+        "avec", "sans", "sur", "sous", "entre", "pour", "chez",
+    }
+    if first_token in fr_starters or stripped.startswith("puis-je") or "est-ce que" in stripped:
+        return "fr"
+
+    # ---- SPAGNOLO (inizio frase) ----
+    if q_low[0] in ("¿", "¡"):
+        return "es"
+    es_starters = {
+        "hola", "buenos", "buenas",
+        "puedo", "podemos", "quisiera", "necesito", "tengo",
+        "quiero", "donde", "cómo", "porqué", "porque",
+    }
+    if first_token in es_starters:
+        return "es"
+
+    # ---- TEDESCO (inizio frase) ----
+    de_starters = {
+        "hallo", "guten",
+        "kann", "kannich", "kann-ich",
+        "könnte", "kannst", "können",
+        "ich", "wir", "sie", "gibt", "brauche", "möchte",
+    }
+    if first_token in de_starters or stripped.startswith("kann ich"):
+        return "de"
+
+    # ---- INGLESE (inizio frase) ----
+    en_starters = {
+        "hi", "hello", "dear",
+        "can", "could", "should", "would",
+        "is", "are", "do", "does", "how", "what", "where", "why", "when",
+        "please",
+    }
+    if first_token in en_starters or stripped.startswith("can i "):
+        return "en"
+
+    # ---- MARKER DI CONTENUTO (come versione precedente) ----
+
+    # Italiani (tecnici + lingua naturale)
     it_markers = [
-        " soletta", "connettore", "connettori", "trave", "travetto",
-        "calcestruzzo", "laterocemento", "lamiera", "pistola", "cartucce",
-        "chiodatrice", "posa", "cemento armato"
+        " connettore", " connettori", " soletta", " trave", " travetto",
+        " calcestruzzo", " laterocemento", " lamiera", " chiodatrice",
+        " pistola", " cartucce", " posa", " cemento armato",
+        " posso ", " devo ", " voglio ", " quale ", " dove ",
+        " usare ", " sparare ", " si può", " si possono", " è possibile ",
     ]
     if any(m in q_low for m in it_markers):
         return "it"
-
-    en_markers = [
-        " beam", " beams", "steel", "timber", "composite", "deck",
-        "slab", "connector", "connectors", "use", "which", "what",
-        "how many", "can i", "design", "load", "capacity"
-    ]
-    if all(ord(c) < 128 for c in q) and any(m in q_low for m in en_markers):
-        return "en"
 
     fr_markers = ["béton", "connecteur", "plancher", "poutre", "acier"]
     if any(m in q_low for m in fr_markers):
@@ -250,14 +315,27 @@ def detect_lang(query: str) -> str:
     if any(m in q_low for m in es_markers):
         return "es"
 
-    de_markers = ["verbinder", "beton", "holz", "decken", "stahlträger"]
+    de_markers = ["verbinder", "beton", "holz", "decken", "stahlträger", "verbund"]
     if any(m in q_low for m in de_markers):
         return "de"
 
-    if all(ord(c) < 128 for c in q):
+    en_markers = [
+        " beam", " beams", " steel", " timber", " composite", " deck",
+        " slab", " connector", " connectors", " design", " load", " capacity"
+    ]
+    if any(m in q_low for m in en_markers):
         return "en"
+
+    # Caratteri non ASCII generici → probabile EU, ma siccome hai tanta Italia:
+    if not all(ord(c) < 128 for c in q):
+        return "it"
+
+    # Default assoluto: italiano
     return "it"
 
+# =========================
+# FAMIGLIE & ROUTING
+# =========================
 
 def detect_explicit_families(query: str) -> List[str]:
     q = query.lower()
@@ -280,7 +358,7 @@ def score_block_routed(
     query: str,
     block: Dict[str, Any],
     fam: str,
-    explicit_fams: List[str]
+    explicit_fams: List[str],
 ) -> float:
     base = base_similarity(query, block)
     if base <= 0:
@@ -317,75 +395,137 @@ def score_block_routed(
     return base
 
 # =========================
-# EXTRACT ANSWER (GOLD ONLY)
+# TOGGLE PERSISTENTE GOLD / CANONICO
 # =========================
 
-def extract_answer(block: Dict[str, Any], lang: str = "it") -> Optional[str]:
+def update_mode_and_clean_query(raw_q: str, provided_mode: Optional[str]) -> (str, str):
     """
-    GOLD ONLY:
-    - Usa response_variants, answers, answer_it.
-    - canonical solo come ultimo fallback se non c'è nient'altro.
+    Logica:
+    - CURRENT_MODE parte "gold".
+    - "GOLD:" => CURRENT_MODE = "gold" (persistente).
+    - "CANONICO:" / "CANONICAL:" => CURRENT_MODE = "canonical" (persistente).
+    - mode=gold/canonical nei parametri => aggiorna CURRENT_MODE (persistente).
+    - Se nessun comando => usa CURRENT_MODE.
     """
-    primary: List[str] = []
-    gold_candidates: List[str] = []
-    fallback: List[str] = []
+    global CURRENT_MODE
 
-    answers = block.get("answers")
-    if isinstance(answers, dict):
-        for key in (lang, lang.lower(), lang.upper()):
-            v = answers.get(key)
-            if isinstance(v, str) and v.strip():
-                primary.append(v.strip())
-                break
-        if not primary:
-            for v in answers.values():
+    q = raw_q.strip()
+    lower = q.lower()
+
+    # Prefissi testuali
+    if lower.startswith("gold:"):
+        CURRENT_MODE = "gold"
+        return q[5:].strip(), CURRENT_MODE
+
+    if lower.startswith("canonico:") or lower.startswith("canonical:"):
+        if lower.startswith("canonico:"):
+            cleaned = q[len("canonico:"):].strip()
+        else:
+            cleaned = q[len("canonical:"):].strip()
+        CURRENT_MODE = "canonical"
+        return cleaned, CURRENT_MODE
+
+    # Parametro esplicito
+    if provided_mode:
+        m = provided_mode.strip().lower()
+        if m in ("gold", "gold-only", "dynamic"):
+            CURRENT_MODE = "gold"
+        elif m in ("canonical", "canonico", "base"):
+            CURRENT_MODE = "canonical"
+
+    if CURRENT_MODE not in ("gold", "canonical"):
+        CURRENT_MODE = "gold"
+
+    return q, CURRENT_MODE
+
+# =========================
+# EXTRACT ANSWER
+# =========================
+
+def extract_answer(block: Dict[str, Any], lang: str, mode: str) -> Optional[str]:
+    """
+    GOLD:
+      - usa response_variants (priorità),
+      - poi answers / answer_it,
+      - MAI canonical.
+    CANONICO:
+      - usa canonical,
+      - se manca, answers / answer_it / legacy.
+    """
+    if mode == "gold":
+        primary: List[str] = []
+        gold_candidates: List[str] = []
+
+        # answers multilingua
+        answers = block.get("answers")
+        if isinstance(answers, dict):
+            for key in (lang, lang.lower(), lang.upper()):
+                v = answers.get(key)
                 if isinstance(v, str) and v.strip():
                     primary.append(v.strip())
                     break
+            if not primary:
+                for v in answers.values():
+                    if isinstance(v, str) and v.strip():
+                        primary.append(v.strip())
+                        break
+
+        # answer_it
+        answer_it = block.get("answer_it")
+        if isinstance(answer_it, str) and answer_it.strip():
+            primary.append(answer_it.strip())
+
+        # GOLD variants
+        variants_raw = block.get("response_variants")
+        if isinstance(variants_raw, list):
+            gold_candidates.extend(
+                [v.strip() for v in variants_raw if isinstance(v, str) and v.strip()]
+            )
+        elif isinstance(variants_raw, dict):
+            for v in variants_raw.values():
+                if isinstance(v, list):
+                    for e in v:
+                        if isinstance(e, str) and e.strip():
+                            gold_candidates.append(e.strip())
+                elif isinstance(v, str) and v.strip():
+                    gold_candidates.append(v.strip())
+
+        if gold_candidates:
+            rich = [t for t in gold_candidates if len(t) >= 160]
+            source = rich if rich else gold_candidates
+            return max(source, key=len).strip()
+
+        if primary:
+            rich = [t for t in primary if len(t) >= 80]
+            source = rich if rich else primary
+            return max(source, key=len).strip()
+
+        return None
+
+    # CANONICO
+    canonical = block.get("canonical")
+    if isinstance(canonical, str) and canonical.strip():
+        return canonical.strip()
+
+    answers = block.get("answers")
+    if isinstance(answers, dict):
+        for v in answers.values():
+            if isinstance(v, str) and v.strip():
+                return v.strip()
 
     answer_it = block.get("answer_it")
     if isinstance(answer_it, str) and answer_it.strip():
-        primary.append(answer_it.strip())
-
-    variants_raw = block.get("response_variants")
-    if isinstance(variants_raw, list):
-        gold_candidates.extend(
-            [v.strip() for v in variants_raw if isinstance(v, str) and v.strip()]
-        )
-    elif isinstance(variants_raw, dict):
-        for v in variants_raw.values():
-            if isinstance(v, list):
-                for e in v:
-                    if isinstance(e, str) and e.strip():
-                        gold_candidates.append(e.strip())
-            elif isinstance(v, str) and v.strip():
-                gold_candidates.append(v.strip())
-
-    canonical = block.get("canonical")
-    if isinstance(canonical, str) and canonical.strip():
-        fallback.append(canonical.strip())
+        return answer_it.strip()
 
     for key in ("answer", "risposta", "text", "content"):
         v = block.get(key)
         if isinstance(v, str) and v.strip():
-            fallback.append(v.strip())
-            break
-
-    if gold_candidates:
-        rich = [t for t in gold_candidates if len(t) >= 160]
-        source = rich if rich else gold_candidates
-        return max(source, key=len).strip()
-
-    if primary:
-        return max(primary, key=len).strip()
-
-    if fallback:
-        return max(fallback, key=len).strip()
+            return v.strip()
 
     return None
 
 # =========================
-# GOLD REFINE + MULTILINGUA
+# GOLD REFINE (solo in GOLD)
 # =========================
 
 def generate_gold_answer(
@@ -394,8 +534,9 @@ def generate_gold_answer(
     block: Dict[str, Any],
     family: str,
     lang: str,
+    mode: str,
 ) -> str:
-    if not USE_OPENAI or openai_client is None:
+    if mode != "gold" or not USE_OPENAI or openai_client is None:
         return base
 
     if lang == "en":
@@ -420,40 +561,33 @@ def generate_gold_answer(
                     "role": "system",
                     "content": (
                         f"Sei Sinapsi, assistente tecnico-commerciale di Tecnaria. "
-                        f"Rispondi SEMPRE nella lingua richiesta ({target_lang}). "
-                        "Usa un tono GOLD: completo, tecnico, chiaro, narrativo ma professionale. "
-                        "NON modificare i dati tecnici, non cambiare i prodotti, "
-                        "non allargare i campi di impiego rispetto al blocco JSON fornito. "
-                        "Rispetta vincoli come l'uso esclusivo della P560 dove indicato. "
-                        "Se il testo base è in italiano e la lingua richiesta è diversa, "
-                        "traduce fedelmente mantenendo struttura e contenuti."
+                        f"Rispondi SEMPRE in {target_lang}. "
+                        "Stile GOLD: completo, tecnico, chiaro, narrativo ma professionale. "
+                        "Non cambiare famiglie o campi di impiego. "
+                        "Rispetta l'uso esclusivo della P560 dove previsto."
                     ),
                 },
                 {
                     "role": "user",
                     "content": (
-                        f"LINGUA RICHIESTA: {target_lang}\n"
+                        f"DOMANDA: {question}\n"
                         f"FAMIGLIA: {family}\n"
-                        f"DOMANDA UTENTE: {question}\n\n"
-                        "Di seguito hai il blocco dati ufficiale in JSON e il testo base estratto.\n"
-                        "Riscrivi il testo in stile GOLD, nella lingua richiesta, "
-                        "senza cambiare le informazioni tecniche e senza accorciare troppo.\n\n"
-                        f"BLOCCO DATI JSON:\n{json.dumps(block, ensure_ascii=False)}\n\n"
-                        f"TESTO BASE:\n{base}"
+                        "BLOCCO JSON UFFICIALE:\n"
+                        f"{json.dumps(block, ensure_ascii=False)}\n\n"
+                        "TESTO BASE SELEZIONATO:\n"
+                        f"{base}\n\n"
+                        "Riscrivi in stile GOLD nella lingua richiesta, "
+                        "senza accorciare in modo drastico e senza alterare i dati tecnici."
                     ),
                 },
             ],
         )
-
         text = (resp.choices[0].message.content or "").strip()
-
         if len(text) < len(base) * 0.7:
             return base
-
         return text
-
     except Exception as e:
-        print(f"[generate_gold_answer] Errore: {e}")
+        print(f"[generate_gold_answer] Errore NLM GOLD: {e}")
         return base
 
 # =========================
@@ -461,7 +595,7 @@ def generate_gold_answer(
 # =========================
 
 def find_best_block(
-    query: str, families: Optional[List[str]], lang: str
+    query: str, families: Optional[List[str]], lang: str, mode: str
 ) -> Optional[Dict[str, Any]]:
     explicit_fams = detect_explicit_families(query)
     forced_fams = [f.upper() for f in families] if families else None
@@ -485,7 +619,7 @@ def find_best_block(
             continue
 
         for b in blocks:
-            ans = extract_answer(b, lang)
+            ans = extract_answer(b, lang, mode)
             if not ans:
                 continue
 
@@ -496,7 +630,6 @@ def find_best_block(
                 best_family = fam
 
     min_score = 0.05 if explicit_fams else 0.25
-
     if not best_block or best_score < min_score:
         return None
 
@@ -511,14 +644,21 @@ def find_best_block(
 
 @app.get("/api/config")
 def api_config():
-    return {
+    return JSONResponse({
         "app": "Tecnaria Sinapsi — Q/A",
         "status": "OK",
         "families_dir": str(DATA_DIR),
         "families": list_all_families(),
         "nlm": bool(openai_client is not None and USE_OPENAI),
-        "answer_mode": "gold",
-    }
+        "current_mode": CURRENT_MODE,
+        "note": (
+            "Modalità persistente: GOLD o CANONICO.\n"
+            "Scrivi 'GOLD:' per passare definitivamente a GOLD.\n"
+            "Scrivi 'CANONICO:' per passare definitivamente a CANONICO.\n"
+            "Lingua rilevata automaticamente per ogni domanda."
+        ),
+    })
+
 
 @app.post("/api/ask")
 async def api_ask_post(request: Request):
@@ -528,119 +668,116 @@ async def api_ask_post(request: Request):
     except Exception:
         raise HTTPException(
             status_code=400,
-            detail="Body JSON non valido. Atteso: {\"q\":..., \"family\":...}",
+            detail="Body JSON non valido. Atteso: {\"q\":..., \"family\":..., \"mode\":...}",
         )
 
-    q = str(data.get("q", "")).strip()
-    if not q:
+    raw_q = str(data.get("q", "")).strip()
+    if not raw_q:
         raise HTTPException(status_code=400, detail="Campo 'q' mancante o vuoto.")
 
-    family = str(data.get("family", "")).strip().upper() if data.get("family") else None
+    provided_mode = str(data.get("mode", "")).strip().lower() if data.get("mode") else None
+    q, mode = update_mode_and_clean_query(raw_q, provided_mode)
 
+    family = str(data.get("family", "")).strip().upper() if data.get("family") else None
     lang = detect_lang(q)
     fams = [family] if family else None
 
-    best = find_best_block(q, fams, lang)
+    best = find_best_block(q, fams, lang, mode)
 
     if not best:
-        return {
+        return JSONResponse({
             "ok": False,
             "q": q,
             "lang": lang,
-            "mode": "gold",
+            "mode": mode,
             "family": family,
-            "text": "Nessuna risposta trovata per questa domanda con i dati disponibili.",
-        }
+            "text": "Nessuna risposta disponibile per questa domanda con la modalità attuale.",
+        })
 
-    base = (
-        extract_answer(best, lang)
-        or extract_answer(best, "it")
-        or extract_answer(best, "en")
-    )
-
+    base = extract_answer(best, lang, mode)
     if not base:
-        return {
+        return JSONResponse({
             "ok": False,
             "q": q,
             "lang": lang,
-            "mode": "gold",
+            "mode": mode,
             "family": best.get("_family", family),
             "id": best.get("id"),
-            "text": "Blocco trovato ma privo di contenuto utilizzabile.",
-        }
+            "text": "Blocco trovato ma senza contenuto utilizzabile nella modalità attuale.",
+        })
 
     text = generate_gold_answer(
-        q, base, best, best.get("_family", family) or "", lang
+        q, base, best, best.get("_family", family) or "", lang, mode
     )
 
     text = re.sub(r"\bperni?\b", "chiodi idonei Tecnaria", text, flags=re.IGNORECASE)
 
-    return {
+    return JSONResponse({
         "ok": True,
         "q": q,
         "lang": lang,
-        "mode": "gold",
+        "mode": mode,
         "family": best.get("_family", family),
         "id": best.get("id"),
         "score": best.get("_score", 0.0),
         "text": text,
-    }
+    })
+
 
 @app.get("/api/ask")
 def api_ask_get(
     q: str = Query(..., description="Domanda"),
     family: Optional[str] = Query(None),
-    mode: Optional[str] = Query(None, description="ignorato, sempre gold"),
+    mode: Optional[str] = Query(None, description="(opzionale) gold/canonical per cambio persistente"),
 ):
-    q = q.strip()
-    lang = detect_lang(q)
+    raw_q = q.strip()
+    provided_mode = (mode or "").strip().lower() or None
+    q_clean, mode_final = update_mode_and_clean_query(raw_q, provided_mode)
+
+    lang = detect_lang(q_clean)
     fams = [family.upper()] if family else None
 
-    best = find_best_block(q, fams, lang)
+    best = find_best_block(q_clean, fams, lang, mode_final)
 
     if not best:
-        return {
+        return JSONResponse({
             "ok": False,
-            "q": q,
+            "q": q_clean,
             "lang": lang,
-            "mode": "gold",
+            "mode": mode_final,
             "family": family,
-            "text": "Nessuna risposta trovata per questa domanda con i dati disponibili.",
-        }
+            "text": "Nessuna risposta disponibile per questa domanda con la modalità attuale.",
+        })
 
-    base = (
-        extract_answer(best, lang)
-        or extract_answer(best, "it")
-        or extract_answer(best, "en")
-    )
-
+    base = extract_answer(best, lang, mode_final)
     if not base:
-        return {
+        return JSONResponse({
             "ok": False,
-            "q": q,
+            "q": q_clean,
             "lang": lang,
-            "mode": "gold",
+            "mode": mode_final,
             "family": best.get("_family", family),
             "id": best.get("id"),
-            "text": "Blocco trovato ma privo di contenuto utilizzabile.",
-        }
+            "text": "Blocco trovato ma senza contenuto utilizzabile nella modalità attuale.",
+        })
 
     text = generate_gold_answer(
-        q, base, best, best.get("_family", family) or "", lang
+        q_clean, base, best, best.get("_family", family) or "", lang, mode_final
     )
 
     text = re.sub(r"\bperni?\b", "chiodi idonei Tecnaria", text, flags=re.IGNORECASE)
 
-    return {
+    return JSONResponse({
         "ok": True,
-        "q": q,
+        "q": q_clean,
         "lang": lang,
-        "mode": "gold",
+        "mode": mode_final,
         "family": best.get("_family", family),
         "id": best.get("id"),
         "score": best.get("_score", 0.0),
         "text": text,
-    }
+    })
+
 
 @app.get("/", response_class=HTMLResponse)
 def root():
