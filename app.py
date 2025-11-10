@@ -9,27 +9,35 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
-# OpenAI client (opzionale, solo per traduzioni)
+# =========================================================
+# OpenAI client (solo se disponibile, solo per traduzioni)
+# =========================================================
+
 try:
     from openai import OpenAI  # type: ignore
 except Exception:
     OpenAI = None  # type: ignore
 
-# ---------------------------------------------------------
-# Percorsi base
-# ---------------------------------------------------------
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+USE_OPENAI = bool(OPENAI_API_KEY) and OpenAI is not None
+openai_client = OpenAI() if USE_OPENAI else None
+
+# =========================================================
+# Percorsi
+# =========================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 DATA_DIR = os.path.join(STATIC_DIR, "data")
 CONFIG_PATH = os.path.join(DATA_DIR, "config.runtime.json")
 
-# ---------------------------------------------------------
-# FastAPI
-# ---------------------------------------------------------
+# =========================================================
+# FastAPI app
+# =========================================================
 
-app = FastAPI(title="Tecnaria Sinapsi Backend", version="3.1")
+app = FastAPI(title="TECNARIA Sinapsi Backend", version="3.2")
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,46 +47,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# monta /static per index.html, css, logo, json, ecc.
 if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-# ---------------------------------------------------------
-# Stato globale / cache
-# ---------------------------------------------------------
+# =========================================================
+# Stato globale
+# =========================================================
 
 _family_cache: Dict[str, Dict[str, Any]] = {}
 _config_cache: Optional[Dict[str, Any]] = None
 
 MODE_GOLD = "gold"
 MODE_CANONICAL = "canonical"
-_current_mode: str = MODE_GOLD  # default: sempre GOLD
+_current_mode: str = MODE_GOLD  # default: GOLD fisso finché non lo cambi tu
 
-# OpenAI (solo se API key presente)
-USE_OPENAI = bool(os.getenv("OPENAI_API_KEY")) and OpenAI is not None
-openai_client: Optional[OpenAI] = None
-if USE_OPENAI:
-    try:
-        openai_client = OpenAI()
-    except Exception:
-        openai_client = None
-        USE_OPENAI = False
-
-# ---------------------------------------------------------
+# =========================================================
 # Modelli
-# ---------------------------------------------------------
-
-from pydantic import BaseModel
-
+# =========================================================
 
 class AskRequest(BaseModel):
     q: str
     family: Optional[str] = None
 
-
-# ---------------------------------------------------------
-# Utilità
-# ---------------------------------------------------------
+# =========================================================
+# Utilità generali
+# =========================================================
 
 def normalize(text: str) -> str:
     if not text:
@@ -99,12 +92,13 @@ def load_config() -> Dict[str, Any]:
     if _config_cache is not None:
         return _config_cache
 
+    # default minimale
     cfg: Dict[str, Any] = {
         "admin": {
             "response_policy": {
                 "mode": "dynamic",
-                "variant_selection": "longest",
-                "variant_seed": 20251106,
+                "variant_selection": "longest",  # GOLD = scegli la più lunga
+                "variant_seed": 20251110,
             }
         }
     }
@@ -114,7 +108,7 @@ def load_config() -> Dict[str, Any]:
             file_cfg = json.load(f)
         if isinstance(file_cfg, dict):
             admin = file_cfg.get("admin") or {}
-            rp = (admin.get("response_policy") or {})
+            rp = admin.get("response_policy") or {}
             cfg["admin"]["response_policy"].update(rp)
     except FileNotFoundError:
         pass
@@ -160,6 +154,7 @@ def load_family(family: str) -> Dict[str, Any]:
             status_code=500, detail=f"Error loading family '{family}': {e}"
         )
 
+    # compat: lista pura o oggetto con items
     if isinstance(data, list):
         items = data
         data = {"family": family, "items": items}
@@ -167,6 +162,7 @@ def load_family(family: str) -> Dict[str, Any]:
         items = data.get("items") or []
         data["items"] = items
 
+    # assegna id mancanti
     for idx, item in enumerate(items):
         if "id" not in item:
             item["id"] = f"{family}-{idx+1:04d}"
@@ -174,55 +170,27 @@ def load_family(family: str) -> Dict[str, Any]:
     _family_cache[family] = data
     return data
 
-
-# ---------------------------------------------------------
-# Instradamento famiglie (hint)
-# ---------------------------------------------------------
-
-FAMILY_SYNONYMS: Dict[str, List[str]] = {
-    "CTF": ["ctf"],
-    "CTL": ["ctl", "legno"],
-    "CTL_MAXI": ["ctl maxi", "maxi"],
-    "VCEM": ["vcem"],
-    "CTCEM": ["ctcem"],
-    "P560": ["p560", "spit p560"],
-    "DIAPASON": ["diapason"],
-}
-
-
-def guess_families_from_text(text: str) -> List[str]:
-    t = text.lower()
-    found: List[str] = []
-    for fam, keys in FAMILY_SYNONYMS.items():
-        for k in keys:
-            if k in t:
-                found.append(fam)
-                break
-    return found
-
-
-# ---------------------------------------------------------
-# Lingua & traduzioni
-# ---------------------------------------------------------
+# =========================================================
+# Lingua
+# =========================================================
 
 SUPPORTED_LANGS = ["it", "en", "fr", "de", "es"]
 
-
 def detect_lang(text: str) -> str:
-    t = text.strip()
+    t = (text or "").strip().lower()
     if not t:
         return "it"
-    low = t.lower()
 
-    if re.search(r"\b(what|which|can i|how|where|why)\b", low):
+    # euristiche semplici ma robuste
+    if re.search(r"\b(what|which|can|how|where|why)\b", t):
         return "en"
-    if re.search(r"\b(qué|dónde|como|cómo|cuándo|por qué)\b", low):
+    if re.search(r"\b(qué|dónde|como|cómo|cuándo|por qué)\b", t):
         return "es"
-    if re.search(r"\b(quel|quelle|quels|quelles|comment|pourquoi|où)\b", low):
+    if re.search(r"\b(quel|quelle|quels|quelles|comment|pourquoi|où)\b", t):
         return "fr"
-    if re.search(r"\b(was|wie|warum|wo|welche|welcher|welches)\b", low):
+    if re.search(r"\b(was|wie|warum|wo|welche|welcher|welches)\b", t):
         return "de"
-    if re.search(r"[àèéìòù]", low):
+    if any(ch in t for ch in "àèéìòù"):
         return "it"
     return "it"
 
@@ -242,9 +210,9 @@ def openai_translate(text: str, target_lang: str, source_lang: Optional[str] = N
                 {
                     "role": "system",
                     "content": (
-                        f"Sei un traduttore tecnico. Traduci il testo nella lingua '{target_lang}'. "
-                        "Mantieni marchi, sigle e nomi dei prodotti Tecnaria invariati. "
-                        "Rispondi solo con il testo tradotto."
+                        f"Sei un traduttore tecnico per prodotti strutturali Tecnaria. "
+                        f"Traduci il testo nella lingua '{target_lang}'. "
+                        "Non tradurre nomi prodotti o sigle. Rispondi solo con il testo tradotto."
                     ),
                 },
                 {"role": "user", "content": text},
@@ -256,103 +224,121 @@ def openai_translate(text: str, target_lang: str, source_lang: Optional[str] = N
     except Exception:
         return text
 
+# =========================================================
+# GOLD / CANONICO: selezione testo
+# =========================================================
 
-# ---------------------------------------------------------
-# GOLD vs CANONICO
-# ---------------------------------------------------------
-
-def pick_best_variant(variants: Any) -> str:
-    texts: List[str] = []
-
-    if isinstance(variants, list):
-        texts = [v.strip() for v in variants if isinstance(v, str) and v.strip()]
+def iter_variants(variants: Any) -> List[str]:
+    out: List[str] = []
+    if isinstance(variants, str):
+        s = variants.strip()
+        if s:
+            out.append(s)
+    elif isinstance(variants, list):
+        for v in variants:
+            if isinstance(v, str):
+                s = v.strip()
+                if s:
+                    out.append(s)
     elif isinstance(variants, dict):
         for v in variants.values():
             if isinstance(v, str):
                 s = v.strip()
                 if s:
-                    texts.append(s)
+                    out.append(s)
             elif isinstance(v, list):
-                for s in v:
-                    if isinstance(s, str):
-                        s = s.strip()
-                        if s:
-                            texts.append(s)
+                for s2 in v:
+                    if isinstance(s2, str):
+                        s2 = s2.strip()
+                        if s2:
+                            out.append(s2)
+    return out
 
-    if not texts:
-        return ""
 
+def pick_gold_text(block: Dict[str, Any]) -> str:
+    """
+    GOLD = scegli il contenuto più ricco disponibile:
+    - tutte le response_variants
+    - canonical / answer_it solo se contribuiscono e sono più lunghi
+    """
     policy = get_response_policy()
     sel = (policy.get("variant_selection") or "longest").lower()
     seed = policy.get("variant_seed")
 
-    if sel == "random":
+    variants = iter_variants(block.get("response_variants"))
+    canonical = (block.get("canonical") or block.get("answer_it") or "").strip()
+
+    candidates: List[str] = []
+    candidates.extend(variants)
+    if canonical:
+        candidates.append(canonical)
+
+    # se non c'è niente, ritorna stringa vuota
+    if not candidates:
+        return ""
+
+    if sel == "random" and candidates:
         rnd = random.Random(seed or None)
-        return rnd.choice(texts)
+        return rnd.choice(candidates)
 
-    # default: longest -> GOLD pieno
-    return max(texts, key=len)
-
-
-def extract_answer(block: Dict[str, Any], lang: str, mode: str) -> str:
-    lang = (lang or "it").lower()
-
-    variants = block.get("response_variants")
-    canonical = block.get("canonical") or block.get(f"canonical_{lang}")
-    answer_lang = block.get(f"answer_{lang}")
-    answer_it = block.get("answer_it")
-
-    if mode == MODE_CANONICAL:
-        if answer_lang:
-            base = answer_lang
-        elif canonical:
-            base = canonical
-        elif answer_it:
-            base = answer_it
-        else:
-            base = pick_best_variant(variants)
-        return (base or "").strip()
-
-    # GOLD = prendi sempre la variante più ricca
-    base = ""
-    if variants:
-        base = pick_best_variant(variants)
-
-    if not base:
-        if answer_lang:
-            base = answer_lang
-        elif answer_it:
-            base = answer_it
-        elif canonical:
-            base = canonical
-
-    return (base or "").strip()
+    # default: GOLD = il testo più lungo
+    return max(candidates, key=len)
 
 
-# ---------------------------------------------------------
-# Matching domanda → item (migliorato)
-# ---------------------------------------------------------
+def pick_canonical_text(block: Dict[str, Any]) -> str:
+    """
+    CANONICO = risposta tecnica sintetica:
+    - preferisci canonical / answer_it
+    - se mancano, prendi la variant più corta
+    """
+    canonical = (block.get("canonical") or block.get("answer_it") or "").strip()
+    if canonical:
+        return canonical
+
+    variants = iter_variants(block.get("response_variants"))
+    if not variants:
+        return ""
+    # CANONICO: scegli la più corta pulita
+    return min(variants, key=len)
+
+# =========================================================
+# Matching domanda → item
+# =========================================================
 
 STOPWORDS = {
-    "dove", "dov", "posso", "puo", "puoi",
-    "si", "no", "come", "quando", "quanto", "quanti",
-    "quale", "quali",
-    "il", "lo", "la", "i", "gli", "le",
-    "un", "una", "uno",
-    "di", "del", "della", "dei", "degli",
-    "da", "in", "su", "per", "con",
-    "e", "ed", "oppure", "o",
-    "any", "can", "do", "use",
-    "utilizzare", "usare",
-    "please", "por", "que", "quel", "quelle", "etc",
-    "vorrei", "voglio", "cliente"
+    "dove","posso","puo","puoi","si","no","come","quando","quanto","quanti",
+    "quale","quali","il","lo","la","i","gli","le","un","una","uno",
+    "di","del","della","dei","degli","da","in","su","per","con","e","ed","o",
+    "oppure","any","can","do","use","utilizzare","usare",
+    "please","cliente","vorrei","voglio","devo","si possono","è possibile"
 }
+
+FAMILY_SYNONYMS: Dict[str, List[str]] = {
+    "CTF": ["ctf"],
+    "CTL": ["ctl"],
+    "CTL_MAXI": ["ctl maxi", "maxi"],
+    "VCEM": ["vcem"],
+    "CTCEM": ["ctcem"],
+    "P560": ["p560", "spit p560"],
+    "DIAPASON": ["diapason"],
+}
+
+def guess_families_from_text(text: str) -> List[str]:
+    t = text.lower()
+    found: List[str] = []
+    for fam, keys in FAMILY_SYNONYMS.items():
+        for k in keys:
+            if k in t:
+                found.append(fam)
+                break
+    return found
 
 
 def collect_item_text(item: Dict[str, Any]) -> Tuple[str, str]:
     """
-    full_text: tutto il contenuto utile (domande + risposte brevi)
-    questions_text: solo testi di domanda/parafrasi per dare extra peso
+    Raccoglie testo utile:
+    - full_text: tutto
+    - q_text: solo domande/parafrasi (per dare più peso)
     """
     q_parts: List[str] = []
     all_parts: List[str] = []
@@ -375,12 +361,6 @@ def collect_item_text(item: Dict[str, Any]) -> Tuple[str, str]:
 
 
 def score_item(q_norm: str, item: Dict[str, Any]) -> float:
-    """
-    - rimuove stopwords dalla query
-    - calcola overlap con tutto il testo
-    - bonus se l'overlap è forte sulle 'questions'
-    Questo riduce i falsi agganci (es. domanda su campo d'impiego che finisce sul blocco sbagliato).
-    """
     if not q_norm:
         return 0.0
 
@@ -389,34 +369,30 @@ def score_item(q_norm: str, item: Dict[str, Any]) -> float:
         return 0.0
     q_set = set(q_terms)
 
-    full_text, questions_text = collect_item_text(item)
+    full_text, q_text = collect_item_text(item)
     full_norm = normalize(full_text)
     if not full_norm:
         return 0.0
     full_set = set(full_norm.split())
 
-    overlap_full = q_set & full_set
-    if not overlap_full:
+    overlap = q_set & full_set
+    if not overlap:
         return 0.0
 
-    base_score = len(overlap_full) / len(q_set)
+    base = len(overlap) / len(q_set)
 
-    # bonus se le parole chiave cadono proprio sulle domande del blocco
-    if questions_text:
-        q_norm_q = normalize(questions_text)
-        q_q_set = set(q_norm_q.split())
-        if q_q_set:
-            overlap_q = q_set & q_q_set
+    if q_text:
+        q_norm2 = normalize(q_text)
+        q_set2 = set(q_norm2.split())
+        if q_set2:
+            overlap_q = q_set & q_set2
             if overlap_q:
-                bonus = len(overlap_q) / len(q_set)
-                base_score += 0.25 * bonus
+                base += 0.25 * (len(overlap_q) / len(q_set))
 
-    return base_score
+    return base
 
 
-def find_best_block(
-    query_it: str, families: Optional[List[str]] = None
-) -> Tuple[Optional[Dict[str, Any]], Optional[str], float]:
+def find_best_block(query_it: str, families: Optional[List[str]] = None) -> Tuple[Optional[Dict[str, Any]], Optional[str], float]:
     q_norm = normalize(query_it)
     if not q_norm:
         return (None, None, 0.0)
@@ -446,80 +422,42 @@ def find_best_block(
 
     return best_item, best_family, best_score
 
+# =========================================================
+# Guardrail GOLD: P560 & CTF
+# =========================================================
 
-# ---------------------------------------------------------
-# Cross-family GOLD logic (acciaio + legno, ecc.)
-# ---------------------------------------------------------
+def enforce_p560_guardrail(question: str, family: str, text: str) -> str:
+    q = question.lower()
+    f = (family or "").upper()
 
-def try_cross_family_answer(query_it: str, mode: str) -> Optional[Dict[str, Any]]:
-    """
-    Intercetta casi misti tipo:
-    - CTF + P560 + acciaio/lamiera
-    - CTL / CTL MAXI + legno lamellare + tavolato + soletta
-    e costruisce UNA risposta GOLD combinata.
+    # Se si parla di CTF + chiodatrice/sparo/utensile, la risposta DEVE citare P560
+    if f == "CTF" and any(k in q for k in ["chiodatrice", "pistola", "sparo", "sparare", "powder", "sparafiss", "utensile"]):
+        if "p560" not in text.lower():
+            extra = (
+                "\n\nNota: i connettori CTF Tecnaria sono certificati esclusivamente con "
+                "chiodatrice a polvere P560 Tecnaria dotata di accessori e chiodi idonei. "
+                "L'uso di utensili diversi fa uscire l'intervento dal perimetro tecnico certificato Tecnaria."
+            )
+            text = text.strip() + extra
 
-    Non tocca i JSON: riusa i blocchi esistenti delle famiglie.
-    """
-    q = query_it.lower()
+    # Se domanda è: posso sparare VCEM/CTL/altro con P560? -> ribadire NO
+    if "p560" in q and any(k in q for k in ["vcem", "ctl", "ctl maxi", "diapason", "ctcem"]):
+        if "non" not in text.lower() and "no" not in text.lower():
+            extra = (
+                "\n\nNota: la P560 è dedicata al sistema CTF (pioli a sparo su acciaio/lamiera). "
+                "VCEM, CTL, CTL MAXI, CTCEM e DIAPASON utilizzano fissaggi meccanici specifici, "
+                "non vanno sparati con P560."
+            )
+            text = text.strip() + extra
 
-    has_ctf = "ctf" in q or "p560" in q or "hea" in q or "ipe" in q or "acciaio" in q or "lamiera grecata" in q
-    has_legno = "legno" in q or "lamellare" in q or "xlam" in q
+    return text
 
-    if not (has_ctf and has_legno):
-        return None
-
-    # blocco CTF/P560 per acciaio + lamiera
-    ctf_q = (
-        "campo di impiego CTF con P560 su travi in acciaio con o senza lamiera grecata, "
-        "uso corretto sistema certificato"
-    )
-    ctf_item, ctf_fam, _ = find_best_block(ctf_q, ["CTF", "P560"])
-
-    # blocco CTL MAXI per legno lamellare + tavolato + soletta
-    ctl_q = (
-        "utilizzo CTL MAXI su travi in legno lamellare con tavolato e soletta, scelta connettori legno"
-    )
-    ctl_item, ctl_fam, _ = find_best_block(ctl_q, ["CTL_MAXI", "CTL"])
-
-    if not (ctf_item and ctf_fam and ctl_item and ctl_fam):
-        return None
-
-    ctf_text = extract_answer(ctf_item, "it", mode)
-    ctl_text = extract_answer(ctl_item, "it", mode)
-
-    if not (ctf_text and ctl_text):
-        return None
-
-    combined = (
-        "Per restare dentro le certificazioni Tecnaria in uno scenario misto acciaio + legno "
-        "devi tenere separati i sistemi per materiale portante:\n\n"
-        f"• **Travi in acciaio con lamiera grecata** → utilizzi i connettori CTF fissati esclusivamente "
-        f"con la pistola a polvere P560 Tecnaria e relativi chiodi/accessori idonei. "
-        f"{ctf_text.strip()}\n\n"
-        "• **Travi in legno lamellare con tavolato e soletta in calcestruzzo** → utilizzi connettori CTL / CTL MAXI "
-        "con fissaggio meccanico a vite nel legno, senza P560. "
-        f"{ctl_text.strip()}\n\n"
-        "I due sistemi non sono intercambiabili: acciaio → CTF + P560; legno → CTL/CTL MAXI con viti. "
-        "Così rimani nel perimetro tecnico e prestazionale valido per progetto e certificazioni."
-    )
-
-    return {
-        "family": "MULTI",
-        "id": None,
-        "text_it": combined,
-    }
-
-
-# ---------------------------------------------------------
+# =========================================================
 # ROUTES
-# ---------------------------------------------------------
+# =========================================================
 
 @app.get("/", include_in_schema=False)
 async def root_page():
-    """
-    Se esiste static/index.html → serve l'interfaccia.
-    Altrimenti restituisce info JSON (utile per debug).
-    """
     index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
@@ -538,8 +476,8 @@ async def api_config():
         "ok": True,
         "current_mode": _current_mode,
         "admin_response_policy": rp,
-        "translation_enabled": bool(USE_OPENAI and openai_client),
         "families": list_families(),
+        "translation_enabled": bool(USE_OPENAI and openai_client),
     }
 
 
@@ -554,16 +492,16 @@ async def api_ask(payload: AskRequest):
     txt = raw_q.lstrip()
     low = txt.lower()
 
-    # comandi persistenti GOLD / CANONICO
+    # comandi persistenti
     if low.startswith("gold:"):
         _current_mode = MODE_GOLD
         txt = txt[5:].strip()
     elif low.startswith("canonico:") or low.startswith("canonical:"):
         _current_mode = MODE_CANONICAL
         idx = low.find(":")
-        txt = txt[idx + 1 :].strip()
+        txt = txt[idx+1:].strip()
 
-    # solo comando → restituisco stato, niente match
+    # se l'utente ha solo cambiato modalità
     if not txt:
         return {
             "ok": True,
@@ -573,35 +511,15 @@ async def api_ask(payload: AskRequest):
 
     mode = _current_mode
 
-    # lingua della domanda
+    # lingua domanda
     user_lang = detect_lang(txt)
 
-    # per il match e la logica cross lavoriamo in IT
+    # per il match usiamo IT come base
     query_for_match = txt
     if user_lang != "it":
         query_for_match = openai_translate(txt, "it", source_lang=user_lang)
 
-    # 1) tentativo risposte cross-famiglia GOLD (acciaio + legno, ecc.)
-    cross = try_cross_family_answer(query_for_match, mode)
-    if cross:
-        base_it = cross["text_it"]
-        if user_lang == "it":
-            final_text = base_it
-        else:
-            final_text = openai_translate(base_it, user_lang, source_lang="it")
-        return {
-            "ok": True,
-            "family": cross["family"],
-            "id": cross["id"],
-            "score": 1.0,
-            "lang": user_lang,
-            "mode": mode,
-            "text": final_text,
-        }
-
-    # 2) altrimenti routing normale
-
-    # famiglie candidate suggerite dal testo o dalla richiesta
+    # famiglie candidate
     if payload.family:
         families = [payload.family.upper()]
     else:
@@ -618,7 +536,12 @@ async def api_ask(payload: AskRequest):
             "mode": mode,
         }
 
-    base_it = extract_answer(item, "it", mode)
+    # selezione GOLD / CANONICO
+    if mode == MODE_GOLD:
+        base_it = pick_gold_text(item)
+    else:
+        base_it = pick_canonical_text(item)
+
     if not base_it:
         return {
             "ok": False,
@@ -629,10 +552,14 @@ async def api_ask(payload: AskRequest):
             "mode": mode,
         }
 
-    if user_lang == "it":
-        final_text = base_it
-    else:
+    # guardrail P560 / CTF
+    base_it = enforce_p560_guardrail(query_for_match, fam, base_it)
+
+    # traduzione se necessario
+    if user_lang != "it":
         final_text = openai_translate(base_it, user_lang, source_lang="it")
+    else:
+        final_text = base_it
 
     return {
         "ok": True,
