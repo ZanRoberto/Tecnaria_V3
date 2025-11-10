@@ -29,7 +29,7 @@ CONFIG_PATH = os.path.join(DATA_DIR, "config.runtime.json")
 # FastAPI
 # ---------------------------------------------------------
 
-app = FastAPI(title="Tecnaria Sinapsi Backend", version="3.0")
+app = FastAPI(title="Tecnaria Sinapsi Backend", version="3.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -114,7 +114,7 @@ def load_config() -> Dict[str, Any]:
             file_cfg = json.load(f)
         if isinstance(file_cfg, dict):
             admin = file_cfg.get("admin") or {}
-            rp = admin.get("response_policy") or {}
+            rp = (admin.get("response_policy") or {})
             cfg["admin"]["response_policy"].update(rp)
     except FileNotFoundError:
         pass
@@ -156,7 +156,9 @@ def load_family(family: str) -> Dict[str, Any]:
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Family '{family}' not found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading family '{family}': {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Error loading family '{family}': {e}"
+        )
 
     if isinstance(data, list):
         items = data
@@ -174,7 +176,7 @@ def load_family(family: str) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------
-# Instradamento famiglie
+# Instradamento famiglie (hint)
 # ---------------------------------------------------------
 
 FAMILY_SYNONYMS: Dict[str, List[str]] = {
@@ -288,6 +290,7 @@ def pick_best_variant(variants: Any) -> str:
         rnd = random.Random(seed or None)
         return rnd.choice(texts)
 
+    # default: longest -> GOLD pieno
     return max(texts, key=len)
 
 
@@ -310,7 +313,7 @@ def extract_answer(block: Dict[str, Any], lang: str, mode: str) -> str:
             base = pick_best_variant(variants)
         return (base or "").strip()
 
-    # GOLD
+    # GOLD = prendi sempre la variante più ricca
     base = ""
     if variants:
         base = pick_best_variant(variants)
@@ -341,7 +344,8 @@ STOPWORDS = {
     "e", "ed", "oppure", "o",
     "any", "can", "do", "use",
     "utilizzare", "usare",
-    "please", "por", "que", "quel", "quelle", "etc"
+    "please", "por", "que", "quel", "quelle", "etc",
+    "vorrei", "voglio", "cliente"
 }
 
 
@@ -374,9 +378,8 @@ def score_item(q_norm: str, item: Dict[str, Any]) -> float:
     """
     - rimuove stopwords dalla query
     - calcola overlap con tutto il testo
-    - aggiunge bonus se l'overlap è forte sulle 'questions'
-    Questo riduce i falsi agganci (es. domanda sul campo d'impiego CTF
-    che finisce sul blocco P560).
+    - bonus se l'overlap è forte sulle 'questions'
+    Questo riduce i falsi agganci (es. domanda su campo d'impiego che finisce sul blocco sbagliato).
     """
     if not q_norm:
         return 0.0
@@ -398,7 +401,7 @@ def score_item(q_norm: str, item: Dict[str, Any]) -> float:
 
     base_score = len(overlap_full) / len(q_set)
 
-    # bonus domande specifiche
+    # bonus se le parole chiave cadono proprio sulle domande del blocco
     if questions_text:
         q_norm_q = normalize(questions_text)
         q_q_set = set(q_norm_q.split())
@@ -411,7 +414,9 @@ def score_item(q_norm: str, item: Dict[str, Any]) -> float:
     return base_score
 
 
-def find_best_block(query_it: str, families: Optional[List[str]] = None) -> Tuple[Optional[Dict[str, Any]], Optional[str], float]:
+def find_best_block(
+    query_it: str, families: Optional[List[str]] = None
+) -> Tuple[Optional[Dict[str, Any]], Optional[str], float]:
     q_norm = normalize(query_it)
     if not q_norm:
         return (None, None, 0.0)
@@ -440,6 +445,69 @@ def find_best_block(query_it: str, families: Optional[List[str]] = None) -> Tupl
         return (None, None, 0.0)
 
     return best_item, best_family, best_score
+
+
+# ---------------------------------------------------------
+# Cross-family GOLD logic (acciaio + legno, ecc.)
+# ---------------------------------------------------------
+
+def try_cross_family_answer(query_it: str, mode: str) -> Optional[Dict[str, Any]]:
+    """
+    Intercetta casi misti tipo:
+    - CTF + P560 + acciaio/lamiera
+    - CTL / CTL MAXI + legno lamellare + tavolato + soletta
+    e costruisce UNA risposta GOLD combinata.
+
+    Non tocca i JSON: riusa i blocchi esistenti delle famiglie.
+    """
+    q = query_it.lower()
+
+    has_ctf = "ctf" in q or "p560" in q or "hea" in q or "ipe" in q or "acciaio" in q or "lamiera grecata" in q
+    has_legno = "legno" in q or "lamellare" in q or "xlam" in q
+
+    if not (has_ctf and has_legno):
+        return None
+
+    # blocco CTF/P560 per acciaio + lamiera
+    ctf_q = (
+        "campo di impiego CTF con P560 su travi in acciaio con o senza lamiera grecata, "
+        "uso corretto sistema certificato"
+    )
+    ctf_item, ctf_fam, _ = find_best_block(ctf_q, ["CTF", "P560"])
+
+    # blocco CTL MAXI per legno lamellare + tavolato + soletta
+    ctl_q = (
+        "utilizzo CTL MAXI su travi in legno lamellare con tavolato e soletta, scelta connettori legno"
+    )
+    ctl_item, ctl_fam, _ = find_best_block(ctl_q, ["CTL_MAXI", "CTL"])
+
+    if not (ctf_item and ctf_fam and ctl_item and ctl_fam):
+        return None
+
+    ctf_text = extract_answer(ctf_item, "it", mode)
+    ctl_text = extract_answer(ctl_item, "it", mode)
+
+    if not (ctf_text and ctl_text):
+        return None
+
+    combined = (
+        "Per restare dentro le certificazioni Tecnaria in uno scenario misto acciaio + legno "
+        "devi tenere separati i sistemi per materiale portante:\n\n"
+        f"• **Travi in acciaio con lamiera grecata** → utilizzi i connettori CTF fissati esclusivamente "
+        f"con la pistola a polvere P560 Tecnaria e relativi chiodi/accessori idonei. "
+        f"{ctf_text.strip()}\n\n"
+        "• **Travi in legno lamellare con tavolato e soletta in calcestruzzo** → utilizzi connettori CTL / CTL MAXI "
+        "con fissaggio meccanico a vite nel legno, senza P560. "
+        f"{ctl_text.strip()}\n\n"
+        "I due sistemi non sono intercambiabili: acciaio → CTF + P560; legno → CTL/CTL MAXI con viti. "
+        "Così rimani nel perimetro tecnico e prestazionale valido per progetto e certificazioni."
+    )
+
+    return {
+        "family": "MULTI",
+        "id": None,
+        "text_it": combined,
+    }
 
 
 # ---------------------------------------------------------
@@ -495,7 +563,7 @@ async def api_ask(payload: AskRequest):
         idx = low.find(":")
         txt = txt[idx + 1 :].strip()
 
-    # se è solo comando, niente blocco: rispondiamo stato
+    # solo comando → restituisco stato, niente match
     if not txt:
         return {
             "ok": True,
@@ -505,22 +573,41 @@ async def api_ask(payload: AskRequest):
 
     mode = _current_mode
 
-    # lingua domanda
+    # lingua della domanda
     user_lang = detect_lang(txt)
 
-    # per il match lavoriamo in IT
+    # per il match e la logica cross lavoriamo in IT
     query_for_match = txt
     if user_lang != "it":
         query_for_match = openai_translate(txt, "it", source_lang=user_lang)
 
-    # famiglie candidate
+    # 1) tentativo risposte cross-famiglia GOLD (acciaio + legno, ecc.)
+    cross = try_cross_family_answer(query_for_match, mode)
+    if cross:
+        base_it = cross["text_it"]
+        if user_lang == "it":
+            final_text = base_it
+        else:
+            final_text = openai_translate(base_it, user_lang, source_lang="it")
+        return {
+            "ok": True,
+            "family": cross["family"],
+            "id": cross["id"],
+            "score": 1.0,
+            "lang": user_lang,
+            "mode": mode,
+            "text": final_text,
+        }
+
+    # 2) altrimenti routing normale
+
+    # famiglie candidate suggerite dal testo o dalla richiesta
     if payload.family:
         families = [payload.family.upper()]
     else:
         guessed = guess_families_from_text(txt)
         families = guessed or None
 
-    # match
     item, fam, score = find_best_block(query_for_match, families)
 
     if not item or not fam:
@@ -531,7 +618,6 @@ async def api_ask(payload: AskRequest):
             "mode": mode,
         }
 
-    # risposta base (sempre IT)
     base_it = extract_answer(item, "it", mode)
     if not base_it:
         return {
@@ -543,7 +629,6 @@ async def api_ask(payload: AskRequest):
             "mode": mode,
         }
 
-    # traduzione finale
     if user_lang == "it":
         final_text = base_it
     else:
