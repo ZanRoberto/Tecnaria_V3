@@ -37,7 +37,7 @@ CONFIG_PATH = os.path.join(DATA_DIR, "config.runtime.json")
 # FastAPI app
 # =========================================================
 
-app = FastAPI(title="TECNARIA Sinapsi Backend", version="3.2")
+app = FastAPI(title="TECNARIA Sinapsi Backend", version="3.3")
 
 app.add_middleware(
     CORSMiddleware,
@@ -59,7 +59,7 @@ _config_cache: Optional[Dict[str, Any]] = None
 
 MODE_GOLD = "gold"
 MODE_CANONICAL = "canonical"
-_current_mode: str = MODE_GOLD  # default: GOLD fino a comando diverso
+_current_mode: str = MODE_GOLD  # default: GOLD finché non lo cambi
 
 # =========================================================
 # Modelli
@@ -252,7 +252,7 @@ def iter_variants(variants: Any) -> List[str]:
 
 def pick_gold_text(block: Dict[str, Any]) -> str:
     """
-    GOLD: scegli il contenuto più ricco disponibile.
+    GOLD: scegli il contenuto più ricco disponibile (longest).
     """
     policy = get_response_policy()
     sel = (policy.get("variant_selection") or "longest").lower()
@@ -273,13 +273,13 @@ def pick_gold_text(block: Dict[str, Any]) -> str:
         rnd = random.Random(seed or None)
         return rnd.choice(candidates)
 
-    # default: GOLD = testo più lungo
+    # default GOLD: usa la più lunga
     return max(candidates, key=len)
 
 
 def pick_canonical_text(block: Dict[str, Any]) -> str:
     """
-    CANONICO: risposta sintetica.
+    CANONICO: risposta sintetica (canonical o la più corta).
     """
     canonical = (block.get("canonical") or block.get("answer_it") or "").strip()
     if canonical:
@@ -288,7 +288,6 @@ def pick_canonical_text(block: Dict[str, Any]) -> str:
     variants = iter_variants(block.get("response_variants"))
     if not variants:
         return ""
-    # CANONICO: scegli la più corta
     return min(variants, key=len)
 
 # =========================================================
@@ -325,10 +324,6 @@ def guess_families_from_text(text: str) -> List[str]:
 
 
 def collect_item_text(item: Dict[str, Any]) -> Tuple[str, str]:
-    """
-    full_text: tutto il contenuto
-    q_text: solo domande/parafrasi
-    """
     q_parts: List[str] = []
     all_parts: List[str] = []
 
@@ -413,37 +408,43 @@ def find_best_block(query_it: str, families: Optional[List[str]] = None) -> Tupl
     return best_item, best_family, best_score
 
 # =========================================================
-# Guardrail P560 / CTF
+# Guardrail tecnico P560 / famiglie
 # =========================================================
 
-def enforce_p560_guardrail(question: str, family: str, text: str) -> str:
+def enforce_guardrails(question: str, family: str, text: str, mode: str) -> str:
+    """
+    Applica vincoli tecnici fondamentali (P560, uso corretto famiglie).
+    """
     q = (question or "").lower()
-    f = (family or "").upper()
+    fam = (family or "").upper()
+    out = text.strip()
 
-    # CTF + chiodatrice/pistola/sparo => obbligo P560
-    if f == "CTF" and any(
-        k in q for k in
-        ["chiodatrice", "pistola", "sparo", "sparare", "powder", "sparafiss", "utensile"]
-    ):
-        if "p560" not in text.lower():
-            extra = (
-                "\n\nNota: i connettori CTF Tecnaria sono certificati esclusivamente con "
-                "chiodatrice a polvere P560 Tecnaria dotata di accessori e chiodi idonei. "
-                "L'uso di utensili diversi fa uscire l'intervento dal perimetro tecnico certificato Tecnaria."
-            )
-            text = text.strip() + extra
+    # 1) CTF: GOLD deve SEMPRE ricordare che il sistema certificato è con P560
+    if fam == "CTF":
+        note = (
+            " I connettori CTF Tecnaria sono parte di un sistema certificato: "
+            "il fissaggio è previsto esclusivamente con chiodatrice a polvere P560 Tecnaria "
+            "dotata di accessori e chiodi idonei. L'uso di utensili diversi non è coperto "
+            "dal perimetro tecnico e prestazionale Tecnaria."
+        )
+        if "p560" not in out.lower():
+            if mode == MODE_GOLD:
+                out = out + "\n\n" + note
+            else:
+                # anche in CANONICO, breve ma chiaro
+                out = out + " (Fissaggio certificato solo con P560 Tecnaria.)"
 
-    # P560 + famiglie non CTF => chiarire che non si usa
+    # 2) Domande che mischiano P560 con famiglie non compatibili
     if "p560" in q and any(k in q for k in ["vcem", "ctl", "ctl maxi", "ctcem", "diapason"]):
-        if "non" not in text.lower() and "no" not in text.lower():
-            extra = (
-                "\n\nNota: la P560 è dedicata al sistema CTF (pioli a sparo su acciaio/lamiera). "
-                "VCEM, CTL, CTL MAXI, CTCEM e DIAPASON utilizzano fissaggi meccanici specifici "
-                "e non vanno posati con P560."
-            )
-            text = text.strip() + extra
+        extra = (
+            "\n\nNota: la P560 è dedicata al sistema CTF (pioli a sparo su acciaio/lamiera). "
+            "VCEM, CTL, CTL MAXI, CTCEM e DIAPASON utilizzano fissaggi meccanici specifici "
+            "e non devono essere posati con P560."
+        )
+        if extra.strip().lower() not in out.lower():
+            out = out + extra
 
-    return text
+    return out
 
 # =========================================================
 # ROUTES
@@ -485,7 +486,7 @@ async def api_ask(payload: AskRequest):
     txt = raw_q.lstrip()
     low = txt.lower()
 
-    # comandi persistenti modalità
+    # comandi persistenti GOLD / CANONICO
     if low.startswith("gold:"):
         _current_mode = MODE_GOLD
         txt = txt[5:].strip()
@@ -494,7 +495,6 @@ async def api_ask(payload: AskRequest):
         idx = low.find(":")
         txt = txt[idx + 1 :].strip()
 
-    # se era solo comando
     if not txt:
         return {
             "ok": True,
@@ -507,12 +507,12 @@ async def api_ask(payload: AskRequest):
     # lingua utente
     user_lang = detect_lang(txt)
 
-    # per il match usiamo IT (traduzione solo interna se serve)
+    # per il match usiamo italiano (traduzione interna se serve)
     query_for_match = txt
     if user_lang != "it":
         query_for_match = openai_translate(txt, "it", source_lang=user_lang)
 
-    # famiglie candidate
+    # famiglie candidate (hint o auto)
     if payload.family:
         families = [payload.family.upper()]
     else:
@@ -545,8 +545,8 @@ async def api_ask(payload: AskRequest):
             "mode": mode,
         }
 
-    # guardrail P560
-    base_it = enforce_p560_guardrail(query_for_match, fam, base_it)
+    # guardrail tecnici (P560, ecc.)
+    base_it = enforce_guardrails(query_for_match, fam, base_it, mode)
 
     # traduzione se necessario
     if user_lang != "it":
