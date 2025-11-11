@@ -1,4 +1,408 @@
-{
+[
+  {
+    "id": "COMM-0001",
+    "family": "COMM",
+    "tags": ["azienda", "presentazione", "tecnaria"],
+    "response_variants": {
+      "gold": {
+        "it": "Tecnaria S.p.A. è un’azienda italiana specializzata nello sviluppo di connettori per solai misti e sistemi di rinforzo strutturale. Produce e certifica dispositivi per strutture acciaio-calcestruzzo, legno-calcestruzzo e laterocemento, integrando assistenza tecnica, software di calcolo e documentazione ufficiale CE."
+      }
+    }
+  },
+  {
+    "id": "COMM-0002",
+    "family": "COMM",
+    "tags": ["contatti", "supporto tecnico", "email"],
+    "response_variants": {
+      "gold": {
+        "it": "Per contattare il supporto tecnico Tecnaria scrivi a info@tecnaria.com oppure telefona al numero +39 0424 535 600. Il servizio è attivo nei giorni feriali e fornisce assistenza su prodotti, posa, software e documentazione."
+      }
+    }
+  },
+  {
+    "id": "COMM-0003",
+    "family": "COMM",
+    "tags": ["catalogo", "download", "schede tecniche"],
+    "response_variants": {
+      "gold": {
+        "it": "Le schede tecniche, i cataloghi e le istruzioni di posa aggiornate di ogni famiglia di connettori sono disponibili sul sito ufficiale www.tecnaria.com nella sezione 'Download'. I file sono sempre aggiornati all’ultima revisione tecnica."
+      }
+    }
+  },
+  {
+    "id": "COMM-0004",
+    "family": "COMM",
+    "tags": ["software", "programma calcolo", "download"],
+    "response_variants": {
+      "gold": {
+        "it": "Il software di calcolo Tecnaria consente di progettare solai misti e verificare il comportamento dei connettori. È scaricabile gratuitamente dal sito ufficiale nella sezione 'Software di calcolo'."
+      }
+    }
+  },
+  {
+    "id": "COMM-0005",
+    "family": "COMM",
+    "tags": ["richiesta preventivo", "commerciale", "distributori"],
+    "response_variants": {
+      "gold": {
+        "it": "Per preventivi e informazioni commerciali puoi contattare l’ufficio vendite Tecnaria o i distributori locali elencati sul sito. È possibile richiedere supporto anche tramite il modulo online nella sezione 'Contatti'."
+      }
+    }
+  },
+  {
+    "id": "COMM-0006",
+    "family": "COMM",
+    "tags": ["distributori", "francia", "europa"],
+    "response_variants": {
+      "gold": {
+        "it": "Tecnaria dispone di distributori in vari paesi europei, inclusa la Francia. L’elenco aggiornato è disponibile su www.tecnaria.com, sezione 'Rete commerciale'."
+      }
+    }
+  },
+  {
+    "id": "COMM-0007",
+    "family": "COMM",
+    "tags": ["formazione", "seminari", "webinar"],
+    "response_variants": {
+      "gold": {
+        "it": "Tecnaria organizza corsi di formazione, webinar e incontri tecnici su solai misti e sistemi di rinforzo. È possibile iscriversi tramite la sezione 'Formazione' del sito o richiedere eventi dedicati per studi di progettazione."
+      }
+    }
+  },
+  {
+    "id": "COMM-0008",
+    "family": "COMM",
+    "tags": ["certificazioni", "CE", "ETA"],
+    "response_variants": {
+      "gold": {
+        "it": "Tutti i connettori Tecnaria sono coperti da marcatura CE e valutazione tecnica europea ETA. La documentazione ufficiale è disponibile nelle rispettive schede di prodotto."
+      }
+    }
+  },
+  {
+    "id": "COMM-0009",
+    "family": "COMM",
+    "tags": ["garanzia", "responsabilità", "durata"],
+    "response_variants": {
+      "gold": {
+        "it": "I prodotti Tecnaria sono garantiti contro difetti di fabbricazione. La durata e le condizioni di garanzia sono riportate nei documenti ufficiali e nel manuale d’uso dei sistemi di fissaggio."
+      }
+    }
+  },
+  {
+    "id": "COMM-0010",
+    "family": "COMM",
+    "tags": ["spedizioni", "tempi consegna"],
+    "response_variants": {
+      "gold": {
+        "it": "I tempi di consegna dipendono dal tipo di prodotto e dalla disponibilità. In genere i connettori standard sono forniti entro pochi giorni lavorativi dall’ordine."
+      }
+    }
+  },
+  {
+    "id": "COMM-0011",
+    "family": "COMM",
+    "tags": ["certificati prova", "laboratori"],
+    "response_variants": {
+      "gold": {
+        "it": "Le prove di qualificazione dei connettori Tecnaria sono effettuate in laboratori accreditati e documentate nei fascicoli tecnici allegati alle ETA."
+      }
+    }
+  },
+  {
+    "id": "COMM-0012",
+    "family": "COMM",
+    "tags": ["assistenza cantiere", "tecnico in sito"],
+    "response_variants": {
+      "gold": {
+        "it": "Su richiesta è possibile organizzare assistenza tecnica in cantiere per verifiche di posa e conformità dei fissaggi. Contattare l’ufficio tecnico Tecnaria con anticipo per la pianificazione."
+      }
+    }
+  },
+  {
+    "id": "COMM-0013",
+    "family": "COMM",
+    "tags": ["canali social", "linkedin", "youtube"],
+    "response_variants": {
+      "gold": {
+        "it": "Tecnaria è presente su LinkedIn e YouTube con contenuti tecnici, video di posa e aggiornamenti sui prodotti. Seguire i canali ufficiali è il modo migliore per restare aggiornati."
+      }
+    }
+  },
+  {
+    "id": "COMM-0014",
+    "family": "COMM",
+    "tags": ["fiere", "eventi"],
+    "response_variants": {
+      "gold": {
+        "it": "Tecnaria partecipa regolarmente a fiere di edilizia e ingegneria strutturale, presentando novità e casi applicativi. L’elenco aggiornato degli eventi è pubblicato sul sito nella sezione 'News & Fiere'."
+      }
+    }
+  },
+  {
+    "id": "COMM-0015",
+    "family": "COMM",
+    "tags": ["richiesta documenti", "disegni CAD", "BIM"],
+    "response_variants": {
+      "gold": {
+        "it": "I file CAD e BIM dei prodotti Tecnaria sono disponibili per i progettisti nella sezione 'Download' del sito ufficiale. Possono essere richiesti anche tramite e-mail all’ufficio tecnico."
+      }
+    }
+  },
+  {
+    "id": "COMM-0016",
+    "family": "COMM",
+    "tags": ["privacy", "dati personali"],
+    "response_variants": {
+      "gold": {
+        "it": "Tecnaria tratta i dati personali secondo il GDPR europeo. Le informazioni sono utilizzate esclusivamente per fornire assistenza e comunicazioni tecniche."
+      }
+    }
+  },
+  {
+    "id": "COMM-0017",
+    "family": "COMM",
+    "tags": ["newsletter", "iscrizione"],
+    "response_variants": {
+      "gold": {
+        "it": "Iscrivendoti alla newsletter Tecnaria riceverai aggiornamenti su nuovi prodotti, software, webinar e casi di studio. L’iscrizione avviene dal sito ufficiale."
+      }
+    }
+  },
+  {
+    "id": "COMM-0018",
+    "family": "COMM",
+    "tags": ["modulo contatto", "form online"],
+    "response_variants": {
+      "gold": {
+        "it": "Il modulo contatti del sito consente di inviare richieste dirette all’ufficio tecnico, commerciale o amministrativo. È il canale consigliato per domande operative."
+      }
+    }
+  },
+  {
+    "id": "COMM-0019",
+    "family": "COMM",
+    "tags": ["uffici", "sede", "indirizzo"],
+    "response_variants": {
+      "gold": {
+        "it": "La sede di Tecnaria è a Bassano del Grappa (VI), Italia. L’indirizzo e la mappa sono disponibili nella sezione 'Contatti' del sito ufficiale."
+      }
+    }
+  },
+  {
+    "id": "COMM-0020",
+    "family": "COMM",
+    "tags": ["orari uffici"],
+    "response_variants": {
+      "gold": {
+        "it": "Gli uffici Tecnaria sono aperti dal lunedì al venerdì, con orario 8:30–12:30 e 14:00–17:30."
+      }
+    }
+  },
+  {
+    "id": "COMM-0021",
+    "family": "COMM",
+    "tags": ["assistenza progettisti", "calcoli", "soluzioni"],
+    "response_variants": {
+      "gold": {
+        "it": "L’assistenza per progettisti offre supporto nei calcoli, nella scelta dei connettori e nelle verifiche strutturali dei solai misti. È possibile inviare planimetrie e dettagli per consulenze dedicate."
+      }
+    }
+  },
+  {
+    "id": "COMM-0022",
+    "family": "COMM",
+    "tags": ["domande frequenti", "faq"],
+    "response_variants": {
+      "gold": {
+        "it": "Le FAQ Tecnaria raccolgono risposte rapide su posa, scelta connettori, compatibilità e manutenzione. Sono accessibili dal sito nella sezione 'Domande frequenti'."
+      }
+    }
+  },
+  {
+    "id": "COMM-0023",
+    "family": "COMM",
+    "tags": ["nuovi prodotti", "innovazioni"],
+    "response_variants": {
+      "gold": {
+        "it": "Tecnaria aggiorna periodicamente la gamma di prodotti introducendo nuovi connettori e sistemi di fissaggio. Le novità sono pubblicate sul sito e comunicate tramite newsletter."
+      }
+    }
+  },
+  {
+    "id": "COMM-0024",
+    "family": "COMM",
+    "tags": ["sinapsi", "intelligenza artificiale", "assistente"],
+    "response_variants": {
+      "gold": {
+        "it": "Sinapsi è l’assistente AI ufficiale di Tecnaria che risponde su prodotti, posa e normative. Le informazioni fornite derivano dai dati tecnici ufficiali, costantemente aggiornati."
+      }
+    }
+  },
+  {
+    "id": "COMM-0025",
+    "family": "COMM",
+    "tags": ["integrazione", "siti partner"],
+    "response_variants": {
+      "gold": {
+        "it": "Sinapsi è integrabile su siti web partner tramite API REST. Le risposte vengono generate utilizzando i dataset ufficiali Tecnaria GOLD."
+      }
+    }
+  },
+  {
+    "id": "COMM-0026",
+    "family": "COMM",
+    "tags": ["aiuto", "problemi", "bug"],
+    "response_variants": {
+      "gold": {
+        "it": "Per segnalare problemi di utilizzo del sistema o errori nelle risposte puoi scrivere a sinapsi@tecnaria.com specificando la domanda e l’esito riscontrato."
+      }
+    }
+  },
+  {
+    "id": "COMM-0027",
+    "family": "COMM",
+    "tags": ["lingue", "internazionale"],
+    "response_variants": {
+      "gold": {
+        "it": "Il sistema Sinapsi riconosce domande in italiano, inglese, francese, tedesco e spagnolo. Per altre lingue viene utilizzato l’inglese come lingua di servizio."
+      }
+    }
+  },
+  {
+    "id": "COMM-0028",
+    "family": "COMM",
+    "tags": ["richiesta demo", "presentazione ai clienti"],
+    "response_variants": {
+      "gold": {
+        "it": "Le aziende partner possono richiedere una dimostrazione di Sinapsi e delle funzionalità GOLD per la consulenza tecnica digitale, scrivendo a info@tecnaria.com."
+      }
+    }
+  },
+  {
+    "id": "COMM-0029",
+    "family": "COMM",
+    "tags": ["aggiornamento dataset", "revisioni"],
+    "response_variants": {
+      "gold": {
+        "it": "I dataset GOLD vengono aggiornati periodicamente per recepire modifiche tecniche, normative o di prodotto. Ogni aggiornamento è tracciato nella sezione 'Revisioni'."
+      }
+    }
+  },
+  {
+    "id": "COMM-0030",
+    "family": "COMM",
+    "tags": ["uso commerciale", "licenze"],
+    "response_variants": {
+      "gold": {
+        "it": "L’utilizzo commerciale dei dataset e delle API Sinapsi è soggetto a licenza. Per informazioni contatta l’amministrazione Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "COMM-0031",
+    "family": "COMM",
+    "tags": ["collaborazioni", "università"],
+    "response_variants": {
+      "gold": {
+        "it": "Tecnaria collabora con università e centri di ricerca per lo sviluppo di nuovi sistemi costruttivi e la validazione sperimentale dei connettori."
+      }
+    }
+  },
+  {
+    "id": "COMM-0032",
+    "family": "COMM",
+    "tags": ["documenti tecnici", "bibliografia"],
+    "response_variants": {
+      "gold": {
+        "it": "Gli articoli tecnici e le pubblicazioni sui solai misti con connettori Tecnaria sono disponibili nella sezione 'Bibliografia' del sito."
+      }
+    }
+  },
+  {
+    "id": "COMM-0033",
+    "family": "COMM",
+    "tags": ["canali vendita", "ordini"],
+    "response_variants": {
+      "gold": {
+        "it": "Gli ordini dei prodotti Tecnaria possono essere inoltrati direttamente all’ufficio vendite o ai distributori autorizzati. Per ogni ordine viene emessa conferma scritta."
+      }
+    }
+  },
+  {
+    "id": "COMM-0034",
+    "family": "COMM",
+    "tags": ["spedizione internazionale", "dogana"],
+    "response_variants": {
+      "gold": {
+        "it": "Per spedizioni internazionali Tecnaria fornisce la documentazione doganale e di conformità richiesta dal paese di destinazione."
+      }
+    }
+  },
+  {
+    "id": "COMM-0035",
+    "family": "COMM",
+    "tags": ["recensioni", "feedback"],
+    "response_variants": {
+      "gold": {
+        "it": "I clienti possono inviare feedback o testimonianze sui progetti realizzati con i sistemi Tecnaria. I contributi più interessanti vengono condivisi sui canali ufficiali."
+      }
+    }
+  },
+  {
+    "id": "COMM-0036",
+    "family": "COMM",
+    "tags": ["sicurezza dati", "server", "api"],
+    "response_variants": {
+      "gold": {
+        "it": "Le API di Sinapsi sono ospitate su server sicuri con connessione cifrata HTTPS. Tutte le richieste e le risposte rispettano gli standard di sicurezza dati."
+      }
+    }
+  },
+  {
+    "id": "COMM-0037",
+    "family": "COMM",
+    "tags": ["integrazione gold", "tecnaria gold"],
+    "response_variants": {
+      "gold": {
+        "it": "La piattaforma Tecnaria GOLD integra tutte le famiglie di connettori e le logiche di risposta Sinapsi. Ogni interazione avviene in modalità tecnica validata."
+      }
+    }
+  },
+  {
+    "id": "COMM-0038",
+    "family": "COMM",
+    "tags": ["termini d’uso", "condizioni servizio"],
+    "response_variants": {
+      "gold": {
+        "it": "L’utilizzo di Sinapsi implica l’accettazione delle condizioni d’uso e della licenza Tecnaria GOLD pubblicate sul sito."
+      }
+    }
+  },
+  {
+    "id": "COMM-0039",
+    "family": "COMM",
+    "tags": ["assistenza gold", "modalità gold"],
+    "response_variants": {
+      "gold": {
+        "it": "Le risposte in modalità GOLD offrono spiegazioni complete, con riferimenti a norme e campi di applicazione. In caso di dubbi, è sempre disponibile il supporto diretto Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "COMM-0040",
+    "family": "COMM",
+    "tags": ["modalità canonico", "risposte sintetiche"],
+    "response_variants": {
+      "gold": {
+        "it": "La modalità CANONICO fornisce risposte sintetiche per uso rapido. Può essere attivata digitando 'CANONICO:' all’inizio della domanda o tramite il toggle nell’interfaccia."
+      }
+    }
+  },
+  {
+    "id": "COMM-0041",
+   
+
   "family": "COMM",
   "items": [
     {
