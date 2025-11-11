@@ -1,14 +1,14 @@
 {
-  "families_dir": "static/data",
-  "enabled_families": [
-    "VCEM",
-    "CTF",
+  "mode": "gold",
+  "families": [
+    "COMM",
     "CTCEM",
+    "CTF",
     "CTL",
     "CTL_MAXI",
     "DIAPASON",
     "P560",
-    "COMM"
+    "VCEM"
   ],
-  "default_mode": "GOLD"
+  "lock_to_core": true
 }
