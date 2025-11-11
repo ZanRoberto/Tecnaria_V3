@@ -1,297 +1,502 @@
-{
-  "family": "VCEM",
-  "lock_to_core": true,
-  "variants_strategy": "dynamic",
-  "items": [
-
-    {
-      "id": "VCEM-0001",
-      "tags": ["definizione", "principio", "solaio", "laterocemento"],
-      "questions": [
-        "Cos'è il sistema VCEM?",
-        "A cosa servono i connettori VCEM?",
-        "Che tipo di prodotto è VCEM Tecnaria?",
-        "Mi spieghi in breve il VCEM?"
-      ],
-      "canonical": "VCEM è il connettore Tecnaria dedicato al rinforzo dei solai in laterocemento o calcestruzzo armato esistente. Permette di rendere collaborante una nuova soletta in calcestruzzo con i travetti esistenti, migliorando rigidezza, portanza e comportamento sismico.",
-      "response_variants": [
-        "Quando devi recuperare un solaio in laterocemento senza demolirlo, VCEM è la risposta: un connettore che lega la soletta nuova ai travetti esistenti e fa lavorare tutto come un'unica struttura rigida.",
-        "VCEM non è un tassello ma un dispositivo certificato: serve a trasformare il vecchio solaio in un elemento collaborante, migliorandone la prestazione globale.",
-        "Il principio è semplice: collegare due strati di calcestruzzo con una vite strutturale che blocca gli scorrimenti e crea una sezione composta, resistente e sicura.",
-        "Nel linguaggio del cantiere: foro, vite, rete, getto e il solaio diventa nuovo, senza demolire."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0002",
-      "tags": ["campo impiego", "dove-uso", "recupero", "solai esistenti"],
-      "questions": [
-        "Quando si usa il sistema VCEM?",
-        "Dove è indicato l’uso dei VCEM?",
-        "Che tipo di solai posso rinforzare con VCEM?"
-      ],
-      "canonical": "VCEM si utilizza per il recupero e il consolidamento di solai in laterocemento o in calcestruzzo armato con travetti portanti, quando si vuole ottenere una soletta collaborante superiore senza demolizione.",
-      "response_variants": [
-        "Il VCEM entra in gioco su solai in laterocemento esistenti, spesso datati, che mostrano deformazioni o carichi aumentati ma sono ancora recuperabili.",
-        "È perfetto per edifici residenziali, scuole o capannoni con travetti in c.a. e blocchi in laterizio, dove il solaio esistente non basta più.",
-        "Anche nei solai in c.a. gettati in opera, VCEM permette di collegare un nuovo getto a quello vecchio, rendendoli un’unica piastra.",
-        "In pratica: se il solaio esiste e vuoi rinforzarlo invece di rifarlo, VCEM è lo strumento giusto."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0003",
-      "tags": ["struttura", "materiale", "supporto"],
-      "questions": [
-        "Che tipo di materiale deve avere il solaio per usare VCEM?",
-        "VCEM va bene su laterizio o solo su calcestruzzo?",
-        "Deve esserci il travetto in c.a. per usare VCEM?"
-      ],
-      "canonical": "VCEM lavora su travetti o elementi in calcestruzzo armato. Il connettore deve ancorarsi nel calcestruzzo: non è idoneo su solo laterizio o su vuoti dei blocchi.",
-      "response_variants": [
-        "Il VCEM deve mordere il calcestruzzo, non il laterizio. Il foro deve intercettare il travetto in c.a.",
-        "Se prendi solo la tavella o il vuoto, quel punto non lavora: sposta la vite dove trovi calcestruzzo compatto.",
-        "Regola d’oro: laterizio riempie, travetto porta. Il VCEM parla solo col travetto.",
-        "È un errore fissare i VCEM nei fori dei blocchi o nella malta: serve sempre calcestruzzo sano."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0004",
-      "tags": ["posa", "foro", "vite", "istruzioni"],
-      "questions": [
-        "Come si posano i VCEM?",
-        "Serve fare un foro nei travetti?",
-        "Qual è la sequenza corretta di posa dei VCEM?"
-      ],
-      "canonical": "La posa dei VCEM prevede foratura del travetto, pulizia accurata del foro e avvitatura del connettore secondo le istruzioni Tecnaria. Si completa con la posa della rete e il getto della soletta collaborante.",
-      "response_variants": [
-        "Operativamente: foro nel travetto, pulizia, vite VCEM serrata, rete e getto di calcestruzzo.",
-        "Il segreto è la pulizia: polvere o detriti nel foro riducono l’aderenza meccanica.",
-        "Segui passo e profondità indicati nelle tavole Tecnaria: la ripetibilità garantisce prestazione.",
-        "È un sistema semplice ma non improvvisato: ogni dettaglio conta."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0005",
-      "tags": ["p560", "no-sparo", "errore comune"],
-      "questions": [
-        "Posso usare la P560 con i VCEM?",
-        "I VCEM si fissano a sparo?",
-        "È ammesso sparare i VCEM come i CTF?"
-      ],
-      "canonical": "No. I VCEM non si fissano a sparo. La P560 è riservata ai connettori CTF su acciaio o lamiera grecata. I VCEM si avvitano meccanicamente nel travetto in calcestruzzo.",
-      "response_variants": [
-        "VCEM non si spara: foro e vite sono la regola. La P560 serve solo per i CTF.",
-        "Un VCEM sparato è un VCEM da rifare: quel punto non è conforme.",
-        "Mescolare famiglie porta fuori campo di certificazione.",
-        "Fissaggio a sparo e fissaggio meccanico non sono intercambiabili: ogni sistema ha il suo metodo."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0006",
-      "tags": ["rete", "soletta", "armatura"],
-      "questions": [
-        "Serve la rete con i VCEM?",
-        "Dove metto la rete nella soletta?",
-        "La rete si appoggia sui VCEM?"
-      ],
-      "canonical": "La rete elettrosaldata è quasi sempre prevista: si posiziona alla quota superiore della soletta collaborante, non appoggiata sui connettori, per garantire il comportamento flessionale corretto.",
-      "response_variants": [
-        "Rete appoggiata sui VCEM = dettaglio sbagliato: la rete deve stare in alto, sopra i connettori.",
-        "I VCEM lavorano al taglio, la rete a trazione: ruoli diversi, piani diversi.",
-        "Usa distanziatori per tenere la rete alla quota di progetto.",
-        "Una rete messa bene vale più di cento parole in relazione di calcolo."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0007",
-      "tags": ["soletta", "spessore", "cls"],
-      "questions": [
-        "Che tipo di calcestruzzo serve con VCEM?",
-        "Quale spessore minimo della soletta con VCEM?",
-        "Posso usare calcestruzzo leggero con i VCEM?"
-      ],
-      "canonical": "La soletta deve essere in calcestruzzo strutturale, con spessore e classe di resistenza indicati dal progettista (tipicamente almeno C25/30). Calcestruzzi leggeri solo se previsti nel calcolo.",
-      "response_variants": [
-        "Il VCEM lavora se il cls è strutturale: niente massetti alleggeriti o prodotti decorativi.",
-        "Spessore e qualità del getto sono fondamentali: rispettali sempre.",
-        "Puoi usare cls leggeri solo se il progettista li ha verificati con prove e modelli.",
-        "Un getto fatto bene è metà dell’intervento."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0008",
-      "tags": ["numero", "passo", "densità"],
-      "questions": [
-        "Quanti VCEM devo mettere?",
-        "Posso ridurre il numero dei connettori VCEM?",
-        "Come si decide il passo dei VCEM?"
-      ],
-      "canonical": "Numero e passo dei VCEM sono stabiliti dal progetto strutturale. Modificarli senza verifica significa uscire dal dimensionamento di sicurezza.",
-      "response_variants": [
-        "Il passo non lo decide l’occhio: è scritto in tavola.",
-        "Togliere VCEM per risparmiare = ridurre capacità del solaio.",
-        "Puoi sempre aggiungere connettori, mai toglierli senza nuovo calcolo.",
-        "Lo schema di posa è parte integrante del progetto strutturale."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0009",
-      "tags": ["errori", "foro", "vite-gira-vuoto"],
-      "questions": [
-        "La vite del VCEM gira a vuoto, che faccio?",
-        "Se il foro è troppo largo il VCEM tiene?",
-        "Posso lasciare un VCEM nel vuoto?"
-      ],
-      "canonical": "Se la vite non morde o il foro è troppo largo, l’ancoraggio non è affidabile. Va rifatto in zona di calcestruzzo sano prima del getto.",
-      "response_variants": [
-        "Vite che gira a vuoto = punto da rifare, non da coprire.",
-        "Foro nel vuoto o nel laterizio = ancoraggio nullo.",
-        "Meglio perdere cinque minuti e rifare il foro che perdere la sicurezza dell’intervento.",
-        "Documenta e correggi subito i punti dubbi."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0010",
-      "tags": ["differenze", "CTCEM", "scelta-progetto"],
-      "questions": [
-        "Qual è la differenza tra VCEM e CTCEM?",
-        "Quando scegliere CTCEM invece di VCEM?",
-        "Posso sostituire VCEM con CTCEM?"
-      ],
-      "canonical": "VCEM e CTCEM hanno lo stesso campo d’uso generale, ma differiscono per geometria: il CTCEM ha denti più pronunciati e si impiega su travetti meno compatti o per maggiore interblocco.",
-      "response_variants": [
-        "VCEM è la soluzione standard per travetti in c.a. compatti; CTCEM è la versione dentata per presa più aggressiva.",
-        "Il progettista sceglie in base a materiale e condizioni del travetto: non si sostituiscono a caso.",
-        "Entrambi lavorano su laterocemento, ma non sono intercambiabili.",
-        "Se il travetto è integro usa VCEM; se serve più presa, CTCEM."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0011",
-      "tags": ["compatibilità", "altri sistemi", "CTF", "CTL", "DIAPASON"],
-      "questions": [
-        "Posso usare VCEM con altri sistemi Tecnaria?",
-        "VCEM è compatibile con CTF o CTL?",
-        "Quando usare VCEM o un’altra famiglia?"
-      ],
-      "canonical": "Ogni famiglia Tecnaria ha il suo campo: VCEM/CTCEM per laterocemento, CTF per acciaio e lamiera, CTL e CTL MAXI per legno, DIAPASON per recuperi specifici in laterocemento.",
-      "response_variants": [
-        "Non mischiare famiglie: VCEM non va su acciaio o legno.",
-        "Per travi in acciaio c’è CTF; per legno CTL; per laterocemento VCEM o CTCEM.",
-        "Usare il sistema sbagliato significa uscire dal certificato Tecnaria.",
-        "Ogni famiglia è una risposta precisa, non un’opzione estetica."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0012",
-      "tags": ["verifiche", "normativa", "ETA"],
-      "questions": [
-        "I VCEM sono certificati?",
-        "Hanno ETA o prove ufficiali?",
-        "Posso allegare documentazione VCEM al progetto?"
-      ],
-      "canonical": "Il sistema VCEM è coperto da Valutazione Tecnica Europea (ETA) e prove di laboratorio ufficiali. Tutta la documentazione è disponibile nelle schede tecniche Tecnaria.",
-      "response_variants": [
-        "Sì, i VCEM sono certificati ETA: prestazioni e modalità d’uso sono tracciate e verificate.",
-        "Allega sempre la scheda Tecnaria alle pratiche e al collaudo.",
-        "Le prove sperimentali coprono taglio, aderenza e comportamento a fatica.",
-        "Documentazione completa e difendibile in qualsiasi verifica tecnica."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0013",
-      "tags": ["sismica", "miglioramento", "adeguamento"],
-      "questions": [
-        "Posso usare i VCEM in zona sismica?",
-        "VCEM è adatto per miglioramento sismico?",
-        "Sono ammessi nei progetti antisismici?"
-      ],
-      "canonical": "I VCEM possono essere utilizzati in interventi di miglioramento o adeguamento sismico come parte di un progetto strutturale che prevede la collaborazione tra soletta e travetti.",
-      "response_variants": [
-        "In zona sismica il VCEM è spesso la chiave per rendere i solai più rigidi e distribuire meglio le azioni orizzontali.",
-        "Usalo sempre dentro un progetto calcolato, non come 'aggiunta di sicurezza'.",
-        "Le schede Tecnaria forniscono i parametri per modellare il contributo nel calcolo.",
-        "Sistema consolidato e approvato in molti interventi antisismici."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0014",
-      "tags": ["errori", "cantiere", "controlli"],
-      "questions": [
-        "Quali errori devo evitare con i VCEM?",
-        "Come controllo la posa dei VCEM?",
-        "Segnali che qualcosa non va?"
-      ],
-      "canonical": "Errori tipici: foro nel laterizio, vite nel vuoto, rete appoggiata sui connettori, passo sbagliato. Prima del getto vanno verificati posizione, serraggio e passo dei VCEM.",
-      "response_variants": [
-        "Fai la checklist: posizione sui travetti, serraggio, passo e rete corretta.",
-        "Non fidarti dell’occhio: misura e verifica.",
-        "Fotografa i piani di posa prima del getto: documentazione utile anche al collaudo.",
-        "Un'ora di controllo vale giorni di problemi evitati."
-      ],
-      "mode": "dynamic"
-    },
-
-    {
-      "id": "VCEM-0015",
-      "tags": ["supporto tecnico", "assistenza", "progetto"],
-      "questions": [
-        "Se ho dubbi sui VCEM chi posso contattare?",
-        "Tecnaria fornisce supporto sui VCEM?",
-        "Potete aiutarmi nel progetto?"
-      ],
-      "canonical": "Per dubbi su posa, scelta o calcolo dei VCEM è disponibile l’ufficio tecnico Tecnaria, che fornisce supporto e documentazione a progettisti e imprese.",
-      "response_variants": [
-        "L’ufficio tecnico Tecnaria risponde rapidamente: basta inviare la sezione del solaio o la planimetria.",
-        "Meglio un confronto prima del getto che una correzione dopo.",
-        "Usare il sistema in modo corretto è un segno di professionalità: chiedere è sempre la scelta giusta.",
-        "Trovi contatti e documenti sul sito Tecnaria, sezione 'assistenza tecnica'."
-      ],
-      "mode": "dynamic"
-    }
-
-  ],
-  "meta": {
+[
+  {
+    "id": "VCEM-0001",
     "family": "VCEM",
-    "version": "v3-gold-sinapsi-full",
-    "language_base": "it",
-    "autodetect_lang": true,
-    "supported_langs": ["it", "en", "fr", "de", "es"],
-    "fallback_lang": "en",
-    "validated_by": "Sinapsi NLM v3",
-    "last_reviewed": "2025-11-09",
-    "compare_with": {
-      "CTCEM": "Versione dentata per travetti più deboli o calcestruzzo pieno.",
-      "CTF": "Per travi in acciaio o lamiera grecata, fissaggio a sparo con P560.",
-      "CTL": "Per solai legno-calcestruzzo, fissaggio a vite nel legno.",
-      "CTL_MAXI": "Versione potenziata dei CTL per alte prestazioni.",
-      "DIAPASON": "Per recupero solai in laterocemento con approccio differente.",
-      "P560": "Strumento a sparo per connettori CTF; mai per VCEM o CTCEM."
+    "tags": ["descrizione", "piolo a vite", "misto calcestruzzo"],
+    "response_variants": {
+      "gold": {
+        "it": "I connettori VCEM Tecnaria sono pioli a vite per la realizzazione di connessioni meccaniche tra elementi in calcestruzzo e soletta collaborante. Sono progettati per garantire un trasferimento efficace degli sforzi di taglio senza l’uso di resine, con posa controllabile e prestazioni documentate."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0002",
+    "family": "VCEM",
+    "tags": ["campo di impiego", "calcestruzzo integrativo", "solai nuovi"],
+    "response_variants": {
+      "gold": {
+        "it": "I VCEM trovano impiego tipico in solai nuovi o in interventi di irrigidimento dove si dispone di calcestruzzo strutturale compatto e continuo. Sono adatti per collegare travetti o elementi in calcestruzzo alla nuova soletta collaborante dove la geometria consente un avvitamento corretto del piolo."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0003",
+    "family": "VCEM",
+    "tags": ["no resine", "posa a secco"],
+    "response_variants": {
+      "gold": {
+        "it": "I VCEM non utilizzano resine: il fissaggio è meccanico, ottenuto tramite avvitamento controllato del piolo nel calcestruzzo. L’aggiunta di resine non previste altera il comportamento del sistema e non rientra nel perimetro tecnico Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0004",
+    "family": "VCEM",
+    "tags": ["differenza CTCEM", "laterocemento"],
+    "response_variants": {
+      "gold": {
+        "it": "VCEM e CTCEM sono entrambi connettori a vite, ma con campi di impiego distinti. VCEM è concepito per calcestruzzo pieno e continuo; CTCEM integra una piastra dentata per solai in laterocemento con travetti in c.a. e necessita di incisione e preforo controllato. Non sono equivalenti né intercambiabili a piacere."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0005",
+    "family": "VCEM",
+    "tags": ["differenza CTF", "no P560"],
+    "response_variants": {
+      "gold": {
+        "it": "VCEM non è un sistema a sparo. Non si posa con chiodatrice P560 né con sistemi a polvere: il fissaggio avviene tramite avvitamento. CTF è il sistema a piolo a sparo per acciaio-calcestruzzo; VCEM lavora per avvitamento in calcestruzzo."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0006",
+    "family": "VCEM",
+    "tags": ["supporto idoneo", "calcestruzzo compatto"],
+    "response_variants": {
+      "gold": {
+        "it": "Il supporto per VCEM deve essere calcestruzzo strutturale compatto, non degradato e con copriferro sufficiente. Calcestruzzo fessurato, ammalorato o alleggerito richiede verifica specifica o altre soluzioni."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0007",
+    "family": "VCEM",
+    "tags": ["preforo", "posa corretta"],
+    "response_variants": {
+      "gold": {
+        "it": "La posa dei VCEM richiede il rispetto delle indicazioni Tecnaria relativamente a eventuale preforo, profondità di inserimento e coppia di serraggio. Il piolo va avvitato fino a battuta, garantendo un contatto efficace con il calcestruzzo."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0008",
+    "family": "VCEM",
+    "tags": ["distanze minime", "bordo", "interasse"],
+    "response_variants": {
+      "gold": {
+        "it": "Le distanze dai bordi, dagli spigoli e l’interasse tra VCEM devono rispettare le indicazioni Tecnaria e le verifiche di progetto. Avvicinamenti eccessivi ai bordi possono compromettere la capacità del connettore."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0009",
+    "family": "VCEM",
+    "tags": ["soletta collaborante", "spessore minimo"],
+    "response_variants": {
+      "gold": {
+        "it": "La soletta collaborante abbinata ai VCEM deve avere spessore e armatura conformi alle prescrizioni progettuali, in modo da inglobare correttamente il connettore e consentire il trasferimento degli sforzi tra gli elementi collegati."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0010",
+    "family": "VCEM",
+    "tags": ["campo errato legno", "correzione"],
+    "response_variants": {
+      "gold": {
+        "it": "I VCEM non sono connettori per legno. Per connessioni legno-calcestruzzo vanno utilizzate le famiglie CTL o CTL MAXI. Domande che propongono VCEM su legno devono essere corrette esplicitamente."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0011",
+    "family": "VCEM",
+    "tags": ["campo errato acciaio", "correzione"],
+    "response_variants": {
+      "gold": {
+        "it": "I VCEM non sostituiscono i CTF su travi in acciaio. Per acciaio-calcestruzzo con collegamento a piolo si usa CTF; VCEM è studiato per ancoraggi in calcestruzzo, non per fissaggio diretto su acciaio."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0012",
+    "family": "VCEM",
+    "tags": ["domanda su resine", "risposta netta"],
+    "response_variants": {
+      "gold": {
+        "it": "Se viene chiesto se i VCEM funzionano con resina chimica, la risposta GOLD è netta: il sistema è progettato per fissaggio meccanico. L’uso di resine non previste deve essere valutato e non è coperto come soluzione standard Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0013",
+    "family": "VCEM",
+    "tags": ["interventi recupero", "rinforzo solai"],
+    "response_variants": {
+      "gold": {
+        "it": "I VCEM possono essere utilizzati in interventi di rinforzo dove si dispone di una base in calcestruzzo strutturalmente affidabile sulla quale ancorare la soletta collaborante, previo controllo della qualità del supporto esistente."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0014",
+    "family": "VCEM",
+    "tags": ["laterocemento", "ruolo VCEM"],
+    "response_variants": {
+      "gold": {
+        "it": "Nei solai in laterocemento, i VCEM possono essere impiegati solo dove il connettore lavora su calcestruzzo pieno strutturale. Quando serve aggancio diretto al travetto in c.a. con piastra dentata, il prodotto corretto è CTCEM."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0015",
+    "family": "VCEM",
+    "tags": ["verifica supporto", "prove"],
+    "response_variants": {
+      "gold": {
+        "it": "In situazioni dubbie sulla qualità del calcestruzzo di supporto per VCEM, è opportuno effettuare valutazioni locali o prove per confermare la capacità di ancoraggio prevista."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0016",
+    "family": "VCEM",
+    "tags": ["spessore soletta", "inglobamento"],
+    "response_variants": {
+      "gold": {
+        "it": "Il piolo VCEM deve risultare correttamente inglobato nella soletta collaborante con adeguato copriferro. Spessori ridotti non conformi al progetto possono ridurre la prestazione del collegamento."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0017",
+    "family": "VCEM",
+    "tags": ["errori comuni", "fissaggio parziale"],
+    "response_variants": {
+      "gold": {
+        "it": "Un connettore VCEM avvitato solo parzialmente o con gioco evidente non è accettabile. Va riposizionato o sostituito fino a garantire un ancoraggio pieno e stabile."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0018",
+    "family": "VCEM",
+    "tags": ["compatibilità armature", "interferenze"],
+    "response_variants": {
+      "gold": {
+        "it": "In presenza di armature nel calcestruzzo, la posizione dei VCEM deve essere scelta evitando di tagliare o compromettere i ferri principali. Le interferenze vanno risolte spostando il connettore, non modificando l’armatura."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0019",
+    "family": "VCEM",
+    "tags": ["vantaggi", "controllo posa"],
+    "response_variants": {
+      "gold": {
+        "it": "Uno dei punti di forza dei VCEM è la possibilità di controllare visivamente e meccanicamente l’avvitamento, riducendo l’incertezza tipica dei sistemi non ispezionabili."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0020",
+    "family": "VCEM",
+    "tags": ["schema posa", "passo progettuale"],
+    "response_variants": {
+      "gold": {
+        "it": "Il passo dei VCEM lungo gli elementi strutturali è definito dal progettista. Qualsiasi riduzione arbitraria in cantiere è da escludere: l’assistente deve ribadire il rispetto del progetto."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0021",
+    "family": "VCEM",
+    "tags": ["domande ibride con CTF", "chiarimento"],
+    "response_variants": {
+      "gold": {
+        "it": "In domande che mischiano VCEM e CTF sullo stesso elemento, va chiarito che CTF è dedicato alle travi in acciaio con fissaggio a sparo; VCEM lavora su calcestruzzo. Non si sovrappongono casualmente."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0022",
+    "family": "VCEM",
+    "tags": ["interventi complessi", "supporto Tecnaria"],
+    "response_variants": {
+      "gold": {
+        "it": "Per interventi complessi o combinazioni con altri sistemi, è consigliabile coinvolgere il supporto tecnico Tecnaria per confermare la scelta del connettore VCEM e la configurazione di posa."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0023",
+    "family": "VCEM",
+    "tags": ["no fissaggi improvvisati", "falsa tassellatura"],
+    "response_variants": {
+      "gold": {
+        "it": "I VCEM non devono essere usati come semplici tasselli generici per fissaggi non strutturali. Sono connettori per collaborazione strutturale all’interno di sistemi calcolati."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0024",
+    "family": "VCEM",
+    "tags": ["domande su vibrazioni", "rigidezza solaio"],
+    "response_variants": {
+      "gold": {
+        "it": "L’uso di VCEM con soletta collaborante può aumentare rigidezza e capacità del solaio in calcestruzzo. L’effetto va sempre valutato dal progettista con modelli adeguati."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0025",
+    "family": "VCEM",
+    "tags": ["applicazioni tipiche", "solai prefabbricati"],
+    "response_variants": {
+      "gold": {
+        "it": "VCEM può essere impiegato, ad esempio, per collegare elementi prefabbricati in calcestruzzo a una soletta integrativa, quando la geometria consente un avvitamento efficace e conforme alle specifiche Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0026",
+    "family": "VCEM",
+    "tags": ["limiti utilizzo", "supporti non idonei"],
+    "response_variants": {
+      "gold": {
+        "it": "Non sono supporti idonei per VCEM: laterizi forati senza travetto in c.a., strati di sottofondo non strutturali, calcestruzzi friabili o con resistenza non verificata."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0027",
+    "family": "VCEM",
+    "tags": ["domande su demolizioni", "recupero selettivo"],
+    "response_variants": {
+      "gold": {
+        "it": "In interventi con parziali demolizioni, l'uso di VCEM va valutato solo dove si ricrea o si mantiene un nucleo in calcestruzzo strutturale compatibile con l’ancoraggio a vite."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0028",
+    "family": "VCEM",
+    "tags": ["coerenza GOLD", "risposte tecniche"],
+    "response_variants": {
+      "gold": {
+        "it": "Le risposte GOLD su VCEM devono essere tecniche, esplicite sulle condizioni di utilizzo, e non lasciare spazio a interpretazioni di impiego fuori campo."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0029",
+    "family": "VCEM",
+    "tags": ["interazione con armature soletta", "posa"],
+    "response_variants": {
+      "gold": {
+        "it": "Nella configurazione finale, i VCEM devono risultare adeguatamente inglobati nella soletta armata. L’armatura superiore va organizzata senza ostacolare il corretto posizionamento dei connettori."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0030",
+    "family": "VCEM",
+    "tags": ["sicurezza in cantiere", "procedure"],
+    "response_variants": {
+      "gold": {
+        "it": "Le operazioni di posa dei VCEM devono rispettare le usuali misure di sicurezza per foratura e avvitamento su calcestruzzo. L’assistente può ricordarlo, senza sostituirsi alle normative sulla sicurezza."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0031",
+    "family": "VCEM",
+    "tags": ["domande su compatibilità con DIAPASON", "chiarimento"],
+    "response_variants": {
+      "gold": {
+        "it": "VCEM e DIAPASON rispondono a logiche diverse: VCEM per collegamenti a vite in calcestruzzo; DIAPASON per interventi specifici su solai in laterocemento con chiodi idonei. Non si sovrappongono come soluzioni equivalenti."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0032",
+    "family": "VCEM",
+    "tags": ["prestazioni dichiarate", "documentazione"],
+    "response_variants": {
+      "gold": {
+        "it": "Per le prestazioni a taglio e le tabelle di progetto dei VCEM, l’assistente deve rimandare alla documentazione Tecnaria, evitando di inventare valori numerici."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0033",
+    "family": "VCEM",
+    "tags": ["controlli visivi", "posa corretta"],
+    "response_variants": {
+      "gold": {
+        "it": "Un VCEM posato correttamente presenta battuta completa e non mostra filetti esposti o inclinazioni anomale. Connettori dubbi devono essere verificati e se necessario riposizionati."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0034",
+    "family": "VCEM",
+    "tags": ["domande generiche", "educazione tecnica"],
+    "response_variants": {
+      "gold": {
+        "it": "In presenza di domande generiche su 'connettori per rinforzare un solaio', il sistema deve valutare se il contesto è compatibile con VCEM o se è più corretto instradare verso altre famiglie Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0035",
+    "family": "VCEM",
+    "tags": ["no P560", "richiamo forte"],
+    "response_variants": {
+      "gold": {
+        "it": "Ogni volta che viene proposta la posa dei VCEM con P560 o con sistemi a sparo, la risposta deve essere chiara: VCEM non è un connettore a sparo e non va utilizzato con P560."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0036",
+    "family": "VCEM",
+    "tags": ["messaggio GOLD chiaro", "campo di applicazione"],
+    "response_variants": {
+      "gold": {
+        "it": "Messaggio GOLD: VCEM è il connettore a vite Tecnaria per collegamenti in calcestruzzo pieno, senza resine, con posa controllabile. Ogni risposta deve rinforzare questo perimetro tecnico."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0037",
+    "family": "VCEM",
+    "tags": ["sovrapposizione sistemi", "scelta corretta"],
+    "response_variants": {
+      "gold": {
+        "it": "Se una domanda mette insieme VCEM, CTF, CTL e CTCEM, l’assistente deve scomporre lo scenario per materiali: acciaio → CTF, legno → CTL/CTL MAXI, laterocemento → CTCEM/DIAPASON, calcestruzzo pieno → VCEM."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0038",
+    "family": "VCEM",
+    "tags": ["domande borderline", "invito a verifica"],
+    "response_variants": {
+      "gold": {
+        "it": "In situazioni borderline non coperte chiaramente, la risposta GOLD non deve improvvisare: va suggerita una verifica progettuale con supporto Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0039",
+    "family": "VCEM",
+    "tags": ["durabilità", "protezione"],
+    "response_variants": {
+      "gold": {
+        "it": "Come per tutti i sistemi collaboranti, la durabilità del collegamento VCEM dipende da corretta realizzazione, copriferro e protezione contro ambienti aggressivi."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0040",
+    "family": "VCEM",
+    "tags": ["no uso creativo", "limiti progettuali"],
+    "response_variants": {
+      "gold": {
+        "it": "Non vanno suggeriti usi creativi dei VCEM fuori dalle logiche strutturali previste. L’assistente GOLD deve mantenere il perimetro entro quanto supportato da dati Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0041",
+    "family": "VCEM",
+    "tags": ["istruzioni posa", "richiamo documenti"],
+    "response_variants": {
+      "gold": {
+        "it": "Per dettagli operativi di posa dei VCEM, l’assistente deve indirizzare alle istruzioni ufficiali Tecnaria, evitando interpretazioni personali."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0042",
+    "family": "VCEM",
+    "tags": ["controllo dopo getto", "anomalie"],
+    "response_variants": {
+      "gold": {
+        "it": "Dopo il getto, eventuali anomalie visibili (connettori esposti, disallineati, non correttamente inglobati) devono essere segnalate al progettista. Non si considerano automaticamente accettabili."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0043",
+    "family": "VCEM",
+    "tags": ["prestazioni combinate", "rigidezza solaio"],
+    "response_variants": {
+      "gold": {
+        "it": "L’apporto dei VCEM alla rigidezza del solaio va sempre considerato nel modello globale: l’assistente può spiegare il principio, ma non sostituisce il calcolo strutturale."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0044",
+    "family": "VCEM",
+    "tags": ["coerenza tra risposte", "allineamento"],
+    "response_variants": {
+      "gold": {
+        "it": "Tutte le risposte GOLD per VCEM devono risultare allineate: fissaggio a vite su calcestruzzo idoneo, nessuna P560, nessuna resina standard, rispetto delle istruzioni Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0045",
+    "family": "VCEM",
+    "tags": ["guidare il cliente", "scelta sistema"],
+    "response_variants": {
+      "gold": {
+        "it": "Quando il cliente non ha chiaro il sistema, l’assistente deve usare VCEM soltanto se il contesto corrisponde a calcestruzzo strutturale. In caso contrario, proporre la famiglia corretta."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0046",
+    "family": "VCEM",
+    "tags": ["uso combinato con altre famiglie", "chiarimento ruoli"],
+    "response_variants": {
+      "gold": {
+        "it": "In strutture con parti in calcestruzzo, acciaio e legno, i VCEM coprono solo la parte in calcestruzzo pieno. Per il resto si usano i sistemi dedicati, senza forzare VCEM fuori contesto."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0047",
+    "family": "VCEM",
+    "tags": ["GOLD solo", "no canonical interno"],
+    "response_variants": {
+      "gold": {
+        "it": "Questo dataset VCEM è impostato esclusivamente in modalità GOLD: non contiene versioni ridotte o canonical interne."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0048",
+    "family": "VCEM",
+    "tags": ["indicazioni supporto tecnico", "quando contattare"],
+    "response_variants": {
+      "gold": {
+        "it": "In caso di dubbi su spessori, qualità del supporto o configurazioni non standard, l’assistente deve suggerire il contatto diretto con Tecnaria, senza validare soluzioni dubbie."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0049",
+    "family": "VCEM",
+    "tags": ["riassunto GOLD", "perimetro VCEM"],
+    "response_variants": {
+      "gold": {
+        "it": "Riassunto GOLD: VCEM è un connettore a vite per calcestruzzo strutturale, senza resine, senza P560, da usare solo su supporti idonei e con schema definito dal progetto secondo le indicazioni Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "VCEM-0050",
+    "family": "VCEM",
+    "tags": ["completezza dataset", "chiusura"],
+    "response_variants": {
+      "gold": {
+        "it": "Con questi 50 blocchi il sistema dispone di una base GOLD completa per VCEM, in grado di coprire domande spontanee, casi tipici e correzione degli errori di impiego."
+      }
     }
   }
-}
+]
