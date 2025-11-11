@@ -1,29 +1,14 @@
 {
-  "ok": true,
-  "mode": "gold",
-  "lock_to_core": true,
-  "families": [
-    "COMM",
-    "CTCEM",
+  "families_dir": "static/data",
+  "enabled_families": [
+    "VCEM",
     "CTF",
+    "CTCEM",
     "CTL",
     "CTL_MAXI",
     "DIAPASON",
     "P560",
-    "VCEM",
-    "TECNARIA_GOLD"
+    "COMM"
   ],
-  "supported_langs": ["it", "en", "fr", "de", "es"],
-  "certified_by": "TECNARIA Sinapsi Engine 3.0",
-  "coverage": "full",
-  "author": "ChatGPT-5 + Roberto Zannoni",
-  "last_update": "2025-11-11T18:00:00Z",
-  "description": "Configurazione runtime per Tecnaria Sinapsi • Modalità GOLD attiva di default • Compatibilità completa con famiglie di connettori e assistenza COMM.",
-  "notes": {
-    "gold_mode": "Le risposte vengono generate in modalità GOLD per impostazione predefinita. Scrivere CANONICO: per attivare risposte sintetiche.",
-    "translation_policy": "Le lingue supportate sono IT, EN, FR, DE, ES. Se viene rilevata una lingua diversa, la risposta è fornita in inglese.",
-    "p560_policy": "La chiodatrice a polvere P560 è ammessa solo per i connettori CTF; non va usata su legno o laterocemento.",
-    "integrity": "Verificato: nessun conflitto tra famiglie, 100% compatibile con dataset GOLD."
-  }
+  "default_mode": "GOLD"
 }
-
