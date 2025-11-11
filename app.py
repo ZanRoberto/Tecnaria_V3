@@ -1,565 +1,570 @@
 import os
 import json
+import math
 import re
-import unicodedata
-import random
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-# =========================================================
-# OpenAI client (solo per traduzioni se disponibile)
-# =========================================================
-
-try:
-    from openai import OpenAI  # type: ignore
-except Exception:
-    OpenAI = None  # type: ignore
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-USE_OPENAI = bool(OPENAI_API_KEY) and OpenAI is not None
-openai_client = OpenAI() if USE_OPENAI else None
+from openai import OpenAI
 
 # =========================================================
-# Percorsi
+# CONFIGURAZIONE BASE
 # =========================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-DATA_DIR = os.path.join(STATIC_DIR, "data")
-CONFIG_PATH = os.path.join(DATA_DIR, "config.runtime.json")
+DATA_DIR = os.path.join(BASE_DIR, "static", "data")
+
+DEFAULT_MODE = "gold"  # GOLD di default
+SUPPORTED_FAMILIES_DEFAULT = [
+    "COMM",
+    "CTCEM",
+    "CTF",
+    "CTL",
+    "CTL_MAXI",
+    "DIAPASON",
+    "P560",
+    "TECNARIA_GOLD",
+    "VCEM",
+]
+
+client = OpenAI()
+
+app = FastAPI(title="TECNARIA Sinapsi Backend", version="3.0")
+
+# Static (interfaccia)
+static_dir = os.path.join(BASE_DIR, "static")
+if os.path.isdir(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 
 # =========================================================
-# FastAPI app
+# LETTURA CONFIG
 # =========================================================
-
-app = FastAPI(title="TECNARIA Sinapsi Backend", version="3.3")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-if os.path.isdir(STATIC_DIR):
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
-# =========================================================
-# Stato globale
-# =========================================================
-
-_family_cache: Dict[str, Dict[str, Any]] = {}
-_config_cache: Optional[Dict[str, Any]] = None
-
-MODE_GOLD = "gold"
-MODE_CANONICAL = "canonical"
-_current_mode: str = MODE_GOLD  # default: GOLD finché non lo cambi
-
-# =========================================================
-# Modelli
-# =========================================================
-
-class AskRequest(BaseModel):
-    q: str
-    family: Optional[str] = None
-
-# =========================================================
-# Utility
-# =========================================================
-
-def normalize(text: str) -> str:
-    if not text:
-        return ""
-    text = text.lower()
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(c for c in text if not unicodedata.combining(c))
-    text = re.sub(r"[^a-z0-9]+", " ", text)
-    return text.strip()
-
-
-def safe_family_filename(family: str) -> str:
-    return f"{family.upper()}.json"
-
 
 def load_config() -> Dict[str, Any]:
-    global _config_cache
-    if _config_cache is not None:
-        return _config_cache
+    """
+    Legge config.runtime.json se esiste, altrimenti usa defaults.
+    """
+    candidate_paths = [
+        os.path.join(DATA_DIR, "config.runtime.json"),
+        os.path.join(BASE_DIR, "config.runtime.json"),
+    ]
+    for p in candidate_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                return cfg
+            except Exception:
+                pass
 
-    cfg: Dict[str, Any] = {
-        "admin": {
-            "response_policy": {
-                "mode": "dynamic",
-                "variant_selection": "longest",
-                "variant_seed": 20251110,
-            }
-        }
+    # fallback
+    return {
+        "ok": True,
+        "mode": DEFAULT_MODE,
+        "families": SUPPORTED_FAMILIES_DEFAULT,
     }
-    try:
-        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            file_cfg = json.load(f)
-        if isinstance(file_cfg, dict):
-            admin = file_cfg.get("admin") or {}
-            rp = admin.get("response_policy") or {}
-            cfg["admin"]["response_policy"].update(rp)
-    except FileNotFoundError:
-        pass
-    except Exception:
-        pass
-
-    _config_cache = cfg
-    return cfg
 
 
-def get_response_policy() -> Dict[str, Any]:
-    cfg = load_config()
-    return (cfg.get("admin") or {}).get("response_policy") or {}
+CONFIG = load_config()
 
 
-def list_families() -> List[str]:
-    if not os.path.isdir(DATA_DIR):
+# =========================================================
+# CARICAMENTO DATASET
+# =========================================================
+
+def load_family_file(name: str) -> List[Dict[str, Any]]:
+    """
+    Carica il JSON di una famiglia da static/data/<name>.json se esiste.
+    Se manca, ritorna lista vuota.
+    """
+    filename = f"{name}.json"
+    path = os.path.join(DATA_DIR, filename)
+    if not os.path.exists(path):
         return []
-    fams: List[str] = []
-    for fname in os.listdir(DATA_DIR):
-        if not fname.lower().endswith(".json"):
-            continue
-        base = fname.rsplit(".", 1)[0]
-        if base.lower().startswith("config.runtime"):
-            continue
-        fams.append(base.upper())
-    return sorted(set(fams))
-
-
-def load_family(family: str) -> Dict[str, Any]:
-    family = family.upper()
-    if family in _family_cache:
-        return _family_cache[family]
-
-    path = os.path.join(DATA_DIR, safe_family_filename(family))
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Family '{family}' not found")
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error loading family '{family}': {e}"
-        )
-
-    if isinstance(data, list):
-        items = data
-        data = {"family": family, "items": items}
-    else:
-        items = data.get("items") or []
-        data["items"] = items
-
-    for idx, item in enumerate(items):
-        if "id" not in item:
-            item["id"] = f"{family}-{idx+1:04d}"
-
-    _family_cache[family] = data
-    return data
-
-# =========================================================
-# Lingua
-# =========================================================
-
-SUPPORTED_LANGS = ["it", "en", "fr", "de", "es"]
-
-def detect_lang(text: str) -> str:
-    t = (text or "").strip().lower()
-    if not t:
-        return "it"
-
-    if re.search(r"\b(what|which|can|how|where|why)\b", t):
-        return "en"
-    if re.search(r"\b(qué|dónde|como|cómo|cuándo|por qué)\b", t):
-        return "es"
-    if re.search(r"\b(quel|quelle|quels|quelles|comment|pourquoi|où)\b", t):
-        return "fr"
-    if re.search(r"\b(was|wie|warum|wo|welche|welcher|welches)\b", t):
-        return "de"
-    if any(ch in t for ch in "àèéìòù"):
-        return "it"
-    return "it"
-
-
-def openai_translate(text: str, target_lang: str, source_lang: Optional[str] = None) -> str:
-    if not text or not USE_OPENAI or not openai_client:
-        return text
-
-    target_lang = target_lang.lower()
-    if target_lang not in SUPPORTED_LANGS:
-        return text
-
-    try:
-        completion = openai_client.chat.completions.create(
-            model=os.getenv("OPENAI_TRANSLATION_MODEL", "gpt-4.1-mini"),
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        f"Sei un traduttore tecnico per prodotti strutturali Tecnaria. "
-                        f"Traduci il testo nella lingua '{target_lang}'. "
-                        "Non tradurre nomi prodotti o sigle. Rispondi solo con il testo tradotto."
-                    ),
-                },
-                {"role": "user", "content": text},
-            ],
-            max_tokens=800,
-        )
-        out = (completion.choices[0].message.content or "").strip()
-        return out or text
+        if isinstance(data, list):
+            return data
+        return []
     except Exception:
-        return text
+        return []
+
+
+def load_all_items() -> List[Dict[str, Any]]:
+    families = CONFIG.get("families", SUPPORTED_FAMILIES_DEFAULT)
+    all_items: List[Dict[str, Any]] = []
+    for fam in families:
+        items = load_family_file(fam)
+        for it in items:
+            if "family" not in it:
+                it["family"] = fam
+            all_items.append(it)
+    return all_items
+
+
+DATA_ITEMS = load_all_items()
+
 
 # =========================================================
-# GOLD / CANONICO selezione testo
+# UTILS TESTO / LINGUA
 # =========================================================
 
-def iter_variants(variants: Any) -> List[str]:
-    out: List[str] = []
-    if isinstance(variants, str):
-        s = variants.strip()
-        if s:
-            out.append(s)
-    elif isinstance(variants, list):
-        for v in variants:
-            if isinstance(v, str):
-                s = v.strip()
-                if s:
-                    out.append(s)
-    elif isinstance(variants, dict):
-        for v in variants.values():
-            if isinstance(v, str):
-                s = v.strip()
-                if s:
-                    out.append(s)
-            elif isinstance(v, list):
-                for s2 in v:
-                    if isinstance(s2, str):
-                        s2 = s2.strip()
-                        if s2:
-                            out.append(s2)
-    return out
+def normalize(text: str) -> List[str]:
+    text = (text or "").lower()
+    text = re.sub(r"[^a-z0-9àèéìòóùüäößçñ ]+", " ", text)
+    return [t for t in text.split() if t]
 
 
-def pick_gold_text(block: Dict[str, Any]) -> str:
+def detect_language(q: str) -> str:
     """
-    GOLD: scegli il contenuto più ricco disponibile (longest).
+    Rilevamento grezzo:
+    - IT, EN, FR, DE, ES
+    - fallback EN per lingue non riconosciute (es. russo).
     """
-    policy = get_response_policy()
-    sel = (policy.get("variant_selection") or "longest").lower()
-    seed = policy.get("variant_seed")
+    s = q.lower()
 
-    variants = iter_variants(block.get("response_variants"))
-    canonical = (block.get("canonical") or block.get("answer_it") or "").strip()
+    it_markers = [" il ", " lo ", " la ", " che ", " con ", " dove ", "posso", "soletta", "trave", "calcestruzzo"]
+    en_markers = [" the ", " can ", " what ", " where ", " beam", "slab", "concrete"]
+    fr_markers = [" le ", " la ", " les ", " des ", " avec ", " poutre", "dalle"]
+    de_markers = [" der ", " die ", " das ", " und ", " mit ", "träger", "platte"]
+    es_markers = [" el ", " la ", " los ", " las ", " con ", "viga", "forjado"]
 
-    candidates: List[str] = []
-    candidates.extend(variants)
-    if canonical:
-        candidates.append(canonical)
+    def has_any(markers): return any(m in s for m in markers)
 
-    if not candidates:
-        return ""
+    if has_any(it_markers):
+        return "it"
+    if has_any(en_markers):
+        return "en"
+    if has_any(fr_markers):
+        return "fr"
+    if has_any(de_markers):
+        return "de"
+    if has_any(es_markers):
+        return "es"
+    # fallback: meglio inglese che italiano per richieste esotiche
+    return "en"
 
-    if sel == "random":
-        rnd = random.Random(seed or None)
-        return rnd.choice(candidates)
-
-    # default GOLD: usa la più lunga
-    return max(candidates, key=len)
-
-
-def pick_canonical_text(block: Dict[str, Any]) -> str:
-    """
-    CANONICO: risposta sintetica (canonical o la più corta).
-    """
-    canonical = (block.get("canonical") or block.get("answer_it") or "").strip()
-    if canonical:
-        return canonical
-
-    variants = iter_variants(block.get("response_variants"))
-    if not variants:
-        return ""
-    return min(variants, key=len)
 
 # =========================================================
-# Matching domanda → item
+# ESTRAZIONE TESTO DAI BLOCCHI
 # =========================================================
 
-STOPWORDS = {
-    "dove","posso","puo","puoi","si","no","come","quando","quanto","quanti",
-    "quale","quali","il","lo","la","i","gli","le","un","una","uno",
-    "di","del","della","dei","degli","da","in","su","per","con","e","ed","o",
-    "oppure","any","can","do","use","utilizzare","usare",
-    "please","cliente","vorrei","voglio","devo","si possono","è possibile"
+def extract_gold_text(item: Dict[str, Any], lang: str) -> Optional[str]:
+    rv = item.get("response_variants") or item.get("variants") or {}
+    gold = rv.get("gold") or rv.get("GOLD") or rv.get("gold_it")
+
+    # Caso gold come dict lingue
+    if isinstance(gold, dict):
+        if lang in gold and gold[lang]:
+            return gold[lang]
+        if "it" in gold and gold["it"]:
+            return gold["it"]
+        # qualsiasi lingua disponibile
+        for v in gold.values():
+            if v:
+                return v
+
+    # Caso gold come stringa
+    if isinstance(gold, str):
+        return gold
+
+    # Fallback su campi legacy
+    for key in ["answer_gold", "gold_answer", "answer_it", "answer"]:
+        if isinstance(item.get(key), str) and item[key].strip():
+            return item[key].strip()
+
+    # Fallback su canonical se proprio non c'è altro
+    canonical = item.get("canonical")
+    if isinstance(canonical, str) and canonical.strip():
+        return canonical.strip()
+
+    return None
+
+
+def extract_canonical_text(item: Dict[str, Any], lang: str) -> Optional[str]:
+    # 1. canonical dedicato
+    canonical = item.get("canonical")
+    if isinstance(canonical, dict):
+        # supporto eventuale canonical per lingue
+        if lang in canonical and canonical[lang]:
+            return canonical[lang]
+        if "it" in canonical and canonical["it"]:
+            return canonical["it"]
+    if isinstance(canonical, str) and canonical.strip():
+        return canonical.strip()
+
+    # 2. risposte sintetiche legacy
+    for key in ["answer_it", "answer", "short"]:
+        if isinstance(item.get(key), str) and item[key].strip():
+            return item[key].strip()
+
+    # 3. se non c'è nulla, fallback a gold
+    return extract_gold_text(item, lang)
+
+
+# =========================================================
+# MATCHING / INSTRADAMENTO
+# =========================================================
+
+KEYWORDS_FAMILY = {
+    "CTF": ["ctf", "trave acciaio", "acciaio", "lamiera grecata", "piolo a sparo", "p560"],
+    "VCEM": ["vcem", "piolo", "viti in calcestruzzo", "soletta", "nuovo solaio laterocemento"],
+    "CTCEM": ["ctcem", "laterocemento", "travetti in calcestruzzo", "rinforzo solaio"],
+    "CTL": ["ctl", "legno-calcestruzzo", "trave in legno", "solaio in legno"],
+    "CTL_MAXI": ["ctl maxi", "maxi", "trave importante", "legno pesante"],
+    "DIAPASON": ["diapason", "recupero laterocemento", "senza demolizione", "chiodi idonei"],
+    "P560": ["p560", "chiodatrice", "chiodi a sparo", "cartucce"],
+    "COMM": ["contatto", "assistenza", "tecnaria", "supporto tecnico"],
 }
 
-FAMILY_SYNONYMS: Dict[str, List[str]] = {
-    "CTF": ["ctf"],
-    "CTL": ["ctl"],
-    "CTL_MAXI": ["ctl maxi", "maxi"],
-    "VCEM": ["vcem"],
-    "CTCEM": ["ctcem"],
-    "P560": ["p560", "spit p560"],
-    "DIAPASON": ["diapason"],
-}
+def guess_family_boost(q: str, item: Dict[str, Any]) -> float:
+    """
+    Piccolo boost se la domanda contiene parole chiave della famiglia.
+    """
+    ql = q.lower()
+    fam = (item.get("family") or "").upper()
+    boost = 0.0
 
-def guess_families_from_text(text: str) -> List[str]:
-    t = text.lower()
-    found: List[str] = []
-    for fam, keys in FAMILY_SYNONYMS.items():
-        for k in keys:
-            if k in t:
-                found.append(fam)
-                break
-    return found
+    if fam in KEYWORDS_FAMILY:
+        for kw in KEYWORDS_FAMILY[fam]:
+            if kw in ql:
+                boost += 1.5
+
+    # P560/CTF coerenza forte
+    if "p560" in ql and fam == "P560":
+        boost += 2.0
+    if "p560" in ql and fam == "CTF":
+        boost += 1.0
+    if "legno" in ql and fam in ("CTL", "CTL_MAXI"):
+        boost += 1.5
+    if "laterocemento" in ql and fam in ("VCEM", "CTCEM", "DIAPASON"):
+        boost += 1.5
+
+    return boost
 
 
-def collect_item_text(item: Dict[str, Any]) -> Tuple[str, str]:
-    q_parts: List[str] = []
-    all_parts: List[str] = []
+def score_item(question: str, item: Dict[str, Any]) -> float:
+    """
+    Matching semplice ma robusto.
+    """
+    q_tokens = normalize(question)
+    if not q_tokens:
+        return 0.0
 
-    for key in ("questions", "q", "question", "paraphrases"):
+    text_parts = []
+
+    # tag
+    tags = item.get("tags", [])
+    if isinstance(tags, list):
+        text_parts.extend([str(t) for t in tags])
+
+    # canonical / risposte
+    for key in ["canonical", "answer", "answer_it"]:
         v = item.get(key)
         if isinstance(v, str):
-            q_parts.append(v)
-        elif isinstance(v, list):
-            q_parts.extend([s for s in v if isinstance(s, str)])
+            text_parts.append(v)
+    rv = item.get("response_variants") or {}
+    if isinstance(rv, dict):
+        for v in rv.values():
+            if isinstance(v, str):
+                text_parts.append(v)
+            elif isinstance(v, dict):
+                text_parts.extend([str(x) for x in v.values() if isinstance(x, str)])
 
-    for key in ("questions", "q", "question", "paraphrases",
-                "tags", "canonical", "answer_it"):
-        v = item.get(key)
-        if isinstance(v, str):
-            all_parts.append(v)
-        elif isinstance(v, list):
-            all_parts.extend([s for s in v if isinstance(s, str)])
-
-    return " ".join(all_parts), " ".join(q_parts)
-
-
-def score_item(q_norm: str, item: Dict[str, Any]) -> float:
-    if not q_norm:
+    corpus = normalize(" ".join(text_parts))
+    if not corpus:
         return 0.0
 
-    q_terms = [t for t in q_norm.split() if t and t not in STOPWORDS]
-    if not q_terms:
-        return 0.0
-    q_set = set(q_terms)
+    # overlap
+    overlap = len(set(q_tokens) & set(corpus))
+    score = overlap / math.sqrt(len(corpus) + 1)
 
-    full_text, q_text = collect_item_text(item)
-    full_norm = normalize(full_text)
-    if not full_norm:
-        return 0.0
-    full_set = set(full_norm.split())
+    # family boost
+    score += guess_family_boost(question, item)
 
-    overlap = q_set & full_set
-    if not overlap:
-        return 0.0
-
-    base = len(overlap) / len(q_set)
-
-    if q_text:
-        q_norm2 = normalize(q_text)
-        q_set2 = set(q_norm2.split())
-        if q_set2:
-            overlap_q = q_set & q_set2
-            if overlap_q:
-                base += 0.25 * (len(overlap_q) / len(q_set))
-
-    return base
+    return score
 
 
-def find_best_block(query_it: str, families: Optional[List[str]] = None) -> Tuple[Optional[Dict[str, Any]], Optional[str], float]:
-    q_norm = normalize(query_it)
-    if not q_norm:
-        return (None, None, 0.0)
-
-    if not families:
-        families = list_families()
-
-    best_item = None
-    best_family = None
+def find_best_item(question: str, mode: str) -> Optional[Dict[str, Any]]:
+    """
+    Trova il blocco migliore su TUTTE le famiglie abilitate.
+    """
+    best = None
     best_score = 0.0
 
-    for fam in families:
-        try:
-            data = load_family(fam)
-        except HTTPException:
-            continue
-        items = data.get("items") or []
-        for item in items:
-            s = score_item(q_norm, item)
-            if s > best_score:
-                best_score = s
-                best_item = item
-                best_family = fam
+    for item in DATA_ITEMS:
+        s = score_item(question, item)
+        if s > best_score:
+            best_score = s
+            best = item
 
-    if best_score < 0.15:
-        return (None, None, 0.0)
+    # soglia minima per evitare risposte totalmente a caso
+    if not best or best_score < 0.05:
+        return None
 
-    return best_item, best_family, best_score
+    best["_match_score"] = round(best_score, 4)
+    return best
+
 
 # =========================================================
-# Guardrail tecnico P560 / famiglie
+# GENERAZIONE RISPOSTA (CALL OPENAI)
 # =========================================================
 
-def enforce_guardrails(question: str, family: str, text: str, mode: str) -> str:
-    """
-    Applica vincoli tecnici fondamentali (P560, uso corretto famiglie).
-    """
-    q = (question or "").lower()
-    fam = (family or "").upper()
-    out = text.strip()
+def build_system_prompt(mode: str, target_lang: str) -> str:
+    base = (
+        "Sei TECNARIA Sinapsi, assistente tecnico per connettori e sistemi misti "
+        "Tecnaria (CTF, VCEM, CTCEM, CTL, CTL MAXI, DIAPASON, P560). "
+        "Rispondi in modo coerente con i dati ufficiali Tecnaria, senza invenzioni."
+    )
 
-    # 1) CTF: GOLD deve SEMPRE ricordare che il sistema certificato è con P560
-    if fam == "CTF":
-        note = (
-            " I connettori CTF Tecnaria sono parte di un sistema certificato: "
-            "il fissaggio è previsto esclusivamente con chiodatrice a polvere P560 Tecnaria "
-            "dotata di accessori e chiodi idonei. L'uso di utensili diversi non è coperto "
-            "dal perimetro tecnico e prestazionale Tecnaria."
-        )
-        if "p560" not in out.lower():
-            if mode == MODE_GOLD:
-                out = out + "\n\n" + note
-            else:
-                # anche in CANONICO, breve ma chiaro
-                out = out + " (Fissaggio certificato solo con P560 Tecnaria.)"
-
-    # 2) Domande che mischiano P560 con famiglie non compatibili
-    if "p560" in q and any(k in q for k in ["vcem", "ctl", "ctl maxi", "ctcem", "diapason"]):
+    if mode == "gold":
         extra = (
-            "\n\nNota: la P560 è dedicata al sistema CTF (pioli a sparo su acciaio/lamiera). "
-            "VCEM, CTL, CTL MAXI, CTCEM e DIAPASON utilizzano fissaggi meccanici specifici "
-            "e non devono essere posati con P560."
+            " Modalità GOLD: risposta completa, strutturata, tecnica, chiara, con riferimenti a condizioni d'uso, limiti, "
+            "compatibilità tra sistemi. Niente chiacchiere inutili."
         )
-        if extra.strip().lower() not in out.lower():
-            out = out + extra
+    else:
+        extra = (
+            " Modalità CANONICO: risposta tecnica sintetica, diretta, 1-3 frasi."
+        )
 
-    return out
+    lang_map = {
+        "it": "Rispondi in italiano.",
+        "en": "Answer in English.",
+        "fr": "Réponds en français.",
+        "de": "Antworte auf Deutsch.",
+        "es": "Responde en español.",
+    }
+    lang_msg = lang_map.get(target_lang, "Answer in English.")
+
+    return base + extra + " " + lang_msg
+
+
+def generate_answer_with_openai(
+    question: str,
+    base_text: str,
+    mode: str,
+    target_lang: str,
+    family: str,
+    item_id: str,
+) -> str:
+    """
+    Usa OpenAI per trasformare il blocco GOLD/ CANONICO in risposta finale.
+    Se fallisce, ritorna base_text.
+    """
+    # safety: se manca base_text, meglio rispondere minimo
+    if not base_text:
+        return "Al momento non è disponibile una risposta tecnica adeguata. Contatta il supporto Tecnaria."
+
+    try:
+        system_prompt = build_system_prompt(mode, target_lang)
+
+        # Prompt utente: vincoliamo in modo esplicito i punti critici (es. P560 / CTF)
+        user_prompt = f"""
+Domanda utente:
+{question}
+
+Testo base dal dataset (famiglia {family}, id {item_id}):
+\"\"\"{base_text}\"\"\"
+
+Istruzioni:
+- Usa il testo base come riferimento vincolante.
+- Se la domanda riguarda CTF: specifica che la posa corretta è con chiodatrice a polvere P560 Tecnaria con accessori e chiodi idonei, salvo diversa indicazione ufficiale.
+- Non estendere l'uso di P560 a sistemi non previsti (CTL, CTL MAXI, VCEM, CTCEM, DIAPASON).
+- Se più famiglie sono citate insieme, separa chiaramente i campi di utilizzo.
+- Non inventare prodotti, certificazioni o valori numerici non presenti in documentazione.
+- In modalità GOLD: dai una risposta completa e strutturata.
+- In modalità CANONICO: sii sintetico ma tecnicamente corretto.
+- Mantieni la risposta nella lingua richiesta dal sistema.
+"""
+        completion = client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            temperature=0.2 if mode == "canonical" else 0.35,
+            max_tokens=600 if mode == "gold" else 220,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        text = completion.choices[0].message.content.strip()
+        if not text:
+            return base_text
+        return text
+    except Exception:
+        # fallback se API non risponde
+        return base_text
+
 
 # =========================================================
-# ROUTES
+# SCHEMA RICHIESTE
 # =========================================================
 
-@app.get("/", include_in_schema=False)
-async def root_page():
-    index_path = os.path.join(STATIC_DIR, "index.html")
+class AskRequest(BaseModel):
+    question: str
+    mode: Optional[str] = None  # "gold" o "canonical" dal frontend (toggle)
+
+
+# =========================================================
+# ENDPOINTS
+# =========================================================
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    """
+    Serve l'interfaccia. Se manca index.html, mostra un placeholder.
+    """
+    index_path = os.path.join(static_dir, "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {
+        with open(index_path, "r", encoding="utf-8") as f:
+            return f.read()
+    # fallback minimale (per sicurezza)
+    return """
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>TECNARIA Sinapsi</title>
+</head>
+<body>
+  <h1>TECNARIA Sinapsi backend attivo</h1>
+  <p>Interfaccia non trovata. Verifica i file statici.</p>
+</body>
+</html>
+"""
+
+
+@app.get("/api/config", response_class=JSONResponse)
+async def get_config():
+    """
+    Usato dalla UI per capire se il backend è vivo e quali famiglie sono abilitate.
+    """
+    return JSONResponse({
         "ok": True,
         "message": "TECNARIA Sinapsi backend attivo",
-        "mode": _current_mode,
-        "families": list_families(),
-    }
+        "mode": DEFAULT_MODE,
+        "families": CONFIG.get("families", SUPPORTED_FAMILIES_DEFAULT),
+    })
 
 
-@app.get("/api/config")
-async def api_config():
-    rp = get_response_policy()
-    return {
-        "ok": True,
-        "current_mode": _current_mode,
-        "admin_response_policy": rp,
-        "families": list_families(),
-        "translation_enabled": bool(USE_OPENAI and openai_client),
-    }
-
-
-@app.post("/api/ask")
-async def api_ask(payload: AskRequest):
-    global _current_mode
-
-    raw_q = (payload.q or "").strip()
+@app.post("/api/ask", response_class=JSONResponse)
+async def ask(req: AskRequest):
+    raw_q = (req.question or "").strip()
     if not raw_q:
-        raise HTTPException(status_code=400, detail="Missing 'q' in request body")
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": "Domanda vuota.",
+            },
+            status_code=400,
+        )
 
-    txt = raw_q.lstrip()
-    low = txt.lower()
+    # -----------------------------------------------------
+    # Gestione GOLD / CANONICO da testo
+    # -----------------------------------------------------
+    q_lower = raw_q.lower()
 
-    # comandi persistenti GOLD / CANONICO
-    if low.startswith("gold:"):
-        _current_mode = MODE_GOLD
-        txt = txt[5:].strip()
-    elif low.startswith("canonico:") or low.startswith("canonical:"):
-        _current_mode = MODE_CANONICAL
-        idx = low.find(":")
-        txt = txt[idx + 1 :].strip()
+    # Prefissi forzanti
+    forced_mode = None
+    if q_lower.startswith("gold:"):
+        forced_mode = "gold"
+        raw_q = raw_q[5:].strip()
+    elif q_lower.startswith("canonic:") or q_lower.startswith("canonico:") or q_lower.startswith("canonical:"):
+        forced_mode = "canonical"
+        raw_q = re.sub(r"^(canonic:|canonico:|canonical:)", "", q_lower, 1, flags=re.IGNORECASE).strip()
 
-    if not txt:
-        return {
+    # Mode finale:
+    mode = (forced_mode or (req.mode or "")).lower()
+    if mode not in ("gold", "canonical"):
+        mode = DEFAULT_MODE  # default sempre GOLD
+
+    # Lingua target
+    target_lang = detect_language(raw_q)
+
+    # Trova blocco migliore
+    item = find_best_item(raw_q, mode)
+    if not item:
+        # Nessun match sensato
+        fallback_msg = {
+            "it": "Non trovo una risposta tecnica adatta nei dati disponibili. Contatta il supporto Tecnaria con maggiori dettagli.",
+            "en": "No suitable technical answer found in the available data. Please contact Tecnaria support with more details.",
+        }
+        return JSONResponse(
+            {
+                "ok": True,
+                "answer": fallback_msg.get(target_lang, fallback_msg["en"]),
+                "meta": {
+                    "family": None,
+                    "id": None,
+                    "score": 0.0,
+                    "lang": target_lang,
+                    "mode": mode.upper(),
+                },
+            }
+        )
+
+    family = item.get("family")
+    item_id = item.get("id") or ""
+    score = float(item.get("_match_score", 0.0))
+
+    # Estrai testo base
+    if mode == "gold":
+        base_text = extract_gold_text(item, target_lang)
+    else:
+        base_text = extract_canonical_text(item, target_lang)
+
+    if not base_text:
+        # fallback minimo hard se manca tutto
+        base_text = "Per questo argomento è necessaria una verifica diretta con l'ufficio tecnico Tecnaria."
+
+    # Chiamata modello per risposta finale
+    final_answer = generate_answer_with_openai(
+        question=raw_q,
+        base_text=base_text,
+        mode=mode,
+        target_lang=target_lang,
+        family=family or "",
+        item_id=item_id,
+    )
+
+    return JSONResponse(
+        {
             "ok": True,
-            "message": f"Modalità aggiornata a '{_current_mode}'. Inserisci la domanda successiva.",
-            "mode": _current_mode,
+            "answer": final_answer,
+            "meta": {
+                "family": family,
+                "id": item_id,
+                "score": score,
+                "lang": target_lang,
+                "mode": mode.upper(),
+            },
         }
+    )
 
-    mode = _current_mode
 
-    # lingua utente
-    user_lang = detect_lang(txt)
+# =========================================================
+# HEALTHCHECK SEMPLICE
+# =========================================================
 
-    # per il match usiamo italiano (traduzione interna se serve)
-    query_for_match = txt
-    if user_lang != "it":
-        query_for_match = openai_translate(txt, "it", source_lang=user_lang)
-
-    # famiglie candidate (hint o auto)
-    if payload.family:
-        families = [payload.family.upper()]
-    else:
-        guessed = guess_families_from_text(txt)
-        families = guessed or None
-
-    item, fam, score = find_best_block(query_for_match, families)
-
-    if not item or not fam:
-        return {
-            "ok": False,
-            "message": "Blocco trovato ma senza risposta valida.",
-            "lang": user_lang,
-            "mode": mode,
-        }
-
-    # GOLD / CANONICO
-    if mode == MODE_GOLD:
-        base_it = pick_gold_text(item)
-    else:
-        base_it = pick_canonical_text(item)
-
-    if not base_it:
-        return {
-            "ok": False,
-            "message": "Blocco trovato ma senza risposta valida.",
-            "family": fam,
-            "id": item.get("id"),
-            "lang": user_lang,
-            "mode": mode,
-        }
-
-    # guardrail tecnici (P560, ecc.)
-    base_it = enforce_guardrails(query_for_match, fam, base_it, mode)
-
-    # traduzione se necessario
-    if user_lang != "it":
-        final_text = openai_translate(base_it, user_lang, source_lang="it")
-    else:
-        final_text = base_it
-
-    return {
+@app.get("/health", response_class=JSONResponse)
+async def health():
+    return JSONResponse({
         "ok": True,
-        "family": fam,
-        "id": item.get("id"),
-        "score": round(score, 4),
-        "lang": user_lang,
-        "mode": mode,
-        "text": final_text,
-    }
+        "message": "TECNARIA Sinapsi backend attivo",
+        "families_loaded": list(sorted({i.get("family") for i in DATA_ITEMS if i.get("family")})),
+        "items_count": len(DATA_ITEMS),
+        "mode_default": DEFAULT_MODE,
+    })
+
+
+# =========================================================
+# MAIN (solo locale)
+# =========================================================
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app:app", host="0.0.0.0", port=10000, reload=True)
