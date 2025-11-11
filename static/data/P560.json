@@ -1,376 +1,502 @@
-{
-  "family": "P560",
-  "lock_to_core": true,
-  "variants_strategy": "dynamic",
-  "items": [
-    {
-      "id": "P560-0001",
-      "tags": [
-        "definizione",
-        "uso",
-        "strumento"
-      ],
-      "questions": [
-        "Cos'è la P560?",
-        "A cosa serve la P560 Tecnaria?",
-        "Che tipo di utensile è la P560?",
-        "È una pistola o un chiodatore?"
-      ],
-      "canonical": "La P560 è la chiodatrice Tecnaria a sparo controllato per fissare i connettori CTF su travi in acciaio o lamiera grecata. Utilizza cartucce a polvere calibrate e consente un fissaggio rapido, sicuro e costante.",
-      "response_variants": [
-        "La P560 è la chiodatrice a polvere Tecnaria dedicata ai connettori CTF: uno strumento di precisione per collegamenti acciaio–calcestruzzo.",
-        "Non è una pistola generica: è una chiodatrice tecnica che lavora con cartucce controllate per fissaggi strutturali.",
-        "Serve a installare i CTF in modo rapido e ripetibile, garantendo penetrazione costante del chiodo.",
-        "È uno strumento da cantiere calibrato per i sistemi Tecnaria: non per fissaggi casuali.",
-        "Con la P560 trasformi minuti di foratura in secondi di sparo controllato, mantenendo sicurezza e prestazione."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0002",
-      "tags": [
-        "compatibilità",
-        "famiglie",
-        "errore-famiglia"
-      ],
-      "questions": [
-        "Posso sparare i VCEM con la P560?",
-        "Posso usare la P560 per fissare i CTCEM?",
-        "Posso sparare i CTL o CTL MAXI?",
-        "P560 è compatibile con tutti i connettori Tecnaria?"
-      ],
-      "canonical": "No. La P560 è compatibile solo con i connettori CTF e accessori Tecnaria previsti. Non si usa per VCEM, CTCEM, CTL o CTL MAXI.",
-      "response_variants": [
-        "P560 → solo CTF. I VCEM e i CTCEM si avvitano, non si sparano.",
-        "Ogni famiglia ha il suo strumento: la P560 è fatta per i CTF, nient’altro.",
-        "CTL e VCEM non vogliono colpi di pistola: usano viti, non cartucce.",
-        "La P560 lavora solo nel campo acciaio–lamiera. Per laterocemento o legno servono altri sistemi.",
-        "Sparare un VCEM o un CTL è un errore da evitare: rischi di danneggiare sia il pezzo che la superficie."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0003",
-      "tags": [
-        "cartucce",
-        "potenza",
-        "colore"
-      ],
-      "questions": [
-        "Che cartucce usa la P560?",
-        "Ci sono diversi tipi di cartucce?",
-        "Come scelgo la potenza giusta?",
-        "Cosa significano i colori delle cartucce?"
-      ],
-      "canonical": "La P560 usa cartucce a polvere calibro .27 in strip, con potenze differenziate per colore. La scelta dipende dal supporto e dallo spessore da attraversare: seguire sempre la tabella Tecnaria.",
-      "response_variants": [
-        "Usa cartucce a polvere .27, disponibili in vari colori secondo la potenza. Il colore indica la forza del colpo.",
-        "Le cartucce più deboli servono su lamiere sottili, quelle più forti su acciai spessi.",
-        "La scelta corretta evita sia fissaggi incompleti sia eccessiva penetrazione.",
-        "Consulta la tabella Tecnaria: ogni colore corrisponde a una potenza e a un’applicazione.",
-        "Non improvvisare: prova sempre la cartuccia giusta su un elemento di scarto prima del lavoro reale."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0004",
-      "tags": [
-        "manutenzione",
-        "pulizia"
-      ],
-      "questions": [
-        "Come si pulisce la P560?",
-        "Serve manutenzione giornaliera?",
-        "Va lubrificata dopo l’uso?",
-        "Posso smontarla da solo?"
-      ],
-      "canonical": "La P560 va pulita regolarmente per rimuovere residui di polvere e lubrificata con olio specifico Tecnaria. La manutenzione ordinaria può essere fatta dall’operatore formato.",
-      "response_variants": [
-        "Dopo ogni giornata di lavoro va pulita e lubrificata: la polvere da sparo lascia residui che possono bloccare il meccanismo.",
-        "Basta poco: smonta, soffia, olia, richiudi. È una routine da 5 minuti che evita guasti.",
-        "Usa sempre prodotti consigliati: oli sbagliati o grassi comuni attirano sporco.",
-        "Se non sei sicuro, chiedi assistenza Tecnaria: è meglio una revisione che un blocco.",
-        "Una P560 pulita spara bene e dura anni: la manutenzione è parte del mestiere."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0005",
-      "tags": [
-        "sicurezza",
-        "dpi"
-      ],
-      "questions": [
-        "Quali protezioni servono con la P560?",
-        "Serve il casco acustico?",
-        "La P560 è pericolosa?",
-        "Come mi proteggo quando sparo?"
-      ],
-      "canonical": "Con la P560 vanno sempre usati occhiali, cuffie antirumore, guanti e scarpe di sicurezza. È uno strumento sicuro se impiegato con le dovute cautele e formazione.",
-      "response_variants": [
-        "Occhiali, cuffie e guanti non sono un optional: ogni colpo genera rumore e schegge.",
-        "Trattala come un utensile da sparo: sicurezza prima di tutto.",
-        "La P560 è sicura se la usi bene: non puntarla mai verso persone o superfici non da lavoro.",
-        "Non sottovalutare il rinculo: mantieni sempre la posizione corretta.",
-        "Tecnaria forma gli operatori proprio per garantire sicurezza e risultati coerenti."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0006",
-      "tags": [
-        "revisione",
-        "frequenza"
-      ],
-      "questions": [
-        "Ogni quanto va revisionata la P560?",
-        "Serve manutenzione periodica?",
-        "Ogni quante scariche va controllata?"
-      ],
-      "canonical": "Tecnaria consiglia la revisione completa ogni 10.000–15.000 colpi o almeno una volta l’anno, a seconda dell’intensità d’uso.",
-      "response_variants": [
-        "Ogni 10–15 mila spari conviene una revisione: le guarnizioni si consumano.",
-        "Una volta all’anno un controllo Tecnaria allunga la vita dello strumento.",
-        "Se la senti “dura” o irregolare, anticipa la revisione: è sintomo di residui interni.",
-        "Non aspettare che si blocchi: manutenzione programmata è produttività.",
-        "Meglio una revisione preventiva che una fermata improvvisa in cantiere."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0007",
-      "tags": [
-        "uso-improprio",
-        "errori"
-      ],
-      "questions": [
-        "Posso sparare in calcestruzzo con la P560?",
-        "Posso usare chiodi generici?",
-        "La posso usare come chiodatrice universale?"
-      ],
-      "canonical": "No. La P560 non è una chiodatrice universale. È progettata per sparare connettori e chiodi Tecnaria su acciaio o lamiera. Non va usata su calcestruzzo o materiali non previsti.",
-      "response_variants": [
-        "P560 è nata per acciaio e lamiera: sparare su calcestruzzo è un errore.",
-        "I chiodi generici non garantiscono sicurezza né prestazione.",
-        "Ogni colpo fuori campo può danneggiare pistone e canna.",
-        "Non è una sparachiodi da ferramenta: è uno strumento tecnico.",
-        "Chi la tratta come un giocattolo si ritrova con riparazioni costose."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0008",
-      "tags": [
-        "modelli",
-        "differenze"
-      ],
-      "questions": [
-        "Che differenza c’è tra P560 e P370?",
-        "Qual è la versione più recente?",
-        "P560 sostituisce altri modelli?"
-      ],
-      "canonical": "La P560 è l’evoluzione più moderna delle chiodatrici Tecnaria, con maggiore affidabilità, ergonomia e potenza controllata rispetto ai modelli precedenti.",
-      "response_variants": [
-        "Rispetto alla P370, la P560 ha colpi più stabili e manutenzione semplificata.",
-        "È più potente ma anche più morbida da usare, grazie al miglior controllo del rinculo.",
-        "P370 era la generazione precedente: la P560 ne è la naturale evoluzione.",
-        "È progettata per durare e semplificare la vita in cantiere.",
-        "Più moderna, più precisa, più sicura: questa è la differenza vera."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0009",
-      "tags": [
-        "blocco",
-        "inceppamento"
-      ],
-      "questions": [
-        "La P560 si è bloccata, cosa faccio?",
-        "Non spara più, che succede?",
-        "Come sblocco la P560?"
-      ],
-      "canonical": "In caso di inceppamento, scaricare l’utensile, rimuovere la cartuccia, controllare il canale di sparo e pulire. Se il blocco persiste, rivolgersi al servizio Tecnaria.",
-      "response_variants": [
-        "Prima regola: scarica sempre la P560 prima di toccarla.",
-        "Spesso si tratta di un residuo di polvere o un chiodo incastrato: pulisci e lubrifica.",
-        "Non forzare con colpi o martelli: rischi di piegare la canna.",
-        "Se non si libera facilmente, il centro assistenza risolve in un attimo.",
-        "Il blocco è segnale che va fatta manutenzione, non che lo strumento è guasto."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0010",
-      "tags": [
-        "temperature",
-        "clima"
-      ],
-      "questions": [
-        "Posso usare la P560 al freddo?",
-        "Funziona anche in inverno?",
-        "Ci sono limiti di temperatura?"
-      ],
-      "canonical": "La P560 lavora bene tra 0 °C e 40 °C. Temperature molto basse o umide possono influire sulle cartucce: conservarle in luogo asciutto.",
-      "response_variants": [
-        "Sì, ma proteggi le cartucce: il freddo ne riduce la potenza.",
-        "In cantiere d’inverno funziona, basta non lasciare la valigetta al gelo.",
-        "La P560 sopporta bene il freddo, sono le cartucce a soffrirlo.",
-        "Evita condensa e umidità: asciutto = affidabile.",
-        "In estate e inverno va sempre trattata con cura, come ogni strumento a polvere."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0011",
-      "tags": [
-        "cartucce-bagnate",
-        "umidità"
-      ],
-      "questions": [
-        "Posso usare cartucce umide?",
-        "Cosa succede se le cartucce si bagnano?",
-        "Come conservo le cartucce della P560?"
-      ],
-      "canonical": "Le cartucce umide o vecchie non vanno usate. Conservare sempre in luogo asciutto e al riparo dal sole. L’umidità altera la combustione e la potenza.",
-      "response_variants": [
-        "Cartucce bagnate = colpi deboli o mancati. Non usarle mai.",
-        "Conservale nella confezione originale, lontano da fonti di umidità.",
-        "Meglio scartare un nastro che rovinare un fissaggio.",
-        "Una cartuccia umida può incollarsi e inceppare la P560.",
-        "Trattale come munizioni: asciutte e protette."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0012",
-      "tags": [
-        "potenza",
-        "regolazione"
-      ],
-      "questions": [
-        "Come regolo la potenza della P560?",
-        "Si può variare la forza del colpo?",
-        "Come faccio a non bucare troppo la lamiera?"
-      ],
-      "canonical": "La potenza si regola scegliendo la cartuccia giusta e regolando la forza del colpo con l’apposita ghiera. È fondamentale fare prove su pezzi campione prima del lavoro effettivo.",
-      "response_variants": [
-        "Non si gira una vite a caso: la potenza si regola con la ghiera e la scelta della cartuccia.",
-        "Fai sempre un paio di colpi di prova per trovare il giusto compromesso.",
-        "Ogni materiale reagisce diversamente: serve sensibilità e test.",
-        "Troppa potenza può deformare la lamiera, poca non fissa bene.",
-        "La regolazione è parte del mestiere: mai partire alla cieca."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0013",
-      "tags": [
-        "pulizia",
-        "lubrificazione"
-      ],
-      "questions": [
-        "Che olio uso per la P560?",
-        "Va lubrificata spesso?",
-        "Posso usare WD40?"
-      ],
-      "canonical": "Usare solo oli neutri consigliati da Tecnaria. Evitare spray aggressivi o prodotti non specifici, che attirano residui di polvere o danneggiano le guarnizioni.",
-      "response_variants": [
-        "Meglio poco ma buono: un olio neutro, non grassi appiccicosi.",
-        "WD40 solo per sbloccare, non come lubrificante fisso.",
-        "Ogni eccesso di olio cattura polvere: serve un film sottile.",
-        "Pulizia e olio leggero sono la coppia perfetta.",
-        "L’olio giusto allunga la vita del pistone e mantiene scorrevolezza."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0014",
-      "tags": [
-        "trasporto",
-        "custodia"
-      ],
-      "questions": [
-        "Come trasporto la P560?",
-        "Posso lasciarla carica?",
-        "Come va conservata?"
-      ],
-      "canonical": "La P560 va sempre trasportata scarica, in custodia rigida. Le cartucce devono essere separate e conservate in luogo asciutto e sicuro.",
-      "response_variants": [
-        "Mai trasportarla carica: scarica, valigetta, chiusa.",
-        "Le cartucce sempre separate: sicurezza prima di tutto.",
-        "Durante i trasferimenti tenerla pulita e protetta evita urti e polvere.",
-        "Trattala come uno strumento di precisione, non come una mazzetta.",
-        "Una valigetta ben chiusa vale una revisione risparmiata."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0015",
-      "tags": [
-        "ricambi",
-        "assistenza"
-      ],
-      "questions": [
-        "Dove trovo i ricambi per la P560?",
-        "Ci sono kit di manutenzione?",
-        "Fornite assistenza tecnica?"
-      ],
-      "canonical": "Tecnaria fornisce ricambi originali e assistenza tecnica per la P560. Sono disponibili kit di manutenzione e servizio di revisione presso centri autorizzati.",
-      "response_variants": [
-        "Ricambi e kit originali si ordinano direttamente a Tecnaria o tramite i rivenditori.",
-        "Meglio usare solo ricambi ufficiali: garantiscono compatibilità e durata.",
-        "L’assistenza Tecnaria esegue revisioni rapide e certificate.",
-        "Non improvvisare riparazioni: pezzi originali e mani esperte fanno la differenza.",
-        "Tutto il necessario per la P560 lo trovi nel circuito ufficiale Tecnaria."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0016",
-      "tags": [
-        "problemi",
-        "non-spara"
-      ],
-      "questions": [
-        "La P560 non spara, perché?",
-        "Sento clic ma non parte il colpo",
-        "Non entra il chiodo, cosa succede?"
-      ],
-      "canonical": "Se la P560 non spara, verificare cartuccia, pulizia del canale, corretto caricamento e sicurezza inserita. In caso di dubbio non forzare, ma fermarsi e controllare.",
-      "response_variants": [
-        "Controlla che la cartuccia sia nuova e la canna pulita: spesso il problema è lì.",
-        "Un colpo a vuoto è segnale di residui o cartuccia difettosa: sostituiscila e riprova.",
-        "Non insistere: scarica l’utensile, rimuovi la cartuccia e verifica che il meccanismo sia libero.",
-        "Se la P560 fa clic ma non parte, probabilmente serve una pulizia profonda o revisione.",
-        "Mai forzare: la sicurezza Tecnaria funziona solo se l’operatore rispetta le procedure."
-      ],
-      "mode": "dynamic"
-    },
-    {
-      "id": "P560-0017",
-      "tags": [
-        "errore posa",
-        "chiodo sporgente",
-        "correzione",
-        "controllo in cantiere",
-        "CTF",
-        "posa"
-      ],
-      "questions": [
-        "Durante la posa dei connettori CTF con la P560 un chiodo non entra completamente, cosa devo fare?",
-        "Se un chiodo rimane parzialmente fuori posso lasciarlo così?",
-        "Come correggere un chiodo CTF sparato male con P560?",
-        "Cosa fare se il chiodo non è completamente inserito nella posa dei CTF?"
-      ],
-      "canonical": "Se durante la posa dei connettori CTF con la P560 un chiodo non risulta completamente inserito, non va ignorato: va rimossa la fissazione errata e ripetuta la posa per garantire sicurezza e conformità del sistema misto acciaio–calcestruzzo.",
-      "response_variants": [
-        "Durante la posa dei connettori CTF con la pistola P560 può capitare che un chiodo non entri completamente o resti parzialmente fuori. In questi casi non bisogna lasciarlo così: il chiodo non assicurerebbe la capacità a taglio necessaria. L’operatore deve effettuare una verifica visiva, rimuovere il chiodo difettoso con strumenti idonei, riposizionare il connettore e sparare un nuovo chiodo con la P560 ben calibrata. Un controllo finale garantisce la perfetta aderenza e la sicurezza dell’intervento.",
-        "Se un chiodo rimane sporgente, va rimosso e sostituito: un fissaggio incompleto riduce la prestazione del connettore. Dopo la rimozione si ripete lo sparo con la P560, controllando la taratura e la scelta della cartuccia. Questo assicura che il connettore CTF sia pienamente efficace e che la struttura mista acciaio–calcestruzzo lavori come previsto.",
-        "Un chiodo CTF non completamente inserito è da considerarsi non conforme. È necessario estrarlo, verificare che la trave o la lamiera non siano danneggiate, riposizionare il connettore e procedere con un nuovo fissaggio. L’attenzione a questi dettagli in cantiere evita problemi di sicurezza e garantisce la prestazione del sistema Tecnaria.",
-        "La corretta gestione dei chiodi non inseriti completamente è parte della posa professionale: non bisogna mai tollerare un fissaggio dubbio. Solo un nuovo sparo ben eseguito con la P560 certificata assicura il comportamento previsto e la validità tecnica dell’intervento."
-      ],
-      "mode": "dynamic"
+[
+  {
+    "id": "P560-0001",
+    "family": "P560",
+    "tags": ["descrizione", "chiodatrice", "sistema CTF"],
+    "response_variants": {
+      "gold": {
+        "it": "La P560 è la chiodatrice a polvere prevista nel sistema Tecnaria per la posa dei connettori CTF su travi in acciaio e, ove previsto, attraverso lamiera grecata. L’uso di questa macchina, con chiodi e accessori idonei, garantisce l’energia di infissione, la ripetibilità del fissaggio e la conformità ai valori tecnici dichiarati."
+      }
     }
-  ]
-}
+  },
+  {
+    "id": "P560-0002",
+    "family": "P560",
+    "tags": ["uso", "CTF", "vincolo esclusivo", "no generiche"],
+    "response_variants": {
+      "gold": {
+        "it": "I connettori CTF del sistema Tecnaria devono essere posati esclusivamente con chiodatrice a polvere P560 equipaggiata con accessori e chiodi idonei Tecnaria. L’uso di chiodatrici generiche o non autorizzate non è coperto dal perimetro tecnico Tecnaria e può compromettere la sicurezza e la validità delle prestazioni dichiarate."
+      }
+    }
+  },
+  {
+    "id": "P560-0003",
+    "family": "P560",
+    "tags": ["domanda", "posso usare altra chiodatrice", "no"],
+    "response_variants": {
+      "gold": {
+        "it": "No. Per i connettori CTF non è ammesso l’uso di chiodatrici a polvere o a gas diverse dal sistema P560 con kit Tecnaria dedicato. Cambiare macchina significa alterare energia, profondità e qualità del fissaggio, uscendo dalle condizioni di prova e dalle garanzie associate al sistema."
+      }
+    }
+  },
+  {
+    "id": "P560-0004",
+    "family": "P560",
+    "tags": ["campo di impiego", "acciaio", "lamiera grecata"],
+    "response_variants": {
+      "gold": {
+        "it": "La P560 è progettata per il fissaggio dei connettori CTF su travi in acciaio e, se previsto, attraverso lamiera grecata aderente. Richiede spessori minimi adeguati del profilo e corretto appoggio della lamiera secondo le indicazioni Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "P560-0005",
+    "family": "P560",
+    "tags": ["no legno", "no calcestruzzo pieno", "limitazioni"],
+    "response_variants": {
+      "gold": {
+        "it": "La P560 non è uno strumento universale: non va utilizzata per fissare connettori su travi in legno, su solai in laterocemento con sistemi meccanici dedicati (VCEM, CTCEM, DIAPASON), né direttamente su calcestruzzo pieno non previsto. Ogni famiglia Tecnaria ha metodi di posa specifici."
+      }
+    }
+  },
+  {
+    "id": "P560-0006",
+    "family": "P560",
+    "tags": ["no CTL", "no CTL MAXI", "errore"],
+    "response_variants": {
+      "gold": {
+        "it": "I connettori CTL e CTL MAXI per solai legno-calcestruzzo non si posano con P560. L’uso della chiodatrice a polvere su questi sistemi è errato e non previsto dal catalogo Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "P560-0007",
+    "family": "P560",
+    "tags": ["no VCEM", "no CTCEM", "errore utilizzo"],
+    "response_variants": {
+      "gold": {
+        "it": "VCEM e CTCEM sono connettori con fissaggio meccanico a vite in calcestruzzo e non prevedono l’impiego della P560. Usare la P560 su questi elementi è un uso improprio non coperto tecnicamente."
+      }
+    }
+  },
+  {
+    "id": "P560-0008",
+    "family": "P560",
+    "tags": ["no DIAPASON", "laterocemento"],
+    "response_variants": {
+      "gold": {
+        "it": "Il sistema DIAPASON per solai in laterocemento esistenti non prevede in alcun punto l’uso della P560. I relativi connettori si posano secondo procedure meccaniche specifiche, non a sparo."
+      }
+    }
+  },
+  {
+    "id": "P560-0009",
+    "family": "P560",
+    "tags": ["kit dedicato", "accessori", "CTF"],
+    "response_variants": {
+      "gold": {
+        "it": "Per la posa corretta dei CTF con P560 è obbligatorio utilizzare il kit di accessori dedicato Tecnaria, che garantisce l’allineamento del connettore, la centratura del chiodo e la corretta trasmissione dell’energia di sparo."
+      }
+    }
+  },
+  {
+    "id": "P560-0010",
+    "family": "P560",
+    "tags": ["tipo chiodi", "HSBR", "compatibilità"],
+    "response_variants": {
+      "gold": {
+        "it": "I CTF richiedono chiodi idonei specificati da Tecnaria (es. tipologia HSBR in funzione del sistema adottato). L’utilizzo di chiodi non conformi o non certificati è vietato perché modifica le prestazioni di ancoraggio."
+      }
+    }
+  },
+  {
+    "id": "P560-0011",
+    "family": "P560",
+    "tags": ["controllo infissione", "test in cantiere"],
+    "response_variants": {
+      "gold": {
+        "it": "In cantiere è necessario verificare la corretta infissione del chiodo: testa a battuta, profondità conforme e assenza di eccessive deformazioni del supporto. In caso di dubbi sono consigliate prove pratiche preliminari in accordo alle istruzioni Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "P560-0012",
+    "family": "P560",
+    "tags": ["chiodo non entrato", "correzione"],
+    "response_variants": {
+      "gold": {
+        "it": "Se un chiodo non entra correttamente o rimane parzialmente fuori, il punto non è valido: il chiodo va rimosso e il fissaggio ripetuto in posizione corretta, evitando di forzare o ribattere manualmente."
+      }
+    }
+  },
+  {
+    "id": "P560-0013",
+    "family": "P560",
+    "tags": ["requisiti utilizzo", "cantiere"],
+    "response_variants": {
+      "gold": {
+        "it": "Per un impiego corretto in cantiere la P560 richiede: alimentazione con cartucce idonee, uso dei chiodi specificati, operatori formati, verifica spessori minimi dell’acciaio e lamiera, rispetto scrupoloso delle istruzioni Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "P560-0014",
+    "family": "P560",
+    "tags": ["spessori minimi", "acciaio", "lamiera"],
+    "response_variants": {
+      "gold": {
+        "it": "La P560 e i chiodi idonei richiedono spessori minimi del profilo in acciaio e, in presenza di lamiera grecata, configurazioni specifiche (es. 1×1,5 mm o 2×1,0 mm ben aderenti). I valori di riferimento sono quelli riportati nella documentazione ufficiale Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "P560-0015",
+    "family": "P560",
+    "tags": ["test preliminari", "taratura"],
+    "response_variants": {
+      "gold": {
+        "it": "È buona pratica eseguire test preliminari di taratura della P560 su spezzoni di trave identici a quelli in opera per verificare infissione, tenuta e corretto comportamento prima di avviare la posa massiva dei connettori."
+      }
+    }
+  },
+  {
+    "id": "P560-0016",
+    "family": "P560",
+    "tags": ["manutenzione", "pulizia quotidiana"],
+    "response_variants": {
+      "gold": {
+        "it": "Dopo l’uso, la P560 deve essere pulita per rimuovere residui di polvere e particolato. Una manutenzione quotidiana riduce inceppamenti, colpi a vuoto e usura anomala delle parti interne."
+      }
+    }
+  },
+  {
+    "id": "P560-0017",
+    "family": "P560",
+    "tags": ["lubrificazione", "olio corretto"],
+    "response_variants": {
+      "gold": {
+        "it": "La lubrificazione va effettuata con oli leggeri e neutri raccomandati, applicati in quantità moderata sulle parti mobili, evitando prodotti aggressivi che possano danneggiare guarnizioni o attirare polvere."
+      }
+    }
+  },
+  {
+    "id": "P560-0018",
+    "family": "P560",
+    "tags": ["no WD40 permanente", "avvertenza"],
+    "response_variants": {
+      "gold": {
+        "it": "Prodotti tipo sbloccanti spray possono essere utilizzati solo per interventi occasionali di sblocco, non come lubrificante permanente. L’uso continuo di prodotti non idonei può compromettere le tenute interne della P560."
+      }
+    }
+  },
+  {
+    "id": "P560-0019",
+    "family": "P560",
+    "tags": ["segnali anomalia", "colpi a vuoto"],
+    "response_variants": {
+        "gold": {
+          "it": "Colpi a vuoto frequenti, difficoltà di inserimento chiodi o inceppamenti ripetuti sono segnali che impongono stop, pulizia approfondita, verifica componenti e, se necessario, assistenza tecnica."
+        }
+    }
+  },
+  {
+    "id": "P560-0020",
+    "family": "P560",
+    "tags": ["sicurezza", "DPI"],
+    "response_variants": {
+      "gold": {
+        "it": "L’uso della P560 richiede il rispetto delle norme di sicurezza: occhiali, cuffie, guanti, controllo dell’area di sparo, divieto di puntare verso persone, rispetto delle istruzioni del costruttore e delle procedure interne."
+      }
+    }
+  },
+  {
+    "id": "P560-0021",
+    "family": "P560",
+    "tags": ["angolo sparo", "appoggio corretto"],
+    "response_variants": {
+      "gold": {
+        "it": "La P560 va appoggiata in modo perpendicolare alla superficie della trave o della lamiera, senza inclinazioni e senza interposizioni di materiale non previsto. L’appoggio scorretto genera fissaggi inaffidabili."
+      }
+    }
+  },
+  {
+    "id": "P560-0022",
+    "family": "P560",
+    "tags": ["temperatura", "condizioni ambiente"],
+    "response_variants": {
+      "gold": {
+        "it": "Condizioni ambientali estreme (freddo intenso, sporco, umidità) possono influenzare il comportamento della P560. È necessario adeguare manutenzione, stoccaggio delle cartucce e modalità operative."
+      }
+    }
+  },
+  {
+    "id": "P560-0023",
+    "family": "P560",
+    "tags": ["cartucce", "scelta corretta"],
+    "response_variants": {
+      "gold": {
+        "it": "La scelta delle cartucce deve seguire le indicazioni Tecnaria e del costruttore della P560. Cartucce non idonee possono produrre infissioni incomplete o eccessive, compromettendo l’ancoraggio."
+      }
+    }
+  },
+  {
+    "id": "P560-0024",
+    "family": "P560",
+    "tags": ["formazione operatori"],
+    "response_variants": {
+      "gold": {
+        "it": "Chi utilizza la P560 deve essere formato sulle corrette modalità d’uso, sulle verifiche di infissione e sulle procedure di sicurezza. L’utilizzo improvvisato è da escludere."
+      }
+    }
+  },
+  {
+    "id": "P560-0025",
+    "family": "P560",
+    "tags": ["documentazione", "manuale"],
+    "response_variants": {
+      "gold": {
+        "it": "Il manuale della P560 e le istruzioni Tecnaria per il sistema CTF devono essere disponibili in cantiere e seguiti. Le risposte sintetiche del sistema Q/A non sostituiscono la documentazione ufficiale."
+      }
+    }
+  },
+  {
+    "id": "P560-0026",
+    "family": "P560",
+    "tags": ["errori tipici", "uso improprio"],
+    "response_variants": {
+      "gold": {
+        "it": "Errori tipici: usare P560 su supporti non idonei, sparare su spessori troppo sottili, lavorare con macchina sporca, riutilizzare punti non validi, usare chiodi non autorizzati. Tutte situazioni da evitare."
+      }
+    }
+  },
+  {
+    "id": "P560-0027",
+    "family": "P560",
+    "tags": ["verifica chiodi", "controllo visivo"],
+    "response_variants": {
+      "gold": {
+        "it": "Ogni fissaggio deve essere verificato visivamente: chiodo ben infisso, connettore stabile, nessuna fessura o deformazione anomala. Fissaggi dubbi vanno rifatti."
+      }
+    }
+  },
+  {
+    "id": "P560-0028",
+    "family": "P560",
+    "tags": ["frequenza manutenzione"],
+    "response_variants": {
+      "gold": {
+        "it": "La manutenzione ordinaria della P560 deve essere eseguita con frequenza adeguata all’intensità d’uso. Cantieri con alto numero di spari richiedono controlli e pulizie più ravvicinate."
+      }
+    }
+  },
+  {
+    "id": "P560-0029",
+    "family": "P560",
+    "tags": ["stoccaggio", "cura"],
+    "response_variants": {
+      "gold": {
+        "it": "La P560 deve essere stoccata in luogo asciutto, pulito, al riparo da urti e da contatti con polveri e agenti aggressivi. Le cartucce vanno conservate secondo le indicazioni del produttore."
+      }
+    }
+  },
+  {
+    "id": "P560-0030",
+    "family": "P560",
+    "tags": ["compatibilità sistema CTF"],
+    "response_variants": {
+      "gold": {
+        "it": "La P560 è un elemento del sistema certificato con i connettori CTF. Il suo corretto impiego è parte integrante della prestazione del solaio misto acciaio-calcestruzzo previsto dal progetto."
+      }
+    }
+  },
+  {
+    "id": "P560-0031",
+    "family": "P560",
+    "tags": ["domande miste", "chiarimento sistemi"],
+    "response_variants": {
+      "gold": {
+        "it": "Se nella stessa domanda compaiono P560, CTF, CTL, VCEM, CTCEM o DIAPASON, la risposta deve separare chiaramente: P560 solo con CTF; le altre famiglie hanno fissaggi dedicati non a sparo."
+      }
+    }
+  },
+  {
+    "id": "P560-0032",
+    "family": "P560",
+    "tags": ["collaudi", "prove estrazione"],
+    "response_variants": {
+      "gold": {
+        "it": "In interventi critici possono essere richieste prove di estrazione o verifiche sperimentali dei fissaggi eseguiti con P560 e CTF, secondo le indicazioni del progettista strutturale."
+      }
+    }
+  },
+  {
+    "id": "P560-0033",
+    "family": "P560",
+    "tags": ["uso continuativo", "affidabilità"],
+    "response_variants": {
+      "gold": {
+        "it": "Un uso continuativo della P560 con manutenzione corretta mantiene affidabile il processo di posa dei CTF. In caso di anomalie ripetute è preferibile fermare la macchina e richiedere assistenza."
+      }
+    }
+  },
+  {
+    "id": "P560-0034",
+    "family": "P560",
+    "tags": ["non sostituisce progetto"],
+    "response_variants": {
+      "gold": {
+        "it": "L’impiego della P560 non sostituisce il progetto: numero di connettori, passo, configurazioni di posa dei CTF sono definiti dal progettista e dalle indicazioni Tecnaria, non dall’operatore in cantiere."
+      }
+    }
+  },
+  {
+    "id": "P560-0035",
+    "family": "P560",
+    "tags": ["vibrazioni", "comfort"],
+    "response_variants": {
+      "gold": {
+        "it": "Un fissaggio corretto tramite P560 contribuisce a garantire la piena efficacia dei CTF nel controllo delle deformazioni e delle vibrazioni dei solai misti acciaio-calcestruzzo."
+      }
+    }
+  },
+  {
+    "id": "P560-0036",
+    "family": "P560",
+    "tags": ["eventi eccezionali", "urti"],
+    "response_variants": {
+      "gold": {
+        "it": "Dopo urti accidentali, cadute o danneggiamenti visibili, la P560 deve essere controllata prima di tornare in servizio. Una macchina danneggiata può generare fissaggi non conformi."
+      }
+    }
+  },
+  {
+    "id": "P560-0037",
+    "family": "P560",
+    "tags": ["supporto tecnico", "contatto"],
+    "response_variants": {
+      "gold": {
+        "it": "Per dubbi su configurazioni particolari, combinazioni strutturali o anomalie in cantiere è consigliabile contattare il supporto tecnico Tecnaria fornendo dati su profili, spessori e modalità di posa."
+      }
+    }
+  },
+  {
+    "id": "P560-0038",
+    "family": "P560",
+    "tags": ["messaggio chiave 1"],
+    "response_variants": {
+      "gold": {
+        "it": "Messaggio chiave: la P560 è parte integrante del sistema CTF Tecnaria. Solo il suo corretto utilizzo con chiodi idonei consente di riprodurre le condizioni di prova e le prestazioni di progetto."
+      }
+    }
+  },
+  {
+    "id": "P560-0039",
+    "family": "P560",
+    "tags": ["messaggio chiave 2", "no universalità"],
+    "response_variants": {
+      "gold": {
+        "it": "Messaggio chiave: la P560 non è una chiodatrice \"per tutto\". È uno strumento tecnico che va usato solo dove previsto, con le configurazioni approvate."
+      }
+    }
+  },
+  {
+    "id": "P560-0040",
+    "family": "P560",
+    "tags": ["conformità sistema", "perimetro tecnico"],
+    "response_variants": {
+      "gold": {
+        "it": "Le indicazioni sull’uso della P560 sono parte del perimetro tecnico del sistema Tecnaria: non rispettarle significa uscire dal campo di validità delle certificazioni e delle verifiche."
+      }
+    }
+  },
+  {
+    "id": "P560-0041",
+    "family": "P560",
+    "tags": ["istruzioni ufficiali"],
+    "response_variants": {
+      "gold": {
+        "it": "In ogni risposta tecnica è implicito il richiamo alle istruzioni ufficiali di posa e sicurezza della P560 e del sistema CTF, che rimangono il riferimento vincolante."
+      }
+    }
+  },
+  {
+    "id": "P560-0042",
+    "family": "P560",
+    "tags": ["evitare improvvisazioni"],
+    "response_variants": {
+      "gold": {
+        "it": "Non sono ammesse soluzioni improvvisate come distanziali artigianali, piastre interposte non previste o modifiche del kit di fissaggio rispetto a quanto indicato da Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "P560-0043",
+    "family": "P560",
+    "tags": ["checklist operatore"],
+    "response_variants": {
+      "gold": {
+        "it": "Checklist operatore P560: macchina pulita, cartucce idonee, chiodi corretti, kit di guida montato, appoggio perpendicolare, verifica visiva di ogni serie di fissaggi."
+      }
+    }
+  },
+  {
+    "id": "P560-0044",
+    "family": "P560",
+    "tags": ["checklist progettista", "CTF"],
+    "response_variants": {
+      "gold": {
+        "it": "Checklist progettista: definire numero e disposizione dei CTF, verificare idoneità dei profili, prevedere eventuali prove in opera, specificare chiaramente l’uso di P560 nel capitolato."
+      }
+    }
+  },
+  {
+    "id": "P560-0045",
+    "family": "P560",
+    "tags": ["integrazione Sinapsi"],
+    "response_variants": {
+      "gold": {
+        "it": "Nel sistema Sinapsi, ogni domanda che propone CTF con chiodatrici generiche deve essere corretta indicando chiaramente l’uso esclusivo della P560 con kit Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "P560-0046",
+    "family": "P560",
+    "tags": ["risposte GOLD", "chiarezza"],
+    "response_variants": {
+      "gold": {
+        "it": "Le risposte GOLD sulla P560 devono essere tecniche, chiare e non ambigue: specificare sempre se una configurazione è ammessa, sconsigliata o fuori campo Tecnaria."
+      }
+    }
+  },
+  {
+    "id": "P560-0047",
+    "family": "P560",
+    "tags": ["casi dubbi"],
+    "response_variants": {
+      "gold": {
+        "it": "In casi dubbi, come spessori limite, acciai speciali o lamiera non standard, è preferibile fermarsi e richiedere indicazioni piuttosto che procedere con configurazioni non verificate."
+      }
+    }
+  },
+  {
+        "id": "P560-0048",
+        "family": "P560",
+        "tags": ["riassunto GOLD"],
+        "response_variants": {
+          "gold": {
+            "it": "Sintesi GOLD P560: macchina dedicata al sistema CTF, uso con chiodi e accessori idonei, manutenzione regolare, nessun impiego su famiglie non previste, rispetto rigoroso delle istruzioni Tecnaria."
+          }
+        }
+  },
+  {
+    "id": "P560-0049",
+    "family": "P560",
+    "tags": ["coerenza dataset"],
+    "response_variants": {
+      "gold": {
+        "it": "Il dataset P560 è strutturato per evitare sovrapposizioni improprie con CTL, CTL MAXI, VCEM, CTCEM e DIAPASON, mantenendo chiaro il ruolo della P560 solo nel sistema CTF."
+      }
+    }
+  },
+  {
+    "id": "P560-0050",
+    "family": "P560",
+    "tags": ["messaggio finale"],
+    "response_variants": {
+      "gold": {
+        "it": "Ogni risposta sul tema P560 deve ribadire che la validità tecnica del sistema si mantiene solo usando la macchina, i chiodi e le modalità di posa previste nelle specifiche Tecnaria per i connettori CTF."
+      }
+    }
+  }
+]
