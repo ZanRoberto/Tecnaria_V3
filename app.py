@@ -32,7 +32,10 @@ static_path = os.path.join(BASE_DIR, "static")
 if os.path.isdir(static_path):
     app.mount("/static", StaticFiles(directory=static_path), name="static")
 
-runtime_mode = "gold"  # gold | canonical, di default GOLD fisso
+# modalità runtime:
+# - "gold" = sempre GOLD salvo override a domanda
+# - "canonical" = sempre sintetico salvo override
+runtime_mode = "gold"
 
 kb: Dict[str, List[Dict[str, Any]]] = {}
 config_runtime: Dict[str, Any] = {}
@@ -53,8 +56,11 @@ def load_json(path: str) -> Optional[Any]:
 
 
 def detect_language(text: str) -> str:
+    """
+    Euristica leggerissima, serve solo come meta-informazione.
+    Non influenza la scelta dei contenuti (che sono in IT).
+    """
     t = text.lower()
-    # euristiche semplici, niente librerie strane
     if re.search(r"\b(the |can |use |with |on |steel|concrete)\b", t):
         return "en"
     if re.search(r"[àèéìòù]", t) or "soletta" in t or "solaio" in t:
@@ -65,7 +71,7 @@ def detect_language(text: str) -> str:
         return "fr"
     if "welche" in t or "verbinder" in t or "beton" in t:
         return "de"
-    return "it"  # fallback
+    return "it"
 
 
 def normalize(text: str) -> str:
@@ -73,6 +79,10 @@ def normalize(text: str) -> str:
 
 
 def text_from_block(block: Dict[str, Any]) -> str:
+    """
+    Testo totale del blocco per fare matching.
+    Usa solo i campi previsti, NON inventa niente.
+    """
     parts = []
     for key in [
         "question",
@@ -86,6 +96,7 @@ def text_from_block(block: Dict[str, Any]) -> str:
         v = block.get(key)
         if isinstance(v, str):
             parts.append(v)
+
     rv = block.get("response_variants")
     if isinstance(rv, dict):
         for v in rv.values():
@@ -95,12 +106,13 @@ def text_from_block(block: Dict[str, Any]) -> str:
         for v in rv:
             if isinstance(v, str):
                 parts.append(v)
+
     return normalize(" ".join(parts))
 
 
 def score_block(query: str, block: Dict[str, Any]) -> float:
     """
-    Scoring semplice: overlap parole chiave, niente magia.
+    Scoring semplice a parole chiave.
     Serve SOLO per scegliere il blocco migliore tra quelli GIUSTI.
     """
     qt = re.findall(r"\w+", query.lower())
@@ -112,20 +124,23 @@ def score_block(query: str, block: Dict[str, Any]) -> float:
     if not q_terms:
         return 0.0
 
-    score = 0
+    score = 0.0
     for w in set(q_terms):
         if w in bt:
-            score += 1
-    # piccolo bonus se matcha tag family_name
+            score += 1.0
+
     fam = block.get("family") or block.get("famiglia")
     if isinstance(fam, str) and fam.lower() in bt:
         score += 0.5
+
     return float(score)
 
 
 def pick_family_from_question(question: str) -> Optional[str]:
+    """
+    Instradamento grezzo per famiglia in base al testo domanda.
+    """
     q = question.lower()
-    # mappa semplice, estendibile
     if "ctf" in q:
         return "CTF"
     if "v-cem" in q or "vcem" in q:
@@ -140,14 +155,19 @@ def pick_family_from_question(question: str) -> Optional[str]:
         return "DIAPASON"
     if "p560" in q:
         return "P560"
-    # fallback: nessuna, decideremo dopo
+    if "commercial" in q or "contatto" in q or "supporto" in q or "assistenza" in q:
+        return "COMM"
     return None
 
 
 def load_kb() -> None:
+    """
+    Carica tutti i JSON definiti in config.runtime.json (se esiste)
+    o in DEFAULT_FAMILIES.
+    Ogni item viene normalizzato con campo "family".
+    """
     global kb, config_runtime
 
-    # config.runtime.json se c'è
     cfg_path = os.path.join(DATA_DIR, "config.runtime.json")
     cfg = load_json(cfg_path)
     if isinstance(cfg, dict):
@@ -161,32 +181,29 @@ def load_kb() -> None:
     fams = config_runtime.get("families") or DEFAULT_FAMILIES
 
     loaded: Dict[str, List[Dict[str, Any]]] = {}
+
     for fam in fams:
         name = f"{fam}.json"
         path = os.path.join(DATA_DIR, name)
         data = load_json(path)
+
+        items_norm: List[Dict[str, Any]] = []
+
         if isinstance(data, list):
-            # normalizza, assicura campo family
-            norm_list = []
-            for item in data:
-                if not isinstance(item, dict):
-                    continue
-                if "family" not in item:
-                    item["family"] = fam
-                norm_list.append(item)
-            loaded[fam] = norm_list
+            src_items = data
         elif isinstance(data, dict) and "items" in data:
-            items = data.get("items") or []
-            norm_list = []
-            for item in items:
-                if not isinstance(item, dict):
-                    continue
-                if "family" not in item:
-                    item["family"] = fam
-                norm_list.append(item)
-            loaded[fam] = norm_list
+            src_items = data.get("items") or []
         else:
-            loaded[fam] = []
+            src_items = []
+
+        for item in src_items:
+            if not isinstance(item, dict):
+                continue
+            if "family" not in item:
+                item["family"] = fam
+            items_norm.append(item)
+
+        loaded[fam] = items_norm
 
     kb = loaded
 
@@ -200,20 +217,21 @@ load_kb()
 
 def extract_gold_answer(block: Dict[str, Any], family: str, question: str) -> str:
     """
-    Prende il testo più ricco disponibile dal blocco:
-    - campi GOLD/variants se ci sono
-    - altrimenti answer_it / canonical / answer
-    + regole tipo P560 per CTF quando serve.
+    GOLD = prende il contenuto più ricco e completo disponibile:
+    - campi 'gold' / 'answer_gold' se presenti
+    - altrimenti 'response_variants'
+    - altrimenti 'answer_it' / 'canonical' / 'answer'
+    + applica regole tecniche obbligatorie (es. P560 su CTF se si parla di chiodatrice).
     """
-
     candidates: List[str] = []
 
-    # preferiti espliciti GOLD / variants
+    # 1. espliciti GOLD
     for key in ["gold", "answer_gold"]:
         v = block.get(key)
         if isinstance(v, str) and v.strip():
             candidates.append(v.strip())
 
+    # 2. varianti
     rv = block.get("response_variants")
     if isinstance(rv, dict):
         for v in rv.values():
@@ -224,7 +242,7 @@ def extract_gold_answer(block: Dict[str, Any], family: str, question: str) -> st
             if isinstance(v, str) and v.strip():
                 candidates.append(v.strip())
 
-    # fallback su campi standard
+    # 3. fallback standard
     for key in ["answer_it", "canonical", "answer"]:
         v = block.get(key)
         if isinstance(v, str) and v.strip():
@@ -233,47 +251,53 @@ def extract_gold_answer(block: Dict[str, Any], family: str, question: str) -> st
     if not candidates:
         return ""
 
-    # prendi la più ricca (più lunga) come base GOLD
+    # scegli la più completa (più lunga)
     answer = max(candidates, key=len)
 
-    # Regola dura: CTF & chiodatrice → P560 obbligatoria
+    # Regola dura: CTF + tema chiodatrice/P560 → menziona obbligatoriamente P560
     q_low = question.lower()
-    need_p560 = False
     if family == "CTF":
         if any(w in q_low for w in ["p560", "chiodatrice", "sparo", "powder", "pistola"]):
-            need_p560 = True
-    if need_p560 and "p560" not in answer.lower():
-        answer = (
-            answer.rstrip(". ")
-            + " Il sistema CTF è certificato esclusivamente con la chiodatrice a polvere P560 Tecnaria "
-              "e relativi chiodi idonei; l’uso di utensili diversi non rientra nel perimetro tecnico Tecnaria."
-        )
+            if "p560" not in answer.lower():
+                answer = (
+                    answer.rstrip(". ")
+                    + " Il sistema CTF è certificato esclusivamente con chiodatrice a polvere P560 Tecnaria "
+                      "e chiodi idonei Tecnaria; l’uso di utensili diversi non rientra nel perimetro tecnico certificato."
+                )
 
     return normalize(answer)
 
 
 def extract_canonical_answer(block: Dict[str, Any]) -> str:
-    # Canonico = versione sintetica e tecnica
+    """
+    CANONICO = versione sintetica tecnica.
+    Usata SOLO se l’utente chiede CANONICO: o se la modalità runtime è canonical.
+    """
     for key in ["canonical", "answer_it", "answer"]:
         v = block.get(key)
         if isinstance(v, str) and v.strip():
             return normalize(v)
+
     rv = block.get("response_variants")
     if isinstance(rv, dict):
+        # se ci sono chiavi tipo 'short', 'synth', ecc.
         for k, v in rv.items():
-            if "synth" in k.lower() or "short" in k.lower():
-                if isinstance(v, str) and v.strip():
-                    return normalize(v)
+            if isinstance(v, str) and v.strip() and any(
+                token in k.lower() for token in ["short", "synth", "brief"]
+            ):
+                return normalize(v)
+
     return ""
 
 
 def build_answer(question: str, mode: str) -> Dict[str, Any]:
     """
     Core Q/A:
-    - sceglie famiglia,
-    - fa retrieval,
-    - monta risposta GOLD o CANONICAL,
-    - fallback sicuri.
+    - legge prefissi GOLD:/CANONICO:
+    - sceglie famiglia (se possibile)
+    - fa retrieval sui JSON
+    - costruisce risposta GOLD o CANONICO
+    - fallback sicuro se non trova niente di affidabile.
     """
     q = normalize(question)
     if not q:
@@ -282,7 +306,7 @@ def build_answer(question: str, mode: str) -> Dict[str, Any]:
             "error": "Domanda vuota.",
         }
 
-    # override manuale via prefissi
+    # override esplicito
     override_mode = None
     if q.lower().startswith("gold:"):
         override_mode = "gold"
@@ -296,7 +320,7 @@ def build_answer(question: str, mode: str) -> Dict[str, Any]:
     lang = detect_language(q)
     hinted_family = pick_family_from_question(q)
 
-    # cand: se famiglia nota, cerca lì; altrimenti tutte
+    # famiglie da cercare
     families_to_search = [hinted_family] if hinted_family else list(kb.keys())
 
     best_block = None
@@ -312,36 +336,34 @@ def build_answer(question: str, mode: str) -> Dict[str, Any]:
                 best_block = block
                 best_family = fam
 
+    # niente trovato con punteggio > 0
     if not best_block or best_score <= 0:
-        # niente trovato in modo affidabile
         return {
             "ok": False,
             "answer": (
                 "Per questa domanda non trovo una risposta GOLD affidabile nei dati Tecnaria caricati. "
-                "Serve una verifica tecnica specifica con l’ufficio Tecnaria."
+                "Meglio un confronto diretto con l’ufficio tecnico Tecnaria, indicando tipo di solaio, travi, spessori e vincoli."
             ),
             "meta": {
                 "mode_runtime": eff_mode,
                 "detected_lang": lang,
-                "score": best_score,
+                "score": round(best_score, 4),
             },
         }
 
-    # costruisci risposta in base alla modalità
+    # costruzione risposta
     if eff_mode == "canonical":
         answer = extract_canonical_answer(best_block)
         mode_label = "canonical"
     else:
-        # GOLD di default
         answer = extract_gold_answer(best_block, best_family or "", q)
         mode_label = "gold"
 
     if not answer:
-        # blocco trovato ma senza testo valido → fallback safe
+        # blocco esiste ma non ha testo utile
         answer = (
-            "Esiste un riferimento a questo tema nei dati Tecnaria, ma il blocco non contiene ancora "
-            "un testo GOLD utilizzabile. Per non rischiare una risposta errata, ti invito a contattare "
-            "direttamente il supporto tecnico Tecnaria con i dettagli del caso."
+            "Esiste un riferimento nei dati Tecnaria su questo tema, ma manca ancora un testo GOLD completo. "
+            "Per evitare errori su un aspetto strutturale, è necessario il supporto diretto dell’ufficio tecnico Tecnaria."
         )
 
     return {
@@ -358,7 +380,7 @@ def build_answer(question: str, mode: str) -> Dict[str, Any]:
 
 
 # =========================================================
-# ENDPOINTS
+# ENDPOINTS API
 # =========================================================
 
 @app.get("/api/health")
@@ -375,13 +397,8 @@ def api_health():
 def api_kb_stats():
     fam_stats = {}
     for fam, items in kb.items():
-        fam_stats[fam] = {
-            "count": len(items),
-        }
-    return {
-        "ok": True,
-        "families": fam_stats,
-    }
+        fam_stats[fam] = {"count": len(items)}
+    return {"ok": True, "families": fam_stats}
 
 
 @app.get("/api/config")
@@ -400,10 +417,7 @@ async def set_config(req: Request):
     mode = (data.get("mode") or "").lower()
     if mode in ("gold", "canonical"):
         runtime_mode = mode
-    return {
-        "ok": True,
-        "mode": runtime_mode,
-    }
+    return {"ok": True, "mode": runtime_mode}
 
 
 @app.post("/api/ask")
@@ -415,7 +429,7 @@ async def api_ask(req: Request):
 
 
 # =========================================================
-# UI SEMPLICE TECNARIA SINAPSI
+# UI TECNARIA SINAPSI
 # =========================================================
 
 HTML_UI = """
@@ -586,7 +600,7 @@ HTML_UI = """
       <div>
         <div class="title">TECNARIA Sinapsi</div>
         <div class="subtitle">
-          Assistente GOLD strutturale • connettori & sistemi misti
+          Assistente GOLD strutturale • connettori &amp; sistemi misti
           <span class="pill">Instradamento automatico • CTF • VCEM • CTCEM • CTL • CTL MAXI • DIAPASON • P560</span>
         </div>
       </div>
@@ -609,14 +623,14 @@ HTML_UI = """
       </button>
     </div>
     <div class="tips">
-      GOLD = risposta completa strutturale • CANONICO: risposta tecnica sintetica (usalo solo se ti serve).
+      GOLD = risposta completa strutturale • CANONICO: risposta tecnica sintetica (solo se lo scrivi tu).
     </div>
     <div class="pills">
       <div class="pill-btn" onclick="setQ('Dove posso usare i connettori CTF?')">Uso CTF</div>
       <div class="pill-btn" onclick="setQ('Quando scegliere VCEM o CTCEM per un solaio in laterocemento?')">VCEM vs CTCEM</div>
       <div class="pill-btn" onclick="setQ('Differenza tra CTL e CTL MAXI?')">CTL vs CTL MAXI</div>
       <div class="pill-btn" onclick="setQ('Quando è meglio usare i DIAPASON?')">Uso DIAPASON</div>
-      <div class="pill-btn" onclick="setQ('Con riferimento ai connettori CTF Tecnaria si possono posare con chiodatrice qualsiasi?')">P560 & CTF</div>
+      <div class="pill-btn" onclick="setQ('Con riferimento ai connettori CTF Tecnaria si possono posare con chiodatrice qualsiasi?')">P560 &amp; CTF</div>
       <div class="pill-btn" onclick="setQ('Come contatto Tecnaria per assistenza tecnica in cantiere?')">Supporto Tecnaria</div>
     </div>
   </div>
@@ -659,7 +673,10 @@ function setQ(t) {
 }
 
 function escapeHtml(t) {
-  return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return t
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;");
 }
 </script>
 </body>
