@@ -2,501 +2,484 @@
   {
     "id": "CTF-0001",
     "family": "CTF",
-    "tags": ["descrizione", "piolo a sparo", "misto acciaio-calcestruzzo"],
+    "question": "Dove posso usare i connettori CTF?",
+    "tags": ["CTF", "impiego", "acciaio", "soletta", "lamiera grecata", "solaio misto"],
+    "level": "gold",
+    "canonical": "CTF per solai e travi miste acciaio-calcestruzzo.",
+    "gold": "I connettori CTF Tecnaria sono pioli a sparo certificati per realizzare il collegamento meccanico tra travi in acciaio e soletta in calcestruzzo, con o senza lamiera grecata collaborante. Impediscono lo scorrimento relativo tra acciaio e calcestruzzo e consentono di ottenere una sezione mista più rigida e resistente. Sono impiegati in solai misti acciaio-calcestruzzo, travi composte, rinforzo di impalcati esistenti in acciaio con nuova soletta e nuove strutture miste. Non sono idonei per legno, laterocemento, calcestruzzo pieno senza acciaio o altri supporti diversi dal campo applicativo certificato.",
     "response_variants": {
-      "gold": {
-        "it": "I connettori CTF Tecnaria sono pioli a sparo per strutture miste acciaio-calcestruzzo. Vengono fissati a freddo su travi in acciaio o lamiera grecata mediante sistema certificato a chiodo, e garantiscono il collegamento meccanico tra acciaio e soletta in calcestruzzo, impedendo lo scorrimento relativo e permettendo alla sezione di lavorare come elemento collaborante."
-      }
+      "gold_site": "Usa i CTF quando devi collegare travi in acciaio e soletta in cls (con o senza lamiera grecata aderente). Fuori da questo scenario non sei nel campo Tecnaria.",
+      "gold_short": "CTF = collegamento piolo a sparo per sistemi misti acciaio-calcestruzzo, non per legno o laterocemento."
     }
   },
   {
     "id": "CTF-0002",
     "family": "CTF",
-    "tags": ["P560 obbligatoria", "no chiodatrici generiche"],
+    "question": "Con riferimento ai connettori CTF Tecnaria si possono posare con una chiodatrice qualsiasi?",
+    "tags": ["CTF", "P560", "chiodatrice", "certificazioni", "posa"],
+    "level": "gold",
+    "canonical": "No, non con chiodatrice qualsiasi.",
+    "gold": "No. I connettori CTF non possono essere posati con una chiodatrice a sparo qualsiasi. Il sistema CTF è certificato esclusivamente con la chiodatrice a polvere P560 Tecnaria (o SPIT P560 configurata secondo specifiche Tecnaria) equipaggiata con accessori e chiodi idonei. Solo questa combinazione garantisce energia di infissione, geometria del fissaggio e ripetibilità delle prestazioni conformi alle prove sperimentali. L’uso di altre macchine o chiodi diversi fa uscire l’intervento dal perimetro tecnico e dalle responsabilità Tecnaria.",
     "response_variants": {
-      "gold": {
-        "it": "I CTF non possono essere posati con una chiodatrice a sparo qualsiasi. Il sistema è certificato esclusivamente con la chiodatrice a polvere P560 Tecnaria, equipaggiata con kit e chiodi idonei. L'utilizzo di utensili diversi esclude la conformità tecnica e il perimetro prestazionale Tecnaria."
-      }
+      "gold_site": "Regola pratica: CTF = P560 + chiodi idonei Tecnaria. Se usi altro, sei fuori certificazione e ti assumi il rischio.",
+      "gold_short": "CTF solo con P560 Tecnaria e chiodi idonei. Nessun altro utensile è ammesso."
     }
   },
   {
     "id": "CTF-0003",
     "family": "CTF",
-    "tags": ["campo impiego", "travi acciaio", "soletta collaborante"],
+    "question": "Quali sono gli spessori minimi di acciaio per usare i CTF?",
+    "tags": ["CTF", "spessori", "acciaio", "posa"],
+    "level": "gold",
+    "canonical": "Richiede spessori minimi di acciaio definiti Tecnaria.",
+    "gold": "Per il corretto impiego dei CTF con P560, lo spessore minimo raccomandato della trave in acciaio è pari a 6 mm. In presenza di lamiera grecata, sono ammesse configurazioni tipo 1×1,5 mm o 2×1,0 mm aderenti alla trave, in accordo alle indicazioni Tecnaria. Spessori inferiori o lamiere non aderenti possono compromettere la corretta presa del chiodo e il valore di resistenza a taglio del sistema.",
     "response_variants": {
-      "gold": {
-        "it": "I connettori CTF si utilizzano per solai misti acciaio-calcestruzzo e travi composte acciaio-calcestruzzo, con o senza lamiera grecata. Vanno applicati su travi o lamiere in acciaio aventi spessore idoneo e successivamente inglobati in una soletta collaborante di calcestruzzo progettata secondo le indicazioni Tecnaria e normative vigenti."
-      }
+      "gold_site": "Verifica sempre: trave ≥ 6 mm e lamiera ben aderente. Se hai dubbi sugli spessori, contatta Tecnaria prima di procedere.",
+      "gold_short": "Minimo: trave 6 mm; lamiera solo configurazioni ammesse e aderenti."
     }
   },
   {
     "id": "CTF-0004",
     "family": "CTF",
-    "tags": ["lamiera grecata", "posa su lamiera"],
+    "question": "Come verifico che un CTF sia sparato correttamente?",
+    "tags": ["CTF", "controllo posa", "infissione", "qualità"],
+    "level": "gold",
+    "gold": "Un CTF correttamente posato presenta la testa del chiodo appoggiata al corpo del connettore, senza spazi visibili, deformazioni anomale o inclinazioni eccessive. Il gambo non deve risultare piegato in modo critico. È buona pratica eseguire controlli visivi continui e una prova di estrazione su campione (es. 1 ogni 50–100 fissaggi) per verificare che la capacità di ancoraggio sia coerente con i valori di riferimento Tecnaria.",
     "response_variants": {
-      "gold": {
-        "it": "Con lamiera grecata collaborante, i CTF vengono fissati attraverso la lamiera alla trave in acciaio sottostante, rispettando gli spessori minimi (ad esempio lamiere tipicamente 1,0–1,5 mm, singola o doppia) e le configurazioni previste da Tecnaria. È essenziale che la lamiera sia in appoggio corretto alla trave per garantire il trasferimento degli sforzi."
-      }
+      "gold_site": "Se la testa del chiodo è sollevata, inclinata o il connettore balla, il fissaggio non è valido: rifai il punto.",
+      "gold_short": "Testa a battuta, connettore stabile, prove a campione: così validi la posa."
     }
   },
   {
     "id": "CTF-0005",
     "family": "CTF",
-    "tags": ["distanze minime", "bordo", "interasse"],
+    "question": "Cosa devo fare se un chiodo del CTF non entra completamente?",
+    "tags": ["CTF", "errore posa", "chiodo incompleto"],
+    "level": "gold",
+    "gold": "Se il chiodo non entra completamente o rimane sporgente in modo significativo, il fissaggio non può essere considerato valido. Il connettore va rimosso e il punto rifatto in posizione idonea, verificando la pulizia della superficie, la corretta taratura della P560 e l’assenza di giochi della lamiera. Non è ammesso 'ribattere' manualmente o lasciare chiodi parzialmente infissi in zona strutturalmente attiva.",
     "response_variants": {
-      "gold": {
-        "it": "Le distanze minime tra CTF, dai bordi della trave e dagli spigoli della lamiera devono rispettare le indicazioni Tecnaria e le verifiche di progetto. Riduzioni arbitrarie in cantiere possono compromettere la capacità a taglio del collegamento."
-      }
+      "gold_site": "Chiodo fuori = punto da rifare. Non lasciarlo così e non batterlo a martello per 'aggiustarlo'.",
+      "gold_short": "Chiodo non a battuta → rifare fissaggio. Punto."
     }
   },
   {
     "id": "CTF-0006",
     "family": "CTF",
-    "tags": ["spessore trave", "spessore minimo acciaio"],
+    "question": "Posso usare CTF su travi in legno o su calcestruzzo senza acciaio?",
+    "tags": ["CTF", "legno", "calcestruzzo", "campo impiego"],
+    "level": "gold",
+    "gold": "No. I CTF sono connettori a piolo a sparo per sistemi misti acciaio-calcestruzzo. Non sono progettati né certificati per travi in legno, solai in laterocemento o calcestruzzo senza elemento in acciaio. Per il legno esistono i sistemi CTL e CTL MAXI; per laterocemento e travetti in c.a. esistono VCEM e CTCEM; per recupero specifico con chiodi idonei su laterocemento, la famiglia DIAPASON.",
     "response_variants": {
-      "gold": {
-        "it": "I CTF richiedono uno spessore minimo della zona di fissaggio in acciaio. Travi troppo sottili o piatti non idonei possono non garantire il corretto ancoraggio del chiodo a sparo. Il rispetto degli spessori minimi indicati da Tecnaria è vincolante."
-      }
+      "gold_site": "Se il supporto non è acciaio, non usare CTF: scegli la famiglia corretta (CTL, VCEM, CTCEM, DIAPASON).",
+      "gold_short": "CTF = solo acciaio+cls. No legno, no laterocemento."
     }
   },
   {
     "id": "CTF-0007",
     "family": "CTF",
-    "tags": ["no legno", "no laterocemento", "famiglie dedicate"],
+    "question": "Cosa succede se sparo i CTF su lamiera grecata non aderente?",
+    "tags": ["CTF", "lamiera", "aderenza", "errore posa"],
+    "level": "gold",
+    "gold": "Se la lamiera grecata non aderisce perfettamente alla trave in acciaio, il chiodo può deformare la lamiera senza garantire un ancoraggio efficace al profilo sottostante. Il connettore risulta parzialmente fissato o instabile. Prima della posa dei CTF è obbligatorio bloccare meccanicamente la lamiera in aderenza alla trave (morsetti, viti, punti di saldatura) e solo dopo procedere con i fissaggi.",
     "response_variants": {
-      "gold": {
-        "it": "I CTF non vanno impiegati su travi in legno, solai in laterocemento o calcestruzzo non idoneo. In questi casi esistono famiglie dedicate: CTL/CTL MAXI per legno-calcestruzzo, CTCEM/VCEM e DIAPASON per laterocemento. Usare CTF fuori campo di impiego significa uscire dalle condizioni certificate."
-      }
+      "gold_site": "Se la lamiera 'suona vuota' o si muove, fermala e poi spara il CTF. Mai sparare su lamiera che balla.",
+      "gold_short": "Lamiera non aderente = fissaggio non affidabile."
     }
   },
   {
     "id": "CTF-0008",
     "family": "CTF",
-    "tags": ["sequenza posa", "preparazione superficie"],
+    "question": "Qual è l’interasse tipico dei CTF lungo la trave?",
+    "tags": ["CTF", "interasse", "dimensionamento"],
+    "level": "gold",
+    "gold": "L’interasse dei CTF lungo la trave dipende dal calcolo strutturale. In assenza di indicazioni specifiche, per solai misti ordinari si trovano disposizioni con passo indicativo 15–25 cm. La definizione finale deve essere effettuata dal progettista in funzione delle sollecitazioni a taglio di interfaccia, delle luci e dei carichi. I valori di progetto e i riferimenti di posa sono riportati nella documentazione Tecnaria.",
     "response_variants": {
-      "gold": {
-        "it": "Prima della posa dei CTF è necessario garantire che la superficie in acciaio sia pulita da ruggine friabile, vernici eccessive o contaminanti che possano ridurre la qualità del fissaggio. Successivamente si procede con la posa mediante P560 secondo le istruzioni Tecnaria."
-      }
+      "gold_site": "In cantiere non inventare il passo: segui il disegno del progettista. Se manca, chiedi prima.",
+      "gold_short": "Il passo lo definisce il calcolo, non lo si improvvisa."
     }
   },
   {
     "id": "CTF-0009",
     "family": "CTF",
-    "tags": ["controllo chiodi", "fissaggio corretto"],
+    "question": "Posso concentrare molti CTF vicini per 'stare sicuro'?",
+    "tags": ["CTF", "concentrazione", "distanze minime"],
+    "level": "gold",
+    "gold": "Una concentrazione eccessiva di CTF senza criterio può portare a interazioni negative tra fissaggi, schiacciamenti locali dell’acciaio o inefficienza del collegamento. Esistono distanze minime orizzontali e verticali da rispettare, in linea con le raccomandazioni Tecnaria. Ogni variazione significativa rispetto agli schemi di posa deve essere valutata dal progettista.",
     "response_variants": {
-      "gold": {
-        "it": "Ogni connettore CTF deve risultare solidamente ancorato alla trave, senza giochi o rotazioni anomale. Chiodi non completamente inseriti, storti o con fissaggio incerto devono essere rimossi e il connettore riposato in posizione corretta."
-      }
+      "gold_site": "Mettere 'troppi' CTF tutti attaccati non aumenta la sicurezza: rispetta le distanze e il layout di progetto.",
+      "gold_short": "Seguire layout approvato; no cluster casuali."
     }
   },
   {
     "id": "CTF-0010",
     "family": "CTF",
-    "tags": ["numero connettori", "passo", "progetto"],
+    "question": "I CTF possono essere usati per collegare piastre base o dettagli locali?",
+    "tags": ["CTF", "dettagli", "piastre", "uso improprio"],
+    "level": "gold",
+    "gold": "I CTF sono progettati per il collegamento trave-soletta. L’uso per fissare piastre base, staffe o dettagli locali non previsti dalle schede Tecnaria esce dal loro campo di applicazione certificato. Per questi casi è necessario un dimensionamento specifico e, se del caso, sistemi di ancoraggio diversi.",
     "response_variants": {
-      "gold": {
-        "it": "Il numero e il passo dei CTF lungo le travi sono stabiliti dal progettista strutturale in base ai carichi e alle verifiche. Ridurre in autonomia il numero di connettori per motivi economici o di praticità non è ammesso."
-      }
+      "gold_site": "Se non è trave+soletta, chiedi all’ufficio tecnico prima di usare CTF per 'altro'.",
+      "gold_short": "Uso solo strutturale trave-soletta, non staffe casuali."
     }
   },
   {
     "id": "CTF-0011",
     "family": "CTF",
-    "tags": ["errore posa", "chiodo non entrato"],
+    "question": "Cosa verificare prima del getto della soletta quando ho posato i CTF?",
+    "tags": ["CTF", "controlli pre-getto"],
+    "level": "gold",
+    "gold": "Prima del getto vanno verificati: stabilità dei connettori, corretta infissione dei chiodi, assenza di connettori piegati in modo rilevante, continuità della lamiera grecata, rispetto dell’interasse previsto, pulizia della superficie. Eventuali connettori non conformi devono essere sostituiti o integrati secondo le indicazioni del progettista.",
     "response_variants": {
-      "gold": {
-        "it": "Se un chiodo del CTF non entra correttamente o rimane parzialmente fuori, quel fissaggio non può essere considerato valido. Il connettore va rimosso e riposato, ottenendo un ancoraggio completo e conforme."
-      }
+      "gold_site": "Fai un giro completo: se un CTF è storto, balla o ha chiodo fuori, sistemalo prima del cls.",
+      "gold_short": "Check visivo completo, poi getto."
     }
   },
   {
     "id": "CTF-0012",
     "family": "CTF",
-    "tags": ["soletta", "spessore soletta"],
+    "question": "I CTF hanno valori di resistenza standard o devono essere verificati ogni volta?",
+    "tags": ["CTF", "resistenza", "valori di progetto"],
+    "level": "gold",
+    "gold": "I CTF hanno valori caratteristici di resistenza a taglio determinati da prove di laboratorio e riportati nella documentazione Tecnaria. Tali valori sono riferiti a condizioni di posa conformi alle specifiche (supporto, spessori, posa con P560, ecc.). Il progettista usa questi valori per il dimensionamento. In situazioni fuori standard o dubbie è raccomandabile eseguire prove di estrazione in cantiere.",
     "response_variants": {
-      "gold": {
-        "it": "La soletta collaborante deve avere spessore e armatura conformi alle prescrizioni di progetto e alle indicazioni Tecnaria, in modo da assicurare il completo inglobamento dei CTF e il corretto trasferimento degli sforzi."
-      }
+      "gold_site": "Se rispetti condizioni Tecnaria puoi usare i valori dichiarati; se no, fai prove in cantiere.",
+      "gold_short": "Valori certificati sì, ma solo se condizioni rispettate."
     }
   },
   {
     "id": "CTF-0013",
     "family": "CTF",
-    "tags": ["vantaggi", "rigidezza", "deformazioni"],
+    "question": "Cosa succede se uso CTF in condizioni non previste dalle schede Tecnaria?",
+    "tags": ["CTF", "uso improprio", "responsabilità"],
+    "level": "gold",
+    "gold": "L’uso dei CTF in condizioni non previste (supporti non idonei, spessori insufficienti, utensili diversi, superfici non pulite) fa decadere il riferimento ai valori sperimentali e alle indicazioni Tecnaria. Le prestazioni non sono più garantite e la responsabilità ricade sul progettista e sull’esecutore. In tali casi è obbligatoria una valutazione tecnica specifica.",
     "response_variants": {
-      "gold": {
-        "it": "L’utilizzo dei CTF consente di ottenere una trave o un solaio misto acciaio-calcestruzzo con maggior rigidezza, ridotte deformazioni e migliore comportamento a fatica, rispetto alla trave in acciaio isolata."
-      }
+      "gold_site": "Se fai qualcosa 'fuori schema', non sei più coperto: fatti mettere tutto nero su bianco dal progettista.",
+      "gold_short": "Fuori campo = nessuna garanzia Tecnaria."
     }
   },
   {
     "id": "CTF-0014",
     "family": "CTF",
-    "tags": ["differenza VCEM", "differenza CTCEM"],
+    "question": "Posso usare CTF per rinforzare un solaio esistente in acciaio con nuova soletta?",
+    "tags": ["CTF", "rinforzo", "solaio esistente"],
+    "level": "gold",
+    "gold": "Sì, i CTF sono adatti anche per trasformare un impalcato in acciaio esistente in solaio misto acciaio-calcestruzzo, realizzando una nuova soletta collaborante. È necessario verificare le travi esistenti, la fattibilità del fissaggio con P560 e rispettare le prescrizioni di posa.",
     "response_variants": {
-      "gold": {
-        "it": "VCEM e CTCEM sono connettori a vite per calcestruzzo o laterocemento; CTF è un piolo a sparo per travi in acciaio. Non sono intercambiabili: ciascun sistema ha un campo di applicazione definito."
-      }
+      "gold_site": "Caso tipico: vecchia struttura in acciaio, aggiungi soletta e CTF e ottieni trave mista. Sempre su progetto.",
+      "gold_short": "Utilizzabili per rendere collaborante una struttura acciaio esistente."
     }
   },
   {
     "id": "CTF-0015",
     "family": "CTF",
-    "tags": ["domande spurie", "uso come tassello"],
+    "question": "Come gestire i CTF in presenza di lamiera grecata con nervature alte?",
+    "tags": ["CTF", "lamiera alta", "dettagli posa"],
+    "level": "gold",
+    "gold": "In presenza di lamiere grecate con profili particolari, la posizione dei CTF deve rispettare gli schemi indicati da Tecnaria, in modo che il piolo risulti correttamente annegato nel calcestruzzo e in collegamento efficace con la trave. Non è ammesso posare i CTF in punti dove la geometria non consente adeguata copertura o corretta infissione.",
     "response_variants": {
-      "gold": {
-        "it": "I CTF non devono essere usati come semplici tasselli o punti di fissaggio non strutturali. Sono connettori per collaborazione acciaio-calcestruzzo all’interno di un sistema calcolato."
-      }
+      "gold_site": "Seguire gli schemi Tecnaria per lamiere speciali; non improvvisare fori sulle onde alte.",
+      "gold_short": "Schema di posa dedicato per lamiere particolari."
     }
   },
   {
     "id": "CTF-0016",
     "family": "CTF",
-    "tags": ["uso P560 su altri connettori", "errore"],
+    "question": "I CTF richiedono una manutenzione particolare nel tempo?",
+    "tags": ["CTF", "manutenzione", "durabilità"],
+    "level": "gold",
+    "gold": "Il CTF, una volta inglobato nel calcestruzzo, non richiede manutenzione ordinaria specifica. La durabilità è legata alla corretta posa, copriferro adeguato, protezione contro corrosione delle parti in acciaio non inglobate e qualità del getto.",
     "response_variants": {
-      "gold": {
-        "it": "La P560 è prevista per i sistemi a sparo certificati come CTF. Non va utilizzata per improvvisare fissaggi di altri connettori non progettati per l’ancoraggio a sparo."
-      }
+      "gold_site": "La vera 'manutenzione' è fare bene il lavoro iniziale: posa corretta e copriferro sufficiente.",
+      "gold_short": "Nessuna manutenzione se posa e copriferro sono corretti."
     }
   },
   {
     "id": "CTF-0017",
     "family": "CTF",
-    "tags": ["verifiche in cantiere", "controlli"],
+    "question": "Posso combinare CTF con saldature tra trave e lamiera?",
+    "tags": ["CTF", "saldatura", "lamiera"],
+    "level": "gold",
+    "gold": "È possibile che sulla stessa trave siano presenti saldature per lamiera grecata e connettori CTF, purché la posa sia progettata in modo coerente. I CTF devono comunque rispettare le posizioni e le distanze previste. Ogni combinazione va verificata dal progettista per evitare sovrapposizioni critiche o riduzione di efficacia.",
     "response_variants": {
-      "gold": {
-        "it": "In cantiere è raccomandabile controllare a campione la qualità del fissaggio dei CTF, verificando la corretta penetrazione e l’assenza di connettori laschi o deformati."
-      }
+      "gold_site": "Saldatura + CTF sì, ma solo se previste a disegno. Non riempire tutto a caso.",
+      "gold_short": "Combinazione ammessa se progettata."
     }
   },
   {
     "id": "CTF-0018",
     "family": "CTF",
-    "tags": ["compatibilità lamiera", "aderenza"],
+    "question": "Come gestire i CTF in zone di momento negativo (campate continue)?",
+    "tags": ["CTF", "momento negativo", "continuità"],
+    "level": "gold",
+    "gold": "Nelle zone di momento negativo la disposizione dei CTF e dell’armatura superiore deve essere valutata dal progettista. I CTF devono garantire il trasferimento degli sforzi a taglio anche in prossimità degli appoggi intermedi. Schemi e quantità sono parte integrante del progetto esecutivo.",
     "response_variants": {
-      "gold": {
-        "it": "Quando i CTF sono posati attraverso lamiera grecata, è essenziale che la lamiera sia ben aderente all’ala della trave per evitare giochi che ridurrebbero l’efficacia del collegamento."
-      }
+      "gold_site": "Se sei in presenza di travi continue, segui il disegno: niente modifiche autonome ai CTF in quei punti.",
+      "gold_short": "Layout in momento negativo = sempre da progetto."
     }
   },
   {
     "id": "CTF-0019",
     "family": "CTF",
-    "tags": ["taglio", "resistenza a taglio"],
+    "question": "La P560 può perdere potenza nel tempo e influire sui CTF?",
+    "tags": ["CTF", "P560", "manutenzione utensile"],
+    "level": "gold",
+    "gold": "Sì. Una P560 non manutenuta (residui, lubrificazione errata, componenti usurati) può ridurre l’energia di sparo, generando fissaggi parziali o non conformi. È obbligatorio seguire le istruzioni di manutenzione Tecnaria e verificare periodicamente la qualità di infissione attraverso controlli visivi e prove a campione.",
     "response_variants": {
-          "gold": {
-        "it": "La resistenza a taglio del collegamento con CTF deriva dalla combinazione tra numero di connettori, resistenza acciaio-calcestruzzo e corretta posa. Il dimensionamento segue le tabelle e i criteri Tecnaria."
-      }
+      "gold_site": "Se inizi a vedere chiodi fuori o irregolari, fermati e controlla la P560, non 'spingere più forte'.",
+      "gold_short": "Utensile sporco = fissaggio inaffidabile."
     }
   },
   {
     "id": "CTF-0020",
     "family": "CTF",
-    "tags": ["errori comuni", "riduzione connettori"],
+    "question": "Come devo comportarmi se in cantiere trovo ruggine sulla trave prima di posare i CTF?",
+    "tags": ["CTF", "ruggine", "pulizia"],
+    "level": "gold",
+    "gold": "La presenza di ruggine superficiale moderata non necessariamente impedisce il fissaggio, ma occorre che la superficie sia pulita, priva di scaglie, vernici spesse o ossidi distaccanti. In presenza di ruggine importante o vernici spesse, è necessario pulire fino a ottenere un supporto idoneo. L’aderenza meccanica del chiodo deve essere garantita sul metallo sano.",
     "response_variants": {
-      "gold": {
-        "it": "Errori comuni da evitare: ridurre il numero di CTF rispetto al progetto, utilizzare strumenti non certificati, posare su acciaio sottile non idoneo, ignorare difetti evidenti nel fissaggio."
-      }
+      "gold_site": "Se la trave si scrosta, pulisci fino all’acciaio. Non sparare su croste di ruggine.",
+      "gold_short": "Superficie pulita = fissaggio affidabile."
     }
   },
   {
     "id": "CTF-0021",
     "family": "CTF",
-    "tags": ["domanda generica chiodatrice", "risposta P560"],
+    "question": "Posso usare CTF su travi composte o profili sottili saldati?",
+    "tags": ["CTF", "profili sottili", "verifica spessori"],
+    "level": "gold",
+    "gold": "Su profili sottili, saldati o composti, l’impiego dei CTF va valutato verificando gli spessori effettivi nella zona di infissione. Se non si rispettano i minimi richiesti o la geometria non consente un ancoraggio sicuro, si devono adottare soluzioni alternative o rinforzi locali.",
     "response_variants": {
-      "gold": {
-        "it": "Se viene chiesto se i CTF possono essere posati con 'una chiodatrice generica', la risposta deve essere chiara: no, solo sistema P560 Tecnaria con accessori dedicati è ammesso."
-      }
+      "gold_site": "Se hai dubbi sullo spessore reale, misura o chiedi. Non dare per scontato che vada bene.",
+      "gold_short": "Profili borderline richiedono verifica ad hoc."
     }
   },
   {
     "id": "CTF-0022",
     "family": "CTF",
-    "tags": ["interferenza ferri", "gestione in cantiere"],
+    "question": "I CTF possono essere usati in zona sismica?",
+    "tags": ["CTF", "sismica"],
+    "level": "gold",
+    "gold": "I connettori CTF possono essere impiegati anche in strutture in zona sismica, purché inseriti in un progetto conforme alle normative vigenti e alle indicazioni Tecnaria. Il comportamento del solaio misto e il dimensionamento del numero di connettori devono tenere conto delle azioni sismiche.",
     "response_variants": {
-      "gold": {
-        "it": "In presenza di interferenze con armature, la posizione dei CTF va leggermente variata rispettando passo e distanze minime. Non si praticano fori nei ferri d’armatura per adattare il connettore."
-      }
+      "gold_site": "In sismica, il progetto è ancora più vincolante: mai soluzioni improvvisate.",
+      "gold_short": "Ammessi in zona sismica se progettati correttamente."
     }
   },
   {
     "id": "CTF-0023",
     "family": "CTF",
-    "tags": ["verifica dopo getto", "connettori scoperti"],
+    "question": "Come influisce lo spessore della soletta sulla scelta e sul numero dei CTF?",
+    "tags": ["CTF", "soletta", "dimensionamento"],
+    "level": "gold",
+    "gold": "Lo spessore della soletta influisce sia sulla rigidezza complessiva sia sulla capacità di ancoraggio dei CTF. Il numero e la disposizione dei connettori devono essere dimensionati in funzione del pacchetto soletta, del tipo di lamiera e dei carichi. Valori non standard richiedono verifica specifica.",
     "response_variants": {
-      "gold": {
-        "it": "Dopo il getto, eventuali CTF non completamente inglobati o scoperti indicano un difetto di esecuzione che va valutato dal progettista. Non vanno ignorati."
-      }
+      "gold_site": "Soletta molto sottile o molto spessa? Fai verificare numeri e passo CTF dal progettista.",
+      "gold_short": "Soletta e CTF si dimensionano insieme."
     }
   },
   {
     "id": "CTF-0024",
     "family": "CTF",
-    "tags": ["schema posa", "uniformità"],
+    "question": "Posso usare i CTF in combinazione con connettori saldati a piolo tradizionali?",
+    "tags": ["CTF", "pioli saldati", "ibrido"],
+    "level": "gold",
+    "gold": "In linea teorica è possibile avere in una struttura sia pioli saldati sia CTF, ma la combinazione deve essere oggetto di verifica progettuale. Occorre garantire la coerenza dei parametri di resistenza e di rigidezza dei diversi connettori e la loro corretta disposizione.",
     "response_variants": {
-      "gold": {
-        "it": "Lo schema di posa dei CTF deve garantire una distribuzione adeguata lungo la trave per trasferire il taglio. Addensare solo in poche zone e lasciare tratti scoperti può non essere conforme al progetto."
-      }
+      "gold_site": "Non mischiare sistemi a caso: se vuoi usare sia pioli saldati sia CTF, fallo solo su progetto.",
+      "gold_short": "Mix ammesso solo se progettato."
     }
   },
   {
     "id": "CTF-0025",
     "family": "CTF",
-    "tags": ["differenza con saldati", "vantaggi fissaggio a sparo"],
+    "question": "Come gestire i fori già presenti sulla trave nella zona di posa dei CTF?",
+    "tags": ["CTF", "fori", "interferenze"],
+    "level": "gold",
+    "gold": "La presenza di fori, asole o intagli nella zona di posa dei CTF può ridurre la sezione resistente locale. È necessario evitare di collocare connettori in corrispondenza di indebolimenti rilevanti o verificare il dettaglio con il progettista.",
     "response_variants": {
-      "gold": {
-        "it": "Rispetto ai pioli saldati, i CTF a sparo consentono posa a freddo in cantiere senza impianti di saldatura, con sistema industrializzato e controllato, mantenendo prestazioni strutturali idonee se posati secondo specifiche."
-      }
+      "gold_site": "Non piazzare CTF sopra fori grossi o asole: spostali o chiedi una verifica.",
+      "gold_short": "Attenzione a fori e tagli sotto i CTF."
     }
   },
   {
     "id": "CTF-0026",
     "family": "CTF",
-    "tags": ["uso su HEA IPE", "esempi applicativi"],
+    "question": "Il fissaggio dei CTF genera danneggiamenti per il profilo in acciaio?",
+    "tags": ["CTF", "impatto", "danno locale"],
+    "level": "gold",
+    "gold": "Il sistema di fissaggio a sparo è stato testato per non produrre danneggiamenti inaccettabili al profilo in acciaio quando utilizzato entro il campo certificato (spessori minimi, P560, chiodi idonei). Eventuali deformazioni anomale indicano condizioni non conformi.",
     "response_variants": {
-      "gold": {
-        "it": "I CTF sono adatti, ad esempio, per trasformare travi HEA/IPE con soletta collaborante in travi composte, incrementando capacità portante e limitando deformazioni. Lo schema è definito dal progettista con supporto delle tabelle Tecnaria."
-      }
+      "gold_site": "Se vedi deformazioni eccessive o fessure, c'è qualcosa che non va: fermati.",
+      "gold_short": "In condizioni corrette il danno locale è controllato."
     }
   },
   {
     "id": "CTF-0027",
     "family": "CTF",
-    "tags": ["domande su vibrazioni", "rigidezza solaio misto"],
+    "question": "Esistono istruzioni ufficiali di posa per i CTF?",
+    "tags": ["CTF", "istruzioni", "documentazione"],
+    "level": "gold",
+    "gold": "Sì. Tecnaria fornisce istruzioni di posa ufficiali per i CTF, comprensive di condizioni di impiego, esempi di disposizione, controlli e manutenzione utensile. Il progettista e l’impresa devono attenersi a tali documenti.",
     "response_variants": {
-      "gold": {
-        "it": "In presenza di vibrazioni eccessive di solai in acciaio, l’adozione di CTF e soletta collaborante può aumentare sensibilmente la rigidezza e migliorare il comfort."
-      }
+      "gold_site": "Scarica sempre le istruzioni Tecnaria aggiornate e falle seguire in cantiere.",
+      "gold_short": "Riferimento obbligatorio: istruzioni di posa Tecnaria."
     }
   },
   {
     "id": "CTF-0028",
     "family": "CTF",
-    "tags": ["falso utilizzo", "muratura", "calcestruzzo povero"],
+    "question": "Cosa fare se il progettista non indica il passo dei CTF?",
+    "tags": ["CTF", "mancanza dati progetto"],
+    "level": "gold",
+    "gold": "Se il passo o il numero dei CTF non è indicato nei documenti di progetto, l’impresa non deve improvvisare. È necessario richiedere integrazione al progettista o supporto tecnico Tecnaria per definire una disposizione conforme.",
     "response_variants": {
-      "gold": {
-        "it": "Non è ammesso l’uso di CTF su murature, calcestruzzi poveri o elementi non strutturali. Domande in tal senso vanno corrette indirizzando verso sistemi idonei o supporto tecnico."
-      }
+      "gold_site": "Mai 'lo decido in cantiere'. Chiedi e fatti dare il layout.",
+      "gold_short": "Assenza di dati → richiesta formale di chiarimenti."
     }
   },
   {
     "id": "CTF-0029",
     "family": "CTF",
-    "tags": ["compatibilità normative", "ce", "eurocodici"],
+    "question": "I CTF sono compatibili con tutte le lamiere grecate commerciali?",
+    "tags": ["CTF", "lamiera grecata", "compatibilità"],
+    "level": "gold",
+    "gold": "I CTF sono utilizzabili con lamiere grecate compatibili con gli schemi di posa Tecnaria e le condizioni di acciaio aderente. Profili particolari o non standard devono essere valutati caso per caso verificando geometria, spessori e copertura del piolo.",
     "response_variants": {
-      "gold": {
-        "it": "Il dimensionamento dei collegamenti con CTF si inserisce nel quadro delle normative per strutture miste acciaio-calcestruzzo e nella documentazione Tecnaria. Il progettista deve far riferimento a tali indicazioni."
-      }
+      "gold_site": "Se usi una lamiera 'strana', manda scheda e disegno a Tecnaria prima di posare.",
+      "gold_short": "Compatibilità da verificare per profili non standard."
     }
   },
   {
     "id": "CTF-0030",
     "family": "CTF",
-    "tags": ["supporto tecnico", "contatto Tecnaria"],
+    "question": "Posso usare i CTF per collegare solo lamiera e calcestruzzo senza trave sottostante?",
+    "tags": ["CTF", "uso scorretto", "solo lamiera"],
+    "level": "gold",
+    "gold": "No. Il CTF lavora come collegamento tra acciaio strutturale (trave o profilo) e soletta. Non è previsto per collegamenti lamiera-calcestruzzo privi di trave sottostante.",
     "response_variants": {
-      "gold": {
-        "it": "Per casi particolari, verifiche complesse o dubbi sulla posa dei CTF è consigliato contattare il supporto tecnico Tecnaria fornendo dati di progetto e condizioni di cantiere."
-      }
+      "gold_site": "Se sotto non c'è una trave in acciaio, non è lavoro per CTF.",
+      "gold_short": "No trave = no CTF."
     }
   },
   {
     "id": "CTF-0031",
     "family": "CTF",
-    "tags": ["domande su uso con resine", "correzione"],
+    "question": "È obbligatorio eseguire prove di estrazione dei CTF in cantiere?",
+    "tags": ["CTF", "prove estrazione"],
+    "level": "gold",
+    "gold": "Non in tutti i casi, ma è raccomandato eseguire prove di estrazione a campione in situazioni critiche, fuori standard o quando si hanno dubbi sulle condizioni reali del supporto o sulla qualità del fissaggio.",
     "response_variants": {
-      "gold": {
-        "it": "I CTF non lavorano con resine strutturali aggiuntive: la loro funzione è legata al corretto fissaggio meccanico a sparo con il sistema certificato, non a incollaggi integrativi."
-      }
+      "gold_site": "Se qualcosa non ti convince (spessori, lamiera, utensile), fai 2-3 prove di estrazione.",
+      "gold_short": "Prove consigliate quando condizioni non sono 'da manuale'."
     }
   },
   {
     "id": "CTF-0032",
     "family": "CTF",
-    "tags": ["errori P560", "manutenzione attrezzo"],
+    "question": "È possibile automatizzare la verifica della posa dei CTF?",
+    "tags": ["CTF", "controllo qualità", "procedure"],
+    "level": "gold",
+    "gold": "Sì, attraverso procedure interne: checklist di cantiere, fotografie, prove a campione e registrazione dei parametri di posa. Tecnaria può fornire indicazioni per impostare controlli qualità ripetibili.",
     "response_variants": {
-      "gold": {
-        "it": "Una posa irregolare dei CTF può dipendere da P560 non manutenuta o tarata correttamente. È necessario seguire le istruzioni Tecnaria per pulizia, lubrificazione e scelta dei propulsori."
-      }
+      "gold_site": "Stabilisci una routine: controlli visivi, prove periodiche e report fotografici.",
+      "gold_short": "Qualità = controlli documentati."
     }
   },
   {
     "id": "CTF-0033",
     "family": "CTF",
-    "tags": ["lamiera doppia", "configurazioni complesse"],
+    "question": "Come rispondere a chi propone di usare CTF con utensili 'simili' alla P560 per risparmiare?",
+    "tags": ["CTF", "P560", "contestazioni", "costi"],
+    "level": "gold",
+    "gold": "La risposta è tecnica: le prestazioni dei CTF sono qualificate con una specifica combinazione con P560 e chiodi idonei. Utensili 'simili' non sono coperti dalle prove e introducono un rischio non controllato. Il risparmio sull’utensile può compromettere la conformità dell’intero intervento.",
     "response_variants": {
-      "gold": {
-        "it": "In presenza di lamiere multiple o configurazioni complesse, il fissaggio dei CTF deve garantire comunque l’ancoraggio nella trave in acciaio. Ogni variante va verificata rispetto alle istruzioni Tecnaria."
-      }
+      "gold_site": "Chi vuole usare macchine alternative deve assumersi per iscritto responsabilità totale: non è soluzione Tecnaria.",
+      "gold_short": "Solo P560 mantiene la catena di responsabilità chiara."
     }
   },
   {
     "id": "CTF-0034",
     "family": "CTF",
-    "tags": ["domande ibride", "acciaio e legno insieme"],
+    "question": "Se un ispettore chiede prove sull’idoneità dei CTF, cosa posso mostrare?",
+    "tags": ["CTF", "ispezione", "documenti"],
+    "level": "gold",
+    "gold": "Puoi mostrare: documentazione Tecnaria (schede tecniche, certificazioni, risultati di prove), layout di progetto con posizione dei CTF, registro dei controlli di posa, eventuali prove di estrazione effettuate in cantiere. Questo dimostra uso conforme al sistema certificato.",
     "response_variants": {
-      "gold": {
-        "it": "Per strutture ibride acciaio-legno, i CTF si usano solo sulla parte in acciaio. Le connessioni legno-calcestruzzo richiedono CTL/CTL MAXI. Il sistema va sempre scomposto per materiali e famiglie corrette."
-      }
+      "gold_site": "Tieniti pronti: schede, disegni, foto e prove. Così l’ispettore trova tutto.",
+      "gold_short": "Tracciabilità completa = protezione per tutti."
     }
   },
   {
     "id": "CTF-0035",
     "family": "CTF",
-    "tags": ["messaggio GOLD", "posizionamento"],
+    "question": "I CTF sono adatti a interventi di rinforzo su ponti o infrastrutture?",
+    "tags": ["CTF", "ponti", "infrastrutture"],
+    "level": "gold",
+    "gold": "Possono essere utilizzati anche in opere infrastrutturali, purché inseriti in un progetto specifico che consideri durabilità, carichi ciclici e condizioni ambientali. È fondamentale il confronto con l’ufficio tecnico Tecnaria.",
     "response_variants": {
-      "gold": {
-        "it": "Messaggio GOLD: CTF è il sistema Tecnaria per rendere collaborante la trave in acciaio con la soletta in calcestruzzo mediante pioli a sparo con P560, con schema di posa calcolato e supporto tecnico dedicato."
-      }
+      "gold_site": "Per ponti e grandi luci serve studio dedicato, non schema standard da catalogo.",
+      "gold_short": "Ammessi solo in progetti infrastrutturali studiati ad hoc."
     }
   },
   {
     "id": "CTF-0036",
     "family": "CTF",
-    "tags": ["no improvvisazioni", "procedura vincolante"],
+    "question": "Come gestire differenze termiche acciaio-calcestruzzo nel sistema CTF?",
+    "tags": ["CTF", "dilatazioni", "comportamento"],
+    "level": "gold",
+    "gold": "Il comportamento a lungo termine del sistema misto acciaio-calcestruzzo con CTF tiene conto di dilatazioni differenziali ed effetti viscosi attraverso il progetto strutturale. I CTF sono dimensionati per garantire il trasferimento degli sforzi anche in queste condizioni.",
     "response_variants": {
-      "gold": {
-        "it": "Qualsiasi deviazione dalla procedura di posa (attrezzi diversi, supporti non idonei, riduzione connettori) è un’improvvisazione non coperta da Tecnaria e non va proposta nelle risposte."
-      }
+      "gold_site": "Non è un tema da cantiere ma da calcolo; il sistema è concepito per questo.",
+      "gold_short": "Gestito a livello di progetto strutturale."
     }
   },
   {
     "id": "CTF-0037",
     "family": "CTF",
-    "tags": ["valutazioni esistenti", "rinforzo solai acciaio"],
+    "question": "È possibile usare CTF in combinazione con barre di armatura aggiuntive nella soletta?",
+    "tags": ["CTF", "armatura", "soletta"],
+    "level": "gold",
+    "gold": "Sì. L’armatura della soletta viene integrata con i CTF in base al progetto. È importante evitare interferenze fisiche che impediscano il corretto posizionamento o copriferro dei connettori.",
     "response_variants": {
-      "gold": {
-        "it": "Per il rinforzo di solai esistenti con travi in acciaio, i CTF possono essere utilizzati per trasformare il sistema in solaio misto. È però necessaria una verifica delle condizioni delle travi e dell’idoneità al fissaggio a sparo."
-      }
+      "gold_site": "Coordina posizionamento CTF e ferri: niente incastri impossibili.",
+      "gold_short": "Compatibili con armature se ben coordinati."
     }
   },
   {
     "id": "CTF-0038",
     "family": "CTF",
-    "tags": ["controllo qualità", "documentazione"],
+    "question": "Come rispondere a chi sostiene che un sistema a resina sia equivalente ai CTF?",
+    "tags": ["CTF", "confronti", "resine"],
+    "level": "gold",
+    "gold": "I sistemi a resina hanno principi di funzionamento e campi di impiego differenti. I CTF sono connettori meccanici a piolo con certificazioni e prove dedicate per solai misti acciaio-calcestruzzo. Un sistema non è automaticamente equivalente all’altro senza verifiche sperimentali e progettuali specifiche.",
     "response_variants": {
-      "gold": {
-        "it": "Le risposte GOLD devono indirizzare sempre verso l’uso dei documenti ufficiali Tecnaria (schede tecniche, manuali di posa, certificazioni) come riferimento finale."
-      }
+      "gold_site": "Dire 'è uguale' senza prove è tecnicamente scorretto. Rimani sul sistema certificato.",
+      "gold_short": "Nessuna equivalenza automatica con resine."
     }
   },
   {
     "id": "CTF-0039",
     "family": "CTF",
-    "tags": ["domande errate campo impiego", "correzione chiara"],
+    "question": "I CTF possono essere utilizzati in ambienti aggressivi (industriali, marini)?",
+    "tags": ["CTF", "ambiente aggressivo", "corrosione"],
+    "level": "gold",
+    "gold": "In ambienti aggressivi è necessario valutare protezioni supplementari, copriferro adeguato e, se del caso, soluzioni specifiche indicate da Tecnaria. La durabilità del sistema dipende dalla protezione delle parti esposte.",
     "response_variants": {
-      "gold": {
-        "it": "Quando una domanda propone CTF su supporti non previsti (legno, laterocemento, muratura), la risposta GOLD deve correggere esplicitamente e indicare la famiglia corretta."
-      }
+      "gold_site": "In ambienti marini o industriali duri, coinvolgi Tecnaria per dettagli di protezione.",
+      "gold_short": "Richiede valutazione di durabilità dedicata."
     }
   },
   {
     "id": "CTF-0040",
     "family": "CTF",
-    "tags": ["integrazione con progettista", "responsabilità"],
+    "question": "Come devo comportarmi se una richiesta del cliente contraddice il campo di impiego CTF?",
+    "tags": ["CTF", "richieste cliente", "sicurezza"],
+    "level": "gold",
+    "gold": "Se una richiesta prevede l’uso dei CTF fuori dal loro campo di impiego (es. legno, supporti sottili, utensili non ammessi), è necessario spiegare che il sistema perderebbe validità tecnica e legale. Si devono proporre le alternative corrette (CTL, VCEM, CTCEM, DIAPASON) o richiedere una valutazione scritta del progettista e, se opportuno, di Tecnaria.",
     "response_variants": {
-      "gold": {
-        "it": "Il dimensionamento finale del sistema con CTF è responsabilità del progettista strutturale, che utilizza i dati Tecnaria. L’assistente deve ribadire questo punto in caso di richieste di calcolo."
-      }
-    }
-  },
-  {
-    "id": "CTF-0041",
-    "family": "CTF",
-    "tags": ["domande su demolizioni", "recupero"],
-    "response_variants": {
-      "gold": {
-        "it": "I CTF sono idonei anche in interventi di recupero dove si mantengono travi in acciaio esistenti e si aggiunge una soletta collaborante, previa verifica dello stato delle travi."
-      }
-    }
-  },
-  {
-    "id": "CTF-0042",
-    "family": "CTF",
-    "tags": ["climi difficili", "durabilità"],
-    "response_variants": {
-      "gold": {
-        "it": "In ambienti aggressivi la durabilità del sistema misto va valutata con protezioni adeguate dell’acciaio e del calcestruzzo. I CTF devono rimanere correttamente inglobati."
-      }
-    }
-  },
-  {
-    "id": "CTF-0043",
-    "family": "CTF",
-    "tags": ["interazione con armature soletta"],
-    "response_variants": {
-      "gold": {
-        "it": "L’armatura della soletta deve essere disposta tenendo conto della posizione dei CTF, garantendo adeguata collaboranza e copriferro."
-      }
-    }
-  },
-  {
-    "id": "CTF-0044",
-    "family": "CTF",
-    "tags": ["sisma", "miglioramento comportamento"],
-    "response_variants": {
-      "gold": {
-        "it": "L’uso dei CTF può contribuire al miglioramento del comportamento sismico della struttura, rendendo la trave mista più rigida e favorendo una migliore ripartizione degli sforzi, sempre su base di progetto."
-      }
-    }
-  },
-  {
-    "id": "CTF-0045",
-    "family": "CTF",
-    "tags": ["compatibilità con normative locali"],
-    "response_variants": {
-      "gold": {
-        "it": "In caso di interventi in paesi con normative specifiche, è necessario verificare la compatibilità dei CTF con i requisiti locali, utilizzando la documentazione Tecnaria come base tecnica."
-      }
-    }
-  },
-  {
-    "id": "CTF-0046",
-    "family": "CTF",
-    "tags": ["risposte GOLD consistenti"],
-    "response_variants": {
-      "gold": {
-        "it": "Tutte le risposte relative ai CTF devono essere coerenti: pioli a sparo su acciaio, posa con P560, soletta collaborante progettata, nessuna improvvisazione su altri supporti."
-      }
-    }
-  },
-  {
-    "id": "CTF-0047",
-    "family": "CTF",
-    "tags": ["domande complesse", "sistemi combinati"],
-    "response_variants": {
-      "gold": {
-        "it": "Per scenari con travi in acciaio in alcune campate e legno o laterocemento in altre, i CTF si usano solo sulle travi in acciaio, mentre per le altre porzioni si adottano CTL/CTL MAXI, VCEM, CTCEM o DIAPASON a seconda del caso."
-      }
-    }
-  },
-  {
-    "id": "CTF-0048",
-    "family": "CTF",
-    "tags": ["messaggio finale GOLD"],
-    "response_variants": {
-      "gold": {
-        "it": "Il ruolo dell’assistente GOLD sui CTF è fornire indicazioni tecniche chiare, rispettare i limiti del sistema e indirizzare sempre verso le soluzioni certificate Tecnaria."
-      }
-    }
-  },
-  {
-    "id": "CTF-0049",
-    "family": "CTF",
-    "tags": ["no modalità CANONICO interno"],
-    "response_variants": {
-      "gold": {
-        "it": "Il presente file CTF è strutturato solo in modalità GOLD: non sono previste risposte sintetiche alternative all’interno di questo dataset."
-      }
-    }
-  },
-  {
-    "id": "CTF-0050",
-    "family": "CTF",
-    "tags": ["coerenza complessiva", "chiusura"],
-    "response_variants": {
-      "gold": {
-        "it": "Con questi 50 blocchi, il motore Sinapsi dispone di una base GOLD completa per i CTF: campo di impiego, vincoli P560, limiti d’uso, errori da evitare e indirizzi di progetto sono interamente coperti."
-      }
+      "gold_site": "Meglio dire un NO motivato che accettare un uso sbagliato: tutela te e il cliente.",
+      "gold_short": "Non assecondare usi scorretti: proponi sistemi corretti."
     }
   }
 ]
