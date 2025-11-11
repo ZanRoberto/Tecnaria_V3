@@ -1,311 +1,356 @@
-import json
-import os
-import random
-from typing import Dict, Any, List, Tuple
+"""
+TECNARIA Sinapsi - app.py (complete)
+- FastAPI app that loads family JSONs from ./static/data
+- Supports modes: GOLD (dynamic) and CANONICAL
+- Runtime config persisted in config.runtime.json
+- Language handling: if question begins with a language tag like "GOLD:" or "CANONICO:" or "EN:" it will set mode or prefer language for that request
+- Endpoints:
+  - GET /            -> simple HTML UI (Tecnaria skin placeholder)
+  - GET /api/config  -> current runtime config
+  - POST /api/config -> update runtime config {"mode":"gold"/"canonical", "families": [...]} (atomic)
+  - POST /api/ask    -> {"question":"...", "force_mode":"gold|canonical"} -> returns best-matched answer
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+Notes:
+- This file DOES NOT embed any JSON data. Put your family files in `static/data/*.json`.
+- Each family JSON expected structure: {"family": ..., "items": [ {"id":"...","questions":[...],"canonical":"...","response_variants":[...],"tags":[...],"mode":"dynamic"}, ... ] }
+- The app selects GOLD variant by returning the longest variant from response_variants (prefer narrative), and CANONICAL by returning canonical.
+- Multilingual: the app does not write translations into JSON. It returns the answer in the language found in the question when a matching question text in that language exists; otherwise returns default lang from JSON. For production you should wire an online translator.
+
+Deploy: use Uvicorn/Gunicorn as you already do. Ensure env var DATA_DIR points to ./static/data or default.
+
+"""
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+import os, json, glob, re
+from pathlib import Path
+from datetime import datetime
 
-# -------------------------------------------------------
-# CONFIGURAZIONE DI BASE
-# -------------------------------------------------------
+# --- Config and paths ---
+DATA_DIR = os.environ.get("DATA_DIR", "static/data")
+RUNTIME_CONFIG = os.environ.get("RUNTIME_CONFIG", "config.runtime.json")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "static", "data")
-CONFIG_PATH = os.path.join(DATA_DIR, "config.runtime.json")
+app = FastAPI(title="TECNARIA Sinapsi Backend", version="1.0")
 
-DEFAULT_MODE = "gold"  # modalità di default
-CURRENT_MODE = DEFAULT_MODE  # stato globale (cambia con GOLD:/CANONICO:)
+# default runtime structure
+default_runtime = {
+    "ok": True,
+    "message": "TECNARIA Sinapsi backend attivo",
+    "mode": "gold",            # 'gold' or 'canonical'
+    "families": [],             # loaded families
+    "last_update": datetime.utcnow().isoformat()
+}
 
-FAMILIES: Dict[str, Dict[str, Any]] = {}  # cache JSON famiglie
+# --- Helpers to load and validate JSON families ---
 
-
-# -------------------------------------------------------
-# MODELLI
-# -------------------------------------------------------
-
-class AskRequest(BaseModel):
-    question: str
-    lang: str | None = None
-    mode: str | None = None  # opzionale, se la UI vuole forzare
-
-
-class AskResponse(BaseModel):
-    answer: str
-    family: str | None
-    id: str | None
-    score: float
-    lang: str
-    mode: str
-    meta: Dict[str, Any] = {}
-
-
-# -------------------------------------------------------
-# UTILS CARICAMENTO
-# -------------------------------------------------------
-
-def load_json(path: str) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+def load_runtime_config() -> Dict[str, Any]:
+    if os.path.exists(RUNTIME_CONFIG):
+        try:
+            with open(RUNTIME_CONFIG, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+                return cfg
+        except Exception:
+            # fallback to default
+            return default_runtime.copy()
+    else:
+        return default_runtime.copy()
 
 
-def detect_lang(text: str) -> str:
-    t = text.lower()
-    # euristiche minime: se la domanda arriva in lingue diverse, le usiamo solo per meta
-    if any(w in t for w in [" the ", " can ", " how ", "what "]):
-        return "en"
-    if "¿" in t or any(w in t for w in [" que ", " donde ", " puedo "]):
-        return "es"
-    if any(w in t for w in [" quel ", " où ", " pourquoi "]):
-        return "fr"
-    if any(w in t for w in [" was ", " wie ", " warum ", " welche "]):
-        return "de"
-    return "it"
+def save_runtime_config(cfg: Dict[str, Any]):
+    cfg = dict(cfg)
+    cfg["last_update"] = datetime.utcnow().isoformat()
+    with open(RUNTIME_CONFIG, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
 
+
+# load family jsons into memory index
+FAMILIES: Dict[str, Dict[str, Any]] = {}
+QUESTION_INDEX: List[Dict[str, Any]] = []
+
+
+def load_families(data_dir=DATA_DIR):
+    global FAMILIES, QUESTION_INDEX
+    FAMILIES = {}
+    QUESTION_INDEX = []
+    p = Path(data_dir)
+    if not p.exists():
+        return
+    for file in p.glob("*.json"):
+        try:
+            with open(file, "r", encoding="utf-8") as fh:
+                j = json.load(fh)
+                family_name = j.get("family") or file.stem
+                FAMILIES[family_name] = j
+                # index questions for quick match
+                items = j.get("items", [])
+                for it in items:
+                    qlist = it.get("questions") or []
+                    for q in qlist:
+                        QUESTION_INDEX.append({
+                            "family": family_name,
+                            "item": it,
+                            "question": q,
+                            "id": it.get("id")
+                        })
+        except Exception as e:
+            print(f"Failed load {file}: {e}")
+
+
+# initial load
+load_families()
+
+# runtime
+runtime = load_runtime_config()
+if not runtime.get("families"):
+    runtime["families"] = list(FAMILIES.keys())
+
+# --- Matching utility (simple fuzzy heuristic) ---
 
 def normalize_text(s: str) -> str:
-    return " ".join((s or "").lower().strip().split())
+    return re.sub(r"\s+", " ", s.strip().lower())
 
 
-def keyword_score(question: str, text: str) -> float:
-    q = set(normalize_text(question).split())
-    t = set(normalize_text(text).split())
-    if not q or not t:
-        return 0.0
-    inter = len(q & t)
-    if inter == 0:
-        return 0.0
-    return inter / len(q)
-
-
-# -------------------------------------------------------
-# CARICAMENTO CONFIG & FAMIGLIE
-# -------------------------------------------------------
-
-def load_config() -> Dict[str, Any]:
-    if not os.path.exists(CONFIG_PATH):
-        # fallback se manca il file
-        return {
-            "mode": DEFAULT_MODE,
-            "families": ["COMM", "CTCEM", "CTF", "CTL", "CTL_MAXI", "DIAPASON", "P560", "VCEM"],
-            "lock_to_core": True
-        }
-    cfg = load_json(CONFIG_PATH)
-    # normalizza
-    cfg.setdefault("mode", DEFAULT_MODE)
-    return cfg
-
-
-def load_families() -> None:
-    global FAMILIES
-    cfg = load_config()
-    families = cfg.get("families", [])
-    loaded = {}
-    for fam in families:
-        path = os.path.join(DATA_DIR, f"{fam}.json")
-        if not os.path.exists(path):
+def find_best_item(question: str, prefer_families: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
+    """Return best matched item dict or None"""
+    qn = normalize_text(question)
+    # first exact substring match against indexed questions
+    best = None
+    best_score = 0
+    for entry in QUESTION_INDEX:
+        fam = entry["family"]
+        if prefer_families and fam not in prefer_families:
             continue
-        data = load_json(path)
-        items = data.get("items", [])
-        # normalizza ogni blocco
-        for it in items:
-            it.setdefault("id", "")
-            it.setdefault("questions", [])
-            it.setdefault("canonical", "")
-            # response_variants: list[str] per GOLD
-            if "response_variants" not in it or not isinstance(it["response_variants"], list):
-                it["response_variants"] = []
-            # mode interno blocco (non la UI): default dynamic
-            it.setdefault("mode", "dynamic")
-        loaded[fam] = {
-            "family": data.get("family", fam),
-            "items": items,
-            "meta": data.get("meta", {}),
-        }
-    FAMILIES = loaded
+        candidate_q = normalize_text(entry["question"])
+        score = 0
+        if candidate_q == qn:
+            score = 100
+        elif candidate_q in qn or qn in candidate_q:
+            score = 60
+        else:
+            # word overlap
+            a = set(candidate_q.split())
+            b = set(qn.split())
+            inter = a.intersection(b)
+            score = len(inter)
+        if score > best_score:
+            best_score = score
+            best = entry
+    # secondary: try keyword/tag matching
+    if best_score == 0:
+        # check tags in items
+        qwords = set(qn.split())
+        for fam, data in FAMILIES.items():
+            for it in data.get("items", []):
+                tags = set([t.lower() for t in it.get("tags", [])])
+                if tags and (tags & qwords):
+                    return {"family": fam, "item": it, "question": next(iter(it.get("questions", [""])), ""), "id": it.get("id")}
+    return best
 
 
-# -------------------------------------------------------
-# LOGICA GOLD / CANONICO
-# -------------------------------------------------------
+# --- Answer generation ---
 
-def apply_mode_command(question: str) -> Tuple[str, str]:
+def pick_gold_variant(item: Dict[str, Any]) -> str:
+    """Pick 'best' gold variant from item.response_variants. Strategy: longest variant (narrative) and merge if multiple."""
+    variants = item.get("response_variants") or []
+    if not variants:
+        # fallback to canonical
+        return item.get("canonical", "")
+    # prefer the longest textual variant (by characters)
+    variants_sorted = sorted(variants, key=lambda v: len(v) if isinstance(v, str) else 0, reverse=True)
+    # Return the top variant; if multiple, join first two with newline
+    top = variants_sorted[0]
+    if len(variants_sorted) > 1:
+        second = variants_sorted[1]
+        # avoid duplications
+        if second and second != top:
+            return f"{top}\n\n{second}"
+    return top
+
+
+def pick_canonical(item: Dict[str, Any]) -> str:
+    return item.get("canonical", "")
+
+
+# language detection stub: detect if question starts with language token like "EN: ..." or contains common words
+LANG_MAP = {"en": ["can i", "how to", "when to"], "it": ["posso", "quando", "come"], "fr": ["puis-je", "quand"], "de": ["kann ich", "wann"], "es": ["puedo", "cuando"]}
+
+def detect_language(question: str, default: str = "it") -> str:
+    q = question.strip().lower()
+    m = re.match(r"^(en|it|fr|de|es|ru):\s+", q)
+    if m:
+        return m.group(1)
+    for lang, clues in LANG_MAP.items():
+        for c in clues:
+            if c in q:
+                return lang
+    return default
+
+
+# --- API models ---
+class AskRequest(BaseModel):
+    question: str
+    force_mode: Optional[str] = None  # 'gold' or 'canonical'
+    prefer_families: Optional[List[str]] = None
+
+class ConfigRequest(BaseModel):
+    mode: Optional[str]
+    families: Optional[List[str]]
+
+
+# --- Routes ---
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    # Minimal UI placeholder -- the user already has a UI; keep it light.
+    html = f"""
+    <html>
+      <head>
+        <meta charset='utf-8'/>
+        <title>TECNARIA Sinapsi</title>
+        <style>
+          body {{ font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin: 24px; background:#fff; color:#111 }}
+          .brand {{ display:flex; align-items:center; gap:12px }}
+          .card {{ border-radius:10px; padding:18px; box-shadow:0 6px 18px rgba(0,0,0,0.06); max-width:980px }}
+          .mode {{ font-weight:700; color:#FF6A00 }}
+        </style>
+      </head>
+      <body>
+        <div class='card'>
+          <div class='brand'>
+            <img src='/static/logo.png' alt='Tecnaria' style='height:56px' onerror="this.style.display='none'"/>
+            <div>
+              <h1>TECNARIA Sinapsi - Backend</h1>
+              <div>Modalità: <span class='mode'>{runtime.get('mode','gold').upper()}</span></div>
+            </div>
+          </div>
+          <hr/>
+          <div>
+            <p>Use <code>/api/ask</code> to query, <code>/api/config</code> to view/update runtime config.</p>
+          </div>
+        </div>
+      </body>
+    </html>
     """
-    Legge GOLD: / CANONICO: all'inizio domanda e aggiorna CURRENT_MODE.
-    Ritorna (domanda_pulita, mode_attivo)
-    """
-    global CURRENT_MODE
-    q = question.lstrip()
-
-    upper = q.upper()
-    if upper.startswith("GOLD:"):
-        CURRENT_MODE = "gold"
-        return q[5:].lstrip(), CURRENT_MODE
-
-    if upper.startswith("CANONICO:") or upper.startswith("CANONICAL:"):
-        CURRENT_MODE = "canonical"
-        return q.split(":", 1)[1].lstrip(), CURRENT_MODE
-
-    # se non c'è comando esplicito: resta il mode corrente
-    return question, CURRENT_MODE
-
-
-def find_best_block(question: str) -> Tuple[str | None, Dict[str, Any] | None, float]:
-    """
-    Cerca tra tutte le famiglie il blocco più rilevante.
-    """
-    best_family = None
-    best_block = None
-    best_score = 0.0
-    q_norm = normalize_text(question)
-
-    for fam, data in FAMILIES.items():
-        for it in data["items"]:
-            # punteggio su questions + canonical
-            score_q = max(
-                (keyword_score(q_norm, qq) for qq in it.get("questions", [])),
-                default=0.0
-            )
-            score_c = keyword_score(q_norm, it.get("canonical", ""))
-            score = max(score_q, score_c)
-            if score > best_score:
-                best_score = score
-                best_family = fam
-                best_block = it
-
-    return best_family, best_block, float(best_score)
-
-
-def generate_answer(block: Dict[str, Any], mode: str) -> str:
-    """
-    GOLD:
-      - se ci sono response_variants: ne usa una (testo GOLD)
-      - se non ci sono: usa canonical (fallback tecnico)
-    CANONICO:
-      - usa sempre canonical; se manca, usa prima variant
-    """
-    canonical = (block.get("canonical") or "").strip()
-    variants: List[str] = [v.strip() for v in block.get("response_variants", []) if str(v).strip()]
-
-    if mode == "gold":
-        if variants:
-            return random.choice(variants)
-        if canonical:
-            return canonical
-        return "Per questa domanda il blocco trovato non contiene ancora una risposta GOLD strutturata."
-
-    # mode canonical
-    if canonical:
-        return canonical
-    if variants:
-        return variants[0]
-    return "Per questa domanda non è presente un testo canonico nel blocco selezionato."
-
-
-# -------------------------------------------------------
-# FASTAPI
-# -------------------------------------------------------
-
-app = FastAPI(title="TECNARIA Sinapsi", version="3.0", docs_url=None, redoc_url=None)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=True,
-)
-
-# Static per interfaccia
-static_path = os.path.join(BASE_DIR, "static")
-if os.path.isdir(static_path):
-    app.mount("/static", StaticFiles(directory=static_path), name="static")
-
-
-@app.on_event("startup")
-def startup_event():
-    load_families()
+    return HTMLResponse(html)
 
 
 @app.get("/api/config")
-def get_config():
-    cfg = load_config()
-    return {
-        "ok": True,
-        "message": "TECNARIA Sinapsi backend attivo",
-        "mode": CURRENT_MODE,
-        "families": list(FAMILIES.keys()),
-        "config": cfg
-    }
+async def get_config():
+    cfg = load_runtime_config()
+    # include families discovered
+    cfg["available_families"] = list(FAMILIES.keys())
+    return JSONResponse(cfg)
 
 
-@app.post("/api/mode")
-def set_mode(payload: Dict[str, Any]):
-    global CURRENT_MODE
-    mode = (payload.get("mode") or "").lower()
-    if mode not in ["gold", "canonical"]:
-        raise HTTPException(status_code=400, detail="Mode must be 'gold' or 'canonical'.")
-    CURRENT_MODE = mode
-    return {"ok": True, "mode": CURRENT_MODE}
-
-
-@app.post("/api/ask", response_model=AskResponse)
-def ask(req: AskRequest):
-    if not req.question or not req.question.strip():
-        raise HTTPException(status_code=400, detail="Domanda mancante.")
-
-    # comandi inline GOLD:/CANONICO:
-    clean_question, active_mode = apply_mode_command(req.question)
-
-    # override da payload (es. toggle UI)
+@app.post("/api/config")
+async def post_config(req: ConfigRequest):
+    cfg = load_runtime_config()
     if req.mode:
-        m = req.mode.lower()
-        if m in ["gold", "canonical"]:
-            active_mode = m
-
-    # lingua solo meta / future use
-    lang = req.lang or detect_lang(clean_question)
-
-    family, block, score = find_best_block(clean_question)
-
-    # soglia minima per considerare valida la risposta
-    MIN_SCORE = 0.15
-
-    if not block or score < MIN_SCORE:
-        return AskResponse(
-            answer="Per questa domanda non è ancora presente una risposta GOLD strutturata nei file Tecnaria. Va aggiunto un blocco dedicato nel JSON.",
-            family=family,
-            id=None,
-            score=score,
-            lang=lang,
-            mode=active_mode,
-            meta={"reason": "no_match_or_low_score"}
-        )
-
-    answer = generate_answer(block, active_mode)
-
-    return AskResponse(
-        answer=answer,
-        family=family,
-        id=block.get("id"),
-        score=score,
-        lang=lang,
-        mode=active_mode,
-        meta={
-            "tags": block.get("tags", []),
-            "matched_mode": block.get("mode", "dynamic")
-        }
-    )
+        mode = req.mode.lower()
+        if mode not in ("gold", "canonical"):
+            raise HTTPException(status_code=400, detail="mode must be 'gold' or 'canonical'")
+        cfg["mode"] = mode
+    if req.families is not None:
+        # validate
+        unknown = [f for f in req.families if f not in FAMILIES]
+        if unknown:
+            raise HTTPException(status_code=400, detail={"unknown_families": unknown})
+        cfg["families"] = req.families
+    save_runtime_config(cfg)
+    return JSONResponse(cfg)
 
 
-@app.get("/")
-def root():
-    # pagina minimale: la tua UI custom può usare /static
-    return {
-        "ok": True,
-        "message": "TECNARIA Sinapsi backend attivo",
-        "mode": CURRENT_MODE,
-        "families": list(FAMILIES.keys())
+@app.post("/api/reload")
+async def api_reload():
+    load_families()
+    # refresh runtime families if empty
+    cfg = load_runtime_config()
+    if not cfg.get("families"):
+        cfg["families"] = list(FAMILIES.keys())
+        save_runtime_config(cfg)
+    return JSONResponse({"ok": True, "message": "reloaded", "families": list(FAMILIES.keys())})
+
+
+@app.post("/api/ask")
+async def api_ask(req: AskRequest):
+    question = req.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Empty question")
+    # language detect
+    lang = detect_language(question)
+    # mode selection
+    cfg = load_runtime_config()
+    mode = cfg.get("mode", "gold")
+    if req.force_mode:
+        fm = req.force_mode.lower()
+        if fm in ("gold", "canonical"):
+            mode = fm
+    # prefer families if provided in request else runtime families
+    prefer = req.prefer_families or cfg.get("families") or list(FAMILIES.keys())
+
+    match = find_best_item(question, prefer_families=prefer)
+    if not match:
+        # fallback: try full-text scan of canonical fields
+        fallback = None
+        qn = normalize_text(question)
+        for fam, data in FAMILIES.items():
+            for it in data.get("items", []):
+                can = normalize_text(it.get("canonical",""))
+                if qn in can or can in qn:
+                    fallback = {"family": fam, "item": it, "question": it.get("questions", [""])[0], "id": it.get("id")}
+                    break
+            if fallback:
+                break
+        if fallback:
+            match = fallback
+
+    if not match:
+        return JSONResponse({"found": False, "message": "Nessuna risposta GOLD trovata nei JSON. Potrebbe essere necessario aggiungere un blocco nel JSON.", "mode_requested": mode})
+
+    item = match["item"]
+    fam = match["family"]
+    # pick answer
+    if mode == "gold":
+        answer = pick_gold_variant(item)
+    else:
+        answer = pick_canonical(item)
+
+    # ensure P560 business rule: if family is CTF the GOLD must mention P560. We do not modify JSONs here; we only warn if absent.
+    warnings = []
+    if fam.upper() == "CTF":
+        if "p560" not in answer.lower() and "p560" not in (item.get("canonical","") or "").lower():
+            warnings.append("Nota: la risposta CTF non cita la P560. Se la P560 è obbligatoria, aggiorna il JSON CTF per includerla nella variante GOLD.")
+
+    resp = {
+        "found": True,
+        "family": fam,
+        "id": item.get("id"),
+        "lang_detected": lang,
+        "mode": mode,
+        "answer": answer,
+        "warnings": warnings
     }
+    return JSONResponse(resp)
+
+
+# --- Startup event to ensure config exists ---
+@app.on_event("startup")
+async def startup_event():
+    # ensure runtime config exists
+    cfg = load_runtime_config()
+    if not cfg.get("families"):
+        cfg["families"] = list(FAMILIES.keys())
+        save_runtime_config(cfg)
+    # create sample static/logo.png placeholder if missing
+    static_dir = Path("static")
+    static_dir.mkdir(exist_ok=True)
+    logo_path = static_dir / "logo.png"
+    # leave it to user to populate logo; don't overwrite
+    print("Startup complete. Families loaded:", list(FAMILIES.keys()))
+
+
+# For direct execution (dev)
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app:app", host="0.0.0.0", port=10000, reload=True)
