@@ -2,501 +2,481 @@
   {
     "id": "CTCEM-0001",
     "family": "CTCEM",
-    "tags": ["descrizione", "solai laterocemento", "travetti in c.a."],
-    "response_variants": {
-      "gold": {
-        "it": "I connettori CTCEM Tecnaria sono connettori meccanici specifici per solai in laterocemento con travetti in calcestruzzo armato e soletta collaborante. Integrano una piastra dentata e un piolo a vite che assicura un collegamento efficace tra il travetto in c.a. e la nuova soletta, aumentando rigidezza e capacità portante del solaio."
-      }
-    }
+    "level": "gold",
+    "topic": "Cos'è il sistema CTCEM",
+    "question_examples": [
+      "Cosa sono i connettori CTCEM?",
+      "A cosa serve il sistema CTCEM Tecnaria?",
+      "In quale contesto nasce il connettore CTCEM?"
+    ],
+    "gold_answer_it": "I connettori CTCEM Tecnaria sono dispositivi meccanici studiati per solai in laterocemento con travetti in calcestruzzo armato strutturalmente recuperabili. Il sistema unisce una piastra dentata che incide il travetto e un piolo avvitato che attraversa la soletta collaborante, generando un collegamento a taglio efficace tra travetto e nuovo getto. Sono pensati come soluzione tecnica ingegnerizzata per trasformare un solaio in laterocemento tradizionale in solaio collaborante, con incremento di rigidezza, portata e controllo del comportamento."
   },
   {
     "id": "CTCEM-0002",
     "family": "CTCEM",
-    "tags": ["campo di impiego", "laterocemento recuperabile"],
-    "response_variants": {
-      "gold": {
-        "it": "I CTCEM si utilizzano su solai in laterocemento con travetti in calcestruzzo armato ancora strutturalmente idonei. Sono ideali quando si vuole ottenere una soletta collaborante sopra un solaio esistente senza demolizione totale, mantenendo i travetti e migliorando il comportamento globale."
-      }
-    }
+    "level": "gold",
+    "topic": "Campo di impiego CTCEM",
+    "question_examples": [
+      "Quando si usano i CTCEM?",
+      "Per quali solai è corretto il sistema CTCEM?",
+      "CTCEM è solo per laterocemento?"
+    ],
+    "gold_answer_it": "CTCEM è progettato per solai in laterocemento con travetti in calcestruzzo armato continuo e collaborante, in cui sia possibile ancorare meccanicamente la piastra dentata al travetto e sviluppare una soletta integrativa in calcestruzzo. Non è destinato a travi in acciaio, legno o ad elementi non collaboranti. Il campo corretto è il recupero e il rinforzo di solai in laterocemento esistenti o la realizzazione di sistemi collaboranti su travetti in c.a. idonei."
   },
   {
     "id": "CTCEM-0003",
     "family": "CTCEM",
-    "tags": ["no resine", "posa a secco"],
-    "response_variants": {
-      "gold": {
-        "it": "I CTCEM non prevedono l’uso di resine chimiche. Il fissaggio è esclusivamente meccanico: incisione, preforo, pulizia del foro e avvitatura del piolo fino a battuta. L’impiego di resine non prescritte esce dal perimetro tecnico Tecnaria."
-      }
-    }
+    "level": "gold",
+    "topic": "Differenza CTCEM vs VCEM",
+    "question_examples": [
+      "Differenza tra CTCEM e VCEM?",
+      "Quando preferire CTCEM rispetto a VCEM?",
+      "Perché scegliere una piastra dentata invece di una vite VCEM?"
+    ],
+    "gold_answer_it": "VCEM è una vite strutturale che ancora nel travetto resistente; CTCEM combina piastra dentata e piolo avvitato, con un ingaggio meccanico più pronunciato nel travetto in calcestruzzo. CTCEM è indicato quando si vuole massimizzare la presa meccanica sul travetto, in presenza di configurazioni più delicate o dove il profilo dentato offre maggior sicurezza. Entrambi lavorano su laterocemento, ma CTCEM rappresenta una soluzione con interblocco più marcato, scelta dal progettista in funzione delle verifiche."
   },
   {
     "id": "CTCEM-0004",
     "family": "CTCEM",
-    "tags": ["procedura posa", "incisione", "preforo"],
-    "response_variants": {
-      "gold": {
-        "it": "Procedura tipica CTCEM: 1) piccola incisione nel copriferro del travetto per alloggiare la piastra dentata; 2) preforo nel travetto con diametro e profondità secondo indicazioni Tecnaria; 3) pulizia accurata del foro; 4) avvitatura del piolo fino a serraggio completo. La piastra deve aderire e il connettore risultare stabile."
-      }
-    }
+    "level": "gold",
+    "topic": "Piastra dentata e funzione",
+    "question_examples": [
+      "A cosa serve la piastra dentata del CTCEM?",
+      "Perché il CTCEM ha una base dentata?",
+      "La piastra ha solo funzione di appoggio?"
+    ],
+    "gold_answer_it": "La piastra dentata del CTCEM non è un semplice appoggio: i denti incidono il calcestruzzo del travetto creando un'interfaccia meccanica che aumenta la capacità di trasferimento del taglio. In combinazione con il piolo avvitato nella stessa zona resistente, garantisce un collegamento robusto travetto-soletta. Ridurre la piastra a semplice rondella o modificarne la geometria significa uscire dalla configurazione provata."
   },
   {
     "id": "CTCEM-0005",
     "family": "CTCEM",
-    "tags": ["differenza VCEM", "dentatura"],
-    "response_variants": {
-      "gold": {
-        "it": "Rispetto ai VCEM, i CTCEM sono dotati di piastra dentata che lavora in combinazione con il travetto in c.a. dei solai in laterocemento. VCEM è concepito per calcestruzzo pieno continuo; CTCEM per travetti in c.a. con laterizio interposto. Non sono intercambiabili."
-      }
-    }
+    "level": "gold",
+    "topic": "Preparazione sede nel travetto",
+    "question_examples": [
+      "Serve fresare il travetto per CTCEM?",
+      "Come si prepara l'alloggiamento della piastra CTCEM?",
+      "Devo fare una tasca nel laterocemento?"
+    ],
+    "gold_answer_it": "Per la corretta posa dei CTCEM si realizza un alloggiamento locale nel copriferro del travetto, sufficiente per accogliere la piastra dentata senza ridurre in modo critico la sezione resistente. L'incisione deve raggiungere il calcestruzzo del travetto, evitando di lasciare la piastra appoggiata solo su strati incoerenti. Le dimensioni e profondità devono rispettare le istruzioni Tecnaria, senza demolizioni eccessive non giustificate."
   },
   {
     "id": "CTCEM-0006",
     "family": "CTCEM",
-    "tags": ["no acciaio", "no legno"],
-    "response_variants": {
-      "gold": {
-        "it": "I CTCEM non sono connettori per travi in acciaio o per strutture in legno. Per acciaio-calcestruzzo si usano CTF; per legno-calcestruzzo CTL o CTL MAXI. CTCEM è dedicato ai travetti in c.a. dei solai in laterocemento."
-      }
-    }
+    "level": "gold",
+    "topic": "Foro e avvitamento piolo",
+    "question_examples": [
+      "Come si fora per il piolo CTCEM?",
+      "Qual è il diametro e profondità del foro CTCEM?",
+      "Serve pulire il foro prima di avvitare?"
+    ],
+    "gold_answer_it": "Il foro per il piolo CTCEM va eseguito con il diametro e la profondità indicati da Tecnaria, in asse con la piastra dentata e completamente nel materiale resistente del travetto in c.a. Dopo la foratura, la sede deve essere pulita da polvere e detriti. Il piolo si avvita fino a battuta, in modo netto, senza giochi. Fori sovradimensionati, inclinati o parzialmente in laterizio compromettono l'ancoraggio."
   },
   {
     "id": "CTCEM-0007",
     "family": "CTCEM",
-    "tags": ["vite gira a vuoto", "errore posa"],
-    "response_variants": {
-      "gold": {
-        "it": "Se durante l’avvitatura del CTCEM la vite gira a vuoto, significa che non sta lavorando su calcestruzzo compatto o che il foro è sovradimensionato. Il connettore in quella posizione non è valido: va spostato in zona di travetto sano o rifatto con foro corretto."
-      }
-    }
+    "level": "gold",
+    "topic": "Vite che gira a vuoto",
+    "question_examples": [
+      "Cosa succede se il piolo CTCEM gira a vuoto?",
+      "Se la vite non prende, il connettore è valido?",
+      "Come gestire un CTCEM che non fa presa?"
+    ],
+    "gold_answer_it": "Se durante l'avvitamento il piolo CTCEM gira a vuoto, significa che il foro è troppo grande, non in materiale compatto o che il calcestruzzo è scadente. Quel connettore non è efficace e non può essere considerato nel calcolo. Va posizionato un nuovo CTCEM in zona di travetto sano, con foro corretto. Lasciare in opera connettori non agganciati significa falsare la capacità del sistema."
   },
   {
     "id": "CTCEM-0008",
     "family": "CTCEM",
-    "tags": ["verifiche prima del getto", "controllo in cantiere"],
-    "response_variants": {
-      "gold": {
-        "it": "Prima del getto con CTCEM posati occorre verificare: 1) che ogni connettore sia serrato a battuta; 2) che la piastra dentata sia appoggiata correttamente; 3) che non ci siano connettori inclinati, lenti o appoggiati solo su laterizio; 4) che le posizioni rispettino passo e schema di progetto."
-      }
-    }
+    "level": "gold",
+    "topic": "Spessore soletta collaborante",
+    "question_examples": [
+      "Che spessore minimo di soletta usare con CTCEM?",
+      "CTCEM funziona con 4-5 cm di soletta?",
+      "Lo spessore lo decide il connettore o il progettista?"
+    ],
+    "gold_answer_it": "Lo spessore della soletta collaborante con CTCEM deve essere definito dal progettista sulla base dei dati Tecnaria e delle verifiche di resistenza, aderenza e durabilità. Deve garantire l'inglobamento corretto del piolo, lo sviluppo del cono resistente e il copriferro all'armatura superiore. Spessori troppo ridotti non permettono di sfruttare il sistema in modo sicuro."
   },
   {
     "id": "CTCEM-0009",
     "family": "CTCEM",
-    "tags": ["laterizio", "supporto non idoneo"],
-    "response_variants": {
-      "gold": {
-        "it": "Il CTCEM deve lavorare sul travetto in calcestruzzo, non esclusivamente su laterizio forato. Se il piolo prende solo laterizio o riempimenti deboli, l’ancoraggio non è strutturalmente valido."
-      }
-    }
+    "level": "gold",
+    "topic": "Identificazione travetti",
+    "question_examples": [
+      "Come trovo i travetti giusti per posare CTCEM?",
+      "Posso posare CTCEM 'a occhio' sul laterocemento?",
+      "Serve una mappatura preliminare dei travetti?"
+    ],
+    "gold_answer_it": "La posa dei CTCEM richiede l'individuazione certa del travetto in calcestruzzo. Non è ammesso posare a caso sulla pignatta. In pratica: rilievo, saggi mirati, eventuali strumenti di indagine per confermare la posizione dei travetti. Solo così si può garantire che piastra e piolo lavorino su materiale strutturale effettivo."
   },
   {
     "id": "CTCEM-0010",
     "family": "CTCEM",
-    "tags": ["spessore soletta", "inglobamento connettore"],
-    "response_variants": {
-      "gold": {
-        "it": "La soletta collaborante abbinata ai CTCEM deve garantire il corretto inglobamento del connettore in calcestruzzo armato e il copriferro richiesto. Spessori insufficienti o non conformi al progetto riducono l’efficacia del sistema."
-      }
-    }
+    "level": "gold",
+    "topic": "CTCEM su solaio deteriorato",
+    "question_examples": [
+      "Posso usare CTCEM su travetti molto danneggiati?",
+      "CTCEM sistema un solaio ammalorato?",
+      "Se il travetto è marcio basta mettere più CTCEM?"
+    ],
+    "gold_answer_it": "CTCEM non è una cura per travetti strutturalmente compromessi. Se il calcestruzzo è gravemente degradato, fessurato, carbonatato in profondità o con armature scoperte e corrosione avanzata, prima si affronta il ripristino strutturale o si valutano soluzioni alternative. Aggiungere connettori su un supporto non sano non crea un sistema affidabile."
   },
   {
     "id": "CTCEM-0011",
     "family": "CTCEM",
-    "tags": ["distanze minime", "bordo", "interasse"],
-    "response_variants": {
-      "gold": {
-        "it": "Le distanze tra connettori CTCEM, dai bordi e dagli appoggi devono rispettare le indicazioni Tecnaria e il progetto strutturale. Addensamenti o avvicinamenti eccessivi ai bordi possono compromettere la resistenza locale del travetto."
-      }
-    }
+    "level": "gold",
+    "topic": "Interasse e schema di posa",
+    "question_examples": [
+      "Qual è il passo dei CTCEM?",
+      "Dove vanno messi lungo il travetto?",
+      "Esiste uno schema fisso per i CTCEM?"
+    ],
+    "gold_answer_it": "L'interasse dei CTCEM lungo il travetto e la loro distribuzione sono determinati dal progetto strutturale in base al taglio da trasferire. Tecnaria fornisce capacità del singolo connettore; il progettista definisce il numero necessario per ogni tratto. Esistono disposizioni tipiche, ma vanno sempre ricondotte a un modello di calcolo: non si distribuiscono a caso."
   },
   {
     "id": "CTCEM-0012",
     "family": "CTCEM",
-    "tags": ["errori comuni", "fori sovradimensionati"],
-    "response_variants": {
-      "gold": {
-        "it": "Un errore tipico è realizzare prefori troppo grandi o profondi, riducendo l’aderenza del piolo. In questi casi il connettore va riposizionato; non è ammesso compensare con materiali improvvisati."
-      }
-    }
+    "level": "gold",
+    "topic": "Distanze minime",
+    "question_examples": [
+      "Ci sono distanze minime tra CTCEM?",
+      "Quanto devo stare lontano dai bordi?",
+      "Posso mettere due CTCEM molto vicini?"
+    ],
+    "gold_answer_it": "Come per ogni ancoraggio, anche per CTCEM valgono distanze minime tra connettori e dai bordi del travetto per evitare fessurazioni, sovrapposizione dei coni resistenti e perdita di capacità. Le indicazioni sono riportate nella documentazione Tecnaria e devono essere rispettate. Accatastare connettori nella stessa zona non moltiplica indefinitamente la capacità."
   },
   {
     "id": "CTCEM-0013",
     "family": "CTCEM",
-    "tags": ["no P560", "no sparo"],
-    "response_variants": {
-      "gold": {
-        "it": "I CTCEM non sono connettori a sparo e non si posano con P560 o altri sistemi a polvere. Sono connettori a vite con piastra dentata e richiedono la procedura meccanica prevista."
-      }
-    }
+    "level": "gold",
+    "topic": "Uso di resine con CTCEM",
+    "question_examples": [
+      "Posso iniettare resina nel foro del CTCEM?",
+      "Ha senso combinare CTCEM e resine chimiche?",
+      "Resina migliora la tenuta?"
+    ],
+    "gold_answer_it": "Il sistema CTCEM nasce come fissaggio meccanico a secco su calcestruzzo idoneo. L'uso arbitrario di resine non previste altera il comportamento rispetto alle prove alla base del sistema. Eventuali configurazioni speciali meccanico-resina devono essere oggetto di valutazioni dedicate e non rientrano nella configurazione standard garantita."
   },
   {
     "id": "CTCEM-0014",
     "family": "CTCEM",
-    "tags": ["differenza DIAPASON", "scelta sistema"],
-    "response_variants": {
-      "gold": {
-        "it": "DIAPASON rappresenta un sistema con chiodi idonei per recupero specifico su solai in laterocemento; CTCEM è un connettore meccanico con piastra dentata e piolo a vite per travetti in c.a. La scelta dipende dal tipo di intervento e dallo stato del solaio."
-      }
-    }
+    "level": "gold",
+    "topic": "Controlli in cantiere",
+    "question_examples": [
+      "Che controlli devo fare sui CTCEM dopo la posa?",
+      "Come verifico che i connettori siano corretti?",
+      "Serve documentare qualcosa?"
+    ],
+    "gold_answer_it": "In cantiere si controlla: corretta posizione sui travetti, incisione adeguata della piastra dentata, avvitamento a battuta del piolo, rispetto del passo di progetto. In situazioni critiche o su richiesta del progettista si possono prevedere prove di estrazione su campioni. Le non conformità vanno risolte prima del getto."
   },
   {
     "id": "CTCEM-0015",
     "family": "CTCEM",
-    "tags": ["valutazione travetti", "ammaloramento"],
-    "response_variants": {
-      "gold": {
-        "it": "Prima di adottare CTCEM è necessario che il progettista verifichi l’idoneità dei travetti in calcestruzzo esistenti. Travetti gravemente ammalorati o con armature scoperte possono richiedere altre soluzioni."
-      }
-    }
+    "level": "gold",
+    "topic": "CTCEM e armatura esistente",
+    "question_examples": [
+      "Cosa succede se il foro intercetta un ferro del travetto?",
+      "Posso tagliare l'armatura per far posto al CTCEM?",
+      "Come gestire interferenze con i ferri?"
+    ],
+    "gold_answer_it": "Il foro per CTCEM non deve compromettere le armature principali del travetto. Se in perforazione si intercetta un ferro portante, non lo si taglia: si sposta la posizione del connettore. Fori che riducono sezione o tagliano barre sono da evitare. Il layout dei CTCEM deve essere pensato anche in funzione delle armature esistenti."
   },
   {
     "id": "CTCEM-0016",
     "family": "CTCEM",
-    "tags": ["interventi di rinforzo", "rigidezza solaio"],
-    "response_variants": {
-      "gold": {
-        "it": "L’impiego di CTCEM con soletta collaborante permette di incrementare rigidezza e capacità portante del solaio in laterocemento. L’effetto deve essere quantificato nel progetto strutturale."
-      }
-    }
+    "level": "gold",
+    "topic": "CTCEM e nuove armature soletta",
+    "question_examples": [
+      "La presenza dei CTCEM interferisce con la rete?",
+      "Devo adattare l'armatura alla posizione dei connettori?",
+      "Come coordinare connettori e ferri?"
+    ],
+    "gold_answer_it": "I CTCEM devono essere coordinati con l'armatura della soletta: la rete elettrosaldata e le eventuali barre aggiuntive si adattano evitando di poggiare direttamente sulla testa dei connettori. Il progetto deve considerare le altezze e garantire copriferri adeguati. In caso di interferenze, si modificano leggermente le posizioni mantenendo coerenza con il calcolo."
   },
   {
     "id": "CTCEM-0017",
     "family": "CTCEM",
-    "tags": ["inclinazione connettore", "non accettabile"],
-    "response_variants": {
-      "gold": {
-        "it": "Connettori CTCEM inclinati, non serrati o con piastra non aderente non sono da considerare correttamente posati. Vanno rimossi e riposizionati secondo procedura."
-      }
-    }
+    "level": "gold",
+    "topic": "Uso locale e interventi parziali",
+    "question_examples": [
+      "Posso usare CTCEM solo in alcune campate?",
+      "Ha senso rinforzare a tratti il solaio con CTCEM?",
+      "Cosa comportano gli interventi parziali?"
+    ],
+    "gold_answer_it": "Interventi parziali con CTCEM sono possibili ma devono essere modellati: passaggi tra zone rinforzate e non rinforzate possono creare concentrazioni di sforzo. Il progettista valuta se l'intervento locale è compatibile o se è preferibile una soluzione più omogenea. La posa casuale e discontinua non è una strategia GOLD."
   },
   {
     "id": "CTCEM-0018",
     "family": "CTCEM",
-    "tags": ["compatibilità armature", "foro nel travetto"],
-    "response_variants": {
-      "gold": {
-        "it": "Durante l’esecuzione del preforo per CTCEM occorre evitare di indebolire le armature principali del travetto. In caso di interferenza, la posizione del connettore va modificata, non i ferri."
-      }
-    }
+    "level": "gold",
+    "topic": "Compatibilità con solai storici in laterocemento",
+    "question_examples": [
+      "CTCEM si può usare su solai anni '50-'60?",
+      "È adatto a contesti storici?",
+      "Quali verifiche servono in edifici datati?"
+    ],
+    "gold_answer_it": "Su solai in laterocemento datati CTCEM può essere una soluzione efficace, a patto di verificare la qualità dei travetti, la presenza di armature adeguate e lo stato dei materiali. In edifici storici o vincolati vanno considerati vincoli architettonici, pesi aggiuntivi e, se necessario, condivise le scelte con i tecnici della tutela."
   },
   {
     "id": "CTCEM-0019",
     "family": "CTCEM",
-    "tags": ["istruzioni Tecnaria", "riferimento documenti"],
-    "response_variants": {
-      "gold": {
-        "it": "Per dettagli su diametro, profondità del preforo e coppia di serraggio dei CTCEM, si deve fare riferimento alle istruzioni ufficiali Tecnaria. L’assistente non deve inventare valori numerici mancanti."
-      }
-    }
+    "level": "gold",
+    "topic": "Errore: posare su solo laterizio",
+    "question_examples": [
+      "Posso mettere CTCEM sulla pignatta?",
+      "Se foro nel laterizio e avvito lì va bene?",
+      "Conta qualcosa il mattone forato?"
+    ],
+    "gold_answer_it": "No. Piastra dentata e piolo devono lavorare sul travetto in calcestruzzo. Posare CTCEM su pignatta o laterizio non strutturale è un errore che rende il connettore inefficace. Il laterizio non garantisce l'ancoraggio richiesto e non rientra nelle condizioni provate."
   },
   {
     "id": "CTCEM-0020",
     "family": "CTCEM",
-    "tags": ["passo connettori", "schema di progetto"],
-    "response_variants": {
-      "gold": {
-        "it": "Il passo dei CTCEM lungo i travetti è definito dal progettista. Riduzioni arbitrarie delle quantità in cantiere non sono ammesse: modificano la prestazione rispetto al dimensionamento previsto."
-      }
-    }
+    "level": "gold",
+    "topic": "CTCEM vs soluzioni artigianali",
+    "question_examples": [
+      "Perché usare CTCEM invece di tasselli improvvisati?",
+      "Che vantaggio ho rispetto alle barre piegate con resina?",
+      "CTCEM è solo marketing?"
+    ],
+    "gold_answer_it": "CTCEM sostituisce soluzioni improvvisate (barre piegate, tasselli generici, resine non qualificate) con un sistema definito: geometria nota, prove sperimentali, schede tecniche, supporto del produttore. Questo consente al progettista di modellare e verificare il comportamento in modo coerente. Le soluzioni artigianali, prive di questi riferimenti, non offrono la stessa tracciabilità."
   },
   {
     "id": "CTCEM-0021",
     "family": "CTCEM",
-    "tags": ["domande ibride CTCEM VCEM", "chiarimento"],
-    "response_variants": {
-      "gold": {
-        "it": "In domande che propongono indifferentemente CTCEM o VCEM su laterocemento, l’assistente deve chiarire: CTCEM per travetti in c.a. con piastra dentata; VCEM solo dove è presente calcestruzzo pieno continuo per avvitamento."
-      }
-    }
+    "level": "gold",
+    "topic": "Comportamento a taglio",
+    "question_examples": [
+      "Come lavora CTCEM a taglio?",
+      "Trasferisce solo trazione o anche taglio?",
+      "Che ruolo ha nella collaborazione?"
+    ],
+    "gold_answer_it": "CTCEM è un connettore a taglio: la combinazione di piastra dentata e piolo trasferisce gli sforzi tra travetto e soletta, impedendo lo scorrimento relativo e permettendo di considerare il solaio come sezione collaborante. Nel modello strutturale la sua capacità entra come resistenza a taglio per connettore, da moltiplicare per il numero efficace in ogni tratto."
   },
   {
     "id": "CTCEM-0022",
     "family": "CTCEM",
-    "tags": ["applicazioni tipiche", "recupero solaio"],
-    "response_variants": {
-      "gold": {
-        "it": "Applicazioni tipiche dei CTCEM: recupero di solai in laterocemento con travetti in c.a. e laterizi in buono stato, aggiunta di soletta collaborante per aumentare portata e rigidezza, mantenendo la struttura esistente."
-      }
-    }
+    "level": "gold",
+    "topic": "Effetto su rigidezza e frecce",
+    "question_examples": [
+      "CTCEM riduce le frecce del solaio?",
+      "Migliora il comportamento in esercizio?",
+      "Serve solo per aumentare la portata?"
+    ],
+    "gold_answer_it": "L'impiego corretto di CTCEM con soletta collaborante aumenta rigidezza e capacità portante del solaio, riducendo frecce e migliorando il comportamento in esercizio. L'entità del miglioramento dipende da spessori, numero di connettori, luce, vincoli e viene quantificata dal progettista."
   },
   {
     "id": "CTCEM-0023",
     "family": "CTCEM",
-    "tags": ["supporti non idonei", "laterizi sfondati"],
-    "response_variants": {
-      "gold": {
-        "it": "Se in corrispondenza del CTCEM il laterizio è sfondato o il travetto non offre materiale compatto sufficiente, quel punto non è idoneo. Il connettore va spostato su materiale sano."
-      }
-    }
+    "level": "gold",
+    "topic": "Compatibilità con aperture e forometrie",
+    "question_examples": [
+      "Posso mettere CTCEM vicino a fori nel solaio?",
+      "Che distanze tenere dalle aperture?",
+      "Come gestire gli impianti?"
+    ],
+    "gold_answer_it": "Fori e aperture riducono la sezione resistente. I CTCEM non vanno concentrati a ridosso di forometrie importanti senza verifica. Il progettista deve considerare la presenza di buchi e tracce nel modello; in certe zone può essere necessario aumentare connettori, modificare geometrie o evitare l'uso del sistema."
   },
   {
     "id": "CTCEM-0024",
     "family": "CTCEM",
-    "tags": ["domande su vibrazioni", "irrigidimento"],
-    "response_variants": {
-      "gold": {
-        "it": "L’uso di CTCEM con soletta collaborante può contribuire a ridurre deformazioni e vibrazioni del solaio in laterocemento, ma l’efficacia va valutata con calcolo strutturale specifico."
-      }
-    }
+    "level": "gold",
+    "topic": "Errore: improvvisare geometrie",
+    "question_examples": [
+      "Posso tagliare la piastra CTCEM se mi dà fastidio?",
+      "Posso accorciare il piolo?",
+      "Posso sagomare i connettori in cantiere?"
+    ],
+    "gold_answer_it": "Tagliare, piegare o modificare componenti CTCEM è vietato: si esce dal perimetro delle prove e delle dichiarazioni Tecnaria. Le geometrie sono definite per garantire capacità e comportamento; ogni modifica artigianale rende il connettore non riconducibile al sistema originale."
   },
   {
     "id": "CTCEM-0025",
     "family": "CTCEM",
-    "tags": ["no uso creativo", "limiti chiari"],
-    "response_variants": {
-      "gold": {
-        "it": "I CTCEM non devono essere proposti come tasselli generici o come soluzione per qualsiasi tipo di solaio non compatibile. L’impiego va limitato ai casi per cui sono progettati."
-      }
-    }
+    "level": "gold",
+    "topic": "Pose ripetibili",
+    "question_examples": [
+      "CTCEM garantisce ripetibilità?",
+      "È un sistema controllabile a posteriori?",
+      "Come aiuta nei collaudi?"
+    ],
+    "gold_answer_it": "CTCEM, se posato secondo specifiche, offre una soluzione ripetibile: posizione, numero, diametri fori, profondità e modalità di avvitamento sono verificabili. Questo facilita controlli e collaudi, a differenza di interventi non strutturati in cui è difficile ricostruire quanto effettivamente eseguito."
   },
   {
     "id": "CTCEM-0026",
     "family": "CTCEM",
-    "tags": ["domande borderline", "supporto tecnico"],
-    "response_variants": {
-      "gold": {
-        "it": "In scenari borderline o con solai pesantemente ammalorati, la risposta GOLD è invitare alla verifica del progettista e al confronto con il supporto tecnico Tecnaria, evitando validazioni azzardate."
-      }
-    }
+    "level": "gold",
+    "topic": "Interazione con deformazioni differite",
+    "question_examples": [
+      "CTCEM tiene conto delle deformazioni nel tempo?",
+      "Ci sono problemi di scorrimento?",
+      "Come si comporta a lungo termine?"
+    ],
+    "gold_answer_it": "Come per ogni sistema collaborante con calcestruzzo, anche con CTCEM il progettista deve considerare gli effetti viscosi e di ritiro. I connettori, essendo meccanici, mantengono il legame, ma il calcolo deve includere i fenomeni a lungo termine secondo le normative. Non è un limite di CTCEM, è parte della corretta progettazione."
   },
   {
     "id": "CTCEM-0027",
     "family": "CTCEM",
-    "tags": ["laterocemento vs nuovi solai", "uso corretto"],
-    "response_variants": {
-      "gold": {
-        "it": "CTCEM nasce per il recupero di solai in laterocemento esistenti. Nei solai nuovi in calcestruzzo pieno possono essere più appropriati sistemi come VCEM, a seconda della configurazione progettuale."
-      }
-    }
+    "level": "gold",
+    "topic": "Ambienti aggressivi",
+    "question_examples": [
+      "CTCEM va bene in ambienti umidi?",
+      "Come gestire la durabilità?",
+      "Serve protezione particolare?"
+    ],
+    "gold_answer_it": "In ambienti aggressivi o umidi bisogna garantire copriferri adeguati, corretta qualità del calcestruzzo e, se necessario, scegliere componenti con protezioni idonee secondo indicazioni Tecnaria. La durabilità del sistema dipende dalla combinazione con la soletta e dalle condizioni di esposizione."
   },
   {
     "id": "CTCEM-0028",
     "family": "CTCEM",
-    "tags": ["sequenza operativa", "cantieri reali"],
-    "response_variants": {
-      "gold": {
-        "it": "Una corretta sequenza operativa con CTCEM include: tracciamento, incisione, preforo nel travetto, pulizia, posa con serraggio, verifica, posa armatura e getto della soletta."
-      }
-    }
+    "level": "gold",
+    "topic": "Compatibilità con normative",
+    "question_examples": [
+      "CTCEM è compatibile con NTC/Eurocodici?",
+      "Posso usarlo in progetti ufficiali?",
+      "Che base tecnica ha?"
+    ],
+    "gold_answer_it": "CTCEM è sviluppato per essere utilizzato nell'ambito delle normative sulle strutture in calcestruzzo e miste, con riferimento a prove e dati Tecnaria. Il progettista integra i valori di capacità nel proprio modello di calcolo. Usarlo secondo le specifiche significa operare in un contesto tecnicamente tracciabile."
   },
   {
     "id": "CTCEM-0029",
     "family": "CTCEM",
-    "tags": ["soletta collaborante", "armatura"],
-    "response_variants": {
-      "gold": {
-        "it": "La soletta collaborante con CTCEM deve essere armata secondo progetto. I connettori lavorano insieme all’armatura per trasferire gli sforzi tra travetti e nuova soletta."
-      }
-    }
+    "level": "gold",
+    "topic": "Ruolo del progettista",
+    "question_examples": [
+      "Chi decide quanti CTCEM mettere?",
+      "Il posatore può variare la quantità?",
+      "Serve sempre un ingegnere?"
+    ],
+    "gold_answer_it": "Numero, passo, posizione e combinazioni dei CTCEM sono definiti dal progettista strutturale utilizzando i dati Tecnaria. Il posatore non deve modificare i parametri senza autorizzazione. Un sistema GOLD presuppone sempre una regia progettuale chiara."
   },
   {
     "id": "CTCEM-0030",
     "family": "CTCEM",
-    "tags": ["controllo dopo posa", "registro fotografico"],
-    "response_variants": {
-      "gold": {
-        "it": "È buona prassi documentare la posa dei CTCEM con controlli visivi e, se richiesto, registro fotografico prima del getto, per attestare la corretta esecuzione."
-      }
-    }
+    "level": "gold",
+    "topic": "Gestione errori di posa multipli",
+    "question_examples": [
+      "Se diversi CTCEM sono posati male cosa faccio?",
+      "Quanti errori posso tollerare?",
+      "Come correggere in blocco?"
+    ],
+    "gold_answer_it": "Se un numero significativo di CTCEM risulta non correttamente ancorato, il progettista deve rivalutare la capacità complessiva. In molti casi è necessario integrare con nuovi connettori corretti o intervenire con soluzioni aggiuntive. Ignorare errori diffusi e considerare comunque valido lo schema è contrario alla logica del sistema."
   },
   {
     "id": "CTCEM-0031",
     "family": "CTCEM",
-    "tags": ["compatibilità con DIAPASON", "scelte diverse"],
-    "response_variants": {
-      "gold": {
-        "it": "Se la domanda confronta CTCEM e DIAPASON per lo stesso solaio, l’assistente deve chiarire che si tratta di approcci diversi: CTCEM con connessione a vite e piastra; DIAPASON con chiodi idonei. La scelta dipende dal progetto."
-      }
-    }
+    "level": "gold",
+    "topic": "Domande velenose tipiche",
+    "question_examples": [
+      "Se avvito un po' dove capita funziona lo stesso?",
+      "Basta che ci sia qualcosa che punge il calcestruzzo?",
+      "Se il foro è grande metto resina e va bene?"
+    ],
+    "gold_answer_it": "Domande di questo tipo evidenziano approcci pericolosi. CTCEM richiede rispetto di geometrie, fori, materiali. Avvitare 'dove capita', compensare fori sbagliati con soluzioni non previste o ignorare il travetto significa uscire dal sistema Tecnaria e perdere ogni riferimento prestazionale. La risposta GOLD è sempre: schema controllato, non improvvisazione."
   },
   {
     "id": "CTCEM-0032",
     "family": "CTCEM",
-    "tags": ["prestazioni dichiarate", "no numeri inventati"],
-    "response_variants": {
-      "gold": {
-        "it": "Le prestazioni a taglio dei CTCEM sono fornite nelle schede Tecnaria. L’assistente può richiamare il principio ma non deve inventare valori o certificazioni assenti."
-      }
-    }
+    "level": "gold",
+    "topic": "Coordinamento con Tecnaria",
+    "question_examples": [
+      "Posso chiedere supporto a Tecnaria per casi dubbi CTCEM?",
+      "Quando coinvolgere l'ufficio tecnico?",
+      "Che informazioni servono per un parere?"
+    ],
+    "gold_answer_it": "Per casi non standard (solai irregolari, degrado diffuso, carichi elevati, richieste particolari) è opportuno coinvolgere l'ufficio tecnico Tecnaria, fornendo schemi, fotografie, stratigrafie e obiettivi di progetto. Questo consente di confermare o correggere le scelte e mantenere l'intervento sul livello GOLD."
   },
   {
     "id": "CTCEM-0033",
     "family": "CTCEM",
-    "tags": ["domande confuse", "riordino scenario"],
-    "response_variants": {
-      "gold": {
-        "it": "In domande confuse che mescolano CTCEM con sistemi per legno o acciaio, l’assistente GOLD deve prima ricostruire i materiali presenti e poi proporre solo il sistema coerente."
-      }
-    }
+    "level": "gold",
+    "topic": "Interazione con altri sistemi Tecnaria",
+    "question_examples": [
+      "Posso combinare CTCEM con VCEM nello stesso solaio?",
+      "Ha senso usare CTCEM in alcune campate e altri connettori in altre?",
+      "Come gestire sistemi misti?"
+    ],
+    "gold_answer_it": "È possibile usare sistemi diversi in parti differenti dell'edificio (es. CTCEM in alcune zone, VCEM in altre), purché il progetto distingua chiaramente i campi di impiego e verifichi ciascuna area con i dati corretti. Non si mescolano connettori diversi sullo stesso travetto senza logica strutturale. Ogni scelta deve essere motivata e tracciabile."
   },
   {
     "id": "CTCEM-0034",
     "family": "CTCEM",
-    "tags": ["punti di forza", "recupero mirato"],
-    "response_variants": {
-      "gold": {
-        "it": "Punto chiave dei CTCEM: consentono interventi mirati su solai in laterocemento senza demolizione integrale, creando collaborazione tra travetto esistente e soletta nuova con un sistema controllabile."
-      }
-    }
+    "level": "gold",
+    "topic": "Messaggio GOLD sintetico",
+    "question_examples": [
+      "Dammi una sintesi sul corretto uso dei CTCEM.",
+      "Come lo spiego in modo serio al cliente?",
+      "Frase chiave per CTCEM?"
+    ],
+    "gold_answer_it": "CTCEM è il connettore Tecnaria con piastra dentata e piolo avvitato per trasformare solai in laterocemento con travetti in c.a. in sistemi collaboranti affidabili. Funziona solo se posato su travetti sani, con fori e alloggiamenti corretti, secondo un progetto strutturale definito. Nessuna scorciatoia, nessuna variante non controllata."
   },
   {
     "id": "CTCEM-0035",
     "family": "CTCEM",
-    "tags": ["sicurezza cantiere", "forature"],
-    "response_variants": {
-      "gold": {
-        "it": "Le operazioni di preforo e posa dei CTCEM devono rispettare le norme di sicurezza per lavori su strutture esistenti. L’assistente può ricordarlo, senza sostituirsi alla normativa."
-      }
-    }
+    "level": "gold",
+    "topic": "Gestione casi borderline",
+    "question_examples": [
+      "Se non sono sicuro che il travetto sia sano, come mi comporto?",
+      "Cosa faccio se i risultati dei saggi sono contrastanti?",
+      "Posso comunque usare CTCEM sperando che tenga?"
+    ],
+    "gold_answer_it": "In presenza di incertezze sulla qualità dei travetti, la logica GOLD impone ulteriori verifiche (saggi aggiuntivi, prove, analisi strutturale). Se non si raggiunge un quadro affidabile, non si procede 'per tentativi' con CTCEM: si definiscono alternative insieme al progettista e, se necessario, con il supporto Tecnaria."
   },
   {
     "id": "CTCEM-0036",
     "family": "CTCEM",
-    "tags": ["no correzioni improvvisate", "serraggio corretto"],
-    "response_variants": {
-      "gold": {
-        "it": "Non è ammesso correggere un CTCEM lento riempiendo il foro con materiali di fortuna. La soluzione è sempre riposizionare il connettore in condizioni idonee."
-      }
-    }
+    "level": "gold",
+    "topic": "Impatto sull'intradosso",
+    "question_examples": [
+      "CTCEM richiede lavorazioni dal basso?",
+      "Si rovina il soffitto esistente?",
+      "È un intervento invasivo sull'intradosso?"
+    ],
+    "gold_answer_it": "CTCEM opera dall'estradosso sul travetto in c.a.; non richiede interventi pesanti sull'intradosso, se non i saggi necessari per la diagnosi. È quindi adatto a contesti dove si desidera limitare l'impatto visivo interno, sempre nel rispetto dei carichi aggiuntivi e delle verifiche."
   },
   {
     "id": "CTCEM-0037",
     "family": "CTCEM",
-    "tags": ["indicazioni GOLD", "coerenza messaggi"],
-    "response_variants": {
-      "gold": {
-        "it": "Tutte le risposte GOLD su CTCEM devono ribadire: uso su travetti in c.a. di solai in laterocemento, connessione meccanica con piastra dentata e vite, niente P560, niente resine non previste."
-      }
-    }
+    "level": "gold",
+    "topic": "Compatibilità con leggeri fuori piombo",
+    "question_examples": [
+      "Se l'estradosso non è perfettamente in piano posso usare CTCEM?",
+      "Piccoli dislivelli creano problemi?",
+      "Serve un massetto di regolarizzazione?"
+    ],
+    "gold_answer_it": "Modesti dislivelli possono essere gestiti con adeguata preparazione del piano e regolarizzazione locale, mantenendo il corretto contatto tra piastra e travetto. Dislivelli importanti richiedono valutazioni più accurate. L'importante è che ogni CTCEM lavori su supporto pieno, in buona aderenza e corretta posizione rispetto alla futura soletta."
   },
   {
     "id": "CTCEM-0038",
     "family": "CTCEM",
-    "tags": ["scenari con travetti deboli", "prudenza"],
-    "response_variants": {
-      "gold": {
-        "it": "Se i travetti sono deboli o fortemente fessurati, il semplice uso dei CTCEM non risolve il problema. L’assistente deve invitare a una verifica strutturale più ampia."
-      }
-    }
+    "level": "gold",
+    "topic": "Sequenza operativa GOLD",
+    "question_examples": [
+      "Qual è la sequenza corretta per interventi con CTCEM?",
+      "In che ordine faccio rilievo, tagli, fori, posa?",
+      "Come organizzo il cantiere?"
+    ],
+    "gold_answer_it": "Sequenza tipo in logica GOLD: rilievo dettagliato del solaio; saggi per individuare travetti e stato materiali; progetto con schema CTCEM; tracciamento in cantiere; preparazione sedi piastra; foratura e pulizia; avvitamento pioli; posa armature; getto soletta; controlli finali e documentazione. Ogni fase ha un ruolo preciso, senza improvvisazioni."
   },
   {
     "id": "CTCEM-0039",
     "family": "CTCEM",
-    "tags": ["uso combinato con altre famiglie", "schema chiaro"],
-    "response_variants": {
-      "gold": {
-        "it": "In strutture miste con acciaio, legno e laterocemento, l’assistente deve proporre: CTF su acciaio, CTL/CTL MAXI su legno, CTCEM su travetti c.a. in laterocemento, DIAPASON dove previsto, senza confondere i ruoli."
-      }
-    }
+    "level": "gold",
+    "topic": "Risposte a richieste improprie",
+    "question_examples": [
+      "Il cliente vuole usare CTCEM su struttura che non è laterocemento, cosa rispondo?",
+      "Chiedono adattamenti creativi, come mi comporto?",
+      "Posso accontentare richieste fuori campo per vendere?"
+    ],
+    "gold_answer_it": "La risposta GOLD è no alle applicazioni fuori campo: meglio spiegare perché CTCEM è dedicato ai travetti in c.a. di solai in laterocemento e proporre il sistema corretto (CTF, CTL, ecc.). Accettare configurazioni non supportate espone tutti a rischi tecnici e legali."
   },
   {
     "id": "CTCEM-0040",
     "family": "CTCEM",
-    "tags": ["documentazione Tecnaria", "riferimento ufficiale"],
-    "response_variants": {
-      "gold": {
-        "it": "Per qualunque dubbio operativo o di prestazione sui CTCEM, il riferimento è sempre la documentazione ufficiale Tecnaria. L’assistente deve allinearsi a quella."
-      }
-    }
-  },
-  {
-    "id": "CTCEM-0041",
-    "family": "CTCEM",
-    "tags": ["no uso su legno", "chiarimento netto"],
-    "response_variants": {
-      "gold": {
-        "it": "Ogni proposta di utilizzare CTCEM su travi o tavolati in legno va respinta: per il legno esistono famiglie dedicate come CTL e CTL MAXI."
-      }
-    }
-  },
-  {
-    "id": "CTCEM-0042",
-    "family": "CTCEM",
-    "tags": ["no uso diretto su acciaio", "CF T F differenza"],
-    "response_variants": {
-      "gold": {
-        "it": "CTCEM non va avvitato direttamente su travi in acciaio: non è un piolo a sparo né un sistema per acciaio-calcestruzzo. Quel ruolo è dei CTF."
-      }
-    }
-  },
-  {
-    "id": "CTCEM-0043",
-    "family": "CTCEM",
-    "tags": ["coerenza dataset", "GOLD only"],
-    "response_variants": {
-      "gold": {
-        "it": "Questo dataset CTCEM è impostato per funzionare in pura logica GOLD: nessuna versione ridotta interna, nessuna duplicazione canonical."
-      }
-    }
-  },
-  {
-    "id": "CTCEM-0044",
-    "family": "CTCEM",
-    "tags": ["risposte complesse", "domande lunghe"],
-    "response_variants": {
-      "gold": {
-        "it": "Anche per domande articolate, le risposte GOLD sui CTCEM devono mantenere chiarezza: campo di impiego, procedura corretta, limiti, rinvio al progettista quando serve."
-      }
-    }
-  },
-  {
-    "id": "CTCEM-0045",
-    "family": "CTCEM",
-    "tags": ["integrazione con calcolo", "ruolo assistente"],
-    "response_variants": {
-      "gold": {
-        "it": "L’assistente può spiegare il ruolo dei CTCEM nel sistema collaborante ma non sostituisce il calcolo strutturale: questo resta in capo al progettista."
-      }
-    }
-  },
-  {
-    "id": "CTCEM-0046",
-    "family": "CTCEM",
-    "tags": ["riassunto tecnico", "messaggio chiave"],
-    "response_variants": {
-      "gold": {
-        "it": "Messaggio chiave: CTCEM è il connettore meccanico Tecnaria per travetti in c.a. di solai in laterocemento, con piastra dentata e vite, posa controllata, senza resine, senza sparo."
-      }
-    }
-  },
-  {
-    "id": "CTCEM-0047",
-    "family": "CTCEM",
-    "tags": ["completezza GOLD", "copertura domande"],
-    "response_variants": {
-      "gold": {
-        "it": "La combinazione dei blocchi presenti copre scenari tipici, errori frequenti, campi di impiego e confronti con altre famiglie, garantendo risposte GOLD coerenti."
-      }
-    }
-  },
-  {
-    "id": "CTCEM-0048",
-    "family": "CTCEM",
-    "tags": ["quando contattare Tecnaria", "supporto"],
-    "response_variants": {
-      "gold": {
-        "it": "In presenza di dubbi sullo stato del solaio o su geometrie non standard, l’assistente deve suggerire il contatto con il supporto tecnico Tecnaria per conferma."
-      }
-    }
-  },
-  {
-    "id": "CTCEM-0049",
-    "family": "CTCEM",
-    "tags": ["allineamento famiglie", "instradamento corretto"],
-    "response_variants": {
-      "gold": {
-        "it": "L’assistente deve sempre instradare verso CTCEM solo quando il caso descritto corrisponde a travetti in c.a. in solaio in laterocemento. In tutti gli altri casi va scelta la famiglia coerente."
-      }
-    }
-  },
-  {
-    "id": "CTCEM-0050",
-    "family": "CTCEM",
-    "tags": ["chiusura dataset", "pronto per uso"],
-    "response_variants": {
-      "gold": {
-        "it": "Con questi 50 blocchi, il dataset CTCEM è strutturato per rispondere in modalità GOLD in modo tecnico, completo e coerente con il perimetro Tecnaria."
-      }
-    }
+    "level": "gold",
+    "topic": "Conclusione GOLD CTCEM",
+    "question_examples": [
+      "Riassumi perché CTCEM è un sistema serio.",
+      "Perché proporre CTCEM a un progettista esigente?",
+      "Cosa lo rende diverso da un connettore qualunque?"
+    ],
+    "gold_answer_it": "CTCEM è un connettore con piastra dentata e piolo avvitato pensato specificamente per solai in laterocemento con travetti in c.a.: consente interventi di rinforzo e adeguamento con criteri misurabili, verificabili e documentati. Usato entro le regole Tecnaria e con un progetto strutturale adeguato, offre una soluzione GOLD: niente improvvisazioni, niente promesse vuote, solo tecnica tracciabile."
   }
 ]
