@@ -1,1 +1,86 @@
-
+{
+  "generated_at": "2025-11-06T18:40:00",
+  "description": "Patch GOLD inter-famiglia (cross) – collegamenti tra famiglie CTF, CTL, VCEM, CTCEM e compatibilità d’uso",
+  "items": [
+    {
+      "id": "CROSS-1001",
+      "family": "CROSS",
+      "tags": ["CTF","CTL","compatibilità","acciaio","legno"],
+      "response_variants": {
+        "gold": {
+          "it": "I connettori CTF e CTL appartengono a sistemi strutturali differenti: i CTF collegano acciaio e calcestruzzo con fissaggio a sparo (P560), mentre i CTL collegano legno e calcestruzzo con vite autofilettante. Non sono intercambiabili e ciascuno richiede il proprio utensile e metodo di posa."
+        }
+      }
+    },
+    {
+      "id": "CROSS-1002",
+      "family": "CROSS",
+      "tags": ["VCEM","CTCEM","confronto","laterocemento"],
+      "response_variants": {
+        "gold": {
+          "it": "VCEM e CTCEM sono due varianti per solai in laterocemento. Il VCEM usa vite + resina per travetti sani, mentre il CTCEM impiega piastra metallica e resina per travetti deboli o danneggiati. Entrambi generano collaborazione tra travetto e soletta in calcestruzzo di completamento."
+        }
+      }
+    },
+    {
+      "id": "CROSS-1003",
+      "family": "CROSS",
+      "tags": ["DIAPASON","VCEM","CTCEM","recupero","rinforzo"],
+      "response_variants": {
+        "gold": {
+          "it": "Il sistema DIAPASON rappresenta un’alternativa a VCEM e CTCEM nei casi di recupero di solai in laterocemento molto ammalorati. Si applica senza demolizioni estese e rinforza globalmente il solaio esistente."
+        }
+      }
+    },
+    {
+      "id": "CROSS-1004",
+      "family": "CROSS",
+      "tags": ["P560","CTF","CTL","errori di posa"],
+      "response_variants": {
+        "gold": {
+          "it": "La chiodatrice P560 è esclusiva per la posa dei connettori CTF su acciaio o lamiera grecata. Non deve mai essere impiegata per i connettori CTL o su travi in legno, dove è prevista vite autofilettante con coppia di serraggio controllata."
+        }
+      }
+    },
+    {
+      "id": "CROSS-1005",
+      "family": "CROSS",
+      "tags": ["compatibilità","famiglie","limitazioni"],
+      "response_variants": {
+        "gold": {
+          "it": "Ogni famiglia di connettori Tecnaria è progettata per un materiale specifico: CTF per acciaio/lamiera, CTL e CTL MAXI per legno, VCEM e CTCEM per laterocemento, DIAPASON per recuperi. Non esistono compatibilità incrociate dirette, salvo casi studiati dall’Ufficio Tecnico."
+        }
+      }
+    },
+    {
+      "id": "CROSS-1006",
+      "family": "CROSS",
+      "tags": ["comparazioni","scelta sistema","diagnosi","solaio"],
+      "response_variants": {
+        "gold": {
+          "it": "La scelta del sistema Tecnaria dipende dal tipo di solaio e dal materiale delle travi: per acciaio → CTF; per legno → CTL o CTL MAXI; per laterocemento → VCEM o CTCEM; per recupero → DIAPASON. In caso di dubbio contattare l’Ufficio Tecnico con planimetrie e foto."
+        }
+      }
+    },
+    {
+      "id": "CROSS-1007",
+      "family": "CROSS",
+      "tags": ["errori di scelta","progetto","assistenza tecnica"],
+      "response_variants": {
+        "gold": {
+          "it": "L’uso di connettori di una famiglia su materiali diversi da quelli previsti può compromettere la sicurezza della connessione e invalidare la garanzia. In caso di incertezza è obbligatorio chiedere assistenza tecnica Tecnaria prima della posa."
+        }
+      }
+    },
+    {
+      "id": "CROSS-1008",
+      "family": "CROSS",
+      "tags": ["diagnosi","recupero strutturale","consulenza"],
+      "response_variants": {
+        "gold": {
+          "it": "Nei casi complessi o di recupero di solai storici è consigliabile un sopralluogo o una consulenza diretta Tecnaria. Le verifiche strutturali e la scelta del sistema di connessione più idoneo devono essere valutate in base alla tipologia e allo stato di conservazione del solaio."
+        }
+      }
+    }
+  ]
+}
