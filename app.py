@@ -1,688 +1,288 @@
 import os
 import json
 import re
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Tuple, Optional
+from fastapi import FastAPI, Body
+from fastapi.responses import JSONResponse
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+# === Config ===
+# Percorsi di default: possono essere sovrascritti da config.runtime.json
+DEFAULT_CONFIG = {
+    "gold_mode": True,
+    "data_paths": {
+        "index": "static/data/index_tecnaria.json",
+        "router": "static/data/overlays/tecnaria_router_gold.json",
+        "gold_content": "static/data/patches/tecnaria_gold_consolidato.json",
+        "tests": {
+            "must_pass": "static/data/tests/must_pass.json",
+            "smoke_200": "static/data/tests/smoke_200.json",
+            "expected_patterns": "static/data/tests/expected_patterns.json"
+        }
+    },
+    "routing": {
+        "normalize": {"lowercase": True, "strip_accents": True, "collapse_spaces": True},
+        "fallback_family": "COMM",
+        "fallback_id": "COMM-CANALE-CORE-001"
+    },
+    "terminologia": {
+        "vietati": ["perni"],
+        "obbligatori": {
+            "CTF": ["P560", "chiodi idonei Tecnaria"]
+        }
+    }
+}
 
-# =========================================================
-# CONFIG DI BASE
-# =========================================================
+CONFIG_PATH = os.environ.get(
+    "TECNARIA_CONFIG",
+    os.path.join("static", "data", "config.runtime.json")
+)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "static", "data")
+app = FastAPI(title="Tecnaria Sinapsi – GOLD")
 
-DEFAULT_FAMILIES = [
-    "COMM",
-    "CTF",
-    "VCEM",
-    "CTCEM",
-    "CTL",
-    "CTL_MAXI",
-    "DIAPASON",
-    "P560",
-]
+# === Stato in memoria ===
+class State:
+    config: Dict[str, Any] = {}
+    index: List[Dict[str, Any]] = []
+    router_rules: List[Dict[str, Any]] = []
+    items: Dict[str, Dict[str, Any]] = {}  # by id
+    items_by_family: Dict[str, List[Dict[str, Any]]] = {}
 
-app = FastAPI()
+S = State()
 
-# monta static se esiste
-static_path = os.path.join(BASE_DIR, "static")
-if os.path.isdir(static_path):
-    app.mount("/static", StaticFiles(directory=static_path), name="static")
+# === Utils ===
+def load_json(path: str) -> Any:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-# modalità runtime:
-# - "gold" = sempre GOLD salvo override a domanda
-# - "canonical" = sempre sintetico salvo override
-runtime_mode = "gold"
+def strip_accents(s: str) -> str:
+    # quick & robust without external deps
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
 
-kb: Dict[str, List[Dict[str, Any]]] = {}
-config_runtime: Dict[str, Any] = {}
+def normalize_text(s: str, policy: Dict[str, Any]) -> str:
+    t = s or ""
+    if policy.get("strip_accents", True):
+        t = strip_accents(t)
+    if policy.get("lowercase", True):
+        t = t.lower()
+    if policy.get("collapse_spaces", True):
+        t = re.sub(r"\s+", " ", t).strip()
+    return t
 
+def ensure_list_items(payload: Any) -> List[Dict[str, Any]]:
+    """Accetta sia {"items":[...]} che una lista di oggetti."""
+    if isinstance(payload, dict) and "items" in payload and isinstance(payload["items"], list):
+        return payload["items"]
+    if isinstance(payload, list):
+        return payload
+    return []
 
-# =========================================================
-# UTILITA'
-# =========================================================
+def build_items_index(items: List[Dict[str, Any]]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, List[Dict[str, Any]]]]:
+    by_id = {}
+    by_family = {}
+    for it in items:
+        _id = it.get("id")
+        fam = it.get("family", "COMM")
+        if not _id:
+            continue
+        by_id[_id] = it
+        by_family.setdefault(fam, []).append(it)
+    return by_id, by_family
 
-def load_json(path: str) -> Optional[Any]:
-    if not os.path.isfile(path):
-        return None
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return None
+def match_any_substring(text_norm: str, patterns: List[str], policy: Dict[str, Any]) -> bool:
+    for p in patterns:
+        if normalize_text(p, policy) in text_norm:
+            return True
+    return False
 
-
-def detect_language(text: str) -> str:
+def find_by_triggers(q_norm: str, family_hint: Optional[str]) -> Optional[Dict[str, Any]]:
     """
-    Euristica leggerissima, serve solo come meta-informazione.
-    Non influenza la scelta dei contenuti (che sono in IT).
+    Se abbiamo un 'family_hint' cerchiamo prima dentro quella family.
+    Altrimenti cerchiamo globalmente l'item con triggers_brevi che matchano q_norm.
     """
-    t = text.lower()
-    if re.search(r"\b(the |can |use |with |on |steel|concrete)\b", t):
-        return "en"
-    if re.search(r"[àèéìòù]", t) or "soletta" in t or "solaio" in t:
-        return "it"
-    if "¿" in t or "qué" in t or "conectores" in t:
-        return "es"
-    if "quelle" in t or "plancher" in t or "béton" in t:
-        return "fr"
-    if "welche" in t or "verbinder" in t or "beton" in t:
-        return "de"
-    return "it"
-
-
-def normalize(text: str) -> str:
-    return re.sub(r"\s+", " ", (text or "")).strip()
-
-
-def text_from_block(block: Dict[str, Any]) -> str:
-    """
-    Testo totale del blocco per fare matching.
-    Usa solo i campi previsti, NON inventa niente.
-    """
-    parts = []
-    for key in [
-        "question",
-        "canonical",
-        "answer",
-        "answer_it",
-        "gold",
-        "note",
-        "notes",
-    ]:
-        v = block.get(key)
-        if isinstance(v, str):
-            parts.append(v)
-
-    rv = block.get("response_variants")
-    if isinstance(rv, dict):
-        for v in rv.values():
-            if isinstance(v, str):
-                parts.append(v)
-    elif isinstance(rv, list):
-        for v in rv:
-            if isinstance(v, str):
-                parts.append(v)
-
-    return normalize(" ".join(parts))
-
-
-def score_block(query: str, block: Dict[str, Any]) -> float:
-    """
-    Scoring semplice a parole chiave.
-    Serve SOLO per scegliere il blocco migliore tra quelli GIUSTI.
-    """
-    qt = re.findall(r"\w+", query.lower())
-    bt = text_from_block(block).lower()
-    if not bt:
-        return 0.0
-
-    q_terms = [w for w in qt if len(w) > 2]
-    if not q_terms:
-        return 0.0
-
-    score = 0.0
-    for w in set(q_terms):
-        if w in bt:
-            score += 1.0
-
-    fam = block.get("family") or block.get("famiglia")
-    if isinstance(fam, str) and fam.lower() in bt:
-        score += 0.5
-
-    return float(score)
-
-
-def pick_family_from_question(question: str) -> Optional[str]:
-    """
-    Instradamento grezzo per famiglia in base al testo domanda.
-    """
-    q = question.lower()
-    if "ctf" in q:
-        return "CTF"
-    if "v-cem" in q or "vcem" in q:
-        return "VCEM"
-    if "ctcem" in q:
-        return "CTCEM"
-    if "ctl maxi" in q or "maxi" in q:
-        return "CTL_MAXI"
-    if "ctl" in q:
-        return "CTL"
-    if "diapason" in q:
-        return "DIAPASON"
-    if "p560" in q:
-        return "P560"
-    if "commercial" in q or "contatto" in q or "supporto" in q or "assistenza" in q:
-        return "COMM"
+    search_families = [family_hint] if family_hint else list(S.items_by_family.keys())
+    for fam in search_families:
+        for it in S.items_by_family.get(fam, []):
+            triggers = it.get("triggers_brevi", [])
+            if not isinstance(triggers, list): 
+                continue
+            if any(normalize_text(t, S.config["routing"]["normalize"]) in q_norm for t in triggers):
+                return it
+    # fallback: cerca ovunque
+    for it in S.items.values():
+        triggers = it.get("triggers_brevi", [])
+        if not isinstance(triggers, list):
+            continue
+        if any(normalize_text(t, S.config["routing"]["normalize"]) in q_norm for t in triggers):
+            return it
     return None
 
-
-def load_kb() -> None:
+def route_query(q: str) -> Tuple[str, str]:
     """
-    Carica tutti i JSON definiti in config.runtime.json (se esiste)
-    o in DEFAULT_FAMILIES.
-    Ogni item viene normalizzato con campo "family".
+    Ordine: Router (regole prioritarie) -> Index (intents/patterns) -> triggers_brevi -> Fallback.
+    Ritorna (family, id).
     """
-    global kb, config_runtime
+    policy = S.config["routing"]["normalize"]
+    qn = normalize_text(q, policy)
 
-    cfg_path = os.path.join(DATA_DIR, "config.runtime.json")
-    cfg = load_json(cfg_path)
-    if isinstance(cfg, dict):
-        config_runtime = cfg
+    # 1) Router: regole ordinate per priority desc
+    rules = sorted(S.router_rules, key=lambda r: r.get("priority", 0), reverse=True)
+    for r in rules:
+        pats = r.get("if_text_matches_any", [])
+        if match_any_substring(qn, pats, policy):
+            route_to = r.get("route_to") or {}
+            fam = route_to.get("family")
+            _id = route_to.get("id")
+            if fam and _id:
+                return fam, _id
+            # stop_on_match senza route_to definita -> ignora
+            if r.get("stop_on_match", False):
+                break
+
+    # 2) Index: intents con patterns
+    intents = sorted(S.index, key=lambda x: x.get("priority", 0), reverse=True)
+    for it in intents:
+        pats = it.get("patterns", [])
+        if match_any_substring(qn, pats, policy):
+            route_to = it.get("route") or {}
+            fam = route_to.get("family")
+            _id = route_to.get("id")
+            if fam and _id:
+                return fam, _id
+
+    # 3) triggers_brevi: se l’utente ha scritto una cosa vicina ai triggers
+    hit = find_by_triggers(qn, family_hint=None)
+    if hit:
+        return hit.get("family", S.config["routing"]["fallback_family"]), hit.get("id", S.config["routing"]["fallback_id"])
+
+    # 4) Fallback
+    return S.config["routing"]["fallback_family"], S.config["routing"]["fallback_id"]
+
+def pick_gold_answer(item: Dict[str, Any]) -> str:
+    rv = item.get("response_variants", {})
+    gold = rv.get("gold", {})
+    # lingua IT obbligatoria per noi
+    txt = gold.get("it") or ""
+    return txt
+
+def enforce_terminology(family: str, txt: str) -> str:
+    # vietati
+    for v in S.config.get("terminologia", {}).get("vietati", []):
+        # se compare il termine vietato, lo “neutralizziamo” (opzionale: sostituire/omissis)
+        txt = re.sub(rf"\b{re.escape(v)}\b", "[termine-non-ammesso]", txt, flags=re.IGNORECASE)
+
+    # obbligatori per famiglia (si assicura che compaiano almeno una volta)
+    obbl = S.config.get("terminologia", {}).get("obbligatori", {}).get(family, [])
+    for req in obbl:
+        if req.lower() not in txt.lower():
+            # Aggiungi una riga nota tecnica in coda
+            txt += f"\n\nNota tecnica: requisito terminologico — {req}."
+    return txt
+
+def load_all() -> Dict[str, str]:
+    # 1) config
+    conf = DEFAULT_CONFIG.copy()
+    try:
+        if os.path.exists(CONFIG_PATH):
+            disk = load_json(CONFIG_PATH)
+            # merge shallow per semplicità
+            conf.update(disk)
+            # merge sub-dict noti
+            for k in ("data_paths", "routing", "terminologia"):
+                if k in disk and isinstance(disk[k], dict):
+                    conf[k].update(disk[k])
+    except Exception as e:
+        print(f"[WARN] config.runtime.json non letto: {e}. Uso DEFAULT_CONFIG.")
+    S.config = conf
+
+    # 2) index
+    idx_path = conf["data_paths"]["index"]
+    S.index = []
+    if os.path.exists(idx_path):
+        payload = load_json(idx_path)
+        S.index = payload if isinstance(payload, list) else payload.get("intents", [])
     else:
-        config_runtime = {
-            "mode_default": "gold",
-            "families": DEFAULT_FAMILIES,
-        }
+        print(f"[WARN] index non trovato: {idx_path}")
 
-    fams = config_runtime.get("families") or DEFAULT_FAMILIES
-
-    loaded: Dict[str, List[Dict[str, Any]]] = {}
-
-    for fam in fams:
-        name = f"{fam}.json"
-        path = os.path.join(DATA_DIR, name)
-        data = load_json(path)
-
-        items_norm: List[Dict[str, Any]] = []
-
-        if isinstance(data, list):
-            src_items = data
-        elif isinstance(data, dict) and "items" in data:
-            src_items = data.get("items") or []
-        else:
-            src_items = []
-
-        for item in src_items:
-            if not isinstance(item, dict):
-                continue
-            if "family" not in item:
-                item["family"] = fam
-            items_norm.append(item)
-
-        loaded[fam] = items_norm
-
-    kb = loaded
-
-
-load_kb()
-
-
-# =========================================================
-# COSTRUZIONE RISPOSTE
-# =========================================================
-
-def extract_gold_answer(block: Dict[str, Any], family: str, question: str) -> str:
-    """
-    GOLD = prende il contenuto più ricco e completo disponibile:
-    - campi 'gold' / 'answer_gold' se presenti
-    - altrimenti 'response_variants'
-    - altrimenti 'answer_it' / 'canonical' / 'answer'
-    + applica regole tecniche obbligatorie (es. P560 su CTF se si parla di chiodatrice).
-    """
-    candidates: List[str] = []
-
-    # 1. espliciti GOLD
-    for key in ["gold", "answer_gold"]:
-        v = block.get(key)
-        if isinstance(v, str) and v.strip():
-            candidates.append(v.strip())
-
-    # 2. varianti
-    rv = block.get("response_variants")
-    if isinstance(rv, dict):
-        for v in rv.values():
-            if isinstance(v, str) and v.strip():
-                candidates.append(v.strip())
-    elif isinstance(rv, list):
-        for v in rv:
-            if isinstance(v, str) and v.strip():
-                candidates.append(v.strip())
-
-    # 3. fallback standard
-    for key in ["answer_it", "canonical", "answer"]:
-        v = block.get(key)
-        if isinstance(v, str) and v.strip():
-            candidates.append(v.strip())
-
-    if not candidates:
-        return ""
-
-    # scegli la più completa (più lunga)
-    answer = max(candidates, key=len)
-
-    # Regola dura: CTF + tema chiodatrice/P560 → menziona obbligatoriamente P560
-    q_low = question.lower()
-    if family == "CTF":
-        if any(w in q_low for w in ["p560", "chiodatrice", "sparo", "powder", "pistola"]):
-            if "p560" not in answer.lower():
-                answer = (
-                    answer.rstrip(". ")
-                    + " Il sistema CTF è certificato esclusivamente con chiodatrice a polvere P560 Tecnaria "
-                      "e chiodi idonei Tecnaria; l’uso di utensili diversi non rientra nel perimetro tecnico certificato."
-                )
-
-    return normalize(answer)
-
-
-def extract_canonical_answer(block: Dict[str, Any]) -> str:
-    """
-    CANONICO = versione sintetica tecnica.
-    Usata SOLO se l’utente chiede CANONICO: o se la modalità runtime è canonical.
-    """
-    for key in ["canonical", "answer_it", "answer"]:
-        v = block.get(key)
-        if isinstance(v, str) and v.strip():
-            return normalize(v)
-
-    rv = block.get("response_variants")
-    if isinstance(rv, dict):
-        # se ci sono chiavi tipo 'short', 'synth', ecc.
-        for k, v in rv.items():
-            if isinstance(v, str) and v.strip() and any(
-                token in k.lower() for token in ["short", "synth", "brief"]
-            ):
-                return normalize(v)
-
-    return ""
-
-
-def build_answer(question: str, mode: str) -> Dict[str, Any]:
-    """
-    Core Q/A:
-    - legge prefissi GOLD:/CANONICO:
-    - sceglie famiglia (se possibile)
-    - fa retrieval sui JSON
-    - costruisce risposta GOLD o CANONICO
-    - fallback sicuro se non trova niente di affidabile.
-    """
-    q = normalize(question)
-    if not q:
-        return {
-            "ok": False,
-            "error": "Domanda vuota.",
-        }
-
-    # override esplicito
-    override_mode = None
-    if q.lower().startswith("gold:"):
-        override_mode = "gold"
-        q = q[5:].strip()
-    elif q.lower().startswith("canonico:") or q.lower().startswith("canonical:"):
-        override_mode = "canonical"
-        q = re.sub(r"^(canonico:|canonical:)\s*", "", q, flags=re.IGNORECASE)
-
-    eff_mode = override_mode or mode or "gold"
-
-    lang = detect_language(q)
-    hinted_family = pick_family_from_question(q)
-
-    # famiglie da cercare
-    families_to_search = [hinted_family] if hinted_family else list(kb.keys())
-
-    best_block = None
-    best_score = 0.0
-    best_family = hinted_family
-
-    for fam in families_to_search:
-        items = kb.get(fam) or []
-        for block in items:
-            s = score_block(q, block)
-            if s > best_score:
-                best_score = s
-                best_block = block
-                best_family = fam
-
-    # niente trovato con punteggio > 0
-    if not best_block or best_score <= 0:
-        return {
-            "ok": False,
-            "answer": (
-                "Per questa domanda non trovo una risposta GOLD affidabile nei dati Tecnaria caricati. "
-                "Meglio un confronto diretto con l’ufficio tecnico Tecnaria, indicando tipo di solaio, travi, spessori e vincoli."
-            ),
-            "meta": {
-                "mode_runtime": eff_mode,
-                "detected_lang": lang,
-                "score": round(best_score, 4),
-            },
-        }
-
-    # costruzione risposta
-    if eff_mode == "canonical":
-        answer = extract_canonical_answer(best_block)
-        mode_label = "canonical"
+    # 3) router
+    router_path = conf["data_paths"]["router"]
+    S.router_rules = []
+    if os.path.exists(router_path):
+        payload = load_json(router_path)
+        # accetta sia {"rules":[...]} che lista
+        rules = payload.get("rules") if isinstance(payload, dict) else payload
+        if isinstance(rules, list):
+            S.router_rules = rules
     else:
-        answer = extract_gold_answer(best_block, best_family or "", q)
-        mode_label = "gold"
+        print(f"[WARN] router non trovato: {router_path}")
 
-    if not answer:
-        # blocco esiste ma non ha testo utile
-        answer = (
-            "Esiste un riferimento nei dati Tecnaria su questo tema, ma manca ancora un testo GOLD completo. "
-            "Per evitare errori su un aspetto strutturale, è necessario il supporto diretto dell’ufficio tecnico Tecnaria."
-        )
+    # 4) contenuti GOLD consolidati
+    gold_path = conf["data_paths"]["gold_content"]
+    items_raw = []
+    if os.path.exists(gold_path):
+        payload = load_json(gold_path)
+        items_raw = ensure_list_items(payload)
+    else:
+        print(f"[WARN] gold_content non trovato: {gold_path}")
 
+    S.items, S.items_by_family = build_items_index(items_raw)
+
+    # Log di controllo
     return {
-        "ok": True,
-        "answer": answer,
-        "family": best_family,
-        "id": best_block.get("id"),
-        "meta": {
-            "mode_runtime": mode_label,
-            "detected_lang": lang,
-            "score": round(best_score, 4),
-        },
+        "config": os.path.abspath(CONFIG_PATH),
+        "index": os.path.abspath(idx_path),
+        "router": os.path.abspath(router_path),
+        "gold_content": os.path.abspath(gold_path),
+        "n_index": str(len(S.index)),
+        "n_rules": str(len(S.router_rules)),
+        "n_items": str(len(S.items)),
     }
 
+# === Avvio: carica tutto una volta ===
+LOAD_INFO = load_all()
+print("[BOOT] Caricati file:")
+for k,v in LOAD_INFO.items():
+    print(f"  - {k}: {v}")
 
-# =========================================================
-# ENDPOINTS API
-# =========================================================
+# === API ===
+@app.get("/health")
+def health():
+    return {"status": "ok", "gold_mode": S.config.get("gold_mode", True), "loaded": LOAD_INFO}
 
-@app.get("/api/health")
-def api_health():
-    return {
-        "ok": True,
-        "message": "TECNARIA Sinapsi backend attivo",
-        "mode": runtime_mode,
-        "families": list(kb.keys()),
-    }
-
-
-@app.get("/api/debug/kb_stats")
-def api_kb_stats():
-    fam_stats = {}
-    for fam, items in kb.items():
-        fam_stats[fam] = {"count": len(items)}
-    return {"ok": True, "families": fam_stats}
-
-
-@app.get("/api/config")
-def get_config():
-    return {
-        "ok": True,
-        "mode": runtime_mode,
-        "config_runtime": config_runtime,
-    }
-
-
-@app.post("/api/config")
-async def set_config(req: Request):
-    global runtime_mode
-    data = await req.json()
-    mode = (data.get("mode") or "").lower()
-    if mode in ("gold", "canonical"):
-        runtime_mode = mode
-    return {"ok": True, "mode": runtime_mode}
-
+@app.post("/reload")
+def reload_all():
+    info = load_all()
+    return {"status":"reloaded", "loaded": info}
 
 @app.post("/api/ask")
-async def api_ask(req: Request):
-    data = await req.json()
-    question = data.get("question") or data.get("q") or ""
-    result = build_answer(question, runtime_mode)
-    return JSONResponse(result)
+def ask(payload: Dict[str, Any] = Body(...)):
+    q = payload.get("q") or payload.get("question") or ""
+    lang = payload.get("lang", "it")
+    mode = payload.get("mode", "gold")  # al momento gestiamo solo gold
 
+    fam, _id = route_query(q)
+    item = S.items.get(_id)
+    if not item:
+        # fallback se id mancante: prova a cercare via triggers nella famiglia proposta
+        hit = find_by_triggers(normalize_text(q, S.config["routing"]["normalize"]), fam)
+        if hit:
+            fam = hit.get("family", fam)
+            _id = hit.get("id", _id)
+            item = hit
 
-# =========================================================
-# UI TECNARIA SINAPSI
-# =========================================================
+    if not item:
+        # fallback finale
+        fam = S.config["routing"]["fallback_family"]
+        _id = S.config["routing"]["fallback_id"]
+        item = S.items.get(_id, {"id": _id, "family": fam, "response_variants":{"gold":{"it":"Per questa domanda non trovo una risposta GOLD consolidata."}}})
 
-HTML_UI = """
-<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8" />
-  <title>TECNARIA Sinapsi • GOLD Assistant</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-      display: flex;
-      justify-content: center;
-      padding: 24px;
-    }
-    .app {
-      width: 100%;
-      max-width: 1100px;
-      background: #020817;
-      border-radius: 22px;
-      padding: 24px 24px 18px;
-      box-shadow: 0 18px 45px rgba(0,0,0,0.6);
-      border: 1px solid rgba(148,163,253,0.18);
-    }
-    .header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 12px;
-    }
-    .logo {
-      width: 40px;
-      height: 40px;
-      border-radius: 11px;
-      background: #f97316;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-weight:700;
-      color:#111827;
-      font-size:19px;
-    }
-    .title {
-      font-size: 20px;
-      font-weight: 600;
-      color: #e5e7eb;
-    }
-    .subtitle {
-      font-size: 12px;
-      color: #9ca3af;
-    }
-    .pill {
-      display: inline-flex;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 10px;
-      gap: 6px;
-      align-items: center;
-      background: rgba(79,70,229,0.2);
-      color: #a5b4fc;
-      margin-left: 8px;
-    }
-    .mode-indicator {
-      margin-left: auto;
-      font-size: 10px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: #22c55e22;
-      color: #4ade80;
-      border: 1px solid #22c55e55;
-    }
-    .chat-box {
-      margin-top: 8px;
-      padding: 12px;
-      background: #020817;
-      border-radius: 16px;
-      border: 1px solid #111827;
-      min-height: 220px;
-      max-height: 430px;
-      overflow-y: auto;
-      font-size: 13px;
-    }
-    .line-system {
-      color: #6b7280;
-      font-size: 10px;
-      margin-bottom: 4px;
-    }
-    .line-q {
-      color: #e5e7eb;
-      margin-top: 8px;
-      margin-bottom: 2px;
-    }
-    .line-a {
-      color: #9ca3af;
-      margin-bottom: 6px;
-    }
-    .meta {
-      font-size: 9px;
-      color: #6b7280;
-      margin-bottom: 4px;
-    }
-    .input-row {
-      margin-top: 10px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .input-row input {
-      flex: 1;
-      padding: 9px 10px;
-      border-radius: 999px;
-      border: 1px solid #111827;
-      background: #020817;
-      color: #e5e7eb;
-      font-size: 12px;
-      outline: none;
-    }
-    .input-row button {
-      padding: 8px 14px;
-      border-radius: 999px;
-      border: none;
-      cursor: pointer;
-      font-size: 11px;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: #f97316;
-      color: #111827;
-      font-weight: 600;
-    }
-    .input-row button span {
-      font-size: 14px;
-    }
-    .tips {
-      margin-top: 6px;
-      font-size: 9px;
-      color: #6b7280;
-    }
-    .pills {
-      margin-top: 6px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      font-size: 9px;
-    }
-    .pill-btn {
-      padding: 4px 9px;
-      border-radius: 999px;
-      border: 1px solid #111827;
-      background: #020817;
-      color: #9ca3af;
-      cursor: pointer;
-    }
-    .pill-btn:hover {
-      border-color: #4f46e5;
-      color: #e5e7eb;
-    }
-  </style>
-</head>
-<body>
-  <div class="app">
-    <div class="header">
-      <div class="logo">T</div>
-      <div>
-        <div class="title">TECNARIA Sinapsi</div>
-        <div class="subtitle">
-          Assistente GOLD strutturale • connettori &amp; sistemi misti
-          <span class="pill">Instradamento automatico • CTF • VCEM • CTCEM • CTL • CTL MAXI • DIAPASON • P560</span>
-        </div>
-      </div>
-      <div class="mode-indicator" id="mode-indicator">GOLD attivo</div>
-    </div>
+    answer = pick_gold_answer(item)
+    answer = enforce_terminology(fam, answer)
 
-    <div class="chat-box" id="chat">
-      <div class="line-system">Sistema • init • mode: GOLD</div>
-      <div class="line-a">
-        Benvenuto in Tecnaria Sinapsi. Modalità GOLD attiva: fai domande reali di cantiere o progetto
-        (CTF, VCEM, CTCEM, CTL, CTL MAXI, DIAPASON, P560). Se scrivi <b>CANONICO:</b> prima della domanda,
-        la risposta sarà più sintetica e tecnica.
-      </div>
-    </div>
-
-    <div class="input-row">
-      <input id="q" placeholder="Scrivi la tua domanda (es. 'Dove posso usare i connettori CTF?')" />
-      <button onclick="ask()">
-        <span>➜</span> Chiedi
-      </button>
-    </div>
-    <div class="tips">
-      GOLD = risposta completa strutturale • CANONICO: risposta tecnica sintetica (solo se lo scrivi tu).
-    </div>
-    <div class="pills">
-      <div class="pill-btn" onclick="setQ('Dove posso usare i connettori CTF?')">Uso CTF</div>
-      <div class="pill-btn" onclick="setQ('Quando scegliere VCEM o CTCEM per un solaio in laterocemento?')">VCEM vs CTCEM</div>
-      <div class="pill-btn" onclick="setQ('Differenza tra CTL e CTL MAXI?')">CTL vs CTL MAXI</div>
-      <div class="pill-btn" onclick="setQ('Quando è meglio usare i DIAPASON?')">Uso DIAPASON</div>
-      <div class="pill-btn" onclick="setQ('Con riferimento ai connettori CTF Tecnaria si possono posare con chiodatrice qualsiasi?')">P560 &amp; CTF</div>
-      <div class="pill-btn" onclick="setQ('Come contatto Tecnaria per assistenza tecnica in cantiere?')">Supporto Tecnaria</div>
-    </div>
-  </div>
-
-<script>
-async function ask() {
-  const inp = document.getElementById('q');
-  const chat = document.getElementById('chat');
-  const text = (inp.value || "").trim();
-  if (!text) return;
-  chat.innerHTML += `<div class="line-q">Domanda • ${escapeHtml(text)}</div>`;
-  inp.value = "";
-  try {
-    const res = await fetch('/api/ask', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({question: text})
-    });
-    const data = await res.json();
-    if (!data.ok) {
-      chat.innerHTML += `<div class="line-a">${escapeHtml(data.answer || data.error || 'Nessuna risposta utile.')}</div>`;
-    } else {
-      const meta = data.meta || {};
-      const fam = data.family || 'N/D';
-      const id = data.id || 'N/D';
-      const score = meta.score !== undefined ? meta.score : '';
-      chat.innerHTML += `<div class="line-a">${escapeHtml(data.answer)}</div>`;
-      chat.innerHTML += `<div class="meta">Famiglia: ${fam} • ID: ${id} • score: ${score} • mode: ${meta.mode_runtime}</div>`;
-    }
-  } catch (e) {
-    chat.innerHTML += `<div class="line-a">Errore di comunicazione con il backend.</div>`;
-  }
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function setQ(t) {
-  const inp = document.getElementById('q');
-  inp.value = t;
-  inp.focus();
-}
-
-function escapeHtml(t) {
-  return t
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;");
-}
-</script>
-</body>
-</html>
-"""
-
-@app.get("/", response_class=HTMLResponse)
-def root():
-    return HTML_UI
+    return JSONResponse({
+        "answer": answer,
+        "family": fam,
+        "id": _id,
+        "mode": "gold",
+        "lang": lang
+    })
