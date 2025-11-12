@@ -1,1 +1,46 @@
-
+{
+  "generated_at": "2025-11-12T12:36:00",
+  "description": "Patch AUTO-FIX derivata dall’overlay correzioni_ovr_batch7_CTL_P560.json – chiusura definitiva copertura GOLD CTL e P560 (Batch7)",
+  "items": [
+    {
+      "id": "CTL-0601",
+      "family": "CTL",
+      "tags": ["CTL", "fessurazioni", "verifica"],
+      "response_variants": {
+        "gold": {
+          "it": "In presenza di fessurazioni passanti sul travetto, il connettore CTL può perdere parte della sua capacità a taglio. In tali casi è obbligatorio sostituire o rinforzare l’elemento ligneo. Le prove di estrazione devono essere ripetute su campione sano."
+        }
+      }
+    },
+    {
+      "id": "CTL-0602",
+      "family": "CTL",
+      "tags": ["CTL", "posa", "umidità"],
+      "response_variants": {
+        "gold": {
+          "it": "Durante la posa dei connettori CTL su legno umido o resinoso, pulire il foro e garantire che la vite penetri fino a completa battuta. In caso di eccesso di resina, attendere l’asciugatura o utilizzare un preforo."
+        }
+      }
+    },
+    {
+      "id": "P560-0801",
+      "family": "P560",
+      "tags": ["P560", "manutenzione", "sicurezza"],
+      "response_variants": {
+        "gold": {
+          "it": "Dopo 500 colpi è necessario smontare il gruppo pistone della chiodatrice P560 e pulire accuratamente i residui di polvere. Lubrificare con olio neutro e verificare la tenuta dell’anello di battuta prima di riprendere le operazioni."
+        }
+      }
+    },
+    {
+      "id": "P560-0802",
+      "family": "P560",
+      "tags": ["P560", "acciaio verniciato", "contatto"],
+      "response_variants": {
+        "gold": {
+          "it": "Durante la posa su travi in acciaio verniciate, rimuovere la vernice nel punto di sparo per assicurare contatto diretto del chiodo Tecnaria con il metallo. In caso contrario, la penetrazione può risultare incompleta."
+        }
+      }
+    }
+  ]
+}
