@@ -1,1 +1,86 @@
-
+{
+  "generated_at": "2025-11-06T18:25:00",
+  "description": "Patch GOLD definitiva per la famiglia VCEM – vite metallo + resina su solai in laterocemento",
+  "items": [
+    {
+      "id": "VCEM-1001",
+      "family": "VCEM",
+      "tags": ["VCEM","laterocemento","vite metallo","resina","posa"],
+      "response_variants": {
+        "gold": {
+          "it": "Il connettore VCEM Tecnaria è progettato per solai in laterocemento con travetti in c.a. in buone condizioni. L’ancoraggio avviene mediante vite metallica iniettata con resina bicomponente. Garantisce trasferimento a taglio tra travetto e soletta di completamento."
+        }
+      }
+    },
+    {
+      "id": "VCEM-1002",
+      "family": "VCEM",
+      "tags": ["VCEM","foro","pulizia","iniezione","aderenza"],
+      "response_variants": {
+        "gold": {
+          "it": "La qualità del foro è determinante: forare al diametro previsto, spazzolare e soffiare a fondo per eliminare polveri. Iniettare la resina dal fondo fino a riempimento; inserire la vite con leggera rotazione per migliorare l’aderenza e ridurre vuoti."
+        }
+      }
+    },
+    {
+      "id": "VCEM-1003",
+      "family": "VCEM",
+      "tags": ["VCEM","passo","posizionamento","rete","getto"],
+      "response_variants": {
+        "gold": {
+          "it": "Il passo dei VCEM va definito in funzione di luci e carichi del solaio. In fase di getto, assicurarsi che la testa del connettore rimanga inglobata e che la rete d’armatura non interferisca con il corretto copriferro."
+        }
+      }
+    },
+    {
+      "id": "VCEM-1004",
+      "family": "VCEM",
+      "tags": ["VCEM","comparazione","CTCEM","scelta sistema"],
+      "response_variants": {
+        "gold": {
+          "it": "La scelta tra VCEM e CTCEM dipende dallo stato dei travetti: con travetto sano e copriferro integro è preferibile VCEM (vite+resina); in presenza di degrado marcato o copriferro ammalorato è più indicato CTCEM, che dispone di piastra superiore di ripartizione."
+        }
+      }
+    },
+    {
+      "id": "VCEM-1005",
+      "family": "VCEM",
+      "tags": ["VCEM","prove","estrazione","indurimento resina"],
+      "response_variants": {
+        "gold": {
+          "it": "Eventuali prove di estrazione su VCEM vanno eseguite solo a resina completamente indurita secondo i tempi indicati dalla scheda tecnica. Valori inferiori attesi suggeriscono foro sporco, miscela non omogenea o dosaggio insufficiente."
+        }
+      }
+    },
+    {
+      "id": "VCEM-1006",
+      "family": "VCEM",
+      "tags": ["VCEM","sicurezza","DPI","resina"],
+      "response_variants": {
+        "gold": {
+          "it": "Durante l’uso della resina impiegare DPI (guanti, occhiali). Evitare contatto con pelle e mucose, arieggiare gli ambienti chiusi e smaltire correttamente i contenitori secondo normativa."
+        }
+      }
+    },
+    {
+      "id": "VCEM-1007",
+      "family": "VCEM",
+      "tags": ["VCEM","errori di posa","difetti","ripristino"],
+      "response_variants": {
+        "gold": {
+          "it": "Se il foro è sfiancato o sporco, l’aderenza vite-resina-calcestruzzo si riduce sensibilmente. In questi casi rifare il foro a distanza minima consentita, pulire a regola d’arte e ripetere iniezione e inserimento."
+        }
+      }
+    },
+    {
+      "id": "VCEM-1008",
+      "family": "VCEM",
+      "tags": ["VCEM","compatibilità","CTF","CTL","DIAPASON"],
+      "response_variants": {
+        "gold": {
+          "it": "VCEM è dedicato a solai in laterocemento; non è alternativo ai CTF (acciaio/lamiera con P560) né ai CTL/CTL MAXI (legno-calcestruzzo). In recuperi molto degradati si valuta DIAPASON come soluzione di rinforzo diffuso."
+        }
+      }
+    }
+  ]
+}
