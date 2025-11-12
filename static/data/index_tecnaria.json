@@ -1,1 +1,169 @@
-
+{
+  "version": "2025-11-12",
+  "normalize": {
+    "lowercase": true,
+    "strip_accents": true,
+    "collapse_spaces": true,
+    "replace": {
+      "×": "x",
+      "–": "-",
+      "—": "-",
+      "’": "'"
+    }
+  },
+  "aliases": {
+    "p560": ["spit p560", "chiodatrice p560", "p 560"],
+    "ctf": ["connettore ctf", "ctf tecnaria"],
+    "ctl": ["connettore ctl", "ctl tecnaria"],
+    "ctl_maxi": ["ctl maxi", "connettore ctl maxi", "ctlmaxi"],
+    "vcem": ["connettore vcem", "viti resina vcem"],
+    "ctcem": ["connettore ctcem", "ct-cem", "ct cem"],
+    "diapason": ["sistema diapason", "rete diapason"]
+  },
+  "patterns": [
+    {
+      "intent": "CROSS_VCEM_vs_CTCEM",
+      "regex": "(quando|quale|meglio|differenza).*\\b(vc?em)\\b.*\\b(ct?cem)\\b|vcem\\s*vs\\s*ctcem|vcem oppure ctcem",
+      "map_to": {"family": "CROSS", "id": "CROSS-VCEMvsCTCEM-0001"},
+      "priority": 100
+    },
+    {
+      "intent": "CTF_PREFORO",
+      "regex": "(ctf).*(preforo|foro).*|(preforo).*ctf|ctf.*lamiera.*trave.*(1x1\\.5|1x1,5|8\\s*mm)",
+      "map_to": {"family": "CTF", "id": "CTF-PREFORO-0001"},
+      "priority": 95
+    },
+    {
+      "intent": "CTF_CHIODO_INCLINATO",
+      "regex": "ctf.*(chiodo|fissaggio).*(inclinat|angol)",
+      "map_to": {"family": "CTF", "id": "CTF-INCLINAZIONE-0002"},
+      "priority": 90
+    },
+    {
+      "intent": "CTF_LAMIERA_ADERENZA",
+      "regex": "ctf.*lamiera.*(aderent|ondulat|distacc)",
+      "map_to": {"family": "CTF", "id": "CTF-LAMIERAADERENZA-0003"},
+      "priority": 80
+    },
+    {
+      "intent": "P560_MANUT",
+      "regex": "p560.*(pulizia|manutenzione|pistone|camera)",
+      "map_to": {"family": "P560", "id": "P560-MANUT-0001"},
+      "priority": 85
+    },
+    {
+      "intent": "P560_TARATURA",
+      "regex": "p560.*(taratura|energia|penetraz|colpo)",
+      "map_to": {"family": "P560", "id": "P560-TARATURA-0002"},
+      "priority": 85
+    },
+    {
+      "intent": "CTL_FESSURE",
+      "regex": "ctl.*(fessur|fessure|spaccature|vuoto)",
+      "map_to": {"family": "CTL", "id": "CTL-FESSURE-0001"},
+      "priority": 90
+    },
+    {
+      "intent": "CTL_SERRAGGIO",
+      "regex": "ctl.*(coppia|serragg)",
+      "map_to": {"family": "CTL", "id": "CTL-COPPIA-0002"},
+      "priority": 70
+    },
+    {
+      "intent": "CTL_MAXI_QUANDO",
+      "regex": "(quando|passare).*ctl\\s*maxi|ctl\\s*maxi.*quando",
+      "map_to": {"family": "CTL_MAXI", "id": "CTL_MAXI-QUANDO-0001"},
+      "priority": 75
+    },
+    {
+      "intent": "CTL_MAXI_DISTANZE",
+      "regex": "ctl\\s*maxi.*(distanza|bordo|passo)",
+      "map_to": {"family": "CTL_MAXI", "id": "CTL_MAXI-DISTANZE-0002"},
+      "priority": 60
+    },
+    {
+      "intent": "VCEM_SEQUENZA",
+      "regex": "vcem.*(sequenza|foro|pulizia|iniezion|induriment)",
+      "map_to": {"family": "VCEM", "id": "VCEM-SEQUENZA-0001"},
+      "priority": 95
+    },
+    {
+      "intent": "VCEM_RESINE",
+      "regex": "vcem.*(resina|epossidic|vinilester|vinilestere)",
+      "map_to": {"family": "VCEM", "id": "VCEM-RESINE-0002"},
+      "priority": 70
+    },
+    {
+      "intent": "VCEM_LIMITI",
+      "regex": "vcem.*(vietat|limit|precompress|cavi|armatur)",
+      "map_to": {"family": "VCEM", "id": "VCEM-DIVIETI-0003"},
+      "priority": 70
+    },
+    {
+      "intent": "CTCEM_PIASTRA",
+      "regex": "ctcem.*(piastra|ripartizion)",
+      "map_to": {"family": "CTCEM", "id": "CTCEM-PIASTRA-0001"},
+      "priority": 85
+    },
+    {
+      "intent": "CTCEM_GETTO_RETE",
+      "regex": "ctcem.*(getto|rete|distanziator|legatur|muov)",
+      "map_to": {"family": "CTCEM", "id": "CTCEM-RETE-0002"},
+      "priority": 60
+    },
+    {
+      "intent": "CTCEM_COPRIFERRO",
+      "regex": "ctcem.*(copriferro|minim|norm)",
+      "map_to": {"family": "CTCEM", "id": "CTCEM-COPRIFERRO-0003"},
+      "priority": 60
+    },
+    {
+      "intent": "DIAPASON_QUANDO",
+      "regex": "diapason.*(quando|preferibil|vs|meglio)|diapason.*vcem|diapason.*ctcem",
+      "map_to": {"family": "DIAPASON", "id": "DIAPASON-QUANDO-0001"},
+      "priority": 80
+    },
+    {
+      "intent": "DIAPASON_PROVE",
+      "regex": "diapason.*(prova|adesion|pulizia|saturaz)",
+      "map_to": {"family": "DIAPASON", "id": "DIAPASON-PROVE-0002"},
+      "priority": 60
+    },
+    {
+      "intent": "CROSS_CTF_su_LEGNO",
+      "regex": "ctf.*(legno|trave in legno)|posso usare ctf.*legno",
+      "map_to": {"family": "CROSS", "id": "CROSS-CTFvsCTL-0002"},
+      "priority": 100
+    },
+    {
+      "intent": "CROSS_COESISTENZA",
+      "regex": "(ctf.*vcem|vcem.*ctf).*insieme|coexist|coesister",
+      "map_to": {"family": "CROSS", "id": "CROSS-COESISTENZA-0003"},
+      "priority": 70
+    },
+    {
+      "intent": "COMM_ASSISTENZA",
+      "regex": "(assistenza|contattare|supporto).*tecnaria|canale.*ufficio.*tecnic",
+      "map_to": {"family": "COMM", "id": "COMM-CANALE-0001"},
+      "priority": 50
+    },
+    {
+      "intent": "COMM_PREVENTIVO",
+      "regex": "(preventiv|offerta).*vcem|ctcem|dati.*offerta",
+      "map_to": {"family": "COMM", "id": "COMM-PREVENTIVO-0002"},
+      "priority": 50
+    }
+  ],
+  "cross_rules": [
+    {
+      "rule_id": "CR-CTF-NO-LEGNO",
+      "if_match": {"family": "CTF", "text_regex": "legno"},
+      "redirect_to": {"family": "CROSS", "id": "CROSS-CTFvsCTL-0002"}
+    },
+    {
+      "rule_id": "CR-VCEM-CTCEM-DECIDER",
+      "if_match": {"text_regex": "(vcem|ctcem).*(sceglier|meglio|quando)"},
+      "redirect_to": {"family": "CROSS", "id": "CROSS-VCEMvsCTCEM-0001"}
+    }
+  ]
+}
