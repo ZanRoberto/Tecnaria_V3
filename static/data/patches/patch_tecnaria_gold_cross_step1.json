@@ -81,6 +81,16 @@
           "it": "Nei casi complessi o di recupero di solai storici è consigliabile un sopralluogo o una consulenza diretta Tecnaria. Le verifiche strutturali e la scelta del sistema di connessione più idoneo devono essere valutate in base alla tipologia e allo stato di conservazione del solaio."
         }
       }
+    },
+    {
+      "id": "CROSS-1010",
+      "family": "CROSS",
+      "tags": ["VCEM","CTCEM","laterocemento","scelta sistema","comparazione"],
+      "response_variants": {
+        "gold": {
+          "it": "La scelta tra VCEM e CTCEM dipende dallo stato dei travetti del solaio in laterocemento. Se i travetti sono integri, con copriferro sano e senza fessurazioni, è indicato il VCEM (vite metallica + resina). Se invece i travetti presentano degrado del calcestruzzo, copriferro distaccato o armature affioranti, è preferibile il CTCEM, che grazie alla piastra superiore ripartisce gli sforzi e rinforza il travetto. Entrambi garantiscono la collaborazione con la soletta in calcestruzzo di completamento, ma il CTCEM è specifico per casi di recupero e consolidamento."
+        }
+      }
     }
   ]
 }
