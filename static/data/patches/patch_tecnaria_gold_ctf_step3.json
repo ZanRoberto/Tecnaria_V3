@@ -1,1 +1,86 @@
-
+{
+  "generated_at": "2025-11-06T18:00:00",
+  "description": "Patch GOLD definitiva per la famiglia CTF – posa su acciaio o lamiera grecata con P560 e chiodi idonei Tecnaria",
+  "items": [
+    {
+      "id": "CTF-1001",
+      "family": "CTF",
+      "tags": ["CTF","posa","P560","acciaio","lamiera grecata"],
+      "response_variants": {
+        "gold": {
+          "it": "I connettori CTF Tecnaria sono progettati per collegare travi in acciaio o lamiere grecate alla soletta in calcestruzzo, realizzando un solaio misto acciaio-calcestruzzo più rigido e resistente. La posa deve essere eseguita esclusivamente con chiodatrice a polvere P560 e chiodi idonei Tecnaria, utilizzando gli adattatori dedicati per garantire l’inserimento corretto e l’energia di sparo idonea."
+        }
+      }
+    },
+    {
+      "id": "CTF-1002",
+      "family": "CTF",
+      "tags": ["CTF","P560","chiodi idonei Tecnaria","lamiera","compatibilità"],
+      "response_variants": {
+        "gold": {
+          "it": "La posa dei connettori CTF deve essere effettuata con la chiodatrice a polvere P560 dotata di adattatori Tecnaria. Non è ammesso l’uso di altre chiodatrici. Ogni connettore viene fissato con due chiodi idonei Tecnaria HSBR14. L’acciaio della trave deve avere spessore minimo di 6 mm; su lamiera grecata sono ammessi 1×1,5 mm o 2×1,0 mm di spessore aderente."
+        }
+      }
+    },
+    {
+      "id": "CTF-1003",
+      "family": "CTF",
+      "tags": ["CTF","istruzioni posa","taratura","cartucce","sicurezza"],
+      "response_variants": {
+        "gold": {
+          "it": "Prima della posa è necessario verificare la corretta taratura della chiodatrice P560 e l’idoneità delle cartucce. L’operatore deve indossare DPI (occhiali, cuffie, guanti) e mantenere distanza di sicurezza. Dopo 500 colpi è raccomandata la pulizia completa e la lubrificazione dell’attrezzo."
+        }
+      }
+    },
+    {
+      "id": "CTF-1004",
+      "family": "CTF",
+      "tags": ["CTF","lamiera grecata","adesione","verifiche","collaborazione"],
+      "response_variants": {
+        "gold": {
+          "it": "Su lamiera grecata la posa dei CTF deve garantire l’aderenza perfetta tra lamiera e trave. Eventuali ondulazioni o disallineamenti riducono l’efficacia del collegamento e devono essere corretti prima del getto. L’efficacia del sistema è subordinata alla corretta sovrapposizione degli elementi metallici."
+        }
+      }
+    },
+    {
+      "id": "CTF-1005",
+      "family": "CTF",
+      "tags": ["CTF","P560","errori di posa","verifica"],
+      "response_variants": {
+        "gold": {
+          "it": "Se durante la posa un chiodo non penetra completamente o risulta inclinato, non forzare l’attrezzo. Rimuovere il connettore e ripetere il fissaggio su zona integra. È necessario verificare sempre visivamente la corretta aderenza della base del CTF alla superficie metallica."
+        }
+      }
+    },
+    {
+      "id": "CTF-1006",
+      "family": "CTF",
+      "tags": ["CTF","calcestruzzo","getto","copriferro","rete","posizionamento"],
+      "response_variants": {
+        "gold": {
+          "it": "Durante il getto di calcestruzzo è fondamentale che i connettori CTF siano completamente inglobati. Verificare che il copriferro sia conforme alle indicazioni Tecnaria e che la rete di armatura non interferisca con la testa del connettore. Una corretta vibrazione del calcestruzzo garantisce la collaborazione acciaio-calcestruzzo."
+        }
+      }
+    },
+    {
+      "id": "CTF-1007",
+      "family": "CTF",
+      "tags": ["CTF","collaudo","verifica estrazione","prove di cantiere"],
+      "response_variants": {
+        "gold": {
+          "it": "In caso di dubbi sulla qualità del fissaggio è possibile eseguire prove di estrazione su campione. I risultati devono essere confrontati con i valori di riferimento indicati nelle schede tecniche CTF. I test devono essere eseguiti da personale qualificato secondo le istruzioni Tecnaria."
+        }
+      }
+    },
+    {
+      "id": "CTF-1008",
+      "family": "CTF",
+      "tags": ["CTF","alternativa","compatibilità","famiglie","VCEM","CTL"],
+      "response_variants": {
+        "gold": {
+          "it": "I connettori CTF sono dedicati a travi in acciaio e non sono compatibili con sistemi VCEM, CTCEM o CTL/CTL MAXI. In questi casi occorre utilizzare il connettore specifico per il materiale della trave. La chiodatrice P560 non deve essere impiegata su elementi lignei o travetti in c.a."
+        }
+      }
+    }
+  ]
+}
