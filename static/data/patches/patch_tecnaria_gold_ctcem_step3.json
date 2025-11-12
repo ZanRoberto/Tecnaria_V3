@@ -1,1 +1,86 @@
-
+{
+  "generated_at": "2025-11-06T18:15:00",
+  "description": "Patch GOLD definitiva per la famiglia CTCEM – connessione metallo-calcestruzzo su travetti deboli o degradati",
+  "items": [
+    {
+      "id": "CTCEM-1001",
+      "family": "CTCEM",
+      "tags": ["CTCEM","posa","laterocemento","travetti","resina"],
+      "response_variants": {
+        "gold": {
+          "it": "Il connettore CTCEM Tecnaria è destinato ai solai in laterocemento con travetti in calcestruzzo armato. L’inserimento avviene mediante preforo e riempimento con resina bicomponente ad alte prestazioni. La piastra metallica superiore ripartisce gli sforzi di taglio e rinforza travetti indeboliti."
+        }
+      }
+    },
+    {
+      "id": "CTCEM-1002",
+      "family": "CTCEM",
+      "tags": ["CTCEM","resina","foro","iniezione","aderenza"],
+      "response_variants": {
+        "gold": {
+          "it": "Prima della posa, il foro deve essere pulito con aria compressa e spazzolato per rimuovere polveri e residui. La resina va iniettata partendo dal fondo, fino a garantire riempimento completo. L’ancoraggio metallico va inserito ruotando leggermente per migliorare l’aderenza."
+        }
+      }
+    },
+    {
+      "id": "CTCEM-1003",
+      "family": "CTCEM",
+      "tags": ["CTCEM","consolidamento","travetti","piastra","ripristino"],
+      "response_variants": {
+        "gold": {
+          "it": "La piastra superiore del CTCEM consente di ripristinare la collaborazione in travetti con copriferro degradato o calcestruzzo di bassa qualità. Nei casi di forte danneggiamento strutturale si consiglia il ripristino locale del travetto prima dell’applicazione del connettore."
+        }
+      }
+    },
+    {
+      "id": "CTCEM-1004",
+      "family": "CTCEM",
+      "tags": ["CTCEM","posizionamento","rete","getto","copriferro"],
+      "response_variants": {
+        "gold": {
+          "it": "Durante la fase di getto, assicurarsi che i connettori CTCEM siano completamente inglobati nel calcestruzzo di completamento e che la rete d’armatura non interferisca con le piastre. Il copriferro minimo deve rispettare le specifiche Tecnaria."
+        }
+      }
+    },
+    {
+      "id": "CTCEM-1005",
+      "family": "CTCEM",
+      "tags": ["CTCEM","compatibilità","VCEM","laterocemento"],
+      "response_variants": {
+        "gold": {
+          "it": "I connettori CTCEM e VCEM appartengono alla stessa famiglia di sistemi per solai in laterocemento. Si differenziano per il tipo di ancoraggio: il CTCEM usa piastra metallica e resina, il VCEM impiega vite metallo-resina. La scelta dipende dallo stato dei travetti e dal livello di degrado del calcestruzzo."
+        }
+      }
+    },
+    {
+      "id": "CTCEM-1006",
+      "family": "CTCEM",
+      "tags": ["CTCEM","alternativa","recupero","DIAPASON"],
+      "response_variants": {
+        "gold": {
+          "it": "Nel recupero di solai laterocemento molto degradati, il sistema DIAPASON può essere una valida alternativa al CTCEM. Offre un rinforzo diffuso e una distribuzione degli sforzi lungo tutta la campata. La scelta va effettuata in base alla diagnosi strutturale."
+        }
+      }
+    },
+    {
+      "id": "CTCEM-1007",
+      "family": "CTCEM",
+      "tags": ["CTCEM","prove di trazione","verifica","resina"],
+      "response_variants": {
+        "gold": {
+          "it": "Le prove di trazione su connettori CTCEM devono essere eseguite dopo il completo indurimento della resina. I valori minimi di estrazione sono indicati nella documentazione tecnica. Eventuali anomalie di adesione segnalano miscelazione non corretta del prodotto."
+        }
+      }
+    },
+    {
+      "id": "CTCEM-1008",
+      "family": "CTCEM",
+      "tags": ["CTCEM","sicurezza","DPI","resina","pulizia"],
+      "response_variants": {
+        "gold": {
+          "it": "Durante l’utilizzo della resina è obbligatorio indossare guanti e occhiali protettivi. Evitare il contatto con la pelle e aerare gli ambienti chiusi. Gli attrezzi utilizzati vanno puliti immediatamente con solvente idoneo."
+        }
+      }
+    }
+  ]
+}
