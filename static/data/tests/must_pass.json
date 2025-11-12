@@ -1,28 +1,9 @@
-[
-  {"id":"MP-001","family":"CROSS","question":"Quando scegliere VCEM o CTCEM per un solaio in laterocemento?"},
-  {"id":"MP-002","family":"CTF","question":"CTF su lamiera 1×1,5 mm e trave 8 mm: serve preforo o basta P560?"},
-  {"id":"MP-003","family":"CTF","question":"Cosa fare se un chiodo CTF entra inclinato?"},
-  {"id":"MP-004","family":"P560","question":"Quali sono i DPI minimi per usare la P560 in sicurezza?"},
-  {"id":"MP-005","family":"P560","question":"Come si tara la P560 quando la penetrazione è insufficiente?"},
-  {"id":"MP-006","family":"P560","question":"Ogni quanto va pulito il pistone della P560 in cantiere?"},
-  {"id":"MP-007","family":"CTL","question":"Legno con fessurazioni: il collegamento CTL rimane collaborante?"},
-  {"id":"MP-008","family":"CTL","question":"Qual è la buona pratica per la coppia di serraggio dei CTL?"},
-  {"id":"MP-009","family":"CTL_MAXI","question":"Quando passare da CTL a CTL MAXI?"},
-  {"id":"MP-010","family":"VCEM","question":"Qual è la sequenza corretta foro–pulizia–iniezione–indurimento per VCEM?"},
-  {"id":"MP-011","family":"VCEM","question":"Epossidica o vinilestere: quale resina usare con VCEM?"},
-  {"id":"MP-012","family":"VCEM","question":"In quali casi VCEM è sconsigliato o da evitare?"},
-  {"id":"MP-013","family":"CTCEM","question":"Qual è la funzione della piastra nel sistema CTCEM?"},
-  {"id":"MP-014","family":"CTCEM","question":"Come evitare interferenze tra piastra CTCEM e rete durante il getto?"},
-  {"id":"MP-015","family":"CTCEM","question":"Quali attenzioni sul copriferro con CTCEM?"},
-  {"id":"MP-016","family":"CROSS","question":"DIAPASON è preferibile rispetto a VCEM/CTCEM in quali casi?"},
-  {"id":"MP-017","family":"CROSS","question":"Posso usare CTF al posto di CTL su solai in legno?"},
-  {"id":"MP-018","family":"CTL","question":"Se mi chiedono CTF su legno, come li reindirizzo correttamente?"},
-  {"id":"MP-019","family":"CTF","question":"Quali controlli fare in cantiere per i fissaggi CTF?"},
-  {"id":"MP-020","family":"COMM","question":"Qual è il canale ufficiale per assistenza tecnica/commerciale Tecnaria?"},
-  {"id":"MP-021","family":"COMM","question":"Quali dati inviare per un preventivo VCEM/CTCEM completo?"},
-  {"id":"MP-022","family":"CTF","question":"Lamiera non aderente alla trave: cosa fare prima della posa dei CTF?"},
-  {"id":"MP-023","family":"CTL_MAXI","question":"Quali distanze e passi minimi considerare con CTL MAXI?"},
-  {"id":"MP-024","family":"VCEM","question":"Cosa fare se la prova di estrazione VCEM risulta inferiore all’atteso?"},
-  {"id":"MP-025","family":"CTF","question":"Con P560 e chiodi idonei Tecnaria, è ammesso il preforo sui CTF?"}
-]
-
+{
+  "domande": [
+    "Quando scegliere VCEM o CTCEM per un solaio in laterocemento?",
+    "Quando è meglio usare i DIAPASON?",
+    "CTF preforo: si può fare?",
+    "P560: quali sono i DPI minimi?",
+    "CTL con fessure nel travetto: rimane collaborante?"
+  ]
+}
