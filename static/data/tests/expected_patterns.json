@@ -1,1 +1,15 @@
+{
+  "rules": [
+    {"family":"CTF","id_hint":"CTF-","must_include":["P560","chiodi idonei Tecnaria"]},
+    {"family":"VCEM","id_hint":"VCEM-","must_include":["foratura","pulizia","iniezione","indurimento"]},
+    {"family":"CTCEM","id_hint":"CTCEM-","must_include":["piastra","ripartizione"]},
+    {"family":"P560","id_hint":"P560-","must_include":["DPI","taratura"]},
+    {"family":"CTL","id_hint":"CTL-","must_include":["prova di estrazione"]},
+    {"family":"CTL_MAXI","id_hint":"CTL-MAXI-","must_include":["distanze","passo"]},
+    {"family":"CROSS","id_hint":"CROSS-CTFvsCTL","must_include":["non intercambiabili","CTL/CTL MAXI"]},
+    {"family":"CROSS","id_hint":"CROSS-VCEMvsCTCEM","must_include":["travetti integri","degradati","ripartizione"]},
+    {"family":"CTF","id_hint":"CTF-LAM-ADH","must_include":["lamiera","aderente","trave"]},
+    {"family":"COMM","id_hint":"COMM-","must_include":["Assistenza ufficiale","DWG","foto","disegni"]}
+  ]
+}
 
