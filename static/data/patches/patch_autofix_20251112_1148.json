@@ -1,1 +1,36 @@
-
+{
+  "generated_at": "2025-11-12T11:48:00",
+  "description": "Patch AUTO-FIX generata dall’overlay correzioni_2025-11-12_ovr01.json – chiusura CTL e P560 step1",
+  "items": [
+    {
+      "id": "CTL-0501",
+      "family": "CTL",
+      "tags": ["CTL", "fessurazioni", "verifica estrazione"],
+      "response_variants": {
+        "gold": {
+          "it": "Se il travetto in legno presenta piccole fessurazioni longitudinali ma la vite entra in parte nel materiale sano, il collegamento rimane collaborante. Tuttavia è necessario verificare visivamente che la fessura non prosegua fino alla testa della vite. In caso di dubbio, prevedere una prova di estrazione o sostituire l’elemento."
+        }
+      }
+    },
+    {
+      "id": "P560-0701",
+      "family": "P560",
+      "tags": ["P560", "manutenzione", "taratura"],
+      "response_variants": {
+        "gold": {
+          "it": "Per la chiodatrice P560 è necessario controllare periodicamente la taratura della potenza e lo stato dell’adattatore Tecnaria. In caso di difficoltà di penetrazione del chiodo, interrompere la posa e verificare sia la pressione della cartuccia sia la pulizia del pistone interno."
+        }
+      }
+    },
+    {
+      "id": "P560-0702",
+      "family": "P560",
+      "tags": ["P560", "errore posa", "chiodo"],
+      "response_variants": {
+        "gold": {
+          "it": "Se il chiodo Tecnaria non si inserisce completamente nel supporto, non forzare il colpo. Pulire l’adattatore e ripetere la prova con nuova cartuccia. In presenza di acciaio temprato o spessore oltre 10 mm, consultare l’ufficio tecnico per energia di sparo idonea."
+        }
+      }
+    }
+  ]
+}
