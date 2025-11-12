@@ -1,4 +1,19 @@
 {
+  "intent": "SCELTA_VCEM_CTCEM",
+  "patterns": [
+    "quando scegliere vcem o ctcem",
+    "differenza vcem ctcem",
+    "meglio vcem o ctcem",
+    "vcem vs ctcem",
+    "scelta connettore laterocemento vcem ctcem",
+    "quale usare tra vcem e ctcem",
+    "quando vcem quando ctcem"
+  ],
+  "normalize": { "lowercase": true, "strip_accents": true, "collapse_spaces": true },
+  "route": { "family": "CROSS", "id": "CROSS-VCEMvsCTCEM-DECIDER-001" },
+  "priority": 100
+}
+{
   "version": "2025-11-12",
   "normalize": {
     "lowercase": true,
