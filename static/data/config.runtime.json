@@ -1,38 +1,5 @@
 {
-  "gold_mode": true,
-  "data_paths": {
-    "index": "static/data/index_tecnaria.json",
-    "router": "static/data/overlays/tecnaria_router_gold.json",
-    "gold_content": "static/data/patches/tecnaria_gold_consolidato.json",
-    "tests": {
-      "must_pass": "static/data/tests/must_pass.json",
-      "smoke_200": "static/data/tests/smoke_200.json",
-      "expected_patterns": "static/data/tests/expected_patterns.json"
-    }
-  },
-  "routing": {
-    "normalize": {"lowercase": true, "strip_accents": true, "collapse_spaces": true},
-    "fallback_family": "COMM",
-    "fallback_id": "COMM-CANALE-CORE-001"
-  },
-  "terminologia": {
-    "vietati": ["perni"],
-    "obbligatori": {
-      "CTF": ["P560", "chiodi idonei Tecnaria"]
-    }
-  }
-}
-{
-  "mode": "gold",
-  "families": [
-    "COMM",
-    "CTCEM",
-    "CTF",
-    "CTL",
-    "CTL_MAXI",
-    "DIAPASON",
-    "P560",
-    "VCEM"
-  ],
-  "lock_to_core": true
+  "name": "Tecnaria Sinapsi",
+  "gold_mode_default": true,
+  "version": "2.0"
 }
