@@ -1,51 +1,61 @@
 {
   "version": "2025-11-12",
-  "priority_order": ["CROSS", "CTF", "P560", "VCEM", "CTCEM", "CTL", "CTL_MAXI", "DIAPASON", "COMM"],
+  "priority_order": [
+    "CROSS",
+    "CTF",
+    "P560",
+    "VCEM",
+    "CTCEM",
+    "CTL",
+    "CTL_MAXI",
+    "DIAPASON",
+    "COMM"
+  ],
   "fallbacks": {
-    "unknown": {"family": "COMM", "id": "COMM-CANALE-0001"},
-    "ambiguous": {"family": "CROSS", "id": "CROSS-VCEMvsCTCEM-0001"}
+    "unknown": { "family": "COMM", "id": "COMM-CANALE-0001" },
+    "ambiguous": { "family": "CROSS", "id": "CROSS-VCEMvsCTCEM-0001" }
   },
   "route": [
-    {"intent": "CROSS_VCEM_vs_CTCEM", "to": {"family": "CROSS", "id": "CROSS-VCEMvsCTCEM-0001"}},
-    {"intent": "CROSS_CTF_su_LEGNO", "to": {"family": "CROSS", "id": "CROSS-CTFvsCTL-0002"}},
-    {"intent": "CROSS_COESISTENZA", "to": {"family": "CROSS", "id": "CROSS-COESISTENZA-0003"}},
+    { "intent": "CROSS_VCEM_vs_CTCEM", "to": { "family": "CROSS", "id": "CROSS-VCEMvsCTCEM-0001" } },
+    { "intent": "CROSS_CTF_su_LEGNO", "to": { "family": "CROSS", "id": "CROSS-CTFvsCTL-0002" } },
+    { "intent": "CROSS_COESISTENZA", "to": { "family": "CROSS", "id": "CROSS-COESISTENZA-0003" } },
 
-    {"intent": "CTF_PREFORO", "to": {"family": "CTF", "id": "CTF-PREFORO-0001"}},
-    {"intent": "CTF_CHIODO_INCLINATO", "to": {"family": "CTF", "id": "CTF-INCLINAZIONE-0002"}},
-    {"intent": "CTF_LAMIERA_ADERENZA", "to": {"family": "CTF", "id": "CTF-LAMIERAADERENZA-0003"}},
+    { "intent": "CTF_PREFORO", "to": { "family": "CTF", "id": "CTF-PREFORO-0001" } },
+    { "intent": "CTF_CHIODO_INCLINATO", "to": { "family": "CTF", "id": "CTF-INCLINAZIONE-0002" } },
+    { "intent": "CTF_LAMIERA_ADERENZA", "to": { "family": "CTF", "id": "CTF-LAMIERAADERENZA-0003" } },
 
-    {"intent": "P560_MANUT", "to": {"family": "P560", "id": "P560-MANUT-0001"}},
-    {"intent": "P560_TARATURA", "to": {"family": "P560", "id": "P560-TARATURA-0002"}},
+    { "intent": "P560_MANUT", "to": { "family": "P560", "id": "P560-MANUT-0001" } },
+    { "intent": "P560_TARATURA", "to": { "family": "P560", "id": "P560-TARATURA-0002" } },
 
-    {"intent": "CTL_FESSURE", "to": {"family": "CTL", "id": "CTL-FESSURE-0001"}},
-    {"intent": "CTL_SERRAGGIO", "to": {"family": "CTL", "id": "CTL-COPPIA-0002"}},
+    { "intent": "CTL_FESSURE", "to": { "family": "CTL", "id": "CTL-FESSURE-0001" } },
+    { "intent": "CTL_SERRAGGIO", "to": { "family": "CTL", "id": "CTL-COPPIA-0002" } },
 
-    {"intent": "CTL_MAXI_QUANDO", "to": {"family": "CTL_MAXI", "id": "CTL_MAXI-QUANDO-0001"}},
-    {"intent": "CTL_MAXI_DISTANZE", "to": {"family": "CTL_MAXI", "id": "CTL_MAXI-DISTANZE-0002"}},
+    { "intent": "CTL_MAXI_QUANDO", "to": { "family": "CTL_MAXI", "id": "CTL_MAXI-QUANDO-0001" } },
+    { "intent": "CTL_MAXI_DISTANZE", "to": { "family": "CTL_MAXI", "id": "CTL_MAXI-DISTANZE-0002" } },
 
-    {"intent": "VCEM_SEQUENZA", "to": {"family": "VCEM", "id": "VCEM-SEQUENZA-0001"}},
-    {"intent": "VCEM_RESINE", "to": {"family": "VCEM", "id": "VCEM-RESINE-0002"}},
-    {"intent": "VCEM_LIMITI", "to": {"family": "VCEM", "id": "VCEM-DIVIETI-0003"}},
+    { "intent": "VCEM_SEQUENZA", "to": { "family": "VCEM", "id": "VCEM-SEQUENZA-0001" } },
+    { "intent": "VCEM_RESINE", "to": { "family": "VCEM", "id": "VCEM-RESINE-0002" } },
+    { "intent": "VCEM_LIMITI", "to": { "family": "VCEM", "id": "VCEM-DIVIETI-0003" } },
 
-    {"intent": "CTCEM_PIASTRA", "to": {"family": "CTCEM", "id": "CTCEM-PIASTRA-0001"}},
-    {"intent": "CTCEM_GETTO_RETE", "to": {"family": "CTCEM", "id": "CTCEM-RETE-0002"}},
-    {"intent": "CTCEM_COPRIFERRO", "to": {"family": "CTCEM", "id": "CTCEM-COPRIFERRO-0003"}},
+    { "intent": "CTCEM_PIASTRA", "to": { "family": "CTCEM", "id": "CTCEM-PIASTRA-0001" } },
+    { "intent": "CTCEM_GETTO_RETE", "to": { "family": "CTCEM", "id": "CTCEM-RETE-0002" } },
+    { "intent": "CTCEM_COPRIFERRO", "to": { "family": "CTCEM", "id": "CTCEM-COPRIFERRO-0003" } },
 
-    {"intent": "DIAPASON_QUANDO", "to": {"family": "DIAPASON", "id": "DIAPASON-QUANDO-0001"}},
-    {"intent": "DIAPASON_PROVE", "to": {"family": "DIAPASON", "id": "DIAPASON-PROVE-0002"}},
+    { "intent": "DIAPASON_QUANDO", "to": { "family": "DIAPASON", "id": "DIAPASON-QUANDO-0001" } },
+    { "intent": "DIAPASON_PROVE", "to": { "family": "DIAPASON", "id": "DIAPASON-PROVE-0002" } },
 
-    {"intent": "COMM_ASSISTENZA", "to": {"family": "COMM", "id": "COMM-CANALE-0001"}},
-    {"intent": "COMM_PREVENTIVO", "to": {"family": "COMM", "id": "COMM-PREVENTIVO-0002"}}
+    { "intent": "COMM_ASSISTENZA", "to": { "family": "COMM", "id": "COMM-CANALE-0001" } },
+    { "intent": "COMM_PREVENTIVO", "to": { "family": "COMM", "id": "COMM-PREVENTIVO-0002" } }
+  ],
+  "regex_rules": [
+    {
+      "rule": "route_vcem_vs_ctcem",
+      "if_any_regex": [
+        "(quando|qual[ea]|differenza).*\\b(vcem)\\b.*\\b(ctcem)\\b",
+        "\\bvcem\\b.*\\bctcem\\b"
+      ],
+      "then": { "family": "CROSS", "id": "CROSS-VCEMvsCTCEM-DECIDER-001" },
+      "priority": 90
+    }
   ]
 }
-{
-  "rule": "route_vcem_vs_ctcem",
-  "if_any_regex": [
-    "(quando|qual[ea]|differenza).*\\b(vcem)\\b.*\\b(ctcem)\\b",
-    "\\bvcem\\b.*\\bctcem\\b"
-  ],
-  "then": { "family": "CROSS", "id": "CROSS-VCEMvsCTCEM-DECIDER-001" },
-  "priority": 90
-}
-
-
