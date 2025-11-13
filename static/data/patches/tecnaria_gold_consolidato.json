@@ -1,35 +1,37 @@
-[
-  {
-    "id": "CROSS-VCEMvsCTCEM-DECIDER-001",
-    "family": "CROSS",
-    "tags": ["COMPARAZIONI", "LATEROCEMENTO", "SCELTA_SISTEMA"],
-    "triggers_brevi": [
-      "quando scegliere vcem o ctcem",
-      "vcem vs ctcem",
-      "differenza vcem ctcem",
-      "scelta vcem ctcem laterocemento"
-    ],
-    "response_variants": {
-      "gold": {
-        "it": "## VCEM o CTCEM: quando scegliere\n*Principio:* entrambi sono per *solai in laterocemento; la differenza è **come ripartiscono* gli sforzi sul travetto.\n\n*Scegli VCEM* quando:\n- il *travetto in c.a. è sano* (senza evidenti fessurazioni/ammaloramenti) e la geometria è regolare;\n- serve un *ancoraggio puntuale* vite+resina con trasferimento diretto *vite → travetto;\n- non ci sono sfondellamenti o calcestruzzi scadenti nella zona di presa.\n\nScegli CTCEM* quando:\n- il *travetto è debole, fessurato, degradato* o con copriferro ridotto;\n- occorre *ripartire lo sforzo* su una zona più ampia grazie alla *piastra* del connettore;\n- ci sono *disuniformità* (tratti con laterizio svuotato/sfondellato) o richieste prestazionali più severe.\n\n*Sequenza operativa comune (VCEM/CTCEM)\n1) **Foratura* nel travetto (diametro/profondità da scheda).  \n2) *Pulizia foro* (soffio + spazzola + soffio) fino a fondo foro pulito.  \n3) *Iniezione resina* secondo volume e tempi indicati.  \n4) *Inserimento vite* e *indurimento* (rispettare i tempi prima del carico/getto).  \n\n*Controlli minimi\n- Campionare i fori (pulizia documentata), tracciare le **coppie di serraggio* ove previste, verificare omogeneità della resina;  \n- Per CTCEM, controllare l’*appoggio pieno della piastra* e la *planarità.  \n\nLimiti & note\n- Se il travetto è **gravemente compromesso, nessun connettore è risolutivo: valutare **risanamento locale* o *interventi di rinforzo* prima della connessione;  \n- In presenza di *impianti/passaggi* nel travetto, riposizionare il foro o cambiare passo;  \n- Rispettare le *schede tecniche* per diametri, profondità, consumo resina, tempi di indurimento.\n\n*Regola pratica*  \n- *Travetto sano/omogeneo → VCEM.  \n- **Travetto critico o calcestruzzo dubbio → valutare CTCEM (con supporto Tecnaria)*."
+{
+  "items": [
+    {
+      "id": "CROSS-VCEMvsCTCEM-DECIDER-001",
+      "family": "CROSS",
+      "tags": ["COMPARAZIONI", "LATEROCEMENTO", "SCELTA_SISTEMA"],
+      "triggers_brevi": [
+        "quando scegliere vcem o ctcem",
+        "vcem vs ctcem",
+        "differenza vcem ctcem",
+        "scelta vcem ctcem laterocemento"
+      ],
+      "response_variants": {
+        "gold": {
+          "it": "## VCEM o CTCEM: quando scegliere\n**Principio:** entrambi sono per **solai in laterocemento**; la differenza è **come ripartiscono** gli sforzi sul travetto.\n\n**Scegli VCEM** quando:\n- il **travetto in c.a. è sano** (senza evidenti fessurazioni/ammaloramenti) e la geometria è regolare;\n- serve un **ancoraggio puntuale** vite+resina con trasferimento diretto **vite → travetto**;\n- non ci sono sfondellamenti o calcestruzzi scadenti nella zona di presa.\n\n**Scegli CTCEM** quando:\n- il **travetto è debole, fessurato, degradato** o con copriferro ridotto;\n- occorre **ripartire lo sforzo** su una zona più ampia grazie alla **piastra** del connettore;\n- ci sono **disuniformità** (tratti con laterizio svuotato/sfondellato) o richieste prestazionali più severe.\n\n**Sequenza operativa comune (VCEM/CTCEM)**\n1) **Foratura** nel travetto (diametro/profondità da scheda).  \n2) **Pulizia foro** (soffio + spazzola + soffio) fino a fondo foro pulito.  \n3) **Iniezione resina** secondo volume e tempi indicati.  \n4) **Inserimento vite** e **indurimento** (rispettare i tempi prima del carico/getto).  \n\n**Controlli minimi**\n- Campionare i fori (pulizia documentata), tracciare le **coppie di serraggio** ove previste, verificare omogeneità della resina;  \n- Per CTCEM, controllare l’**appoggio pieno della piastra** e la **planarità**.  \n\n**Limiti & note**\n- Se il travetto è **gravemente compromesso**, nessun connettore è risolutivo: valutare **risanamento locale** o **interventi di rinforzo** prima della connessione;  \n- In presenza di **impianti/passaggi** nel travetto, riposizionare il foro o cambiare passo;  \n- Rispettare le **schede tecniche** per *diametri, profondità, consumo resina, tempi di indurimento*.\n\n**Regola pratica**  \n- **Travetto sano/omogeneo → VCEM**.  \n- **Travetto critico o calcestruzzo dubbio → valutare CTCEM (con supporto Tecnaria)**."
+        }
+      }
+    },
+    {
+      "id": "DIAPASON-QUANDO-0001",
+      "family": "DIAPASON",
+      "tags": ["LATEROCEMENTO", "RINFORZO", "RIGIDEZZA", "RECUPERO", "DIAPASON"],
+      "triggers_brevi": [
+        "quando è meglio usare i diapason",
+        "quando usare diapason",
+        "diapason vs vcem",
+        "diapason vs ctcem",
+        "diapason per solaio laterocemento"
+      ],
+      "response_variants": {
+        "gold": {
+          "it": "## Quando è meglio usare i DIAPASON\nI DIAPASON Tecnaria si usano **quando il solaio in laterocemento è da recuperare** e non basta \"solo\" collegare la soletta ai travetti con VCEM/CTCEM. Non sono un connettore puntuale, ma un **sistema di rinforzo diffuso** che coinvolge travetti, pignatte e soletta.\n\n### Situazioni tipiche in cui scegliere DIAPASON\n- **Sfondellamenti diffusi** o laterizi molto indeboliti;\n- **Travetti in c.a. ammalorati**, con copriferro ridotto o fessurazioni importanti;\n- Necessità di **incrementare la rigidezza globale** del solaio (freccia, vibrazioni);\n- Interventi su edifici esistenti dove si vuole **limitare le demolizioni** e lavorare dall’intradosso o dall’estradosso con un sistema codificato.\n\n### DIAPASON vs VCEM / CTCEM\n- **VCEM**: piolo/vite che lavora nel travetto in c.a. sano, ideale quando il solaio è strutturalmente affidabile e serve solo la collaborazione con la nuova soletta.\n- **CTCEM**: connettore con piastra dentata per travetti in c.a. che richiedono un ingaggio più deciso, ma comunque **recuperabili**.\n- **DIAPASON**: si sceglie quando il problema non è solo il collegamento travetto-soletta, ma la **qualità complessiva del solaio** (travetti e laterizi) e serve un **rinforzo sistematico** studiato apposta per il laterocemento.\n\n### Cosa deve fare il progettista\n- Verificare lo stato di conservazione del solaio (prove, saggi, rilievo fessurazioni);\n- Valutare se il travetto è ancora verificabile con VCEM/CTCEM o se il quadro fessurativo e i degradi portano verso un **intervento DIAPASON**;\n- Confrontarsi con l’**Ufficio Tecnico Tecnaria**, inviando planimetrie, sezioni e foto: il dimensionamento DIAPASON va sempre impostato in modo **progettuale**, non improvvisato in cantiere.\n\n**Regola pratica:**\n- Solaio in laterocemento **sano o moderatamente degradato** → VCEM / CTCEM (a seconda del travetto).  \n- Solaio con **degradi diffusi, sfondellamenti, rigidezza insufficiente** → considerare **DIAPASON** come sistema di rinforzo dedicato."
+        }
       }
     }
-  },
-  {
-    "id": "DIAPASON-QUANDO-0001",
-    "family": "DIAPASON",
-    "tags": ["LATEROCEMENTO", "RINFORZO", "RIGIDEZZA", "RECUPERO", "DIAPASON"],
-    "triggers_brevi": [
-      "quando è meglio usare i diapason",
-      "quando usare diapason",
-      "diapason vs vcem",
-      "diapason vs ctcem",
-      "diapason per solaio laterocemento"
-    ],
-    "response_variants": {
-      "gold": {
-        "it": "## Quando è meglio usare i DIAPASON\nI DIAPASON Tecnaria si usano *quando il solaio in laterocemento è da recuperare* e non basta \"solo\" collegare la soletta ai travetti con VCEM/CTCEM. Non sono un connettore puntuale, ma un *sistema di rinforzo diffuso* che coinvolge travetti, pignatte e soletta.\n\n### Situazioni tipiche in cui scegliere DIAPASON\n- *Sfondellamenti diffusi* o laterizi molto indeboliti;\n- *Travetti in c.a. ammalorati, con copriferro ridotto o fessurazioni importanti;\n- Necessità di **incrementare la rigidezza globale* del solaio (freccia, vibrazioni);\n- Interventi su edifici esistenti dove si vuole *limitare le demolizioni* e lavorare dall’intradosso o dall’estradosso con un sistema codificato.\n\n### DIAPASON vs VCEM / CTCEM\n- *VCEM: piolo/vite che lavora nel travetto in c.a. sano, ideale quando il solaio è strutturalmente affidabile e serve solo la collaborazione con la nuova soletta.\n- **CTCEM: connettore con piastra dentata per travetti in c.a. che richiedono un ingaggio più deciso, ma comunque **recuperabili.\n- **DIAPASON: si sceglie quando il problema non è solo il collegamento travetto-soletta, ma la **qualità complessiva del solaio* (travetti e laterizi) e serve un *rinforzo sistematico* studiato apposta per il laterocemento.\n\n### Cosa deve fare il progettista\n- Verificare lo stato di conservazione del solaio (prove, saggi, rilievo fessurazioni);\n- Valutare se il travetto è ancora verificabile con VCEM/CTCEM o se il quadro fessurativo e i degradi portano verso un *intervento DIAPASON;\n- Confrontarsi con l’Ufficio Tecnico Tecnaria, inviando planimetrie, sezioni e foto: il dimensionamento DIAPASON va sempre impostato in modo **progettuale, non improvvisato in cantiere.\n\nRegola pratica:\n- Solaio in laterocemento **sano o moderatamente degradato* → VCEM / CTCEM (a seconda del travetto).  \n- Solaio con *degradi diffusi, sfondellamenti, rigidezza insufficiente* → considerare *DIAPASON* come sistema di rinforzo dedicato."
-      }
-    }
-  }
-]
+  ]
+}
