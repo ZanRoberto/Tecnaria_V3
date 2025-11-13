@@ -5,90 +5,134 @@
     {
       "id": "CROSS-1001",
       "family": "CROSS",
-      "tags": ["CTF","CTL","compatibilità","acciaio","legno"],
+      "tags": [
+        "CTF",
+        "CTL",
+        "compatibilità",
+        "acciaio",
+        "legno"
+      ],
       "response_variants": {
         "gold": {
-          "it": "I connettori CTF e CTL appartengono a sistemi strutturali differenti: i CTF collegano acciaio e calcestruzzo con fissaggio a sparo (P560), mentre i CTL collegano legno e calcestruzzo con vite autofilettante. Non sono intercambiabili e ciascuno richiede il proprio utensile e metodo di posa."
+          "it": "I connettori CTF e CTL non sono intercambiabili perché lavorano su strutture diverse: i CTF collegano travi in acciaio (o lamiera grecata) alla soletta in calcestruzzo, mentre i CTL sono studiati per solai misti legno-calcestruzzo. Usare CTF su travi in legno o CTL su acciaio non è ammesso perché la forma del gambo, il tipo di ancoraggio e la modalità di posa sono ottimizzati per il materiale di base. In pratica: acciaio/lamiera → CTF con P560; legno → CTL o CTL MAXI con vite dedicata. Forzare un sistema sull’altro compromette la collaborazione strutturale e annulla la validità delle prove di tipo."
         }
       }
     },
     {
       "id": "CROSS-1002",
       "family": "CROSS",
-      "tags": ["VCEM","CTCEM","confronto","laterocemento"],
+      "tags": [
+        "VCEM",
+        "CTCEM",
+        "confronto",
+        "laterocemento"
+      ],
       "response_variants": {
         "gold": {
-          "it": "VCEM e CTCEM sono due varianti per solai in laterocemento. Il VCEM usa vite + resina per travetti sani, mentre il CTCEM impiega piastra metallica e resina per travetti deboli o danneggiati. Entrambi generano collaborazione tra travetto e soletta in calcestruzzo di completamento."
+          "it": "VCEM e CTCEM sono due varianti di connettori per solai in laterocemento, ma con differenti modalità di trasferimento degli sforzi. Il VCEM è una vite metallica chimicamente ancorata nel travetto mediante resina, adatta a travetti in buone condizioni con calcestruzzo integro. Il CTCEM aggiunge una piastra metallica superiore che ripartisce gli sforzi su una zona più ampia della soletta, risultando più indicato quando il travetto è indebolito, degradato o con copriferro ridotto. Per travetti sani si può usare VCEM; nei casi di recupero o in presenza di dubbi sulla qualità del calcestruzzo è preferibile CTCEM, sempre su verifica di progetto."
         }
       }
     },
     {
       "id": "CROSS-1003",
       "family": "CROSS",
-      "tags": ["DIAPASON","VCEM","CTCEM","recupero","rinforzo"],
+      "tags": [
+        "DIAPASON",
+        "VCEM",
+        "CTCEM",
+        "recupero",
+        "rinforzo"
+      ],
       "response_variants": {
         "gold": {
-          "it": "Il sistema DIAPASON rappresenta un’alternativa a VCEM e CTCEM nei casi di recupero di solai in laterocemento molto ammalorati. Si applica senza demolizioni estese e rinforza globalmente il solaio esistente."
+          "it": "Il sistema DIAPASON rappresenta un approccio diverso rispetto ai connettori puntuali VCEM/CTCEM: invece di agire solo su singoli punti di collegamento travetto-soletta, lavora come rinforzo diffuso del solaio in laterocemento esistente. VCEM e CTCEM sono indicati quando si vuole migliorare la collaborazione locale tra travetto e getto integrativo, con travetti sostanzialmente integri. DIAPASON è più adatto quando il solaio presenta diffuse carenze di rigidezza, fessurazioni o degrado e si vuole intervenire con una soluzione che distribuisca gli sforzi su una superficie più ampia, migliorando in modo globale il comportamento del solaio esistente."
         }
       }
     },
     {
       "id": "CROSS-1004",
       "family": "CROSS",
-      "tags": ["P560","CTF","CTL","errori di posa"],
+      "tags": [
+        "scelta sistema",
+        "legno",
+        "acciaio",
+        "laterocemento"
+      ],
       "response_variants": {
         "gold": {
-          "it": "La chiodatrice P560 è esclusiva per la posa dei connettori CTF su acciaio o lamiera grecata. Non deve mai essere impiegata per i connettori CTL o su travi in legno, dove è prevista vite autofilettante con coppia di serraggio controllata."
+          "it": "La scelta tra CTF, CTL/CTL MAXI, VCEM/CTCEM e DIAPASON dipende innanzitutto dal tipo di solaio esistente: travi in acciaio o lamiera grecata → connettori CTF; travi in legno → connettori CTL o CTL MAXI; solai in laterocemento con travetti in c.a. → connettori VCEM o CTCEM; solai in laterocemento con diffuse carenze di rigidezza o degrado importante → sistemi DIAPASON. Una volta identificata la famiglia corretta, si valuta lo stato di conservazione, le luci, i carichi e gli obiettivi di prestazione (rigidezza, vibrazioni, incremento di capacità portante) per scegliere la variante più idonea all’interno della famiglia selezionata."
         }
       }
     },
     {
       "id": "CROSS-1005",
       "family": "CROSS",
-      "tags": ["compatibilità","famiglie","limitazioni"],
+      "tags": [
+        "progettazione",
+        "verifiche",
+        "normativa"
+      ],
       "response_variants": {
         "gold": {
-          "it": "Ogni famiglia di connettori Tecnaria è progettata per un materiale specifico: CTF per acciaio/lamiera, CTL e CTL MAXI per legno, VCEM e CTCEM per laterocemento, DIAPASON per recuperi. Non esistono compatibilità incrociate dirette, salvo casi studiati dall’Ufficio Tecnico."
+          "it": "Indipendentemente dal tipo di connettore utilizzato (CTF, CTL, VCEM, CTCEM o DIAPASON), il dimensionamento del solaio misto deve essere sempre eseguito da un tecnico abilitato sulla base delle Norme Tecniche per le Costruzioni e dei relativi documenti applicativi. I connettori non sostituiscono il progetto strutturale: forniscono solo i valori caratteristici di resistenza e le modalità di impiego. Il progettista deve verificare le tensioni nei materiali, la fessurazione, le deformazioni (anche a lungo termine) e la resistenza globale del solaio, includendo eventuali azioni sismiche. Nei casi complessi o di recupero su edifici esistenti è buona pratica confrontarsi con l’ufficio tecnico del produttore per confermare la scelta del sistema."
         }
       }
     },
     {
       "id": "CROSS-1006",
       "family": "CROSS",
-      "tags": ["comparazioni","scelta sistema","diagnosi","solaio"],
+      "tags": [
+        "vibrazioni",
+        "rigidezza",
+        "comfort"
+      ],
       "response_variants": {
         "gold": {
-          "it": "La scelta del sistema Tecnaria dipende dal tipo di solaio e dal materiale delle travi: per acciaio → CTF; per legno → CTL o CTL MAXI; per laterocemento → VCEM o CTCEM; per recupero → DIAPASON. In caso di dubbio contattare l’Ufficio Tecnico con planimetrie e foto."
+          "it": "L’incremento di rigidezza ottenuto con i sistemi misti (CTF, CTL/CTL MAXI, VCEM/CTCEM o DIAPASON) riduce generalmente le vibrazioni e migliora il comfort d’uso del solaio. Nei solai in legno l’impiego di CTL/CTL MAXI con adeguata soletta collaborante è spesso risolutivo per vibrazioni eccessive. Nei solai in laterocemento, VCEM/CTCEM migliorano la collaborazione travetto-soletta, mentre DIAPASON agisce come rinforzo diffuso della sezione resistente. In ogni caso, l’effetto sulle vibrazioni va valutato con un calcolo globale del solaio e non solo sulla base dell’aumento di massa o di spessore del getto integrativo."
         }
       }
     },
     {
       "id": "CROSS-1007",
       "family": "CROSS",
-      "tags": ["errori di scelta","progetto","assistenza tecnica"],
+      "tags": [
+        "errori di scelta",
+        "progetto",
+        "assistenza tecnica"
+      ],
       "response_variants": {
         "gold": {
-          "it": "L’uso di connettori di una famiglia su materiali diversi da quelli previsti può compromettere la sicurezza della connessione e invalidare la garanzia. In caso di incertezza è obbligatorio chiedere assistenza tecnica Tecnaria prima della posa."
+          "it": "L’errore più frequente nella scelta dei connettori è applicare un sistema pensato per un certo tipo di solaio a una struttura diversa: ad esempio, usare CTF su travi in legno, CTL su travi in acciaio o VCEM su travetti fortemente degradati dove sarebbe più indicato un CTCEM o un sistema tipo DIAPASON. Per ridurre il rischio di errori, è buona norma partire sempre dall’identificazione chiara del solaio esistente (materiale, geometria, stato di conservazione) e, in caso di dubbio, inviare a Tecnaria una documentazione minima (foto, sezioni, schemi) per avere un riscontro sull’idoneità del sistema scelto. Nei casi limite è obbligatorio coinvolgere un progettista strutturale e, se necessario, eseguire prove in sito."
         }
       }
     },
     {
       "id": "CROSS-1008",
       "family": "CROSS",
-      "tags": ["diagnosi","recupero strutturale","consulenza"],
+      "tags": [
+        "diagnosi",
+        "recupero strutturale",
+        "consulenza"
+      ],
       "response_variants": {
         "gold": {
-          "it": "Nei casi complessi o di recupero di solai storici è consigliabile un sopralluogo o una consulenza diretta Tecnaria. Le verifiche strutturali e la scelta del sistema di connessione più idoneo devono essere valutate in base alla tipologia e allo stato di conservazione del solaio."
+          "it": "Nei progetti di recupero strutturale è fondamentale partire da una diagnosi accurata del solaio esistente: tipo di solaio (legno, acciaio, laterocemento), presenza di fessurazioni, deformazioni, fenomeni di corrosione o degrado del calcestruzzo. Solo dopo questa fase è possibile scegliere consapevolmente tra sistemi come CTL/CTL MAXI, CTF, VCEM/CTCEM o DIAPASON. La documentazione fotografica, le prove di estrazione e, quando necessario, saggi locali o analisi dei materiali sono strumenti utili per ridurre l’incertezza. Tecnaria può fornire supporto tecnico sulla scelta del connettore, ma la responsabilità finale del progetto resta in capo al tecnico incaricato."
         }
       }
     },
     {
-      "id": "CROSS-1010",
+      "id": "CROSS-VCEMvsCTCEM-0001",
       "family": "CROSS",
-      "tags": ["VCEM","CTCEM","laterocemento","scelta sistema","comparazione"],
+      "tags": [
+        "VCEM",
+        "CTCEM",
+        "laterocemento",
+        "scelta sistema",
+        "comparazione"
+      ],
       "response_variants": {
         "gold": {
-          "it": "La scelta tra VCEM e CTCEM dipende dallo stato dei travetti del solaio in laterocemento. Se i travetti sono integri, con copriferro sano e senza fessurazioni, è indicato il VCEM (vite metallica + resina). Se invece i travetti presentano degrado del calcestruzzo, copriferro distaccato o armature affioranti, è preferibile il CTCEM, che grazie alla piastra superiore ripartisce gli sforzi e rinforza il travetto. Entrambi garantiscono la collaborazione con la soletta in calcestruzzo di completamento, ma il CTCEM è specifico per casi di recupero e consolidamento."
+          "it": "La scelta tra VCEM e CTCEM per un solaio in laterocemento dipende soprattutto dallo stato dei travetti e dagli obiettivi di progetto. VCEM è un connettore a vite con ancoraggio chimico nel travetto in c.a. ed è indicato quando i travetti sono strutturalmente sani, con copriferro sufficiente e calcestruzzo in buone condizioni: in questo caso lavora in modo puntuale garantendo un efficace trasferimento di taglio tra travetto e soletta integrativa. CTCEM, oltre al gambo infisso nel travetto, aggiunge una piastra metallica superiore che ripartisce gli sforzi su una superficie più ampia della soletta: è quindi preferibile quando il travetto è indebolito, presenta fessurazioni diffuse, copriferro ridotto o degrado, oppure quando si vuole aumentare la sicurezza riducendo la concentrazione degli sforzi. In sintesi: travetti integri → VCEM normalmente sufficiente; travetti dubbi o degradati, recuperi spinti o richieste prestazionali elevate → CTCEM, con verifica di progetto e, se necessario, supporto dell’ufficio tecnico Tecnaria."
         }
       }
     }
