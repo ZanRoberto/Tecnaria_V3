@@ -38,4 +38,14 @@
     {"intent": "COMM_PREVENTIVO", "to": {"family": "COMM", "id": "COMM-PREVENTIVO-0002"}}
   ]
 }
+{
+  "rule": "route_vcem_vs_ctcem",
+  "if_any_regex": [
+    "(quando|qual[ea]|differenza).*\\b(vcem)\\b.*\\b(ctcem)\\b",
+    "\\bvcem\\b.*\\bctcem\\b"
+  ],
+  "then": { "family": "CROSS", "id": "CROSS-VCEMvsCTCEM-DECIDER-001" },
+  "priority": 90
+}
+
 
