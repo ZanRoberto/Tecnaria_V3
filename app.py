@@ -1,28 +1,21 @@
 import os
 import json
-import re
-import html
-from typing import List, Optional, Dict, Any
+import difflib
+from pathlib import Path
+from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
-from openai import OpenAI
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel
 
-# --------------------------------------------------
-# Config generale
-# --------------------------------------------------
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise RuntimeError("OPENAI_API_KEY non impostata nelle variabili d'ambiente.")
+# ------------------------------------------------------------------------------
+# Config di base
+# ------------------------------------------------------------------------------
 
-client = OpenAI()
-
-MODEL_CHAT = os.getenv("TECNARIA_MODEL_CHAT", "gpt-4.1-mini")
-DATA_DIR = os.getenv("TECNARIA_DATA_DIR", "static/data")
-
+APP_NAME = "TECNARIA-IMBUTO"
+DATA_DIR = Path("static/data")
 FAMILY_FILES = [
     "CTF.json",
     "VCEM.json",
@@ -34,718 +27,708 @@ FAMILY_FILES = [
     "COMM.json",
 ]
 
-CONSOLIDATO_PATH = os.path.join(DATA_DIR, "patches", "tecnaria_gold_consolidato.json")
+IMBUTO_STAGES = ["top", "middle", "bottom", "post"]
 
-# --------------------------------------------------
-# FastAPI
-# --------------------------------------------------
-
-app = FastAPI(title="TECNARIA-IMBUTO", version="1.2.1")
+app = FastAPI(title=APP_NAME)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # restringere in produzione
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Modelli Pydantic
-# --------------------------------------------------
+# ------------------------------------------------------------------------------
 
 class AskRequest(BaseModel):
-    question: str = Field(..., description="Domanda grezza dell'utente")
-    session_id: Optional[str] = Field(
-        None, description="ID sessione chat lato frontend"
-    )
-    lang: Optional[str] = Field(
-        "it", description="Lingua preferita per la risposta (it/en/fr/de/es)"
-    )
-    debug: bool = Field(False, description="Se true, restituisce anche info di match/imbuto")
-    force_family: Optional[str] = Field(
-        None, description="Forza una famiglia (es: CTF, CTL, VCEM, ecc.)"
-    )
-    force_stage: Optional[str] = Field(
-        None,
-        description=(
-            "Forza lo stadio imbuto: top, middle, bottom, post. "
-            "Se None, viene classificato in automatico."
-        ),
-    )
+    question: str
+    lang: Optional[str] = "it"
+    debug: Optional[bool] = False
 
 
 class AskResponse(BaseModel):
     answer: str
     family: Optional[str] = None
     stage: Optional[str] = None
-    lang: str = "it"
-    debug: Optional[Dict[str, Any]] = None
+    match: Optional[Dict[str, Any]] = None
+    debug: Optional[str] = ""
 
 
-class ConfigResponse(BaseModel):
-    model_chat: str
-    gold_items: int
-    imbuto_stages: List[str]
-    data_dir: str
-    family_files: List[str]
-    consolidato_loaded: bool
-
-
-# --------------------------------------------------
+# ------------------------------------------------------------------------------
 # Caricamento KB GOLD
-# --------------------------------------------------
+# ------------------------------------------------------------------------------
 
 KB_GOLD: List[Dict[str, Any]] = []
 
 
-def _load_json_items(path: str) -> List[Dict[str, Any]]:
-    """
-    Carica un file JSON e restituisce la lista di items, qualunque sia il formato:
-    - {"items": [ ... ]}
-    - [ ... ]
-
-    In caso di JSON corrotto NON blocca l'app:
-    logga l'errore e restituisce lista vuota.
-    """
-    if not os.path.exists(path):
-        print(f"[IMBUTO] WARNING: file non trovato: {path}")
+def _load_json_items(path: Path) -> List[Dict[str, Any]]:
+    if not path.exists():
         return []
+    with path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
 
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except json.JSONDecodeError as e:
-        print(f"[IMBUTO] ERRORE JSON in {path}: {e} — FILE IGNORATO.")
-        return []
-
-    if isinstance(data, dict) and "items" in data:
-        items = data["items"]
-    elif isinstance(data, list):
+    # può essere lista pura o dict con chiave "items"
+    if isinstance(data, list):
         items = data
+    elif isinstance(data, dict) and "items" in data:
+        items = data["items"]
     else:
         items = []
 
-    return [it for it in items if isinstance(it, dict)]
+    # normalizza un minimo
+    norm_items: List[Dict[str, Any]] = []
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        item = dict(raw)
+        # family obbligatoria per debug / instradamento
+        if "family" not in item:
+            # prova a dedurre dal file se presente
+            item["family"] = item.get("famiglia") or path.stem.upper()
+        # id di backup
+        if "id" not in item:
+            item["id"] = f"{item['family']}-AUTO"
+        norm_items.append(item)
+    return norm_items
 
 
 def load_kb() -> List[Dict[str, Any]]:
     all_items: List[Dict[str, Any]] = []
-
     for fname in FAMILY_FILES:
-        full = os.path.join(DATA_DIR, fname)
+        full = DATA_DIR / fname
         items = _load_json_items(full)
         all_items.extend(items)
-
-    if os.path.exists(CONSOLIDATO_PATH):
-        items = _load_json_items(CONSOLIDATO_PATH)
-        all_items.extend(items)
-
-    seen_ids = set()
-    unique_items: List[Dict[str, Any]] = []
-    for it in all_items:
-        iid = it.get("id")
-        if iid and iid in seen_ids:
-            continue
-        if iid:
-            seen_ids.add(iid)
-        unique_items.append(it)
-
-    print(f"[IMBUTO] Caricati {len(unique_items)} blocchi GOLD (famiglie + consolidato se presente).")
-    return unique_items
+    return all_items
 
 
-@app.on_event("startup")
-def _startup_event():
-    global KB_GOLD
-    KB_GOLD = load_kb()
-
-# --------------------------------------------------
-# Utilità LLM (classificazione imbuto)
-# --------------------------------------------------
-
-IMBUTO_STAGES = ["top", "middle", "bottom", "post"]
-
-FAMILIES_ALLOWED = {
-    "CTF", "CTL", "CTL_MAXI", "VCEM", "CTCEM", "P560", "DIAPASON", "GTS", "COMM", "ALTRO"
-}
-
-
-def call_chat(
-    messages: List[Dict[str, str]],
-    model: Optional[str] = None,
-    temperature: float = 0.2,
-    max_tokens: int = 500,
-) -> str:
-    if model is None:
-        model = MODEL_CHAT
-
-    resp = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
-    return resp.choices[0].message.content.strip()
+def extract_answer(item: Dict[str, Any]) -> str:
+    # Prova varie chiavi possibili per la risposta GOLD
+    for key in (
+        "answer",
+        "gold_answer",
+        "gold",
+        "risposta",
+        "risposta_gold",
+        "body",
+        "it",
+    ):
+        v = item.get(key)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    # fallback di emergenza
+    return item.get("answer", "") or ""
 
 
-def classify_imbuto(question: str, lang: str = "it") -> Dict[str, Any]:
-    system_prompt = f"""
-Sei il modulo IMBUTO di un bot Tecnaria.
-Devi classificare la domanda dell'utente nello stadio del funnel commerciale e tecnico.
-
-Stadi imbuto (usa SEMPRE uno di questi, minuscolo):
-- "top"    : curiosità generali, che prodotto usare, confronto famiglie, concetti base.
-- "middle" : dettagli tecnici su una famiglia già abbastanza chiara (posa, limiti, verifiche).
-- "bottom" : domande molto specifiche e operative (quantità, codici ordine, tempi consegna, casi limite).
-- "post"   : assistenza post-vendita, problemi in cantiere, varianti in corso d'opera.
-
-Famiglie disponibili (usa esattamente queste stringhe o "ALTRO"):
-- CTF, CTL, CTL_MAXI, VCEM, CTCEM, P560, DIAPASON, GTS, COMM, ALTRO
-
-Rispondi in JSON valido nel formato:
-{{
-  "stage": "top|middle|bottom|post",
-  "family": "CTF|CTL|CTL_MAXI|VCEM|CTCEM|P560|DIAPASON|GTS|COMM|ALTRO",
-  "short_context": "riassunto telegrafico del caso (max 25 parole, nella lingua dell'utente)"
-}}
-"""
-    user_prompt = f"Domanda utente ({lang}): {question}"
-
-    raw = call_chat(
-        [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.1,
-        max_tokens=200,
-    )
-
-    try:
-        data = json.loads(raw)
-    except Exception:
-        data = {}
-
-    stage = data.get("stage", "middle")
-    if stage not in IMBUTO_STAGES:
-        stage = "middle"
-
-    family = data.get("family", "ALTRO")
-    if family not in FAMILIES_ALLOWED:
-        family = "ALTRO"
-
-    short_context = data.get("short_context") or question[:150]
-
-    return {
-        "stage": stage,
-        "family": family,
-        "short_context": short_context,
-        "raw": raw,
-    }
-
-# --------------------------------------------------
-# MATCH GOLD
-# --------------------------------------------------
-
-TOKEN_REGEX = re.compile(r"\w+", re.UNICODE)
-
-
-def tokenize(text: str) -> List[str]:
-    return [t.lower() for t in TOKEN_REGEX.findall(text or "")]
-
-
-def score_item(
-    item: Dict[str, Any],
-    q_tokens: List[str],
-    imbuto_family: Optional[str],
-    imbuto_stage: Optional[str],
-) -> float:
-    score = 0.0
-
-    triggers = item.get("triggers", [])
-    tags = item.get("tags", [])
-    text_parts: List[str] = []
-
+def score_item(question: str, item: Dict[str, Any]) -> float:
+    q = question.lower()
+    parts: List[str] = []
+    q_item = item.get("question") or item.get("domanda") or ""
+    parts.append(str(q_item))
+    triggers = item.get("triggers") or item.get("keywords") or []
     if isinstance(triggers, list):
-        text_parts.extend(triggers)
+        parts.extend([str(t) for t in triggers])
+    tags = item.get("tags") or []
     if isinstance(tags, list):
-        text_parts.extend(tags)
+        parts.extend([str(t) for t in tags])
 
-    text_parts.append(item.get("id", ""))
-    text_parts.append(item.get("family", ""))
-
-    item_tokens = tokenize(" ".join(text_parts))
-    if item_tokens:
-        overlap = len(set(q_tokens) & set(item_tokens))
-        base = overlap / (len(set(item_tokens)) + 1e-6)
-    else:
-        base = 0.0
-
-    score += base
-
-    item_family = item.get("family")
-    if imbuto_family and item_family:
-        if imbuto_family == item_family:
-            score += 0.3
-        elif imbuto_family != "ALTRO":
-            score -= 0.05
-
-    tags_lower = [t.lower() for t in tags if isinstance(t, str)]
-    if imbuto_stage == "bottom":
-        if any(k in tags_lower for k in ["ordine", "codice", "cantiere"]):
-            score += 0.1
-    if imbuto_stage == "top":
-        if any(k in tags_lower for k in ["panoramica", "confronto"]):
-            score += 0.1
-
-    return score
+    text = " ".join(parts).lower()
+    if not text:
+        return 0.0
+    return difflib.SequenceMatcher(None, q, text).ratio()
 
 
 def match_item(
     question: str,
-    imbuto_info: Dict[str, Any],
     kb: List[Dict[str, Any]],
-    top_k: int = 5,
-) -> List[Dict[str, Any]]:
-    q_tokens = tokenize(question)
+    family: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    candidates = (
+        [item for item in kb if item.get("family") == family]
+        if family
+        else kb
+    )
+    if not candidates:
+        candidates = kb
 
-    scored: List[Dict[str, Any]] = []
-    for item in kb:
-        s = score_item(
-            item=item,
-            q_tokens=q_tokens,
-            imbuto_family=imbuto_info.get("family"),
-            imbuto_stage=imbuto_info.get("stage"),
-        )
-        scored.append({"score": s, "item": item})
+    best_item = None
+    best_score = -1.0
+    for item in candidates:
+        s = score_item(question, item)
+        if s > best_score:
+            best_score = s
+            best_item = item
 
-    scored.sort(key=lambda x: x["score"], reverse=True)
-    return scored[:top_k]
+    if not best_item:
+        return None
+
+    best_item = dict(best_item)
+    best_item["_score"] = round(best_score, 3)
+    return best_item
 
 
-def pick_response(
-    matches: List[Dict[str, Any]],
-    lang: str = "it",
-) -> Dict[str, Any]:
-    if not matches:
-        raise HTTPException(status_code=404, detail="Nessun blocco GOLD pertinente trovato.")
+def classify_imbuto(question: str) -> Dict[str, Optional[str]]:
+    """
+    Instradamento molto sobrio:
+    - stage sempre 'top' per ora
+    - family stimata solo con parole chiave grosse
+    Tutto il resto resta interno, non esposto in UI.
+    """
+    q = question.lower()
 
-    best = matches[0]["item"]
-
-    rv = best.get("response_variants", {}) or {}
-    gold_block = rv.get("gold") or {}
-    chosen = None
-
-    if isinstance(gold_block, dict):
-        chosen = gold_block.get(lang) or gold_block.get("it")
-        if chosen is None and gold_block:
-            chosen = next(iter(gold_block.values()), None)
-
-    if not chosen:
-        chosen = best.get("question") or best.get("summary") or "Nessuna risposta GOLD disponibile per questo blocco."
+    # famiglie per parole chiave forti
+    if "p560" in q or "p 560" in q or "p-560" in q or "pistola a sparo" in q:
+        family = "P560"
+    elif "ctf" in q or "lamiera grecata" in q or "trave in acciaio" in q:
+        family = "CTF"
+    elif "ctl maxi" in q or "ctlmaxi" in q:
+        family = "CTL_MAXI"
+    elif "ctl" in q:
+        family = "CTL"
+    elif "v  c e m" in q or "vcem" in q:
+        family = "VCEM"
+    elif "ctcem" in q:
+        family = "CTCEM"
+    elif "diapason" in q:
+        family = "DIAPASON"
+    elif "ordine" in q or "preventivo" in q or "commerciale" in q:
+        family = "COMM"
+    else:
+        family = None  # ricerca globale
 
     return {
-        "block": best,
-        "answer": chosen,
+        "stage": "top",
+        "family": family,
     }
 
-# --------------------------------------------------
-# Endpoint API “puri”
-# --------------------------------------------------
 
-@app.get("/api/config", response_model=ConfigResponse)
-def get_config():
-    return ConfigResponse(
-        model_chat=MODEL_CHAT,
-        gold_items=len(KB_GOLD),
-        imbuto_stages=IMBUTO_STAGES,
-        data_dir=DATA_DIR,
-        family_files=FAMILY_FILES,
-        consolidato_loaded=os.path.exists(CONSOLIDATO_PATH),
-    )
+def answer_question(req: AskRequest) -> AskResponse:
+    question = (req.question or "").strip()
+    if not question:
+        return AskResponse(
+            answer="Inserisci una domanda di cantiere o di progetto.",
+            family=None,
+            stage=None,
+            match=None,
+            debug="",
+        )
 
+    imbuto = classify_imbuto(question)
+    match = match_item(question, KB_GOLD, family=imbuto.get("family"))
+    if not match:
+        return AskResponse(
+            answer="Non ho trovato una risposta adeguata nei dati GOLD. "
+                   "Prova a riformulare la domanda con più dettagli sul solaio e sui connettori.",
+            family=None,
+            stage=imbuto.get("stage"),
+            match=None,
+            debug="",
+        )
 
-@app.post("/api/ask", response_model=AskResponse)
-def api_ask(payload: AskRequest):
-    if not payload.question or not payload.question.strip():
-        raise HTTPException(status_code=400, detail="Domanda vuota.")
+    answer = extract_answer(match)
+    family = match.get("family")
+    stage = imbuto.get("stage")
 
-    q = payload.question.strip()
+    debug_text = ""
+    if req.debug:
+        debug_text = (
+            f"IMBUTO interno: stage={stage} · family={imbuto.get('family') or 'auto'}\n"
+            f"MATCH: id={match.get('id')} · family={family} · "
+            f"score={match.get('_score')} · question='{match.get('question') or match.get('domanda')}'"
+        )
 
-    if payload.force_stage or payload.force_family:
-        imbuto = classify_imbuto(q, lang=payload.lang)
-        if payload.force_stage:
-            imbuto["stage"] = payload.force_stage
-        if payload.force_family:
-            imbuto["family"] = payload.force_family
-    else:
-        imbuto = classify_imbuto(q, lang=payload.lang)
-
-    matches = match_item(q, imbuto_info=imbuto, kb=KB_GOLD, top_k=5)
-
-    picked = pick_response(matches, lang=payload.lang)
-    answer_text = picked["answer"]
-    block = picked["block"]
-
-    debug_data = None
-    if payload.debug:
-        debug_data = {
-            "imbuto": imbuto,
-            "matches": [
-                {
-                    "score": float(m["score"]),
-                    "id": m["item"].get("id"),
-                    "family": m["item"].get("family"),
-                    "tags": m["item"].get("tags", []),
-                }
-                for m in matches
-            ],
-            "picked_block_id": block.get("id"),
-        }
+    match_public = {
+        "id": match.get("id"),
+        "family": family,
+        "score": match.get("_score"),
+        "question": match.get("question") or match.get("domanda"),
+    }
 
     return AskResponse(
-        answer=answer_text,
-        family=block.get("family"),
-        stage=imbuto.get("stage"),
-        lang=payload.lang,
-        debug=debug_data,
-    )
-
-
-@app.post("/ask", response_model=AskResponse)
-def api_ask_alias(payload: AskRequest):
-    return api_ask(payload)
-
-# --------------------------------------------------
-# UI SERVER-SIDE (form GET, nessun python-multipart)
-# --------------------------------------------------
-
-TEMPLATE_BASE = """
-<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8" />
-  <title>TECNARIA Sinapsi – Imbuto GOLD</title>
-  <style>
-    body {{
-      margin: 0;
-      padding: 40px 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #101826 0, #020617 55%, #000000 100%);
-      color: #e5e7eb;
-      display: flex;
-      justify-content: center;
-    }}
-    .shell {{
-      width: 100%;
-      max-width: 1200px;
-      padding: 0 24px;
-    }}
-    .card {{
-      border-radius: 24px;
-      background: #020617;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
-      border: 1px solid rgba(148,163,184,0.35);
-      overflow: hidden;
-    }}
-    .card-header {{
-      padding: 20px 28px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: radial-gradient(circle at top left, #fb923c 0, #ea580c 45%, #020617 100%);
-      color: white;
-    }}
-    .title-block {{
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }}
-    .avatar {{
-      width: 40px;
-      height: 40px;
-      border-radius: 999px;
-      background: #0f172a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 20px;
-      border: 2px solid rgba(248, 250, 252, 0.6);
-    }}
-    .title-main {{
-      font-size: 20px;
-      font-weight: 700;
-    }}
-    .title-sub {{
-      font-size: 13px;
-      opacity: 0.9;
-    }}
-    .header-right {{
-      text-align: right;
-      font-size: 12px;
-    }}
-    .badge-green {{
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: #16a34a;
-      font-size: 11px;
-      font-weight: 600;
-    }}
-    .badge-green span.dot {{
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: #bbf7d0;
-    }}
-    .tabs {{
-      padding: 10px 20px 4px 20px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      border-bottom: 1px solid rgba(148,163,184,0.35);
-      background: #020617;
-      font-size: 11px;
-    }}
-    .tab-pill {{
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(148,163,184,0.5);
-      background: rgba(15,23,42,0.8);
-      color: #e5e7eb;
-    }}
-    .tab-pill.primary {{
-      border-color: #f97316;
-      background: linear-gradient(to right, rgba(248, 153, 72, 0.25), rgba(248, 113, 113, 0.25));
-    }}
-    .card-body {{
-      display: grid;
-      grid-template-columns: minmax(0, 2fr) minmax(0, 2fr);
-      min-height: 360px;
-    }}
-    @media (max-width: 900px) {{
-      .card-body {{
-        grid-template-columns: minmax(0, 1fr);
-      }}
-    }}
-    .left-pane {{
-      padding: 20px 20px 18px 20px;
-      border-right: 1px solid rgba(30,41,59,0.9);
-    }}
-    .right-pane {{
-      padding: 20px 20px 18px 20px;
-      background: radial-gradient(circle at top, rgba(15,23,42,0.9), #020617 55%, #000000 100%);
-    }}
-    .system-box {{
-      border-radius: 16px;
-      background: rgba(15,23,42,0.9);
-      border: 1px solid rgba(148,163,184,0.5);
-      font-size: 13px;
-      padding: 12px 14px;
-      margin-bottom: 12px;
-      color: #e5e7eb;
-    }}
-    .system-box strong {{
-      color: #f97316;
-    }}
-    textarea.question {{
-      width: 100%;
-      min-height: 160px;
-      max-height: 260px;
-      resize: vertical;
-      border-radius: 14px;
-      border: 1px solid rgba(55,65,81,0.9);
-      background: #020617;
-      color: #e5e7eb;
-      padding: 10px 12px;
-      font-size: 14px;
-      font-family: inherit;
-      outline: none;
-    }}
-    textarea.question:focus {{
-      border-color: #f97316;
-      box-shadow: 0 0 0 1px rgba(249,115,22,0.6);
-    }}
-    .input-row {{
-      margin-top: 12px;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }}
-    .input-label {{
-      flex: 1;
-      font-size: 13px;
-      color: #9ca3af;
-    }}
-    .btn-main {{
-      padding: 9px 18px;
-      border-radius: 999px;
-      border: none;
-      background: linear-gradient(to right, #f97316, #ec4899);
-      color: white;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      box-shadow: 0 10px 25px rgba(248,113,22,0.4);
-    }}
-    .footer-note {{
-      margin-top: 8px;
-      font-size: 11px;
-      color: #9ca3af;
-    }}
-    .answer-header {{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-      font-size: 13px;
-      color: #9ca3af;
-    }}
-    .answer-box {{
-      border-radius: 16px;
-      background: rgba(15,23,42,0.9);
-      border: 1px solid rgba(148,163,184,0.5);
-      padding: 12px 14px;
-      font-size: 14px;
-      min-height: 160px;
-      white-space: pre-wrap;
-    }}
-    .debug-box {{
-      margin-top: 10px;
-      border-radius: 12px;
-      background: rgba(15,23,42,0.9);
-      border: 1px dashed rgba(148,163,184,0.6);
-      padding: 10px;
-      font-size: 11px;
-      max-height: 200px;
-      overflow: auto;
-    }}
-  </style>
-</head>
-<body>
-<div class="shell">
-  <div class="card">
-    <div class="card-header">
-      <div class="title-block">
-        <div class="avatar">T</div>
-        <div>
-          <div class="title-main">TECNARIA Sinapsi</div>
-          <div class="title-sub">
-            Assistente GOLD strutturale · connettori &amp; sistemi misti · Imbuto automatico
-          </div>
-        </div>
-      </div>
-      <div class="header-right">
-        <div class="badge-green"><span class="dot"></span> GOLD attivo</div>
-        <div style="margin-top:4px; opacity:0.8;">Dataset: tecnaria_gold + imbuto · /api/ask</div>
-      </div>
-    </div>
-
-    <div class="tabs">
-      <div class="tab-pill primary">Instradamento automatico · CTF · VCEM · CTCEM · CTL · CTL MAXI · DIAPASON · P560 · COMM</div>
-      <div class="tab-pill">Mode: GOLD deterministico</div>
-      <div class="tab-pill">Lingua: IT</div>
-    </div>
-
-    <div class="card-body">
-      <div class="left-pane">
-        <div class="system-box">
-          <strong>Sistema · init · mode: GOLD</strong><br/>
-          Quando fai una domanda reale di cantiere (solai in legno, laterocemento, acciaio, P560, ecc.)
-          l'imbuto sceglie la famiglia più pertinente (CTF, VCEM, CTCEM, CTL, CTL MAXI, DIAPASON, P560, COMM)
-          e pesca una risposta GOLD completa e deterministica.
-        </div>
-
-        <form action="/ui/ask" method="get">
-          <textarea class="question" name="q" placeholder="Scrivi la tua domanda (es. 'Quando devo usare il CTL MAXI in un solaio misto legno-calcestruzzo?')">{question}</textarea>
-
-          <div class="input-row">
-            <div class="input-label">
-              GOLD = risposta completa strutturale. <br/>
-              Se scrivi <strong>CANONICO:</strong> prima della domanda, la risposta sarà più sintetica e tecnica.
-            </div>
-            <button type="submit" class="btn-main">
-              <span>Chiedi</span> <span>➜</span>
-            </button>
-          </div>
-
-          <div class="footer-note">
-            Suggerimento: descrivi sempre tipo di solaio, travi, spessori, luce delle campate e problemi (fessurazioni, umidità, degrado).
-          </div>
-        </form>
-      </div>
-
-      <div class="right-pane">
-        <div class="answer-header">
-          <div><strong>Risposta GOLD</strong></div>
-          <div style="font-size:11px; color:#9ca3af;">Stadio imbuto: {stage} · Famiglia: {family}</div>
-        </div>
-        <div class="answer-box">{answer}</div>
-        <div class="debug-box">{debug}</div>
-      </div>
-    </div>
-  </div>
-</div>
-</body>
-</html>
-"""
-
-def render_ui(question: str = "", answer: str = "", stage: str = "-", family: str = "-", debug: str = "") -> str:
-    q = html.escape(question or "")
-    a = answer or "In attesa della domanda…"
-    a = html.escape(a)
-    dbg = debug or ""
-    dbg = html.escape(dbg)
-    return TEMPLATE_BASE.format(question=q, answer=a, stage=stage, family=family, debug=dbg)
-
-
-@app.get("/", response_class=HTMLResponse)
-def ui_root():
-    return render_ui()
-
-
-@app.get("/ui/ask", response_class=HTMLResponse)
-def ui_ask(q: str):
-    question = (q or "").strip()
-    if not question:
-        return render_ui(question="", answer="Scrivi prima una domanda.", stage="-", family="-", debug="")
-
-    imbuto = classify_imbuto(question, lang="it")
-    matches = match_item(question, imbuto_info=imbuto, kb=KB_GOLD, top_k=5)
-    try:
-        picked = pick_response(matches, lang="it")
-        answer_text = picked["answer"]
-        block = picked["block"]
-    except HTTPException as e:
-        return render_ui(question=question, answer=str(e.detail), stage=imbuto.get("stage", "-"), family=imbuto.get("family", "-"), debug="")
-
-    dbg_lines = []
-    dbg_lines.append(f"IMBUTO: stage={imbuto.get('stage')} · family={imbuto.get('family')}")
-    if imbuto.get("short_context"):
-        dbg_lines.append(f"context: {imbuto['short_context']}")
-    dbg_lines.append("")
-    dbg_lines.append("MATCH TOP K:")
-    for idx, m in enumerate(matches):
-        it = m["item"]
-        dbg_lines.append(f"{idx+1}) score={m['score']:.3f} · id={it.get('id')} · family={it.get('family')}")
-
-    debug_text = "\n".join(dbg_lines)
-
-    return render_ui(
-        question=question,
-        answer=answer_text,
-        stage=imbuto.get("stage", "-"),
-        family=block.get("family", "-"),
+        answer=answer,
+        family=family,
+        stage=stage,
+        match=match_public,
         debug=debug_text,
     )
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)), reload=True)
+# ------------------------------------------------------------------------------
+# Startup: carica KB
+# ------------------------------------------------------------------------------
+
+@app.on_event("startup")
+def _startup_event() -> None:
+    global KB_GOLD
+    KB_GOLD = load_kb()
+    print(f"[IMBUTO] Caricati {len(KB_GOLD)} blocchi GOLD (famiglie + consolidato se presente).")
+
+
+# ------------------------------------------------------------------------------
+# API REST
+# ------------------------------------------------------------------------------
+
+@app.get("/api/config")
+def api_config():
+    return {
+        "app": APP_NAME,
+        "gold_items": len(KB_GOLD),
+        "families": sorted({item.get("family") for item in KB_GOLD}),
+        "imbuto_stages": IMBUTO_STAGES,
+    }
+
+
+@app.post("/api/ask", response_model=AskResponse)
+def api_ask(req: AskRequest):
+    resp = answer_question(req)
+    return JSONResponse(content=resp.model_dump())
+
+
+# ------------------------------------------------------------------------------
+# UI HTML (dark, aziendale, nessun segreto esposto)
+# ------------------------------------------------------------------------------
+
+HTML_PAGE = """
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8" />
+    <title>TECNARIA Sinapsi — Q/A</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #050814;
+            --bg-card: #121827;
+            --bg-input: #0b1020;
+            --accent: #ff7a3c;
+            --accent-soft: rgba(255,122,60,0.12);
+            --text: #f9fafb;
+            --text-soft: #9ca3af;
+            --border-subtle: #1f2937;
+            --pill-bg: #111827;
+            --pill-soft: #1f2937;
+            --pill-text: #e5e7eb;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: radial-gradient(circle at top, #1f2937 0, #050814 55%);
+            color: var(--text);
+        }
+        .page {
+            max-width: 1240px;
+            margin: 24px auto;
+            padding: 8px 16px 32px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: linear-gradient(90deg, #fb923c, #f97316);
+            border-radius: 18px;
+            box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.18);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            color: #111827;
+        }
+        .header-title {
+            font-weight: 700;
+            font-size: 20px;
+            letter-spacing: 0.01em;
+        }
+        .header-sub {
+            font-size: 13px;
+            color: rgba(17,24,39,0.9);
+        }
+        .badge {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            background: rgba(15,23,42,0.14);
+            color: #f9fafb;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #22c55e;
+        }
+        .badge-secondary {
+            margin-left: 8px;
+            background: rgba(15,23,42,0.26);
+        }
+        .main {
+            margin-top: 18px;
+            background: rgba(15,23,42,0.9);
+            border-radius: 18px;
+            border: 1px solid rgba(31,41,55,0.9);
+            padding: 16px 18px 18px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.1fr);
+            gap: 14px;
+        }
+        @media (max-width: 900px) {
+            .main {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+        .panel {
+            background: radial-gradient(circle at top left, #111827 0, #020617 60%);
+            border-radius: 14px;
+            padding: 14px 14px 16px;
+            border: 1px solid var(--border-subtle);
+        }
+        .panel-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-soft);
+            margin-bottom: 6px;
+        }
+        .pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+            margin-bottom: 3px;
+        }
+        .pill {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            background: var(--pill-bg);
+            border: 1px solid #1f2937;
+            color: var(--pill-text);
+            opacity: 0.92;
+        }
+        .pill-soft {
+            background: var(--accent-soft);
+            border-color: rgba(248,113,113,0.4);
+            color: #fed7aa;
+        }
+        .system-box {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-soft);
+            padding: 10px 11px;
+            border-radius: 10px;
+            background: rgba(15,23,42,0.95);
+            border: 1px dashed #1f2937;
+        }
+        .textarea-wrapper {
+            margin-top: 12px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 170px;
+            resize: vertical;
+            padding: 10px 11px;
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+            outline: none;
+            background: var(--bg-input);
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        textarea::placeholder {
+            color: #6b7280;
+        }
+        .textarea-footer {
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-soft);
+        }
+        .cta-row {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .chip {
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: #020617;
+            border: 1px solid #1f2937;
+            font-size: 11px;
+            cursor: pointer;
+            color: #e5e7eb;
+        }
+        .chip:hover {
+            border-color: #4b5563;
+        }
+        .btn-primary {
+            border-radius: 999px;
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            background: linear-gradient(135deg, #fb923c, #f97316);
+            color: #111827;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 12px 25px rgba(0,0,0,0.55);
+        }
+        .btn-primary span.icon {
+            display: inline-block;
+            transform: translateY(1px);
+        }
+        .btn-primary:active {
+            transform: translateY(1px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.7);
+        }
+        .resp-box {
+            width: 100%;
+            min-height: 220px;
+            max-height: 420px;
+            padding: 10px 11px;
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+            background: radial-gradient(circle at top left, #020617 0, #020617 60%);
+            font-size: 14px;
+            line-height: 1.6;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .resp-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: var(--text-soft);
+        }
+        .debug-toggle {
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+        .debug-toggle input {
+            accent-color: var(--accent);
+        }
+        .debug-box {
+            margin-top: 6px;
+            padding: 7px 8px;
+            border-radius: 8px;
+            background: #020617;
+            border: 1px dashed #374151;
+            font-size: 11px;
+            color: #9ca3af;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+            white-space: pre-wrap;
+        }
+        .footer-note {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <header class="header">
+        <div class="header-left">
+            <div class="avatar">T</div>
+            <div>
+                <div class="header-title">TECNARIA Sinapsi</div>
+                <div class="header-sub">
+                    Assistente GOLD strutturale · connettori &amp; sistemi misti
+                </div>
+            </div>
+        </div>
+        <div>
+            <span class="badge">
+                <span class="dot"></span>
+                GOLD attivo
+                <span id="datasetLabel" class="badge badge-secondary" style="margin-left:8px;">dataset: caricamento...</span>
+            </span>
+        </div>
+    </header>
+
+    <main class="main">
+        <!-- PANNELLO SINISTRO: DOMANDA -->
+        <section class="panel">
+            <div class="panel-header">Sistema · init · mode: GOLD</div>
+            <div class="system-box">
+                Benvenuto in Tecnaria Sinapsi. Modalità GOLD attiva: scrivi una domanda reale di cantiere
+                su connettori e sistemi misti (CTF, VCEM, CTCEM, CTL, CTL MAXI, DIAPASON, P560, ecc.).
+            </div>
+
+            <div class="pill-row" style="margin-top:12px;">
+                <div class="pill pill-soft">Instradamento automatico · famiglie connettori</div>
+                <div class="pill">CTF</div>
+                <div class="pill">VCEM</div>
+                <div class="pill">CTCEM</div>
+                <div class="pill">CTL</div>
+                <div class="pill">CTL MAXI</div>
+                <div class="pill">DIAPASON</div>
+                <div class="pill">P560</div>
+                <div class="pill">COMM</div>
+            </div>
+
+            <div class="textarea-wrapper">
+                <textarea id="questionInput"
+                          placeholder="Es. &quot;Quando devo usare il CTL MAXI su un solaio misto legno-calcestruzzo?&quot;"></textarea>
+            </div>
+
+            <div class="textarea-footer">
+                <div>
+                    GOLD = risposta completa strutturale. Scrivi CANONICO: all'inizio se vuoi una risposta più sintetica.
+                </div>
+                <div class="cta-row">
+                    <button class="chip" onclick="fillHint('Uso CTF')">Uso CTF</button>
+                    <button class="chip" onclick="fillHint('Uso P560')">P560 &amp; fissaggi a sparo</button>
+                    <button class="chip" onclick="fillHint('Confronto CTL vs CTL MAXI')">CTL vs CTL MAXI</button>
+                    <button class="btn-primary" onclick="sendQuestion()">
+                        <span>Chiedi</span>
+                        <span class="icon">➜</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="footer-note">
+                Suggerimento: descrivi sempre tipo di solaio, travi, spessori, luce delle campate e problemi
+                (fessurazioni, umidità, degrado).
+            </div>
+        </section>
+
+        <!-- PANNELLO DESTRO: RISPOSTA -->
+        <section class="panel">
+            <div class="resp-header-row">
+                <div>Risposta GOLD</div>
+                <label class="debug-toggle">
+                    <input id="debugCheckbox" type="checkbox" />
+                    <span>Debug interno (solo per te)</span>
+                </label>
+            </div>
+            <div id="answerBox" class="resp-box">
+                In attesa della domanda...
+            </div>
+            <div id="debugBox" class="debug-box"></div>
+        </section>
+    </main>
+</div>
+
+<script>
+async function loadConfig() {
+    try {
+        const res = await fetch("/api/config");
+        if (!res.ok) return;
+        const data = await res.json();
+        const label = document.getElementById("datasetLabel");
+        if (Array.isArray(data.families)) {
+            label.textContent = "dataset: GOLD · famiglie " + data.families.join(", ");
+        } else {
+            label.textContent = "dataset: GOLD";
+        }
+    } catch (e) {
+        console.warn("Config error", e);
+    }
+}
+
+function fillHint(text) {
+    const el = document.getElementById("questionInput");
+    if (!el) return;
+    if (!el.value.trim()) {
+        el.value = text;
+    } else {
+        el.value = el.value.trim() + " " + text;
+    }
+    el.focus();
+}
+
+async function sendQuestion() {
+    const qEl = document.getElementById("questionInput");
+    const aEl = document.getElementById("answerBox");
+    const dEl = document.getElementById("debugBox");
+    const debugOn = document.getElementById("debugCheckbox").checked;
+
+    const question = (qEl.value || "").trim();
+    if (!question) {
+        aEl.textContent = "Inserisci una domanda di cantiere o di progetto.";
+        dEl.style.display = "none";
+        dEl.textContent = "";
+        return;
+    }
+
+    aEl.textContent = "Sto elaborando la risposta GOLD...";
+    dEl.style.display = "none";
+    dEl.textContent = "";
+
+    try {
+        const res = await fetch("/api/ask", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ question: question, lang: "it", debug: debugOn })
+        });
+        if (!res.ok) {
+            aEl.textContent = "Errore backend (" + res.status + ").";
+            return;
+        }
+        const data = await res.json();
+        aEl.textContent = data.answer || "Nessuna risposta disponibile.";
+
+        if (debugOn && data.debug) {
+            dEl.textContent = data.debug;
+            dEl.style.display = "block";
+        } else {
+            dEl.style.display = "none";
+            dEl.textContent = "";
+        }
+    } catch (e) {
+        console.error(e);
+        aEl.textContent = "Errore di comunicazione con il server.";
+        dEl.style.display = "none";
+        dEl.textContent = "";
+    }
+}
+
+window.addEventListener("DOMContentLoaded", loadConfig);
+</script>
+</body>
+</html>
+"""
+
+
+@app.get("/", response_class=HTMLResponse)
+def index():
+    return HTMLResponse(content=HTML_PAGE)
+
+
+# ------------------------------------------------------------------------------
+# Fallback root info (per chiamate HEAD / GET raw)
+# ------------------------------------------------------------------------------
+
+@app.get("/health")
+def health():
+    return {"app": APP_NAME, "status": "ok", "items": len(KB_GOLD)}
