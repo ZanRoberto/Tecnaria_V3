@@ -1,6 +1,6 @@
 import os
 import json
-import math
+import re
 from typing import List, Optional, Dict, Any
 
 from fastapi import FastAPI, HTTPException
@@ -19,20 +19,33 @@ if not OPENAI_API_KEY:
 client = OpenAI()
 
 MODEL_CHAT = os.getenv("TECNARIA_MODEL_CHAT", "gpt-4.1-mini")
-MODEL_EMBED = os.getenv("TECNARIA_MODEL_EMBED", "text-embedding-3-large")
 
-# Path knowledge base (adattali alla tua repo)
-PATH_GOLD = os.getenv("TECNARIA_GOLD_PATH", "static/data/tecnaria_gold.json")
+# cartella dati reale del progetto
+DATA_DIR = os.getenv("TECNARIA_DATA_DIR", "static/data")
+
+# elenco file di famiglia runtime (come in RECUPERTOTALE)
+FAMILY_FILES = [
+    "CTF.json",
+    "VCEM.json",
+    "CTCEM.json",
+    "CTL.json",
+    "CTL_MAXI.json",
+    "DIAPASON.json",
+    "P560.json",
+    "COMM.json",
+]
+
+CONSOLIDATO_PATH = os.path.join(DATA_DIR, "patches", "tecnaria_gold_consolidato.json")
 
 # --------------------------------------------------
 # FastAPI
 # --------------------------------------------------
 
-app = FastAPI(title="TECNARIA-IMBUTO", version="1.0.0")
+app = FastAPI(title="TECNARIA-IMBUTO", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # in prod: restringi
+    allow_origins=["*"],  # restringi in produzione
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -51,7 +64,6 @@ class AskRequest(BaseModel):
         "it", description="Lingua preferita per la risposta (it/en/fr/de/es)"
     )
     debug: bool = Field(False, description="Se true, restituisce anche info di match/imbuto")
-    # Override imbuto (facoltativi)
     force_family: Optional[str] = Field(
         None, description="Forza una famiglia (es: CTF, CTL, VCEM, ecc.)"
     )
@@ -74,46 +86,93 @@ class AskResponse(BaseModel):
 
 class ConfigResponse(BaseModel):
     model_chat: str
-    model_embed: str
     gold_items: int
     imbuto_stages: List[str]
+    data_dir: str
+    family_files: List[str]
+    consolidato_loaded: bool
 
 
 # --------------------------------------------------
-# Caricamento KB GOLD
+# Caricamento KB GOLD (famiglie + consolidato)
 # --------------------------------------------------
 
 KB_GOLD: List[Dict[str, Any]] = []
 
 
-def load_gold(path: str) -> List[Dict[str, Any]]:
+def _load_json_items(path: str) -> List[Dict[str, Any]]:
+    """Carica un file JSON e restituisce la lista di items, qualunque sia il formato:
+    - {"items": [ ... ]}
+    - [ ... ]
+    """
     if not os.path.exists(path):
-        raise RuntimeError(f"File GOLD non trovato: {path}")
+        return []
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    if not isinstance(data, list):
-        raise RuntimeError("Il file GOLD deve contenere una lista di blocchi.")
-    return data
+
+    if isinstance(data, dict) and "items" in data:
+        items = data["items"]
+    elif isinstance(data, list):
+        items = data
+    else:
+        items = []
+
+    # garantisci che ogni item sia dict
+    return [it for it in items if isinstance(it, dict)]
+
+
+def load_kb() -> List[Dict[str, Any]]:
+    all_items: List[Dict[str, Any]] = []
+
+    # famiglie runtime principali
+    for fname in FAMILY_FILES:
+        full = os.path.join(DATA_DIR, fname)
+        items = _load_json_items(full)
+        all_items.extend(items)
+
+    # consolidato aggiuntivo, se esiste
+    if os.path.exists(CONSOLIDATO_PATH):
+        items = _load_json_items(CONSOLIDATO_PATH)
+        all_items.extend(items)
+
+    # filtra eventuali doppioni per id (tiene il primo)
+    seen_ids = set()
+    unique_items: List[Dict[str, Any]] = []
+    for it in all_items:
+        iid = it.get("id")
+        if iid and iid in seen_ids:
+            continue
+        if iid:
+            seen_ids.add(iid)
+        unique_items.append(it)
+
+    print(f"[IMBUTO] Caricati {len(unique_items)} blocchi GOLD (famiglie + consolidato se presente).")
+    return unique_items
 
 
 @app.on_event("startup")
 def _startup_event():
     global KB_GOLD
-    KB_GOLD = load_gold(PATH_GOLD)
-    print(f"[IMBUTO] Caricati {len(KB_GOLD)} blocchi GOLD da {PATH_GOLD}")
+    KB_GOLD = load_kb()
 
 
 # --------------------------------------------------
-# Utilità LLM
+# Utilità LLM (solo per classificazione imbuto)
 # --------------------------------------------------
+
+IMBUTO_STAGES = ["top", "middle", "bottom", "post"]
+
+FAMILIES_ALLOWED = {
+    "CTF", "CTL", "CTL_MAXI", "VCEM", "CTCEM", "P560", "DIAPASON", "GTS", "COMM", "ALTRO"
+}
+
 
 def call_chat(
     messages: List[Dict[str, str]],
     model: str = None,
     temperature: float = 0.2,
-    max_tokens: int = 800,
+    max_tokens: int = 500,
 ) -> str:
-    """Wrapper semplice per chiamata chat OpenAI."""
     if model is None:
         model = MODEL_CHAT
 
@@ -126,42 +185,7 @@ def call_chat(
     return resp.choices[0].message.content.strip()
 
 
-def get_embedding(text: str) -> List[float]:
-    """Calcola embedding con modello OpenAI."""
-    text = text.replace("\n", " ")
-    emb = client.embeddings.create(
-        model=MODEL_EMBED,
-        input=[text],
-    )
-    return emb.data[0].embedding
-
-
-def cosine_similarity(a: List[float], b: List[float]) -> float:
-    if not a or not b or len(a) != len(b):
-        return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
-    na = math.sqrt(sum(x * x for x in a))
-    nb = math.sqrt(sum(y * y for y in b))
-    if na == 0 or nb == 0:
-        return 0.0
-    return dot / (na * nb)
-
-
-# --------------------------------------------------
-# IMBUTO: classificazione stadio + famiglia
-# --------------------------------------------------
-
-IMBUTO_STAGES = ["top", "middle", "bottom", "post"]
-
-
 def classify_imbuto(question: str, lang: str = "it") -> Dict[str, Any]:
-    """
-    Usa il modello per capire:
-    - stadio imbuto: top / middle / bottom / post
-    - famiglia principale: CTF, CTL, CTL_MAXI, VCEM, CTCEM, P560, DIAPASON, GTS, COMM, ALTRO
-    - tipo di solaio / contesto sintetico
-    Torna sempre un dizionario robusto.
-    """
     system_prompt = f"""
 Sei il modulo IMBUTO di un bot Tecnaria.
 Devi classificare la domanda dell'utente nello stadio del funnel commerciale e tecnico.
@@ -175,7 +199,7 @@ Stadi imbuto (usa SEMPRE uno di questi, minuscolo):
 Famiglie disponibili (usa esattamente queste stringhe o "ALTRO"):
 - CTF, CTL, CTL_MAXI, VCEM, CTCEM, P560, DIAPASON, GTS, COMM, ALTRO
 
-Rispondi in JSON **valido**, senza testo aggiuntivo, nel formato:
+Rispondi in JSON valido nel formato:
 {{
   "stage": "top|middle|bottom|post",
   "family": "CTF|CTL|CTL_MAXI|VCEM|CTCEM|P560|DIAPASON|GTS|COMM|ALTRO",
@@ -193,7 +217,6 @@ Rispondi in JSON **valido**, senza testo aggiuntivo, nel formato:
         max_tokens=200,
     )
 
-    # fallback robusto
     try:
         data = json.loads(raw)
     except Exception:
@@ -204,8 +227,7 @@ Rispondi in JSON **valido**, senza testo aggiuntivo, nel formato:
         stage = "middle"
 
     family = data.get("family", "ALTRO")
-    allowed_fam = {"CTF", "CTL", "CTL_MAXI", "VCEM", "CTCEM", "P560", "DIAPASON", "GTS", "COMM", "ALTRO"}
-    if family not in allowed_fam:
+    if family not in FAMILIES_ALLOWED:
         family = "ALTRO"
 
     short_context = data.get("short_context") or question[:150]
@@ -219,54 +241,69 @@ Rispondi in JSON **valido**, senza testo aggiuntivo, nel formato:
 
 
 # --------------------------------------------------
-# MATCH GOLD: selezione blocchi e varianti
+# MATCH GOLD basato su triggers/tags (no embeddings)
 # --------------------------------------------------
+
+TOKEN_REGEX = re.compile(r"\w+", re.UNICODE)
+
+
+def tokenize(text: str) -> List[str]:
+    return [t.lower() for t in TOKEN_REGEX.findall(text or "")]
+
 
 def score_item(
     item: Dict[str, Any],
-    q_embedding: List[float],
+    q_tokens: List[str],
     imbuto_family: Optional[str],
     imbuto_stage: Optional[str],
 ) -> float:
     """
-    Semplice scoring:
-    - similitudine embedding sulla domanda
-    - booster se famiglia combacia
-    - leggero booster se tag contiene 'bottom'/'middle' ecc coerente con lo stage
+    Scoring semplice e robusto:
+    - overlap tra tokens della domanda e tokens di triggers/tags
+    - booster se famiglia coincide
+    - piccoli bonus in base allo stage.
     """
-    base_score = 0.0
+    score = 0.0
 
-    # embedding domanda vs testo item (question + tags)
-    text = item.get("question", "") + " " + " ".join(item.get("tags", []))
-    try:
-        item_emb = item.get("_embedding")
-        if item_emb is None:
-            # se non presente, lo calcoliamo lazy (puoi anche pre-calcolarlo offline)
-            item_emb = get_embedding(text)
-            item["_embedding"] = item_emb  # cache in memoria
-        sim = cosine_similarity(q_embedding, item_emb)
-    except Exception:
-        sim = 0.0
+    triggers = item.get("triggers", [])
+    tags = item.get("tags", [])
+    text_parts = []
 
-    base_score += sim * 1.0
+    if isinstance(triggers, list):
+        text_parts.extend(triggers)
+    if isinstance(tags, list):
+        text_parts.extend(tags)
+
+    text_parts.append(item.get("id", ""))
+    text_parts.append(item.get("family", ""))
+
+    item_tokens = tokenize(" ".join(text_parts))
+    if not item_tokens:
+        base = 0.0
+    else:
+        overlap = len(set(q_tokens) & set(item_tokens))
+        base = overlap / (len(set(item_tokens)) + 1e-6)
+
+    score += base
 
     # booster famiglia
     item_family = item.get("family")
     if imbuto_family and item_family:
         if imbuto_family == item_family:
-            base_score += 0.3
+            score += 0.3
         elif imbuto_family != "ALTRO":
-            # penalità leggera se mismatch grosso
-            base_score -= 0.05
+            score -= 0.05
 
-    # booster stage-logic sui tag
-    tags = [t.lower() for t in item.get("tags", [])]
-    if imbuto_stage == "bottom" and "ordine" in tags:
-        base_score += 0.1
-    if imbuto_stage == "top" and "panoramica" in tags:
-        base_score += 0.1
+    # booster stage via tags
+    tags_lower = [t.lower() for t in tags]
+    if imbuto_stage == "bottom":
+        if "ordine" in tags_lower or "codice" in tags_lower or "cantiere" in tags_lower:
+            score += 0.1
+    if imbuto_stage == "top":
+        if "panoramica" in tags_lower or "confronto" in tags_lower:
+            score += 0.1
 
-    return base_score
+    return score
 
 
 def match_item(
@@ -275,14 +312,13 @@ def match_item(
     kb: List[Dict[str, Any]],
     top_k: int = 5,
 ) -> List[Dict[str, Any]]:
-    """Seleziona i best match dal GOLD usando embedding + segnali imbuto."""
-    q_emb = get_embedding(question)
+    q_tokens = tokenize(question)
 
     scored: List[Dict[str, Any]] = []
     for item in kb:
         s = score_item(
             item=item,
-            q_embedding=q_emb,
+            q_tokens=q_tokens,
             imbuto_family=imbuto_info.get("family"),
             imbuto_stage=imbuto_info.get("stage"),
         )
@@ -299,49 +335,29 @@ def pick_response(
     """
     Restituisce:
     - blocco GOLD selezionato
-    - testo risposta finale (scegliendo variante GOLD se presente)
+    - testo risposta finale (da response_variants.gold.[lang])
     """
     if not matches:
         raise HTTPException(status_code=404, detail="Nessun blocco GOLD pertinente trovato.")
 
     best = matches[0]["item"]
 
-    # Struttura attesa (adatta se il tuo JSON è diverso):
-    # {
-    #   "id": "...",
-    #   "family": "CTF",
-    #   "question": "....",
-    #   "answers": {
-    #       "it": {
-    #           "gold": [ "testo...", "variante..." ],
-    #           "canonical": [ "..." ],
-    #           "dynamic": [ "..." ]
-    #       },
-    #       "en": {...}
-    #   },
-    #   "tags": [...],
-    #   ...
-    # }
+    rv = best.get("response_variants", {}) or {}
 
-    answers = best.get("answers", {})
-    lang_block = answers.get(lang) or answers.get("it") or {}
+    # preferiamo sempre GOLD
+    gold_block = rv.get("gold") or {}
+    chosen = None
 
-    # 1) preferisci GOLD
-    gold_list = lang_block.get("gold") or []
-    if gold_list:
-        chosen = gold_list[0]
-    else:
-        # 2) fallback canonical
-        canon_list = lang_block.get("canonical") or []
-        if canon_list:
-            chosen = canon_list[0]
-        else:
-            # 3) fallback dynamic / testo question se proprio disperati
-            dyn_list = lang_block.get("dynamic") or []
-            if dyn_list:
-                chosen = dyn_list[0]
-            else:
-                chosen = best.get("question", "Nessuna risposta disponibile nel GOLD.")
+    if isinstance(gold_block, dict):
+        # gold_block es: {"it": "...", "en": "..."}
+        chosen = gold_block.get(lang) or gold_block.get("it")
+        if chosen is None and gold_block:
+            # prendi la prima lingua disponibile
+            chosen = next(iter(gold_block.values()), None)
+
+    # fallback estremo: se manca proprio tutto
+    if not chosen:
+        chosen = best.get("question") or best.get("summary") or "Nessuna risposta GOLD disponibile per questo blocco."
 
     return {
         "block": best,
@@ -357,9 +373,11 @@ def pick_response(
 def get_config():
     return ConfigResponse(
         model_chat=MODEL_CHAT,
-        model_embed=MODEL_EMBED,
         gold_items=len(KB_GOLD),
         imbuto_stages=IMBUTO_STAGES,
+        data_dir=DATA_DIR,
+        family_files=FAMILY_FILES,
+        consolidato_loaded=os.path.exists(CONSOLIDATO_PATH),
     )
 
 
@@ -370,9 +388,8 @@ def api_ask(payload: AskRequest):
 
     q = payload.question.strip()
 
-    # 1) IMBUTO: classificazione stadio + famiglia
+    # 1) IMBUTO
     if payload.force_stage or payload.force_family:
-        # se l'utente forza qualcosa, usiamo imbuto solo come "contesto soft"
         imbuto = classify_imbuto(q, lang=payload.lang)
         if payload.force_stage:
             imbuto["stage"] = payload.force_stage
@@ -389,7 +406,7 @@ def api_ask(payload: AskRequest):
     answer_text = picked["answer"]
     block = picked["block"]
 
-    # 4) Impacchetta debug se richiesto
+    # 4) Debug opzionale
     debug_data = None
     if payload.debug:
         debug_data = {
@@ -399,7 +416,6 @@ def api_ask(payload: AskRequest):
                     "score": float(m["score"]),
                     "id": m["item"].get("id"),
                     "family": m["item"].get("family"),
-                    "question": m["item"].get("question"),
                     "tags": m["item"].get("tags", []),
                 }
                 for m in matches
@@ -415,10 +431,6 @@ def api_ask(payload: AskRequest):
         debug=debug_data,
     )
 
-
-# --------------------------------------------------
-# Root semplice (opzionale)
-# --------------------------------------------------
 
 @app.get("/")
 def root():
