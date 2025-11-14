@@ -1,421 +1,245 @@
-[
-  {
-    "id": "COMM-0001",
-    "family": "COMM",
-    "tags": ["azienda", "presentazione", "tecnaria"],
-    "response_variants": {
-      "gold": {
-        "it": "Tecnaria S.p.A. è un’azienda italiana specializzata nello sviluppo di connettori per solai misti e sistemi di rinforzo strutturale. Produce e certifica dispositivi per strutture acciaio-calcestruzzo, legno-calcestruzzo e laterocemento, integrando assistenza tecnica, software di calcolo e documentazione ufficiale CE."
-      }
-    }
-  },
-  {
-    "id": "COMM-0002",
-    "family": "COMM",
-    "tags": ["contatti", "supporto tecnico", "email"],
-    "response_variants": {
-      "gold": {
-        "it": "Per contattare il supporto tecnico Tecnaria scrivi a info@tecnaria.com oppure telefona al numero +39 0424 535 600. Il servizio è attivo nei giorni feriali e fornisce assistenza su prodotti, posa, software e documentazione."
-      }
-    }
-  },
-  {
-    "id": "COMM-0003",
-    "family": "COMM",
-    "tags": ["catalogo", "download", "schede tecniche"],
-    "response_variants": {
-      "gold": {
-        "it": "Le schede tecniche, i cataloghi e le istruzioni di posa aggiornate di ogni famiglia di connettori sono disponibili sul sito ufficiale www.tecnaria.com nella sezione 'Download'. I file sono sempre aggiornati all’ultima revisione tecnica."
-      }
-    }
-  },
-  {
-    "id": "COMM-0004",
-    "family": "COMM",
-    "tags": ["software", "programma calcolo", "download"],
-    "response_variants": {
-      "gold": {
-        "it": "Il software di calcolo Tecnaria consente di progettare solai misti e verificare il comportamento dei connettori. È scaricabile gratuitamente dal sito ufficiale nella sezione 'Software di calcolo'."
-      }
-    }
-  },
-  {
-    "id": "COMM-0005",
-    "family": "COMM",
-    "tags": ["richiesta preventivo", "commerciale", "distributori"],
-    "response_variants": {
-      "gold": {
-        "it": "Per preventivi e informazioni commerciali puoi contattare l’ufficio vendite Tecnaria o i distributori locali elencati sul sito. È possibile richiedere supporto anche tramite il modulo online nella sezione 'Contatti'."
-      }
-    }
-  },
-  {
-    "id": "COMM-0006",
-    "family": "COMM",
-    "tags": ["distributori", "francia", "europa"],
-    "response_variants": {
-      "gold": {
-        "it": "Tecnaria dispone di distributori in vari paesi europei, inclusa la Francia. L’elenco aggiornato è disponibile su www.tecnaria.com, sezione 'Rete commerciale'."
-      }
-    }
-  },
-  {
-    "id": "COMM-0007",
-    "family": "COMM",
-    "tags": ["formazione", "seminari", "webinar"],
-    "response_variants": {
-      "gold": {
-        "it": "Tecnaria organizza corsi di formazione, webinar e incontri tecnici su solai misti e sistemi di rinforzo. È possibile iscriversi tramite la sezione 'Formazione' del sito o richiedere eventi dedicati per studi di progettazione."
-      }
-    }
-  },
-  {
-    "id": "COMM-0008",
-    "family": "COMM",
-    "tags": ["certificazioni", "CE", "ETA"],
-    "response_variants": {
-      "gold": {
-        "it": "Tutti i connettori Tecnaria sono coperti da marcatura CE e valutazione tecnica europea ETA. La documentazione ufficiale è disponibile nelle rispettive schede di prodotto."
-      }
-    }
-  },
-  {
-    "id": "COMM-0009",
-    "family": "COMM",
-    "tags": ["garanzia", "responsabilità", "durata"],
-    "response_variants": {
-      "gold": {
-        "it": "I prodotti Tecnaria sono garantiti contro difetti di fabbricazione. La durata e le condizioni di garanzia sono riportate nei documenti ufficiali e nel manuale d’uso dei sistemi di fissaggio."
-      }
-    }
-  },
-  {
-    "id": "COMM-0010",
-    "family": "COMM",
-    "tags": ["spedizioni", "tempi consegna"],
-    "response_variants": {
-      "gold": {
-        "it": "I tempi di consegna dipendono dal tipo di prodotto e dalla disponibilità. In genere i connettori standard sono forniti entro pochi giorni lavorativi dall’ordine."
-      }
-    }
-  },
-  {
-    "id": "COMM-0011",
-    "family": "COMM",
-    "tags": ["certificati prova", "laboratori"],
-    "response_variants": {
-      "gold": {
-        "it": "Le prove di qualificazione dei connettori Tecnaria sono effettuate in laboratori accreditati e documentate nei fascicoli tecnici allegati alle ETA."
-      }
-    }
-  },
-  {
-    "id": "COMM-0012",
-    "family": "COMM",
-    "tags": ["assistenza cantiere", "tecnico in sito"],
-    "response_variants": {
-      "gold": {
-        "it": "Su richiesta è possibile organizzare assistenza tecnica in cantiere per verifiche di posa e conformità dei fissaggi. Contattare l’ufficio tecnico Tecnaria con anticipo per la pianificazione."
-      }
-    }
-  },
-  {
-    "id": "COMM-0013",
-    "family": "COMM",
-    "tags": ["canali social", "linkedin", "youtube"],
-    "response_variants": {
-      "gold": {
-        "it": "Tecnaria è presente su LinkedIn e YouTube con contenuti tecnici, video di posa e aggiornamenti sui prodotti. Seguire i canali ufficiali è il modo migliore per restare aggiornati."
-      }
-    }
-  },
-  {
-    "id": "COMM-0014",
-    "family": "COMM",
-    "tags": ["fiere", "eventi"],
-    "response_variants": {
-      "gold": {
-        "it": "Tecnaria partecipa regolarmente a fiere di edilizia e ingegneria strutturale, presentando novità e casi applicativi. L’elenco aggiornato degli eventi è pubblicato sul sito nella sezione 'News & Fiere'."
-      }
-    }
-  },
-  {
-    "id": "COMM-0015",
-    "family": "COMM",
-    "tags": ["richiesta documenti", "disegni CAD", "BIM"],
-    "response_variants": {
-      "gold": {
-        "it": "I file CAD e BIM dei prodotti Tecnaria sono disponibili per i progettisti nella sezione 'Download' del sito ufficiale. Possono essere richiesti anche tramite e-mail all’ufficio tecnico."
-      }
-    }
-  },
-  {
-    "id": "COMM-0016",
-    "family": "COMM",
-    "tags": ["privacy", "dati personali"],
-    "response_variants": {
-      "gold": {
-        "it": "Tecnaria tratta i dati personali secondo il GDPR europeo. Le informazioni sono utilizzate esclusivamente per fornire assistenza e comunicazioni tecniche."
-      }
-    }
-  },
-  {
-    "id": "COMM-0017",
-    "family": "COMM",
-    "tags": ["newsletter", "iscrizione"],
-    "response_variants": {
-      "gold": {
-        "it": "Iscrivendoti alla newsletter Tecnaria riceverai aggiornamenti su nuovi prodotti, software, webinar e casi di studio. L’iscrizione avviene dal sito ufficiale."
-      }
-    }
-  },
-  {
-    "id": "COMM-0018",
-    "family": "COMM",
-    "tags": ["modulo contatto", "form online"],
-    "response_variants": {
-      "gold": {
-        "it": "Il modulo contatti del sito consente di inviare richieste dirette all’ufficio tecnico, commerciale o amministrativo. È il canale consigliato per domande operative."
-      }
-    }
-  },
-  {
-    "id": "COMM-0019",
-    "family": "COMM",
-    "tags": ["uffici", "sede", "indirizzo"],
-    "response_variants": {
-      "gold": {
-        "it": "La sede di Tecnaria è a Bassano del Grappa (VI), Italia. L’indirizzo e la mappa sono disponibili nella sezione 'Contatti' del sito ufficiale."
-      }
-    }
-  },
-  {
-    "id": "COMM-0020",
-    "family": "COMM",
-    "tags": ["orari uffici"],
-    "response_variants": {
-      "gold": {
-        "it": "Gli uffici Tecnaria sono aperti dal lunedì al venerdì, con orario 8:30–12:30 e 14:00–17:30."
-      }
-    }
-  },
-  {
-    "id": "COMM-0021",
-    "family": "COMM",
-    "tags": ["assistenza progettisti", "calcoli", "soluzioni"],
-    "response_variants": {
-      "gold": {
-        "it": "L’assistenza per progettisti offre supporto nei calcoli, nella scelta dei connettori e nelle verifiche strutturali dei solai misti. È possibile inviare planimetrie e dettagli per consulenze dedicate."
-      }
-    }
-  },
-  {
-    "id": "COMM-0022",
-    "family": "COMM",
-    "tags": ["domande frequenti", "faq"],
-    "response_variants": {
-      "gold": {
-        "it": "Le FAQ Tecnaria raccolgono risposte rapide su posa, scelta connettori, compatibilità e manutenzione. Sono accessibili dal sito nella sezione 'Domande frequenti'."
-      }
-    }
-  },
-  {
-    "id": "COMM-0023",
-    "family": "COMM",
-    "tags": ["nuovi prodotti", "innovazioni"],
-    "response_variants": {
-      "gold": {
-        "it": "Tecnaria aggiorna periodicamente la gamma di prodotti introducendo nuovi connettori e sistemi di fissaggio. Le novità sono pubblicate sul sito e comunicate tramite newsletter."
-      }
-    }
-  },
-  {
-    "id": "COMM-0024",
-    "family": "COMM",
-    "tags": ["sinapsi", "intelligenza artificiale", "assistente"],
-    "response_variants": {
-      "gold": {
-        "it": "Sinapsi è l’assistente AI ufficiale di Tecnaria che risponde su prodotti, posa e normative. Le informazioni fornite derivano dai dati tecnici ufficiali, costantemente aggiornati."
-      }
-    }
-  },
-  {
-    "id": "COMM-0025",
-    "family": "COMM",
-    "tags": ["integrazione", "siti partner"],
-    "response_variants": {
-      "gold": {
-        "it": "Sinapsi è integrabile su siti web partner tramite API REST. Le risposte vengono generate utilizzando i dataset ufficiali Tecnaria GOLD."
-      }
-    }
-  },
-  {
-    "id": "COMM-0026",
-    "family": "COMM",
-    "tags": ["aiuto", "problemi", "bug"],
-    "response_variants": {
-      "gold": {
-        "it": "Per segnalare problemi di utilizzo del sistema o errori nelle risposte puoi scrivere a sinapsi@tecnaria.com specificando la domanda e l’esito riscontrato."
-      }
-    }
-  },
-  {
-    "id": "COMM-0027",
-    "family": "COMM",
-    "tags": ["lingue", "internazionale"],
-    "response_variants": {
-      "gold": {
-        "it": "Il sistema Sinapsi riconosce domande in italiano, inglese, francese, tedesco e spagnolo. Per altre lingue viene utilizzato l’inglese come lingua di servizio."
-      }
-    }
-  },
-  {
-    "id": "COMM-0028",
-    "family": "COMM",
-    "tags": ["richiesta demo", "presentazione ai clienti"],
-    "response_variants": {
-      "gold": {
-        "it": "Le aziende partner possono richiedere una dimostrazione di Sinapsi e delle funzionalità GOLD per la consulenza tecnica digitale, scrivendo a info@tecnaria.com."
-      }
-    }
-  },
-  {
-    "id": "COMM-0029",
-    "family": "COMM",
-    "tags": ["aggiornamento dataset", "revisioni"],
-    "response_variants": {
-      "gold": {
-        "it": "I dataset GOLD vengono aggiornati periodicamente per recepire modifiche tecniche, normative o di prodotto. Ogni aggiornamento è tracciato nella sezione 'Revisioni'."
-      }
-    }
-  },
-  {
-    "id": "COMM-0030",
-    "family": "COMM",
-    "tags": ["uso commerciale", "licenze"],
-    "response_variants": {
-      "gold": {
-        "it": "L’utilizzo commerciale dei dataset e delle API Sinapsi è soggetto a licenza. Per informazioni contatta l’amministrazione Tecnaria."
-      }
-    }
-  },
-  {
-    "id": "COMM-0031",
-    "family": "COMM",
-    "tags": ["collaborazioni", "università"],
-    "response_variants": {
-      "gold": {
-        "it": "Tecnaria collabora con università e centri di ricerca per lo sviluppo di nuovi sistemi costruttivi e la validazione sperimentale dei connettori."
-      }
-    }
-  },
-  {
-    "id": "COMM-0032",
-    "family": "COMM",
-    "tags": ["documenti tecnici", "bibliografia"],
-    "response_variants": {
-      "gold": {
-        "it": "Gli articoli tecnici e le pubblicazioni sui solai misti con connettori Tecnaria sono disponibili nella sezione 'Bibliografia' del sito."
-      }
-    }
-  },
-  {
-    "id": "COMM-0033",
-    "family": "COMM",
-    "tags": ["canali vendita", "ordini"],
-    "response_variants": {
-      "gold": {
-        "it": "Gli ordini dei prodotti Tecnaria possono essere inoltrati direttamente all’ufficio vendite o ai distributori autorizzati. Per ogni ordine viene emessa conferma scritta."
-      }
-    }
-  },
-  {
-    "id": "COMM-0034",
-    "family": "COMM",
-    "tags": ["spedizione internazionale", "dogana"],
-    "response_variants": {
-      "gold": {
-        "it": "Per spedizioni internazionali Tecnaria fornisce la documentazione doganale e di conformità richiesta dal paese di destinazione."
-      }
-    }
-  },
-  {
-    "id": "COMM-0035",
-    "family": "COMM",
-    "tags": ["recensioni", "feedback"],
-    "response_variants": {
-      "gold": {
-        "it": "I clienti possono inviare feedback o testimonianze sui progetti realizzati con i sistemi Tecnaria. I contributi più interessanti vengono condivisi sui canali ufficiali."
-      }
-    }
-  },
-  {
-    "id": "COMM-0036",
-    "family": "COMM",
-    "tags": ["sicurezza dati", "server", "api"],
-    "response_variants": {
-      "gold": {
-        "it": "Le API di Sinapsi sono ospitate su server sicuri con connessione cifrata HTTPS. Tutte le richieste e le risposte rispettano gli standard di sicurezza dati."
-      }
-    }
-  },
-  {
-    "id": "COMM-0037",
-    "family": "COMM",
-    "tags": ["integrazione gold", "tecnaria gold"],
-    "response_variants": {
-      "gold": {
-        "it": "La piattaforma Tecnaria GOLD integra tutte le famiglie di connettori e le logiche di risposta Sinapsi. Ogni interazione avviene in modalità tecnica validata."
-      }
-    }
-  },
-  {
-    "id": "COMM-0038",
-    "family": "COMM",
-    "tags": ["termini d’uso", "condizioni servizio"],
-    "response_variants": {
-      "gold": {
-        "it": "L’utilizzo di Sinapsi implica l’accettazione delle condizioni d’uso e della licenza Tecnaria GOLD pubblicate sul sito."
-      }
-    }
-  },
-  {
-    "id": "COMM-0039",
-    "family": "COMM",
-    "tags": ["assistenza gold", "modalità gold"],
-    "response_variants": {
-      "gold": {
-        "it": "Le risposte in modalità GOLD offrono spiegazioni complete, con riferimenti a norme e campi di applicazione. In caso di dubbi, è sempre disponibile il supporto diretto Tecnaria."
-      }
-    }
-  },
-  {
-    "id": "COMM-0040",
-    "family": "COMM",
-    "tags": ["modalità canonico", "risposte sintetiche"],
-    "response_variants": {
-      "gold": {
-        "it": "La modalità CANONICO fornisce risposte sintetiche per uso rapido. Può essere attivata digitando 'CANONICO:' all’inizio della domanda o tramite il toggle nell’interfaccia."
-      }
-    }
-  },
-  {
-    "id": "COMM-0041",
-   
-
-  "family": "COMM",
+{
+  "generated_at": "2025-11-12T12:00:00",
   "items": [
     {
-      "id": "COMM-0001",
-      "tags": ["ordini", "commerciale", "contatti"],
-      "questions": [
-        "Come posso fare un ordine?",
-        "A chi mando la richiesta di offerta?",
-        "Quali sono i riferimenti commerciali Tecnaria?"
-      ],
-      "canonical": "Per ordini e richieste di offerta puoi contattare direttamente l'ufficio commerciale Tecnaria o rivolgerti ai distributori autorizzati indicati nelle schede tecniche e nella sezione contatti del sito Tecnaria.",
-      "mode": "canonical"
+      "id": "COMM-1001",
+      "family": "COMM",
+      "tags": ["assistenza tecnica", "cantiere", "progetto", "contatti", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Per assistenza tecnica in cantiere o in fase di progetto contatta l’Ufficio Tecnico Tecnaria indicando: tipo di solaio, travi, spessori, vincoli, fotografie e planimetria. Riceverai risposta con indicazioni precise o richiesta di integrazioni. Usa il canale ufficiale (modulo o email dedicata)."
+        }
+      }
+    },
+    {
+      "id": "COMM-1002",
+      "family": "COMM",
+      "tags": ["preventivo", "offerta", "quantità", "tempi", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Per un preventivo allega: quantità stimate per famiglia (CTF, VCEM, CTCEM, CTL, CTL MAXI, DIAPASON), elaborati DWG/PDF, indirizzo cantiere e dati di fatturazione. Riceverai offerta con prezzi, tempi e condizioni di resa."
+        }
+      }
+    },
+    {
+      "id": "COMM-1003",
+      "family": "COMM",
+      "tags": ["ordine", "conferma", "consegna", "urgenza", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "L’ordine deve citare l’offerta Tecnaria. Dopo la ricezione viene inviata conferma con disponibilità e tempi di consegna. Per urgenze contattare prima dell’invio per pianificare eventuali corsie rapide."
+        }
+      }
+    },
+    {
+      "id": "COMM-1004",
+      "family": "COMM",
+      "tags": ["tempi", "consegna", "stock", "parziali", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "I tempi di consegna dipendono da famiglia e quantità. Per forniture standard i tempi sono rapidi; per grandi lotti o componenti speciali vengono pianificati con il commerciale. In caso di urgenze o criticità di cantiere segnalare tempestivamente: sono possibili consegne parziali o preallocazioni."
+        }
+      }
+    },
+    {
+      "id": "COMM-1005",
+      "family": "COMM",
+      "tags": ["documentazione", "schede tecniche", "DWG", "manuali", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Schede tecniche, DWG e manuali di posa sono disponibili su richiesta. Invia i dati del progetto per ricevere i set pertinenti (CTF/P560, VCEM/CTCEM, CTL/CTL MAXI, DIAPASON). I DWG includono distanze, fori e indicazioni di posa."
+        }
+      }
+    },
+    {
+      "id": "COMM-1006",
+      "family": "COMM",
+      "tags": ["P560", "nolo", "manutenzione", "consumabili", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Per la posa CTF è prevista esclusivamente la chiodatrice a polvere P560 con kit/adattatori Tecnaria. È disponibile servizio di nolo e supporto manutenzione. Indicare date e volumi per pianificare consumabili (cartucce e chiodi idonei Tecnaria)."
+        }
+      }
+    },
+    {
+      "id": "COMM-1007",
+      "family": "COMM",
+      "tags": ["resi", "non conformità", "DDT", "condizioni vendita", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "In caso di non conformità: documentare con foto, lotto, quantità e descrizione; inviare a commerciale/tecnico per istruttoria. I resi devono essere concordati e completi di imballo e DDT. La gestione segue le condizioni di vendita."
+        }
+      }
+    },
+    {
+      "id": "COMM-1008",
+      "family": "COMM",
+      "tags": ["sopralluogo", "affiancamento", "remoto", "pianificazione", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Per cantieri complessi è possibile concordare sopralluogo o affiancamento remoto. Invia descrizione sintetica del problema, fotografie e disponibilità orarie per pianificare l’intervento."
+        }
+      }
+    },
+    {
+      "id": "COMM-1009",
+      "family": "COMM",
+      "tags": ["formazione", "posa", "calendario", "sessioni", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Sono disponibili sessioni di formazione mirate su: posa CTF con P560, VCEM/CTCEM su laterocemento, CTL/CTL MAXI su legno-calcestruzzo. Richiedere calendario e modalità al commerciale."
+        }
+      }
+    },
+    {
+      "id": "COMM-1010",
+      "family": "COMM",
+      "tags": ["capitolati", "prescrizioni", "voci EP", "istruzioni posa", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Su richiesta forniamo testi tipo per capitolati (voci di elenco prezzi, descrizioni sintetiche) per CTF, VCEM/CTCEM, CTL/CTL MAXI e DIAPASON, allineati alle istruzioni di posa ufficiali."
+        }
+      }
+    },
+    {
+      "id": "COMM-1011",
+      "family": "COMM",
+      "tags": ["tracciabilità", "SAL", "fascicolo tecnico", "fotografie", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Per opere soggette a verifica è consigliata la tracciabilità fotografica dei punti significativi (preparazione, posa, risultati) con riferimento ad assi e campate. Allegare le evidenze ai SAL o al fascicolo tecnico."
+        }
+      }
+    },
+    {
+      "id": "COMM-1012",
+      "family": "COMM",
+      "tags": ["verifica preliminare", "dati progetto", "orientativa", "approfondimento", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Per una verifica preliminare inviare: tipologia solaio, stratigrafia, materiali, geometrie, carichi e foto. Se i dati non sono completi la risposta sarà orientativa e potrà essere richiesto un approfondimento progettuale."
+        }
+      }
+    },
+    {
+      "id": "COMM-1013",
+      "family": "COMM",
+      "tags": ["magazzino", "preallocazione", "urgenze", "consegne parziali", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "La disponibilità varia per famiglia e periodo. Per esigenze urgenti consultare l’ufficio commerciale: spesso sono possibili consegne parziali rapide o preallocazioni su produzione."
+        }
+      }
+    },
+    {
+      "id": "COMM-1014",
+      "family": "COMM",
+      "tags": ["certificazioni", "conformità", "marcature", "tracciabilità", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Su richiesta forniamo dichiarazioni, marcature CE e documenti di conformità. Indicare numero d’ordine o lotto per una tracciabilità completa."
+        }
+      }
+    },
+    {
+      "id": "COMM-1015",
+      "family": "COMM",
+      "tags": ["privacy", "NDA", "dati progetto", "trattamento dati", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "I dati di progetto sono trattati esclusivamente per assistenza tecnica e commerciale. Condividere solo informazioni pertinenti. Se necessario è possibile concordare un NDA."
+        }
+      }
+    },
+    {
+      "id": "COMM-1016",
+      "family": "COMM",
+      "tags": ["aggiornamenti", "istruzioni posa", "versione recente", "ufficiale", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Le istruzioni di posa possono essere aggiornate. Utilizzare sempre la versione più recente e, in caso di discrepanze, attenersi alle comunicazioni ufficiali Tecnaria."
+        }
+      }
+    },
+    {
+      "id": "COMM-1017",
+      "family": "COMM",
+      "tags": ["ordini", "spedizioni", "variazioni", "cantiere", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Per ordini e spedizioni indicare sempre il riferimento alla conferma d’ordine. Per variazioni di indirizzo o orari di cantiere avvisare con anticipo per evitare ritardi."
+        }
+      }
+    },
+    {
+      "id": "COMM-1018",
+      "family": "COMM",
+      "tags": ["FAQ", "VCEM vs CTCEM", "CTL vs CTL MAXI", "DIAPASON recupero", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "FAQ disponibili su: differenza VCEM/CTCEM, requisiti P560 per CTF, scelta CTL vs CTL MAXI, uso DIAPASON nel recupero di solai esistenti. Per casi non coperti inviare domanda sintetica con allegati."
+        }
+      }
+    },
+    {
+      "id": "COMM-1019",
+      "family": "COMM",
+      "tags": ["post-vendita", "ricambi", "documenti", "lotto", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Per supporto post-vendita (integrazioni, ricambi, documenti) contattare il commerciale citando numero d’ordine e lotto. Allegare foto e descrizione puntuale del bisogno."
+        }
+      }
+    },
+    {
+      "id": "COMM-1020",
+      "family": "COMM",
+      "tags": ["GOLD", "CANONICO", "narrativa", "deterministico", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Il sistema eroga risposte GOLD complete e narrative ma deterministiche. Per una versione sintetica usare la parola chiave CANONICO prima della domanda."
+        }
+      }
+    },
+    {
+      "id": "COMM-1021",
+      "family": "COMM",
+      "tags": ["instradamento", "domande non coperte", "dati minimi", "ufficio tecnico", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Se una domanda non è coperta in modo sicuro dal dataset, il sistema indirizza all’Ufficio Tecnico e richiede i dati minimi di progetto (solaio, travi, spessori, vincoli, foto)."
+        }
+      }
+    },
+    {
+      "id": "COMM-1022",
+      "family": "COMM",
+      "tags": ["CTF", "P560", "consumabili", "nolo", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Per offerta CTF con P560 indicare: tipo trave acciaio, lamiera grecata (spessore/strato), lunghezze campate, numero stimato di punti, necessità di nolo P560 e consumabili (cartucce e chiodi idonei Tecnaria)."
+        }
+      }
+    },
+    {
+      "id": "COMM-1023",
+      "family": "COMM",
+      "tags": ["VCEM", "CTCEM", "laterocemento", "ripristini", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Per offerta VCEM/CTCEM indicare: tipo solaio laterocemento, stato dei travetti/copriferro, profondità utile, passo previsto, superfici e foto. Specificare se sono previsti ripristini locali."
+        }
+      }
+    },
+    {
+      "id": "COMM-1024",
+      "family": "COMM",
+      "tags": ["CTL", "CTL MAXI", "legno", "prove a campione", "COMM"],
+      "response_variants": {
+        "gold": {
+          "it": "Per offerta CTL/CTL MAXI indicare: sezione/essenza della trave in legno, spessore della soletta, passo e lunghezze. Per legni storici o fessurati allegare foto e, se necessario, prevedere prove a campione."
+        }
+      }
     }
   ]
 }
-
