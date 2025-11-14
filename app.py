@@ -20,7 +20,6 @@ if not OPENAI_API_KEY:
 client = OpenAI()
 
 MODEL_CHAT = os.getenv("TECNARIA_MODEL_CHAT", "gpt-4.1-mini")
-
 DATA_DIR = os.getenv("TECNARIA_DATA_DIR", "static/data")
 
 FAMILY_FILES = [
@@ -40,7 +39,7 @@ CONSOLIDATO_PATH = os.path.join(DATA_DIR, "patches", "tecnaria_gold_consolidato.
 # FastAPI
 # --------------------------------------------------
 
-app = FastAPI(title="TECNARIA-IMBUTO", version="1.2.0")
+app = FastAPI(title="TECNARIA-IMBUTO", version="1.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -132,13 +131,11 @@ def _load_json_items(path: str) -> List[Dict[str, Any]]:
 def load_kb() -> List[Dict[str, Any]]:
     all_items: List[Dict[str, Any]] = []
 
-    # famiglie principali
     for fname in FAMILY_FILES:
         full = os.path.join(DATA_DIR, fname)
         items = _load_json_items(full)
         all_items.extend(items)
 
-    # consolidato aggiuntivo, se esiste
     if os.path.exists(CONSOLIDATO_PATH):
         items = _load_json_items(CONSOLIDATO_PATH)
         all_items.extend(items)
@@ -162,7 +159,6 @@ def load_kb() -> List[Dict[str, Any]]:
 def _startup_event():
     global KB_GOLD
     KB_GOLD = load_kb()
-
 
 # --------------------------------------------------
 # Utilità LLM (classificazione imbuto)
@@ -194,11 +190,7 @@ def call_chat(
 
 
 def classify_imbuto(question: str, lang: str = "it") -> Dict[str, Any]:
-    """
-    Classifica la domanda nello stadio dell'imbuto e nella famiglia principale.
-    ATTENZIONE: niente f-string nella system_prompt per non rompere le graffe del JSON.
-    """
-    system_prompt = """
+    system_prompt = f"""
 Sei il modulo IMBUTO di un bot Tecnaria.
 Devi classificare la domanda dell'utente nello stadio del funnel commerciale e tecnico.
 
@@ -209,18 +201,15 @@ Stadi imbuto (usa SEMPRE uno di questi, minuscolo):
 - "post"   : assistenza post-vendita, problemi in cantiere, varianti in corso d'opera.
 
 Famiglie disponibili (usa esattamente queste stringhe o "ALTRO"):
-CTF, CTL, CTL_MAXI, VCEM, CTCEM, P560, DIAPASON, GTS, COMM, ALTRO
+- CTF, CTL, CTL_MAXI, VCEM, CTCEM, P560, DIAPASON, GTS, COMM, ALTRO
 
 Rispondi in JSON valido nel formato:
-
-{
+{{
   "stage": "top|middle|bottom|post",
   "family": "CTF|CTL|CTL_MAXI|VCEM|CTCEM|P560|DIAPASON|GTS|COMM|ALTRO",
   "short_context": "riassunto telegrafico del caso (max 25 parole, nella lingua dell'utente)"
-}
+}}
 """
-
-    # Qui l'f-string è sicura, non contiene graffe JSON
     user_prompt = f"Domanda utente ({lang}): {question}"
 
     raw = call_chat(
@@ -245,7 +234,7 @@ Rispondi in JSON valido nel formato:
     if family not in FAMILIES_ALLOWED:
         family = "ALTRO"
 
-    short_context = data.get("short_context") or question[:120]
+    short_context = data.get("short_context") or question[:150]
 
     return {
         "stage": stage,
@@ -254,9 +243,8 @@ Rispondi in JSON valido nel formato:
         "raw": raw,
     }
 
-
 # --------------------------------------------------
-# MATCH GOLD basato su triggers/tags (no embeddings)
+# MATCH GOLD
 # --------------------------------------------------
 
 TOKEN_REGEX = re.compile(r"\w+", re.UNICODE)
@@ -273,16 +261,16 @@ def score_item(
     imbuto_stage: Optional[str],
 ) -> float:
     """
-    Scoring semplice e robusto:
-    - overlap tra tokens della domanda e tokens di triggers/tags
+    Scoring:
+    - overlap tra tokens domanda e tokens di triggers/tags/id/family
     - booster se famiglia coincide
-    - piccoli bonus in base allo stage.
+    - piccoli bonus in base allo stage
     """
     score = 0.0
 
     triggers = item.get("triggers", [])
     tags = item.get("tags", [])
-    text_parts = []
+    text_parts: List[str] = []
 
     if isinstance(triggers, list):
         text_parts.extend(triggers)
@@ -293,15 +281,14 @@ def score_item(
     text_parts.append(item.get("family", ""))
 
     item_tokens = tokenize(" ".join(text_parts))
-    if not item_tokens:
-        base = 0.0
-    else:
+    if item_tokens:
         overlap = len(set(q_tokens) & set(item_tokens))
         base = overlap / (len(set(item_tokens)) + 1e-6)
+    else:
+        base = 0.0
 
     score += base
 
-    # booster famiglia
     item_family = item.get("family")
     if imbuto_family and item_family:
         if imbuto_family == item_family:
@@ -309,13 +296,12 @@ def score_item(
         elif imbuto_family != "ALTRO":
             score -= 0.05
 
-    # booster stage via tags
-    tags_lower = [t.lower() for t in tags]
+    tags_lower = [t.lower() for t in tags if isinstance(t, str)]
     if imbuto_stage == "bottom":
-        if "ordine" in tags_lower or "codice" in tags_lower or "cantiere" in tags_lower:
+        if any(k in tags_lower for k in ["ordine", "codice", "cantiere"]):
             score += 0.1
     if imbuto_stage == "top":
-        if "panoramica" in tags_lower or "confronto" in tags_lower:
+        if any(k in tags_lower for k in ["panoramica", "confronto"]):
             score += 0.1
 
     return score
@@ -358,13 +344,10 @@ def pick_response(
     best = matches[0]["item"]
 
     rv = best.get("response_variants", {}) or {}
-
-    # preferiamo sempre GOLD
     gold_block = rv.get("gold") or {}
     chosen = None
 
     if isinstance(gold_block, dict):
-        # gold_block es: {"it": "...", "en": "..."}
         chosen = gold_block.get(lang) or gold_block.get("it")
         if chosen is None and gold_block:
             chosen = next(iter(gold_block.values()), None)
@@ -376,7 +359,6 @@ def pick_response(
         "block": best,
         "answer": chosen,
     }
-
 
 # --------------------------------------------------
 # Endpoint API
@@ -444,24 +426,411 @@ def api_ask(payload: AskRequest):
     )
 
 
+@app.post("/ask", response_model=AskResponse)
+def api_ask_alias(payload: AskRequest):
+    """Alias per compatibilità con UI che chiama ancora /ask."""
+    return api_ask(payload)
+
 # --------------------------------------------------
-# Root semplice
+# UI HTML su "/"
 # --------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
 def root():
     return """
-    <html>
-      <head><title>TECNARIA-IMBUTO</title></head>
-      <body>
-        <h1>TECNARIA-IMBUTO</h1>
-        <p>API attiva.</p>
-        <ul>
-          <li>Config: <code>/api/config</code></li>
-          <li>Ask: <code>POST /api/ask</code> (JSON)</li>
-        </ul>
-      </body>
-    </html>
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>TECNARIA Sinapsi – Imbuto GOLD</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #101826 0, #020617 55%, #000000 100%);
+      color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+    }
+    .shell {
+      width: 100%;
+      max-width: 1200px;
+      padding: 0 24px;
+    }
+    .card {
+      border-radius: 24px;
+      background: #020617;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      border: 1px solid rgba(148,163,184,0.35);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: radial-gradient(circle at top left, #fb923c 0, #ea580c 45%, #020617 100%);
+      color: white;
+    }
+    .title-block {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 20px;
+      border: 2px solid rgba(248, 250, 252, 0.6);
+    }
+    .title-main {
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .title-sub {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+    .header-right {
+      text-align: right;
+      font-size: 12px;
+    }
+    .badge-green {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #16a34a;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-green span.dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #bbf7d0;
+    }
+    .tabs {
+      padding: 10px 20px 4px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 1px solid rgba(148,163,184,0.35);
+      background: #020617;
+    }
+    .tab-pill {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.5);
+      background: rgba(15,23,42,0.8);
+      color: #e5e7eb;
+      cursor: default;
+    }
+    .tab-pill.primary {
+      border-color: #f97316;
+      background: linear-gradient(to right, rgba(248, 153, 72, 0.25), rgba(248, 113, 113, 0.25));
+    }
+    .card-body {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 2fr);
+      gap: 0;
+      min-height: 360px;
+    }
+    @media (max-width: 900px) {
+      .card-body {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+    .left-pane {
+      padding: 20px 20px 18px 20px;
+      border-right: 1px solid rgba(30,41,59,0.9);
+    }
+    .right-pane {
+      padding: 20px 20px 18px 20px;
+      background: radial-gradient(circle at top, rgba(15,23,42,0.9), #020617 55%, #000000 100%);
+    }
+    .system-box {
+      border-radius: 16px;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.5);
+      font-size: 13px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      color: #e5e7eb;
+    }
+    .system-box strong {
+      color: #f97316;
+    }
+    textarea#question {
+      width: 100%;
+      min-height: 160px;
+      max-height: 260px;
+      resize: vertical;
+      border-radius: 14px;
+      border: 1px solid rgba(55,65,81,0.9);
+      background: #020617;
+      color: #e5e7eb;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+    }
+    textarea#question:focus {
+      border-color: #f97316;
+      box-shadow: 0 0 0 1px rgba(249,115,22,0.6);
+    }
+    .input-row {
+      margin-top: 12px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .input-label {
+      flex: 1;
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    .btn-main {
+      padding: 9px 18px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(to right, #f97316, #ec4899);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 10px 25px rgba(248,113,22,0.4);
+    }
+    .btn-main:active {
+      transform: translateY(1px);
+      box-shadow: 0 4px 14px rgba(248,113,22,0.3);
+    }
+    .chips-row {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 11px;
+    }
+    .chip {
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(75,85,99,0.8);
+      cursor: pointer;
+      color: #e5e7eb;
+    }
+    .chip:hover {
+      border-color: #f97316;
+      color: #fde68a;
+    }
+    .footer-note {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .answer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    .answer-box {
+      border-radius: 16px;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.5);
+      padding: 12px 14px;
+      font-size: 14px;
+      min-height: 160px;
+      white-space: pre-wrap;
+    }
+    .debug-toggle {
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .debug-toggle input {
+      accent-color: #f97316;
+    }
+    .debug-box {
+      margin-top: 10px;
+      border-radius: 12px;
+      background: rgba(15,23,42,0.9);
+      border: 1px dashed rgba(148,163,184,0.6);
+      padding: 10px;
+      font-size: 11px;
+      max-height: 180px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="card">
+    <div class="card-header">
+      <div class="title-block">
+        <div class="avatar">T</div>
+        <div>
+          <div class="title-main">TECNARIA Sinapsi</div>
+          <div class="title-sub">
+            Assistente GOLD strutturale · connettori &amp; sistemi misti · Imbuto automatico
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="badge-green"><span class="dot"></span> GOLD attivo</div>
+        <div style="margin-top:4px; opacity:0.8;">Dataset: tecnaria_gold + imbuto · /api/ask</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab-pill primary">Instradamento automatico · CTF · VCEM · CTCEM · CTL · CTL MAXI · DIAPASON · P560 · COMM</div>
+      <div class="tab-pill">Mode: GOLD deterministico</div>
+      <div class="tab-pill">Lingua: IT</div>
+    </div>
+
+    <div class="card-body">
+      <div class="left-pane">
+        <div class="system-box">
+          <strong>Sistema · init · mode: GOLD</strong><br>
+          Quando fai una domanda reale di cantiere (solai in legno, laterocemento, acciaio, P560, ecc.)
+          l'imbuto sceglie la famiglia più pertinente (CTF, VCEM, CTCEM, CTL, CTL MAXI, DIAPASON, P560, COMM)
+          e pesca una risposta GOLD completa e deterministica.
+        </div>
+
+        <textarea id="question" placeholder="Scrivi la tua domanda (es. 'Quando devo usare il CTL MAXI in un solaio misto legno-calcestruzzo?')"></textarea>
+
+        <div class="input-row">
+          <div class="input-label">
+            GOLD = risposta completa strutturale. <br>
+            Se scrivi <strong>CANONICO:</strong> prima della domanda, la risposta sarà più sintetica e tecnica.
+          </div>
+          <button class="btn-main" onclick="sendAsk()">
+            <span>Chiedi</span> <span>➜</span>
+          </button>
+        </div>
+
+        <div class="chips-row">
+          <div class="chip" onclick="preset('Uso CTF per solai su lamiera grecata con travi in acciaio: quali limiti di spessore lamiera e che chiodatrice devo usare?')">Uso CTF</div>
+          <div class="chip" onclick="preset('Quando è preferibile usare VCEM invece di CTCEM nel recupero di un solaio in laterocemento esistente?')">VCEM vs CTCEM</div>
+          <div class="chip" onclick="preset('Quando devo scegliere CTL MAXI rispetto al CTL standard in un solaio misto legno-calcestruzzo?')">CTL vs CTL MAXI</div>
+          <div class="chip" onclick="preset('Posso usare DIAPASON per il recupero di un solaio in laterocemento con travetti ammalorati?')">Uso DIAPASON</div>
+          <div class="chip" onclick="preset('Per la posa dei connettori CTF su lamiera grecata quale chiodatrice e quali chiodi idonei Tecnaria devo usare?')">P560 &amp; CTF</div>
+          <div class="chip" onclick="preset('Cosa devo mandare a Tecnaria per avere un preventivo completo per CTF, VCEM e DIAPASON sullo stesso cantiere?')">Supporto Tecnaria</div>
+        </div>
+
+        <div class="footer-note">
+          Suggerimento: descrivi sempre tipo di solaio, travi, spessori, luce delle campate e problemi (fessurazioni, umidità, degrado).
+        </div>
+      </div>
+
+      <div class="right-pane">
+        <div class="answer-header">
+          <div><strong>Risposta GOLD</strong></div>
+          <label class="debug-toggle">
+            <input type="checkbox" id="debugToggle" checked />
+            debug imbuto &amp; match
+          </label>
+        </div>
+        <div id="answer" class="answer-box">In attesa della domanda…</div>
+        <div id="debugBox" class="debug-box" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function preset(text) {
+    document.getElementById("question").value = text;
+    document.getElementById("question").focus();
+  }
+
+  async function sendAsk() {
+    const q = document.getElementById("question").value.trim();
+    const debug = document.getElementById("debugToggle").checked;
+    const answerEl = document.getElementById("answer");
+    const debugEl = document.getElementById("debugBox");
+
+    if (!q) {
+      answerEl.textContent = "Scrivi prima una domanda.";
+      return;
+    }
+
+    answerEl.textContent = "Invio richiesta a /api/ask…";
+    debugEl.style.display = debug ? "block" : "none";
+    debugEl.textContent = "";
+
+    try {
+      const resp = await fetch("/api/ask", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          question: q,
+          lang: "it",
+          debug: debug
+        })
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        answerEl.textContent = "Errore backend (" + resp.status + "): " + (data.detail || JSON.stringify(data));
+        return;
+      }
+
+      answerEl.textContent = data.answer || "(nessuna risposta)";
+
+      if (debug && data.debug) {
+        const ib = data.debug.imbuto || {};
+        const matches = data.debug.matches || [];
+
+        let text = "";
+        text += "IMBUTO\n";
+        text += "- stage: " + (ib.stage || "?") + "\n";
+        text += "- family: " + (ib.family || "?") + "\n";
+        if (ib.short_context) {
+          text += "- short_context: " + ib.short_context + "\n";
+        }
+        text += "\nMATCH TOP K\n";
+        matches.forEach((m, idx) => {
+          text += (idx + 1) + ") score=" + m.score.toFixed(3)
+               + " · id=" + (m.id || "?")
+               + " · family=" + (m.family || "?") + "\n";
+          if (m.tags && m.tags.length) {
+            text += "   tags: " + m.tags.join(", ") + "\n";
+          }
+        });
+
+        debugEl.style.display = "block";
+        text = text || "Nessun dettaglio di debug disponibile.";
+        debugEl.textContent = text;
+      } else {
+        debugEl.style.display = "none";
+      }
+    } catch (e) {
+      answerEl.textContent = "Errore di rete: " + e;
+    }
+  }
+</script>
+</body>
+</html>
     """
 
 
