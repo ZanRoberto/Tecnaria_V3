@@ -1,734 +1,951 @@
 import os
 import json
-import difflib
-from pathlib import Path
+import glob
+import logging
+from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel
 
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None  # gestito a runtime
 
-# ------------------------------------------------------------------------------
-# Config di base
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# CONFIGURAZIONE DI BASE
+# -----------------------------------------------------------------------------
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("tecnaria-imbuto")
 
 APP_NAME = "TECNARIA-IMBUTO"
-DATA_DIR = Path("static/data")
-FAMILY_FILES = [
-    "CTF.json",
-    "VCEM.json",
-    "CTCEM.json",
-    "CTL.json",
-    "CTL_MAXI.json",
-    "DIAPASON.json",
-    "P560.json",
-    "COMM.json",
-]
+DATA_DIR = "static/data"
+MODEL_CHAT_DEFAULT = "gpt-4.1-mini"  # usa quello che hai su Render
 
+# Modalità A4 (aggressiva)
 IMBUTO_STAGES = ["top", "middle", "bottom", "post"]
+
+# -----------------------------------------------------------------------------
+# STRUTTURE DATI
+# -----------------------------------------------------------------------------
+
+@dataclass
+class KBItem:
+    id: str
+    family: str
+    lang: str
+    question: str
+    answer: str
+    mode: str
+    tags: List[str]
+    raw: Dict[str, Any]
+
+
+@dataclass
+class FamilyScore:
+    family: str
+    score: float
+    reasons: List[str]
+
+
+# -----------------------------------------------------------------------------
+# CARICAMENTO KNOWLEDGE BASE (GOLD)
+# -----------------------------------------------------------------------------
+
+KB_ITEMS: List[KBItem] = []
+KB_BY_FAMILY_LANG: Dict[str, List[KBItem]] = {}
+FAMILY_FILES: List[str] = []
+CONSOLIDATO_LOADED = False
+
+def _safe_get(d: Dict[str, Any], key: str, default: Any = "") -> Any:
+    return d.get(key, default)
+
+def _load_json_items(path: str) -> List[KBItem]:
+    """Carica un singolo file JSON (lista di blocchi GOLD). Ignora errori singoli, non manda in crash l'app."""
+    items: List[KBItem] = []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        logger.error(f"[KB] Errore JSON nel file {path}: {e}")
+        return items
+    except FileNotFoundError:
+        logger.warning(f"[KB] File non trovato: {path}")
+        return items
+
+    if not isinstance(data, list):
+        logger.warning(f"[KB] File {path} non contiene una lista JSON, ignorato.")
+        return items
+
+    for obj in data:
+        if not isinstance(obj, dict):
+            continue
+        _id = str(_safe_get(obj, "id", "")).strip()
+        _family = str(_safe_get(obj, "family", "")).strip()
+        _lang = str(_safe_get(obj, "lang", "it")).strip() or "it"
+        _question = str(_safe_get(obj, "question", "")).strip()
+        _answer = str(_safe_get(obj, "answer", "")).strip()
+        _mode = str(_safe_get(obj, "mode", "gold")).strip().lower()
+        _tags = _safe_get(obj, "tags", [])
+        if not isinstance(_tags, list):
+            _tags = []
+
+        if not _id or not _family or not _answer:
+            # blocco incompleto, ignoriamo
+            continue
+
+        item = KBItem(
+            id=_id,
+            family=_family.upper(),
+            lang=_lang.lower(),
+            question=_question,
+            answer=_answer,
+            mode=_mode,
+            tags=[str(t).lower() for t in _tags],
+            raw=obj,
+        )
+        items.append(item)
+
+    logger.info(f"[KB] Caricati {len(items)} blocchi da {path}")
+    return items
+
+def load_kb() -> None:
+    """Carica tutte le famiglie GOLD e popola le strutture globali."""
+    global KB_ITEMS, KB_BY_FAMILY_LANG, FAMILY_FILES, CONSOLIDATO_LOADED
+
+    KB_ITEMS = []
+    KB_BY_FAMILY_LANG = {}
+    FAMILY_FILES = []
+    CONSOLIDATO_LOADED = False
+
+    if not os.path.isdir(DATA_DIR):
+        logger.warning(f"[KB] Data dir non trovata: {DATA_DIR}")
+        return
+
+    # Carichiamo tutti i JSON di famiglia
+    patterns = [
+        os.path.join(DATA_DIR, "*.json"),
+    ]
+    seen_files = set()
+    for pattern in patterns:
+        for path in glob.glob(pattern):
+            name = os.path.basename(path)
+            if name.lower() in {"consolidato.json", "tecnaria_gold.json"}:
+                continue
+            if path in seen_files:
+                continue
+            seen_files.add(path)
+            FAMILY_FILES.append(name)
+            items = _load_json_items(path)
+            for it in items:
+                KB_ITEMS.append(it)
+                key = f"{it.family}:{it.lang}"
+                KB_BY_FAMILY_LANG.setdefault(key, []).append(it)
+
+    # Eventuale consolidato
+    consolidato_path = os.path.join(DATA_DIR, "consolidato.json")
+    if os.path.exists(consolidato_path):
+        consolidato_items = _load_json_items(consolidato_path)
+        for it in consolidato_items:
+            KB_ITEMS.append(it)
+            key = f"{it.family}:{it.lang}"
+            KB_BY_FAMILY_LANG.setdefault(key, []).append(it)
+        CONSOLIDATO_LOADED = True
+
+    logger.info(
+        f"[IMBUTO] Caricati {len(KB_ITEMS)} blocchi GOLD (famiglie + consolidato se presente)."
+    )
+
+# -----------------------------------------------------------------------------
+# CLIENT OPENAI (SE DISPONIBILE)
+# -----------------------------------------------------------------------------
+
+def get_openai_client() -> Optional["OpenAI"]:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or OpenAI is None:
+        return None
+    try:
+        client = OpenAI(api_key=api_key)
+        return client
+    except Exception as e:
+        logger.error(f"[OPENAI] Impossibile inizializzare il client: {e}")
+        return None
+
+CLIENT = get_openai_client()
+MODEL_CHAT = os.getenv("MODEL_CHAT", MODEL_CHAT_DEFAULT)
+
+def call_chat(messages: List[Dict[str, str]], max_tokens: int = 256) -> Optional[str]:
+    """Chiamata LLM robusta: se fallisce, restituisce None, non blocca il sistema."""
+    if CLIENT is None:
+        return None
+    try:
+        resp = CLIENT.chat.completions.create(
+            model=MODEL_CHAT,
+            messages=messages,
+            max_tokens=max_tokens,
+        )
+        txt = resp.choices[0].message.content
+        return txt
+    except Exception as e:
+        logger.error(f"[OPENAI] Errore chiamata chat: {e}")
+        return None
+
+# -----------------------------------------------------------------------------
+# TEC-ENGINE A4: RICONOSCIMENTO FAMIGLIA & INTENT
+# -----------------------------------------------------------------------------
+
+FAMILY_RULES = {
+    "CTF": {
+        "keywords": [
+            "ctf",
+            "connettore ctf",
+            "solaio su lamiera",
+            "lamiera grecata",
+            "lamiera collaborante",
+            "lamiera trapezoidale",
+        ],
+        "signals": [
+            "grecata",
+            "trapezoidale",
+            "lamiera",
+        ],
+    },
+    "P560": {
+        "keywords": [
+            "p560",
+            "p 560",
+            "chiodatrice",
+            "pistola",
+            "utensile a sparo",
+            "sparachiodi",
+        ],
+        "signals": [
+            "sparare",
+            "sparo",
+            "colpo",
+            "rimbalza",
+            "rebound",
+            "chiodo non entra",
+            "chiodi non entrano",
+            "non entra il chiodo",
+        ],
+    },
+    "CTL": {
+        "keywords": [
+            "ctl",
+            "connettore legno calcestruzzo",
+            "solaio misto legno calcestruzzo",
+        ],
+        "signals": [
+            "travi in legno",
+            "soletta in calcestruzzo",
+            "solaio in legno",
+            "legno vecchio",
+            "legno umido",
+        ],
+    },
+    "CTL_MAXI": {
+        "keywords": [
+            "ctl maxi",
+            "ctlmaxi",
+        ],
+        "signals": [
+            "travi grandi",
+            "maggiore capacità",
+            "prestazioni elevate",
+            "solaio importante",
+        ],
+    },
+    "DIAPASON": {
+        "keywords": [
+            "diapason",
+            "solaio laterocemento",
+            "laterocemento",
+        ],
+        "signals": [
+            "soletta galleggiante",
+            "pignatte",
+            "travetti",
+            "solaio anni",
+            "solaio vecchio in laterocemento",
+        ],
+    },
+    "VCEM": {
+        "keywords": [
+            "vcem",
+            "resina",
+            "cartuccia",
+            "iniezione",
+            "chimico",
+        ],
+        "signals": [
+            "ancoraggio chimico",
+            "barra chimica",
+            "resina epossidica",
+        ],
+    },
+    "CTCEM": {
+        "keywords": [
+            "ctcem",
+        ],
+        "signals": [],
+    },
+    "COMM": {
+        "keywords": [
+            "prezzo",
+            "costo",
+            "codice",
+            "listino",
+            "listini",
+            "ordine",
+            "ordinare",
+        ],
+        "signals": [
+            "quanto costa",
+            "preventivo",
+            "tempistiche",
+            "consegna",
+        ],
+    },
+}
+
+def detect_families(question: str) -> List[FamilyScore]:
+    q = question.lower()
+    scores: Dict[str, FamilyScore] = {}
+
+    for fam, rules in FAMILY_RULES.items():
+        score = 0.0
+        reasons: List[str] = []
+        for kw in rules["keywords"]:
+            if kw in q:
+                score += 3.0
+                reasons.append(f"keyword:{kw}")
+        for sig in rules["signals"]:
+            if sig in q:
+                score += 1.5
+                reasons.append(f"signal:{sig}")
+        if score > 0:
+            scores[fam] = FamilyScore(family=fam, score=score, reasons=reasons)
+
+    # Cross hard rules (A4 aggressivo)
+    q_has_lamiera = ("lamiera" in q) or ("grecata" in q)
+    q_has_chiodi = ("chiodo" in q) or ("chiodi" in q)
+    q_has_sparo = ("sparo" in q) or ("sparare" in q) or ("colpo" in q)
+
+    # Lamiera → CTF
+    if q_has_lamiera and "CTF" not in scores:
+        scores["CTF"] = FamilyScore("CTF", 2.0, ["lamiera=CTF"])
+
+    # CTF + chiodi/sparo → P560
+    if (("ctf" in q) or q_has_lamiera) and q_has_chiodi and "P560" not in scores:
+        scores["P560"] = FamilyScore("P560", 2.5, ["ctf+chiodi→P560"])
+
+    # Pistola/chiodatrice su grecata → P560
+    if ("pistola" in q or "chiodatrice" in q or "utensile" in q) and q_has_lamiera and "P560" not in scores:
+        scores["P560"] = FamilyScore("P560", 3.0, ["pistola+lamiera→P560"])
+
+    # Resina → VCEM
+    if ("resina" in q or "chimico" in q or "cartuccia" in q) and "VCEM" not in scores:
+        scores["VCEM"] = FamilyScore("VCEM", 2.5, ["resina→VCEM"])
+
+    # Solaio legno + cls → CTL
+    if ("solaio in legno" in q or "travi in legno" in q) and ("soletta" in q or "calcestruzzo" in q) and "CTL" not in scores:
+        scores["CTL"] = FamilyScore("CTL", 2.5, ["legno+cls→CTL"])
+
+    # Laterocemento → DIAPASON
+    if ("laterocemento" in q or "travetti" in q or "pignatte" in q) and "DIAPASON" not in scores:
+        scores["DIAPASON"] = FamilyScore("DIAPASON", 2.5, ["laterocemento→DIAPASON"])
+
+    # Ordina per score decrescente
+    ordered = sorted(scores.values(), key=lambda x: x.score, reverse=True)
+    return ordered
+
+def detect_intent(question: str) -> str:
+    q = question.lower()
+
+    if any(x in q for x in ["quanto costa", "prezzo", "costo", "listino", "codice", "preventivo", "consegna"]):
+        return "pricing"
+    if any(x in q for x in ["parlami", "cos'è", "cosa è", "che cos", "me ne puoi parlare", "mi puoi parlare"]):
+        return "general"
+    if any(x in q for x in ["dove si usa", "quando si usa", "in quali casi", "per quali solai", "per quali situazioni"]):
+        return "use_case"
+    if any(x in q for x in ["come si posa", "posa", "mettere", "fissare", "installare", "passo", "interasse", "passi", "di quanti cm"]):
+        return "installation"
+    if any(x in q for x in ["non funziona", "problema", "difetto", "non entra", "rimbalza", "non tiene", "si stacca", "non spara", "si inceppa"]):
+        return "defect"
+    if any(x in q for x in ["sicurezza", "dpi", "pericol", "infortunio", "rumore", "esplosione"]):
+        return "safety"
+    if any(x in q for x in ["posso usare", "compatibile", "insieme a", "contemporaneamente", "alternativa", "in alternativa", "si può usare con"]):
+        return "compatibility"
+    if any(x in q for x in ["norma", "eta", "ntc", "eurocodice", "ec2", "ec5", "certificato", "certificazione"]):
+        return "regulation"
+    if any(x in q for x in ["differenza", "meglio", "vs", "confronto", "pro e contro", "qual è meglio"]):
+        return "comparison"
+
+    return "general"
+
+# -----------------------------------------------------------------------------
+# DISPATCH TABLE: FAMILY + INTENT → ID BLOCCO GOLD
+# (qui metti gli ID corretti man mano che li definisci)
+# -----------------------------------------------------------------------------
+
+P560_DISPATCH = {
+    "general": "P560-0001",
+    "use_case": "P560-0002",
+    "installation": "P560-0010",
+    "defect": "P560-0020",
+    "safety": "P560-0030",
+    "*": "P560-0001",
+}
+
+CTF_DISPATCH = {
+    "general": "CTF-0001",
+    "use_case": "CTF-0005",
+    "installation": "CTF-0010",
+    "design": "CTF-0020",
+    "compatibility": "CTF-0030",
+    "safety": "CTF-0040",
+    "*": "CTF-0001",
+}
+
+CTL_DISPATCH = {
+    "general": "CTL-0001",
+    "use_case": "CTL-0005",
+    "installation": "CTL-0010",
+    "design": "CTL-0020",
+    "defect": "CTL-0030",
+    "*": "CTL-0001",
+}
+
+CTL_MAXI_DISPATCH = {
+    "general": "CTL_MAXI-0001",
+    "use_case": "CTL_MAXI-0005",
+    "installation": "CTL_MAXI-0010",
+    "design": "CTL_MAXI-0020",
+    "*": "CTL_MAXI-0001",
+}
+
+DIAPASON_DISPATCH = {
+    "general": "DIAPASON-0001",
+    "use_case": "DIAPASON-0005",
+    "installation": "DIAPASON-0010",
+    "design": "DIAPASON-0020",
+    "*": "DIAPASON-0001",
+}
+
+VCEM_DISPATCH = {
+    "general": "VCEM-0001",
+    "use_case": "VCEM-0005",
+    "installation": "VCEM-0010",
+    "design": "VCEM-0020",
+    "compatibility": "VCEM-0030",
+    "*": "VCEM-0001",
+}
+
+CTCEM_DISPATCH = {
+    "general": "CTCEM-0001",
+    "*": "CTCEM-0001",
+}
+
+COMM_DISPATCH = {
+    "pricing": "COMM-0001",
+    "general": "COMM-0002",
+    "*": "COMM-0002",
+}
+
+DISPATCH_TABLE = {
+    "P560": P560_DISPATCH,
+    "CTF": CTF_DISPATCH,
+    "CTL": CTL_DISPATCH,
+    "CTL_MAXI": CTL_MAXI_DISPATCH,
+    "DIAPASON": DIAPASON_DISPATCH,
+    "VCEM": VCEM_DISPATCH,
+    "CTCEM": CTCEM_DISPATCH,
+    "COMM": COMM_DISPATCH,
+}
+
+def dispatch_block_id(family: str, intent: str) -> Optional[str]:
+    fam = family.upper()
+    table = DISPATCH_TABLE.get(fam)
+    if not table:
+        return None
+    return table.get(intent) or table.get("*")
+
+# -----------------------------------------------------------------------------
+# SELEZIONE BLOCCO DAL KB
+# -----------------------------------------------------------------------------
+
+def get_kb_item_by_id(block_id: str, lang: str = "it") -> Optional[KBItem]:
+    block_id = block_id.strip()
+    lang = lang.lower()
+    for it in KB_ITEMS:
+        if it.id == block_id and it.lang == lang:
+            return it
+    # fallback: ignora lang
+    for it in KB_ITEMS:
+        if it.id == block_id:
+            return it
+    return None
+
+def simple_best_match_by_family(question: str, family: str, lang: str = "it") -> Optional[KBItem]:
+    """Fallback: se il dispatch non trova l'ID, usa un match testuale sui blocchi della famiglia."""
+    key = f"{family.upper()}:{lang.lower()}"
+    candidates = KB_BY_FAMILY_LANG.get(key, [])
+    if not candidates:
+        # fallback su lingua qualsiasi
+        for k, v in KB_BY_FAMILY_LANG.items():
+            fam, _ = k.split(":")
+            if fam == family.upper():
+                candidates.extend(v)
+    if not candidates:
+        return None
+
+    q = question.lower()
+    best_score = -1.0
+    best_item: Optional[KBItem] = None
+
+    for it in candidates:
+        score = 0.0
+        # match su question + tags
+        if it.question:
+            for token in it.question.lower().split():
+                if token and token in q:
+                    score += 1.0
+        for t in it.tags:
+            if t and t in q:
+                score += 1.5
+        if score > best_score:
+            best_score = score
+            best_item = it
+
+    return best_item
+
+# -----------------------------------------------------------------------------
+# MOTORE IMBUTO / A4
+# -----------------------------------------------------------------------------
+
+def answer_question(question: str, lang: str = "it") -> Dict[str, Any]:
+    """Core engine: A4 aggressivo, deterministico quanto possibile."""
+    if not question or not question.strip():
+        raise HTTPException(status_code=400, detail="Domanda vuota.")
+
+    q = question.strip()
+
+    # 1) Riconosci famiglie
+    families = detect_families(q)
+    if families:
+        top_family = families[0].family
+    else:
+        # se proprio non capisce, chiedi al modello (se disponibile)
+        top_family = None
+        llm_family = call_chat(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "Sei un classificatore di domande per il bot Tecnaria. "
+                        "Rispondi SOLO con una di queste parole: CTF, P560, CTL, CTL_MAXI, DIAPASON, VCEM, CTCEM, COMM. "
+                        "Scegli quella che meglio rappresenta la famiglia di prodotto coinvolta nella domanda."
+                    ),
+                },
+                {"role": "user", "content": q},
+            ],
+            max_tokens=4,
+        )
+        if llm_family:
+            cand = llm_family.strip().upper()
+            if cand in FAMILY_RULES.keys() or cand == "COMM":
+                top_family = cand
+
+        if not top_family:
+            # fallback finale: rispondi in modo generico usando un blocco COMM/CTF
+            top_family = "COMM"
+
+    # 2) Intent
+    intent = detect_intent(q)
+
+    # 3) Blocchi GOLD
+    block_id = dispatch_block_id(top_family, intent)
+    item: Optional[KBItem] = None
+    if block_id:
+        item = get_kb_item_by_id(block_id, lang)
+
+    if item is None:
+        # fallback su best match famiglia
+        item = simple_best_match_by_family(q, top_family, lang)
+
+    if item is None:
+        # fallback totale: risposta generica
+        text = (
+            "Al momento non trovo un blocco GOLD specifico per questa domanda. "
+            "Ti consiglio di riformularla indicando il tipo di solaio, la famiglia di connettori "
+            "(CTF, CTL, CTL MAXI, VCEM, CTCEM, DIAPASON) e l'eventuale utilizzo della P560."
+        )
+        return {
+            "family": top_family,
+            "intent": intent,
+            "block_id": None,
+            "answer": text,
+            "mode": "fallback",
+        }
+
+    # 4) Risposta base GOLD (modalità A: aziendale tecnica, niente poesia)
+    answer_text = item.answer
+
+    # opzionale: raffinamento con LLM (QUI LO TENIAMO SPENTO PER LIMITARE I CONSUMI)
+    # se in futuro vuoi riattivarlo, puoi fare:
+    # refined = call_chat([...])
+    # se refined: answer_text = refined
+
+    return {
+        "family": item.family,
+        "intent": intent,
+        "block_id": item.id,
+        "answer": answer_text,
+        "mode": item.mode,
+    }
+
+# -----------------------------------------------------------------------------
+# FASTAPI APP
+# -----------------------------------------------------------------------------
 
 app = FastAPI(title=APP_NAME)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # se vuoi restringere, metti il dominio del tuo frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-# ------------------------------------------------------------------------------
-# Modelli Pydantic
-# ------------------------------------------------------------------------------
-
-class AskRequest(BaseModel):
-    question: str
-    lang: Optional[str] = "it"
-    debug: Optional[bool] = False
-
-
-class AskResponse(BaseModel):
-    answer: str
-    family: Optional[str] = None
-    stage: Optional[str] = None
-    match: Optional[Dict[str, Any]] = None
-    debug: Optional[str] = ""
-
-
-# ------------------------------------------------------------------------------
-# Caricamento KB GOLD
-# ------------------------------------------------------------------------------
-
-KB_GOLD: List[Dict[str, Any]] = []
-
-
-def _load_json_items(path: Path) -> List[Dict[str, Any]]:
-    if not path.exists():
-        return []
-    with path.open("r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    # può essere lista pura o dict con chiave "items"
-    if isinstance(data, list):
-        items = data
-    elif isinstance(data, dict) and "items" in data:
-        items = data["items"]
-    else:
-        items = []
-
-    # normalizza un minimo
-    norm_items: List[Dict[str, Any]] = []
-    for raw in items:
-        if not isinstance(raw, dict):
-            continue
-        item = dict(raw)
-        # family obbligatoria per debug / instradamento
-        if "family" not in item:
-            # prova a dedurre dal file se presente
-            item["family"] = item.get("famiglia") or path.stem.upper()
-        # id di backup
-        if "id" not in item:
-            item["id"] = f"{item['family']}-AUTO"
-        norm_items.append(item)
-    return norm_items
-
-
-def load_kb() -> List[Dict[str, Any]]:
-    all_items: List[Dict[str, Any]] = []
-    for fname in FAMILY_FILES:
-        full = DATA_DIR / fname
-        items = _load_json_items(full)
-        all_items.extend(items)
-    return all_items
-
-
-def extract_answer(item: Dict[str, Any]) -> str:
-    # Prova varie chiavi possibili per la risposta GOLD
-    for key in (
-        "answer",
-        "gold_answer",
-        "gold",
-        "risposta",
-        "risposta_gold",
-        "body",
-        "it",
-    ):
-        v = item.get(key)
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    # fallback di emergenza
-    return item.get("answer", "") or ""
-
-
-def score_item(question: str, item: Dict[str, Any]) -> float:
-    q = question.lower()
-    parts: List[str] = []
-    q_item = item.get("question") or item.get("domanda") or ""
-    parts.append(str(q_item))
-    triggers = item.get("triggers") or item.get("keywords") or []
-    if isinstance(triggers, list):
-        parts.extend([str(t) for t in triggers])
-    tags = item.get("tags") or []
-    if isinstance(tags, list):
-        parts.extend([str(t) for t in tags])
-
-    text = " ".join(parts).lower()
-    if not text:
-        return 0.0
-    return difflib.SequenceMatcher(None, q, text).ratio()
-
-
-def match_item(
-    question: str,
-    kb: List[Dict[str, Any]],
-    family: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
-    candidates = (
-        [item for item in kb if item.get("family") == family]
-        if family
-        else kb
-    )
-    if not candidates:
-        candidates = kb
-
-    best_item = None
-    best_score = -1.0
-    for item in candidates:
-        s = score_item(question, item)
-        if s > best_score:
-            best_score = s
-            best_item = item
-
-    if not best_item:
-        return None
-
-    best_item = dict(best_item)
-    best_item["_score"] = round(best_score, 3)
-    return best_item
-
-
-def classify_imbuto(question: str) -> Dict[str, Optional[str]]:
-    """
-    Instradamento molto sobrio:
-    - stage sempre 'top' per ora
-    - family stimata solo con parole chiave grosse
-    Tutto il resto resta interno, non esposto in UI.
-    """
-    q = question.lower()
-
-    # famiglie per parole chiave forti
-    if "p560" in q or "p 560" in q or "p-560" in q or "pistola a sparo" in q:
-        family = "P560"
-    elif "ctf" in q or "lamiera grecata" in q or "trave in acciaio" in q:
-        family = "CTF"
-    elif "ctl maxi" in q or "ctlmaxi" in q:
-        family = "CTL_MAXI"
-    elif "ctl" in q:
-        family = "CTL"
-    elif "v  c e m" in q or "vcem" in q:
-        family = "VCEM"
-    elif "ctcem" in q:
-        family = "CTCEM"
-    elif "diapason" in q:
-        family = "DIAPASON"
-    elif "ordine" in q or "preventivo" in q or "commerciale" in q:
-        family = "COMM"
-    else:
-        family = None  # ricerca globale
-
-    return {
-        "stage": "top",
-        "family": family,
-    }
-
-
-def answer_question(req: AskRequest) -> AskResponse:
-    question = (req.question or "").strip()
-    if not question:
-        return AskResponse(
-            answer="Inserisci una domanda di cantiere o di progetto.",
-            family=None,
-            stage=None,
-            match=None,
-            debug="",
-        )
-
-    imbuto = classify_imbuto(question)
-    match = match_item(question, KB_GOLD, family=imbuto.get("family"))
-    if not match:
-        return AskResponse(
-            answer="Non ho trovato una risposta adeguata nei dati GOLD. "
-                   "Prova a riformulare la domanda con più dettagli sul solaio e sui connettori.",
-            family=None,
-            stage=imbuto.get("stage"),
-            match=None,
-            debug="",
-        )
-
-    answer = extract_answer(match)
-    family = match.get("family")
-    stage = imbuto.get("stage")
-
-    debug_text = ""
-    if req.debug:
-        debug_text = (
-            f"IMBUTO interno: stage={stage} · family={imbuto.get('family') or 'auto'}\n"
-            f"MATCH: id={match.get('id')} · family={family} · "
-            f"score={match.get('_score')} · question='{match.get('question') or match.get('domanda')}'"
-        )
-
-    match_public = {
-        "id": match.get("id"),
-        "family": family,
-        "score": match.get("_score"),
-        "question": match.get("question") or match.get("domanda"),
-    }
-
-    return AskResponse(
-        answer=answer,
-        family=family,
-        stage=stage,
-        match=match_public,
-        debug=debug_text,
-    )
-
-
-# ------------------------------------------------------------------------------
-# Startup: carica KB
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# STARTUP
+# -----------------------------------------------------------------------------
 
 @app.on_event("startup")
 def _startup_event() -> None:
-    global KB_GOLD
-    KB_GOLD = load_kb()
-    print(f"[IMBUTO] Caricati {len(KB_GOLD)} blocchi GOLD (famiglie + consolidato se presente).")
+    load_kb()
+    logger.info(f"[APP] {APP_NAME} avviata. MODEL_CHAT={MODEL_CHAT}")
 
+# -----------------------------------------------------------------------------
+# API: ROOT & CONFIG
+# -----------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-# API REST
-# ------------------------------------------------------------------------------
-
-@app.get("/api/config")
-def api_config():
-    return {
-        "app": APP_NAME,
-        "gold_items": len(KB_GOLD),
-        "families": sorted({item.get("family") for item in KB_GOLD}),
-        "imbuto_stages": IMBUTO_STAGES,
-    }
-
-
-@app.post("/api/ask", response_model=AskResponse)
-def api_ask(req: AskRequest):
-    resp = answer_question(req)
-    return JSONResponse(content=resp.model_dump())
-
-
-# ------------------------------------------------------------------------------
-# UI HTML (dark, aziendale, nessun segreto esposto)
-# ------------------------------------------------------------------------------
-
-HTML_PAGE = """
+@app.get("/", response_class=HTMLResponse)
+def root() -> str:
+    """UI minimale dark + info di base API."""
+    return f"""
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="utf-8" />
-    <title>TECNARIA Sinapsi — Q/A</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <style>
-        :root {
-            color-scheme: dark;
-            --bg: #050814;
-            --bg-card: #121827;
-            --bg-input: #0b1020;
-            --accent: #ff7a3c;
-            --accent-soft: rgba(255,122,60,0.12);
-            --text: #f9fafb;
-            --text-soft: #9ca3af;
-            --border-subtle: #1f2937;
-            --pill-bg: #111827;
-            --pill-soft: #1f2937;
-            --pill-text: #e5e7eb;
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: radial-gradient(circle at top, #1f2937 0, #050814 55%);
-            color: var(--text);
-        }
-        .page {
-            max-width: 1240px;
-            margin: 24px auto;
-            padding: 8px 16px 32px;
-        }
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 20px;
-            background: linear-gradient(90deg, #fb923c, #f97316);
-            border-radius: 18px;
-            box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-        }
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-        .avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 999px;
-            background: rgba(15,23,42,0.18);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 20px;
-            color: #111827;
-        }
-        .header-title {
-            font-weight: 700;
-            font-size: 20px;
-            letter-spacing: 0.01em;
-        }
-        .header-sub {
-            font-size: 13px;
-            color: rgba(17,24,39,0.9);
-        }
-        .badge {
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-size: 12px;
-            background: rgba(15,23,42,0.14);
-            color: #f9fafb;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 999px;
-            background: #22c55e;
-        }
-        .badge-secondary {
-            margin-left: 8px;
-            background: rgba(15,23,42,0.26);
-        }
-        .main {
-            margin-top: 18px;
-            background: rgba(15,23,42,0.9);
-            border-radius: 18px;
-            border: 1px solid rgba(31,41,55,0.9);
-            padding: 16px 18px 18px;
-            display: grid;
-            grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.1fr);
-            gap: 14px;
-        }
-        @media (max-width: 900px) {
-            .main {
-                grid-template-columns: minmax(0, 1fr);
-            }
-        }
-        .panel {
-            background: radial-gradient(circle at top left, #111827 0, #020617 60%);
-            border-radius: 14px;
-            padding: 14px 14px 16px;
-            border: 1px solid var(--border-subtle);
-        }
-        .panel-header {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-soft);
-            margin-bottom: 6px;
-        }
-        .pill-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 10px;
-            margin-bottom: 3px;
-        }
-        .pill {
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-size: 11px;
-            background: var(--pill-bg);
-            border: 1px solid #1f2937;
-            color: var(--pill-text);
-            opacity: 0.92;
-        }
-        .pill-soft {
-            background: var(--accent-soft);
-            border-color: rgba(248,113,113,0.4);
-            color: #fed7aa;
-        }
-        .system-box {
-            font-size: 13px;
-            line-height: 1.5;
-            color: var(--text-soft);
-            padding: 10px 11px;
-            border-radius: 10px;
-            background: rgba(15,23,42,0.95);
-            border: 1px dashed #1f2937;
-        }
-        .textarea-wrapper {
-            margin-top: 12px;
-        }
-        textarea {
-            width: 100%;
-            min-height: 170px;
-            resize: vertical;
-            padding: 10px 11px;
-            border-radius: 10px;
-            border: 1px solid var(--border-subtle);
-            outline: none;
-            background: var(--bg-input);
-            color: var(--text);
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        textarea::placeholder {
-            color: #6b7280;
-        }
-        .textarea-footer {
-            margin-top: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-            color: var(--text-soft);
-        }
-        .cta-row {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }
-        .chip {
-            padding: 5px 10px;
-            border-radius: 999px;
-            background: #020617;
-            border: 1px solid #1f2937;
-            font-size: 11px;
-            cursor: pointer;
-            color: #e5e7eb;
-        }
-        .chip:hover {
-            border-color: #4b5563;
-        }
-        .btn-primary {
-            border-radius: 999px;
-            padding: 8px 20px;
-            font-size: 14px;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            background: linear-gradient(135deg, #fb923c, #f97316);
-            color: #111827;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 12px 25px rgba(0,0,0,0.55);
-        }
-        .btn-primary span.icon {
-            display: inline-block;
-            transform: translateY(1px);
-        }
-        .btn-primary:active {
-            transform: translateY(1px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.7);
-        }
-        .resp-box {
-            width: 100%;
-            min-height: 220px;
-            max-height: 420px;
-            padding: 10px 11px;
-            border-radius: 10px;
-            border: 1px solid var(--border-subtle);
-            background: radial-gradient(circle at top left, #020617 0, #020617 60%);
-            font-size: 14px;
-            line-height: 1.6;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-        .resp-header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-            font-size: 12px;
-            color: var(--text-soft);
-        }
-        .debug-toggle {
-            font-size: 11px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            cursor: pointer;
-        }
-        .debug-toggle input {
-            accent-color: var(--accent);
-        }
-        .debug-box {
-            margin-top: 6px;
-            padding: 7px 8px;
-            border-radius: 8px;
-            background: #020617;
-            border: 1px dashed #374151;
-            font-size: 11px;
-            color: #9ca3af;
-            max-height: 150px;
-            overflow-y: auto;
-            display: none;
-            white-space: pre-wrap;
-        }
-        .footer-note {
-            margin-top: 10px;
-            font-size: 11px;
-            color: #6b7280;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <title>{APP_NAME}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {{
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #05060a;
+      color: #edf1f7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }}
+    .container {{
+      width: 100%;
+      max-width: 920px;
+      padding: 24px;
+      box-sizing: border-box;
+    }}
+    .card {{
+      background: radial-gradient(circle at top left, #1f2933, #05060a 60%);
+      border-radius: 18px;
+      padding: 24px 24px 20px;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.75);
+      border: 1px solid rgba(255,255,255,0.06);
+    }}
+    h1 {{
+      margin: 0 0 4px;
+      font-size: 1.4rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #9ca3ff;
+    }}
+    .subtitle {{
+      font-size: 0.9rem;
+      color: #9ca3af;
+      margin-bottom: 18px;
+    }}
+    label {{
+      font-size: 0.85rem;
+      color: #d1d5db;
+      display: block;
+      margin-bottom: 6px;
+    }}
+    textarea {{
+      width: 100%;
+      min-height: 90px;
+      max-height: 260px;
+      resize: vertical;
+      border-radius: 12px;
+      border: 1px solid rgba(148,163,184,0.7);
+      background: rgba(15,23,42,0.85);
+      color: #f9fafb;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      outline: none;
+      box-sizing: border-box;
+    }}
+    textarea:focus {{
+      border-color: #a5b4fc;
+      box-shadow: 0 0 0 1px rgba(129,140,248,0.55);
+    }}
+    .row {{
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+      gap: 10px;
+    }}
+    select {{
+      background: rgba(15,23,42,0.85);
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.7);
+      color: #e5e7eb;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      outline: none;
+    }}
+    button {{
+      border: none;
+      border-radius: 999px;
+      padding: 8px 18px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: linear-gradient(130deg, #4f46e5, #06b6d4);
+      color: #f9fafb;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 8px 22px rgba(15,23,42,0.7);
+    }}
+    button:disabled {{
+      opacity: 0.6;
+      cursor: default;
+      box-shadow: none;
+    }}
+    .answer-card {{
+      margin-top: 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(55,65,81,0.9);
+      background: radial-gradient(circle at top right, #111827, #020617 65%);
+      padding: 14px 14px 10px;
+      font-size: 0.93rem;
+      line-height: 1.5;
+      color: #e5e7eb;
+      white-space: pre-wrap;
+    }}
+    .answer-meta {{
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #9ca3af;
+      margin-bottom: 4px;
+    }}
+    .badge {{
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.95);
+      border: 1px solid rgba(148,163,184,0.5);
+      font-size: 0.7rem;
+    }}
+    .badge span {{
+      opacity: 0.9;
+    }}
+    .small-muted {{
+      font-size: 0.72rem;
+      color: #6b7280;
+      margin-top: 10px;
+    }}
+    a {{
+      color: #a5b4fc;
+      text-decoration: none;
+    }}
+    a:hover {{
+      text-decoration: underline;
+    }}
+  </style>
 </head>
 <body>
-<div class="page">
-    <header class="header">
-        <div class="header-left">
-            <div class="avatar">T</div>
-            <div>
-                <div class="header-title">TECNARIA Sinapsi</div>
-                <div class="header-sub">
-                    Assistente GOLD strutturale · connettori &amp; sistemi misti
-                </div>
-            </div>
-        </div>
+  <div class="container">
+    <div class="card">
+      <h1>{APP_NAME}</h1>
+      <div class="subtitle">
+        Assistente tecnico su connettori e sistemi di consolidamento solai Tecnaria.<br/>
+        Digita la tua domanda in linguaggio naturale, il motore A4 penserà al resto.
+      </div>
+
+      <label for="question">Domanda</label>
+      <textarea id="question" placeholder="Esempi:
+- Mi parli della P560?
+- Che connettori uso per un solaio in legno con soletta in calcestruzzo?
+- La pistola rimbalza sulla lamiera grecata, cosa può essere?"></textarea>
+
+      <div class="row">
         <div>
-            <span class="badge">
-                <span class="dot"></span>
-                GOLD attivo
-                <span id="datasetLabel" class="badge badge-secondary" style="margin-left:8px;">dataset: caricamento...</span>
-            </span>
+          <select id="lang">
+            <option value="it" selected>Italiano</option>
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="es">Español</option>
+          </select>
         </div>
-    </header>
+        <div style="flex:1"></div>
+        <button id="askBtn" onclick="sendQuestion()">
+          <span>Chiedi</span>
+          <span>➜</span>
+        </button>
+      </div>
 
-    <main class="main">
-        <!-- PANNELLO SINISTRO: DOMANDA -->
-        <section class="panel">
-            <div class="panel-header">Sistema · init · mode: GOLD</div>
-            <div class="system-box">
-                Benvenuto in Tecnaria Sinapsi. Modalità GOLD attiva: scrivi una domanda reale di cantiere
-                su connettori e sistemi misti (CTF, VCEM, CTCEM, CTL, CTL MAXI, DIAPASON, P560, ecc.).
-            </div>
+      <div id="answerBox" class="answer-card" style="display:none;">
+        <div class="answer-meta">
+          <span class="badge">
+            <span id="metaFamily">-</span>
+          </span>
+          &nbsp;&nbsp;
+          <span class="badge">
+            <span id="metaIntent">-</span>
+          </span>
+          &nbsp;&nbsp;
+          <span class="badge">
+            <span id="metaBlock">-</span>
+          </span>
+        </div>
+        <div id="answerText"></div>
+      </div>
 
-            <div class="pill-row" style="margin-top:12px;">
-                <div class="pill pill-soft">Instradamento automatico · famiglie connettori</div>
-                <div class="pill">CTF</div>
-                <div class="pill">VCEM</div>
-                <div class="pill">CTCEM</div>
-                <div class="pill">CTL</div>
-                <div class="pill">CTL MAXI</div>
-                <div class="pill">DIAPASON</div>
-                <div class="pill">P560</div>
-                <div class="pill">COMM</div>
-            </div>
+      <div class="small-muted">
+        API disponibili:
+        <code>GET /api/config</code>,
+        <code>POST /api/ask</code> (JSON).
+      </div>
+    </div>
+  </div>
 
-            <div class="textarea-wrapper">
-                <textarea id="questionInput"
-                          placeholder="Es. &quot;Quando devo usare il CTL MAXI su un solaio misto legno-calcestruzzo?&quot;"></textarea>
-            </div>
+  <script>
+    async function sendQuestion() {{
+      const qEl = document.getElementById("question");
+      const langEl = document.getElementById("lang");
+      const btn = document.getElementById("askBtn");
+      const answerBox = document.getElementById("answerBox");
+      const answerText = document.getElementById("answerText");
+      const metaFamily = document.getElementById("metaFamily");
+      const metaIntent = document.getElementById("metaIntent");
+      const metaBlock = document.getElementById("metaBlock");
 
-            <div class="textarea-footer">
-                <div>
-                    GOLD = risposta completa strutturale. Scrivi CANONICO: all'inizio se vuoi una risposta più sintetica.
-                </div>
-                <div class="cta-row">
-                    <button class="chip" onclick="fillHint('Uso CTF')">Uso CTF</button>
-                    <button class="chip" onclick="fillHint('Uso P560')">P560 &amp; fissaggi a sparo</button>
-                    <button class="chip" onclick="fillHint('Confronto CTL vs CTL MAXI')">CTL vs CTL MAXI</button>
-                    <button class="btn-primary" onclick="sendQuestion()">
-                        <span>Chiedi</span>
-                        <span class="icon">➜</span>
-                    </button>
-                </div>
-            </div>
+      const q = qEl.value.trim();
+      const lang = langEl.value;
 
-            <div class="footer-note">
-                Suggerimento: descrivi sempre tipo di solaio, travi, spessori, luce delle campate e problemi
-                (fessurazioni, umidità, degrado).
-            </div>
-        </section>
-
-        <!-- PANNELLO DESTRO: RISPOSTA -->
-        <section class="panel">
-            <div class="resp-header-row">
-                <div>Risposta GOLD</div>
-                <label class="debug-toggle">
-                    <input id="debugCheckbox" type="checkbox" />
-                    <span>Debug interno (solo per te)</span>
-                </label>
-            </div>
-            <div id="answerBox" class="resp-box">
-                In attesa della domanda...
-            </div>
-            <div id="debugBox" class="debug-box"></div>
-        </section>
-    </main>
-</div>
-
-<script>
-async function loadConfig() {
-    try {
-        const res = await fetch("/api/config");
-        if (!res.ok) return;
-        const data = await res.json();
-        const label = document.getElementById("datasetLabel");
-        if (Array.isArray(data.families)) {
-            label.textContent = "dataset: GOLD · famiglie " + data.families.join(", ");
-        } else {
-            label.textContent = "dataset: GOLD";
-        }
-    } catch (e) {
-        console.warn("Config error", e);
-    }
-}
-
-function fillHint(text) {
-    const el = document.getElementById("questionInput");
-    if (!el) return;
-    if (!el.value.trim()) {
-        el.value = text;
-    } else {
-        el.value = el.value.trim() + " " + text;
-    }
-    el.focus();
-}
-
-async function sendQuestion() {
-    const qEl = document.getElementById("questionInput");
-    const aEl = document.getElementById("answerBox");
-    const dEl = document.getElementById("debugBox");
-    const debugOn = document.getElementById("debugCheckbox").checked;
-
-    const question = (qEl.value || "").trim();
-    if (!question) {
-        aEl.textContent = "Inserisci una domanda di cantiere o di progetto.";
-        dEl.style.display = "none";
-        dEl.textContent = "";
+      if (!q) {{
+        alert("Scrivi una domanda.");
         return;
-    }
+      }}
 
-    aEl.textContent = "Sto elaborando la risposta GOLD...";
-    dEl.style.display = "none";
-    dEl.textContent = "";
+      btn.disabled = true;
+      btn.innerHTML = "<span>In elaborazione...</span>";
 
-    try {
-        const res = await fetch("/api/ask", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ question: question, lang: "it", debug: debugOn })
-        });
-        if (!res.ok) {
-            aEl.textContent = "Errore backend (" + res.status + ").";
-            return;
-        }
-        const data = await res.json();
-        aEl.textContent = data.answer || "Nessuna risposta disponibile.";
+      try {{
+        const resp = await fetch("/api/ask", {{
+          method: "POST",
+          headers: {{
+            "Content-Type": "application/json"
+          }},
+          body: JSON.stringify({{ question: q, lang: lang }})
+        }});
 
-        if (debugOn && data.debug) {
-            dEl.textContent = data.debug;
-            dEl.style.display = "block";
-        } else {
-            dEl.style.display = "none";
-            dEl.textContent = "";
-        }
-    } catch (e) {
+        if (!resp.ok) {{
+          const err = await resp.json().catch(() => ({{ detail: resp.statusText }}));
+          throw new Error(err.detail || "Errore API");
+        }}
+
+        const data = await resp.json();
+        answerText.textContent = data.answer || "[Nessuna risposta disponibile]";
+        metaFamily.textContent = data.family ? ("Famiglia: " + data.family) : "Famiglia: -";
+        metaIntent.textContent = data.intent ? ("Intent: " + data.intent) : "Intent: -";
+        metaBlock.textContent = data.block_id ? ("Blocco: " + data.block_id) : "Blocco: -";
+
+        answerBox.style.display = "block";
+      }} catch (e) {{
         console.error(e);
-        aEl.textContent = "Errore di comunicazione con il server.";
-        dEl.style.display = "none";
-        dEl.textContent = "";
-    }
-}
+        answerText.textContent = "Si è verificato un errore durante l'elaborazione della domanda.";
+        metaFamily.textContent = "Famiglia: -";
+        metaIntent.textContent = "Intent: -";
+        metaBlock.textContent = "Blocco: -";
+        answerBox.style.display = "block";
+      }} finally {{
+        btn.disabled = false;
+        btn.innerHTML = "<span>Chiedi</span><span>➜</span>";
+      }}
+    }}
 
-window.addEventListener("DOMContentLoaded", loadConfig);
-</script>
+    // Invio con CTRL+Invio
+    document.addEventListener("keydown", function(e) {{
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {{
+        sendQuestion();
+      }}
+    }});
+  </script>
 </body>
 </html>
-"""
+    """
 
+@app.get("/api/config")
+def api_config() -> Dict[str, Any]:
+    return {
+        "app": APP_NAME,
+        "model_chat": MODEL_CHAT,
+        "gold_items": len(KB_ITEMS),
+        "imbuto_stages": IMBUTO_STAGES,
+        "data_dir": DATA_DIR,
+        "family_files": FAMILY_FILES,
+        "consolidato_loaded": CONSOLIDATO_LOADED,
+    }
 
-@app.get("/", response_class=HTMLResponse)
-def index():
-    return HTMLResponse(content=HTML_PAGE)
+# -----------------------------------------------------------------------------
+# API: ASK
+# -----------------------------------------------------------------------------
 
+@app.post("/api/ask")
+async def api_ask(payload: Dict[str, Any]) -> JSONResponse:
+    question = str(payload.get("question", "") or "").strip()
+    lang = str(payload.get("lang", "it") or "it").lower()
+    try:
+        result = answer_question(question, lang=lang)
+        return JSONResponse(result)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"[API] Errore /api/ask: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Errore interno durante l'elaborazione della domanda.")
 
-# ------------------------------------------------------------------------------
-# Fallback root info (per chiamate HEAD / GET raw)
-# ------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# HEALTHCHECK
+# -----------------------------------------------------------------------------
 
 @app.get("/health")
-def health():
-    return {"app": APP_NAME, "status": "ok", "items": len(KB_GOLD)}
+def health() -> Dict[str, Any]:
+    return {
+        "status": "ok",
+        "app": APP_NAME,
+        "items": len(KB_ITEMS),
+    }
