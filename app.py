@@ -1,9 +1,10 @@
 import os
 import json
 import re
+import html
 from typing import List, Optional, Dict, Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
@@ -39,11 +40,11 @@ CONSOLIDATO_PATH = os.path.join(DATA_DIR, "patches", "tecnaria_gold_consolidato.
 # FastAPI
 # --------------------------------------------------
 
-app = FastAPI(title="TECNARIA-IMBUTO", version="1.1.0")
+app = FastAPI(title="TECNARIA-IMBUTO", version="1.2.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # restringi in produzione
+    allow_origins=["*"],  # restringere in produzione
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -140,7 +141,6 @@ def load_kb() -> List[Dict[str, Any]]:
         items = _load_json_items(CONSOLIDATO_PATH)
         all_items.extend(items)
 
-    # filtra doppioni per id
     seen_ids = set()
     unique_items: List[Dict[str, Any]] = []
     for it in all_items:
@@ -260,12 +260,6 @@ def score_item(
     imbuto_family: Optional[str],
     imbuto_stage: Optional[str],
 ) -> float:
-    """
-    Scoring:
-    - overlap tra tokens domanda e tokens di triggers/tags/id/family
-    - booster se famiglia coincide
-    - piccoli bonus in base allo stage
-    """
     score = 0.0
 
     triggers = item.get("triggers", [])
@@ -333,11 +327,6 @@ def pick_response(
     matches: List[Dict[str, Any]],
     lang: str = "it",
 ) -> Dict[str, Any]:
-    """
-    Restituisce:
-    - blocco GOLD selezionato
-    - testo risposta finale (da response_variants.gold.[lang])
-    """
     if not matches:
         raise HTTPException(status_code=404, detail="Nessun blocco GOLD pertinente trovato.")
 
@@ -361,7 +350,7 @@ def pick_response(
     }
 
 # --------------------------------------------------
-# Endpoint API
+# Endpoint API “puri”
 # --------------------------------------------------
 
 @app.get("/api/config", response_model=ConfigResponse)
@@ -383,7 +372,6 @@ def api_ask(payload: AskRequest):
 
     q = payload.question.strip()
 
-    # 1) IMBUTO
     if payload.force_stage or payload.force_family:
         imbuto = classify_imbuto(q, lang=payload.lang)
         if payload.force_stage:
@@ -393,10 +381,8 @@ def api_ask(payload: AskRequest):
     else:
         imbuto = classify_imbuto(q, lang=payload.lang)
 
-    # 2) MATCH GOLD
     matches = match_item(q, imbuto_info=imbuto, kb=KB_GOLD, top_k=5)
 
-    # 3) PICK risposta GOLD
     picked = pick_response(matches, lang=payload.lang)
     answer_text = picked["answer"]
     block = picked["block"]
@@ -428,23 +414,20 @@ def api_ask(payload: AskRequest):
 
 @app.post("/ask", response_model=AskResponse)
 def api_ask_alias(payload: AskRequest):
-    """Alias per compatibilità con UI che chiama ancora /ask."""
     return api_ask(payload)
 
 # --------------------------------------------------
-# UI HTML su "/"
+# UI SERVER-SIDE (nessun JavaScript necessario)
 # --------------------------------------------------
 
-@app.get("/", response_class=HTMLResponse)
-def root():
-    return """
+TEMPLATE_BASE = """
 <!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
   <title>TECNARIA Sinapsi – Imbuto GOLD</title>
   <style>
-    body {
+    body {{
       margin: 0;
       padding: 40px 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -452,33 +435,33 @@ def root():
       color: #e5e7eb;
       display: flex;
       justify-content: center;
-    }
-    .shell {
+    }}
+    .shell {{
       width: 100%;
       max-width: 1200px;
       padding: 0 24px;
-    }
-    .card {
+    }}
+    .card {{
       border-radius: 24px;
       background: #020617;
       box-shadow: 0 24px 60px rgba(0,0,0,0.6);
       border: 1px solid rgba(148,163,184,0.35);
       overflow: hidden;
-    }
-    .card-header {
+    }}
+    .card-header {{
       padding: 20px 28px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       background: radial-gradient(circle at top left, #fb923c 0, #ea580c 45%, #020617 100%);
       color: white;
-    }
-    .title-block {
+    }}
+    .title-block {{
       display: flex;
       align-items: center;
       gap: 16px;
-    }
-    .avatar {
+    }}
+    .avatar {{
       width: 40px;
       height: 40px;
       border-radius: 999px;
@@ -489,20 +472,20 @@ def root():
       font-weight: 700;
       font-size: 20px;
       border: 2px solid rgba(248, 250, 252, 0.6);
-    }
-    .title-main {
+    }}
+    .title-main {{
       font-size: 20px;
       font-weight: 700;
-    }
-    .title-sub {
+    }}
+    .title-sub {{
       font-size: 13px;
       opacity: 0.9;
-    }
-    .header-right {
+    }}
+    .header-right {{
       text-align: right;
       font-size: 12px;
-    }
-    .badge-green {
+    }}
+    .badge-green {{
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -511,54 +494,52 @@ def root():
       background: #16a34a;
       font-size: 11px;
       font-weight: 600;
-    }
-    .badge-green span.dot {
+    }}
+    .badge-green span.dot {{
       width: 8px;
       height: 8px;
       border-radius: 999px;
       background: #bbf7d0;
-    }
-    .tabs {
+    }}
+    .tabs {{
       padding: 10px 20px 4px 20px;
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       border-bottom: 1px solid rgba(148,163,184,0.35);
       background: #020617;
-    }
-    .tab-pill {
       font-size: 11px;
+    }}
+    .tab-pill {{
       padding: 4px 10px;
       border-radius: 999px;
       border: 1px solid rgba(148,163,184,0.5);
       background: rgba(15,23,42,0.8);
       color: #e5e7eb;
-      cursor: default;
-    }
-    .tab-pill.primary {
+    }}
+    .tab-pill.primary {{
       border-color: #f97316;
       background: linear-gradient(to right, rgba(248, 153, 72, 0.25), rgba(248, 113, 113, 0.25));
-    }
-    .card-body {
+    }}
+    .card-body {{
       display: grid;
       grid-template-columns: minmax(0, 2fr) minmax(0, 2fr);
-      gap: 0;
       min-height: 360px;
-    }
-    @media (max-width: 900px) {
-      .card-body {
+    }}
+    @media (max-width: 900px) {{
+      .card-body {{
         grid-template-columns: minmax(0, 1fr);
-      }
-    }
-    .left-pane {
+      }}
+    }}
+    .left-pane {{
       padding: 20px 20px 18px 20px;
       border-right: 1px solid rgba(30,41,59,0.9);
-    }
-    .right-pane {
+    }}
+    .right-pane {{
       padding: 20px 20px 18px 20px;
       background: radial-gradient(circle at top, rgba(15,23,42,0.9), #020617 55%, #000000 100%);
-    }
-    .system-box {
+    }}
+    .system-box {{
       border-radius: 16px;
       background: rgba(15,23,42,0.9);
       border: 1px solid rgba(148,163,184,0.5);
@@ -566,11 +547,11 @@ def root():
       padding: 12px 14px;
       margin-bottom: 12px;
       color: #e5e7eb;
-    }
-    .system-box strong {
+    }}
+    .system-box strong {{
       color: #f97316;
-    }
-    textarea#question {
+    }}
+    textarea.question {{
       width: 100%;
       min-height: 160px;
       max-height: 260px;
@@ -583,23 +564,23 @@ def root():
       font-size: 14px;
       font-family: inherit;
       outline: none;
-    }
-    textarea#question:focus {
+    }}
+    textarea.question:focus {{
       border-color: #f97316;
       box-shadow: 0 0 0 1px rgba(249,115,22,0.6);
-    }
-    .input-row {
+    }}
+    .input-row {{
       margin-top: 12px;
       display: flex;
       gap: 12px;
       align-items: center;
-    }
-    .input-label {
+    }}
+    .input-label {{
       flex: 1;
       font-size: 13px;
       color: #9ca3af;
-    }
-    .btn-main {
+    }}
+    .btn-main {{
       padding: 9px 18px;
       border-radius: 999px;
       border: none;
@@ -612,44 +593,35 @@ def root():
       align-items: center;
       gap: 6px;
       box-shadow: 0 10px 25px rgba(248,113,22,0.4);
-    }
-    .btn-main:active {
-      transform: translateY(1px);
-      box-shadow: 0 4px 14px rgba(248,113,22,0.3);
-    }
-    .chips-row {
+    }}
+    .chips-row {{
       margin-top: 10px;
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       font-size: 11px;
-    }
-    .chip {
+    }}
+    .chip {{
       padding: 5px 10px;
       border-radius: 999px;
       background: rgba(15,23,42,0.9);
       border: 1px solid rgba(75,85,99,0.8);
-      cursor: pointer;
       color: #e5e7eb;
-    }
-    .chip:hover {
-      border-color: #f97316;
-      color: #fde68a;
-    }
-    .footer-note {
+    }}
+    .footer-note {{
       margin-top: 8px;
       font-size: 11px;
       color: #9ca3af;
-    }
-    .answer-header {
+    }}
+    .answer-header {{
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
       font-size: 13px;
       color: #9ca3af;
-    }
-    .answer-box {
+    }}
+    .answer-box {{
       border-radius: 16px;
       background: rgba(15,23,42,0.9);
       border: 1px solid rgba(148,163,184,0.5);
@@ -657,28 +629,17 @@ def root():
       font-size: 14px;
       min-height: 160px;
       white-space: pre-wrap;
-    }
-    .debug-toggle {
-      font-size: 11px;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      cursor: pointer;
-      user-select: none;
-    }
-    .debug-toggle input {
-      accent-color: #f97316;
-    }
-    .debug-box {
+    }}
+    .debug-box {{
       margin-top: 10px;
       border-radius: 12px;
       background: rgba(15,23,42,0.9);
       border: 1px dashed rgba(148,163,184,0.6);
       padding: 10px;
       font-size: 11px;
-      max-height: 180px;
+      max-height: 200px;
       overflow: auto;
-    }
+    }}
   </style>
 </head>
 <body>
@@ -709,137 +670,97 @@ def root():
     <div class="card-body">
       <div class="left-pane">
         <div class="system-box">
-          <strong>Sistema · init · mode: GOLD</strong><br>
+          <strong>Sistema · init · mode: GOLD</strong><br/>
           Quando fai una domanda reale di cantiere (solai in legno, laterocemento, acciaio, P560, ecc.)
           l'imbuto sceglie la famiglia più pertinente (CTF, VCEM, CTCEM, CTL, CTL MAXI, DIAPASON, P560, COMM)
           e pesca una risposta GOLD completa e deterministica.
         </div>
 
-        <textarea id="question" placeholder="Scrivi la tua domanda (es. 'Quando devo usare il CTL MAXI in un solaio misto legno-calcestruzzo?')"></textarea>
+        <form action="/ui/ask" method="post">
+          <textarea class="question" name="question" placeholder="Scrivi la tua domanda (es. 'Quando devo usare il CTL MAXI in un solaio misto legno-calcestruzzo?')">{question}</textarea>
 
-        <div class="input-row">
-          <div class="input-label">
-            GOLD = risposta completa strutturale. <br>
-            Se scrivi <strong>CANONICO:</strong> prima della domanda, la risposta sarà più sintetica e tecnica.
+          <div class="input-row">
+            <div class="input-label">
+              GOLD = risposta completa strutturale. <br/>
+              Se scrivi <strong>CANONICO:</strong> prima della domanda, la risposta sarà più sintetica e tecnica.
+            </div>
+            <button type="submit" class="btn-main">
+              <span>Chiedi</span> <span>➜</span>
+            </button>
           </div>
-          <button class="btn-main" onclick="sendAsk()">
-            <span>Chiedi</span> <span>➜</span>
-          </button>
-        </div>
 
-        <div class="chips-row">
-          <div class="chip" onclick="preset('Uso CTF per solai su lamiera grecata con travi in acciaio: quali limiti di spessore lamiera e che chiodatrice devo usare?')">Uso CTF</div>
-          <div class="chip" onclick="preset('Quando è preferibile usare VCEM invece di CTCEM nel recupero di un solaio in laterocemento esistente?')">VCEM vs CTCEM</div>
-          <div class="chip" onclick="preset('Quando devo scegliere CTL MAXI rispetto al CTL standard in un solaio misto legno-calcestruzzo?')">CTL vs CTL MAXI</div>
-          <div class="chip" onclick="preset('Posso usare DIAPASON per il recupero di un solaio in laterocemento con travetti ammalorati?')">Uso DIAPASON</div>
-          <div class="chip" onclick="preset('Per la posa dei connettori CTF su lamiera grecata quale chiodatrice e quali chiodi idonei Tecnaria devo usare?')">P560 &amp; CTF</div>
-          <div class="chip" onclick="preset('Cosa devo mandare a Tecnaria per avere un preventivo completo per CTF, VCEM e DIAPASON sullo stesso cantiere?')">Supporto Tecnaria</div>
-        </div>
-
-        <div class="footer-note">
-          Suggerimento: descrivi sempre tipo di solaio, travi, spessori, luce delle campate e problemi (fessurazioni, umidità, degrado).
-        </div>
+          <div class="footer-note">
+            Suggerimento: descrivi sempre tipo di solaio, travi, spessori, luce delle campate e problemi (fessurazioni, umidità, degrado).
+          </div>
+        </form>
       </div>
 
       <div class="right-pane">
         <div class="answer-header">
           <div><strong>Risposta GOLD</strong></div>
-          <label class="debug-toggle">
-            <input type="checkbox" id="debugToggle" checked />
-            debug imbuto &amp; match
-          </label>
+          <div style="font-size:11px; color:#9ca3af;">Stadio imbuto: {stage} · Famiglia: {family}</div>
         </div>
-        <div id="answer" class="answer-box">In attesa della domanda…</div>
-        <div id="debugBox" class="debug-box" style="display:none;"></div>
+        <div class="answer-box">{answer}</div>
+        <div class="debug-box">{debug}</div>
       </div>
     </div>
   </div>
 </div>
-
-<script>
-  function preset(text) {
-    document.getElementById("question").value = text;
-    document.getElementById("question").focus();
-  }
-
-  async function sendAsk() {
-    const q = document.getElementById("question").value.trim();
-    const debug = document.getElementById("debugToggle").checked;
-    const answerEl = document.getElementById("answer");
-    const debugEl = document.getElementById("debugBox");
-
-    if (!q) {
-      answerEl.textContent = "Scrivi prima una domanda.";
-      return;
-    }
-
-    answerEl.textContent = "Invio richiesta a /api/ask…";
-    debugEl.style.display = debug ? "block" : "none";
-    debugEl.textContent = "";
-
-    try {
-      const resp = await fetch("/api/ask", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          question: q,
-          lang: "it",
-          debug: debug
-        })
-      });
-
-      const data = await resp.json();
-
-      if (!resp.ok) {
-        answerEl.textContent = "Errore backend (" + resp.status + "): " + (data.detail || JSON.stringify(data));
-        return;
-      }
-
-      answerEl.textContent = data.answer || "(nessuna risposta)";
-
-      if (debug && data.debug) {
-        const ib = data.debug.imbuto || {};
-        const matches = data.debug.matches || [];
-
-        let text = "";
-        text += "IMBUTO\n";
-        text += "- stage: " + (ib.stage || "?") + "\n";
-        text += "- family: " + (ib.family || "?") + "\n";
-        if (ib.short_context) {
-          text += "- short_context: " + ib.short_context + "\n";
-        }
-        text += "\nMATCH TOP K\n";
-        matches.forEach((m, idx) => {
-          text += (idx + 1) + ") score=" + m.score.toFixed(3)
-               + " · id=" + (m.id || "?")
-               + " · family=" + (m.family || "?") + "\n";
-          if (m.tags && m.tags.length) {
-            text += "   tags: " + m.tags.join(", ") + "\n";
-          }
-        });
-
-        debugEl.style.display = "block";
-        text = text || "Nessun dettaglio di debug disponibile.";
-        debugEl.textContent = text;
-      } else {
-        debugEl.style.display = "none";
-      }
-    } catch (e) {
-      answerEl.textContent = "Errore di rete: " + e;
-    }
-  }
-</script>
 </body>
 </html>
-    """
+"""
+
+def render_ui(question: str = "", answer: str = "", stage: str = "-", family: str = "-", debug: str = "") -> str:
+    q = html.escape(question or "")
+    a = answer or "In attesa della domanda…"
+    a = html.escape(a)
+    dbg = debug or ""
+    dbg = html.escape(dbg)
+    return TEMPLATE_BASE.format(question=q, answer=a, stage=stage, family=family, debug=dbg)
+
+
+@app.get("/", response_class=HTMLResponse)
+def ui_root():
+    return render_ui()
+
+
+@app.post("/ui/ask", response_class=HTMLResponse)
+def ui_ask(question: str = Form(...)):
+    q = (question or "").strip()
+    if not q:
+        return render_ui(question="", answer="Scrivi prima una domanda.", stage="-", family="-", debug="")
+
+    imbuto = classify_imbuto(q, lang="it")
+    matches = match_item(q, imbuto_info=imbuto, kb=KB_GOLD, top_k=5)
+    try:
+        picked = pick_response(matches, lang="it")
+        answer_text = picked["answer"]
+        block = picked["block"]
+    except HTTPException as e:
+        return render_ui(question=q, answer=str(e.detail), stage=imbuto.get("stage", "-"), family=imbuto.get("family", "-"), debug="")
+
+    # debug sintetico
+    dbg_lines = []
+    dbg_lines.append(f"IMBUTO: stage={imbuto.get('stage')} · family={imbuto.get('family')}")
+    if imbuto.get("short_context"):
+        dbg_lines.append(f"context: {imbuto['short_context']}")
+    dbg_lines.append("")
+    dbg_lines.append("MATCH TOP K:")
+    for idx, m in enumerate(matches):
+        it = m["item"]
+        dbg_lines.append(f"{idx+1}) score={m['score']:.3f} · id={it.get('id')} · family={it.get('family')}")
+
+    debug_text = "\n".join(dbg_lines)
+
+    return render_ui(
+        question=q,
+        answer=answer_text,
+        stage=imbuto.get("stage", "-"),
+        family=block.get("family", "-"),
+        debug=debug_text,
+    )
 
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(
-        "app:app",
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", 8000)),
-        reload=True,
-    )
+    uvicorn.run("app:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)), reload=True)
