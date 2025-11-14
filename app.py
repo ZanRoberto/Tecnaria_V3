@@ -4,7 +4,7 @@ import re
 import html
 from typing import List, Optional, Dict, Any
 
-from fastapi import FastAPI, HTTPException, Form
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
@@ -40,7 +40,7 @@ CONSOLIDATO_PATH = os.path.join(DATA_DIR, "patches", "tecnaria_gold_consolidato.
 # FastAPI
 # --------------------------------------------------
 
-app = FastAPI(title="TECNARIA-IMBUTO", version="1.2.0")
+app = FastAPI(title="TECNARIA-IMBUTO", version="1.2.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -417,7 +417,7 @@ def api_ask_alias(payload: AskRequest):
     return api_ask(payload)
 
 # --------------------------------------------------
-# UI SERVER-SIDE (nessun JavaScript necessario)
+# UI SERVER-SIDE (form GET, nessun python-multipart)
 # --------------------------------------------------
 
 TEMPLATE_BASE = """
@@ -594,20 +594,6 @@ TEMPLATE_BASE = """
       gap: 6px;
       box-shadow: 0 10px 25px rgba(248,113,22,0.4);
     }}
-    .chips-row {{
-      margin-top: 10px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      font-size: 11px;
-    }}
-    .chip {{
-      padding: 5px 10px;
-      border-radius: 999px;
-      background: rgba(15,23,42,0.9);
-      border: 1px solid rgba(75,85,99,0.8);
-      color: #e5e7eb;
-    }}
     .footer-note {{
       margin-top: 8px;
       font-size: 11px;
@@ -676,8 +662,8 @@ TEMPLATE_BASE = """
           e pesca una risposta GOLD completa e deterministica.
         </div>
 
-        <form action="/ui/ask" method="post">
-          <textarea class="question" name="question" placeholder="Scrivi la tua domanda (es. 'Quando devo usare il CTL MAXI in un solaio misto legno-calcestruzzo?')">{question}</textarea>
+        <form action="/ui/ask" method="get">
+          <textarea class="question" name="q" placeholder="Scrivi la tua domanda (es. 'Quando devo usare il CTL MAXI in un solaio misto legno-calcestruzzo?')">{question}</textarea>
 
           <div class="input-row">
             <div class="input-label">
@@ -724,22 +710,21 @@ def ui_root():
     return render_ui()
 
 
-@app.post("/ui/ask", response_class=HTMLResponse)
-def ui_ask(question: str = Form(...)):
-    q = (question or "").strip()
-    if not q:
+@app.get("/ui/ask", response_class=HTMLResponse)
+def ui_ask(q: str):
+    question = (q or "").strip()
+    if not question:
         return render_ui(question="", answer="Scrivi prima una domanda.", stage="-", family="-", debug="")
 
-    imbuto = classify_imbuto(q, lang="it")
-    matches = match_item(q, imbuto_info=imbuto, kb=KB_GOLD, top_k=5)
+    imbuto = classify_imbuto(question, lang="it")
+    matches = match_item(question, imbuto_info=imbuto, kb=KB_GOLD, top_k=5)
     try:
         picked = pick_response(matches, lang="it")
         answer_text = picked["answer"]
         block = picked["block"]
     except HTTPException as e:
-        return render_ui(question=q, answer=str(e.detail), stage=imbuto.get("stage", "-"), family=imbuto.get("family", "-"), debug="")
+        return render_ui(question=question, answer=str(e.detail), stage=imbuto.get("stage", "-"), family=imbuto.get("family", "-"), debug="")
 
-    # debug sintetico
     dbg_lines = []
     dbg_lines.append(f"IMBUTO: stage={imbuto.get('stage')} · family={imbuto.get('family')}")
     if imbuto.get("short_context"):
@@ -753,7 +738,7 @@ def ui_ask(question: str = Form(...)):
     debug_text = "\n".join(dbg_lines)
 
     return render_ui(
-        question=q,
+        question=question,
         answer=answer_text,
         stage=imbuto.get("stage", "-"),
         family=block.get("family", "-"),
