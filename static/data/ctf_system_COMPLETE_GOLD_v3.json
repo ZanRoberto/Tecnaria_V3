@@ -2,7 +2,7 @@
   "blocks": [
     {
       "id": "P560-0001-OVERVIEW-GENERALE",
-      "family": "P560",
+      "family": "CTF_SYSTEM",
       "mode": "gold",
       "lang": "it",
       "tags": [
@@ -15,18 +15,15 @@
       "question": "Che cos'è la chiodatrice P560 Tecnaria e a cosa serve nei sistemi CTF?",
       "answer": "La P560 è la chiodatrice a sparo Tecnaria progettata specificamente per la posa dei chiodi idonei Tecnaria nei sistemi collaboranti acciaio–calcestruzzo con connettori CTF. È un utensile a cartuccia che consente di fissare, con un unico colpo controllato, lamiera grecata, piastra del connettore CTF e ala della trave in acciaio, garantendo la corretta deformazione del chiodo e il trasferimento di taglio–scorrimento tra le parti. La P560 lavora con diversi livelli di propulsore, scelta che va calibrata in funzione dello spessore della lamiera e dell’ala, e prevede il controllo di qualità tramite apposita card che verifica la distanza testa–piastra dopo lo sparo. L’uso congiunto di P560, chiodi idonei Tecnaria e connettori CTF costituisce il sistema di fissaggio riconosciuto e verificato nelle prove sperimentali Tecnaria.",
       "triggers": [
-        "mi parli della p560",
-        "cos'è la p560",
-        "che cos'è la p560",
-        "spiegami la p560",
-        "a cosa serve la p560",
-        "uso della p560",
-        "pistola p560",
-        "chiodatrice p560",
-        "chiodatrice p560 tecnaria"
-      ],
-      "question_it": "Che cos'è la chiodatrice P560 Tecnaria e a cosa serve nei sistemi CTF?",
-      "answer_it": "La P560 è la chiodatrice a sparo Tecnaria progettata specificamente per la posa dei chiodi idonei Tecnaria nei sistemi collaboranti acciaio–calcestruzzo con connettori CTF. È un utensile a cartuccia che consente di fissare, con un unico colpo controllato, lamiera grecata, piastra del connettore CTF e ala della trave in acciaio, garantendo la corretta deformazione del chiodo e il trasferimento di taglio–scorrimento tra le parti. La P560 lavora con diversi livelli di propulsore, scelta che va calibrata in funzione dello spessore della lamiera e dell’ala, e prevede il controllo di qualità tramite apposita card che verifica la distanza testa–piastra dopo lo sparo. L’uso congiunto di P560, chiodi idonei Tecnaria e connettori CTF costituisce il sistema di fissaggio riconosciuto e verificato nelle prove sperimentali Tecnaria."
+        "cos'è",
+        "tecnaria",
+        "serve",
+        "sistemi",
+        "cosa",
+        "chiodatrice",
+        "p560",
+        "che cos'è la chiodatrice p560 tecnaria e a cosa serve nei sistemi ctf?"
+      ]
     },
     {
       "id": "P560-ERR-0003-SOVRA-INFISSIONE",
@@ -2602,134 +2599,190 @@
       "answer_it": "La P560 deve essere utilizzata ogni volta che si posano connettori CTF su lamiera grecata nei solai misti acciaio-calcestruzzo. È lo strumento previsto dal sistema Tecnaria per installare i chiodi idonei Tecnaria in modo controllato, ripetibile e coerente con le prestazioni dichiarate. Non va usata con altre famiglie di connettori e non va sostituita con utensili non previsti."
     },
     {
-      "id": "CTF_SYSTEM-0000-OVERVIEW",
+      "id": "CTF-0051-COLLAUDO-SOLAIO-COLLABORANTE",
       "family": "CTF_SYSTEM",
       "mode": "gold",
-      "lang": "it",
-      "intent": "overview",
+      "intent": "collaudo_strutturale",
       "tags": [
-        "CTF",
-        "CTF_SYSTEM",
-        "overview",
-        "generale",
-        "cosa sono i CTF",
-        "connettori per lamiera grecata"
+        "collaudo",
+        "prova di carico",
+        "deformazioni",
+        "salaio collaborante",
+        "verifica post-opera"
       ],
       "triggers": [
-        "mi parli dei ctf",
-        "cosa sono i ctf",
-        "ctf system",
-        "spiegami i ctf",
-        "cos'è il ctf",
-        "cosa fanno i ctf",
-        "a cosa servono i ctf",
-        "ctf tecnaria"
+        "verificare collaborazione dopo getto",
+        "come verificare solaio collaborante",
+        "collaudo solaio misto",
+        "prova di carico ctf",
+        "controllo deformazioni solaio ctf"
       ],
-      "question_it": "Mi parli dei CTF?",
-      "answer_it": "I CTF Tecnaria sono connettori metallici progettati per il solidarizzamento tra soletta in calcestruzzo e lamiera grecata nei solai misti acciaio-calcestruzzo. Il sistema funziona tramite un chiodo idoneo Tecnaria infisso con la P560 nella cresta dell’ondina, generando un ancoraggio meccanico che trasferisce le forze di taglio e rende collaborante la soletta con la lamiera. Tutto il comportamento resistente – capacità a taglio, rigidezza iniziale, curva di scorrimento e prestazioni sotto carico ciclico – è validato secondo ETA e dipende da tre elementi inscindibili: lamiera conforme, CTF idonei e posa con P560. L’obiettivo progettuale del sistema è creare un diaframma rigido e una collaborazione efficace evitando scorrimenti e instabilità. Le indicazioni di posa includono controllo geometrico della lamiera, verifica della deformazione card, gestione dei casi limite (imbarcamenti, torsioni, contaminanti) e applicazione di uno schema di chiodatura definito dal progettista."
+      "question_it": "Come posso verificare a posteriori che un solaio misto con connettori CTF stia realmente lavorando in collaborazione?",
+      "answer_it": "La verifica della collaborazione post-opera non si basa sui singoli connettori ma sul comportamento globale del solaio. I controlli più affidabili sono: (1) una prova di carico calibrata, confrontando le deformazioni misurate con quelle teoriche previste dal modello collaborante; (2) rilevazione delle frecce in esercizio su campate significative, verificando che risultino coerenti con la rigidezza del sistema misto; (3) ispezione localizzata delle zone critiche per verificare continuità, assenza di distacchi e stato della lamiera; (4) monitoraggio vibrazionale prima/dopo il carico per valutare variazioni di rigidezza dinamica. Se le deformazioni risultano inferiori o coerenti con il modello collaborante, il solaio può considerarsi funzionante come previsto."
     },
     {
-      "id": "P560-0000-OVERVIEW",
+      "id": "CTF-0052-RIUTILIZZO-ZONA-BUCATA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "errore_posa",
+      "tags": [
+        "foro preesistente",
+        "colpi vecchi",
+        "zona danneggiata",
+        "lamiera indebolita"
+      ],
+      "triggers": [
+        "riutilizzare zona bucata",
+        "colpi vecchi lamiera",
+        "foro precedente lamiera",
+        "sparare vicino a colpi esistenti"
+      ],
+      "question_it": "Se la lamiera presenta fori o segni di vecchi colpi di sparo, posso riutilizzare la stessa zona per posare un nuovo CTF?",
+      "answer_it": "No. Una lamiera già forata o segnata da colpi precedenti perde rigidezza locale e non garantisce più la resistenza laterale necessaria alla deformazione corretta del chiodo Tecnaria. Le letture card diventano poco affidabili e la posa è da considerarsi fuori campo. Il nuovo colpo deve essere eseguito su lamiera integra e con profilo non compromesso."
+    },
+    {
+      "id": "CTF-0053-ONDINA-SPOSTAMENTO-LATERALE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "anomalia_strutturale",
+      "tags": [
+        "ondina mobile",
+        "laterale",
+        "instabilità lamiera"
+      ],
+      "triggers": [
+        "ondina si sposta lateralmente",
+        "lamiera laterale instabile",
+        "movimento laterale ondina"
+      ],
+      "question_it": "Durante lo sparo l’ondina si sposta lateralmente sotto il puntale: è un fissaggio valido?",
+      "answer_it": "No. Lo spostamento laterale dell’ondina indica una perdita di appoggio o una torsione locale della lamiera. In queste condizioni la card registra un valore ingannevole e il fissaggio non è affidabile. La zona va considerata non idonea e la posa deve essere spostata su ondina stabile."
+    },
+    {
+      "id": "CTF-0054-POSA-BORDO-LAMIERA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "errore_posa",
+      "tags": [
+        "bordo lamiera",
+        "prima ondina",
+        "zona debole"
+      ],
+      "triggers": [
+        "posare vicino al bordo lamiera",
+        "prima ondina bordo",
+        "fissaggio bordo lamiera"
+      ],
+      "question_it": "È possibile posare i CTF sulla prima ondina vicino al bordo della lamiera grecata?",
+      "answer_it": "In generale è sconsigliato. La prima ondina vicino al bordo ha rigidezza ridotta e può deformarsi in modo anomalo durante lo sparo. Questo porta a card non rappresentative o a collassi locali. La posa deve avvenire su ondine centrali o comunque su zone con appoggio pieno."
+    },
+    {
+      "id": "P560-0055-TESTA-RIGATA",
       "family": "P560",
       "mode": "gold",
-      "lang": "it",
-      "intent": "overview",
+      "intent": "difetto_materiale",
       "tags": [
-        "P560",
-        "overview",
-        "chiodatrice",
-        "posa CTF",
-        "strumentazione",
-        "propulsori"
+        "difetti chiodo",
+        "testa rigata",
+        "acciaio imperfetto"
       ],
       "triggers": [
-        "mi parli della p560",
-        "cos'è la p560",
-        "spiegami la p560",
-        "a cosa serve la p560",
-        "uso della p560",
-        "pistola p560 tecnaria",
-        "chiodatrice p560"
+        "testa chiodo rigata",
+        "difetto acciaio chiodo",
+        "chiodo testa segnata"
       ],
-      "question_it": "Mi parli della P560?",
-      "answer_it": "La P560 è la chiodatrice a propulsione utilizzata nei sistemi Tecnaria per l’infissione controllata dei chiodi idonei Tecnaria nelle lamiere grecate e nelle piastre dei CTF. È una macchina a massa battente con energia calibrata e ripetibile, studiata per garantire deformazioni coerenti del chiodo e permettere una lettura card affidabile. Tutte le prove sperimentali, le ETA e le curve prestazionali dei CTF sono state realizzate esclusivamente con P560: per questo l’uso di chiodatrici diverse porta il fissaggio fuori campo certificato. La P560 richiede manutenzione ordinaria (pulizia testa di sparo, verifica puntale, controllo usure), l’utilizzo di propulsori idonei e DPI obbligatori (occhiali EN166, cuffie, guanti). Il comportamento del chiodo, la profondità di infissione e la stabilità dell’ondina dipendono dalla corretta energia di sparo: la P560 garantisce ripetibilità, sicurezza e conformità al sistema CTF Tecnaria."
+      "question_it": "Se la testa del chiodo Tecnaria presenta rigature superficiali, il colpo è considerabile valido?",
+      "answer_it": "Leggere rigature superficiali non costituiscono automaticamente un colpo non valido se la deformazione finale rispetta la finestra card e risulta ripetibile su più punti. Tuttavia, rigature profonde o difetti evidenti possono alterare la plastificazione del chiodo. In caso di dubbio il colpo va scartato."
     },
     {
-      "id": "CTF-ROSSO-0020-SPARO-A-VUOTO-CHIODO-INTEGRO",
-      "family": "CTF_SYSTEM",
+      "id": "P560-0056-DEFORMAZIONE-TROPPO-PICCOLA",
+      "family": "P560",
       "mode": "gold",
-      "lang": "it",
       "intent": "errore_uso",
       "tags": [
-        "P560",
-        "chiodo integro",
-        "sparare a vuoto",
-        "ammaccatura lamiera",
-        "fissaggio non valido",
-        "fuori campo"
+        "deformazione minima",
+        "propulsore forte",
+        "sovra infissione"
       ],
       "triggers": [
-        "p560 spara a vuoto",
-        "chiodo integro non si deforma",
-        "testa del chiodo lontana dalla piastra",
-        "solo ammaccatura superficiale lamiera",
-        "colpo senza deformazione del chiodo",
-        "fissaggio senza deformazione plastica"
+        "deformazione troppo piccola",
+        "card sotto minimo",
+        "colpo troppo forte"
       ],
-      "question_it": "Durante la posa dei CTF su lamiera grecata, la P560 sta sparando a vuoto: il chiodo Tecnaria rimane integro, non si deforma, la testa non si avvicina alla piastra e la lamiera presenta solo un’ammaccatura superficiale. Questo fissaggio è valido oppure indica una condizione di fuori-campo? E quale parametro tecnico devo controllare per capire l’esatta causa?",
-      "answer_it": "Un fissaggio in cui la P560 sembra “sparare a vuoto”, il chiodo idoneo Tecnaria rimane sostanzialmente integro, la testa non si avvicina alla piastra del CTF e sulla lamiera compare solo un’ammaccatura superficiale, non è da considerare valido. In questa configurazione la macchina non sta riproducendo le condizioni di prova alla base del sistema CTF: manca la deformazione plastica controllata del chiodo che caratterizza l’ancoraggio certificato e rende significativa la lettura card.\n\nSe il chiodo non si deforma, sei fuori curva di prova: o la lamiera/supporto hanno una rigidezza e una geometria diverse da quelle previste (spessori anomali, materiali fuori campo, lamiera non appoggiata o con vuoti dietro), oppure l’energia del colpo non si trasferisce correttamente nel punto di infissione. In questi casi il fissaggio va scartato e il tratto va analizzato come anomalia.\n\nIl parametro tecnico principale da controllare è la deformazione plastica del chiodo in relazione alla lettura card, confrontata con un tratto di riferimento sano: il chiodo deve presentare una deformazione coerente e la testa deve accostarsi alla piastra del CTF. Se, a parità di impostazioni P560 e propulsori, in una zona corretta il chiodo si deforma regolarmente mentre nella zona critica resta integro, la causa è locale (appoggio della lamiera, vuoti, strati intermedi). Finché non viene ripristinata una configurazione conforme alle condizioni di prova, i fissaggi che si presentano con chiodo integro e sola ammaccatura superficiale della lamiera sono da considerare non affidabili e fuori campo rispetto al sistema CTF Tecnaria."
+      "question_it": "Cosa significa se la deformazione del chiodo risulta troppo piccola rispetto alla finestra card?",
+      "answer_it": "Una deformazione troppo piccola indica sovra-infissione: il chiodo ha subito un’energia eccessiva, spesso dovuta a propulsore troppo potente, superficie non omogenea o pressatura non corretta. Il colpo non è valido e va ripetuto con propulsore adeguato."
     },
     {
-      "id": "CTF_SYSTEM-0100-OVERVIEW-COS-E-CTF",
-      "family": "CTF_SYSTEM",
-      "mode": "gold",
-      "lang": "it",
-      "intent": "overview",
-      "tags": [
-        "CTF",
-        "CTF_SYSTEM",
-        "connettori",
-        "solaio misto",
-        "lamiera grecata",
-        "sistema collaborante"
-      ],
-      "triggers": [
-        "mi parli dei ctf",
-        "mi parli del ctf system",
-        "cos'è il connettore ctf",
-        "che cos'è il connettore ctf tecnaria",
-        "cosa sono i connettori ctf tecnaria",
-        "ctf tecnaria cosa sono",
-        "ctf system spiegazione",
-        "ctf su lamiera grecata"
-      ],
-      "question_it": "Che cos'è il connettore CTF Tecnaria e in quale sistema viene utilizzato?",
-      "answer_it": "I connettori CTF Tecnaria sono dispositivi metallici progettati per collegare una lamiera grecata in acciaio ad una soletta in calcestruzzo..."
-    },
-    {
-      "id": "P560-0100-OVERVIEW-COS-E-P560",
+      "id": "P560-0057-CHIODO-SBASELLATO",
       "family": "P560",
       "mode": "gold",
-      "lang": "it",
-      "intent": "overview",
+      "intent": "difetto_materiale",
       "tags": [
-        "P560",
-        "chiodatrice",
-        "pistola a sparo",
-        "chiodi idonei Tecnaria",
-        "posa CTF"
+        "difetti chiodo",
+        "punta danneggiata"
       ],
       "triggers": [
-        "mi parli della p560",
-        "cos'è la p560",
-        "che cos'è la p560 tecnaria",
-        "cos'è la chiodatrice p560",
-        "chiodatrice p560 tecnaria",
-        "pistola p560 tecnaria a cosa serve",
-        "uso della p560 per i ctf"
+        "chiodo con sbavature",
+        "punta chiodo danneggiata",
+        "difetto chiodo"
       ],
-      "question_it": "Che cos'è la P560 Tecnaria e a cosa serve nel sistema CTF?",
-      "answer_it": "La P560 è la chiodatrice a sparo sviluppata da Tecnaria per la posa controllata dei connettori CTF su lamiera grecata..."
+      "question_it": "Se il chiodo presenta sbavature o piccoli difetti sulla punta prima della posa, posso usarlo lo stesso?",
+      "answer_it": "No. Un chiodo con punta danneggiata non garantisce una deformazione controllata e può generare letture card incoerenti. Come da specifiche Tecnaria, si devono usare solo chiodi idonei privi di difetti visibili."
+    },
+    {
+      "id": "CTF-0058-ORIENTAMENTO-CONNETTORE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "errore_posa",
+      "tags": [
+        "orientamento ctf",
+        "posa errata",
+        "direzione connettore"
+      ],
+      "triggers": [
+        "orientamento ctf sbagliato",
+        "montato al contrario",
+        "direzione errata connettore"
+      ],
+      "question_it": "Cosa comporta un errato orientamento del connettore CTF rispetto alla trave?",
+      "answer_it": "L’orientamento errato compromette la capacità del connettore di trasferire correttamente gli sforzi di taglio-scorrimento. Il CTF deve essere sempre orientato secondo le indicazioni Tecnaria: eventuali rotazioni o inversioni portano a riduzione di portanza e possibile non conformità."
+    },
+    {
+      "id": "CTF-0059-UMIDITA-EFFETTO-CARD",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "condizioni_ambientali",
+      "tags": [
+        "umidità",
+        "cantiere",
+        "card"
+      ],
+      "triggers": [
+        "umidità card",
+        "effetto umidità lettura card",
+        "ambiente umido ctf"
+      ],
+      "question_it": "L’umidità del cantiere può influenzare la lettura della card nei sistemi CTF?",
+      "answer_it": "L’umidità non altera direttamente la plastificazione del chiodo, ma può influenzare condizioni superficiali come presenza di condensa, vernice più morbida o calamina bagnata. In queste condizioni la card può risultare meno leggibile e la superficie meno reattiva al colpo. È consigliabile asciugare localmente la zona prima della posa."
+    },
+    {
+      "id": "CTF-0060-DIAGNOSI-P560-VS-LAMIERA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "diagnostica",
+      "tags": [
+        "diagnosi",
+        "p560",
+        "lamiera",
+        "problema colpo"
+      ],
+      "triggers": [
+        "problema lamiera o p560",
+        "come distinguere difetto p560",
+        "diagnosi differenziale colpo"
+      ],
+      "question_it": "Come si distingue un problema della P560 da un problema della lamiera quando il colpo risulta anomalo?",
+      "answer_it": "Se l’anomalia è sistematica e si ripete su tutta la campata, il problema è tipicamente della P560 (propulsori, puntale, pressatura o usura). Se invece l’anomalia compare solo in zone specifiche della lamiera, il problema è locale (buckling, depressioni, torsione, vernice spessa). La card fornisce un’indicazione: incoerenze ripetute = macchina; incoerenze localizzate = lamiera."
     }
   ]
 }
