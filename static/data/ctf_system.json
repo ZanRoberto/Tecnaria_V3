@@ -1230,6 +1230,1373 @@
       ],
       "question_it": "Esistono casi in cui una zona di solaio con lamiera molto danneggiata deve essere dichiarata 'non consolidabile con CTF', rendendo necessario cambiare completamente tecnologia di intervento?",
       "answer_it": "Sì. Il sistema CTF si basa su presupposti chiari: lamiera di caratteristiche note, profilo leggibile, appoggio continuo sulle travi, assenza di danni estesi gravi. Quando questi presupposti vengono meno in modo radicale – lamiera di tipo sconosciuto o estremamente danneggiata, buckling diffuso, corrosione pesante, riparazioni improprie, mancanza di appoggio continuo – la zona diventa di fatto non consolidabile con questo schema. In tali casi, insistere nel tentativo di 'far funzionare' i CTF significa forzare il sistema fuori dal proprio campo di validità. La scelta corretta è dichiarare esplicitamente che il tratto è fuori campo per CTF e valutare, insieme al progettista, un diverso tipo di intervento (ad esempio nuova soletta con connettori su travi esistenti, piastre saldate, profilati aggiuntivi, ecc.). Questo approccio mantiene chiaro il perimetro di responsabilità e preserva l'affidabilità tecnica dell'intervento."
+    },
+    {
+      "id": "CTF-0001",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "uso",
+        "applicazioni",
+        "posa",
+        "p560"
+      ],
+      "triggers": [
+        "dove posso usare i connettori ctf?"
+      ],
+      "question_it": "Dove posso usare i connettori CTF?",
+      "answer_it": "I connettori CTF Tecnaria sono progettati per il collegamento meccanico tra travi in acciaio o lamiera grecata e la soletta in calcestruzzo; trasformano la sovrapposizione in una trave mista collaborante. La posa è prevista esclusivamente con chiodatrice a polvere P560 Tecnaria, utilizzando chiodi idonei Tecnaria e gli adattatori dedicati."
+    },
+    {
+      "id": "CTF-0002",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "strumenti",
+        "p560",
+        "sicurezza"
+      ],
+      "triggers": [
+        "con riferimento ai connettori ctf si possono posare con una chiodatrice a sparo qualsiasi?"
+      ],
+      "question_it": "Con riferimento ai connettori CTF si possono posare con una chiodatrice a sparo qualsiasi?",
+      "answer_it": "No: i CTF sono progettati per posa con chiodatrice a polvere SPIT P560 dotata di kit/adattatori dedicati Tecnaria; altre macchine non sono ammesse per garantire energia e profondità di inserimento."
+    },
+    {
+      "id": "CTF-0003",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "legno",
+        "vibrazioni",
+        "solaio",
+        "CTL",
+        "DIAPASON"
+      ],
+      "triggers": [
+        "ho un solaio in legno che vibra, che connettori posso usare?"
+      ],
+      "question_it": "Ho un solaio in legno che vibra, che connettori posso usare?",
+      "answer_it": "Per solai in legno si usano connettori della famiglia CTL o CTL MAXI; i CTF non sono adatti al legno. DIAPASON è per laterocemento. Valutare causa vibrazione e consultare la scheda CTL o intervento di rinforzo."
+    },
+    {
+      "id": "CTF-0004",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "controllo",
+        "collaudo",
+        "prova"
+      ],
+      "triggers": [
+        "quali sono i controlli da fare dopo la posa dei connettori ctf?"
+      ],
+      "question_it": "Quali sono i controlli da fare dopo la posa dei connettori CTF?",
+      "answer_it": "Controllo visivo di profondità chiodo e allineamento, controllo fissaggio 100% sui punti critici, prova di estrazione su campione (1/50 o come da progetto), registrazione e log su cantiere."
+    },
+    {
+      "id": "CTF-0005",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "correzione",
+        "p560",
+        "sicurezza"
+      ],
+      "triggers": [
+        "cosa fare se un chiodo della posa con p560 rimane parzialmente fuori?"
+      ],
+      "question_it": "Cosa fare se un chiodo della posa con P560 rimane parzialmente fuori?",
+      "answer_it": "Se un chiodo non è inserito correttamente rimuoverlo con utensili adeguati, ispezionare foro e superficie, riposizionare il connettore e fissare con nuovo chiodo idoneo usando P560 correttamente tarata."
+    },
+    {
+      "id": "CTF-0006",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "ordini",
+        "misure",
+        "catalogo"
+      ],
+      "triggers": [
+        "quali misure ordino per i connettori ctf?"
+      ],
+      "question_it": "Quali misure ordino per i connettori CTF?",
+      "answer_it": "Le misure comuni includono gambo e tipo piolo; scegliere secondo progetto: tipicamente CTF 12/040, 12/050 ecc. Controllare catalogo Tecnaria e specifiche progetto per lunghezza imbullonata."
+    },
+    {
+      "id": "CTF-0007",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "lamiera",
+        "posa",
+        "spessore"
+      ],
+      "triggers": [
+        "posso usare i ctf su lamiera grecata con spessore ridotto?"
+      ],
+      "question_it": "Posso usare i CTF su lamiera grecata con spessore ridotto?",
+      "answer_it": "Sì, ma occorre verificare compatibilità: la lamiera deve garantire contatto e trasferimento carichi; spesso è richiesta lamiera ≥ 1.5 mm o doppia lamiera in funzione del progetto. Consultare la scheda Tecnaria."
+    },
+    {
+      "id": "CTF-0008",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "fissazioni",
+        "numero",
+        "posa"
+      ],
+      "triggers": [
+        "quante fissazioni per connettore sono necessarie?"
+      ],
+      "question_it": "Quante fissazioni per connettore sono necessarie?",
+      "answer_it": "Standard Tecnaria: 2 chiodi idonei Tecnaria per ogni connettore CTF (salvo diversa indicazione progettuale)."
+    },
+    {
+      "id": "CTF-0009",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "propulsori",
+        "p560",
+        "materiale"
+      ],
+      "triggers": [
+        "quali propulsori usare con la p560 per i ctf?"
+      ],
+      "question_it": "Quali propulsori usare con la P560 per i CTF?",
+      "answer_it": "Usare solo i propulsori specificati da Tecnaria per CTF; la combinazione chiodo/propulsore è critica per energia e penetrazione. Consultare tabella compatibilità P560-CTF."
+    },
+    {
+      "id": "CTF-0010",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "formazione",
+        "sicurezza",
+        "p560"
+      ],
+      "triggers": [
+        "serve una formazione specifica per chi usa la p560?"
+      ],
+      "question_it": "Serve una formazione specifica per chi usa la P560?",
+      "answer_it": "Sì. Operatori devono essere formati all'uso della P560, alla taratura, alla gestione propulsori e alla sicurezza; Tecnaria fornisce istruzioni operative e pacchetti di training."
+    },
+    {
+      "id": "CTF-0011",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "DPI",
+        "sicurezza",
+        "cantiere"
+      ],
+      "triggers": [
+        "quali dpi sono necessari durante la posa con p560?"
+      ],
+      "question_it": "Quali DPI sono necessari durante la posa con P560?",
+      "answer_it": "Occhiali di protezione, cuffie antirumore, guanti tecnici, casco e calzature di sicurezza sono obbligatori; inoltre usare dispositivi di contenimento dei detriti quando si opera in quota."
+    },
+    {
+      "id": "CTF-0012",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "test",
+        "prova",
+        "qualità"
+      ],
+      "triggers": [
+        "come si esegue una prova di estrazione per i ctf?"
+      ],
+      "question_it": "Come si esegue una prova di estrazione per i CTF?",
+      "answer_it": "Eseguire test su campioni rappresentativi (es. 1/50 punti o come da progetto): applicare carico di trazione fino a valore richiesto e registrare rottura o slittamento; confrontare con valori tabellati."
+    },
+    {
+      "id": "CTF-0013",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "corrosione",
+        "materiali",
+        "protezione"
+      ],
+      "triggers": [
+        "ctf e protezione dalla corrosione: cosa devo considerare?"
+      ],
+      "question_it": "CTF e protezione dalla corrosione: cosa devo considerare?",
+      "answer_it": "Usare elementi con finiture adatte all'ambiente (zincatura, verniciatura) e valutare barriera tra acciaio e ambiente aggressivo; la scelta del chiodo deve considerare resistenza alla corrosione."
+    },
+    {
+      "id": "CTF-0014",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "ambienti",
+        "marini",
+        "corrosione"
+      ],
+      "triggers": [
+        "si possono usare i ctf in ambienti marini?"
+      ],
+      "question_it": "Si possono usare i CTF in ambienti marini?",
+      "answer_it": "In ambienti marini usare componenti con elevata resistenza alla corrosione (acciaio inox A4 o rivestimenti speciali); valutare specifica di progetto e manutenzione."
+    },
+    {
+      "id": "CTF-0015",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "interasse",
+        "progetto",
+        "capacità"
+      ],
+      "triggers": [
+        "qual è l'interasse consigliato tra connettori ctf?"
+      ],
+      "question_it": "Qual è l'interasse consigliato tra connettori CTF?",
+      "answer_it": "L'interasse dipende dalla verifica strutturale; valori tipici sono riportati in tabelle di progetto e catalogo Tecnaria. Consultare progetto strutturale per spaziatura ottimale."
+    },
+    {
+      "id": "CTF-0016",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "report",
+        "documentazione",
+        "collegamento"
+      ],
+      "triggers": [
+        "cosa devo inserire nel report di posa dei ctf?"
+      ],
+      "question_it": "Cosa devo inserire nel report di posa dei CTF?",
+      "answer_it": "Data, operatore, lotto chiodi/propulsori, taratura P560, numero connettori posati, risultati test estrazione, eventuali non conformità e azioni correttive."
+    },
+    {
+      "id": "CTF-0017",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "vernice",
+        "posa",
+        "preparazione"
+      ],
+      "triggers": [
+        "ctf su trave con vernici protettive: posso posare senza rimuovere vernice?"
+      ],
+      "question_it": "CTF su trave con vernici protettive: posso posare senza rimuovere vernice?",
+      "answer_it": "Generalmente è richiesta rimozione locale del rivestimento per assicurare contatto metallico e presa del chiodo; valutare caso per caso e documentare."
+    },
+    {
+      "id": "CTF-0018",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "temperatura",
+        "condizioni",
+        "p560"
+      ],
+      "triggers": [
+        "esistono limiti di temperatura per l'uso della p560 durante posa?"
+      ],
+      "question_it": "Esistono limiti di temperatura per l'uso della P560 durante posa?",
+      "answer_it": "Sì: operare entro temperature consigliate dal produttore P560 e da Tecnaria; temperature estreme possono alterare il comportamento dei propulsori e la penetrazione del chiodo."
+    },
+    {
+      "id": "CTF-0019",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "armature",
+        "interferenze",
+        "posa"
+      ],
+      "triggers": [
+        "ctf e interferenze con armature della soletta: cosa fare?"
+      ],
+      "question_it": "CTF e interferenze con armature della soletta: cosa fare?",
+      "answer_it": "Evitare interferenze con armature. Se rischio di contatto, consultare progettista per riposizionamento o scelta di connettore alternativo e possibili prove di compatibilità."
+    },
+    {
+      "id": "CTF-0020",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "manutenzione",
+        "p560",
+        "lubrificazione"
+      ],
+      "triggers": [
+        "qual è la manutenzione raccomandata per la p560 dopo la posa?"
+      ],
+      "question_it": "Qual è la manutenzione raccomandata per la P560 dopo la posa?",
+      "answer_it": "Pulizia giornaliera per rimuovere polvere da sparo, lubrificazione leggera con oli neutri raccomandati da Tecnaria, controllo guarnizioni e ispezione periodica componenti critici."
+    },
+    {
+      "id": "CTF-0021",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "versioni",
+        "catalogo",
+        "modelli"
+      ],
+      "triggers": [
+        "ctf: differenza tra versioni e modelli disponibili?"
+      ],
+      "question_it": "CTF: differenza tra versioni e modelli disponibili?",
+      "answer_it": "CTF ha vari tagli e lunghezze pensate per diversi spessori e condizioni; consultare catalogo Tecnaria per gamma completa e corrispondenza prestazionale."
+    },
+    {
+      "id": "CTF-0022",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "magazzino",
+        "conservazione",
+        "chiodi"
+      ],
+      "triggers": [
+        "ctf: come si conservano i chiodi idonei tecnaria in cantiere?"
+      ],
+      "question_it": "CTF: come si conservano i chiodi idonei Tecnaria in cantiere?",
+      "answer_it": "Conservare in luogo asciutto, protetto da umidità e contaminanti; rispettare lotti e date di fornitura; separare tipologie per evitare scambi."
+    },
+    {
+      "id": "CTF-0023",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "travi sottili",
+        "posa",
+        "calcoli"
+      ],
+      "triggers": [
+        "ctf su travi sottili: quali accorgimenti?"
+      ],
+      "question_it": "CTF su travi sottili: quali accorgimenti?",
+      "answer_it": "Verificare spessore trave e possibilità di deformazione; valutare rinforzi, uso di piastra o scelta di connettore alternativo se la trave non garantisce resistenza all'azione di sparo."
+    },
+    {
+      "id": "CTF-0024",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "p560",
+        "compatibilita",
+        "altre famiglie"
+      ],
+      "triggers": [
+        "posso usare p560 per altri connettori oltre ctf?"
+      ],
+      "question_it": "Posso usare P560 per altri connettori oltre CTF?",
+      "answer_it": "P560 è utilizzata per alcuni sistemi a sparo (CTF e altri indicati da Tecnaria) ma non per sistemi meccanici come CTL/VCEM/CTCEM salvo diversa indicazione Tecnaria. Consultare compatibilità su ogni famiglia."
+    },
+    {
+      "id": "CTF-0025",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "isolamento",
+        "interferenze",
+        "posa"
+      ],
+      "triggers": [
+        "ctf e isolamento termico: interferenze?"
+      ],
+      "question_it": "CTF e isolamento termico: interferenze?",
+      "answer_it": "Se presente isolamento tra trave e soletta verificare continuità strutturale; in genere i connettori CTF attraversano soletta e interagiscono con l'isolante, richiedendo attenzione a ponti termici."
+    },
+    {
+      "id": "CTF-0026",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "rottura",
+        "incidente",
+        "correzione"
+      ],
+      "triggers": [
+        "cosa fare se si rompe un connettore durante il fissaggio?"
+      ],
+      "question_it": "Cosa fare se si rompe un connettore durante il fissaggio?",
+      "answer_it": "Rimuovere il connettore danneggiato, ispezionare foro e materiale, sostituire con connettore integro e nuovo chiodo idoneo Tecnaria; registrare l'accaduto nel report."
+    },
+    {
+      "id": "CTF-0027",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "rumore",
+        "tecnica",
+        "sequenza"
+      ],
+      "triggers": [
+        "ctf e rumore/distanze minime tra spari consecutivi?"
+      ],
+      "question_it": "CTF e rumore/distanze minime tra spari consecutivi?",
+      "answer_it": "Prevedere pause operative e distanza minima per evitare accumulo di calore e deformazioni nella lamiera/trave; seguire linee guida Tecnaria su ritmo di posa."
+    },
+    {
+      "id": "CTF-0028",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "lamiera_irregolare",
+        "posa",
+        "gestione"
+      ],
+      "triggers": [
+        "ctf: come si gestisce una commessa con piastre forate o lamiera irregolare?"
+      ],
+      "question_it": "CTF: come si gestisce una commessa con piastre forate o lamiera irregolare?",
+      "answer_it": "Valutare stato e planarità della lamiera; se irregolare prevedere piani di appoggio o scelta di punti alternativi su trave; la posa su lamiera non aderente può compromettere funzione."
+    },
+    {
+      "id": "CTF-0029",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "errori",
+        "controlli",
+        "best_practices"
+      ],
+      "triggers": [
+        "ctf: quali sono i principali errori di posa da evitare?"
+      ],
+      "question_it": "CTF: quali sono i principali errori di posa da evitare?",
+      "answer_it": "Errori: uso di utensili non certificati, chiodi non idonei, posa su lamiera non aderente, non rispettare 2 chiodi per connettore, mancanza di prove di controllo."
+    },
+    {
+      "id": "CTF-0030",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "progetto",
+        "ottimizzazione",
+        "sicurezza"
+      ],
+      "triggers": [
+        "ctf: posso ridurre il numero di connettori per risparmiare?"
+      ],
+      "question_it": "CTF: posso ridurre il numero di connettori per risparmiare?",
+      "answer_it": "No senza verifica progettuale: ogni connettore è dimensionato per contribuire alla capacità del solaio; riduzioni senza calcolo possono compromettere sicurezza."
+    },
+    {
+      "id": "CTF-0031",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "accesso",
+        "cantiere",
+        "posespeciali"
+      ],
+      "triggers": [
+        "ctf: come gestire zone con accesso difficoltoso?"
+      ],
+      "question_it": "CTF: come gestire zone con accesso difficoltoso?",
+      "answer_it": "Pianificare operazioni con attrezzature di accesso (ponti, cestelli), prevedere punti di lavoro sicuri; in zone impossibili valutare soluzioni alternative o posa manuale con approvazione."
+    },
+    {
+      "id": "CTF-0032",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "ponti termici",
+        "soluzioni",
+        "isolamento"
+      ],
+      "triggers": [
+        "ctf: sono possibili soluzioni per ridurre ponti termici causati dai connettori?"
+      ],
+      "question_it": "CTF: sono possibili soluzioni per ridurre ponti termici causati dai connettori?",
+      "answer_it": "Sì: progettare dettagli con strati isolanti, utilizzare sleeve termici o posizioni di connettori ottimizzate per minimizzare ponti termici; coordinare con termotecnico."
+    },
+    {
+      "id": "CTF-0033",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "pre-getto",
+        "test",
+        "verifica"
+      ],
+      "triggers": [
+        "ctf: quali test pre-getto sono obbligatori?"
+      ],
+      "question_it": "CTF: quali test pre-getto sono obbligatori?",
+      "answer_it": "Controlli visivi, prove di estrazione su campione, verifica registro posa e conformità materiali; questi test assicurano che la soletta venga gettata con connettori corretti."
+    },
+    {
+      "id": "CTF-0034",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "distanziatori",
+        "piastra",
+        "detailing"
+      ],
+      "triggers": [
+        "ctf: è possibile usare distanziatori o piastre sotto i connettori?"
+      ],
+      "question_it": "CTF: è possibile usare distanziatori o piastre sotto i connettori?",
+      "answer_it": "In alcuni casi tecnici è possibile usare piastre di distribuzione o distanziatori progettuali, ma devono essere verificati e approvati dal progettista; evitare soluzioni improvvisate."
+    },
+    {
+      "id": "CTF-0035",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "sovraccarico",
+        "detailing",
+        "capacitÃ "
+      ],
+      "triggers": [
+        "ctf: come trattare punti di sovraccarico locali?"
+      ],
+      "question_it": "CTF: come trattare punti di sovraccarico locali?",
+      "answer_it": "Eseguire verifica locale e aumentare densità connettori o usare rinforzi strutturali; ogni intervento deve essere calcolato dal progettista."
+    },
+    {
+      "id": "CTF-0036",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "giunti",
+        "dettagli",
+        "posa"
+      ],
+      "triggers": [
+        "ctf: come si gestiscono connettori in prossimità di giunti strutturali?"
+      ],
+      "question_it": "CTF: come si gestiscono connettori in prossimità di giunti strutturali?",
+      "answer_it": "Evitare posa direttamente sui giunti; progettare soluzioni di continuità che rispettino dilatazioni e movimenti; consultare progettista per dettagli."
+    },
+    {
+      "id": "CTF-0037",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "accessori",
+        "efficienza",
+        "p560"
+      ],
+      "triggers": [
+        "ctf: esistono accessori tecnaria consigliati per posa rapida?"
+      ],
+      "question_it": "CTF: esistono accessori Tecnaria consigliati per posa rapida?",
+      "answer_it": "Sì: adattatori P560, guide di posizionamento e jigs per allineamento sono disponibili presso Tecnaria per aumentare velocità e ripetibilità."
+    },
+    {
+      "id": "CTF-0038",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "verniciato",
+        "preparazione",
+        "compatibilitÃ "
+      ],
+      "triggers": [
+        "ctf: come si verifica la compatibilità con travi in acciaio verniciate?"
+      ],
+      "question_it": "CTF: come si verifica la compatibilità con travi in acciaio verniciate?",
+      "answer_it": "Rimozione locale del rivestimento fino a metallo sano è spesso richiesta; eseguire prova di estrazione dopo preparazione per confermare tenuta."
+    },
+    {
+      "id": "CTF-0039",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "soletta",
+        "spessore",
+        "progetto"
+      ],
+      "triggers": [
+        "ctf: quali sono i limiti di spessore per la soletta sopra i connettori?"
+      ],
+      "question_it": "CTF: quali sono i limiti di spessore per la soletta sopra i connettori?",
+      "answer_it": "Lo spessore minimo e le condizioni di copertura dipendono da progetto; valori tipici vanno verificati in relazione al tipo di connettore e alle tabelle carichi Tecnaria."
+    },
+    {
+      "id": "CTF-0040",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "collaudo",
+        "obbligo",
+        "norme"
+      ],
+      "triggers": [
+        "ctf: quando è obbligatorio il collaudo estensivo?"
+      ],
+      "question_it": "CTF: quando è obbligatorio il collaudo estensivo?",
+      "answer_it": "In lavori critici o su richiesta del progettista/committenza, collaudo estensivo (più prelievi e prove) può essere imposto; tipicamente se variabilità materiali o geometrie lo richiedono."
+    },
+    {
+      "id": "CTF-0041",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "certificazioni",
+        "documentazione",
+        "qualitÃ "
+      ],
+      "triggers": [
+        "ctf: quali certificazioni fornite con il prodotto?"
+      ],
+      "question_it": "CTF: quali certificazioni fornite con il prodotto?",
+      "answer_it": "Tecnaria fornisce schede tecniche, dichiarazioni di prestazione e certificati materiali per ogni lotto; richiedere documentazione al momento dell'ordine."
+    },
+    {
+      "id": "CTF-0042",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "tracciabilitÃ ",
+        "lotti",
+        "magazzino"
+      ],
+      "triggers": [
+        "ctf: come si traccia la tracciabilità dei lotti in cantiere?"
+      ],
+      "question_it": "CTF: come si traccia la tracciabilità dei lotti in cantiere?",
+      "answer_it": "Mantenere registro lotti, collegare ogni lotto ai report di posa e test; stampare etichette e inserire nel report elettronico di cantiere."
+    },
+    {
+      "id": "CTF-0043",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "carico",
+        "capacita",
+        "progetto"
+      ],
+      "triggers": [
+        "ctf: quali sono i limiti di carico per singolo connettore?"
+      ],
+      "question_it": "CTF: quali sono i limiti di carico per singolo connettore?",
+      "answer_it": "I limiti sono riportati nelle tabelle carico Tecnaria per ogni modello; devono essere usati per calcoli strutturali e dimensionamento finale."
+    },
+    {
+      "id": "CTF-0044",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "ambiente",
+        "smaltimento",
+        "residui"
+      ],
+      "triggers": [
+        "ctf: gestione residui e ambiente dopo posa?"
+      ],
+      "question_it": "CTF: gestione residui e ambiente dopo posa?",
+      "answer_it": "Smaltire propulsori vuoti e residui metallici secondo normative locali; pulire area e raccogliere scarti separatamente."
+    },
+    {
+      "id": "CTF-0045",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "pianificazione",
+        "efficienza",
+        "cantiere"
+      ],
+      "triggers": [
+        "ctf: come pianificare una giornata di posa efficiente?"
+      ],
+      "question_it": "CTF: come pianificare una giornata di posa efficiente?",
+      "answer_it": "Pianificare sequenze di posa, verificare disponibilitÃ P560 e propulsori, predisporre materiali, assegnare operatori formati e predisporre controllo qualità giornaliero."
+    },
+    {
+      "id": "CTF-0046",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "coordinamento",
+        "impianti",
+        "collaborazione"
+      ],
+      "triggers": [
+        "ctf: come si integra la posa con fasi impiantistiche?"
+      ],
+      "question_it": "CTF: come si integra la posa con fasi impiantistiche?",
+      "answer_it": "Coordinare con il team impianti per evitare interferenze; programmare fasce orarie per posa e predisporre segnalazioni su planimetrie."
+    },
+    {
+      "id": "CTF-0047",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "prefabbricato",
+        "posa",
+        "sistemi"
+      ],
+      "triggers": [
+        "ctf: è possibile posa agevolata in prefabbricato?"
+      ],
+      "question_it": "CTF: è possibile posa agevolata in prefabbricato?",
+      "answer_it": "Sì: adottare procedure specifiche per prefabbricazione e trasporto, assicurare accesso per P560 e predisposizione dei punti di posa."
+    },
+    {
+      "id": "CTF-0048",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "direttore",
+        "pre-getto",
+        "checklist"
+      ],
+      "triggers": [
+        "ctf: quali indicazioni dare al direttore lavori prima del getto?"
+      ],
+      "question_it": "CTF: quali indicazioni dare al direttore lavori prima del getto?",
+      "answer_it": "Fornire report posa completo, risultati test estrazione, elenco non conformità e planimetria con punti verificati; ricevere autorizzazione scritta prima del getto."
+    },
+    {
+      "id": "CTF-0049",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "kb",
+        "aggiornamento",
+        "red-teaming"
+      ],
+      "triggers": [
+        "ctf: come aggiornare la kb se emergono nuove domande velenose?"
+      ],
+      "question_it": "CTF: come aggiornare la KB se emergono nuove domande velenose?",
+      "answer_it": "Inserire nuovo blocco GOLD con variants tecniche/cantiere/regolatoria, allegare evidenze e test; aggiornare retriever e ri-addestrare ranker su nuovi esempi."
+    },
+    {
+      "id": "CTF-0050",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "checklist",
+        "finale",
+        "collaudo"
+      ],
+      "triggers": [
+        "ctf: checklist rapida per verifica finale prima del collaudo"
+      ],
+      "question_it": "CTF: checklist rapida per verifica finale prima del collaudo",
+      "answer_it": "Verificare: taratura P560, lotto chiodi/propulsori, 2 chiodi per connettore, risultati pull-test conforme, documentazione posa e foto; consegnare fascicolo collaudo."
+    },
+    {
+      "id": "P560-0001",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "overview",
+        "strumento",
+        "ctf",
+        "lamiera"
+      ],
+      "triggers": [
+        "che cos'è la p560 tecnaria?"
+      ],
+      "question_it": "Che cos'è la P560 Tecnaria?",
+      "answer_it": "La P560 è la chiodatrice a sparo progettata da Tecnaria per la posa dei chiodi idonei Tecnaria nei sistemi CTF su lamiera grecata. Lo strumento genera un colpo calibrato che attraversa la lamiera e assicura l'ancoraggio del chiodo al supporto sottostante. La P560 non è un utensile generico: è parte integrante del sistema CTF e la prestazione del connettore dipende dal corretto uso di questo strumento."
+    },
+    {
+      "id": "P560-0002",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "applicazioni",
+        "ctf",
+        "lamiera"
+      ],
+      "triggers": [
+        "per quali applicazioni è progettata la p560?"
+      ],
+      "question_it": "Per quali applicazioni è progettata la P560?",
+      "answer_it": "La P560 è progettata esclusivamente per la posa dei connettori CTF Tecnaria su lamiera grecata all'interno di solai misti acciaio-calcestruzzo. È idonea quando la lamiera funge da casseratura e da elemento collaborante e il fissaggio tra connettore CTF e lamiera deve essere affidabile e ripetibile. Non deve essere utilizzata su legno, calcestruzzo, muratura o altri supporti per i quali non è stata progettata."
+    },
+    {
+      "id": "P560-0003",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "ctf",
+        "necessità",
+        "prestazioni",
+        "ancoraggio"
+      ],
+      "triggers": [
+        "perché la p560 è necessaria per i connettori ctf su lamiera grecata?"
+      ],
+      "question_it": "Perché la P560 è necessaria per i connettori CTF su lamiera grecata?",
+      "answer_it": "La capacità a taglio dei connettori CTF fissati su lamiera dipende dalla qualità dell'ancoraggio ottenuto con i chiodi idonei Tecnaria. La P560 garantisce un'energia di impatto costante, un colpo pressoché verticale e una profondità di inserimento controllata. L'utilizzo di utensili non idonei comporta fissaggi incerti, chiodi piegati o parzialmente inseriti e una riduzione non controllata delle prestazioni del sistema."
+    },
+    {
+      "id": "P560-0004",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "chiodi idonei Tecnaria",
+        "materiali",
+        "compatibilità"
+      ],
+      "triggers": [
+        "che tipo di chiodi utilizza la p560?"
+      ],
+      "question_it": "Che tipo di chiodi utilizza la P560?",
+      "answer_it": "La P560 utilizza esclusivamente chiodi idonei Tecnaria, progettati e qualificati per lavorare con la lamiera grecata e con il supporto sottostante. I chiodi sono disponibili in diverse lunghezze per adattarsi agli spessori di lamiera e alle condizioni del supporto. L'uso di chiodi non idonei o di provenienza non Tecnaria può causare mancata penetrazione, deformazioni locali della lamiera, fissaggi instabili e la perdita di conformità rispetto al sistema CTF."
+    },
+    {
+      "id": "P560-0005",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "posa",
+        "ciclo operativo",
+        "procedura"
+      ],
+      "triggers": [
+        "come funziona il ciclo di posa di un chiodo con la p560?"
+      ],
+      "question_it": "Come funziona il ciclo di posa di un chiodo con la P560?",
+      "answer_it": "Il ciclo di posa di un chiodo con la P560 prevede: posizionamento verticale dello strumento sul punto da fissare, appoggio stabile del puntale sulla lamiera, compressione decisa fino all'arresto meccanico, attivazione del colpo. Il chiodo idoneo Tecnaria viene spinto attraverso la lamiera e ancorato al supporto. Dopo il colpo è necessario un controllo visivo del fissaggio per verificare verticalità, completa penetrazione e assenza di pieghe."
+    },
+    {
+      "id": "P560-0006",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "lamiera",
+        "requisiti",
+        "cantiere"
+      ],
+      "triggers": [
+        "quali sono i requisiti minimi della lamiera per usare la p560?"
+      ],
+      "question_it": "Quali sono i requisiti minimi della lamiera per usare la P560?",
+      "answer_it": "La lamiera grecata deve essere integra, sufficientemente aderente al supporto e priva di deformazioni eccessive nel punto di posa. Non devono essere presenti rigonfiamenti, distacchi significativi, ammaccature profonde o corrosione estesa che impediscano un appoggio pieno del puntale. Spessori di lamiera non compatibili con il chiodo prescelto possono generare rimbalzi o mancata penetrazione, e devono essere valutati caso per caso."
+    },
+    {
+      "id": "P560-0007",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "controlli",
+        "verifica",
+        "qualità posa"
+      ],
+      "triggers": [
+        "come si verifica che il chiodo sia stato posato correttamente con la p560?"
+      ],
+      "question_it": "Come si verifica che il chiodo sia stato posato correttamente con la P560?",
+      "answer_it": "Il fissaggio è considerato corretto quando il chiodo idoneo Tecnaria risulta verticale, completamente inserito, con testa aderente alla piastra del CTF e senza evidenti pieghe o deformazioni. In caso di penetrazione parziale, inclinazione evidente, lamiera schiacciata in modo anomalo o testa distanziata dal connettore, il punto non è conforme e va ripetuto correggendo la causa del difetto, ad esempio migliorando l'appoggio o sostituendo la cartuccia."
+    },
+    {
+      "id": "P560-0008",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "errori",
+        "operatore",
+        "cantiere"
+      ],
+      "triggers": [
+        "quali errori operativi sono più frequenti nell'uso della p560?"
+      ],
+      "question_it": "Quali errori operativi sono più frequenti nell'uso della P560?",
+      "answer_it": "Gli errori più frequenti sono: colpi dati con strumento inclinato, appoggi su lamiera non aderente o deformata, pressione insufficiente sul puntale prima del colpo, doppio colpo sullo stesso punto, utilizzo di chiodi non idonei Tecnaria o cartucce usurate. Queste condizioni generano chiodi piegati, fissaggi parziali o danni alla lamiera che riducono l'affidabilità del sistema CTF."
+    },
+    {
+      "id": "P560-0009",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "compatibilità",
+        "famiglie",
+        "limitazioni"
+      ],
+      "triggers": [
+        "la p560 può essere utilizzata per ctl, ctl maxi, vcem o diapason?"
+      ],
+      "question_it": "La P560 può essere utilizzata per CTL, CTL MAXI, VCEM o DIAPASON?",
+      "answer_it": "No. La P560 è destinata esclusivamente alla posa dei connettori CTF su lamiera grecata. Le famiglie CTL, CTL MAXI, VCEM e DIAPASON prevedono sistemi di collegamento completamente diversi e non sono compatibili con una chiodatrice a sparo. L'utilizzo della P560 su queste famiglie non genera un collegamento strutturale corretto e non è ammesso nelle logiche Tecnaria."
+    },
+    {
+      "id": "P560-0010",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "ctf",
+        "esclusività",
+        "prestazioni"
+      ],
+      "triggers": [
+        "perché i ctf su lamiera vanno posati esclusivamente con la p560?"
+      ],
+      "question_it": "Perché i CTF su lamiera vanno posati esclusivamente con la P560?",
+      "answer_it": "I connettori CTF su lamiera sono dimensionati e testati assumendo un fissaggio ottenuto con chiodi idonei Tecnaria posati tramite P560. Questo garantisce un livello di energia e di ripetibilità che non è assicurato da utensili manuali o da altri sistemi di fissaggio. L'uso di strumenti diversi dalla P560 introduce incertezze nella qualità dell'ancoraggio e può annullare il riferimento alle prove sperimentali e alle prestazioni dichiarate."
+    },
+    {
+      "id": "P560-0011",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "prestazioni",
+        "ctf",
+        "chiodatura"
+      ],
+      "triggers": [
+        "qual è la relazione tra prestazione del sistema ctf e corretta chiodatura con p560?"
+      ],
+      "question_it": "Qual è la relazione tra prestazione del sistema CTF e corretta chiodatura con P560?",
+      "answer_it": "La prestazione del sistema CTF su lamiera deriva dall'interazione tra connettore, lamiera e chiodo idoneo Tecnaria. Se la chiodatura eseguita con P560 è corretta, il connettore trasferisce lo sforzo di taglio in modo ripetibile e coerente con le verifiche di progetto. Fissaggi errati, chiodi piegati o parzialmente inseriti riducono la rigidezza locale, aumentano lo scorrimento e abbassano la capacità resistente del collegamento."
+    },
+    {
+      "id": "P560-0012",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "preparazione",
+        "lamiera",
+        "cantiere"
+      ],
+      "triggers": [
+        "come va preparata la zona di lamiera prima di usare la p560?"
+      ],
+      "question_it": "Come va preparata la zona di lamiera prima di usare la P560?",
+      "answer_it": "Prima della posa con P560, la zona di lamiera deve essere pulita da spessori di malta indurita, residui di taglio, scorie di saldatura e ossidazioni spesse che impediscano l'appoggio uniforme del puntale. Eventuali deformazioni locali vanno ridotte, e i punti con lamiera chiaramente non aderente al supporto devono essere corretti o esclusi. Solo con una base regolare la P560 può trasferire correttamente l'energia di colpo."
+    },
+    {
+      "id": "P560-0013",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "lamiera",
+        "spessore",
+        "chiodi idonei Tecnaria"
+      ],
+      "triggers": [
+        "cosa succede se la lamiera è troppo sottile o troppo spessa per il chiodo scelto?"
+      ],
+      "question_it": "Cosa succede se la lamiera è troppo sottile o troppo spessa per il chiodo scelto?",
+      "answer_it": "Se la lamiera è troppo sottile rispetto al chiodo idoneo Tecnaria selezionato, si possono generare deformazioni eccessive o forature troppo ampie. Se è troppo spessa, il chiodo può non riuscire a penetrare completamente nel supporto, lasciando il fissaggio parziale. In entrambi i casi la prestazione del collegamento non è garantita. La scelta del chiodo deve essere coerente con lo spessore della lamiera previsto dalle specifiche Tecnaria."
+    },
+    {
+      "id": "P560-0014",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "errori",
+        "chiodo piegato",
+        "ripristino"
+      ],
+      "triggers": [
+        "come si gestisce un chiodo piegato durante la posa con la p560?"
+      ],
+      "question_it": "Come si gestisce un chiodo piegato durante la posa con la P560?",
+      "answer_it": "Un chiodo piegato è un fissaggio non conforme. Va rimosso con cautela evitando di danneggiare ulteriormente la lamiera e il connettore CTF. Il punto dovrà essere ripristinato valutando se è possibile riposizionare il connettore su una zona integra della lamiera oppure utilizzare un punto di fissaggio alternativo in accordo con il progetto. Non è ammesso lasciare in opera chiodi piegati o parzialmente inseriti."
+    },
+    {
+      "id": "P560-0015",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "rebound",
+        "lamiera",
+        "stabilità"
+      ],
+      "triggers": [
+        "cosa si intende per \"rebound\" della p560 su lamiera?"
+      ],
+      "question_it": "Cosa si intende per \"rebound\" della P560 su lamiera?",
+      "answer_it": "Il termine rebound indica il rimbalzo dello strumento sulla lamiera causato da appoggio non stabile, lamiera non aderente o spessore inadeguato. In presenza di rebound l'energia del colpo non viene trasferita correttamente al chiodo, che può rimanere parzialmente inserito o inclinato. In queste condizioni il fissaggio non è conforme e la causa del rimbalzo deve essere eliminata prima di ripetere il colpo."
+    },
+    {
+      "id": "P560-0016",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "sicurezza",
+        "dpi",
+        "cantiere"
+      ],
+      "triggers": [
+        "quali verifiche di sicurezza sono necessarie nell'uso della p560?"
+      ],
+      "question_it": "Quali verifiche di sicurezza sono necessarie nell'uso della P560?",
+      "answer_it": "L'operatore deve utilizzare adeguati dispositivi di protezione individuale, in particolare occhiali, guanti e protezioni acustiche. È necessario verificare l'assenza di persone in linea con la direzione di tiro, controllare che la P560 sia in buono stato, che le cartucce siano idonee e che non vi siano danni al puntale. La sicurezza va considerata parte integrante della procedura di posa, non un aspetto accessorio."
+    },
+    {
+      "id": "P560-0017",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "clima",
+        "cantiere",
+        "limitazioni"
+      ],
+      "triggers": [
+        "la p560 può essere usata in tutte le condizioni climatiche?"
+      ],
+      "question_it": "La P560 può essere usata in tutte le condizioni climatiche?",
+      "answer_it": "La P560 può essere impiegata in un normale range di condizioni climatiche di cantiere. Tuttavia, in presenza di umidità elevata, gelo, ghiaccio sulla lamiera o condizioni di scivolosità marcata, l'uso dell'utensile richiede maggiore attenzione. La stabilità dell'operatore e l'aderenza della lamiera al supporto sono condizioni essenziali. In caso di condizioni estreme è opportuno sospendere la posa e riprenderla in sicurezza."
+    },
+    {
+      "id": "P560-0018",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "diagnosi",
+        "utensile",
+        "supporto"
+      ],
+      "triggers": [
+        "come si distingue un problema di utensile da un problema di supporto?"
+      ],
+      "question_it": "Come si distingue un problema di utensile da un problema di supporto?",
+      "answer_it": "Se la P560 è in buono stato, il puntale è integro, le cartucce sono corrette e i chiodi idonei Tecnaria sono originali, un fissaggio difettoso è spesso legato a problemi del supporto: lamiera non aderente, spessore anomalo, presenza di vuoti o superficie deformata. Se invece più fissaggi in condizioni diverse risultano difettosi, è necessario controllare l'utensile, lo stato dei meccanismi interni e la qualità delle cartucce."
+    },
+    {
+      "id": "P560-0019",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "errori",
+        "doppio colpo",
+        "non ammesso"
+      ],
+      "triggers": [
+        "è ammesso dare due colpi consecutivi sullo stesso chiodo con la p560?"
+      ],
+      "question_it": "È ammesso dare due colpi consecutivi sullo stesso chiodo con la P560?",
+      "answer_it": "No. Il doppio colpo sullo stesso chiodo non è ammesso, perché genera tensioni e deformazioni non controllate sulla lamiera e sul chiodo idoneo Tecnaria. Se il primo colpo non produce un fissaggio conforme, il chiodo deve essere rimosso e il punto ripristinato. Il tentativo di correggere un fissaggio insufficiente con un secondo colpo sullo stesso chiodo non dà garanzie prestazionali."
+    },
+    {
+      "id": "P560-0020",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "sistema",
+        "tecnaria",
+        "ctf",
+        "p560"
+      ],
+      "triggers": [
+        "la p560 è considerata parte del sistema tecnaria per i solai ctf su lamiera?"
+      ],
+      "question_it": "La P560 è considerata parte del sistema Tecnaria per i solai CTF su lamiera?",
+      "answer_it": "Sì. La P560, insieme ai connettori CTF e ai chiodi idonei Tecnaria, costituisce il sistema di fissaggio previsto da Tecnaria per i solai misti acciaio-calcestruzzo con lamiera grecata. Le prestazioni strutturali e la ripetibilità del comportamento si basano sull'uso congiunto di questi componenti. L'uso di utensili o chiodi diversi da quelli indicati esce dal sistema Tecnaria e non è coperto dalle sue logiche di progetto."
+    },
+    {
+      "id": "P560-0021",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "lamiera non aderente",
+        "cantiere",
+        "non conformità"
+      ],
+      "triggers": [
+        "come gestire un punto di lamiera chiaramente non aderente al supporto?"
+      ],
+      "question_it": "Come gestire un punto di lamiera chiaramente non aderente al supporto?",
+      "answer_it": "Se la lamiera presenta zone di distacco rispetto al supporto, il colpo della P560 può produrre rimbalzo, deformazioni e fissaggi non affidabili. In questi casi il punto non va chiodato fino a quando non si è ripristinata una sufficiente aderenza, ad esempio mediante interventi locali sul supporto o modificando la disposizione dei connettori in accordo con il progettista. Forzare la posa su lamiera non aderente non è conforme."
+    },
+    {
+      "id": "P560-0022",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "chiodo parziale",
+        "supporto",
+        "ripetizione posa"
+      ],
+      "triggers": [
+        "cosa fare se il chiodo non penetra completamente nel supporto?"
+      ],
+      "question_it": "Cosa fare se il chiodo non penetra completamente nel supporto?",
+      "answer_it": "Se, dopo il colpo, il chiodo idoneo Tecnaria non risulta completamente inserito nel supporto, il fissaggio è da considerarsi non conforme. È necessario verificare la scelta della cartuccia, lo stato dell'utensile e le caratteristiche del supporto. Il chiodo parziale non deve essere lasciato in opera: va rimosso e il fissaggio ripetuto, eventualmente riposizionando il connettore CTF o adottando le modifiche concordate con il progettista."
+    },
+    {
+      "id": "P560-0023",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "manutenzione",
+        "guasti",
+        "sicurezza"
+      ],
+      "triggers": [
+        "quali sono i segnali che indicano un possibile guasto o usura della p560?"
+      ],
+      "question_it": "Quali sono i segnali che indicano un possibile guasto o usura della P560?",
+      "answer_it": "Segnali di possibile guasto o usura della P560 sono: variazioni evidenti nel rumore del colpo, energia manifestamente insufficiente, difficoltà di compressione del puntale, inceppamenti ripetuti, rientro incompleto del meccanismo dopo il colpo, danneggiamenti visibili alla boccola o alle parti di guida del chiodo. In presenza di questi sintomi lo strumento va fermato e sottoposto a manutenzione specializzata prima di riprendere la posa."
+    },
+    {
+      "id": "P560-0024",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "compatibilità",
+        "chiodi idonei Tecnaria",
+        "cartucce"
+      ],
+      "triggers": [
+        "è possibile utilizzare la p560 con altre marche di chiodi o cartucce?"
+      ],
+      "question_it": "È possibile utilizzare la P560 con altre marche di chiodi o cartucce?",
+      "answer_it": "No. La P560 è progettata per lavorare con chiodi idonei Tecnaria e cartucce compatibili indicate da Tecnaria. L'utilizzo di chiodi o cartucce di altre marche introduce variabilità non controllate nell'energia di colpo, nella geometria del fissaggio e nella qualità dell'ancoraggio. Di conseguenza, non sono garantite le prestazioni dei sistemi CTF e l'utilizzo di materiali non indicati non è ammesso."
+    },
+    {
+      "id": "P560-0025",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "controllo qualità",
+        "cantiere",
+        "ispezioni"
+      ],
+      "triggers": [
+        "cosa si intende per controllo a campione dei fissaggi eseguiti con p560?"
+      ],
+      "question_it": "Cosa si intende per controllo a campione dei fissaggi eseguiti con P560?",
+      "answer_it": "Il controllo a campione prevede la verifica visiva sistematica di un certo numero di fissaggi eseguiti con P560 distribuiti nelle diverse zone del solaio. Si verifica verticalità, penetrazione, integrità della lamiera, aderenza tra testa del chiodo, piastra del CTF e lamiera. Se vengono riscontrate non conformità ripetute, il controllo va esteso e si deve individuare la causa (utensile, cartucce, lamiera, operatore) prima di proseguire."
+    },
+    {
+      "id": "P560-0026",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "killer",
+        "errori critici",
+        "non conformità"
+      ],
+      "triggers": [
+        "quali sono gli errori più critici considerati \"killer\" nell'uso della p560?"
+      ],
+      "question_it": "Quali sono gli errori più critici considerati \"killer\" nell'uso della P560?",
+      "answer_it": "Sono considerati errori critici: l'uso di utensili diversi dalla P560 per la posa dei CTF su lamiera, l'impiego di chiodi non idonei Tecnaria, la posa su lamiera evidentemente non aderente al supporto, il doppio colpo sullo stesso chiodo, l'accettazione di chiodi piegati o parzialmente inseriti, e la mancanza di qualunque controllo a campione dei fissaggi. Questi errori compromettono in modo sostanziale l'affidabilità del sistema."
+    },
+    {
+      "id": "P560-0027",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "inclinazione",
+        "posa",
+        "buone pratiche"
+      ],
+      "triggers": [
+        "la p560 può essere utilizzata in orizzontale e in inclinazione rispetto al solaio?"
+      ],
+      "question_it": "La P560 può essere utilizzata in orizzontale e in inclinazione rispetto al solaio?",
+      "answer_it": "La P560 è progettata per essere utilizzata con asse di tiro sostanzialmente perpendicolare al piano della lamiera. Angoli di inclinazione moderati possono essere tollerati solo se l'appoggio del puntale è pieno e il colpo rimane controllato. Inclinazioni marcate riducono l'efficacia dell'ancoraggio e aumentano il rischio di chiodi piegati, per cui non sono da considerarsi conformi alle buone pratiche di posa."
+    },
+    {
+      "id": "P560-0028",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "piano di montaggio",
+        "istruzioni",
+        "ctf"
+      ],
+      "triggers": [
+        "come integrare le indicazioni sulla p560 nel piano di montaggio del solaio ctf?"
+      ],
+      "question_it": "Come integrare le indicazioni sulla P560 nel piano di montaggio del solaio CTF?",
+      "answer_it": "Nel piano di montaggio del solaio CTF è opportuno inserire istruzioni specifiche sull'uso della P560: utensile previsto, tipo di chiodi idonei Tecnaria, caratteristiche attese della lamiera, controlli a campione, gestione delle non conformità e riferimenti alle schede tecniche Tecnaria. In questo modo l'impresa esecutrice conosce chiaramente le condizioni da rispettare e può organizzare correttamente la fase di fissaggio."
+    },
+    {
+      "id": "P560-0029",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "sostituzione",
+        "utensili manuali",
+        "limitazioni"
+      ],
+      "triggers": [
+        "è possibile sostituire la p560 con utensili manuali in casi particolari?"
+      ],
+      "question_it": "È possibile sostituire la P560 con utensili manuali in casi particolari?",
+      "answer_it": "No, non è previsto sostituire la P560 con utensili manuali per la posa dei CTF su lamiera. Gli utensili manuali non garantiscono l'energia di colpo e la ripetibilità necessarie e non sono stati considerati nelle prove sperimentali alla base del sistema CTF. Eventuali scelte diverse vanno discusse con Tecnaria e con il progettista strutturale e, in assenza di indicazioni esplicite, non sono ammesse."
+    },
+    {
+      "id": "P560-0030",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "general",
+      "tags": [
+        "sintesi",
+        "quando si usa",
+        "ctf",
+        "lamiera"
+      ],
+      "triggers": [
+        "in sintesi, quando si deve usare la p560 in un cantiere tecnaria?"
+      ],
+      "question_it": "In sintesi, quando si deve usare la P560 in un cantiere Tecnaria?",
+      "answer_it": "La P560 deve essere utilizzata ogni volta che si posano connettori CTF su lamiera grecata nei solai misti acciaio-calcestruzzo. È lo strumento previsto dal sistema Tecnaria per installare i chiodi idonei Tecnaria in modo controllato, ripetibile e coerente con le prestazioni dichiarate. Non va usata con altre famiglie di connettori e non va sostituita con utensili non previsti."
     }
   ]
 }
