@@ -2678,6 +2678,58 @@
       ],
       "question_it": "Durante la posa dei CTF su lamiera grecata, la P560 sta sparando a vuoto: il chiodo Tecnaria rimane integro, non si deforma, la testa non si avvicina alla piastra e la lamiera presenta solo un’ammaccatura superficiale. Questo fissaggio è valido oppure indica una condizione di fuori-campo? E quale parametro tecnico devo controllare per capire l’esatta causa?",
       "answer_it": "Un fissaggio in cui la P560 sembra “sparare a vuoto”, il chiodo idoneo Tecnaria rimane sostanzialmente integro, la testa non si avvicina alla piastra del CTF e sulla lamiera compare solo un’ammaccatura superficiale, non è da considerare valido. In questa configurazione la macchina non sta riproducendo le condizioni di prova alla base del sistema CTF: manca la deformazione plastica controllata del chiodo che caratterizza l’ancoraggio certificato e rende significativa la lettura card.\n\nSe il chiodo non si deforma, sei fuori curva di prova: o la lamiera/supporto hanno una rigidezza e una geometria diverse da quelle previste (spessori anomali, materiali fuori campo, lamiera non appoggiata o con vuoti dietro), oppure l’energia del colpo non si trasferisce correttamente nel punto di infissione. In questi casi il fissaggio va scartato e il tratto va analizzato come anomalia.\n\nIl parametro tecnico principale da controllare è la deformazione plastica del chiodo in relazione alla lettura card, confrontata con un tratto di riferimento sano: il chiodo deve presentare una deformazione coerente e la testa deve accostarsi alla piastra del CTF. Se, a parità di impostazioni P560 e propulsori, in una zona corretta il chiodo si deforma regolarmente mentre nella zona critica resta integro, la causa è locale (appoggio della lamiera, vuoti, strati intermedi). Finché non viene ripristinata una configurazione conforme alle condizioni di prova, i fissaggi che si presentano con chiodo integro e sola ammaccatura superficiale della lamiera sono da considerare non affidabili e fuori campo rispetto al sistema CTF Tecnaria."
+    },
+    {
+      "id": "CTF_SYSTEM-0100-OVERVIEW-COS-E-CTF",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "overview",
+      "tags": [
+        "CTF",
+        "CTF_SYSTEM",
+        "connettori",
+        "solaio misto",
+        "lamiera grecata",
+        "sistema collaborante"
+      ],
+      "triggers": [
+        "mi parli dei ctf",
+        "mi parli del ctf system",
+        "cos'è il connettore ctf",
+        "che cos'è il connettore ctf tecnaria",
+        "cosa sono i connettori ctf tecnaria",
+        "ctf tecnaria cosa sono",
+        "ctf system spiegazione",
+        "ctf su lamiera grecata"
+      ],
+      "question_it": "Che cos'è il connettore CTF Tecnaria e in quale sistema viene utilizzato?",
+      "answer_it": "I connettori CTF Tecnaria sono dispositivi metallici progettati per collegare una lamiera grecata in acciaio ad una soletta in calcestruzzo..."
+    },
+    {
+      "id": "P560-0100-OVERVIEW-COS-E-P560",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "overview",
+      "tags": [
+        "P560",
+        "chiodatrice",
+        "pistola a sparo",
+        "chiodi idonei Tecnaria",
+        "posa CTF"
+      ],
+      "triggers": [
+        "mi parli della p560",
+        "cos'è la p560",
+        "che cos'è la p560 tecnaria",
+        "cos'è la chiodatrice p560",
+        "chiodatrice p560 tecnaria",
+        "pistola p560 tecnaria a cosa serve",
+        "uso della p560 per i ctf"
+      ],
+      "question_it": "Che cos'è la P560 Tecnaria e a cosa serve nel sistema CTF?",
+      "answer_it": "La P560 è la chiodatrice a sparo sviluppata da Tecnaria per la posa controllata dei connettori CTF su lamiera grecata..."
     }
   ]
 }
