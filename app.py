@@ -4,7 +4,7 @@ import re
 import unicodedata
 from typing import Any, Dict, List, Optional, Set
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -15,7 +15,6 @@ from pydantic import BaseModel
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "static", "data")
 
-# ATTENZIONE: qui usiamo il V3
 KB_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_v3.json")
 
 FALLBACK_FAMILY = "COMM"
@@ -29,27 +28,18 @@ FALLBACK_MESSAGE = (
 #  FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="3.0.0")
+app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="3.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # in produzione puoi restringere
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
 # ============================================================
-#  MODELLI
+#  MODELLI DI RISPOSTA
 # ============================================================
-
-class AskRequest(BaseModel):
-    # supportiamo sia "q" sia "question" per non rompere la UI
-    q: Optional[str] = None
-    question: Optional[str] = None
-    lang: str = "it"
-    mode: str = "gold"
-
 
 class AskResponse(BaseModel):
     ok: bool
@@ -58,7 +48,6 @@ class AskResponse(BaseModel):
     id: str
     mode: str
     lang: str
-
 
 # ============================================================
 #  UTIL DI NORMALIZZAZIONE
@@ -70,7 +59,6 @@ def strip_accents(s: str) -> str:
         if not unicodedata.combining(c)
     )
 
-
 def normalize_text(s: str) -> str:
     if s is None:
         return ""
@@ -79,10 +67,8 @@ def normalize_text(s: str) -> str:
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
-
 def tokenize_norm(s: str) -> List[str]:
     return normalize_text(s).split()
-
 
 # ============================================================
 #  STATO IN MEMORIA
@@ -92,9 +78,7 @@ class BrainState:
     blocks: List[Dict[str, Any]] = []
     tokens_by_id: Dict[str, Set[str]] = {}
 
-
 S = BrainState()
-
 
 # ============================================================
 #  CARICAMENTO KB
@@ -136,12 +120,10 @@ def load_kb() -> None:
                             if t:
                                 tokens.add(t)
 
-        # indicizzazione base
         add_tokens(blk.get("question_it"))
         add_tokens(blk.get("triggers", []))
         add_tokens(blk.get("tags", []))
 
-        # piccola scorciatoia family-based
         fam = str(blk.get("family", "")).upper()
         if "P560" in fam:
             tokens.add("p560")
@@ -152,7 +134,6 @@ def load_kb() -> None:
 
     print(f"[BOOT] Caricati {len(S.blocks)} blocchi GOLD da {KB_PATH}")
 
-
 # ============================================================
 #  SCORING
 # ============================================================
@@ -162,7 +143,7 @@ def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
     family = str(blk.get("family", "")).upper()
     score = 0.0
 
-    # 1) match diretto su triggers e tags (substring sulla domanda normalizzata)
+    # 1) match diretto su triggers e tags (substring)
     for field, weight in [
         ("triggers", 10.0),
         ("tags", 3.0),
@@ -177,12 +158,12 @@ def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
             if tv and tv in q_norm:
                 score += weight
 
-    # 2) overlap token base
+    # 2) overlap token
     ref = S.tokens_by_id.get(blk_id, set())
     common = q_tokens & ref
     score += 1.0 * len(common)
 
-    # 3) booster di family legato alle parole chiave in domanda
+    # 3) booster family
     if "P560" in family or "P560" in blk_id.upper():
         if any(tok in q_tokens for tok in ["p560", "pistola", "sparachiodi", "chiodatrice"]):
             score += 8.0
@@ -192,7 +173,6 @@ def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
             score += 5.0
 
     return score
-
 
 def find_best_block(q: str) -> Optional[Dict[str, Any]]:
     q_norm = normalize_text(q)
@@ -209,12 +189,10 @@ def find_best_block(q: str) -> Optional[Dict[str, Any]]:
             best_score = s
             best = blk
 
-    # se il punteggio è troppo basso, consideriamo che non ha trovato nulla
     if best is None or best_score <= 0.0:
         return None
 
     return best
-
 
 # ============================================================
 #  ESTRAZIONE RISPOSTA
@@ -239,16 +217,10 @@ def pick_answer_it(blk: Dict[str, Any]) -> Optional[str]:
 
     return None
 
-
 def enforce_terminologia(family: str, txt: str) -> str:
-    """
-    Regola Tecnaria:
-    - usare sempre 'chiodi idonei Tecnaria' al posto di 'perni'
-    """
     if not isinstance(txt, str):
         return txt
     return re.sub(r"\bperni\b", "chiodi idonei Tecnaria", txt, flags=re.IGNORECASE)
-
 
 # ============================================================
 #  ENDPOINTS
@@ -258,6 +230,14 @@ def enforce_terminologia(family: str, txt: str) -> str:
 def on_startup():
     load_kb()
 
+@app.get("/")
+def root():
+    return {
+        "ok": True,
+        "message": "Backend Tecnaria-IMBUTO attivo.",
+        "kb_path": KB_PATH,
+        "blocks_loaded": len(S.blocks),
+    }
 
 @app.get("/health")
 def health():
@@ -267,14 +247,36 @@ def health():
         "kb_path": KB_PATH,
     }
 
-
 @app.post("/api/ask", response_model=AskResponse)
-def api_ask(req: AskRequest) -> AskResponse:
-    if (req.mode or "").lower() != "gold":
+async def api_ask(request: Request) -> AskResponse:
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    if not isinstance(body, dict):
+        body = {}
+
+    # prendiamo il testo dalla prima chiave utile che troviamo
+    q = (
+        body.get("q")
+        or body.get("question")
+        or body.get("text")
+        or body.get("message")
+        or body.get("input")
+        or ""
+    )
+    if not isinstance(q, str):
+        q = str(q or "")
+
+    q = q.strip()
+
+    mode = (str(body.get("mode") or "gold")).lower()
+    lang = str(body.get("lang") or "it")
+
+    if mode != "gold":
         raise HTTPException(status_code=400, detail="Modalità non supportata. Usa mode=gold.")
 
-    # compatibilità q / question
-    q = (req.q or req.question or "").strip()
     if not q:
         return AskResponse(
             ok=False,
@@ -282,7 +284,7 @@ def api_ask(req: AskRequest) -> AskResponse:
             family=FALLBACK_FAMILY,
             id=FALLBACK_ID,
             mode="gold",
-            lang=req.lang or "it",
+            lang=lang,
         )
 
     blk = find_best_block(q)
@@ -293,7 +295,7 @@ def api_ask(req: AskRequest) -> AskResponse:
             family=FALLBACK_FAMILY,
             id=FALLBACK_ID,
             mode="gold",
-            lang=req.lang or "it",
+            lang=lang,
         )
 
     txt = pick_answer_it(blk)
@@ -304,7 +306,7 @@ def api_ask(req: AskRequest) -> AskResponse:
             family=str(blk.get("family", FALLBACK_FAMILY)),
             id=str(blk.get("id", FALLBACK_ID)),
             mode="gold",
-            lang=req.lang or "it",
+            lang=lang,
         )
 
     family = str(blk.get("family", FALLBACK_FAMILY))
@@ -316,9 +318,8 @@ def api_ask(req: AskRequest) -> AskResponse:
         family=family,
         id=str(blk.get("id", FALLBACK_ID)),
         mode="gold",
-        lang=req.lang or "it",
+        lang=lang,
     )
-
 
 if __name__ == "__main__":
     import uvicorn
