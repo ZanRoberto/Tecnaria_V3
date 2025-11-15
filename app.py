@@ -477,18 +477,77 @@ def get_kb_item_by_id(block_id: str, lang: str = "it") -> Optional[KBItem]:
             return it
     return None
 
+
 def simple_best_match_by_family(question: str, family: str, lang: str = "it") -> Optional[KBItem]:
-    """Fallback: se il dispatch non trova l'ID, usa un match testuale sui blocchi della famiglia."""
+    """
+    TEC_SYSTEM A4+ semantic matching
+    """
+    import difflib
+
+    q = question.lower().strip()
+    q_tokens = set(q.split())
+
+    # collect candidates by family/lang
     key = f"{family.upper()}:{lang.lower()}"
     candidates = KB_BY_FAMILY_LANG.get(key, [])
     if not candidates:
-        # fallback su lingua qualsiasi
         for k, v in KB_BY_FAMILY_LANG.items():
-            fam, _ = k.split(":")
+            fam, tlang = k.split(":")
             if fam == family.upper():
                 candidates.extend(v)
+
     if not candidates:
         return None
+
+    best_score = -999
+    best_item = None
+
+    for it in candidates:
+        score = 0
+        it_q = it.question.lower().strip()
+        it_tokens = set(it_q.split())
+
+        # triggers
+        for trg in it.raw.get("triggers", []) or []:
+            trg_l = trg.lower().strip()
+            if trg_l in q:
+                score += 40
+            ratio = difflib.SequenceMatcher(None, trg_l, q).ratio()
+            if ratio > 0.75:
+                score += 25
+
+        # tags
+        for tag in it.tags:
+            tag_l = tag.lower()
+            if tag_l in q:
+                score += 30
+            if tag_l in q_tokens:
+                score += 20
+            ratio = difflib.SequenceMatcher(None, tag_l, q).ratio()
+            if ratio > 0.70:
+                score += 12
+
+        # question similarity
+        ratio_q = difflib.SequenceMatcher(None, it_q, q).ratio()
+        score += ratio_q * 15
+        common = len(q_tokens.intersection(it_tokens))
+        score += common * 3
+
+        # priorities
+        if "p560" in q and "p560" in it.id.lower():
+            score += 60
+        if "ctf" in q and "ctf" in it.id.lower():
+            score += 60
+
+        if score > best_score:
+            best_score = score
+            best_item = it
+
+    if best_score < 5:
+        return None
+
+    return best_item
+
 
     q = question.lower()
     best_score = -1.0
