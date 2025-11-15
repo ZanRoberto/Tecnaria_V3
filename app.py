@@ -15,7 +15,8 @@ from pydantic import BaseModel
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "static", "data")
 
-KB_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_v6.json")
+# 👉 FILE UNICO CHE USI TU (NOME CORRETTO)
+KB_PATH = os.path.join(DATA_DIR, "ctf_system.json")
 
 FALLBACK_FAMILY = "COMM"
 FALLBACK_ID = "COMM-FALLBACK-NOANSWER-0001"
@@ -117,7 +118,6 @@ def load_kb() -> None:
             continue
 
         S.blocks.append(blk)
-        # indicizzazione token di riferimento
         tokens: Set[str] = set()
 
         def add_tokens(val: Any):
@@ -156,7 +156,6 @@ def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
     family = str(blk.get("family", "")).upper()
     score = 0.0
 
-    # 1) match diretto su triggers e tags (substring)
     for field, weight in [
         ("triggers", 10.0),
         ("tags", 3.0),
@@ -171,12 +170,10 @@ def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
             if tv and tv in q_norm:
                 score += weight
 
-    # 2) overlap token con indicizzazione di riferimento
     ref = S.tokens_by_id.get(blk_id, set())
     common = q_tokens & ref
     score += 1.0 * len(common)
 
-    # 3) booster di family
     if "P560" in family or "P560" in blk_id.upper():
         if any(tok in q_tokens for tok in ["p560", "pistola", "sparachiodi", "chiodatrice"]):
             score += 8.0
@@ -214,21 +211,19 @@ def find_best_block(q: str) -> Optional[Dict[str, Any]]:
 # ============================================================
 
 def pick_answer_it(blk: Dict[str, Any]) -> Optional[str]:
-    # formato classico
     ans = blk.get("answer_it")
     if isinstance(ans, str) and ans.strip():
         return ans.strip()
 
-    # altri formati legacy (gold_answer_it, response_variants, ecc.)
     ga = blk.get("gold_answer_it")
     if isinstance(ga, str) and ga.strip():
         return ga.strip()
 
     rv = blk.get("response_variants")
     if isinstance(rv, dict):
-        gold_block = rv.get("gold") or rv.get("GOLD") or {}
-        if isinstance(gold_block, dict):
-            txt = gold_block.get("it") or gold_block.get("IT")
+        g = rv.get("gold") or rv.get("GOLD") or {}
+        if isinstance(g, dict):
+            txt = g.get("it") or g.get("IT")
             if isinstance(txt, str) and txt.strip():
                 return txt.strip()
 
@@ -238,7 +233,6 @@ def pick_answer_it(blk: Dict[str, Any]) -> Optional[str]:
 def enforce_terminologia(family: str, txt: str) -> str:
     if not isinstance(txt, str):
         return txt
-    # mai "perni" -> sempre "chiodi idonei Tecnaria"
     return re.sub(r"\bperni\b", "chiodi idonei Tecnaria", txt, flags=re.IGNORECASE)
 
 
