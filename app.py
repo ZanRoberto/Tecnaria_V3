@@ -15,8 +15,8 @@ from pydantic import BaseModel
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "static", "data")
 
-# 👉 FILE UNICO CHE USI TU (NOME CORRETTO)
-KB_PATH = os.path.join(DATA_DIR, "ctf_system.json")
+# ATTENZIONE: qui usiamo il V3
+KB_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_v3.json")
 
 FALLBACK_FAMILY = "COMM"
 FALLBACK_ID = "COMM-FALLBACK-NOANSWER-0001"
@@ -29,21 +29,24 @@ FALLBACK_MESSAGE = (
 #  FASTAPI
 # ============================================================
 
-app = FastAPI(title="Tecnaria Sinapsi – Motore GOLD CTF_SYSTEM + P560")
+app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],   # in produzione puoi restringere
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ============================================================
 #  MODELLI
 # ============================================================
 
 class AskRequest(BaseModel):
-    q: str
+    # supportiamo sia "q" sia "question" per non rompere la UI
+    q: Optional[str] = None
+    question: Optional[str] = None
     lang: str = "it"
     mode: str = "gold"
 
@@ -92,6 +95,7 @@ class BrainState:
 
 S = BrainState()
 
+
 # ============================================================
 #  CARICAMENTO KB
 # ============================================================
@@ -132,10 +136,12 @@ def load_kb() -> None:
                             if t:
                                 tokens.add(t)
 
+        # indicizzazione base
         add_tokens(blk.get("question_it"))
         add_tokens(blk.get("triggers", []))
         add_tokens(blk.get("tags", []))
 
+        # piccola scorciatoia family-based
         fam = str(blk.get("family", "")).upper()
         if "P560" in fam:
             tokens.add("p560")
@@ -156,6 +162,7 @@ def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
     family = str(blk.get("family", "")).upper()
     score = 0.0
 
+    # 1) match diretto su triggers e tags (substring sulla domanda normalizzata)
     for field, weight in [
         ("triggers", 10.0),
         ("tags", 3.0),
@@ -170,10 +177,12 @@ def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
             if tv and tv in q_norm:
                 score += weight
 
+    # 2) overlap token base
     ref = S.tokens_by_id.get(blk_id, set())
     common = q_tokens & ref
     score += 1.0 * len(common)
 
+    # 3) booster di family legato alle parole chiave in domanda
     if "P560" in family or "P560" in blk_id.upper():
         if any(tok in q_tokens for tok in ["p560", "pistola", "sparachiodi", "chiodatrice"]):
             score += 8.0
@@ -200,6 +209,7 @@ def find_best_block(q: str) -> Optional[Dict[str, Any]]:
             best_score = s
             best = blk
 
+    # se il punteggio è troppo basso, consideriamo che non ha trovato nulla
     if best is None or best_score <= 0.0:
         return None
 
@@ -221,9 +231,9 @@ def pick_answer_it(blk: Dict[str, Any]) -> Optional[str]:
 
     rv = blk.get("response_variants")
     if isinstance(rv, dict):
-        g = rv.get("gold") or rv.get("GOLD") or {}
-        if isinstance(g, dict):
-            txt = g.get("it") or g.get("IT")
+        gold_block = rv.get("gold") or rv.get("GOLD") or {}
+        if isinstance(gold_block, dict):
+            txt = gold_block.get("it") or gold_block.get("IT")
             if isinstance(txt, str) and txt.strip():
                 return txt.strip()
 
@@ -231,6 +241,10 @@ def pick_answer_it(blk: Dict[str, Any]) -> Optional[str]:
 
 
 def enforce_terminologia(family: str, txt: str) -> str:
+    """
+    Regola Tecnaria:
+    - usare sempre 'chiodi idonei Tecnaria' al posto di 'perni'
+    """
     if not isinstance(txt, str):
         return txt
     return re.sub(r"\bperni\b", "chiodi idonei Tecnaria", txt, flags=re.IGNORECASE)
@@ -259,7 +273,8 @@ def api_ask(req: AskRequest) -> AskResponse:
     if (req.mode or "").lower() != "gold":
         raise HTTPException(status_code=400, detail="Modalità non supportata. Usa mode=gold.")
 
-    q = (req.q or "").strip()
+    # compatibilità q / question
+    q = (req.q or req.question or "").strip()
     if not q:
         return AskResponse(
             ok=False,
