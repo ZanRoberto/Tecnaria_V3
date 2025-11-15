@@ -12,7 +12,17 @@
       "sistema collaborante"
     ],
     "question": "Che cos'è la chiodatrice P560 Tecnaria e a cosa serve nei sistemi CTF?",
-    "answer": "La P560 è la chiodatrice a sparo Tecnaria progettata specificamente per la posa dei chiodi idonei Tecnaria nei sistemi collaboranti acciaio–calcestruzzo con connettori CTF. È un utensile a cartuccia che consente di fissare, con un unico colpo controllato, lamiera grecata, piastra del connettore CTF e ala della trave in acciaio, garantendo la corretta deformazione del chiodo e il trasferimento di taglio–scorrimento tra le parti. La P560 lavora con diversi livelli di propulsore, scelta che va calibrata in funzione dello spessore della lamiera e dell’ala, e prevede il controllo di qualità tramite apposita card che verifica la distanza testa–piastra dopo lo sparo. L’uso congiunto di P560, chiodi idonei Tecnaria e connettori CTF costituisce il sistema di fissaggio riconosciuto e verificato nelle prove sperimentali Tecnaria."
+    "answer": "La P560 è la chiodatrice a sparo Tecnaria progettata specificamente per la posa dei chiodi idonei Tecnaria nei sistemi collaboranti acciaio–calcestruzzo con connettori CTF. È un utensile a cartuccia che consente di fissare, con un unico colpo controllato, lamiera grecata, piastra del connettore CTF e ala della trave in acciaio, garantendo la corretta deformazione del chiodo e il trasferimento di taglio–scorrimento tra le parti. La P560 lavora con diversi livelli di propulsore, scelta che va calibrata in funzione dello spessore della lamiera e dell’ala, e prevede il controllo di qualità tramite apposita card che verifica la distanza testa–piastra dopo lo sparo. L’uso congiunto di P560, chiodi idonei Tecnaria e connettori CTF costituisce il sistema di fissaggio riconosciuto e verificato nelle prove sperimentali Tecnaria.",
+    "triggers": [
+      "cos'è",
+      "tecnaria",
+      "serve",
+      "sistemi",
+      "cosa",
+      "chiodatrice",
+      "p560",
+      "che cos'è la chiodatrice p560 tecnaria e a cosa serve nei sistemi ctf?"
+    ]
   },
   {
     "id": "P560-ERR-0003-SOVRA-INFISSIONE",
@@ -27,7 +37,17 @@
       "card"
     ],
     "question": "Se durante la posa con P560 il chiodo idoneo Tecnaria attraversa la lamiera e penetra troppo nell’ala in acciaio (sovra-infissione), il collegamento dei CTF rimane valido o va scartato?",
-    "answer": "La sovra-infissione è un difetto grave di posa. Se il chiodo idoneo Tecnaria penetra eccessivamente nell’ala, riducendo troppo la distanza tra la testa e la piastra del CTF, il meccanismo di deformazione controllata non è più quello previsto dalle prove Tecnaria. La card di controllo segnala questa condizione con valori di distanza testa–piastra inferiori al range ammissibile. In tali casi il colpo è da considerarsi non valido: il CTF associato non può essere conteggiato ai fini del calcolo e il fissaggio va ripetuto, scegliendo un propulsore meno energico e ripristinando la corretta sequenza di posa."
+    "answer": "La sovra-infissione è un difetto grave di posa. Se il chiodo idoneo Tecnaria penetra eccessivamente nell’ala, riducendo troppo la distanza tra la testa e la piastra del CTF, il meccanismo di deformazione controllata non è più quello previsto dalle prove Tecnaria. La card di controllo segnala questa condizione con valori di distanza testa–piastra inferiori al range ammissibile. In tali casi il colpo è da considerarsi non valido: il CTF associato non può essere conteggiato ai fini del calcolo e il fissaggio va ripetuto, scegliendo un propulsore meno energico e ripristinando la corretta sequenza di posa.",
+    "triggers": [
+      "penetra",
+      "scartato",
+      "tecnaria",
+      "nell’ala",
+      "acciaio",
+      "(sovra-infissione),",
+      "rimane",
+      "p560"
+    ]
   },
   {
     "id": "P560-ERR-0004-VERNICE-SPESSA",
@@ -42,7 +62,17 @@
       "controllo visivo"
     ],
     "question": "La mia trave in acciaio è molto verniciata (strati multipli, spessore non noto) e il chiodo Tecnaria sembra deformarsi correttamente sulla card, ma a occhio la testa rimane immersa nella vernice. Il colpo è valido o è un falso positivo?",
-    "answer": "Uno strato di vernice spesso o non controllato tra testa del chiodo e piastra del CTF può generare un falso positivo: la card può restituire un valore apparentemente corretto, ma la distanza reale in acciaio risulta diversa perché parte dello spessore misurato è vernice comprimibile. Se la testa del chiodo risulta visivamente immersa nella vernice e non è chiaramente percepibile il contatto acciaio–acciaio, il colpo non può essere considerato affidabile. In queste condizioni il fissaggio va scartato, occorre rimuovere o ridurre la vernice nella zona di sparo e ripetere le prove con card su superficie pulita, fino a ottenere una deformazione coerente e ripetibile."
+    "answer": "Uno strato di vernice spesso o non controllato tra testa del chiodo e piastra del CTF può generare un falso positivo: la card può restituire un valore apparentemente corretto, ma la distanza reale in acciaio risulta diversa perché parte dello spessore misurato è vernice comprimibile. Se la testa del chiodo risulta visivamente immersa nella vernice e non è chiaramente percepibile il contatto acciaio–acciaio, il colpo non può essere considerato affidabile. In queste condizioni il fissaggio va scartato, occorre rimuovere o ridurre la vernice nella zona di sparo e ripetere le prove con card su superficie pulita, fino a ottenere una deformazione coerente e ripetibile.",
+    "triggers": [
+      "trave",
+      "correttamente",
+      "card,",
+      "immersa",
+      "nella",
+      "valido",
+      "noto)",
+      "occhio"
+    ]
   },
   {
     "id": "P560-ERR-0005-CALAMINA",
@@ -57,7 +87,17 @@
       "card"
     ],
     "question": "Il mio IPE presenta un’ala con forte calamina industriale e piccole irregolarità superficiali: la card è accettabile ma la deformazione non è perfettamente simmetrica. Il colpo è comunque utilizzabile ai fini del calcolo?",
-    "answer": "La calamina e le irregolarità di laminazione possono modificare localmente l’appoggio della lamiera e della piastra del CTF, producendo una deformazione del chiodo leggermente asimmetrica. Se, eseguite le prove preliminari con la card in più punti rappresentativi della trave, i valori rientrano nel range indicato da Tecnaria e la deformazione si presenta ripetibile, senza schiacciamenti anomali o pieghe eccessive, il collegamento può essere considerato accettabile. Se invece le irregolarità generano letture molto variabili o deformazioni non riconducibili agli schemi di riferimento, la zona va trattata come critica: la superficie dovrebbe essere ripulita o regolarizzata, e i colpi che non rispettano la finestra di accettazione devono essere scartati e ripetuti."
+    "answer": "La calamina e le irregolarità di laminazione possono modificare localmente l’appoggio della lamiera e della piastra del CTF, producendo una deformazione del chiodo leggermente asimmetrica. Se, eseguite le prove preliminari con la card in più punti rappresentativi della trave, i valori rientrano nel range indicato da Tecnaria e la deformazione si presenta ripetibile, senza schiacciamenti anomali o pieghe eccessive, il collegamento può essere considerato accettabile. Se invece le irregolarità generano letture molto variabili o deformazioni non riconducibili agli schemi di riferimento, la zona va trattata come critica: la superficie dovrebbe essere ripulita o regolarizzata, e i colpi che non rispettano la finestra di accettazione devono essere scartati e ripetuti.",
+    "triggers": [
+      "utilizzabile",
+      "fini",
+      "il mio ipe presenta un’ala con forte calamina industriale e piccole irregolarità superficiali: la card è accettabile ma la deformazione non è perfettamente simmetrica. il colpo è comunque utilizzabile ai fini del calcolo?",
+      "calamina",
+      "accettabile",
+      "forte",
+      "superficiali:",
+      "calcolo"
+    ]
   },
   {
     "id": "P560-ERR-0007-SALDATURA-LONGITUDINALE",
@@ -71,7 +111,17 @@
       "CTF"
     ],
     "question": "Se l’ala della trave presenta una saldatura longitudinale proprio nella zona dove dovrei sparare il chiodo dei CTF, è ancora ammesso il fissaggio oppure quella zona diventa non utilizzabile?",
-    "answer": "Un cordone di saldatura longitudinale in corrispondenza dell’area di appoggio lamiera–CTF–ala altera in modo marcato la geometria e la rigidezza locale, impedendo un appoggio piano e una deformazione regolare del chiodo idoneo Tecnaria. Non è ammesso sparare direttamente sul cordone; la zona va considerata non utilizzabile per la posa dei CTF. Il fissaggio deve essere spostato lateralmente su acciaio sano e regolare, mantenendo le distanze minime prescritte dalla documentazione Tecnaria e verificando con card che la deformazione rientri nei limiti ammissibili."
+    "answer": "Un cordone di saldatura longitudinale in corrispondenza dell’area di appoggio lamiera–CTF–ala altera in modo marcato la geometria e la rigidezza locale, impedendo un appoggio piano e una deformazione regolare del chiodo idoneo Tecnaria. Non è ammesso sparare direttamente sul cordone; la zona va considerata non utilizzabile per la posa dei CTF. Il fissaggio deve essere spostato lateralmente su acciaio sano e regolare, mantenendo le distanze minime prescritte dalla documentazione Tecnaria e verificando con card che la deformazione rientri nei limiti ammissibili.",
+    "triggers": [
+      "l’ala",
+      "trave",
+      "longitudinale",
+      "ctf,",
+      "utilizzabile",
+      "se l’ala della trave presenta una saldatura longitudinale proprio nella zona dove dovrei sparare il chiodo dei ctf, è ancora ammesso il fissaggio oppure quella zona diventa non utilizzabile?",
+      "della",
+      "nella"
+    ]
   },
   {
     "id": "P560-ERR-0009-CEDE-LAMIERA",
@@ -85,7 +135,17 @@
       "colpi da rifare"
     ],
     "question": "Se durante la posa la lamiera ha un cedimento locale e i primi colpi sono stati sparati con una distanza lamiera–ala non costante, quei CTF vanno considerati validi o sono automaticamente da scartare?",
-    "answer": "La posa dei CTF presuppone lamiera grecata ben aderente all’ala della trave al momento dello sparo. Se, per mancanza di fissaggi provvisori o puntellazioni adeguate, la lamiera cede localmente e la distanza lamiera–ala varia durante lo sparo, la deformazione del chiodo e l’appoggio della piastra risultano alterati rispetto alle condizioni di prova. I colpi eseguiti con lamiera non stabilizzata non sono affidabili e vanno considerati non validi ai fini del calcolo: occorre stabilizzare l’appoggio (puntelli, viti, staffe temporanee) e ripetere la posa dei CTF, verificando con card che i nuovi colpi rientrino nei parametri di accettazione."
+    "answer": "La posa dei CTF presuppone lamiera grecata ben aderente all’ala della trave al momento dello sparo. Se, per mancanza di fissaggi provvisori o puntellazioni adeguate, la lamiera cede localmente e la distanza lamiera–ala varia durante lo sparo, la deformazione del chiodo e l’appoggio della piastra risultano alterati rispetto alle condizioni di prova. I colpi eseguiti con lamiera non stabilizzata non sono affidabili e vanno considerati non validi ai fini del calcolo: occorre stabilizzare l’appoggio (puntelli, viti, staffe temporanee) e ripetere la posa dei CTF, verificando con card che i nuovi colpi rientrino nei parametri di accettazione.",
+    "triggers": [
+      "vanno",
+      "scartare",
+      "validi",
+      "cedimento",
+      "primi",
+      "automaticamente",
+      "durante",
+      "costante,"
+    ]
   },
   {
     "id": "P560-ERR-0010-ALA-IRREGOLARE",
@@ -99,7 +159,17 @@
       "card borderline"
     ],
     "question": "Se l’ala dell’IPE è irregolare, con piccole “pance” di laminazione, e la card dà valori borderline a seconda del punto, il fissaggio dei CTF può comunque essere considerato affidabile?",
-    "answer": "Le irregolarità di laminazione possono rendere non uniforme l’appoggio della lamiera e della piastra del CTF, generando variazioni nei valori misurati con la card. Se le misure, eseguite in più punti rappresentativi, rientrano comunque nella finestra di accettazione Tecnaria e la deformazione del chiodo appare regolare, senza sintomi di sovra-infissione o difetti evidenti, il collegamento può essere considerato accettabile. Se invece i valori sono spesso al limite o oltre i limiti, o se la deformazione risulta distorta in modo evidente, quella zona va considerata critica: è consigliabile regolarizzare l’ala (ad esempio con molatura controllata) o valutare un dettaglio alternativo, sotto la responsabilità del progettista."
+    "answer": "Le irregolarità di laminazione possono rendere non uniforme l’appoggio della lamiera e della piastra del CTF, generando variazioni nei valori misurati con la card. Se le misure, eseguite in più punti rappresentativi, rientrano comunque nella finestra di accettazione Tecnaria e la deformazione del chiodo appare regolare, senza sintomi di sovra-infissione o difetti evidenti, il collegamento può essere considerato accettabile. Se invece i valori sono spesso al limite o oltre i limiti, o se la deformazione risulta distorta in modo evidente, quella zona va considerata critica: è consigliabile regolarizzare l’ala (ad esempio con molatura controllata) o valutare un dettaglio alternativo, sotto la responsabilità del progettista.",
+    "triggers": [
+      "l’ala",
+      "dell’ipe",
+      "seconda",
+      "punto,",
+      "essere",
+      "laminazione,",
+      "valori",
+      "fissaggio"
+    ]
   },
   {
     "id": "P560-ERR-0012-ZINCATURA-SPESSA",
@@ -113,7 +183,17 @@
       "appoggio irregolare"
     ],
     "question": "È possibile posare CTF su una trave zincata a caldo che presenta gocce e colature di zinco solidificato sotto l’ala, oppure queste irregolarità rendono inaffidabile la deformazione dei chiodi P560?",
-    "answer": "Le gocce e le colature di zinco di una zincatura a caldo irregolare possono creare appoggi puntuali e spessori non controllati tra lamiera, piastra del CTF e ala della trave. Ciò altera la distribuzione dei carichi di contatto e la deformazione del chiodo idoneo Tecnaria, vanificando il controllo tramite card. Prima della posa dei CTF, la zona deve essere preparata eliminando colature e rilievi che impediscono un appoggio piano, in modo da ripristinare una geometria compatibile con le condizioni di prova. In assenza di tale preparazione, i colpi eseguiti su zincatura irregolare non possono essere considerati affidabili e vanno scartati."
+    "answer": "Le gocce e le colature di zinco di una zincatura a caldo irregolare possono creare appoggi puntuali e spessori non controllati tra lamiera, piastra del CTF e ala della trave. Ciò altera la distribuzione dei carichi di contatto e la deformazione del chiodo idoneo Tecnaria, vanificando il controllo tramite card. Prima della posa dei CTF, la zona deve essere preparata eliminando colature e rilievi che impediscono un appoggio piano, in modo da ripristinare una geometria compatibile con le condizioni di prova. In assenza di tale preparazione, i colpi eseguiti su zincatura irregolare non possono essere considerati affidabili e vanno scartati.",
+    "triggers": [
+      "trave",
+      "inaffidabile",
+      "posare",
+      "sotto",
+      "chiodi",
+      "zincata",
+      "gocce",
+      "caldo"
+    ]
   },
   {
     "id": "P560-ERR-0014-VITI-AUTOPERFORANTI-VICINE",
@@ -127,7 +207,17 @@
       "colpo non valido"
     ],
     "question": "Se vicino al punto di sparo dei CTF sono presenti viti autoperforanti che fissano la lamiera alla trave, queste interferenze possono alterare il comportamento del chiodo e invalidare il collegamento?",
-    "answer": "Viti autoperforanti troppo vicine al punto di sparo possono deviare la traiettoria del chiodo idoneo Tecnaria, generare collisioni parziali o creare concentrazioni di tensione in una zona già indebolita dal foro della vite. Se il chiodo intercetta una vite o ne risulta visibilmente influenzato, il colpo deve essere considerato non valido. È buona pratica mantenere una distanza minima tra i fissaggi lamiera–trave (viti) e i punti di sparo dei CTF, seguendo le indicazioni Tecnaria. Qualora la disposizione delle viti interferisca con la posa ottimale dei CTF, va rivista la geometria dei fissaggi o valutata un’altra soluzione di dettaglio."
+    "answer": "Viti autoperforanti troppo vicine al punto di sparo possono deviare la traiettoria del chiodo idoneo Tecnaria, generare collisioni parziali o creare concentrazioni di tensione in una zona già indebolita dal foro della vite. Se il chiodo intercetta una vite o ne risulta visibilmente influenzato, il colpo deve essere considerato non valido. È buona pratica mantenere una distanza minima tra i fissaggi lamiera–trave (viti) e i punti di sparo dei CTF, seguendo le indicazioni Tecnaria. Qualora la disposizione delle viti interferisca con la posa ottimale dei CTF, va rivista la geometria dei fissaggi o valutata un’altra soluzione di dettaglio.",
+    "triggers": [
+      "vicino",
+      "comportamento",
+      "fissano",
+      "autoperforanti",
+      "presenti",
+      "viti",
+      "punto",
+      "alla"
+    ]
   },
   {
     "id": "CTF-0008-LAMIERA-SPESSORI",
@@ -141,7 +231,17 @@
       "fuori campo"
     ],
     "question": "Quali limiti di spessore della lamiera grecata devo rispettare per poter utilizzare i connettori CTF e cosa succede se la lamiera è più spessa (ad esempio 1,5 mm singola o due lamiere sovrapposte)?",
-    "answer": "I connettori CTF sono stati provati da Tecnaria su lamiere grecate con spessori entro intervalli ben definiti. In generale, spessori e configurazioni che aumentano in modo significativo la rigidezza della lamiera o lo spessore complessivo da attraversare possono alterare la deformazione del chiodo e l’ancoraggio complessivo. Una lamiera singola da 1,5 mm o due lamiere da 1,2 mm sovrapposte rientrano tipicamente in situazioni fuori campo rispetto alle prove di riferimento: l’aumento di spessore può richiedere propulsori più energici, con rischio di sovra-infissione e perdita di controllo sulla deformazione. In assenza di indicazioni specifiche Tecnaria, tali soluzioni vanno considerate non coperte dal sistema standard CTF e richiedono un confronto con l’ufficio tecnico prima di essere adottate."
+    "answer": "I connettori CTF sono stati provati da Tecnaria su lamiere grecate con spessori entro intervalli ben definiti. In generale, spessori e configurazioni che aumentano in modo significativo la rigidezza della lamiera o lo spessore complessivo da attraversare possono alterare la deformazione del chiodo e l’ancoraggio complessivo. Una lamiera singola da 1,5 mm o due lamiere da 1,2 mm sovrapposte rientrano tipicamente in situazioni fuori campo rispetto alle prove di riferimento: l’aumento di spessore può richiedere propulsori più energici, con rischio di sovra-infissione e perdita di controllo sulla deformazione. In assenza di indicazioni specifiche Tecnaria, tali soluzioni vanno considerate non coperte dal sistema standard CTF e richiedono un confronto con l’ufficio tecnico prima di essere adottate.",
+    "triggers": [
+      "della",
+      "limiti",
+      "rispettare",
+      "spessore",
+      "devo",
+      "lamiera",
+      "succede",
+      "lamiere"
+    ]
   },
   {
     "id": "CTF-0010-LAMIERA-CRICCATA",
@@ -155,7 +255,17 @@
       "esclusione zona"
     ],
     "question": "Se la lamiera grecata presenta una micro-fessura o una criccatura proprio vicino alla zona di appoggio del CTF, il connettore può essere comunque installato o quella ondina è automaticamente esclusa?",
-    "answer": "Una lamiera criccata in prossimità della zona di appoggio del CTF è un punto debole che può evolvere nel tempo sotto effetto delle sollecitazioni di esercizio e della fatica. La presenza di una cricca vicino al connettore riduce l’affidabilità del trasferimento di carico tra soletta e trave e può portare a distacchi locali della lamiera. In linea di principio, le ondine lesionate dovrebbero essere escluse dalla posa dei CTF e sostituite, ove possibile, con zone sane della lamiera o con adeguati rinforzi. La valutazione finale spetta comunque al progettista, che dovrà considerare la gravità del difetto e il ruolo strutturale di quella fila di connettori."
+    "answer": "Una lamiera criccata in prossimità della zona di appoggio del CTF è un punto debole che può evolvere nel tempo sotto effetto delle sollecitazioni di esercizio e della fatica. La presenza di una cricca vicino al connettore riduce l’affidabilità del trasferimento di carico tra soletta e trave e può portare a distacchi locali della lamiera. In linea di principio, le ondine lesionate dovrebbero essere escluse dalla posa dei CTF e sostituite, ove possibile, con zone sane della lamiera o con adeguati rinforzi. La valutazione finale spetta comunque al progettista, che dovrà considerare la gravità del difetto e il ruolo strutturale di quella fila di connettori.",
+    "triggers": [
+      "ctf,",
+      "connettore",
+      "vicino",
+      "criccatura",
+      "installato",
+      "appoggio",
+      "quella",
+      "automaticamente"
+    ]
   },
   {
     "id": "CTF-0011-HEA-RINFORZATA-TUBOLARE",
@@ -170,7 +280,17 @@
       "variante"
     ],
     "question": "In un solaio con travi HEA, un tratto dell’ala è stato rinforzato con un profilo tubolare saldato superiormente: i CTF possono essere posati anche in quella zona o è interamente fuori campo?",
-    "answer": "Il rinforzo dell’ala di una trave HEA mediante un profilo tubolare saldato modifica localmente la geometria e la rigidezza della sezione, aumentando lo spessore di materiale che il chiodo deve attraversare e alterando il modo in cui la piastra del CTF appoggia. Se il dettaglio è progettato e la geometria risultante è compatibile con gli spessori e le condizioni di prova del sistema CTF, i connettori possono essere utilizzati anche sul tratto rinforzato, previa verifica con card e, se necessario, con il supporto dell’ufficio tecnico Tecnaria. In assenza di un dettaglio progettuale specifico, la zona con tubolare saldato va considerata una variante da valutare caso per caso e non può essere assimilata automaticamente a una trave HEA standard."
+    "answer": "Il rinforzo dell’ala di una trave HEA mediante un profilo tubolare saldato modifica localmente la geometria e la rigidezza della sezione, aumentando lo spessore di materiale che il chiodo deve attraversare e alterando il modo in cui la piastra del CTF appoggia. Se il dettaglio è progettato e la geometria risultante è compatibile con gli spessori e le condizioni di prova del sistema CTF, i connettori possono essere utilizzati anche sul tratto rinforzato, previa verifica con card e, se necessario, con il supporto dell’ufficio tecnico Tecnaria. In assenza di un dettaglio progettuale specifico, la zona con tubolare saldato va considerata una variante da valutare caso per caso e non può essere assimilata automaticamente a una trave HEA standard.",
+    "triggers": [
+      "stato",
+      "rinforzato",
+      "dell’ala",
+      "tratto",
+      "quella",
+      "anche",
+      "zona",
+      "profilo"
+    ]
   },
   {
     "id": "CTF-0012-PASSO-LAMIERA-DIVERSO",
@@ -184,7 +304,17 @@
       "spostamento appoggi"
     ],
     "question": "Se l’impresa ha montato la lamiera grecata con un passo differente rispetto al progetto, spostando quindi la posizione degli appoggi sui CTF, il sistema rimane valido o l’intero schema di collaborazione va rivisto?",
-    "answer": "Il passo della lamiera grecata condiziona la posizione delle nervature e, di conseguenza, la geometria degli appoggi dei CTF sulla trave. Se in cantiere la lamiera viene posata con un passo diverso da quello previsto in progetto, le posizioni dei connettori possono risultare traslate rispetto ai punti di massimo sforzo o agli schemi di calcolo utilizzati dal progettista. In questi casi non è corretto assumere che il solaio mantenga automaticamente le stesse prestazioni. La nuova disposizione dei CTF, determinata dal passo effettivo della lamiera, deve essere trasmessa al progettista strutturale, che valuterà se la soluzione è comunque accettabile o se sono necessari adeguamenti (variazione del numero di connettori, cambiamenti geometrici o modifiche di calcolo)."
+    "answer": "Il passo della lamiera grecata condiziona la posizione delle nervature e, di conseguenza, la geometria degli appoggi dei CTF sulla trave. Se in cantiere la lamiera viene posata con un passo diverso da quello previsto in progetto, le posizioni dei connettori possono risultare traslate rispetto ai punti di massimo sforzo o agli schemi di calcolo utilizzati dal progettista. In questi casi non è corretto assumere che il solaio mantenga automaticamente le stesse prestazioni. La nuova disposizione dei CTF, determinata dal passo effettivo della lamiera, deve essere trasmessa al progettista strutturale, che valuterà se la soluzione è comunque accettabile o se sono necessari adeguamenti (variazione del numero di connettori, cambiamenti geometrici o modifiche di calcolo).",
+    "triggers": [
+      "spostando",
+      "schema",
+      "collaborazione",
+      "ctf,",
+      "valido",
+      "se l’impresa ha montato la lamiera grecata con un passo differente rispetto al progetto, spostando quindi la posizione degli appoggi sui ctf, il sistema rimane valido o l’intero schema di collaborazione va rivisto?",
+      "l’impresa",
+      "degli"
+    ]
   },
   {
     "id": "CTF-0013-HEA-IMBARCATA-INCENDIO",
@@ -198,7 +328,17 @@
       "deformazione ala"
     ],
     "question": "Se la trave HEA presenta un leggero imbarcamento dell’ala dovuto a un precedente surriscaldamento (incendio), posso comunque posare i CTF oppure la deformazione locale compromette il fissaggio?",
-    "answer": "Un imbarcamento moderato dell’ala HEA può essere compatibile con la posa dei CTF solo se la lamiera grecata riesce ad appoggiare in modo continuo e i chiodi, sparati con P560, mostrano una deformazione regolare e ripetibile alla card. Se l’imbarcamento è tale da generare appoggi puntuali, distacchi locali della lamiera o chiodi sistematicamente inclinati, la configurazione non rientra nelle condizioni di prova del sistema; in tal caso la zona va trattata come critica e può essere necessario un intervento di raddrizzamento o l’adozione di un dettaglio alternativo definito dal progettista. In ogni caso, la decisione finale deve essere assunta da chi redige le verifiche strutturali, anche sulla base dello stato globale della trave dopo l’evento termico."
+    "answer": "Un imbarcamento moderato dell’ala HEA può essere compatibile con la posa dei CTF solo se la lamiera grecata riesce ad appoggiare in modo continuo e i chiodi, sparati con P560, mostrano una deformazione regolare e ripetibile alla card. Se l’imbarcamento è tale da generare appoggi puntuali, distacchi locali della lamiera o chiodi sistematicamente inclinati, la configurazione non rientra nelle condizioni di prova del sistema; in tal caso la zona va trattata come critica e può essere necessario un intervento di raddrizzamento o l’adozione di un dettaglio alternativo definito dal progettista. In ogni caso, la decisione finale deve essere assunta da chi redige le verifiche strutturali, anche sulla base dello stato globale della trave dopo l’evento termico.",
+    "triggers": [
+      "surriscaldamento",
+      "trave",
+      "posso",
+      "compromette",
+      "leggero",
+      "se la trave hea presenta un leggero imbarcamento dell’ala dovuto a un precedente surriscaldamento (incendio), posso comunque posare i ctf oppure la deformazione locale compromette il fissaggio?",
+      "posare",
+      "locale"
+    ]
   },
   {
     "id": "CTF_SYSTEM-GLB-0001-COLPI-SCARTATI-PERCENTUALE",
@@ -214,7 +354,17 @@
       "fuori ETA"
     ],
     "question": "In un tratto di trave, durante la posa con P560 dei CTF su lamiera grecata, il 20–30% dei colpi viene scartato per sovra-infissione, lamiera non aderente o irregolarità dell’ala, e i connettori non vengono riposizionati uno a uno: è comunque possibile considerare valido il solaio mediando la collaborazione (ad esempio aumentando la densità dei CTF in altre zone) oppure l’assenza puntuale di chiodature conformi rende non utilizzabile, ai fini di calcolo, l’intero tratto interessato?",
-    "answer": "Il sistema CTF è progettato per lavorare con una distribuzione di connettori che rispetta numero, passo e condizioni di posa previste dal progetto e dalle istruzioni Tecnaria. Se in un tratto di trave il 20–30% dei colpi viene scartato e i connettori non vengono riposizionati singolarmente, la densità effettiva di collegamento risulta inferiore a quella di progetto e non è possibile considerare automaticamente valido il solaio “mediando” la collaborazione con maggiore densità altrove. La capacità a taglio–scorrimento è locale e dipende dalla presenza di chiodature conformi in ogni tratto; accumulare CTF in zone sane non compensa l’assenza di collegamenti efficaci dove le sollecitazioni sono elevate. In queste condizioni il tratto interessato non può essere assunto in calcolo come equivalente al progetto iniziale: occorre ripristinare i connettori mancanti (nuovi colpi conformi) o far ricalcolare la disposizione dei CTF dal progettista, tenendo conto della densità effettivamente realizzata."
+    "answer": "Il sistema CTF è progettato per lavorare con una distribuzione di connettori che rispetta numero, passo e condizioni di posa previste dal progetto e dalle istruzioni Tecnaria. Se in un tratto di trave il 20–30% dei colpi viene scartato e i connettori non vengono riposizionati singolarmente, la densità effettiva di collegamento risulta inferiore a quella di progetto e non è possibile considerare automaticamente valido il solaio “mediando” la collaborazione con maggiore densità altrove. La capacità a taglio–scorrimento è locale e dipende dalla presenza di chiodature conformi in ogni tratto; accumulare CTF in zone sane non compensa l’assenza di collegamenti efficaci dove le sollecitazioni sono elevate. In queste condizioni il tratto interessato non può essere assunto in calcolo come equivalente al progetto iniziale: occorre ripristinare i connettori mancanti (nuovi colpi conformi) o far ricalcolare la disposizione dei CTF dal progettista, tenendo conto della densità effettivamente realizzata.",
+    "triggers": [
+      "collaborazione",
+      "densità",
+      "fini",
+      "tratto",
+      "dell’ala,",
+      "grecata,",
+      "valido",
+      "aderente"
+    ]
   },
   {
     "id": "CTF_SYSTEM-GLB-0002-COMPENSAZIONE-DENSITA",
@@ -229,7 +379,17 @@
       "verifica progettuale"
     ],
     "question": "Se in un tratto la densità di CTF realizzata è inferiore a quella di progetto per errori di posa e colpi scartati, posso compensare aumentando il numero di connettori in un’altra zona della stessa trave e considerare comunque valida la collaborazione globale?",
-    "answer": "La collaborazione acciaio–calcestruzzo fornita dai CTF è funzione locale del numero di connettori efficaci presenti nei tratti maggiormente sollecitati. Una riduzione significativa della densità di CTF in una zona non può essere compensata, per principio, dall’aumento dei connettori in un tratto differente: la portanza e la rigidezza del solaio dipendono dalla distribuzione dei collegamenti lungo la trave, non solo dal numero totale di connettori. Eventuali compensazioni sono ammissibili solo se ricalcolate esplicitamente dal progettista strutturale, che deve verificare il nuovo schema di collaborazione con la densità effettiva. In assenza di una verifica specifica, la semplice “media” tra zone sovra-armate e sotto-armate non è accettabile."
+    "answer": "La collaborazione acciaio–calcestruzzo fornita dai CTF è funzione locale del numero di connettori efficaci presenti nei tratti maggiormente sollecitati. Una riduzione significativa della densità di CTF in una zona non può essere compensata, per principio, dall’aumento dei connettori in un tratto differente: la portanza e la rigidezza del solaio dipendono dalla distribuzione dei collegamenti lungo la trave, non solo dal numero totale di connettori. Eventuali compensazioni sono ammissibili solo se ricalcolate esplicitamente dal progettista strutturale, che deve verificare il nuovo schema di collaborazione con la densità effettiva. In assenza di una verifica specifica, la semplice “media” tra zone sovra-armate e sotto-armate non è accettabile.",
+    "triggers": [
+      "se in un tratto la densità di ctf realizzata è inferiore a quella di progetto per errori di posa e colpi scartati, posso compensare aumentando il numero di connettori in un’altra zona della stessa trave e considerare comunque valida la collaborazione globale?",
+      "posso",
+      "trave",
+      "collaborazione",
+      "densità",
+      "della",
+      "tratto",
+      "quella"
+    ]
   },
   {
     "id": "CTF_SYSTEM-TRV-0001-DUE-IPE-AFFIANCATI",
@@ -244,7 +404,17 @@
       "variante da verificare"
     ],
     "question": "In presenza di una trave composta ottenuta affiancando due profili IPE bullonati tra loro con piatti di collegamento, i CTF posati sulla lamiera in corrispondenza dell’ala superiore possono essere considerati equivalenti a quelli posati su un’unica sezione laminata, oppure questa configurazione rientra in una casistica speciale che richiede una verifica dedicata?",
-    "answer": "Una trave composta ottenuta affiancando due IPE con piatti e bulloni non è equivalente, in modo automatico, a un profilo laminato singolo ai fini della posa dei CTF. In corrispondenza della giunzione tra i due IPE possono essere presenti disallineamenti locali delle ali, piatti sporgenti, bulloni e discontinuità di rigidezza che modificano la deformazione dei chiodi idonei Tecnaria sparati con P560. Questa situazione non rientra nella configurazione standard considerata nelle prove sperimentali di sistema. Pertanto, i CTF posati in corrispondenza della giunzione di due IPE affiancati devono essere considerati una variante strutturale che richiede la valutazione del progettista e, se necessario, un confronto con l’ufficio tecnico Tecnaria, con dettaglio costruttivo dedicato; non possono essere assimilati automaticamente a connettori posati su un’unica trave laminata continua."
+    "answer": "Una trave composta ottenuta affiancando due IPE con piatti e bulloni non è equivalente, in modo automatico, a un profilo laminato singolo ai fini della posa dei CTF. In corrispondenza della giunzione tra i due IPE possono essere presenti disallineamenti locali delle ali, piatti sporgenti, bulloni e discontinuità di rigidezza che modificano la deformazione dei chiodi idonei Tecnaria sparati con P560. Questa situazione non rientra nella configurazione standard considerata nelle prove sperimentali di sistema. Pertanto, i CTF posati in corrispondenza della giunzione di due IPE affiancati devono essere considerati una variante strutturale che richiede la valutazione del progettista e, se necessario, un confronto con l’ufficio tecnico Tecnaria, con dettaglio costruttivo dedicato; non possono essere assimilati automaticamente a connettori posati su un’unica trave laminata continua.",
+    "triggers": [
+      "trave",
+      "un’unica",
+      "collegamento,",
+      "questa",
+      "piatti",
+      "dell’ala",
+      "verifica",
+      "presenza"
+    ]
   },
   {
     "id": "CTF_SYSTEM-TRV-0002-PIATTI-LATERALI-BULLONATI",
@@ -259,7 +429,17 @@
       "variante locale"
     ],
     "question": "In una trave dove sono presenti piatti laterali bullonati o saldati all’anima, in prossimità dell’ala superiore, i CTF posati sulla lamiera grecata possono essere considerati pienamente efficaci oppure la presenza di piatti e bulloni richiede una valutazione specifica?",
-    "answer": "La presenza di piatti laterali bullonati o saldati all’anima in prossimità dell’ala superiore può alterare localmente la rigidezza e la geometria della sezione, introducendo dislivelli, spessori aggiuntivi e interferenze con l’appoggio della lamiera e dei CTF. Se i piatti e i bulloni non interferiscono con l’area di contatto lamiera–ala, non generano spessori supplementari e non condizionano la deformazione dei chiodi idonei Tecnaria, i connettori possono essere considerati assimilabili a quelli su trave semplice. Se invece la presenza di piatti e bulloni modifica l’appoggio o la traiettoria del chiodo, la configurazione deve essere trattata come variante: occorre un dettaglio costruttivo dedicato e una verifica da parte del progettista, eventualmente con il supporto dell’ufficio tecnico Tecnaria."
+    "answer": "La presenza di piatti laterali bullonati o saldati all’anima in prossimità dell’ala superiore può alterare localmente la rigidezza e la geometria della sezione, introducendo dislivelli, spessori aggiuntivi e interferenze con l’appoggio della lamiera e dei CTF. Se i piatti e i bulloni non interferiscono con l’area di contatto lamiera–ala, non generano spessori supplementari e non condizionano la deformazione dei chiodi idonei Tecnaria, i connettori possono essere considerati assimilabili a quelli su trave semplice. Se invece la presenza di piatti e bulloni modifica l’appoggio o la traiettoria del chiodo, la configurazione deve essere trattata come variante: occorre un dettaglio costruttivo dedicato e una verifica da parte del progettista, eventualmente con il supporto dell’ufficio tecnico Tecnaria.",
+    "triggers": [
+      "trave",
+      "piatti",
+      "dell’ala",
+      "laterali",
+      "presenza",
+      "presenti",
+      "saldati",
+      "richiede"
+    ]
   },
   {
     "id": "CTF_SYSTEM-TRV-0003-TRAVI-NON-ALLINEATE",
@@ -274,7 +454,17 @@
       "posa in cantiere"
     ],
     "question": "In un cantiere con trave composta da due profili affiancati non perfettamente allineati, con ali superiori a quote leggermente diverse, la posa dei CTF sulla lamiera grecata rimane valida oppure il disallineamento locale compromette il comportamento dei connettori?",
-    "answer": "Una differenza di quota tra le ali superiori di profili affiancati può generare deformazioni non uniformi della lamiera grecata e della piastra dei CTF, oltre a traiettorie dei chiodi idonei Tecnaria non perpendicolari. Se la lamiera riesce a poggiare in modo continuo, i chiodi sono sostanzialmente perpendicolari e la card conferma deformazioni regolari e ripetibili, la situazione può essere valutata come accettabile dal progettista. Se invece il disallineamento provoca appoggi puntuali, torsioni locali della lamiera o chiodi inclinati in modo sistematico, il comportamento dei CTF non corrisponde alla configurazione di prova e non può essere assunto come standard: occorre correggere il disallineamento o elaborare un dettaglio alternativo verificato dall’ingegnere strutturale."
+    "answer": "Una differenza di quota tra le ali superiori di profili affiancati può generare deformazioni non uniformi della lamiera grecata e della piastra dei CTF, oltre a traiettorie dei chiodi idonei Tecnaria non perpendicolari. Se la lamiera riesce a poggiare in modo continuo, i chiodi sono sostanzialmente perpendicolari e la card conferma deformazioni regolari e ripetibili, la situazione può essere valutata come accettabile dal progettista. Se invece il disallineamento provoca appoggi puntuali, torsioni locali della lamiera o chiodi inclinati in modo sistematico, il comportamento dei CTF non corrisponde alla configurazione di prova e non può essere assunto come standard: occorre correggere il disallineamento o elaborare un dettaglio alternativo verificato dall’ingegnere strutturale.",
+    "triggers": [
+      "trave",
+      "compromette",
+      "diverse,",
+      "comportamento",
+      "composta",
+      "rimane",
+      "lamiera",
+      "superiori"
+    ]
   },
   {
     "id": "CTF_SYSTEM-TRV-0004-TRAVI-IBRIDE-SALDATE",
@@ -289,7 +479,17 @@
       "sezione non standard"
     ],
     "question": "Se una trave è stata realizzata saldando tra loro profili diversi (ad esempio HEA e IPE) per ottenere una sezione ibrida non standard, i CTF posati sulla lamiera in corrispondenza di questa sezione possono essere considerati in campo ETA oppure si tratta di una configurazione fuori campo che richiede una valutazione specifica?",
-    "answer": "Le prove sperimentali e l’ETA dei CTF fanno riferimento a travi in acciaio di tipo standard (HE/IPE/UPN, ecc.) con geometrie e spessori di ala ben definiti. Una sezione ibrida ottenuta saldando profili diversi per creare una trave speciale non rientra nelle configurazioni tipiche di riferimento: le rigidezze locali, gli spessori, le tensioni residue di saldatura e la forma dell’ala possono essere significativamente differenti. Di conseguenza, la posa dei CTF su una trave ibrida saldata va considerata fuori campo ETA; l’eventuale utilizzo deve essere oggetto di una verifica progettuale ad hoc, con analisi della sezione composta e, se necessario, confronto con l’ufficio tecnico Tecnaria. In assenza di tale valutazione, i connettori su quella trave non dovrebbero essere assunti come pienamente equivalenti alle condizioni certificate."
+    "answer": "Le prove sperimentali e l’ETA dei CTF fanno riferimento a travi in acciaio di tipo standard (HE/IPE/UPN, ecc.) con geometrie e spessori di ala ben definiti. Una sezione ibrida ottenuta saldando profili diversi per creare una trave speciale non rientra nelle configurazioni tipiche di riferimento: le rigidezze locali, gli spessori, le tensioni residue di saldatura e la forma dell’ala possono essere significativamente differenti. Di conseguenza, la posa dei CTF su una trave ibrida saldata va considerata fuori campo ETA; l’eventuale utilizzo deve essere oggetto di una verifica progettuale ad hoc, con analisi della sezione composta e, se necessario, confronto con l’ufficio tecnico Tecnaria. In assenza di tale valutazione, i connettori su quella trave non dovrebbero essere assunti come pienamente equivalenti alle condizioni certificate.",
+    "triggers": [
+      "tratta",
+      "ipe)",
+      "trave",
+      "saldando",
+      "questa",
+      "se una trave è stata realizzata saldando tra loro profili diversi (ad esempio hea e ipe) per ottenere una sezione ibrida non standard, i ctf posati sulla lamiera in corrispondenza di questa sezione possono essere considerati in campo eta oppure si tratta di una configurazione fuori campo che richiede una valutazione specifica?",
+      "corrispondenza",
+      "diversi"
+    ]
   },
   {
     "id": "CTF_SYSTEM-CORR-0001-CORROSIONE-E-ALA-BUCATA",
@@ -304,7 +504,17 @@
       "trave degradata"
     ],
     "question": "In un intervento di ripristino su travi fortemente corrose, se l’ala presenta cavità e buchi da corrosione in prossimità della zona di posa dei CTF, è comunque possibile utilizzare i connettori oppure la riduzione locale di sezione rende non affidabile il collegamento?",
-    "answer": "La presenza di cavità e buchi da corrosione sull’ala della trave indica una riduzione significativa della sezione resistente e una possibile concentrazione di tensioni in prossimità del punto di fissaggio dei CTF. In tali condizioni non è sufficiente valutare la sola deformazione dei chiodi idonei Tecnaria: occorre prima di tutto verificare l’idoneità residua della trave rispetto alle sollecitazioni globali e locali. Posare connettori su porzioni di ala gravemente degradate non è raccomandato; la zona dovrebbe essere ripristinata (ad esempio con piatti di rinforzo adeguatamente dimensionati e verificati) e solo sulle parti ripristinate, geometricamente regolari e strutturalmente idonee si potrà valutare la posa dei CTF. In assenza di ripristino progettato, i CTF su ala bucata non possono essere considerati affidabili."
+    "answer": "La presenza di cavità e buchi da corrosione sull’ala della trave indica una riduzione significativa della sezione resistente e una possibile concentrazione di tensioni in prossimità del punto di fissaggio dei CTF. In tali condizioni non è sufficiente valutare la sola deformazione dei chiodi idonei Tecnaria: occorre prima di tutto verificare l’idoneità residua della trave rispetto alle sollecitazioni globali e locali. Posare connettori su porzioni di ala gravemente degradate non è raccomandato; la zona dovrebbe essere ripristinata (ad esempio con piatti di rinforzo adeguatamente dimensionati e verificati) e solo sulle parti ripristinate, geometricamente regolari e strutturalmente idonee si potrà valutare la posa dei CTF. In assenza di ripristino progettato, i CTF su ala bucata non possono essere considerati affidabili.",
+    "triggers": [
+      "l’ala",
+      "corrose,",
+      "ctf,",
+      "cavità",
+      "della",
+      "zona",
+      "buchi",
+      "fortemente"
+    ]
   },
   {
     "id": "CTF_SYSTEM-CORR-0002-SABBIATURA-A-ISOLE",
@@ -319,7 +529,17 @@
       "ripetibilità comportamento"
     ],
     "question": "In un intervento di ripristino su travi corrose, l’impresa sabbia solo alcune fasce dell’ala dove prevede di posare i CTF, lasciando altrove vecchie verniciature e ruggine residua; le prove con card eseguite in zona sabbiata risultano perfette. Ai fini della validità globale del sistema CTF è sufficiente che ogni singolo chiodo sia posato su “isole” di acciaio pulito, oppure la presenza di estese zone non trattate può compromettere la ripetibilità del comportamento del collegamento?",
-    "answer": "Dal punto di vista del singolo collegamento, la posa di CTF su piccole “isole” di acciaio pulito, sabbiate e geometricamente regolari, può produrre deformazioni dei chiodi idonei Tecnaria perfettamente conformi alla card e quindi localmente accettabili. Tuttavia, la presenza di estese porzioni di ala non trattate, con ruggine e verniciature irregolari, può indicare un quadro generale di degrado non controllato e rendere poco ripetibile il comportamento globale del sistema, soprattutto se in futuro saranno necessari ulteriori interventi o se parte dei connettori dovrà essere posata fuori dalle zone sabbiate. La soluzione corretta è definire, a livello progettuale, quali zone dell’ala sono strutturalmente idonee e vanno ripristinate in modo sistematico; tutte le posizioni dei CTF dovrebbero ricadere in aree trattate in modo omogeneo. L’approccio a macchia di leopardo va usato con prudenza e sempre sotto controllo del progettista."
+    "answer": "Dal punto di vista del singolo collegamento, la posa di CTF su piccole “isole” di acciaio pulito, sabbiate e geometricamente regolari, può produrre deformazioni dei chiodi idonei Tecnaria perfettamente conformi alla card e quindi localmente accettabili. Tuttavia, la presenza di estese porzioni di ala non trattate, con ruggine e verniciature irregolari, può indicare un quadro generale di degrado non controllato e rendere poco ripetibile il comportamento globale del sistema, soprattutto se in futuro saranno necessari ulteriori interventi o se parte dei connettori dovrà essere posata fuori dalle zone sabbiate. La soluzione corretta è definire, a livello progettuale, quali zone dell’ala sono strutturalmente idonee e vanno ripristinate in modo sistematico; tutte le posizioni dei CTF dovrebbero ricadere in aree trattate in modo omogeneo. L’approccio a macchia di leopardo va usato con prudenza e sempre sotto controllo del progettista.",
+    "triggers": [
+      "lasciando",
+      "vecchie",
+      "corrose,",
+      "posare",
+      "ctf,",
+      "fasce",
+      "compromettere",
+      "fini"
+    ]
   },
   {
     "id": "CTF_SYSTEM-GETTO-0001-POSA-DOPO-PRIMO-GETTO-PARZIALE",
@@ -334,7 +554,17 @@
       "riprese di getto"
     ],
     "question": "Se, per errore di sequenza di cantiere, alcuni CTF vengono posati con P560 su lamiera e trave dopo un primo getto parziale di calcestruzzo (con spessore non uniforme e presenza di riprese di getto attorno ai connettori), è possibile in qualche modo recuperare la situazione con un secondo getto integrativo e considerare comunque valida la collaborazione acciaio–calcestruzzo, oppure ogni posa eseguita in queste condizioni va trattata come fuori campo ETA?",
-    "answer": "Le procedure di posa dei CTF e di getto del calcestruzzo prevedono che i connettori vengano installati prima del getto, in modo che il calcestruzzo fresco avvolga regolarmente i connettori e la lamiera grecata, garantendo l’aderenza e la collaborazione previste nelle prove di sistema. La posa di CTF dopo un primo getto parziale, con spessore non uniforme e riprese di getto attorno ai connettori, configura una sequenza fuori campo rispetto all’ETA e alle istruzioni Tecnaria: la geometria di ancoraggio nel calcestruzzo e le condizioni di aderenza non corrispondono più a quelle certificate. Un secondo getto integrativo può migliorare la monoliticità apparente, ma non ripristina automaticamente le condizioni di prova. In assenza di una valutazione specifica del progettista, che consideri tali connettori come elementi particolari o li escluda dal modello, le posizioni posate dopo il primo getto parziale devono essere trattate come fuori campo ETA e non vanno assunte come connettori standard."
+    "answer": "Le procedure di posa dei CTF e di getto del calcestruzzo prevedono che i connettori vengano installati prima del getto, in modo che il calcestruzzo fresco avvolga regolarmente i connettori e la lamiera grecata, garantendo l’aderenza e la collaborazione previste nelle prove di sistema. La posa di CTF dopo un primo getto parziale, con spessore non uniforme e riprese di getto attorno ai connettori, configura una sequenza fuori campo rispetto all’ETA e alle istruzioni Tecnaria: la geometria di ancoraggio nel calcestruzzo e le condizioni di aderenza non corrispondono più a quelle certificate. Un secondo getto integrativo può migliorare la monoliticità apparente, ma non ripristina automaticamente le condizioni di prova. In assenza di una valutazione specifica del progettista, che consideri tali connettori come elementi particolari o li escluda dal modello, le posizioni posate dopo il primo getto parziale devono essere trattate come fuori campo ETA e non vanno assunte come connettori standard.",
+    "triggers": [
+      "trave",
+      "(con",
+      "collaborazione",
+      "integrativo",
+      "situazione",
+      "uniforme",
+      "errore",
+      "getto"
+    ]
   },
   {
     "id": "CTF_SYSTEM-GETTO-0002-CALCESTRUZZO-IN-ONDINA-PRIMA-DI-SPARO",
@@ -349,7 +579,17 @@
       "fuori sequenza"
     ],
     "question": "Se, per errore, il calcestruzzo fresco entra nelle ondine della lamiera prima della posa dei CTF e si tenta comunque di sparare con P560 attraversando lamiera e strato di calcestruzzo, i connettori così installati possono essere considerati validi oppure questa situazione è fuori campo rispetto alle condizioni di prova del sistema?",
-    "answer": "La presenza di calcestruzzo tra lamiera grecata e ala della trave altera radicalmente il meccanismo di fissaggio dei CTF: il chiodo idoneo Tecnaria non attraversa più solo lamiera e acciaio, ma incontra uno strato di calcestruzzo che ne modifica traiettoria, deformazione e appoggio. Questa condizione non è prevista nelle prove sperimentali di sistema ed è da considerarsi fuori campo ETA. I connettori installati sparando attraverso lamiera e calcestruzzo fresco o indurito non possono essere assunti come connettori standard CTF; di norma vanno considerati non validi ai fini del calcolo, salvo specifica e documentata verifica progettuale che ne giustifichi l’utilizzo in un modello ad hoc."
+    "answer": "La presenza di calcestruzzo tra lamiera grecata e ala della trave altera radicalmente il meccanismo di fissaggio dei CTF: il chiodo idoneo Tecnaria non attraversa più solo lamiera e acciaio, ma incontra uno strato di calcestruzzo che ne modifica traiettoria, deformazione e appoggio. Questa condizione non è prevista nelle prove sperimentali di sistema ed è da considerarsi fuori campo ETA. I connettori installati sparando attraverso lamiera e calcestruzzo fresco o indurito non possono essere assunti come connettori standard CTF; di norma vanno considerati non validi ai fini del calcolo, salvo specifica e documentata verifica progettuale che ne giustifichi l’utilizzo in un modello ad hoc.",
+    "triggers": [
+      "strato",
+      "prova",
+      "ondine",
+      "fresco",
+      "questa",
+      "se, per errore, il calcestruzzo fresco entra nelle ondine della lamiera prima della posa dei ctf e si tenta comunque di sparare con p560 attraversando lamiera e strato di calcestruzzo, i connettori così installati possono essere considerati validi oppure questa situazione è fuori campo rispetto alle condizioni di prova del sistema?",
+      "validi",
+      "della"
+    ]
   },
   {
     "id": "CTF_SYSTEM-GETTO-0003-RIPRESE-E-RECUPERO",
@@ -364,7 +604,17 @@
       "continuità collaborante"
     ],
     "question": "Se, per errori di programmazione, la soletta in calcestruzzo viene gettata in due fasi con un giunto di ripresa che cade in prossimità di una fila di CTF, è possibile considerare pienamente collaborante la sezione oppure la presenza di riprese di getto in zona connettori richiede una verifica specifica?",
-    "answer": "Le riprese di getto in prossimità di una fila di CTF possono influenzare l’aderenza e la continuità della soletta in calcestruzzo, soprattutto se il trattamento del giunto non è stato eseguito correttamente (scabrosità, pulizia, malta di raccordo). Per quanto i connettori possano risultare correttamente deformati e verificati con card, la presenza di un giunto di ripresa nella zona di passaggio degli sforzi tra acciaio e calcestruzzo richiede una valutazione specifica da parte del progettista. In generale, non è corretto assumere automaticamente che il comportamento corrisponda a quello di una soletta gettata in unica soluzione; il progettista potrà confermare la piena validità, imporre limitazioni o richiedere armature integrative in funzione del dettaglio esecutivo e delle azioni in gioco."
+    "answer": "Le riprese di getto in prossimità di una fila di CTF possono influenzare l’aderenza e la continuità della soletta in calcestruzzo, soprattutto se il trattamento del giunto non è stato eseguito correttamente (scabrosità, pulizia, malta di raccordo). Per quanto i connettori possano risultare correttamente deformati e verificati con card, la presenza di un giunto di ripresa nella zona di passaggio degli sforzi tra acciaio e calcestruzzo richiede una valutazione specifica da parte del progettista. In generale, non è corretto assumere automaticamente che il comportamento corrisponda a quello di una soletta gettata in unica soluzione; il progettista potrà confermare la piena validità, imporre limitazioni o richiedere armature integrative in funzione del dettaglio esecutivo e delle azioni in gioco.",
+    "triggers": [
+      "ctf,",
+      "verifica",
+      "getto",
+      "presenza",
+      "giunto",
+      "calcestruzzo",
+      "viene",
+      "zona"
+    ]
   },
   {
     "id": "CTF_SYSTEM-GETTO-0004-AGGIUNTA-CTF-DOPO-GETTO",
@@ -379,6 +629,16 @@
       "incremento collaborazione"
     ],
     "question": "Se, dopo il completamento del getto della soletta, si decide di aggiungere ulteriori CTF sparati con P560 su lamiera e trave per aumentare la collaborazione acciaio–calcestruzzo, è possibile considerare questi connettori aggiuntivi alla stregua di quelli previsti in fase di progetto oppure tale intervento è fuori campo ETA?",
-    "answer": "L’aggiunta di CTF dopo il completamento del getto non rientra nella sequenza prevista dalle istruzioni Tecnaria né nelle condizioni considerate nelle prove di sistema: i connettori non risultano inglobati nel calcestruzzo fresco con il corretto sviluppo di aderenza e confinamento. Sparare chiodi idonei Tecnaria su una struttura già completata, anche se tecnicamente possibile dal punto di vista esecutivo, non produce un collegamento equivalente a quello dei CTF previsti in progetto e installati prima del getto. Tale intervento va considerato fuori campo ETA; il suo eventuale contributo deve essere valutato con un modello ad hoc dal progettista strutturale e non può essere assunto, in modo automatico, come incremento della collaborazione standard del sistema CTF."
+    "answer": "L’aggiunta di CTF dopo il completamento del getto non rientra nella sequenza prevista dalle istruzioni Tecnaria né nelle condizioni considerate nelle prove di sistema: i connettori non risultano inglobati nel calcestruzzo fresco con il corretto sviluppo di aderenza e confinamento. Sparare chiodi idonei Tecnaria su una struttura già completata, anche se tecnicamente possibile dal punto di vista esecutivo, non produce un collegamento equivalente a quello dei CTF previsti in progetto e installati prima del getto. Tale intervento va considerato fuori campo ETA; il suo eventuale contributo deve essere valutato con un modello ad hoc dal progettista strutturale e non può essere assunto, in modo automatico, come incremento della collaborazione standard del sistema CTF.",
+    "triggers": [
+      "tale",
+      "trave",
+      "se, dopo il completamento del getto della soletta, si decide di aggiungere ulteriori ctf sparati con p560 su lamiera e trave per aumentare la collaborazione acciaio–calcestruzzo, è possibile considerare questi connettori aggiuntivi alla stregua di quelli previsti in fase di progetto oppure tale intervento è fuori campo eta?",
+      "collaborazione",
+      "decide",
+      "aggiungere",
+      "aumentare",
+      "della"
+    ]
   }
 ]
