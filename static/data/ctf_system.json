@@ -2597,6 +2597,59 @@
       ],
       "question_it": "In sintesi, quando si deve usare la P560 in un cantiere Tecnaria?",
       "answer_it": "La P560 deve essere utilizzata ogni volta che si posano connettori CTF su lamiera grecata nei solai misti acciaio-calcestruzzo. È lo strumento previsto dal sistema Tecnaria per installare i chiodi idonei Tecnaria in modo controllato, ripetibile e coerente con le prestazioni dichiarate. Non va usata con altre famiglie di connettori e non va sostituita con utensili non previsti."
+    },
+    {
+      "id": "CTF_SYSTEM-0000-OVERVIEW",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "overview",
+      "tags": [
+        "CTF",
+        "CTF_SYSTEM",
+        "overview",
+        "generale",
+        "cosa sono i CTF",
+        "connettori per lamiera grecata"
+      ],
+      "triggers": [
+        "mi parli dei ctf",
+        "cosa sono i ctf",
+        "ctf system",
+        "spiegami i ctf",
+        "cos'è il ctf",
+        "cosa fanno i ctf",
+        "a cosa servono i ctf",
+        "ctf tecnaria"
+      ],
+      "question_it": "Mi parli dei CTF?",
+      "answer_it": "I CTF Tecnaria sono connettori metallici progettati per il solidarizzamento tra soletta in calcestruzzo e lamiera grecata nei solai misti acciaio-calcestruzzo. Il sistema funziona tramite un chiodo idoneo Tecnaria infisso con la P560 nella cresta dell’ondina, generando un ancoraggio meccanico che trasferisce le forze di taglio e rende collaborante la soletta con la lamiera. Tutto il comportamento resistente – capacità a taglio, rigidezza iniziale, curva di scorrimento e prestazioni sotto carico ciclico – è validato secondo ETA e dipende da tre elementi inscindibili: lamiera conforme, CTF idonei e posa con P560. L’obiettivo progettuale del sistema è creare un diaframma rigido e una collaborazione efficace evitando scorrimenti e instabilità. Le indicazioni di posa includono controllo geometrico della lamiera, verifica della deformazione card, gestione dei casi limite (imbarcamenti, torsioni, contaminanti) e applicazione di uno schema di chiodatura definito dal progettista."
+    },
+    {
+      "id": "P560-0000-OVERVIEW",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "overview",
+      "tags": [
+        "P560",
+        "overview",
+        "chiodatrice",
+        "posa CTF",
+        "strumentazione",
+        "propulsori"
+      ],
+      "triggers": [
+        "mi parli della p560",
+        "cos'è la p560",
+        "spiegami la p560",
+        "a cosa serve la p560",
+        "uso della p560",
+        "pistola p560 tecnaria",
+        "chiodatrice p560"
+      ],
+      "question_it": "Mi parli della P560?",
+      "answer_it": "La P560 è la chiodatrice a propulsione utilizzata nei sistemi Tecnaria per l’infissione controllata dei chiodi idonei Tecnaria nelle lamiere grecate e nelle piastre dei CTF. È una macchina a massa battente con energia calibrata e ripetibile, studiata per garantire deformazioni coerenti del chiodo e permettere una lettura card affidabile. Tutte le prove sperimentali, le ETA e le curve prestazionali dei CTF sono state realizzate esclusivamente con P560: per questo l’uso di chiodatrici diverse porta il fissaggio fuori campo certificato. La P560 richiede manutenzione ordinaria (pulizia testa di sparo, verifica puntale, controllo usure), l’utilizzo di propulsori idonei e DPI obbligatori (occhiali EN166, cuffie, guanti). Il comportamento del chiodo, la profondità di infissione e la stabilità dell’ondina dipendono dalla corretta energia di sparo: la P560 garantisce ripetibilità, sicurezza e conformità al sistema CTF Tecnaria."
     }
   ]
 }
