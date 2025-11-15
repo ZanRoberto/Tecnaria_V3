@@ -198,10 +198,19 @@ def call_chat(messages: List[Dict[str, str]], max_tokens: int = 256) -> Optional
 # -----------------------------------------------------------------------------
 
 FAMILY_RULES = {
-    "CTF": {
+    "CTF_SYSTEM": {
         "keywords": [
             "ctf",
             "connettore ctf",
+            "ctf system",
+            "ctf_system",
+            "ctf system tecnaria",
+            "p560",
+            "p 560",
+            "chiodatrice",
+            "pistola",
+            "utensile a sparo",
+            "sparachiodi",
             "solaio su lamiera",
             "lamiera grecata",
             "lamiera collaborante",
@@ -211,18 +220,6 @@ FAMILY_RULES = {
             "grecata",
             "trapezoidale",
             "lamiera",
-        ],
-    },
-    "P560": {
-        "keywords": [
-            "p560",
-            "p 560",
-            "chiodatrice",
-            "pistola",
-            "utensile a sparo",
-            "sparachiodi",
-        ],
-        "signals": [
             "sparare",
             "sparo",
             "colpo",
@@ -231,6 +228,8 @@ FAMILY_RULES = {
             "chiodo non entra",
             "chiodi non entrano",
             "non entra il chiodo",
+            "chiodo",
+            "chiodi",
         ],
     },
     "CTL": {
@@ -335,17 +334,9 @@ def detect_families(question: str) -> List[FamilyScore]:
     q_has_chiodi = ("chiodo" in q) or ("chiodi" in q)
     q_has_sparo = ("sparo" in q) or ("sparare" in q) or ("colpo" in q)
 
-    # Lamiera → CTF
-    if q_has_lamiera and "CTF" not in scores:
-        scores["CTF"] = FamilyScore("CTF", 2.0, ["lamiera=CTF"])
-
-    # CTF + chiodi/sparo → P560
-    if (("ctf" in q) or q_has_lamiera) and q_has_chiodi and "P560" not in scores:
-        scores["P560"] = FamilyScore("P560", 2.5, ["ctf+chiodi→P560"])
-
-    # Pistola/chiodatrice su grecata → P560
-    if ("pistola" in q or "chiodatrice" in q or "utensile" in q) and q_has_lamiera and "P560" not in scores:
-        scores["P560"] = FamilyScore("P560", 3.0, ["pistola+lamiera→P560"])
+    # Tutto il mondo lamiera/chiodi/sparo → CTF_SYSTEM
+    if (q_has_lamiera or q_has_chiodi or q_has_sparo) and "CTF_SYSTEM" not in scores:
+        scores["CTF_SYSTEM"] = FamilyScore("CTF_SYSTEM", 4.0, ["lamiera/chiodi/sparo→CTF_SYSTEM"])
 
     # Resina → VCEM
     if ("resina" in q or "chimico" in q or "cartuccia" in q) and "VCEM" not in scores:
@@ -389,26 +380,19 @@ def detect_intent(question: str) -> str:
 
 # -----------------------------------------------------------------------------
 # DISPATCH TABLE: FAMILY + INTENT → ID BLOCCO GOLD
-# (qui metti gli ID corretti man mano che li definisci)
 # -----------------------------------------------------------------------------
+# Nota: per CTF_SYSTEM usiamo solo best-match sui blocchi,
+# quindi gli ID qui sono tutti None e l'engine passa subito al match testuale.
 
-P560_DISPATCH = {
-    "general": "P560-0001",
-    "use_case": "P560-0002",
-    "installation": "P560-0010",
-    "defect": "P560-0020",
-    "safety": "P560-0030",
-    "*": "P560-0001",
-}
-
-CTF_DISPATCH = {
-    "general": "CTF-0001",
-    "use_case": "CTF-0005",
-    "installation": "CTF-0010",
-    "design": "CTF-0020",
-    "compatibility": "CTF-0030",
-    "safety": "CTF-0040",
-    "*": "CTF-0001",
+CTF_SYSTEM_DISPATCH = {
+    "general": None,
+    "use_case": None,
+    "installation": None,
+    "design": None,
+    "defect": None,
+    "safety": None,
+    "compatibility": None,
+    "*": None,
 }
 
 CTL_DISPATCH = {
@@ -457,8 +441,7 @@ COMM_DISPATCH = {
 }
 
 DISPATCH_TABLE = {
-    "P560": P560_DISPATCH,
-    "CTF": CTF_DISPATCH,
+    "CTF_SYSTEM": CTF_SYSTEM_DISPATCH,
     "CTL": CTL_DISPATCH,
     "CTL_MAXI": CTL_MAXI_DISPATCH,
     "DIAPASON": DIAPASON_DISPATCH,
@@ -479,7 +462,11 @@ def dispatch_block_id(family: str, intent: str) -> Optional[str]:
 # -----------------------------------------------------------------------------
 
 def get_kb_item_by_id(block_id: str, lang: str = "it") -> Optional[KBItem]:
+    if block_id is None:
+        return None
     block_id = block_id.strip()
+    if not block_id:
+        return None
     lang = lang.lower()
     for it in KB_ITEMS:
         if it.id == block_id and it.lang == lang:
@@ -547,7 +534,7 @@ def answer_question(question: str, lang: str = "it") -> Dict[str, Any]:
                     "role": "system",
                     "content": (
                         "Sei un classificatore di domande per il bot Tecnaria. "
-                        "Rispondi SOLO con una di queste parole: CTF, P560, CTL, CTL_MAXI, DIAPASON, VCEM, CTCEM, COMM. "
+                        "Rispondi SOLO con una di queste parole: CTF_SYSTEM, CTL, CTL_MAXI, DIAPASON, VCEM, CTCEM, COMM. "
                         "Scegli quella che meglio rappresenta la famiglia di prodotto coinvolta nella domanda."
                     ),
                 },
@@ -561,7 +548,7 @@ def answer_question(question: str, lang: str = "it") -> Dict[str, Any]:
                 top_family = cand
 
         if not top_family:
-            # fallback finale: rispondi in modo generico usando un blocco COMM/CTF
+            # fallback finale: rispondi in modo generico usando COMM
             top_family = "COMM"
 
     # 2) Intent
@@ -581,8 +568,8 @@ def answer_question(question: str, lang: str = "it") -> Dict[str, Any]:
         # fallback totale: risposta generica
         text = (
             "Al momento non trovo un blocco GOLD specifico per questa domanda. "
-            "Ti consiglio di riformularla indicando il tipo di solaio, la famiglia di connettori "
-            "(CTF, CTL, CTL MAXI, VCEM, CTCEM, DIAPASON) e l'eventuale utilizzo della P560."
+            "Ti consiglio di riformularla indicando il tipo di solaio e la famiglia di connettori "
+            "(CTF_SYSTEM per sistemi su lamiera e P560, CTL, CTL MAXI, VCEM, CTCEM, DIAPASON)."
         )
         return {
             "family": top_family,
@@ -594,11 +581,6 @@ def answer_question(question: str, lang: str = "it") -> Dict[str, Any]:
 
     # 4) Risposta base GOLD (modalità A: aziendale tecnica, niente poesia)
     answer_text = item.answer
-
-    # opzionale: raffinamento con LLM (QUI LO TENIAMO SPENTO PER LIMITARE I CONSUMI)
-    # se in futuro vuoi riattivarlo, puoi fare:
-    # refined = call_chat([...])
-    # se refined: answer_text = refined
 
     return {
         "family": item.family,
