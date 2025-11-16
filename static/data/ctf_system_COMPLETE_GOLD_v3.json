@@ -23,7 +23,9 @@
         "chiodatrice",
         "p560",
         "che cos'è la chiodatrice p560 tecnaria e a cosa serve nei sistemi ctf?"
-      ]
+      ],
+      "question_it": "Che cos'è la chiodatrice P560 Tecnaria e a cosa serve nei sistemi CTF?",
+      "answer_it": "La P560 è la chiodatrice a sparo Tecnaria progettata specificamente per la posa dei chiodi idonei Tecnaria nei sistemi collaboranti acciaio–calcestruzzo con connettori CTF. È un utensile a cartuccia che consente di fissare, con un unico colpo controllato, lamiera grecata, piastra del connettore CTF e ala della trave in acciaio, garantendo la corretta deformazione del chiodo e il trasferimento di taglio–scorrimento tra le parti. La P560 lavora con diversi livelli di propulsore, scelta che va calibrata in funzione dello spessore della lamiera e dell’ala, e prevede il controllo di qualità tramite apposita card che verifica la distanza testa–piastra dopo lo sparo. L’uso congiunto di P560, chiodi idonei Tecnaria e connettori CTF costituisce il sistema di fissaggio riconosciuto e verificato nelle prove sperimentali Tecnaria."
     },
     {
       "id": "P560-ERR-0003-SOVRA-INFISSIONE",
@@ -48,7 +50,9 @@
         "(sovra-infissione),",
         "rimane",
         "p560"
-      ]
+      ],
+      "question_it": "Se durante la posa con P560 il chiodo idoneo Tecnaria attraversa la lamiera e penetra troppo nell’ala in acciaio (sovra-infissione), il collegamento dei CTF rimane valido o va scartato?",
+      "answer_it": "La sovra-infissione è un difetto grave di posa. Se il chiodo idoneo Tecnaria penetra eccessivamente nell’ala, riducendo troppo la distanza tra la testa e la piastra del CTF, il meccanismo di deformazione controllata non è più quello previsto dalle prove Tecnaria. La card di controllo segnala questa condizione con valori di distanza testa–piastra inferiori al range ammissibile. In tali casi il colpo è da considerarsi non valido: il CTF associato non può essere conteggiato ai fini del calcolo e il fissaggio va ripetuto, scegliendo un propulsore meno energico e ripristinando la corretta sequenza di posa."
     },
     {
       "id": "P560-ERR-0004-VERNICE-SPESSA",
@@ -73,7 +77,9 @@
         "valido",
         "noto)",
         "occhio"
-      ]
+      ],
+      "question_it": "La mia trave in acciaio è molto verniciata (strati multipli, spessore non noto) e il chiodo Tecnaria sembra deformarsi correttamente sulla card, ma a occhio la testa rimane immersa nella vernice. Il colpo è valido o è un falso positivo?",
+      "answer_it": "Uno strato di vernice spesso o non controllato tra testa del chiodo e piastra del CTF può generare un falso positivo: la card può restituire un valore apparentemente corretto, ma la distanza reale in acciaio risulta diversa perché parte dello spessore misurato è vernice comprimibile. Se la testa del chiodo risulta visivamente immersa nella vernice e non è chiaramente percepibile il contatto acciaio–acciaio, il colpo non può essere considerato affidabile. In queste condizioni il fissaggio va scartato, occorre rimuovere o ridurre la vernice nella zona di sparo e ripetere le prove con card su superficie pulita, fino a ottenere una deformazione coerente e ripetibile."
     },
     {
       "id": "P560-ERR-0005-CALAMINA",
@@ -98,7 +104,9 @@
         "forte",
         "superficiali:",
         "calcolo"
-      ]
+      ],
+      "question_it": "Il mio IPE presenta un’ala con forte calamina industriale e piccole irregolarità superficiali: la card è accettabile ma la deformazione non è perfettamente simmetrica. Il colpo è comunque utilizzabile ai fini del calcolo?",
+      "answer_it": "La calamina e le irregolarità di laminazione possono modificare localmente l’appoggio della lamiera e della piastra del CTF, producendo una deformazione del chiodo leggermente asimmetrica. Se, eseguite le prove preliminari con la card in più punti rappresentativi della trave, i valori rientrano nel range indicato da Tecnaria e la deformazione si presenta ripetibile, senza schiacciamenti anomali o pieghe eccessive, il collegamento può essere considerato accettabile. Se invece le irregolarità generano letture molto variabili o deformazioni non riconducibili agli schemi di riferimento, la zona va trattata come critica: la superficie dovrebbe essere ripulita o regolarizzata, e i colpi che non rispettano la finestra di accettazione devono essere scartati e ripetuti."
     },
     {
       "id": "P560-ERR-0007-SALDATURA-LONGITUDINALE",
@@ -122,7 +130,9 @@
         "se l’ala della trave presenta una saldatura longitudinale proprio nella zona dove dovrei sparare il chiodo dei ctf, è ancora ammesso il fissaggio oppure quella zona diventa non utilizzabile?",
         "della",
         "nella"
-      ]
+      ],
+      "question_it": "Se l’ala della trave presenta una saldatura longitudinale proprio nella zona dove dovrei sparare il chiodo dei CTF, è ancora ammesso il fissaggio oppure quella zona diventa non utilizzabile?",
+      "answer_it": "Un cordone di saldatura longitudinale in corrispondenza dell’area di appoggio lamiera–CTF–ala altera in modo marcato la geometria e la rigidezza locale, impedendo un appoggio piano e una deformazione regolare del chiodo idoneo Tecnaria. Non è ammesso sparare direttamente sul cordone; la zona va considerata non utilizzabile per la posa dei CTF. Il fissaggio deve essere spostato lateralmente su acciaio sano e regolare, mantenendo le distanze minime prescritte dalla documentazione Tecnaria e verificando con card che la deformazione rientri nei limiti ammissibili."
     },
     {
       "id": "P560-ERR-0009-CEDE-LAMIERA",
@@ -146,7 +156,9 @@
         "automaticamente",
         "durante",
         "costante,"
-      ]
+      ],
+      "question_it": "Se durante la posa la lamiera ha un cedimento locale e i primi colpi sono stati sparati con una distanza lamiera–ala non costante, quei CTF vanno considerati validi o sono automaticamente da scartare?",
+      "answer_it": "La posa dei CTF presuppone lamiera grecata ben aderente all’ala della trave al momento dello sparo. Se, per mancanza di fissaggi provvisori o puntellazioni adeguate, la lamiera cede localmente e la distanza lamiera–ala varia durante lo sparo, la deformazione del chiodo e l’appoggio della piastra risultano alterati rispetto alle condizioni di prova. I colpi eseguiti con lamiera non stabilizzata non sono affidabili e vanno considerati non validi ai fini del calcolo: occorre stabilizzare l’appoggio (puntelli, viti, staffe temporanee) e ripetere la posa dei CTF, verificando con card che i nuovi colpi rientrino nei parametri di accettazione."
     },
     {
       "id": "P560-ERR-0010-ALA-IRREGOLARE",
@@ -170,7 +182,9 @@
         "laminazione,",
         "valori",
         "fissaggio"
-      ]
+      ],
+      "question_it": "Se l’ala dell’IPE è irregolare, con piccole “pance” di laminazione, e la card dà valori borderline a seconda del punto, il fissaggio dei CTF può comunque essere considerato affidabile?",
+      "answer_it": "Le irregolarità di laminazione possono rendere non uniforme l’appoggio della lamiera e della piastra del CTF, generando variazioni nei valori misurati con la card. Se le misure, eseguite in più punti rappresentativi, rientrano comunque nella finestra di accettazione Tecnaria e la deformazione del chiodo appare regolare, senza sintomi di sovra-infissione o difetti evidenti, il collegamento può essere considerato accettabile. Se invece i valori sono spesso al limite o oltre i limiti, o se la deformazione risulta distorta in modo evidente, quella zona va considerata critica: è consigliabile regolarizzare l’ala (ad esempio con molatura controllata) o valutare un dettaglio alternativo, sotto la responsabilità del progettista."
     },
     {
       "id": "P560-ERR-0012-ZINCATURA-SPESSA",
@@ -194,7 +208,9 @@
         "zincata",
         "gocce",
         "caldo"
-      ]
+      ],
+      "question_it": "È possibile posare CTF su una trave zincata a caldo che presenta gocce e colature di zinco solidificato sotto l’ala, oppure queste irregolarità rendono inaffidabile la deformazione dei chiodi P560?",
+      "answer_it": "Le gocce e le colature di zinco di una zincatura a caldo irregolare possono creare appoggi puntuali e spessori non controllati tra lamiera, piastra del CTF e ala della trave. Ciò altera la distribuzione dei carichi di contatto e la deformazione del chiodo idoneo Tecnaria, vanificando il controllo tramite card. Prima della posa dei CTF, la zona deve essere preparata eliminando colature e rilievi che impediscono un appoggio piano, in modo da ripristinare una geometria compatibile con le condizioni di prova. In assenza di tale preparazione, i colpi eseguiti su zincatura irregolare non possono essere considerati affidabili e vanno scartati."
     },
     {
       "id": "P560-ERR-0014-VITI-AUTOPERFORANTI-VICINE",
@@ -218,7 +234,9 @@
         "viti",
         "punto",
         "alla"
-      ]
+      ],
+      "question_it": "Se vicino al punto di sparo dei CTF sono presenti viti autoperforanti che fissano la lamiera alla trave, queste interferenze possono alterare il comportamento del chiodo e invalidare il collegamento?",
+      "answer_it": "Viti autoperforanti troppo vicine al punto di sparo possono deviare la traiettoria del chiodo idoneo Tecnaria, generare collisioni parziali o creare concentrazioni di tensione in una zona già indebolita dal foro della vite. Se il chiodo intercetta una vite o ne risulta visibilmente influenzato, il colpo deve essere considerato non valido. È buona pratica mantenere una distanza minima tra i fissaggi lamiera–trave (viti) e i punti di sparo dei CTF, seguendo le indicazioni Tecnaria. Qualora la disposizione delle viti interferisca con la posa ottimale dei CTF, va rivista la geometria dei fissaggi o valutata un’altra soluzione di dettaglio."
     },
     {
       "id": "CTF-0008-LAMIERA-SPESSORI",
@@ -242,7 +260,9 @@
         "lamiera",
         "succede",
         "lamiere"
-      ]
+      ],
+      "question_it": "Quali limiti di spessore della lamiera grecata devo rispettare per poter utilizzare i connettori CTF e cosa succede se la lamiera è più spessa (ad esempio 1,5 mm singola o due lamiere sovrapposte)?",
+      "answer_it": "I connettori CTF sono stati provati da Tecnaria su lamiere grecate con spessori entro intervalli ben definiti. In generale, spessori e configurazioni che aumentano in modo significativo la rigidezza della lamiera o lo spessore complessivo da attraversare possono alterare la deformazione del chiodo e l’ancoraggio complessivo. Una lamiera singola da 1,5 mm o due lamiere da 1,2 mm sovrapposte rientrano tipicamente in situazioni fuori campo rispetto alle prove di riferimento: l’aumento di spessore può richiedere propulsori più energici, con rischio di sovra-infissione e perdita di controllo sulla deformazione. In assenza di indicazioni specifiche Tecnaria, tali soluzioni vanno considerate non coperte dal sistema standard CTF e richiedono un confronto con l’ufficio tecnico prima di essere adottate."
     },
     {
       "id": "CTF-0010-LAMIERA-CRICCATA",
@@ -266,7 +286,9 @@
         "appoggio",
         "quella",
         "automaticamente"
-      ]
+      ],
+      "question_it": "Se la lamiera grecata presenta una micro-fessura o una criccatura proprio vicino alla zona di appoggio del CTF, il connettore può essere comunque installato o quella ondina è automaticamente esclusa?",
+      "answer_it": "Una lamiera criccata in prossimità della zona di appoggio del CTF è un punto debole che può evolvere nel tempo sotto effetto delle sollecitazioni di esercizio e della fatica. La presenza di una cricca vicino al connettore riduce l’affidabilità del trasferimento di carico tra soletta e trave e può portare a distacchi locali della lamiera. In linea di principio, le ondine lesionate dovrebbero essere escluse dalla posa dei CTF e sostituite, ove possibile, con zone sane della lamiera o con adeguati rinforzi. La valutazione finale spetta comunque al progettista, che dovrà considerare la gravità del difetto e il ruolo strutturale di quella fila di connettori."
     },
     {
       "id": "CTF-0011-HEA-RINFORZATA-TUBOLARE",
@@ -291,7 +313,9 @@
         "anche",
         "zona",
         "profilo"
-      ]
+      ],
+      "question_it": "In un solaio con travi HEA, un tratto dell’ala è stato rinforzato con un profilo tubolare saldato superiormente: i CTF possono essere posati anche in quella zona o è interamente fuori campo?",
+      "answer_it": "Il rinforzo dell’ala di una trave HEA mediante un profilo tubolare saldato modifica localmente la geometria e la rigidezza della sezione, aumentando lo spessore di materiale che il chiodo deve attraversare e alterando il modo in cui la piastra del CTF appoggia. Se il dettaglio è progettato e la geometria risultante è compatibile con gli spessori e le condizioni di prova del sistema CTF, i connettori possono essere utilizzati anche sul tratto rinforzato, previa verifica con card e, se necessario, con il supporto dell’ufficio tecnico Tecnaria. In assenza di un dettaglio progettuale specifico, la zona con tubolare saldato va considerata una variante da valutare caso per caso e non può essere assimilata automaticamente a una trave HEA standard."
     },
     {
       "id": "CTF-0012-PASSO-LAMIERA-DIVERSO",
@@ -315,7 +339,9 @@
         "se l’impresa ha montato la lamiera grecata con un passo differente rispetto al progetto, spostando quindi la posizione degli appoggi sui ctf, il sistema rimane valido o l’intero schema di collaborazione va rivisto?",
         "l’impresa",
         "degli"
-      ]
+      ],
+      "question_it": "Se l’impresa ha montato la lamiera grecata con un passo differente rispetto al progetto, spostando quindi la posizione degli appoggi sui CTF, il sistema rimane valido o l’intero schema di collaborazione va rivisto?",
+      "answer_it": "Il passo della lamiera grecata condiziona la posizione delle nervature e, di conseguenza, la geometria degli appoggi dei CTF sulla trave. Se in cantiere la lamiera viene posata con un passo diverso da quello previsto in progetto, le posizioni dei connettori possono risultare traslate rispetto ai punti di massimo sforzo o agli schemi di calcolo utilizzati dal progettista. In questi casi non è corretto assumere che il solaio mantenga automaticamente le stesse prestazioni. La nuova disposizione dei CTF, determinata dal passo effettivo della lamiera, deve essere trasmessa al progettista strutturale, che valuterà se la soluzione è comunque accettabile o se sono necessari adeguamenti (variazione del numero di connettori, cambiamenti geometrici o modifiche di calcolo)."
     },
     {
       "id": "CTF-0013-HEA-IMBARCATA-INCENDIO",
@@ -339,7 +365,9 @@
         "se la trave hea presenta un leggero imbarcamento dell’ala dovuto a un precedente surriscaldamento (incendio), posso comunque posare i ctf oppure la deformazione locale compromette il fissaggio?",
         "posare",
         "locale"
-      ]
+      ],
+      "question_it": "Se la trave HEA presenta un leggero imbarcamento dell’ala dovuto a un precedente surriscaldamento (incendio), posso comunque posare i CTF oppure la deformazione locale compromette il fissaggio?",
+      "answer_it": "Un imbarcamento moderato dell’ala HEA può essere compatibile con la posa dei CTF solo se la lamiera grecata riesce ad appoggiare in modo continuo e i chiodi, sparati con P560, mostrano una deformazione regolare e ripetibile alla card. Se l’imbarcamento è tale da generare appoggi puntuali, distacchi locali della lamiera o chiodi sistematicamente inclinati, la configurazione non rientra nelle condizioni di prova del sistema; in tal caso la zona va trattata come critica e può essere necessario un intervento di raddrizzamento o l’adozione di un dettaglio alternativo definito dal progettista. In ogni caso, la decisione finale deve essere assunta da chi redige le verifiche strutturali, anche sulla base dello stato globale della trave dopo l’evento termico."
     },
     {
       "id": "CTF_SYSTEM-GLB-0001-COLPI-SCARTATI-PERCENTUALE",
@@ -365,7 +393,9 @@
         "grecata,",
         "valido",
         "aderente"
-      ]
+      ],
+      "question_it": "In un tratto di trave, durante la posa con P560 dei CTF su lamiera grecata, il 20–30% dei colpi viene scartato per sovra-infissione, lamiera non aderente o irregolarità dell’ala, e i connettori non vengono riposizionati uno a uno: è comunque possibile considerare valido il solaio mediando la collaborazione (ad esempio aumentando la densità dei CTF in altre zone) oppure l’assenza puntuale di chiodature conformi rende non utilizzabile, ai fini di calcolo, l’intero tratto interessato?",
+      "answer_it": "Il sistema CTF è progettato per lavorare con una distribuzione di connettori che rispetta numero, passo e condizioni di posa previste dal progetto e dalle istruzioni Tecnaria. Se in un tratto di trave il 20–30% dei colpi viene scartato e i connettori non vengono riposizionati singolarmente, la densità effettiva di collegamento risulta inferiore a quella di progetto e non è possibile considerare automaticamente valido il solaio “mediando” la collaborazione con maggiore densità altrove. La capacità a taglio–scorrimento è locale e dipende dalla presenza di chiodature conformi in ogni tratto; accumulare CTF in zone sane non compensa l’assenza di collegamenti efficaci dove le sollecitazioni sono elevate. In queste condizioni il tratto interessato non può essere assunto in calcolo come equivalente al progetto iniziale: occorre ripristinare i connettori mancanti (nuovi colpi conformi) o far ricalcolare la disposizione dei CTF dal progettista, tenendo conto della densità effettivamente realizzata."
     },
     {
       "id": "CTF_SYSTEM-GLB-0002-COMPENSAZIONE-DENSITA",
@@ -390,7 +420,9 @@
         "della",
         "tratto",
         "quella"
-      ]
+      ],
+      "question_it": "Se in un tratto la densità di CTF realizzata è inferiore a quella di progetto per errori di posa e colpi scartati, posso compensare aumentando il numero di connettori in un’altra zona della stessa trave e considerare comunque valida la collaborazione globale?",
+      "answer_it": "La collaborazione acciaio–calcestruzzo fornita dai CTF è funzione locale del numero di connettori efficaci presenti nei tratti maggiormente sollecitati. Una riduzione significativa della densità di CTF in una zona non può essere compensata, per principio, dall’aumento dei connettori in un tratto differente: la portanza e la rigidezza del solaio dipendono dalla distribuzione dei collegamenti lungo la trave, non solo dal numero totale di connettori. Eventuali compensazioni sono ammissibili solo se ricalcolate esplicitamente dal progettista strutturale, che deve verificare il nuovo schema di collaborazione con la densità effettiva. In assenza di una verifica specifica, la semplice “media” tra zone sovra-armate e sotto-armate non è accettabile."
     },
     {
       "id": "CTF_SYSTEM-TRV-0001-DUE-IPE-AFFIANCATI",
@@ -415,7 +447,9 @@
         "dell’ala",
         "verifica",
         "presenza"
-      ]
+      ],
+      "question_it": "In presenza di una trave composta ottenuta affiancando due profili IPE bullonati tra loro con piatti di collegamento, i CTF posati sulla lamiera in corrispondenza dell’ala superiore possono essere considerati equivalenti a quelli posati su un’unica sezione laminata, oppure questa configurazione rientra in una casistica speciale che richiede una verifica dedicata?",
+      "answer_it": "Una trave composta ottenuta affiancando due IPE con piatti e bulloni non è equivalente, in modo automatico, a un profilo laminato singolo ai fini della posa dei CTF. In corrispondenza della giunzione tra i due IPE possono essere presenti disallineamenti locali delle ali, piatti sporgenti, bulloni e discontinuità di rigidezza che modificano la deformazione dei chiodi idonei Tecnaria sparati con P560. Questa situazione non rientra nella configurazione standard considerata nelle prove sperimentali di sistema. Pertanto, i CTF posati in corrispondenza della giunzione di due IPE affiancati devono essere considerati una variante strutturale che richiede la valutazione del progettista e, se necessario, un confronto con l’ufficio tecnico Tecnaria, con dettaglio costruttivo dedicato; non possono essere assimilati automaticamente a connettori posati su un’unica trave laminata continua."
     },
     {
       "id": "CTF_SYSTEM-TRV-0002-PIATTI-LATERALI-BULLONATI",
@@ -440,7 +474,9 @@
         "presenti",
         "saldati",
         "richiede"
-      ]
+      ],
+      "question_it": "In una trave dove sono presenti piatti laterali bullonati o saldati all’anima, in prossimità dell’ala superiore, i CTF posati sulla lamiera grecata possono essere considerati pienamente efficaci oppure la presenza di piatti e bulloni richiede una valutazione specifica?",
+      "answer_it": "La presenza di piatti laterali bullonati o saldati all’anima in prossimità dell’ala superiore può alterare localmente la rigidezza e la geometria della sezione, introducendo dislivelli, spessori aggiuntivi e interferenze con l’appoggio della lamiera e dei CTF. Se i piatti e i bulloni non interferiscono con l’area di contatto lamiera–ala, non generano spessori supplementari e non condizionano la deformazione dei chiodi idonei Tecnaria, i connettori possono essere considerati assimilabili a quelli su trave semplice. Se invece la presenza di piatti e bulloni modifica l’appoggio o la traiettoria del chiodo, la configurazione deve essere trattata come variante: occorre un dettaglio costruttivo dedicato e una verifica da parte del progettista, eventualmente con il supporto dell’ufficio tecnico Tecnaria."
     },
     {
       "id": "CTF_SYSTEM-TRV-0003-TRAVI-NON-ALLINEATE",
@@ -465,7 +501,9 @@
         "rimane",
         "lamiera",
         "superiori"
-      ]
+      ],
+      "question_it": "In un cantiere con trave composta da due profili affiancati non perfettamente allineati, con ali superiori a quote leggermente diverse, la posa dei CTF sulla lamiera grecata rimane valida oppure il disallineamento locale compromette il comportamento dei connettori?",
+      "answer_it": "Una differenza di quota tra le ali superiori di profili affiancati può generare deformazioni non uniformi della lamiera grecata e della piastra dei CTF, oltre a traiettorie dei chiodi idonei Tecnaria non perpendicolari. Se la lamiera riesce a poggiare in modo continuo, i chiodi sono sostanzialmente perpendicolari e la card conferma deformazioni regolari e ripetibili, la situazione può essere valutata come accettabile dal progettista. Se invece il disallineamento provoca appoggi puntuali, torsioni locali della lamiera o chiodi inclinati in modo sistematico, il comportamento dei CTF non corrisponde alla configurazione di prova e non può essere assunto come standard: occorre correggere il disallineamento o elaborare un dettaglio alternativo verificato dall’ingegnere strutturale."
     },
     {
       "id": "CTF_SYSTEM-TRV-0004-TRAVI-IBRIDE-SALDATE",
@@ -490,7 +528,9 @@
         "se una trave è stata realizzata saldando tra loro profili diversi (ad esempio hea e ipe) per ottenere una sezione ibrida non standard, i ctf posati sulla lamiera in corrispondenza di questa sezione possono essere considerati in campo eta oppure si tratta di una configurazione fuori campo che richiede una valutazione specifica?",
         "corrispondenza",
         "diversi"
-      ]
+      ],
+      "question_it": "Se una trave è stata realizzata saldando tra loro profili diversi (ad esempio HEA e IPE) per ottenere una sezione ibrida non standard, i CTF posati sulla lamiera in corrispondenza di questa sezione possono essere considerati in campo ETA oppure si tratta di una configurazione fuori campo che richiede una valutazione specifica?",
+      "answer_it": "Le prove sperimentali e l’ETA dei CTF fanno riferimento a travi in acciaio di tipo standard (HE/IPE/UPN, ecc.) con geometrie e spessori di ala ben definiti. Una sezione ibrida ottenuta saldando profili diversi per creare una trave speciale non rientra nelle configurazioni tipiche di riferimento: le rigidezze locali, gli spessori, le tensioni residue di saldatura e la forma dell’ala possono essere significativamente differenti. Di conseguenza, la posa dei CTF su una trave ibrida saldata va considerata fuori campo ETA; l’eventuale utilizzo deve essere oggetto di una verifica progettuale ad hoc, con analisi della sezione composta e, se necessario, confronto con l’ufficio tecnico Tecnaria. In assenza di tale valutazione, i connettori su quella trave non dovrebbero essere assunti come pienamente equivalenti alle condizioni certificate."
     },
     {
       "id": "CTF_SYSTEM-CORR-0001-CORROSIONE-E-ALA-BUCATA",
@@ -515,7 +555,9 @@
         "zona",
         "buchi",
         "fortemente"
-      ]
+      ],
+      "question_it": "In un intervento di ripristino su travi fortemente corrose, se l’ala presenta cavità e buchi da corrosione in prossimità della zona di posa dei CTF, è comunque possibile utilizzare i connettori oppure la riduzione locale di sezione rende non affidabile il collegamento?",
+      "answer_it": "La presenza di cavità e buchi da corrosione sull’ala della trave indica una riduzione significativa della sezione resistente e una possibile concentrazione di tensioni in prossimità del punto di fissaggio dei CTF. In tali condizioni non è sufficiente valutare la sola deformazione dei chiodi idonei Tecnaria: occorre prima di tutto verificare l’idoneità residua della trave rispetto alle sollecitazioni globali e locali. Posare connettori su porzioni di ala gravemente degradate non è raccomandato; la zona dovrebbe essere ripristinata (ad esempio con piatti di rinforzo adeguatamente dimensionati e verificati) e solo sulle parti ripristinate, geometricamente regolari e strutturalmente idonee si potrà valutare la posa dei CTF. In assenza di ripristino progettato, i CTF su ala bucata non possono essere considerati affidabili."
     },
     {
       "id": "CTF_SYSTEM-CORR-0002-SABBIATURA-A-ISOLE",
@@ -540,7 +582,9 @@
         "fasce",
         "compromettere",
         "fini"
-      ]
+      ],
+      "question_it": "In un intervento di ripristino su travi corrose, l’impresa sabbia solo alcune fasce dell’ala dove prevede di posare i CTF, lasciando altrove vecchie verniciature e ruggine residua; le prove con card eseguite in zona sabbiata risultano perfette. Ai fini della validità globale del sistema CTF è sufficiente che ogni singolo chiodo sia posato su “isole” di acciaio pulito, oppure la presenza di estese zone non trattate può compromettere la ripetibilità del comportamento del collegamento?",
+      "answer_it": "Dal punto di vista del singolo collegamento, la posa di CTF su piccole “isole” di acciaio pulito, sabbiate e geometricamente regolari, può produrre deformazioni dei chiodi idonei Tecnaria perfettamente conformi alla card e quindi localmente accettabili. Tuttavia, la presenza di estese porzioni di ala non trattate, con ruggine e verniciature irregolari, può indicare un quadro generale di degrado non controllato e rendere poco ripetibile il comportamento globale del sistema, soprattutto se in futuro saranno necessari ulteriori interventi o se parte dei connettori dovrà essere posata fuori dalle zone sabbiate. La soluzione corretta è definire, a livello progettuale, quali zone dell’ala sono strutturalmente idonee e vanno ripristinate in modo sistematico; tutte le posizioni dei CTF dovrebbero ricadere in aree trattate in modo omogeneo. L’approccio a macchia di leopardo va usato con prudenza e sempre sotto controllo del progettista."
     },
     {
       "id": "CTF_SYSTEM-GETTO-0001-POSA-DOPO-PRIMO-GETTO-PARZIALE",
@@ -565,7 +609,9 @@
         "uniforme",
         "errore",
         "getto"
-      ]
+      ],
+      "question_it": "Se, per errore di sequenza di cantiere, alcuni CTF vengono posati con P560 su lamiera e trave dopo un primo getto parziale di calcestruzzo (con spessore non uniforme e presenza di riprese di getto attorno ai connettori), è possibile in qualche modo recuperare la situazione con un secondo getto integrativo e considerare comunque valida la collaborazione acciaio–calcestruzzo, oppure ogni posa eseguita in queste condizioni va trattata come fuori campo ETA?",
+      "answer_it": "Le procedure di posa dei CTF e di getto del calcestruzzo prevedono che i connettori vengano installati prima del getto, in modo che il calcestruzzo fresco avvolga regolarmente i connettori e la lamiera grecata, garantendo l’aderenza e la collaborazione previste nelle prove di sistema. La posa di CTF dopo un primo getto parziale, con spessore non uniforme e riprese di getto attorno ai connettori, configura una sequenza fuori campo rispetto all’ETA e alle istruzioni Tecnaria: la geometria di ancoraggio nel calcestruzzo e le condizioni di aderenza non corrispondono più a quelle certificate. Un secondo getto integrativo può migliorare la monoliticità apparente, ma non ripristina automaticamente le condizioni di prova. In assenza di una valutazione specifica del progettista, che consideri tali connettori come elementi particolari o li escluda dal modello, le posizioni posate dopo il primo getto parziale devono essere trattate come fuori campo ETA e non vanno assunte come connettori standard."
     },
     {
       "id": "CTF_SYSTEM-GETTO-0002-CALCESTRUZZO-IN-ONDINA-PRIMA-DI-SPARO",
@@ -590,7 +636,9 @@
         "se, per errore, il calcestruzzo fresco entra nelle ondine della lamiera prima della posa dei ctf e si tenta comunque di sparare con p560 attraversando lamiera e strato di calcestruzzo, i connettori così installati possono essere considerati validi oppure questa situazione è fuori campo rispetto alle condizioni di prova del sistema?",
         "validi",
         "della"
-      ]
+      ],
+      "question_it": "Se, per errore, il calcestruzzo fresco entra nelle ondine della lamiera prima della posa dei CTF e si tenta comunque di sparare con P560 attraversando lamiera e strato di calcestruzzo, i connettori così installati possono essere considerati validi oppure questa situazione è fuori campo rispetto alle condizioni di prova del sistema?",
+      "answer_it": "La presenza di calcestruzzo tra lamiera grecata e ala della trave altera radicalmente il meccanismo di fissaggio dei CTF: il chiodo idoneo Tecnaria non attraversa più solo lamiera e acciaio, ma incontra uno strato di calcestruzzo che ne modifica traiettoria, deformazione e appoggio. Questa condizione non è prevista nelle prove sperimentali di sistema ed è da considerarsi fuori campo ETA. I connettori installati sparando attraverso lamiera e calcestruzzo fresco o indurito non possono essere assunti come connettori standard CTF; di norma vanno considerati non validi ai fini del calcolo, salvo specifica e documentata verifica progettuale che ne giustifichi l’utilizzo in un modello ad hoc."
     },
     {
       "id": "CTF_SYSTEM-GETTO-0003-RIPRESE-E-RECUPERO",
@@ -615,7 +663,9 @@
         "calcestruzzo",
         "viene",
         "zona"
-      ]
+      ],
+      "question_it": "Se, per errori di programmazione, la soletta in calcestruzzo viene gettata in due fasi con un giunto di ripresa che cade in prossimità di una fila di CTF, è possibile considerare pienamente collaborante la sezione oppure la presenza di riprese di getto in zona connettori richiede una verifica specifica?",
+      "answer_it": "Le riprese di getto in prossimità di una fila di CTF possono influenzare l’aderenza e la continuità della soletta in calcestruzzo, soprattutto se il trattamento del giunto non è stato eseguito correttamente (scabrosità, pulizia, malta di raccordo). Per quanto i connettori possano risultare correttamente deformati e verificati con card, la presenza di un giunto di ripresa nella zona di passaggio degli sforzi tra acciaio e calcestruzzo richiede una valutazione specifica da parte del progettista. In generale, non è corretto assumere automaticamente che il comportamento corrisponda a quello di una soletta gettata in unica soluzione; il progettista potrà confermare la piena validità, imporre limitazioni o richiedere armature integrative in funzione del dettaglio esecutivo e delle azioni in gioco."
     },
     {
       "id": "CTF_SYSTEM-GETTO-0004-AGGIUNTA-CTF-DOPO-GETTO",
@@ -640,7 +690,9 @@
         "aggiungere",
         "aumentare",
         "della"
-      ]
+      ],
+      "question_it": "Se, dopo il completamento del getto della soletta, si decide di aggiungere ulteriori CTF sparati con P560 su lamiera e trave per aumentare la collaborazione acciaio–calcestruzzo, è possibile considerare questi connettori aggiuntivi alla stregua di quelli previsti in fase di progetto oppure tale intervento è fuori campo ETA?",
+      "answer_it": "L’aggiunta di CTF dopo il completamento del getto non rientra nella sequenza prevista dalle istruzioni Tecnaria né nelle condizioni considerate nelle prove di sistema: i connettori non risultano inglobati nel calcestruzzo fresco con il corretto sviluppo di aderenza e confinamento. Sparare chiodi idonei Tecnaria su una struttura già completata, anche se tecnicamente possibile dal punto di vista esecutivo, non produce un collegamento equivalente a quello dei CTF previsti in progetto e installati prima del getto. Tale intervento va considerato fuori campo ETA; il suo eventuale contributo deve essere valutato con un modello ad hoc dal progettista strutturale e non può essere assunto, in modo automatico, come incremento della collaborazione standard del sistema CTF."
     },
     {
       "id": "CTF-ROSSO-0001-CEDIMENTI-CICLICI",
@@ -662,7 +714,8 @@
         "ondina che cede e ritorna"
       ],
       "question_it": "Come va gestita la posa dei connettori CTF su una lamiera che ha subito un fenomeno di cedimento ciclico (buckling avanti/indietro ripetuto), con instabilità evidente dell'ondina durante il contatto con il puntale?",
-      "answer_it": "Una lamiera che manifesta cedimenti ciclici (buckling avanti-indietro) rientra nel quadro delle condizioni strutturalmente non affidabili per la posa dei CTF. In queste configurazioni l'ondina non garantisce la rigidezza minima necessaria alla lettura card né trasferisce correttamente gli sforzi di taglio. La card risulta ingannevole perché registra un contatto apparente che non rappresenta la reale resistenza della lamiera, la quale può vibrare internamente o collassare parzialmente sotto il chiodo. In tali scenari la posa è vietata: il tratto va segnato come non idoneo, la lamiera deve essere sostituita oppure riportata a condizioni geometriche e meccaniche coerenti con i limiti di deformazione ammessi (≤2 mm, torsione ≤2°/m, planarità coerente). Solo dopo il ripristino e nuova validazione la posa CTF può procedere."
+      "answer_it": "Una lamiera che manifesta cedimenti ciclici (buckling avanti-indietro) rientra nel quadro delle condizioni strutturalmente non affidabili per la posa dei CTF. In queste configurazioni l'ondina non garantisce la rigidezza minima necessaria alla lettura card né trasferisce correttamente gli sforzi di taglio. La card risulta ingannevole perché registra un contatto apparente che non rappresenta la reale resistenza della lamiera, la quale può vibrare internamente o collassare parzialmente sotto il chiodo. In tali scenari la posa è vietata: il tratto va segnato come non idoneo, la lamiera deve essere sostituita oppure riportata a condizioni geometriche e meccaniche coerenti con i limiti di deformazione ammessi (≤2 mm, torsione ≤2°/m, planarità coerente). Solo dopo il ripristino e nuova validazione la posa CTF può procedere.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0002-COLLASSO-ASIMMETRICO",
@@ -683,7 +736,8 @@
         "deformazione non uniforme"
       ],
       "question_it": "È possibile considerare valida la posa dei CTF su una lamiera in cui l'ondina presenta un collasso asimmetrico, con un lato che ha ceduto mentre l'altro mantiene geometria regolare?",
-      "answer_it": "No. Un collasso asimmetrico dell’ondina compromette sia la rigidezza locale sia la direzione di infissione del chiodo. Il chiodo entra in un sistema non simmetrico e con resistenza laterale non uniforme, generando una card potenzialmente ingannevole. In queste condizioni il tratto deve essere classificato come non idoneo: la lamiera deve essere ripristinata o sostituita. La posa CTF è ammessa solo dopo il recupero della geometria entro i limiti ammissibili stabiliti (deformazione ≤2 mm, differenza ondine ≤1 mm, rigidità ondina senza vibrazioni >1 mm durante sparo)."
+      "answer_it": "No. Un collasso asimmetrico dell’ondina compromette sia la rigidezza locale sia la direzione di infissione del chiodo. Il chiodo entra in un sistema non simmetrico e con resistenza laterale non uniforme, generando una card potenzialmente ingannevole. In queste condizioni il tratto deve essere classificato come non idoneo: la lamiera deve essere ripristinata o sostituita. La posa CTF è ammessa solo dopo il recupero della geometria entro i limiti ammissibili stabiliti (deformazione ≤2 mm, differenza ondine ≤1 mm, rigidità ondina senza vibrazioni >1 mm durante sparo).",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0003-BUCKLING-GENERALIZZATO",
@@ -703,7 +757,8 @@
         "lamiera che si muove sotto i piedi"
       ],
       "question_it": "Cosa devo fare se la lamiera mostra un buckling generalizzato su una campata intera, con ondine deformate e instabilità percepibile al calpestio prima ancora della posa dei CTF?",
-      "answer_it": "Un buckling generalizzato della lamiera su una campata intera indica una perdita di stabilità globale del supporto metallico. In queste condizioni i CTF non possono lavorare in modo affidabile perché la lamiera non offre più una base rigida per la connessione né garantisce un trasferimento regolare degli sforzi verso le travi. L'uso della card diventa poco significativo: anche se alcuni colpi sembrano buoni, la deformabilità della lamiera falserebbe il comportamento del solaio misto. Il tratto deve essere classificato come non idoneo alla posa CTF; è necessario prevedere il ripristino o la sostituzione completa della lamiera o una soluzione alternativa di consolidamento progettata dal strutturista, prima di procedere con qualsiasi connessione CTF."
+      "answer_it": "Un buckling generalizzato della lamiera su una campata intera indica una perdita di stabilità globale del supporto metallico. In queste condizioni i CTF non possono lavorare in modo affidabile perché la lamiera non offre più una base rigida per la connessione né garantisce un trasferimento regolare degli sforzi verso le travi. L'uso della card diventa poco significativo: anche se alcuni colpi sembrano buoni, la deformabilità della lamiera falserebbe il comportamento del solaio misto. Il tratto deve essere classificato come non idoneo alla posa CTF; è necessario prevedere il ripristino o la sostituzione completa della lamiera o una soluzione alternativa di consolidamento progettata dal strutturista, prima di procedere con qualsiasi connessione CTF.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0004-TORSIONE-DOPPIA-LAMIERA",
@@ -723,7 +778,8 @@
         "profilo lamiera deformato su due assi"
       ],
       "question_it": "È ammessa la posa dei CTF su una lamiera con doppia torsione (profilo attorcigliato, deformazioni su due assi) ma ancora apparentemente appoggiata alle ali delle travi?",
-      "answer_it": "Una lamiera che presenta una doppia torsione, con profilo attorcigliato e deformazioni combinate su più assi, non offre un piano di appoggio definito né un comportamento prevedibile sotto carico. Anche se a vista sembra ancora appoggiata, la rigidezza effettiva e la continuità del contatto con le travi sono compromesse. In queste condizioni la posa dei CTF non è ammessa: sia la direzione di infissione del chiodo che la lettura della card risultano aleatorie e non riconducibili ai limiti di funzionamento validati. Il tratto va considerato fuori campo; va ripristinata la geometria della lamiera o valutata una sostituzione, sotto controllo del progettista strutturale."
+      "answer_it": "Una lamiera che presenta una doppia torsione, con profilo attorcigliato e deformazioni combinate su più assi, non offre un piano di appoggio definito né un comportamento prevedibile sotto carico. Anche se a vista sembra ancora appoggiata, la rigidezza effettiva e la continuità del contatto con le travi sono compromesse. In queste condizioni la posa dei CTF non è ammessa: sia la direzione di infissione del chiodo che la lettura della card risultano aleatorie e non riconducibili ai limiti di funzionamento validati. Il tratto va considerato fuori campo; va ripristinata la geometria della lamiera o valutata una sostituzione, sotto controllo del progettista strutturale.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0005-COLLASSO-ONDINA-COMPLETO",
@@ -743,7 +799,8 @@
         "lamiera seduta sulla trave"
       ],
       "question_it": "Come gestisco un tratto in cui l'ondina della lamiera è completamente collassata, schiacciata a 'vasca' e praticamente appoggiata alla trave sottostante?",
-      "answer_it": "Un'ondina completamente collassata, che assume la forma di una 'vasca' e appoggia quasi integralmente sulla trave, ha perso la propria funzione geometrica e meccanica: non lavora più come elemento profilato ma come lamiera deformata casualmente. I CTF, in questa situazione, non possono contare su una rigidezza e uno spessore di alzata corretti per il trasferimento di taglio. La posa in corrispondenza di ondine collassate è da considerarsi fuori campo: va esclusa, il tratto deve essere marcato come non idoneo e trasmesso al progettista per una valutazione di ripristino (sostituzione lamiera, inserimento di piatti o soluzioni alternative) prima di procedere con il collegamento CTF."
+      "answer_it": "Un'ondina completamente collassata, che assume la forma di una 'vasca' e appoggia quasi integralmente sulla trave, ha perso la propria funzione geometrica e meccanica: non lavora più come elemento profilato ma come lamiera deformata casualmente. I CTF, in questa situazione, non possono contare su una rigidezza e uno spessore di alzata corretti per il trasferimento di taglio. La posa in corrispondenza di ondine collassate è da considerarsi fuori campo: va esclusa, il tratto deve essere marcato come non idoneo e trasmesso al progettista per una valutazione di ripristino (sostituzione lamiera, inserimento di piatti o soluzioni alternative) prima di procedere con il collegamento CTF.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0006-FESSURAZIONI-PASSANTI",
@@ -763,7 +820,8 @@
         "crepe visibili lamiera"
       ],
       "question_it": "Posso comunque utilizzare i CTF se in prossimità dell'appoggio sono presenti fessure o tagli passanti nella lamiera, anche se di lunghezza limitata?",
-      "answer_it": "Fessure o tagli passanti in prossimità dell'appoggio rappresentano una criticità strutturale della lamiera: riducono la sezione resistente e concentrano gli sforzi in punti non controllati. L'infissione dei CTF in un'area lesionata può aggravare il danno e portare a rotture improvvise, con perdita di collaborazione locale. In presenza di fessure passanti vicino all'ala, la posa CTF deve essere sospesa nel tratto interessato; occorre definire con il progettista strutturale un intervento di ripristino (piastre aggiuntive, sostituzione di pannelli, esclusione del tratto e ridistribuzione delle connessioni) e solo dopo un consolidamento adeguato si può riprendere la posa in sicurezza."
+      "answer_it": "Fessure o tagli passanti in prossimità dell'appoggio rappresentano una criticità strutturale della lamiera: riducono la sezione resistente e concentrano gli sforzi in punti non controllati. L'infissione dei CTF in un'area lesionata può aggravare il danno e portare a rotture improvvise, con perdita di collaborazione locale. In presenza di fessure passanti vicino all'ala, la posa CTF deve essere sospesa nel tratto interessato; occorre definire con il progettista strutturale un intervento di ripristino (piastre aggiuntive, sostituzione di pannelli, esclusione del tratto e ridistribuzione delle connessioni) e solo dopo un consolidamento adeguato si può riprendere la posa in sicurezza.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0007-FESSURAZIONI-NON-VISIBILI-SOSPETTE",
@@ -782,7 +840,8 @@
         "colpi che peggiorano rapidamente"
       ],
       "question_it": "Cosa devo fare se la card evidenzia deformazioni anomale e peggioramento rapido dei colpi, ma a vista non si osservano fessure o rotture evidenti nella lamiera?",
-      "answer_it": "Quando la card segnala un peggioramento rapido della qualità dei colpi (deformazioni incoerenti, sedute irregolari) senza che siano visibili difetti macroscopici, è prudente sospettare la presenza di fessurazioni interne o difetti non immediatamente rilevabili (corrosione interna, cricche da fatica, delaminazioni locali). In questi casi la posa CTF va interrotta sul tratto sospetto e si procede con una verifica approfondita: esame più ravvicinato, eventuale rimozione localizzata di vernici o residui, fino a coinvolgere, se necessario, metodi non distruttivi o il progettista strutturale. È preferibile classificare il tratto come \"da indagare\" piuttosto che accettare colpi formalmente misurabili ma meccanicamente non affidabili."
+      "answer_it": "Quando la card segnala un peggioramento rapido della qualità dei colpi (deformazioni incoerenti, sedute irregolari) senza che siano visibili difetti macroscopici, è prudente sospettare la presenza di fessurazioni interne o difetti non immediatamente rilevabili (corrosione interna, cricche da fatica, delaminazioni locali). In questi casi la posa CTF va interrotta sul tratto sospetto e si procede con una verifica approfondita: esame più ravvicinato, eventuale rimozione localizzata di vernici o residui, fino a coinvolgere, se necessario, metodi non distruttivi o il progettista strutturale. È preferibile classificare il tratto come \"da indagare\" piuttosto che accettare colpi formalmente misurabili ma meccanicamente non affidabili.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0008-FORI-PREGRESSI-LAMIERA",
@@ -802,7 +861,8 @@
         "colpi vicini a fori grandi"
       ],
       "question_it": "È ammesso posare i CTF in prossimità di fori preesistenti nella lamiera (ad esempio vecchi fissaggi, fori impiantistici, bucature artigianali)?",
-      "answer_it": "La presenza di fori preesistenti nella lamiera, in particolare se di diametro significativo o irregolari, altera la distribuzione degli sforzi e riduce l'area resistente attorno all'infissione del chiodo. Posare i CTF troppo vicino a un foro comporta il rischio di concentrazioni di tensione, deformazioni localizzate e possibili collassi improvvisi della lamiera. Come regola prudenziale, in assenza di indicazioni specifiche del progettista, un'area intorno ai fori di raggio pari ad almeno 3–4 volte il diametro del foro va considerata non idonea alla posa CTF. In queste zone è preferibile spostare i connettori su ondine sane o prevedere piastre/addensamenti dedicati definiti dal progettista."
+      "answer_it": "La presenza di fori preesistenti nella lamiera, in particolare se di diametro significativo o irregolari, altera la distribuzione degli sforzi e riduce l'area resistente attorno all'infissione del chiodo. Posare i CTF troppo vicino a un foro comporta il rischio di concentrazioni di tensione, deformazioni localizzate e possibili collassi improvvisi della lamiera. Come regola prudenziale, in assenza di indicazioni specifiche del progettista, un'area intorno ai fori di raggio pari ad almeno 3–4 volte il diametro del foro va considerata non idonea alla posa CTF. In queste zone è preferibile spostare i connettori su ondine sane o prevedere piastre/addensamenti dedicati definiti dal progettista.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0009-LAMIERA-ACCARTOCCIATA-RADDRIZZATA",
@@ -821,7 +881,8 @@
         "profilo recuperato artigianalmente"
       ],
       "question_it": "Posso considerare idonea la lamiera che è stata in passato accartocciata per urto (caduta di un carico) e poi raddrizzata grossolanamente a leve o mazza prima di posare i CTF?",
-      "answer_it": "Una lamiera che ha subito un accartocciamento per urto e viene raddrizzata in modo artigianale (con leve, mazza, pressioni improvvisate) perde la regolarità della sezione e può presentare incrudimenti locali, assottigliamenti e microfessure non evidenti. Anche se a vista la geometria sembra 'rientrata', la capacità resistente dell’ondina è difficilmente valutabile in modo affidabile. In queste situazioni, l'uso dei CTF va trattato con estrema prudenza: o si esclude il tratto danneggiato e si concentra la connessione su zone integre, oppure si procede con un vero ripristino progettato (sostituzione lamiera, piastre di rinforzo continue) approvato dal progettista. La semplice raddrizzatura empirica non è sufficiente per considerare il supporto idoneo.\""
+      "answer_it": "Una lamiera che ha subito un accartocciamento per urto e viene raddrizzata in modo artigianale (con leve, mazza, pressioni improvvisate) perde la regolarità della sezione e può presentare incrudimenti locali, assottigliamenti e microfessure non evidenti. Anche se a vista la geometria sembra 'rientrata', la capacità resistente dell’ondina è difficilmente valutabile in modo affidabile. In queste situazioni, l'uso dei CTF va trattato con estrema prudenza: o si esclude il tratto danneggiato e si concentra la connessione su zone integre, oppure si procede con un vero ripristino progettato (sostituzione lamiera, piastre di rinforzo continue) approvato dal progettista. La semplice raddrizzatura empirica non è sufficiente per considerare il supporto idoneo.\"",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0010-CORROSIONE-PITTING-GRAVE",
@@ -841,7 +902,8 @@
         "assottigliamento per corrosione"
       ],
       "question_it": "Come va gestita la posa CTF su una lamiera che presenta corrosione a pitting marcata, con piccoli crateri e assottigliamenti localizzati visibili?",
-      "answer_it": "La corrosione a pitting è particolarmente insidiosa perché, pur interessando superfici relativamente piccole, riduce in modo drastico lo spessore locale della lamiera e crea punti di innesco per rottura fragile. Se la zona di pitting si trova in prossimità dell’ala o nel percorso del chiodo, la posa CTF non è ammessa: il rischio è di perforazione, collasso locale o propagazione del danno sotto carico. Le aree gravemente corrose devono essere considerate fuori campo per il fissaggio; il progettista può valutare sostituzioni di pannelli, inserimento di piastre di ripartizione o altre strategie. In assenza di un ripristino adeguato, la lamiera corrosa non può essere considerata un supporto affidabile per i CTF."
+      "answer_it": "La corrosione a pitting è particolarmente insidiosa perché, pur interessando superfici relativamente piccole, riduce in modo drastico lo spessore locale della lamiera e crea punti di innesco per rottura fragile. Se la zona di pitting si trova in prossimità dell’ala o nel percorso del chiodo, la posa CTF non è ammessa: il rischio è di perforazione, collasso locale o propagazione del danno sotto carico. Le aree gravemente corrose devono essere considerate fuori campo per il fissaggio; il progettista può valutare sostituzioni di pannelli, inserimento di piastre di ripartizione o altre strategie. In assenza di un ripristino adeguato, la lamiera corrosa non può essere considerata un supporto affidabile per i CTF.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0011-SPESSORE-VARIABILE-LAMIERA",
@@ -860,7 +922,8 @@
         "materiale non omogeneo"
       ],
       "question_it": "Cosa succede se la lamiera presenta spessori significativamente variabili lungo la campata (difetto di produzione o lotti diversi accostati), e come influenza la posa CTF?",
-      "answer_it": "Una lamiera con spessore significativamente variabile lungo la lunghezza introduce disomogeneità di rigidezza e di resistenza. I CTF posati su tratti più sottili lavorano in condizioni meno favorevoli, con rischio maggiore di deformazioni eccessive o rotture locali. Se la variazione di spessore supera i limiti ammessi dal produttore della lamiera o dai calcoli del progettista, il tratto va considerato non conforme. È consigliabile delimitare le zone con spessore ridotto, ridurre la densità dei collegamenti in quelle aree o prevedere interventi di compensazione (piatti integrativi, cambi di passo, esclusione di zone critiche), sempre su indicazione del progettista strutturale. La card va interpretata con attenzione perché la deformazione può cambiare sensibilmente a parità di propulsore."
+      "answer_it": "Una lamiera con spessore significativamente variabile lungo la lunghezza introduce disomogeneità di rigidezza e di resistenza. I CTF posati su tratti più sottili lavorano in condizioni meno favorevoli, con rischio maggiore di deformazioni eccessive o rotture locali. Se la variazione di spessore supera i limiti ammessi dal produttore della lamiera o dai calcoli del progettista, il tratto va considerato non conforme. È consigliabile delimitare le zone con spessore ridotto, ridurre la densità dei collegamenti in quelle aree o prevedere interventi di compensazione (piatti integrativi, cambi di passo, esclusione di zone critiche), sempre su indicazione del progettista strutturale. La card va interpretata con attenzione perché la deformazione può cambiare sensibilmente a parità di propulsore.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0012-LAMIERA-NON-ETA-INCOMPATIBILE",
@@ -880,7 +943,8 @@
         "non so che lamiera ho"
       ],
       "question_it": "Posso utilizzare i connettori CTF su una lamiera grecata di cui non dispongo della scheda tecnica (spessore, profilo, acciaio) e che non compare tra le lamiere coperte dalla documentazione Tecnaria/ETA?",
-      "answer_it": "L’uso dei CTF è validato su specifiche tipologie di lamiere, con spessori, profili e acciai noti e documentati. Se la lamiera presente in cantiere non è riconducibile a un modello noto (assenza di scheda tecnica, profilo non identificabile, acciaio incerto) si entra immediatamente fuori dal campo di validità delle prove e delle tabelle di progetto. In queste condizioni la posa CTF non può essere considerata coperta dalla documentazione Tecnaria: è necessario risalire al produttore della lamiera, acquisire i dati mancanti e verificare con il progettista se la lamiera può essere assimilata a una tipologia già validata o se occorre un approccio progettuale dedicato. Lavorare 'a sensazione' su lamiera non caratterizzata espone a rischi strutturali e di responsabilità professionale."
+      "answer_it": "L’uso dei CTF è validato su specifiche tipologie di lamiere, con spessori, profili e acciai noti e documentati. Se la lamiera presente in cantiere non è riconducibile a un modello noto (assenza di scheda tecnica, profilo non identificabile, acciaio incerto) si entra immediatamente fuori dal campo di validità delle prove e delle tabelle di progetto. In queste condizioni la posa CTF non può essere considerata coperta dalla documentazione Tecnaria: è necessario risalire al produttore della lamiera, acquisire i dati mancanti e verificare con il progettista se la lamiera può essere assimilata a una tipologia già validata o se occorre un approccio progettuale dedicato. Lavorare 'a sensazione' su lamiera non caratterizzata espone a rischi strutturali e di responsabilità professionale.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0013-LAMIERA-RIPARATA-SALDATURA-GROSSOLANA",
@@ -899,7 +963,8 @@
         "ripristino lamiera non planare"
       ],
       "question_it": "È accettabile posare CTF su una lamiera che è stata riparata con saldature grossolane, con cordoni sporgenti in prossimità dell'ala o del punto di appoggio?",
-      "answer_it": "Saldature grossolane su lamiera, soprattutto se con cordoni sporgenti, creano irrigidimenti locali, discontinuità di spessore e potenziali punti di innesco per fessurazione. Se i cordoni sono in prossimità dell'ala o del punto di infissione dei chiodi, la card viene falsata (il chiodo può sedersi su un cordone, non sulla lamiera) e la distribuzione degli sforzi risulta alterata. In tali casi la posa CTF, senza una valutazione specifica del progettista, non è ammessa. È necessario o rimuovere i cordoni sporgenti ripristinando una superficie compatibile con i limiti geometrici ammessi, oppure considerare la zona come non idonea alla posa, introducendo soluzioni alternative di collegamento."
+      "answer_it": "Saldature grossolane su lamiera, soprattutto se con cordoni sporgenti, creano irrigidimenti locali, discontinuità di spessore e potenziali punti di innesco per fessurazione. Se i cordoni sono in prossimità dell'ala o del punto di infissione dei chiodi, la card viene falsata (il chiodo può sedersi su un cordone, non sulla lamiera) e la distribuzione degli sforzi risulta alterata. In tali casi la posa CTF, senza una valutazione specifica del progettista, non è ammessa. È necessario o rimuovere i cordoni sporgenti ripristinando una superficie compatibile con i limiti geometrici ammessi, oppure considerare la zona come non idonea alla posa, introducendo soluzioni alternative di collegamento.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0014-LAMIERA-RICOPERTA-CEMENTO-VERNICE-SPESSA",
@@ -919,7 +984,8 @@
         "card su superficie non pulita"
       ],
       "question_it": "Come gestire una lamiera ricoperta da uno strato significativo di cemento indurito o vernice spessa in corrispondenza delle ali, dove dovrei posare i CTF?",
-      "answer_it": "Strati spessi di cemento indurito, malte, vernici o primer molto corposi costituiscono uno strato interposto comprimibile o irregolare tra testa del chiodo e piastra del CTF, o tra lamiera e ala. In questi casi la card può restituire deformazioni apparentemente accettabili pur misurando in parte la compressione del contaminante, non quella dell'acciaio. La posa su superfici così contaminate è da considerarsi non valida: il tratto va pulito fino a riportare a vista la lamiera metallica e l'ala, entro gli spessori residui ammessi (vernici sottili non comprimibili). Se la pulizia non è possibile o comporta un danneggiamento ulteriore, il tratto deve essere classificato come non idoneo e gestito con una soluzione progettuale alternativa."
+      "answer_it": "Strati spessi di cemento indurito, malte, vernici o primer molto corposi costituiscono uno strato interposto comprimibile o irregolare tra testa del chiodo e piastra del CTF, o tra lamiera e ala. In questi casi la card può restituire deformazioni apparentemente accettabili pur misurando in parte la compressione del contaminante, non quella dell'acciaio. La posa su superfici così contaminate è da considerarsi non valida: il tratto va pulito fino a riportare a vista la lamiera metallica e l'ala, entro gli spessori residui ammessi (vernici sottili non comprimibili). Se la pulizia non è possibile o comporta un danneggiamento ulteriore, il tratto deve essere classificato come non idoneo e gestito con una soluzione progettuale alternativa.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0015-LAMIERA-SCOLLATA-DALLA-TRAVE",
@@ -938,7 +1004,8 @@
         "appoggio non più continuo"
       ],
       "question_it": "Se la lamiera risulta localmente scollata dall'ala della trave (vuoti visibili, movimento verticale alla pressione), è ancora possibile utilizzare i CTF in quel tratto?",
-      "answer_it": "La collaborazione CTF richiede un appoggio continuo e sufficientemente rigido della lamiera sulla trave. Se la lamiera è scollata, con vuoti percepibili o movimento verticale alla semplice pressione manuale, la connessione si basa su un supporto instabile: il chiodo può flettere la lamiera invece di ancorarsi in modo efficace, falsando la card e riducendo la capacità resistente del nodo. In queste condizioni il tratto va considerato non idoneo. Prima di posare i CTF è necessario ripristinare l'appoggio (ad esempio tramite fissaggi aggiuntivi, riposizionamento o sostituzione del pannello) o prevedere una soluzione alternativa definita dal progettista. Posare CTF su lamiera scollata rende il sistema poco prevedibile e non riconducibile alle condizioni di prova."
+      "answer_it": "La collaborazione CTF richiede un appoggio continuo e sufficientemente rigido della lamiera sulla trave. Se la lamiera è scollata, con vuoti percepibili o movimento verticale alla semplice pressione manuale, la connessione si basa su un supporto instabile: il chiodo può flettere la lamiera invece di ancorarsi in modo efficace, falsando la card e riducendo la capacità resistente del nodo. In queste condizioni il tratto va considerato non idoneo. Prima di posare i CTF è necessario ripristinare l'appoggio (ad esempio tramite fissaggi aggiuntivi, riposizionamento o sostituzione del pannello) o prevedere una soluzione alternativa definita dal progettista. Posare CTF su lamiera scollata rende il sistema poco prevedibile e non riconducibile alle condizioni di prova.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0016-LAMIERA-CON-SCHIUME-ISOLANTI",
@@ -958,7 +1025,8 @@
         "materiali espansi tra lamiera e CTF"
       ],
       "question_it": "È possibile posare i CTF su lamiere che presentano schiume isolanti o materiali espansi (poliuretano, EPS, ecc.) in prossimità dell'appoggio o della zona di deformazione card?",
-      "answer_it": "Le schiume isolanti e i materiali espansi sono altamente comprimibili e non possono essere considerati parte del pacchetto resistente acciaio–acciaio. Se tali materiali si interpongono tra lamiera, ala e piastra CTF, la card misurerà in larga parte la deformazione della schiuma, non quella dell'acciaio. La posa CTF in queste condizioni non è tecnicamente valida. È necessario rimuovere completamente i materiali comprimibili dalla zona di appoggio e da quella di contatto testa-chiodo/piastra, ripristinando il contatto metallico diretto. Se la rimozione non è possibile o compromette altri requisiti del sistema, il progettista deve valutare una stratigrafia diversa o un differente sistema di collegamento."
+      "answer_it": "Le schiume isolanti e i materiali espansi sono altamente comprimibili e non possono essere considerati parte del pacchetto resistente acciaio–acciaio. Se tali materiali si interpongono tra lamiera, ala e piastra CTF, la card misurerà in larga parte la deformazione della schiuma, non quella dell'acciaio. La posa CTF in queste condizioni non è tecnicamente valida. È necessario rimuovere completamente i materiali comprimibili dalla zona di appoggio e da quella di contatto testa-chiodo/piastra, ripristinando il contatto metallico diretto. Se la rimozione non è possibile o compromette altri requisiti del sistema, il progettista deve valutare una stratigrafia diversa o un differente sistema di collegamento.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0017-LAMIERA-CON-FORI-MULTIPLI-CASUALI",
@@ -977,7 +1045,8 @@
         "supporto frammentato"
       ],
       "question_it": "Come va gestita una lamiera con fori multipli sparsi (impianti, fissaggi dismessi, perforazioni casuali) in prossimità dell'ala e della fascia di posa dei CTF?",
-      "answer_it": "Una lamiera con fori multipli sparsi in prossimità dell’appoggio è di fatto un supporto frammentato: la continuità di sezione è compromessa, la distribuzione degli sforzi è fortemente alterata e vi sono numerosi punti di concentrazione di tensione. Posare i CTF in mezzo a una 'costellazione' di fori significa affidare la connessione a un materiale già perforato e indebolito. La zona va considerata non idonea alla posa standard dei CTF. È preferibile o arretrare/avanzare la fascia di posa verso zone integre, oppure prevedere interventi locali di ripristino (piastre metalliche continue sovrapposte, fissate strutturalmente) progettati e verificati dal calcolista. Senza un consolidamento vero, la posa in quella fascia è da escludere."
+      "answer_it": "Una lamiera con fori multipli sparsi in prossimità dell’appoggio è di fatto un supporto frammentato: la continuità di sezione è compromessa, la distribuzione degli sforzi è fortemente alterata e vi sono numerosi punti di concentrazione di tensione. Posare i CTF in mezzo a una 'costellazione' di fori significa affidare la connessione a un materiale già perforato e indebolito. La zona va considerata non idonea alla posa standard dei CTF. È preferibile o arretrare/avanzare la fascia di posa verso zone integre, oppure prevedere interventi locali di ripristino (piastre metalliche continue sovrapposte, fissate strutturalmente) progettati e verificati dal calcolista. Senza un consolidamento vero, la posa in quella fascia è da escludere.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0018-COLLASSO-ZONA-APPOGGIO-LATO-INTRADOSSO",
@@ -997,7 +1066,8 @@
         "lamiera spanciata verso il basso"
       ],
       "question_it": "Cosa succede se l'ondina è collassata principalmente lato intradosso (verso il basso), quindi poco visibile dall'alto, ma la card sembra ancora accettabile?",
-      "answer_it": "Un collasso dell’ondina lato intradosso è particolarmente pericoloso perché può passare quasi inosservato dall’alto, mentre la capacità resistente della lamiera risulta già fortemente compromessa. In queste condizioni la card, letta dalla superficie superiore, può restituire valori apparentemente accettabili pur misurando una deformazione su una sezione già danneggiata e assottigliata. Per questo motivo, quando vi è il sospetto di cedimenti lato intradosso (spanciamenti visibili dal basso, deformazioni della finitura sottostante, differenze di livello marcate), il tratto va considerato critico: la posa CTF va sospesa, la lamiera ispezionata anche dal basso e il progettista coinvolto per decidere se escludere la zona, sostituire i pannelli o adottare rinforzi dedicati."
+      "answer_it": "Un collasso dell’ondina lato intradosso è particolarmente pericoloso perché può passare quasi inosservato dall’alto, mentre la capacità resistente della lamiera risulta già fortemente compromessa. In queste condizioni la card, letta dalla superficie superiore, può restituire valori apparentemente accettabili pur misurando una deformazione su una sezione già danneggiata e assottigliata. Per questo motivo, quando vi è il sospetto di cedimenti lato intradosso (spanciamenti visibili dal basso, deformazioni della finitura sottostante, differenze di livello marcate), il tratto va considerato critico: la posa CTF va sospesa, la lamiera ispezionata anche dal basso e il progettista coinvolto per decidere se escludere la zona, sostituire i pannelli o adottare rinforzi dedicati.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0019-ONDA-PROFILO-ANOMALO",
@@ -1017,7 +1087,8 @@
         "profilo diverso dal previsto"
       ],
       "question_it": "È possibile utilizzare la card e posare CTF su tratti di lamiera in cui il profilo dell'ondina è diventato irregolare e non riconducibile al disegno originale (onde schiacciate, allargate, combinate)?",
-      "answer_it": "La corretta interpretazione della card presuppone un profilo di lamiera noto e coerente con quello utilizzato nelle prove di laboratorio e nelle tabelle di progetto. Se il profilo delle ondine è diventato irregolare, con forme miste (schiacciate, allargate, combinate), la relazione tra deformazione misurata e reale stato tensionale non è più affidabile. La posa CTF su tali tratti non può essere considerata coperta dalla documentazione di validazione. Il tratto va considerato fuori standard: o si ripristina la geometria originaria in modo controllato, oppure si valuta, con il progettista, una diversa strategia di consolidamento (piastre, collegamenti diretti alle travi, esclusione locale)."
+      "answer_it": "La corretta interpretazione della card presuppone un profilo di lamiera noto e coerente con quello utilizzato nelle prove di laboratorio e nelle tabelle di progetto. Se il profilo delle ondine è diventato irregolare, con forme miste (schiacciate, allargate, combinate), la relazione tra deformazione misurata e reale stato tensionale non è più affidabile. La posa CTF su tali tratti non può essere considerata coperta dalla documentazione di validazione. Il tratto va considerato fuori standard: o si ripristina la geometria originaria in modo controllato, oppure si valuta, con il progettista, una diversa strategia di consolidamento (piastre, collegamenti diretti alle travi, esclusione locale).",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0020-ZONA-INTERAMENTE-NON-IDONEA",
@@ -1036,7 +1107,8 @@
         "non so se la zona è recuperabile"
       ],
       "question_it": "Quando è corretto arrivare a dichiarare un'intera zona di lamiera come 'non idonea alla posa CTF', invece di cercare di recuperare singoli punti con interventi locali?",
-      "answer_it": "Si dichiara un'intera zona 'non idonea alla posa CTF' quando i difetti non sono puntuali, ma diffusi e combinati: buckling generalizzato, corrosione importante, fori multipli, profilo ondina irriconoscibile, riparazioni grossolane, perdita di appoggio continuo sulla trave. In questi casi il tentativo di 'salvare' singoli punti è fuorviante: il supporto metallico nel suo complesso non risponde più in maniera coerente ai presupposti del sistema CTF. La scelta corretta è delimitare l'area critica, escluderla dalla posa standard dei connettori e coinvolgere il progettista strutturale per definire un intervento di ripristino globale (sostituzione lamiera, piastre continue, rinforzi locali estesi) prima di riprendere la connessione. La card, in queste zone, deve essere considerata non rappresentativa."
+      "answer_it": "Si dichiara un'intera zona 'non idonea alla posa CTF' quando i difetti non sono puntuali, ma diffusi e combinati: buckling generalizzato, corrosione importante, fori multipli, profilo ondina irriconoscibile, riparazioni grossolane, perdita di appoggio continuo sulla trave. In questi casi il tentativo di 'salvare' singoli punti è fuorviante: il supporto metallico nel suo complesso non risponde più in maniera coerente ai presupposti del sistema CTF. La scelta corretta è delimitare l'area critica, escluderla dalla posa standard dei connettori e coinvolgere il progettista strutturale per definire un intervento di ripristino globale (sostituzione lamiera, piastre continue, rinforzi locali estesi) prima di riprendere la connessione. La card, in queste zone, deve essere considerata non rappresentativa.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0021-CARD-TUTTE-SOSPETTE",
@@ -1056,7 +1128,8 @@
         "card che non tornano mai"
       ],
       "question_it": "Come mi devo comportare se, su una campata, tutte le card risultano sospette (deformazioni incoerenti, differenze eccessive tra colpi, mancanza di ripetibilità), pur non vedendo un difetto macroscopico evidente sulla lamiera?",
-      "answer_it": "Se tutte le card di una campata risultano incoerenti o non ripetibili, il problema non è del singolo colpo ma del sistema: supporto lamiera, condizioni di appoggio, macchina, propulsori o una combinazione di questi fattori. In queste situazioni la posa CTF va sospesa sull'intera campata, non solo su un singolo punto. È necessario: 1) verificare l’attrezzatura (P560, puntale, chiodi, propulsori), 2) controllare lo stato della lamiera anche dal basso, 3) verificare appoggi e vincoli delle travi. Se, anche dopo i controlli, le card restano sospette, la campata va classificata come critica e sottoposta al progettista per una valutazione mirata. Proseguire la posa ignorando il segnale delle card significa rinunciare a un controllo di qualità fondamentale del sistema."
+      "answer_it": "Se tutte le card di una campata risultano incoerenti o non ripetibili, il problema non è del singolo colpo ma del sistema: supporto lamiera, condizioni di appoggio, macchina, propulsori o una combinazione di questi fattori. In queste situazioni la posa CTF va sospesa sull'intera campata, non solo su un singolo punto. È necessario: 1) verificare l’attrezzatura (P560, puntale, chiodi, propulsori), 2) controllare lo stato della lamiera anche dal basso, 3) verificare appoggi e vincoli delle travi. Se, anche dopo i controlli, le card restano sospette, la campata va classificata come critica e sottoposta al progettista per una valutazione mirata. Proseguire la posa ignorando il segnale delle card significa rinunciare a un controllo di qualità fondamentale del sistema.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0022-INCOMPATIBILITA-ASSOLUTA-LAMIERA-CTF",
@@ -1076,7 +1149,8 @@
         "non posso usare CTF qui"
       ],
       "question_it": "In quali casi si può parlare di 'incompatibilità assoluta lamiera–CTF', tale da imporre lo stop definitivo della posa con questo sistema su una determinata zona o su tutto il solaio?",
-      "answer_it": "Si parla di incompatibilità assoluta lamiera–CTF quando la combinazione di fattori esce completamente dal campo di validità del sistema: lamiera di tipo non riconducibile alle tipologie previste, spessori fuori range, profilo indecifrabile o pesantemente deformato, corrosione importante, appoggi non continui, presenza di materiali interposti non eliminabili, danni strutturali estesi (buckling, fessure, delaminazioni). In questi casi non è possibile 'aggiustare' il problema con correzioni locali: l'intero presupposto di funzionamento del solaio collaborante con CTF viene meno. La decisione corretta è fermare la posa dei CTF, dichiarare la lamiera incompatibile e affidare al progettista la definizione di una nuova strategia di consolidamento (sostituzione lamiera, calpestio collaborante differente, connettori alternativi, ecc.)."
+      "answer_it": "Si parla di incompatibilità assoluta lamiera–CTF quando la combinazione di fattori esce completamente dal campo di validità del sistema: lamiera di tipo non riconducibile alle tipologie previste, spessori fuori range, profilo indecifrabile o pesantemente deformato, corrosione importante, appoggi non continui, presenza di materiali interposti non eliminabili, danni strutturali estesi (buckling, fessure, delaminazioni). In questi casi non è possibile 'aggiustare' il problema con correzioni locali: l'intero presupposto di funzionamento del solaio collaborante con CTF viene meno. La decisione corretta è fermare la posa dei CTF, dichiarare la lamiera incompatibile e affidare al progettista la definizione di una nuova strategia di consolidamento (sostituzione lamiera, calpestio collaborante differente, connettori alternativi, ecc.).",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0023-PROTOCOLLO-VALUTAZIONE-LAMIERA-DANNEGGIATA",
@@ -1095,7 +1169,8 @@
         "check-list lamiera prima di CTF"
       ],
       "question_it": "Esiste una procedura pratica per valutare se una lamiera danneggiata può essere ancora utilizzata con CTF, oppure va esclusa o sostituita prima di procedere con il consolidamento?",
-      "answer_it": "La valutazione della lamiera prima della posa CTF può seguire una semplice ma rigorosa check-list:\n1) VERIFICA VISIVA: cercare buckling, profili ondina deformati, ondine collassate, fessure, fori multipli, corrosione marcata, riparazioni grossolane.\n2) VERIFICA DI APPOGGIO: controllare che la lamiera sia in appoggio continuo sull'ala (assenza di vuoti significativi, assenza di lamiera 'scollata').\n3) VERIFICA DI SPESSORE E PROFILO: confrontare con documentazione del produttore; se la lamiera non è identificabile, coinvolgere progettista.\n4) PROVE CARD PRELIMINARI: eseguire alcuni colpi test in zone rappresentative e verificarne la ripetibilità.\nSe uno o più di questi punti falliscono in modo grave (buckling diffuso, fessure, corrosione forte, perdita di appoggio, card non ripetibili), la lamiera va dichiarata non idonea e si devono valutare interventi di ripristino o sostituzione prima di procedere con la posa CTF."
+      "answer_it": "La valutazione della lamiera prima della posa CTF può seguire una semplice ma rigorosa check-list:\n1) VERIFICA VISIVA: cercare buckling, profili ondina deformati, ondine collassate, fessure, fori multipli, corrosione marcata, riparazioni grossolane.\n2) VERIFICA DI APPOGGIO: controllare che la lamiera sia in appoggio continuo sull'ala (assenza di vuoti significativi, assenza di lamiera 'scollata').\n3) VERIFICA DI SPESSORE E PROFILO: confrontare con documentazione del produttore; se la lamiera non è identificabile, coinvolgere progettista.\n4) PROVE CARD PRELIMINARI: eseguire alcuni colpi test in zone rappresentative e verificarne la ripetibilità.\nSe uno o più di questi punti falliscono in modo grave (buckling diffuso, fessure, corrosione forte, perdita di appoggio, card non ripetibili), la lamiera va dichiarata non idonea e si devono valutare interventi di ripristino o sostituzione prima di procedere con la posa CTF.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0024-CRITERI-SOSTITUZIONE-LAMIERA",
@@ -1114,7 +1189,8 @@
         "sostituzione pannelli lamiera"
       ],
       "question_it": "Quali sono i criteri pratici che portano a decidere la sostituzione completa di uno o più pannelli di lamiera prima di posare i CTF?",
-      "answer_it": "La sostituzione di uno o più pannelli di lamiera diventa la scelta più razionale quando: 1) i difetti sono diffusi (buckling generalizzato, corrosione estesa, fori multipli), 2) il profilo originale è perso su tratti significativi, 3) l’appoggio sulle travi non è più continuo, 4) le card risultano sistematicamente sospette e non ripetibili nonostante la verifica dell’attrezzatura. Interventi locali a 'patch' su lamiera molto danneggiata rischiano di creare un mosaico difficile da controllare nel tempo. In questi casi il progettista può concludere che la sostituzione parziale o totale dei pannelli è più sicura, più leggibile strutturalmente e più coerente con la logica del sistema CTF."
+      "answer_it": "La sostituzione di uno o più pannelli di lamiera diventa la scelta più razionale quando: 1) i difetti sono diffusi (buckling generalizzato, corrosione estesa, fori multipli), 2) il profilo originale è perso su tratti significativi, 3) l’appoggio sulle travi non è più continuo, 4) le card risultano sistematicamente sospette e non ripetibili nonostante la verifica dell’attrezzatura. Interventi locali a 'patch' su lamiera molto danneggiata rischiano di creare un mosaico difficile da controllare nel tempo. In questi casi il progettista può concludere che la sostituzione parziale o totale dei pannelli è più sicura, più leggibile strutturalmente e più coerente con la logica del sistema CTF.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0025-CARD-INGANNEVOLE-MEMORIA-ELASTICA",
@@ -1133,7 +1209,8 @@
         "colpo che non resta seduto"
       ],
       "question_it": "Cosa significa quando la card sembra buona, ma si osserva che l'ondina ha un forte 'effetto memoria' e tende a tornare su dopo il colpo, facendo pensare che parte della deformazione sia temporanea?",
-      "answer_it": "Se l’ondina mostra un marcato effetto memoria, tornando parzialmente alla posizione iniziale dopo il colpo, significa che una quota significativa della deformazione osservata è elastica e non plastica. La card, che fotografa la situazione subito dopo il colpo, può risultare formalmente accettabile, ma la reale 'seduta' del chiodo e la capacità di ripartire gli sforzi nel tempo sono inferiori a quanto atteso. In queste condizioni è consigliabile ridurre il peso attribuito alla singola card e concentrarsi sulla ripetibilità dei colpi e sulla rigidezza globale del tratto. Se il comportamento elastico è molto marcato e generalizzato, il progettista va coinvolto: potrebbe essere necessario aumentare la densità dei collegamenti, modificare il passo o valutare la compatibilità della lamiera con il sistema CTF."
+      "answer_it": "Se l’ondina mostra un marcato effetto memoria, tornando parzialmente alla posizione iniziale dopo il colpo, significa che una quota significativa della deformazione osservata è elastica e non plastica. La card, che fotografa la situazione subito dopo il colpo, può risultare formalmente accettabile, ma la reale 'seduta' del chiodo e la capacità di ripartire gli sforzi nel tempo sono inferiori a quanto atteso. In queste condizioni è consigliabile ridurre il peso attribuito alla singola card e concentrarsi sulla ripetibilità dei colpi e sulla rigidezza globale del tratto. Se il comportamento elastico è molto marcato e generalizzato, il progettista va coinvolto: potrebbe essere necessario aumentare la densità dei collegamenti, modificare il passo o valutare la compatibilità della lamiera con il sistema CTF.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0026-CARD-INGANNEVOLE-CONTAMINANTI-COMPRESSIBILI",
@@ -1153,7 +1230,8 @@
         "risultati card troppo variabili"
       ],
       "question_it": "Perché la card è considerata ingannevole quando tra testa del chiodo, piastra del CTF e lamiera sono presenti strati comprimibili come malta, vernice spessa o residui solidi?",
-      "answer_it": "La card misura una distanza geometrica basata sulla deformazione di elementi metallici rigidi. Se tra testa del chiodo, piastra CTF e lamiera si inseriscono strati comprimibili (malta, vernici spesse, residui solidi non metallici), parte della deformazione misurata è dovuta allo schiacciamento di questi materiali, non alla plastificazione controllata del metallo. Il risultato è una card che può sembrare 'buona' dal punto di vista numerico, ma che non corrisponde a un reale contatto acciaio–acciaio e a una corretta trasferibilità degli sforzi. Per questo la superficie di posa deve essere pulita, entro i limiti di spessore ammessi; in caso contrario la card va considerata non affidabile e i colpi eseguiti su superfici contaminate devono essere scartati."
+      "answer_it": "La card misura una distanza geometrica basata sulla deformazione di elementi metallici rigidi. Se tra testa del chiodo, piastra CTF e lamiera si inseriscono strati comprimibili (malta, vernici spesse, residui solidi non metallici), parte della deformazione misurata è dovuta allo schiacciamento di questi materiali, non alla plastificazione controllata del metallo. Il risultato è una card che può sembrare 'buona' dal punto di vista numerico, ma che non corrisponde a un reale contatto acciaio–acciaio e a una corretta trasferibilità degli sforzi. Per questo la superficie di posa deve essere pulita, entro i limiti di spessore ammessi; in caso contrario la card va considerata non affidabile e i colpi eseguiti su superfici contaminate devono essere scartati.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0027-CARD-INGANNEVOLE-ONDINA-MOBILE",
@@ -1172,7 +1250,8 @@
         "rigidità insufficiente della lamiera"
       ],
       "question_it": "Come interpretare le card quando l'ondina si muove sensibilmente durante l'infissione (vibra, si abbassa e poi risale), rendendo difficile capire se il contatto è stabile?",
-      "answer_it": "Se l’ondina si muove sensibilmente durante il colpo (abbassandosi e risalendo, o vibrando in modo evidente), la misura della card diventa poco rappresentativa della vera deformazione plastica del sistema. Una parte dell'energia del colpo viene spesa per mettere in vibrazione la lamiera, non per sedere il chiodo. In questa situazione il primo passo è verificare che la lamiera sia correttamente vincolata e in appoggio sulle travi; se l'appoggio è insufficiente o discontinuo, il tratto va considerato non idoneo. Se invece l'appoggio è corretto ma la lamiera è localmente troppo flessibile, il progettista può decidere di addensare i collegamenti, modificare il passo o valutare soluzioni integrative. In ogni caso, una card associata a un comportamento dinamico marcato non può essere interpretata come una misura 'pulita'."
+      "answer_it": "Se l’ondina si muove sensibilmente durante il colpo (abbassandosi e risalendo, o vibrando in modo evidente), la misura della card diventa poco rappresentativa della vera deformazione plastica del sistema. Una parte dell'energia del colpo viene spesa per mettere in vibrazione la lamiera, non per sedere il chiodo. In questa situazione il primo passo è verificare che la lamiera sia correttamente vincolata e in appoggio sulle travi; se l'appoggio è insufficiente o discontinuo, il tratto va considerato non idoneo. Se invece l'appoggio è corretto ma la lamiera è localmente troppo flessibile, il progettista può decidere di addensare i collegamenti, modificare il passo o valutare soluzioni integrative. In ogni caso, una card associata a un comportamento dinamico marcato non può essere interpretata come una misura 'pulita'.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0028-ONDINA-COLLASSATA-A-VASCA",
@@ -1191,7 +1270,8 @@
         "deformazione a catino"
       ],
       "question_it": "Come va gestito un singolo punto in cui l'ondina è collassata localmente a 'vasca', magari per un vecchio carico concentrato (cavalletto, piede di ponteggio), mentre il resto della lamiera sembra regolare?",
-      "answer_it": "Un'ondina collassata localmente a 'vasca' è un punto in cui la lamiera ha già esaurito parte della propria capacità resistente e ha cambiato in modo significativo la propria geometria. Anche se il resto della lamiera è regolare, quel punto va considerato critico e non idoneo alla posa diretta del CTF. In pratica: non si deve posare un connettore in corrispondenza della vasca; il punto va saltato, spostando il CTF su ondine sane adiacenti, oppure, se il danno è in zona strategica, si valuta con il progettista un rinforzo locale (piastre, elementi di ripartizione) che riporti la sezione a condizioni simili a quelle di progetto. La card eseguita su una vasca non è affidabile e il colpo va scartato."
+      "answer_it": "Un'ondina collassata localmente a 'vasca' è un punto in cui la lamiera ha già esaurito parte della propria capacità resistente e ha cambiato in modo significativo la propria geometria. Anche se il resto della lamiera è regolare, quel punto va considerato critico e non idoneo alla posa diretta del CTF. In pratica: non si deve posare un connettore in corrispondenza della vasca; il punto va saltato, spostando il CTF su ondine sane adiacenti, oppure, se il danno è in zona strategica, si valuta con il progettista un rinforzo locale (piastre, elementi di ripartizione) che riporti la sezione a condizioni simili a quelle di progetto. La card eseguita su una vasca non è affidabile e il colpo va scartato.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0029-LAMIERA-COLPITA-DA-PESI-GRAVI-PREGRESSI",
@@ -1210,7 +1290,8 @@
         "lamiera segnata da attrezzature pesanti"
       ],
       "question_it": "Un solaio in lamiera ha evidenti segni di vecchi carichi concentrati (piedi di macchinari, cavalletti, materiale stoccato) che hanno lasciato impronte e avvallamenti. Posso comunque considerare la lamiera idonea alla posa dei CTF?",
-      "answer_it": "La presenza di impronte e avvallamenti dovuti a vecchi carichi concentrati segnala che la lamiera è già stata portata vicino ai propri limiti locali di resistenza in quei punti. Se le deformazioni sono contenute (pochi millimetri, profilo ancora leggibile, nessuna fessura), la zona può essere valutata come borderline ma recuperabile, con spostamento mirato dei connettori su ondine meno coinvolte. Se invece gli avvallamenti sono profondi, il profilo è molto alterato o vi sono segni di fessurazione, la zona va classificata come critica: meglio escluderla dalla posa standard, spostare i CTF e, se l'area è estesa o in posizione chiave, coinvolgere il progettista per un'eventuale integrazione strutturale. La card, in presenza di deformazioni pregresse marcate, deve essere interpretata con molta cautela."
+      "answer_it": "La presenza di impronte e avvallamenti dovuti a vecchi carichi concentrati segnala che la lamiera è già stata portata vicino ai propri limiti locali di resistenza in quei punti. Se le deformazioni sono contenute (pochi millimetri, profilo ancora leggibile, nessuna fessura), la zona può essere valutata come borderline ma recuperabile, con spostamento mirato dei connettori su ondine meno coinvolte. Se invece gli avvallamenti sono profondi, il profilo è molto alterato o vi sono segni di fessurazione, la zona va classificata come critica: meglio escluderla dalla posa standard, spostare i CTF e, se l'area è estesa o in posizione chiave, coinvolgere il progettista per un'eventuale integrazione strutturale. La card, in presenza di deformazioni pregresse marcate, deve essere interpretata con molta cautela.",
+      "lang": "it"
     },
     {
       "id": "CTF-ROSSO-0030-TRATTO-STRUCTURALMENTE-NON-CONSOLIDABILE-CON-CTF",
@@ -1229,7 +1310,8 @@
         "CTF non applicabili in una zona"
       ],
       "question_it": "Esistono casi in cui una zona di solaio con lamiera molto danneggiata deve essere dichiarata 'non consolidabile con CTF', rendendo necessario cambiare completamente tecnologia di intervento?",
-      "answer_it": "Sì. Il sistema CTF si basa su presupposti chiari: lamiera di caratteristiche note, profilo leggibile, appoggio continuo sulle travi, assenza di danni estesi gravi. Quando questi presupposti vengono meno in modo radicale – lamiera di tipo sconosciuto o estremamente danneggiata, buckling diffuso, corrosione pesante, riparazioni improprie, mancanza di appoggio continuo – la zona diventa di fatto non consolidabile con questo schema. In tali casi, insistere nel tentativo di 'far funzionare' i CTF significa forzare il sistema fuori dal proprio campo di validità. La scelta corretta è dichiarare esplicitamente che il tratto è fuori campo per CTF e valutare, insieme al progettista, un diverso tipo di intervento (ad esempio nuova soletta con connettori su travi esistenti, piastre saldate, profilati aggiuntivi, ecc.). Questo approccio mantiene chiaro il perimetro di responsabilità e preserva l'affidabilità tecnica dell'intervento."
+      "answer_it": "Sì. Il sistema CTF si basa su presupposti chiari: lamiera di caratteristiche note, profilo leggibile, appoggio continuo sulle travi, assenza di danni estesi gravi. Quando questi presupposti vengono meno in modo radicale – lamiera di tipo sconosciuto o estremamente danneggiata, buckling diffuso, corrosione pesante, riparazioni improprie, mancanza di appoggio continuo – la zona diventa di fatto non consolidabile con questo schema. In tali casi, insistere nel tentativo di 'far funzionare' i CTF significa forzare il sistema fuori dal proprio campo di validità. La scelta corretta è dichiarare esplicitamente che il tratto è fuori campo per CTF e valutare, insieme al progettista, un diverso tipo di intervento (ad esempio nuova soletta con connettori su travi esistenti, piastre saldate, profilati aggiuntivi, ecc.). Questo approccio mantiene chiaro il perimetro di responsabilità e preserva l'affidabilità tecnica dell'intervento.",
+      "lang": "it"
     },
     {
       "id": "CTF-0001",
@@ -2618,7 +2700,8 @@
         "controllo deformazioni solaio ctf"
       ],
       "question_it": "Come posso verificare a posteriori che un solaio misto con connettori CTF stia realmente lavorando in collaborazione?",
-      "answer_it": "La verifica della collaborazione post-opera non si basa sui singoli connettori ma sul comportamento globale del solaio. I controlli più affidabili sono: (1) una prova di carico calibrata, confrontando le deformazioni misurate con quelle teoriche previste dal modello collaborante; (2) rilevazione delle frecce in esercizio su campate significative, verificando che risultino coerenti con la rigidezza del sistema misto; (3) ispezione localizzata delle zone critiche per verificare continuità, assenza di distacchi e stato della lamiera; (4) monitoraggio vibrazionale prima/dopo il carico per valutare variazioni di rigidezza dinamica. Se le deformazioni risultano inferiori o coerenti con il modello collaborante, il solaio può considerarsi funzionante come previsto."
+      "answer_it": "La verifica della collaborazione post-opera non si basa sui singoli connettori ma sul comportamento globale del solaio. I controlli più affidabili sono: (1) una prova di carico calibrata, confrontando le deformazioni misurate con quelle teoriche previste dal modello collaborante; (2) rilevazione delle frecce in esercizio su campate significative, verificando che risultino coerenti con la rigidezza del sistema misto; (3) ispezione localizzata delle zone critiche per verificare continuità, assenza di distacchi e stato della lamiera; (4) monitoraggio vibrazionale prima/dopo il carico per valutare variazioni di rigidezza dinamica. Se le deformazioni risultano inferiori o coerenti con il modello collaborante, il solaio può considerarsi funzionante come previsto.",
+      "lang": "it"
     },
     {
       "id": "CTF-0052-RIUTILIZZO-ZONA-BUCATA",
@@ -2638,7 +2721,8 @@
         "sparare vicino a colpi esistenti"
       ],
       "question_it": "Se la lamiera presenta fori o segni di vecchi colpi di sparo, posso riutilizzare la stessa zona per posare un nuovo CTF?",
-      "answer_it": "No. Una lamiera già forata o segnata da colpi precedenti perde rigidezza locale e non garantisce più la resistenza laterale necessaria alla deformazione corretta del chiodo Tecnaria. Le letture card diventano poco affidabili e la posa è da considerarsi fuori campo. Il nuovo colpo deve essere eseguito su lamiera integra e con profilo non compromesso."
+      "answer_it": "No. Una lamiera già forata o segnata da colpi precedenti perde rigidezza locale e non garantisce più la resistenza laterale necessaria alla deformazione corretta del chiodo Tecnaria. Le letture card diventano poco affidabili e la posa è da considerarsi fuori campo. Il nuovo colpo deve essere eseguito su lamiera integra e con profilo non compromesso.",
+      "lang": "it"
     },
     {
       "id": "CTF-0053-ONDINA-SPOSTAMENTO-LATERALE",
@@ -2656,7 +2740,8 @@
         "movimento laterale ondina"
       ],
       "question_it": "Durante lo sparo l’ondina si sposta lateralmente sotto il puntale: è un fissaggio valido?",
-      "answer_it": "No. Lo spostamento laterale dell’ondina indica una perdita di appoggio o una torsione locale della lamiera. In queste condizioni la card registra un valore ingannevole e il fissaggio non è affidabile. La zona va considerata non idonea e la posa deve essere spostata su ondina stabile."
+      "answer_it": "No. Lo spostamento laterale dell’ondina indica una perdita di appoggio o una torsione locale della lamiera. In queste condizioni la card registra un valore ingannevole e il fissaggio non è affidabile. La zona va considerata non idonea e la posa deve essere spostata su ondina stabile.",
+      "lang": "it"
     },
     {
       "id": "CTF-0054-POSA-BORDO-LAMIERA",
@@ -2674,7 +2759,8 @@
         "fissaggio bordo lamiera"
       ],
       "question_it": "È possibile posare i CTF sulla prima ondina vicino al bordo della lamiera grecata?",
-      "answer_it": "In generale è sconsigliato. La prima ondina vicino al bordo ha rigidezza ridotta e può deformarsi in modo anomalo durante lo sparo. Questo porta a card non rappresentative o a collassi locali. La posa deve avvenire su ondine centrali o comunque su zone con appoggio pieno."
+      "answer_it": "In generale è sconsigliato. La prima ondina vicino al bordo ha rigidezza ridotta e può deformarsi in modo anomalo durante lo sparo. Questo porta a card non rappresentative o a collassi locali. La posa deve avvenire su ondine centrali o comunque su zone con appoggio pieno.",
+      "lang": "it"
     },
     {
       "id": "P560-0055-TESTA-RIGATA",
@@ -2692,7 +2778,8 @@
         "chiodo testa segnata"
       ],
       "question_it": "Se la testa del chiodo Tecnaria presenta rigature superficiali, il colpo è considerabile valido?",
-      "answer_it": "Leggere rigature superficiali non costituiscono automaticamente un colpo non valido se la deformazione finale rispetta la finestra card e risulta ripetibile su più punti. Tuttavia, rigature profonde o difetti evidenti possono alterare la plastificazione del chiodo. In caso di dubbio il colpo va scartato."
+      "answer_it": "Leggere rigature superficiali non costituiscono automaticamente un colpo non valido se la deformazione finale rispetta la finestra card e risulta ripetibile su più punti. Tuttavia, rigature profonde o difetti evidenti possono alterare la plastificazione del chiodo. In caso di dubbio il colpo va scartato.",
+      "lang": "it"
     },
     {
       "id": "P560-0056-DEFORMAZIONE-TROPPO-PICCOLA",
@@ -2710,7 +2797,8 @@
         "colpo troppo forte"
       ],
       "question_it": "Cosa significa se la deformazione del chiodo risulta troppo piccola rispetto alla finestra card?",
-      "answer_it": "Una deformazione troppo piccola indica sovra-infissione: il chiodo ha subito un’energia eccessiva, spesso dovuta a propulsore troppo potente, superficie non omogenea o pressatura non corretta. Il colpo non è valido e va ripetuto con propulsore adeguato."
+      "answer_it": "Una deformazione troppo piccola indica sovra-infissione: il chiodo ha subito un’energia eccessiva, spesso dovuta a propulsore troppo potente, superficie non omogenea o pressatura non corretta. Il colpo non è valido e va ripetuto con propulsore adeguato.",
+      "lang": "it"
     },
     {
       "id": "P560-0057-CHIODO-SBASELLATO",
@@ -2727,7 +2815,8 @@
         "difetto chiodo"
       ],
       "question_it": "Se il chiodo presenta sbavature o piccoli difetti sulla punta prima della posa, posso usarlo lo stesso?",
-      "answer_it": "No. Un chiodo con punta danneggiata non garantisce una deformazione controllata e può generare letture card incoerenti. Come da specifiche Tecnaria, si devono usare solo chiodi idonei privi di difetti visibili."
+      "answer_it": "No. Un chiodo con punta danneggiata non garantisce una deformazione controllata e può generare letture card incoerenti. Come da specifiche Tecnaria, si devono usare solo chiodi idonei privi di difetti visibili.",
+      "lang": "it"
     },
     {
       "id": "CTF-0058-ORIENTAMENTO-CONNETTORE",
@@ -2745,7 +2834,8 @@
         "direzione errata connettore"
       ],
       "question_it": "Cosa comporta un errato orientamento del connettore CTF rispetto alla trave?",
-      "answer_it": "L’orientamento errato compromette la capacità del connettore di trasferire correttamente gli sforzi di taglio-scorrimento. Il CTF deve essere sempre orientato secondo le indicazioni Tecnaria: eventuali rotazioni o inversioni portano a riduzione di portanza e possibile non conformità."
+      "answer_it": "L’orientamento errato compromette la capacità del connettore di trasferire correttamente gli sforzi di taglio-scorrimento. Il CTF deve essere sempre orientato secondo le indicazioni Tecnaria: eventuali rotazioni o inversioni portano a riduzione di portanza e possibile non conformità.",
+      "lang": "it"
     },
     {
       "id": "CTF-0059-UMIDITA-EFFETTO-CARD",
@@ -2763,7 +2853,8 @@
         "ambiente umido ctf"
       ],
       "question_it": "L’umidità del cantiere può influenzare la lettura della card nei sistemi CTF?",
-      "answer_it": "L’umidità non altera direttamente la plastificazione del chiodo, ma può influenzare condizioni superficiali come presenza di condensa, vernice più morbida o calamina bagnata. In queste condizioni la card può risultare meno leggibile e la superficie meno reattiva al colpo. È consigliabile asciugare localmente la zona prima della posa."
+      "answer_it": "L’umidità non altera direttamente la plastificazione del chiodo, ma può influenzare condizioni superficiali come presenza di condensa, vernice più morbida o calamina bagnata. In queste condizioni la card può risultare meno leggibile e la superficie meno reattiva al colpo. È consigliabile asciugare localmente la zona prima della posa.",
+      "lang": "it"
     },
     {
       "id": "CTF-0060-DIAGNOSI-P560-VS-LAMIERA",
@@ -2782,7 +2873,8 @@
         "diagnosi differenziale colpo"
       ],
       "question_it": "Come si distingue un problema della P560 da un problema della lamiera quando il colpo risulta anomalo?",
-      "answer_it": "Se l’anomalia è sistematica e si ripete su tutta la campata, il problema è tipicamente della P560 (propulsori, puntale, pressatura o usura). Se invece l’anomalia compare solo in zone specifiche della lamiera, il problema è locale (buckling, depressioni, torsione, vernice spessa). La card fornisce un’indicazione: incoerenze ripetute = macchina; incoerenze localizzate = lamiera."
+      "answer_it": "Se l’anomalia è sistematica e si ripete su tutta la campata, il problema è tipicamente della P560 (propulsori, puntale, pressatura o usura). Se invece l’anomalia compare solo in zone specifiche della lamiera, il problema è locale (buckling, depressioni, torsione, vernice spessa). La card fornisce un’indicazione: incoerenze ripetute = macchina; incoerenze localizzate = lamiera.",
+      "lang": "it"
     }
   ]
 }
