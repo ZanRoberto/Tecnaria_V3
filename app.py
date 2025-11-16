@@ -2,7 +2,7 @@ import os
 import json
 import re
 import unicodedata
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +10,11 @@ from pydantic import BaseModel
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+
+# OpenAI: secondo cervello per la scelta semantica
+from openai import OpenAI
+
+client = OpenAI()
 
 # ============================================================
 #  PATH / FILE
@@ -32,7 +37,7 @@ FALLBACK_MESSAGE = (
 #  FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="4.0.0")
+app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="5.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -98,7 +103,7 @@ class BrainState:
 S = BrainState()
 
 # ============================================================
-#  LOAD KB (NUOVA VERSIONE → LEGGE SIA IT CHE LEGACY)
+#  LOAD KB (LEGGE SIA SCHEMA GOLD CHE LEGACY)
 # ============================================================
 
 def load_kb() -> None:
@@ -126,7 +131,6 @@ def load_kb() -> None:
         S.blocks.append(blk)
         tokens: Set[str] = set()
 
-        # Funzione per aggiungere token
         def add_tokens(val: Any):
             if isinstance(val, str):
                 for t in tokenize_norm(val):
@@ -139,10 +143,9 @@ def load_kb() -> None:
                             if t:
                                 tokens.add(t)
 
-        # ⚠️ LEGGE ENTRAMBI GLI SCHEMI
+        # Schema GOLD + legacy
         add_tokens(blk.get("question_it"))
         add_tokens(blk.get("question"))
-
         add_tokens(blk.get("triggers", []))
         add_tokens(blk.get("tags", []))
 
@@ -157,15 +160,17 @@ def load_kb() -> None:
     print(f"[BOOT] Caricati {len(S.blocks)} blocchi GOLD da {KB_PATH}")
 
 # ============================================================
-#  SCORING
+#  SCORING (PRIMO CERVELLO: IMBUTO)
 # ============================================================
 
 def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
     blk_id = blk.get("id", "")
     family = str(blk.get("family", "")).upper()
+    intent = str(blk.get("intent", "")).lower()
 
     score = 0.0
 
+    # Trigger e tag
     for field, w in [
         ("triggers", 10.0),
         ("tags", 3.0),
@@ -181,6 +186,7 @@ def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
     common = q_tokens & ref
     score += len(common)
 
+    # Bonus famiglie
     if "P560" in family:
         if any(tok in q_tokens for tok in ["p560", "pistola", "sparachiodi", "chiodatrice"]):
             score += 8
@@ -189,35 +195,46 @@ def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
         if any(tok in q_tokens for tok in ["ctf", "lamiera", "ondina", "card", "grecata"]):
             score += 5
 
+    # Mini bias sugli intent, per cominciare a differenziare
+    # (overview / errore / controllo posa)
+    if any(kw in q_norm for kw in ["mi parli", "cos e", "cos'è", "che cos e", "che cos'è", "a cosa serve"]):
+        if intent == "overview":
+            score += 5
+        if "err" in blk_id.lower():
+            score -= 3
+
+    if any(kw in q_norm for kw in ["come verifico", "come controllo", "come faccio a sapere", "come faccio a capire"]):
+        if intent in ["controllo_posa", "controllo", "qualita_posa"]:
+            score += 5
+
+    if any(kw in q_norm for kw in ["errore", "difetto", "non valido", "fuori campo", "vietato"]):
+        if intent in ["errore_uso", "anomalia_strutturale"]:
+            score += 5
+
     return score
 
-# ============================================================
-#  FIND BEST
-# ============================================================
-
-def find_best_block(q: str) -> Optional[Dict[str, Any]]:
+def find_top_blocks(q: str, top_k: int = 5) -> List[Tuple[float, Dict[str, Any]]]:
+    """Ritorna i migliori top_k blocchi (score, blk)."""
     q_norm = normalize_text(q)
+    if not q_norm:
+        return []
+
     q_tokens = set(q_norm.split())
-    best = None
-    best_score = 0
+    scored: List[Tuple[float, Dict[str, Any]]] = []
 
     for blk in S.blocks:
         s = score_block(q_norm, q_tokens, blk)
-        if s > best_score:
-            best = blk
-            best_score = s
+        if s > 0:
+            scored.append((s, blk))
 
-    if best_score <= 0:
-        return None
-
-    return best
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored[:top_k]
 
 # ============================================================
-#  PICK ANSWER (NUOVA VERSIONE → GOLD + LEGACY)
+#  PICK ANSWER (GOLD + LEGACY)
 # ============================================================
 
 def pick_answer_it(blk: Dict[str, Any]) -> Optional[str]:
-
     # 1) Schema GOLD
     ans = blk.get("answer_it")
     if isinstance(ans, str) and ans.strip():
@@ -235,7 +252,7 @@ def pick_answer_it(blk: Dict[str, Any]) -> Optional[str]:
             if isinstance(txt, str) and txt.strip():
                 return txt.strip()
 
-    # 2) Schema legacy (senza _it)
+    # 2) Schema legacy
     ans2 = blk.get("answer")
     if isinstance(ans2, str) and ans2.strip():
         return ans2.strip()
@@ -261,6 +278,90 @@ def enforce_terminologia(family: str, txt: str) -> str:
     if not isinstance(txt, str):
         return txt
     return re.sub(r"\bperni\b", "chiodi idonei Tecnaria", txt, flags=re.IGNORECASE)
+
+# ============================================================
+#  SECONDO CERVELLO: OPENAI PER SCELTA SEMANTICA
+# ============================================================
+
+def choose_block_with_openai(question: str, candidates: List[Tuple[float, Dict[str, Any]]]) -> Dict[str, Any]:
+    """
+    Usa OpenAI per scegliere, tra i top-k blocchi proposti dall'imbuto,
+    quello semanticamente più coerente con la domanda.
+    Se qualcosa va storto, ritorna comunque il migliore per score.
+    """
+    # Fallback di default: il migliore per score
+    if not candidates:
+        return {}
+
+    if len(candidates) == 1:
+        return candidates[0][1]
+
+    # Costruisco il contesto per OpenAI
+    model_name = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+
+    # Preparo una lista sintetica di candidati
+    blocchi_descr = []
+    for score, blk in candidates:
+        bid = blk.get("id", "SENZA-ID")
+        fam = blk.get("family", "")
+        intent = blk.get("intent", "")
+        q_it = blk.get("question_it") or blk.get("question") or ""
+        ans = pick_answer_it(blk) or ""
+        # Accorcio un po' la risposta per sicurezza
+        if len(ans) > 600:
+            ans = ans[:600] + " [...]"
+        blocchi_descr.append(
+            f"- ID: {bid}\n  family: {fam}\n  intent: {intent}\n  domanda_blocco: {q_it}\n  risposta_blocco: {ans}"
+        )
+
+    blocchi_text = "\n\n".join(blocchi_descr)
+
+    system_prompt = (
+        "Sei un motore di reranking per una knowledge base tecnica di connettori Tecnaria. "
+        "Ricevi la domanda di un utente (in italiano) e alcuni blocchi candidati, "
+        "ognuno con ID, family, intent, domanda_blocco e risposta_blocco. "
+        "Devi scegliere UN SOLO blocco, quello la cui risposta risponde meglio alla domanda dell’utente. "
+        "Se nessun blocco è davvero adatto, rispondi esattamente con 'NONE'. "
+        "Rispondi SEMPRE SOLO con l'ID del blocco (es. 'P560-ERR-0003-SOVRA-INFISSIONE') oppure 'NONE'."
+    )
+
+    user_prompt = (
+        f"Domanda utente:\n{question}\n\n"
+        f"Blocchi candidati:\n{blocchi_text}\n\n"
+        "Indica SOLO l'ID del blocco migliore oppure 'NONE' se nessuno è adeguato."
+    )
+
+    try:
+        completion = client.chat.completions.create(
+            model=model_name,
+            temperature=0,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        content = completion.choices[0].message.content.strip()
+        if not content:
+            # Nessuna risposta chiara → fallback
+            return candidates[0][1]
+
+        if content.upper().startswith("NONE"):
+            # Nessun blocco ritenuto adatto → fallback al migliore per score
+            return candidates[0][1]
+
+        chosen_id = content.strip().split()[0]
+
+        for _, blk in candidates:
+            if str(blk.get("id", "")).strip() == chosen_id:
+                return blk
+
+        # Se non trova ID esatto, fallback
+        return candidates[0][1]
+
+    except Exception as e:
+        # In caso di errore API, loggare e fallback
+        print(f"[WARN] Errore OpenAI reranking: {e}")
+        return candidates[0][1]
 
 # ============================================================
 #  STARTUP
@@ -291,7 +392,7 @@ async def api_ask(request: Request) -> AskResponse:
 
     try:
         body = await request.json()
-    except:
+    except Exception:
         body = {}
 
     if not isinstance(body, dict):
@@ -326,7 +427,20 @@ async def api_ask(request: Request) -> AskResponse:
             lang=lang,
         )
 
-    blk = find_best_block(q)
+    # 1) Primo cervello: imbuto → top-k blocchi
+    top = find_top_blocks(q, top_k=5)
+    if not top:
+        return AskResponse(
+            ok=False,
+            answer=FALLBACK_MESSAGE,
+            family=FALLBACK_FAMILY,
+            id=FALLBACK_ID,
+            mode="gold",
+            lang=lang,
+        )
+
+    # 2) Secondo cervello: OpenAI sceglie il migliore tra i candidati
+    blk = choose_block_with_openai(q, top)
     if not blk:
         return AskResponse(
             ok=False,
