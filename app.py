@@ -14,33 +14,30 @@ from fastapi.responses import FileResponse
 from openai import OpenAI
 
 # ============================================================
-#  CONFIGURAZIONE BASE
+#  CONFIG BASE (identica alla tua)
 # ============================================================
 
-client = OpenAI()  # usa OPENAI_API_KEY dall'ambiente
+client = OpenAI()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "static", "data")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-# File master principale: CTF + P560 (146 blocchi)
-KB_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_v3.json")
-
-# Directory overlay: patch, migliorie, nuove famiglie
+MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_v3.json")
 OVERLAY_DIR = os.path.join(DATA_DIR, "overlays")
 
 FALLBACK_FAMILY = "COMM"
 FALLBACK_ID = "COMM-FALLBACK-NOANSWER-0001"
 FALLBACK_MESSAGE = (
     "Per questa domanda non trovo una risposta GOLD nei dati caricati. "
-    "Meglio un confronto diretto con l’ufficio tecnico Tecnaria, indicando tipo di solaio, travi, spessori e vincoli."
+    "Meglio un confronto diretto con l’ufficio tecnico Tecnaria."
 )
 
 # ============================================================
 #  FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="6.0.0")
+app = FastAPI(title="TECNARIA GOLD – Overlay First", version="7.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -49,19 +46,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static UI
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 @app.get("/")
 def serve_ui():
-    index_path = os.path.join(STATIC_DIR, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
+    path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(path):
+        return FileResponse(path)
     return {"ok": True, "message": "UI non trovata"}
 
 # ============================================================
-#  MODELLI I/O
+#  MODELLI
 # ============================================================
 
 class AskRequest(BaseModel):
@@ -79,14 +75,14 @@ class AskResponse(BaseModel):
     lang: str
     score: float
 
-
 # ============================================================
-#  NORMALIZZAZIONE TESTO
+#  NORMALIZZAZIONE
 # ============================================================
 
 def strip_accents(s: str) -> str:
     return "".join(
-        c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
+        c for c in unicodedata.normalize("NFKD", s)
+        if not unicodedata.combining(c)
     )
 
 
@@ -101,213 +97,160 @@ def normalize(text: str) -> str:
 
 def tokenize(text: str) -> List[str]:
     t = normalize(text)
-    if not t:
-        return []
-    return t.split(" ")
+    return t.split(" ") if t else []
 
 
 # ============================================================
-#  LOAD KB: MASTER + OVERLAY
+#  LOAD KB (SEPARATI)
 # ============================================================
 
 def load_json(path: str) -> Dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+def load_master():
+    return load_json(MASTER_PATH).get("blocks", [])
 
-def load_kb() -> Dict[str, Any]:
-    """
-    Carica:
-    - il file MASTER (ctf_system_COMPLETE_GOLD_v3.json)
-    - tutti gli OVERLAY in static/data/overlays/*.json
-    Fonde tutti i blocchi in un'unica knowledge base.
-    """
-    if not os.path.exists(KB_PATH):
-        raise FileNotFoundError(f"KB master non trovato: {KB_PATH}")
-
-    base = load_json(KB_PATH)
-    total_blocks: List[Dict[str, Any]] = base.get("blocks", [])
-
-    # Carica overlay solo se la dir esiste
-    overlay_path = Path(OVERLAY_DIR)
-    if overlay_path.exists():
-        for overlay_file in overlay_path.glob("*.json"):
+def load_overlay():
+    blocks = []
+    p = Path(OVERLAY_DIR)
+    if p.exists():
+        for f in p.glob("*.json"):
             try:
-                overlay = load_json(str(overlay_file))
-                overlay_blocks = overlay.get("blocks", [])
-                before = len(total_blocks)
-                total_blocks.extend(overlay_blocks)
-                after = len(total_blocks)
-                print(f"[OVERLAY] {overlay_file.name}: +{after - before} blocchi")
+                d = load_json(str(f))
+                blocks.extend(d.get("blocks", []))
             except Exception as e:
-                print(f"[OVERLAY ERROR] {overlay_file}: {e}")
-
-    print(f"[KB] Totale blocchi caricati (MASTER+OVERLAY): {len(total_blocks)}")
-    return {"blocks": total_blocks}
+                print(f"[OVERLAY ERROR] {f}: {e}")
+    return blocks
 
 
 # ============================================================
-#  INDICE IN MEMORIA
+#  STATE
 # ============================================================
 
 class KBState:
-    blocks: List[Dict[str, Any]] = []
-    # lista di (idx_block, trigger_norm, token_set)
-    trigger_index: List[Tuple[int, str, set]] = []
-
+    master_blocks = []
+    overlay_blocks = []
+    master_index = []
+    overlay_index = []
 
 S = KBState()
 
+# ============================================================
+#  INDEX BUILD
+# ============================================================
 
 def build_index():
-    kb = load_kb()
-    S.blocks = kb.get("blocks", [])
-    S.trigger_index = []
+    S.master_blocks = load_master()
+    S.overlay_blocks = load_overlay()
 
-    for idx, block in enumerate(S.blocks):
-        triggers = block.get("triggers", []) or []
-        for trig in triggers:
+    S.master_index = []
+    S.overlay_index = []
+
+    # overlay first index
+    for idx, block in enumerate(S.overlay_blocks):
+        for trig in block.get("triggers", []) or []:
             t_norm = normalize(trig)
-            if not t_norm:
-                continue
-            tokens = set(tokenize(trig))
-            S.trigger_index.append((idx, t_norm, tokens))
+            if t_norm:
+                S.overlay_index.append((idx, t_norm, set(tokenize(trig))))
 
-    print(f"[INDEX] Blocchi: {len(S.blocks)} – Trigger indicizzati: {len(S.trigger_index)}")
+    # master index
+    for idx, block in enumerate(S.master_blocks):
+        for trig in block.get("triggers", []) or []:
+            t_norm = normalize(trig)
+            if t_norm:
+                S.master_index.append((idx, t_norm, set(tokenize(trig))))
 
+    print(f"[INDEX] overlay={len(S.overlay_blocks)} master={len(S.master_blocks)}")
 
-# Caricamento all'avvio
 build_index()
 
-
 # ============================================================
-#  MOTORE DI MATCH – IMBUTO
+#  MATCHING (overlay first)
 # ============================================================
 
-def lexical_match(question: str) -> Tuple[Optional[Dict[str, Any]], float]:
-    """
-    Imbuto lessicale:
-    1) match per substring del trigger nella domanda
-    2) se punteggi bassi, match per overlap di token
-    """
+def lexical_match_in(index_list, blocks, question):
     q_norm = normalize(question)
     q_tokens = set(tokenize(question))
 
-    best_block = None
+    matches = []
     best_score = 0.0
 
-    # 1) substring-based
-    for idx, trig_norm, trig_tokens in S.trigger_index:
+    for idx, trig_norm, trig_tokens in index_list:
+        score = 0.0
+
+        # substring
         if trig_norm in q_norm:
-            score = len(trig_norm) / max(10, len(q_norm))
-            if score > best_score:
-                best_score = score
-                best_block = S.blocks[idx]
+            score += len(trig_norm) / max(10, len(q_norm))
 
-    # 2) token-overlap se score troppo basso
-    if best_score < 0.25 and q_tokens:
-        for idx, trig_norm, trig_tokens in S.trigger_index:
-            if not trig_tokens:
-                continue
-            inter = q_tokens.intersection(trig_tokens)
-            if not inter:
-                continue
-            score = len(inter) / len(trig_tokens)
-            if score > best_score:
-                best_score = score
-                best_block = S.blocks[idx]
-
-    return best_block, best_score
-
-
-def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    """
-    Secondo cervello OpenAI: tra i candidati già filtrati lessicalmente,
-    chiede al modello quale ID è il più pertinente.
-    """
-    if not candidates:
-        return None
-
-    blocks_desc = []
-    for b in candidates:
-        blocks_desc.append(
-            f"- ID: {b.get('id','?')}\n  Family: {b.get('family','?')}\n  Triggers: {', '.join(b.get('triggers', []))}"
-        )
-    blocks_text = "\n".join(blocks_desc)
-
-    prompt = f"""
-Sei l'assistente tecnico del motore Tecnaria-IMBUTO.
-Devi scegliere il blocco più pertinente alla domanda seguente.
-
-Domanda utente:
-\"\"\"{question}\"\"\"
-
-
-Blocchi candidati:
-{blocks_text}
-
-Rispondi SOLO con l'ID del blocco migliore, senza altro testo.
-"""
-
-    try:
-        completion = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Sei un selettore deterministico di ID blocco Tecnaria. Rispondi solo con un ID esattamente come ti viene fornito."
-                },
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=16,
-            temperature=0.0,
-        )
-        content = completion.choices[0].message.content.strip()
-        for b in candidates:
-            if b.get("id") == content:
-                return b
-    except Exception as e:
-        print(f"[AI_RERANK ERROR] {e}")
-
-    return None
-
-
-def find_best_block(question: str) -> Tuple[Optional[Dict[str, Any]], float]:
-    """
-    Combina imbuto lessicale e, se necessario, reranking AI.
-    """
-    block, score = lexical_match(question)
-
-    if block is not None and score >= 0.40:
-        return block, score
-
-    q_norm = normalize(question)
-    q_tokens = set(tokenize(question))
-    scored: List[Tuple[float, Dict[str, Any]]] = []
-
-    for idx, trig_norm, trig_tokens in S.trigger_index:
-        base_score = 0.0
-        if trig_norm in q_norm:
-            base_score += len(trig_norm) / max(10, len(q_norm))
+        # token overlap
         if q_tokens and trig_tokens:
             inter = q_tokens.intersection(trig_tokens)
             if inter:
-                base_score += len(inter) / len(trig_tokens)
-        if base_score > 0:
-            scored.append((base_score, S.blocks[idx]))
+                score += len(inter) / len(trig_tokens)
 
-    if not scored:
-        return block, score
+        if score > 0:
+            matches.append((score, blocks[idx]))
+            if score > best_score:
+                best_score = score
 
-    scored.sort(key=lambda x: x[0], reverse=True)
-    top_candidates = [b for s, b in scored[:5]]
+    matches.sort(key=lambda x: x[0], reverse=True)
+    return [b for s, b in matches], best_score
 
-    ai_block = ai_rerank(question, top_candidates)
-    if ai_block is not None:
-        return ai_block, max(score, 0.5)
 
-    return block, score
+def ai_rerank(question, candidates):
+    if not candidates or len(candidates) == 1:
+        return candidates[0] if candidates else None
 
+    try:
+        desc = "\n".join(
+            f"- ID: {b.get('id')} | Triggers: {', '.join(b.get('triggers', []))}"
+            for b in candidates
+        )
+
+        prompt = (
+            f"Domanda: {question}\n"
+            f"Blocchi:\n{desc}\n\n"
+            f"Scegli solo l'ID migliore."
+        )
+
+        result = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=10,
+            temperature=0.0,
+        )
+
+        chosen = result.choices[0].message.content.strip()
+        for b in candidates:
+            if b.get("id") == chosen:
+                return b
+
+    except Exception as e:
+        print("[RERANK ERROR]", e)
+
+    return candidates[0]
+
+
+def find_best_block(question):
+
+    # 🔥 1️⃣ MATCH OVERLAY FIRST
+    overlay_candidates, o_score = lexical_match_in(
+        S.overlay_index, S.overlay_blocks, question
+    )
+
+    if overlay_candidates:
+        return ai_rerank(question, overlay_candidates), o_score
+
+    # 🔥 2️⃣ IF NO OVERLAY → MASTER
+    master_candidates, m_score = lexical_match_in(
+        S.master_index, S.master_blocks, question
+    )
+
+    if master_candidates:
+        return ai_rerank(question, master_candidates), m_score
+
+    return None, 0.0
 
 # ============================================================
 #  ENDPOINTS
@@ -317,23 +260,24 @@ def find_best_block(question: str) -> Tuple[Optional[Dict[str, Any]], float]:
 def health():
     return {
         "ok": True,
-        "blocks_loaded": len(S.blocks),
-        "triggers_indexed": len(S.trigger_index),
-        "kb_path": KB_PATH,
-        "overlay_dir": OVERLAY_DIR,
+        "overlay_blocks": len(S.overlay_blocks),
+        "master_blocks": len(S.master_blocks),
+        "overlay_index": len(S.overlay_index),
+        "master_index": len(S.master_index),
     }
 
 
 @app.post("/api/ask", response_model=AskResponse)
 def api_ask(req: AskRequest):
+
     if req.mode.lower() != "gold":
-        raise HTTPException(status_code=400, detail="Modalità non supportata. Usa mode='gold'.")
+        raise HTTPException(400, "Modalità non supportata.")
 
-    question = req.question.strip()
-    if not question:
-        raise HTTPException(status_code=400, detail="Domanda vuota.")
+    q = req.question.strip()
+    if not q:
+        raise HTTPException(400, "Domanda vuota.")
 
-    block, score = find_best_block(question)
+    block, score = find_best_block(q)
 
     if block is None:
         return AskResponse(
@@ -343,42 +287,32 @@ def api_ask(req: AskRequest):
             id=FALLBACK_ID,
             mode="gold",
             lang=req.lang,
-            score=0.0,
+            score=0.0
         )
 
-    lang_key = f"answer_{req.lang}"
     answer = (
-        block.get(lang_key)
+        block.get(f"answer_{req.lang}")
         or block.get("answer_it")
         or block.get("answer")
         or FALLBACK_MESSAGE
     )
 
-    family = block.get("family", "CTF_SYSTEM")
-    mode = block.get("mode", "gold")
-    block_id = block.get("id", "UNKNOWN-ID")
-
     return AskResponse(
         ok=True,
         answer=answer,
-        family=family,
-        id=block_id,
-        mode=mode,
+        family=block.get("family", "CTF_SYSTEM"),
+        id=block.get("id", "UNKNOWN-ID"),
+        mode=block.get("mode", "gold"),
         lang=req.lang,
-        score=float(score),
+        score=float(score)
     )
 
 
 @app.post("/api/reload")
-def api_reload():
-    """
-    Permette di ricaricare KB master + overlay senza riavviare il servizio.
-    Utile quando aggiungiamo nuove patch JSON.
-    """
+def reload_kb():
     build_index()
     return {
         "ok": True,
-        "message": "KB ricaricato (MASTER + OVERLAY)",
-        "blocks_loaded": len(S.blocks),
-        "triggers_indexed": len(S.trigger_index),
+        "overlay_blocks": len(S.overlay_blocks),
+        "master_blocks": len(S.master_blocks),
     }
