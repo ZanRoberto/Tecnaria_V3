@@ -8,12 +8,16 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 # ============================================================
 #  PATH / FILE
 # ============================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "static", "data")
+STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 KB_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_v3.json")
 
@@ -28,7 +32,7 @@ FALLBACK_MESSAGE = (
 #  FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="3.1.0")
+app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="3.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,6 +40,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ============================================================
+#  UI STATIC
+# ============================================================
+
+# monta la cartella static
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+# root → serve la tua interfaccia statica
+@app.get("/")
+def serve_ui():
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {
+        "ok": True,
+        "message": "UI non trovata: manca static/index.html",
+    }
 
 # ============================================================
 #  MODELLI DI RISPOSTA
@@ -50,7 +72,7 @@ class AskResponse(BaseModel):
     lang: str
 
 # ============================================================
-#  UTIL DI NORMALIZZAZIONE
+#  (tutto il resto identico al tuo file)
 # ============================================================
 
 def strip_accents(s: str) -> str:
@@ -70,19 +92,11 @@ def normalize_text(s: str) -> str:
 def tokenize_norm(s: str) -> List[str]:
     return normalize_text(s).split()
 
-# ============================================================
-#  STATO IN MEMORIA
-# ============================================================
-
 class BrainState:
     blocks: List[Dict[str, Any]] = []
     tokens_by_id: Dict[str, Set[str]] = {}
 
 S = BrainState()
-
-# ============================================================
-#  CARICAMENTO KB
-# ============================================================
 
 def load_kb() -> None:
     if not os.path.exists(KB_PATH):
@@ -134,16 +148,11 @@ def load_kb() -> None:
 
     print(f"[BOOT] Caricati {len(S.blocks)} blocchi GOLD da {KB_PATH}")
 
-# ============================================================
-#  SCORING
-# ============================================================
-
 def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
     blk_id = blk.get("id", "")
     family = str(blk.get("family", "")).upper()
     score = 0.0
 
-    # 1) match diretto su triggers e tags (substring)
     for field, weight in [
         ("triggers", 10.0),
         ("tags", 3.0),
@@ -158,12 +167,10 @@ def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
             if tv and tv in q_norm:
                 score += weight
 
-    # 2) overlap token
     ref = S.tokens_by_id.get(blk_id, set())
     common = q_tokens & ref
     score += 1.0 * len(common)
 
-    # 3) booster family
     if "P560" in family or "P560" in blk_id.upper():
         if any(tok in q_tokens for tok in ["p560", "pistola", "sparachiodi", "chiodatrice"]):
             score += 8.0
@@ -194,10 +201,6 @@ def find_best_block(q: str) -> Optional[Dict[str, Any]]:
 
     return best
 
-# ============================================================
-#  ESTRAZIONE RISPOSTA
-# ============================================================
-
 def pick_answer_it(blk: Dict[str, Any]) -> Optional[str]:
     ans = blk.get("answer_it")
     if isinstance(ans, str) and ans.strip():
@@ -222,22 +225,9 @@ def enforce_terminologia(family: str, txt: str) -> str:
         return txt
     return re.sub(r"\bperni\b", "chiodi idonei Tecnaria", txt, flags=re.IGNORECASE)
 
-# ============================================================
-#  ENDPOINTS
-# ============================================================
-
 @app.on_event("startup")
 def on_startup():
     load_kb()
-
-@app.get("/")
-def root():
-    return {
-        "ok": True,
-        "message": "Backend Tecnaria-IMBUTO attivo.",
-        "kb_path": KB_PATH,
-        "blocks_loaded": len(S.blocks),
-    }
 
 @app.get("/health")
 def health():
@@ -257,7 +247,6 @@ async def api_ask(request: Request) -> AskResponse:
     if not isinstance(body, dict):
         body = {}
 
-    # prendiamo il testo dalla prima chiave utile che troviamo
     q = (
         body.get("q")
         or body.get("question")
