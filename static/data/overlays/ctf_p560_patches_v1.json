@@ -1,1 +1,304 @@
-
+{
+  "blocks": [
+    {
+      "id": "CTF-PATCH-0001-P560-COLPO-A-VUOTO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "errore_uso",
+      "tags": ["P560", "colpo a vuoto", "chiodo integro", "lamiera ammaccata", "fuori campo"],
+      "triggers": [
+        "P560 spara a vuoto",
+        "chiodo integro lamiera solo ammaccata",
+        "testa non si avvicina alla piastra",
+        "ammaccatura superficiale lamiera senza deformazione del chiodo"
+      ],
+      "question_it": "Durante la posa dei CTF su lamiera grecata, la P560 sta sparando a vuoto: il chiodo Tecnaria rimane integro, non si deforma, la testa non si avvicina alla piastra e la lamiera presenta solo un’ammaccatura superficiale. Questo fissaggio è valido oppure indica una condizione di fuori-campo?",
+      "answer_it": "Il comportamento descritto indica una condizione di fuori-campo per il sistema P560+CTF: se il chiodo Tecnaria rimane sostanzialmente integro, senza deformazione plastica coerente e senza avvicinamento della testa alla piastra del CTF, il meccanismo di ancoraggio previsto dalle prove Tecnaria non si attiva. L’ammaccatura superficiale della lamiera segnala solo che l’energia del colpo viene dissipata nella lamiera stessa, senza un ancoraggio efficace al supporto. In queste condizioni il fissaggio è da considerarsi NON valido, il CTF non può essere conteggiato e la zona va analizzata per capire la causa (spessore lamiera fuori campo, supporto inadeguato, errata taratura dei propulsori o presenza di interposti). La posa va sospesa, devono essere eseguiti colpi di prova in zona rappresentativa e, se il fenomeno si ripete, va sospeso l’uso della P560 su quel supporto fino a verifica Tecnaria."
+    },
+    {
+      "id": "CTF-PATCH-0002-LAMIERA-CEDIMENTI-CICLICI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "anomalia_strutturale",
+      "tags": ["lamiera", "buckling", "cedimenti ciclici", "instabilità ondina", "CTF"],
+      "triggers": [
+        "lamiera cedimenti ciclici",
+        "buckling avanti indietro ondina",
+        "lamiera instabile che cede e ritorna",
+        "ondina che vibra sotto il puntale"
+      ],
+      "question_it": "Come va gestita la posa dei connettori CTF su una lamiera grecata che manifesta cedimenti ciclici dell’ondina (buckling avanti-indietro) durante il contatto con il puntale della P560?",
+      "answer_it": "Una lamiera che presenta fenomeni di buckling locale ripetuto dell’ondina durante la posa dei CTF non è strutturalmente idonea all’ancoraggio tramite P560. L’instabilità locale fa sì che l’energia del colpo venga dissipata in spostamenti ciclici dell’ondina invece che in infissione controllata del chiodo, rendendo ingannevole sia la lettura card sia la percezione visiva del fissaggio. In queste condizioni i colpi risultano non qualificabili: i CTF associati non possono essere conteggiati e il tratto di lamiera va classificato come non idoneo. È necessario ripristinare o sostituire la lamiera fino a riportare la rigidezza locale entro i limiti di deformazione ammessi (deformazioni contenute, assenza di vibrazioni evidenti, risposta stabile al colpo di prova) e solo dopo si può riprendere la posa con nuova campagna di prove."
+    },
+    {
+      "id": "CTF-PATCH-0003-ONDINA-COLLASSO-ASIMMETRICO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "anomalia_strutturale",
+      "tags": ["lamiera", "ondina", "collasso", "asimmetria", "CTF"],
+      "triggers": [
+        "ondina collassata da un lato",
+        "collasso asimmetrico ondina",
+        "un lato dell onda cede",
+        "lamiera deformata solo da una parte"
+      ],
+      "question_it": "È possibile considerare valida la posa dei CTF su una lamiera in cui l’ondina presenta un collasso asimmetrico, con un lato che ha ceduto mentre l’altro risulta apparentemente regolare?",
+      "answer_it": "Il collasso asimmetrico dell’ondina altera la geometria locale e la rigidezza di appoggio del CTF, modificando sia la traiettoria di infissione del chiodo sia il trasferimento degli sforzi di taglio. In queste condizioni il comportamento del sistema non è più confrontabile con quello verificato nelle prove di qualificazione Tecnaria: la card può restituire una distanza apparentemente corretta, ma riferita a una configurazione geometrica non conforme. Di conseguenza la posa va considerata non valida: il tratto di lamiera con ondine collassate in modo asimmetrico deve essere escluso dalla posa CTF e, se necessario, sostituito o rinforzato fino a recuperare una geometria regolare e una rigidezza coerente con i limiti prescritti. Solo dopo il ripristino è possibile procedere con nuova serie di colpi di prova e con la posa definitiva."
+    },
+    {
+      "id": "CTF-PATCH-0004-VERNICE-SPESSA-FALSO-POSITIVO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "verifica_card",
+      "tags": ["vernice spessa", "card", "falso positivo", "testa chiodo immersa", "contatto acciaio acciaio"],
+      "triggers": [
+        "vernice spessa tra testa e piastra",
+        "testa immersa nella vernice",
+        "card misura anche lo spessore di vernice",
+        "valore card corretto ma vernice spessa"
+      ],
+      "question_it": "Come va interpretata la lettura della card quando tra testa del chiodo e piastra del CTF è presente uno strato di vernice spesso, tale da immergere parzialmente la testa e rendere poco percepibile il contatto acciaio–acciaio?",
+      "answer_it": "Uno strato di vernice eccessivo o non controllato tra testa del chiodo e piastra del CTF può generare un falso positivo nella lettura card. La card misura infatti una distanza geometrica che include anche lo spessore comprimibile della vernice, e non la sola distanza acciaio–acciaio su cui si basano le prove Tecnaria. Se la testa risulta visivamente immersa nella vernice, con contorno sfocato e impossibilità di individuare chiaramente il contatto metallo-metallo, il colpo non può essere considerato qualificato anche se il valore card rientra nel range teorico. In questi casi il fissaggio va scartato, la zona va ripulita o preparata riducendo lo spessore di vernice nei punti di sparo e le prove vanno ripetute su superficie più pulita, fino a ottenere deformazioni e letture card coerenti e ripetibili."
+    },
+    {
+      "id": "CTF-PATCH-0005-CARD-INCLINATA-O-INSTABILE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "verifica_card",
+      "tags": ["card", "misura instabile", "card inclinata", "errore lettura"],
+      "triggers": [
+        "card scivola sulla testa del chiodo",
+        "card inclinata durante la misura",
+        "lettura card instabile",
+        "distanza card diversa se ripeto la misura"
+      ],
+      "question_it": "Se la card scivola o rimane inclinata sulla testa del chiodo durante la misura, ottenendo valori diversi a ogni prova, è possibile considerare valida la lettura oppure la verifica va ripetuta?",
+      "answer_it": "La verifica con card presuppone un appoggio stabile e ortogonale sia sulla piastra del CTF sia sulla testa del chiodo. Se la card scivola, resta inclinata o restituisce valori sensibilmente diversi a parità di colpo, la misura è da considerarsi non affidabile. In questi casi è necessario ripetere la lettura assicurandosi che i punti di contatto siano puliti, che la card sia appoggiata in modo fermo e che l’operatore non introduca momenti o torsioni durante la misurazione. Se, anche dopo un corretto posizionamento, i valori restano incoerenti rispetto alla deformazione visiva o rispetto ai colpi circostanti, il fissaggio va considerato dubbio e, prudenzialmente, escluso dal conteggio strutturale, ripetendo il colpo in posizione idonea."
+    },
+    {
+      "id": "CTF-PATCH-0006-P560-SU-CALCESTRUZZO-NON-AMMESSO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "limite_applicazione",
+      "tags": ["P560", "calcestruzzo", "CTF", "fuori campo", "travetto in c.a."],
+      "triggers": [
+        "P560 su travetto in calcestruzzo",
+        "sparare i CTF nel travetto in c.a.",
+        "chiodo P560 che entra nel calcestruzzo",
+        "validità fissaggio CTF su calcestruzzo"
+      ],
+      "question_it": "È ammesso utilizzare la P560 per fissare i connettori CTF sparando nei travetti in calcestruzzo di un solaio esistente, considerando valido il fissaggio ai fini della collaborazione strutturale?",
+      "answer_it": "La P560 e i chiodi idonei Tecnaria abbinati ai CTF sono progettati e qualificati per il fissaggio su lamiere grecate in acciaio, con condizioni geometriche e meccaniche definite. L’uso diretto su travetti in calcestruzzo di solai esistenti, al di fuori delle configurazioni sperimentate, esce dal campo di validità del sistema e non può essere considerato equivalente alle condizioni di prova. In particolare, il meccanismo di infissione nel calcestruzzo è profondamente diverso e non è coperto dall’ETA né dalla documentazione Tecnaria. Di conseguenza i fissaggi eseguiti sparando nel calcestruzzo con P560 non possono essere conteggiati per la verifica di collaborazione CTF-lamiera-trave e la soluzione va considerata non ammissibile, salvo valutazione specifica e autorizzazione Tecnaria per casi particolari."
+    },
+    {
+      "id": "CTF-PATCH-0007-LAMIERA-NON-ADERENTE-ALLA-TRAVE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "anomalia_strutturale",
+      "tags": ["lamiera distaccata", "vuoto sotto lamiera", "appoggio non continuo", "CTF"],
+      "triggers": [
+        "lamiera non appoggia bene sulla trave",
+        "vuoto sotto la lamiera in corrispondenza del CTF",
+        "lamiera che flette prima del contatto con la trave",
+        "ondina sospesa tra due appoggi"
+      ],
+      "question_it": "Cosa succede se il CTF viene fissato su una lamiera grecata che, in corrispondenza del chiodo, non appoggia correttamente sull’ala della trave, ma risulta parzialmente sospesa o distaccata?",
+      "answer_it": "Il corretto funzionamento del sistema CTF richiede che la lamiera grecata sia in appoggio efficace sull’ala della trave o sul supporto metallico previsto, così che il chiodo idoneo Tecnaria trasferisca gli sforzi attraverso una catena continua acciaio–lamiera–trave. Se la lamiera risulta parzialmente sospesa, con un vuoto sensibile sotto l’ondina proprio in corrispondenza del CTF, il colpo tende a flettere la lamiera anziché ancorarla, alterando sia la deformazione del chiodo sia la lettura card. In queste condizioni il fissaggio non è rappresentativo delle prove di qualificazione e non può essere considerato valido ai fini strutturali; occorre ripristinare l’aderenza lamiera–trave (riporto di appoggi, correzioni locali) e ripetere i colpi in zona con appoggio continuo."
+    },
+    {
+      "id": "CTF-PATCH-0008-TESTA-RIGATA-MA-DEFORMAZIONE-OK",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "defect",
+      "tags": ["testa chiodo rigata", "difetto superficiale", "accettabilità colpo"],
+      "triggers": [
+        "testa del chiodo rigata",
+        "piccolo graffio sulla testa ma card ok",
+        "difetto superficiale testa chiodo",
+        "testa leggermente rigata ma deformazione simmetrica"
+      ],
+      "question_it": "Se un colpo presenta una deformazione del chiodo corretta e simmetrica, con lettura card nel campo ammesso, ma la testa mostra una leggera rigatura superficiale dovuta a un difetto locale dell’acciaio, il fissaggio può essere considerato valido?",
+      "answer_it": "Una leggera rigatura superficiale sulla testa del chiodo, non associata a cricche, schiacciamenti anomali o perdita di materiale, non compromette di per sé il funzionamento del sistema, a condizione che tutti gli altri parametri di controllo risultino conformi. Se la deformazione plastica del gambo è coerente con quella attesa, la testa è ben appoggiata alla piastra del CTF e la lettura card rientra nel range di accettazione, la rigatura superficiale può essere considerata un difetto estetico o di finitura e il colpo può essere classificato come valido. Se invece la rigatura si accompagna a asimmetrie marcate, micro-cricche o incertezze nella misura, è prudente scartare il fissaggio e ripetere il colpo."
+    },
+    {
+      "id": "CTF-PATCH-0009-TESTA-FESSURATA-O-CRICCATA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "defect",
+      "tags": ["testa chiodo criccata", "rottura", "difetto grave"],
+      "triggers": [
+        "testa del chiodo con cricca",
+        "testa fessurata dopo lo sparo",
+        "testa quasi divisa in due",
+        "rotta la testa del chiodo"
+      ],
+      "question_it": "Come va classificato un colpo in cui la testa del chiodo, pur apparentemente a distanza corretta dalla piastra, presenta una cricca evidente o una fessurazione che interessa una parte significativa dello spessore?",
+      "answer_it": "La presenza di cricche o fessurazioni evidenti sulla testa del chiodo dopo lo sparo è un difetto grave che compromette l’affidabilità del fissaggio. Anche in presenza di una distanza card apparentemente conforme, la testa fessurata non garantisce la capacità di mantenere nel tempo la forza di serraggio e il corretto trasferimento degli sforzi di taglio. Un chiodo con testa criccata va sempre considerato non conforme: il fissaggio è da scartare e il CTF associato non può essere conteggiato. È opportuno verificare se il fenomeno si ripete su più colpi, perché potrebbe indicare un problema di partita chiodi, propulsori troppo energici o condizioni di posa anomale da analizzare con Tecnaria."
+    },
+    {
+      "id": "CTF-PATCH-0010-CTF-CHE-BALLA-DOPO-LO-SPARO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "anomalia_strutturale",
+      "tags": ["CTF instabile", "CTF che balla", "ancoraggio insufficiente", "lamiera deformata"],
+      "triggers": [
+        "CTF che si muove se lo tocco",
+        "connettore che balla dopo lo sparo",
+        "CTF non solidale alla lamiera",
+        "CTF che ruota leggermente"
+      ],
+      "question_it": "Se dopo lo sparo con P560 il connettore CTF risulta percepibilmente mobile al tatto, con una piccola rotazione o gioco rispetto alla lamiera, il fissaggio può essere considerato valido?",
+      "answer_it": "Un CTF correttamente fissato con P560 deve risultare solidale alla lamiera, senza giochi percepibili al tatto e senza possibilità di rotazione apprezzabile. Se il connettore “balla”, ruota o sembra muoversi rispetto alla lamiera, significa che l’ancoraggio tra chiodo, lamiera e piastra non si è sviluppato secondo il meccanismo previsto. In queste condizioni il fissaggio è da considerarsi non valido: i CTF interessati vanno esclusi dal conteggio e la causa va individuata (lamiera troppo sottile o deformata, presenza di interposti, colpo insufficiente, supporto non idoneo). Solo dopo aver ripristinato condizioni di posa corrette e verificato con una serie di colpi prova stabili è possibile riprendere la posa definitiva."
+    },
+    {
+      "id": "CTF-PATCH-0011-LAMIERA-CON-FORI-O-TAGLI-PREESISTENTI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "limite_applicazione",
+      "tags": ["lamiera forata", "taglio vicino al CTF", "foro preesistente", "indebolimento lamiera"],
+      "triggers": [
+        "lamiera con foro vicino al CTF",
+        "taglio preesistente in corrispondenza del fissaggio",
+        "lamiera rotta dove voglio fissare",
+        "CTF vicino a un taglio della lamiera"
+      ],
+      "question_it": "È ammesso fissare un CTF con P560 in prossimità di un foro, taglio o rottura preesistente nella lamiera grecata, contando quel connettore come pienamente efficace?",
+      "answer_it": "La presenza di fori, tagli o rotture preesistenti nella lamiera in prossimità del punto di fissaggio riduce la sezione resistente effettiva e altera il percorso degli sforzi di taglio tra CTF e lamiera. Di conseguenza il comportamento non è confrontabile con quello verificato nelle prove di qualificazione, che assumono lamiera integra con caratteristiche geometriche definite. Fissare un CTF a ridosso di un foro o di un taglio significa operare fuori campo: quel connettore non può essere considerato pienamente efficace e, in linea prudenziale, va escluso dal conteggio. È preferibile spostare il fissaggio in zona di lamiera integra o, se la situazione è diffusa, prevedere il ripristino della lamiera o una verifica specifica con Tecnaria."
+    },
+    {
+      "id": "CTF-PATCH-0012-P560-PROPULSORE-TROPPO-ENERGICO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "errore_uso",
+      "tags": ["P560", "propulsore troppo forte", "sovra infissione", "testa troppo vicina alla piastra"],
+      "triggers": [
+        "testa troppo schiacciata contro la piastra",
+        "sovra infissione del chiodo",
+        "propulsore troppo aggressivo",
+        "card sotto il minimo ammesso"
+      ],
+      "question_it": "Cosa indica una distanza card inferiore al minimo ammesso, con testa del chiodo eccessivamente schiacciata verso la piastra del CTF, e come va gestita la scelta del propulsore per la P560 in questi casi?",
+      "answer_it": "Una distanza card inferiore al limite minimo previsto indica generalmente una sovra-infissione del chiodo, spesso dovuta all’utilizzo di propulsori troppo energici rispetto alla combinazione lamiera–supporto reale. In queste condizioni il meccanismo di deformazione controllata del chiodo esce dal campo di prova: la testa può schiacciarsi in modo anomalo, il gambo subisce deformazioni non previste e il comportamento del fissaggio diventa difficile da correlare alle prestazioni dichiarate. I colpi con card sotto il minimo vanno considerati non qualificati e scartati; occorre ripetere i colpi di prova utilizzando un propulsore di classe inferiore, fino a ottenere un intervallo di distanze card stabilmente dentro il campo ammesso. Solo dopo questa taratura è corretto procedere con la posa in produzione."
+    },
+    {
+      "id": "CTF-PATCH-0013-P560-PROPULSORE-TROPPO-DEBOLE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "errore_uso",
+      "tags": ["P560", "propulsore debole", "infissione insufficiente", "card sopra massimo"],
+      "triggers": [
+        "card oltre il massimo ammesso",
+        "testa troppo distante dalla piastra",
+        "colpo che non entra abbastanza",
+        "propulsore troppo debole"
+      ],
+      "question_it": "Se la maggior parte dei colpi presenta una distanza card superiore al massimo ammesso, con teste dei chiodi visibilmente troppo distanti dalla piastra del CTF, come va interpretata la situazione e cosa bisogna correggere?",
+      "answer_it": "Distanze card sistematicamente superiori al massimo ammesso indicano che l’energia di infissione fornita dalla P560 non è sufficiente per generare la deformazione plastica prevista nel chiodo e l’ancoraggio efficace alla lamiera e al supporto. Nella pratica questo è spesso legato a propulsori troppo deboli per lo spessore reale di lamiera, eventuali interposti o condizioni di appoggio. I colpi con card oltre il massimo vanno considerati non qualificati: non possono essere conteggiati per il dimensionamento e la posa va sospesa. È necessario ripetere i colpi di prova con una classe di propulsori superiore o dopo aver ripristinato le corrette condizioni di appoggio, fino a ottenere un campo di misure entro l’intervallo ammesso e una deformazione visivamente coerente."
+    },
+    {
+      "id": "CTF-PATCH-0014-LAMIERA-TROPPO-SOTTILE-O-FLESSIBILE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "limite_applicazione",
+      "tags": ["lamiera sottile", "lamiera flessibile", "ondina troppo cedevole", "fuori campo"],
+      "triggers": [
+        "lamiera troppo sottile per i CTF",
+        "ondina che si piega facilmente sotto il puntale",
+        "lamiera che vibra molto allo sparo",
+        "lamiera che non oppone rigidezza alla P560"
+      ],
+      "question_it": "Cosa succede se i CTF vengono posati su una lamiera grecata che, alla prova pratica con la P560, mostra una flessibilità eccessiva dell’ondina, con forti vibrazioni e scarsa rigidezza locale?",
+      "answer_it": "Una lamiera troppo sottile o troppo flessibile rispetto al campo di applicazione previsto per il sistema CTF+P560 non è in grado di fornire la rigidezza locale necessaria per un ancoraggio ripetibile. Se l’ondina si piega vistosamente sotto il puntale, vibra in modo marcato allo sparo e la deformazione del chiodo risulta molto variabile, si è in presenza di una condizione fuori campo rispetto alle prove Tecnaria. In queste situazioni la card può restituire valori incoerenti e il comportamento dei fissaggi non è affidabile ai fini del dimensionamento. La posa va sospesa e la configurazione deve essere rivalutata: occorre verificare che la lamiera rientri negli spessori e nelle tipologie ammesse o considerare soluzioni alternative con lamiera idonea o altri sistemi di collegamento approvati."
+    },
+    {
+      "id": "CTF-PATCH-0015-LAMIERA-CORROSA-O-CONSUMATA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "limite_applicazione",
+      "tags": ["lamiera corrosa", "ruggine", "spessore ridotto", "recupero solai esistenti"],
+      "triggers": [
+        "lamiera esistente molto corrosa",
+        "ruggine diffusa sulla lamiera",
+        "lamiera assottigliata dalla corrosione",
+        "spessore incerto per corrosione"
+      ],
+      "question_it": "È prudente posare i CTF con P560 su una lamiera esistente fortemente corrosa, con evidente riduzione di spessore e incertezza sulla capacità resistente locale?",
+      "answer_it": "La lamiera fortemente corrosa, con perdita di sezione significativa e spessore effettivo non più controllabile, esce dal contesto di applicazione tipico dei CTF posati su lamiera nuova o comunque integra. In questi casi la capacità resistente locale dell’ondina può risultare molto inferiore a quella presupposta nelle verifiche e nelle prove sperimentali. La posa dei CTF su lamiera così degradata non è prudente: il rischio è di ottenere fissaggi con resistenza non verificabile e potenziali collassi locali della lamiera sotto carico o sotto l’azione del colpo. In presenza di corrosione diffusa è necessario valutare interventi di sostituzione della lamiera, applicazione di nuova lamiera collaborante o, in alternativa, sistemi di collegamento diversi che non facciano affidamento su una lamiera strutturalmente compromessa."
+    },
+    {
+      "id": "CTF-PATCH-0016-LAMIERA-CON-BORDO-RIALZATO-ATTORNO-AL-CHIODO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "defect",
+      "tags": ["bordo rialzato", "cratere", "deformazione locale lamiera"],
+      "triggers": [
+        "bordino rialzato attorno al foro del chiodo",
+        "lamiera che si alza attorno alla testa",
+        "cratere invertito attorno al chiodo",
+        "deformazione a vulcano della lamiera"
+      ],
+      "question_it": "Come va interpretata la presenza di un bordo rialzato della lamiera attorno al punto di infissione del chiodo, con una sorta di piccolo 'vulcano' metallico, e quando è da considerarsi difetto grave?",
+      "answer_it": "Un leggero bordo rialzato della lamiera attorno al punto di infissione può comparire come effetto collaterale della deformazione, ma se l’entità è modesta e non altera l’appoggio tra testa del chiodo, piastra del CTF e lamiera circostante, il fenomeno può essere compatibile con un fissaggio ancora efficace. Quando invece il bordo rialzato è marcato, genera un cratere che solleva sensibilmente il piano di contatto o interferisce con il corretto appoggio del CTF e della card, la deformazione esce dal campo di accettazione. In questi casi il colpo va considerato non qualificato: è opportuno verificare la taratura dei propulsori, l’eventuale presenza di interposti e la qualità della lamiera; i fissaggi con deformazioni così anomale devono essere esclusi dal conteggio e, se il fenomeno è diffuso, occorre confrontarsi con Tecnaria."
+    },
+    {
+      "id": "CTF-PATCH-0017-CHIODI-CON-DIFETTI-RIPETUTI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "manutenzione_P560",
+      "tags": ["partita chiodi difettosa", "difetti ripetuti", "controllo qualità chiodi"],
+      "triggers": [
+        "più chiodi con lo stesso difetto",
+        "testa criccata su molti colpi",
+        "difetti ripetuti stessa scatola",
+        "sospetto su partita chiodi"
+      ],
+      "question_it": "Cosa bisogna fare se, durante la posa, si osserva lo stesso difetto grave (per esempio teste criccate o gambo eccessivamente piegato) ripetersi su un numero significativo di chiodi della stessa partita?",
+      "answer_it": "La ripetizione sistematica dello stesso difetto grave su più chiodi della medesima fornitura indica un possibile problema di qualità o di compatibilità tra propulsori e condizioni reali di posa. Non è prudente continuare la posa ignorando il fenomeno: i fissaggi affetti dal difetto non possono essere considerati qualificati e l’affidabilità complessiva dell’intervento risulta compromessa. In questi casi è necessario sospendere l’utilizzo di quella partita di chiodi, segregare i materiali sospetti, documentare fotograficamente il difetto e contattare Tecnaria fornendo tutti i dettagli (lotto, condizioni di posa, tarature, tipo di lamiera e supporto). Solo dopo indicazioni specifiche del produttore, eventuale sostituzione dei materiali e nuova campagna di prove è possibile riprendere la posa."
+    },
+    {
+      "id": "CTF-PATCH-0018-P560-MANUTENZIONE-EFFETTI-SULLA-POSA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "manutenzione_P560",
+      "tags": ["manutenzione P560", "sporco in canna", "prestazioni ridotte", "colpi irregolari"],
+      "triggers": [
+        "P560 spara in modo irregolare",
+        "colpi diversi uno dall altro",
+        "pistola sporca",
+        "necessità di pulizia P560"
+      ],
+      "question_it": "In che modo la manutenzione e lo stato di pulizia della P560 possono influenzare la qualità dei fissaggi dei CTF e quando è necessario fermarsi per effettuare la manutenzione?",
+      "answer_it": "La P560 è uno strumento a sparo calibrato; il suo corretto funzionamento dipende anche dalla pulizia interna, dalla lubrificazione e dal buono stato dei componenti soggetti a usura. Sporco, residui di polvere di propulsore o mancanza di manutenzione possono generare colpi irregolari, variazioni impreviste di energia, inceppamenti e comportamento anomalo del sistema di ritorno. Quando l’operatore percepisce differenze sensibili tra un colpo e l’altro, difficoltà di inserimento dei chiodi, ritardi nello scatto o rumori anomali, è obbligatorio sospendere la posa dei CTF, eseguire le operazioni di manutenzione previste nel manuale P560 e, se necessario, far verificare lo strumento da personale autorizzato. Solo dopo avere ripristinato condizioni di funzionamento regolari e aver ripetuto con esito positivo i colpi di prova è corretto riprendere la posa strutturale."
+    },
+    {
+      "id": "CTF-PATCH-0019-CTF-POSATO-FUORI-DAL-PASSO-CONSIGLIATO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "errore_uso",
+      "tags": ["passo connettori", "interasse errato", "densità fissaggi"],
+      "triggers": [
+        "CTF troppo lontani tra loro",
+        "passo diverso da quello di progetto",
+        "densità connettori inferiore",
+        "ho sbagliato distribuzione CTF"
+      ],
+      "question_it": "Cosa comporta, ai fini della verifica strutturale, una posa dei CTF con passo significativamente diverso (di solito più largo) rispetto a quello previsto dal progetto o dalla documentazione Tecnaria?",
+      "answer_it": "La resistenza e la rigidezza del sistema misto dipendono direttamente dalla densità e dalla distribuzione dei connettori CTF lungo le travi e le campate. Una posa con passo sensibilmente più largo rispetto a quello di progetto riduce il numero di connettori efficaci, abbassa la capacità di trasferimento delle azioni di taglio e può portare a uno stato di sollecitazione del solaio non conforme alle verifiche. Se ci si accorge a posteriori di aver posato con passo maggiore, non è sufficiente confidare su margini di sicurezza non dimostrati: è necessario confrontarsi con il progettista strutturale e con Tecnaria, rilevare con precisione la reale distribuzione dei CTF e, se del caso, integrare con connettori aggiuntivi o ricalcolare il solaio sulla base della configurazione effettiva."
+    },
+    {
+      "id": "CTF-PATCH-0020-LAMIERA-CON-VIBRAZIONI-DA-MACCHINARI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "anomalia_strutturale",
+      "tags": ["vibrazioni esterne", "macchinari in funzione", "posa in condizioni dinamiche"],
+      "triggers": [
+        "lamiera vibra per macchinari vicini",
+        "posa CTF con cantiere in movimento",
+        "lamiera instabile per vibrazioni esterne",
+        "problemi a misurare card per vibrazioni"
+      ],
+      "question_it": "È corretto effettuare la posa dei CTF e la lettura della card su lamiere che, durante il lavoro, sono soggette a vibrazioni significative dovute a macchinari in funzione o altre sorgenti dinamiche?",
+      "answer_it": "Le operazioni di posa dei CTF con P560 e le verifiche mediante card richiedono che la lamiera sia in condizioni almeno approssimativamente statiche. Vibrazioni significative dovute a macchinari, traffico o altre sorgenti dinamiche possono alterare la risposta locale della lamiera al colpo, rendere instabile la posizione del CTF, influenzare la traiettoria del chiodo e, soprattutto, compromettere la ripetibilità e l’affidabilità delle letture card. Se le vibrazioni sono tali da rendere difficoltoso il mantenimento del puntale o della card in posizione, è opportuno sospendere la posa durante il funzionamento delle sorgenti di vibrazione o prevedere una fase dedicata in condizioni più stabili. Solo in assenza di vibrazioni rilevanti è possibile considerare pienamente rappresentative le misure di controllo."
+    }
+  ]
+}
