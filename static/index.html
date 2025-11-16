@@ -263,13 +263,18 @@
       const q = document.getElementById("q").value.trim();
       if (!q) return;
 
+      // Add user message
       addMessage(q, "user");
       document.getElementById("q").value = "";
 
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q: q, lang: "it", mode: "gold" })
+        body: JSON.stringify({
+          question: q,
+          lang: "it",
+          mode: "gold"
+        })
       });
 
       const data = await res.json();
