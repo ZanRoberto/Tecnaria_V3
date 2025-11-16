@@ -13,8 +13,9 @@ from fastapi.responses import FileResponse
 
 from openai import OpenAI
 
+
 # ============================================================
-#  CONFIG BASE (identica alla tua)
+# CONFIG
 # ============================================================
 
 client = OpenAI()
@@ -33,11 +34,12 @@ FALLBACK_MESSAGE = (
     "Meglio un confronto diretto con l’ufficio tecnico Tecnaria."
 )
 
+
 # ============================================================
-#  FASTAPI
+# FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA GOLD – Overlay First", version="7.0.0")
+app = FastAPI(title="TECNARIA GOLD – OverlayFirst", version="8.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,14 +52,15 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 @app.get("/")
-def serve_ui():
+def index():
     path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(path):
         return FileResponse(path)
     return {"ok": True, "message": "UI non trovata"}
 
+
 # ============================================================
-#  MODELLI
+# MODELLI
 # ============================================================
 
 class AskRequest(BaseModel):
@@ -75,8 +78,9 @@ class AskResponse(BaseModel):
     lang: str
     score: float
 
+
 # ============================================================
-#  NORMALIZZAZIONE
+# NORMALIZZAZIONE
 # ============================================================
 
 def strip_accents(s: str) -> str:
@@ -86,46 +90,48 @@ def strip_accents(s: str) -> str:
     )
 
 
-def normalize(text: str) -> str:
-    if not isinstance(text, str):
+def normalize(t: str) -> str:
+    if not isinstance(t, str):
         return ""
-    t = strip_accents(text)
-    t = t.lower()
-    t = re.sub(r"\s+", " ", t).strip()
+    t = strip_accents(t)
+    t = t.lower().strip()
+    t = re.sub(r"\s+", " ", t)
     return t
 
 
 def tokenize(text: str) -> List[str]:
-    t = normalize(text)
-    return t.split(" ") if t else []
+    return normalize(text).split(" ")
 
 
 # ============================================================
-#  LOAD KB (SEPARATI)
+# LOAD KB
 # ============================================================
 
 def load_json(path: str) -> Dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
 def load_master():
     return load_json(MASTER_PATH).get("blocks", [])
 
-def load_overlay():
+
+def load_overlays():
     blocks = []
     p = Path(OVERLAY_DIR)
-    if p.exists():
-        for f in p.glob("*.json"):
-            try:
-                d = load_json(str(f))
-                blocks.extend(d.get("blocks", []))
-            except Exception as e:
-                print(f"[OVERLAY ERROR] {f}: {e}")
+    if not p.exists():
+        return blocks
+    for f in p.glob("*.json"):
+        try:
+            d = load_json(str(f))
+            blocks.extend(d.get("blocks", []))
+        except Exception as e:
+            print("[OVERLAY ERROR]", f, e)
     return blocks
 
 
 # ============================================================
-#  STATE
+# STATE
 # ============================================================
 
 class KBState:
@@ -136,45 +142,47 @@ class KBState:
 
 S = KBState()
 
+
 # ============================================================
-#  INDEX BUILD
+# INDEX BUILD
 # ============================================================
 
 def build_index():
     S.master_blocks = load_master()
-    S.overlay_blocks = load_overlay()
+    S.overlay_blocks = load_overlays()
 
     S.master_index = []
     S.overlay_index = []
 
-    # overlay first index
+    # Overlay index
     for idx, block in enumerate(S.overlay_blocks):
         for trig in block.get("triggers", []) or []:
-            t_norm = normalize(trig)
-            if t_norm:
-                S.overlay_index.append((idx, t_norm, set(tokenize(trig))))
+            norm = normalize(trig)
+            if norm:
+                S.overlay_index.append((idx, norm, set(tokenize(trig))))
 
-    # master index
+    # Master index
     for idx, block in enumerate(S.master_blocks):
         for trig in block.get("triggers", []) or []:
-            t_norm = normalize(trig)
-            if t_norm:
-                S.master_index.append((idx, t_norm, set(tokenize(trig))))
+            norm = normalize(trig)
+            if norm:
+                S.master_index.append((idx, norm, set(tokenize(trig))))
 
     print(f"[INDEX] overlay={len(S.overlay_blocks)} master={len(S.master_blocks)}")
 
+
 build_index()
 
+
 # ============================================================
-#  MATCHING (overlay first)
+# MATCHING
 # ============================================================
 
-def lexical_match_in(index_list, blocks, question):
+def lexical_match_in(index_list, blocks, question, min_score=0.0):
     q_norm = normalize(question)
     q_tokens = set(tokenize(question))
 
     matches = []
-    best_score = 0.0
 
     for idx, trig_norm, trig_tokens in index_list:
         score = 0.0
@@ -184,18 +192,19 @@ def lexical_match_in(index_list, blocks, question):
             score += len(trig_norm) / max(10, len(q_norm))
 
         # token overlap
-        if q_tokens and trig_tokens:
-            inter = q_tokens.intersection(trig_tokens)
-            if inter:
-                score += len(inter) / len(trig_tokens)
+        inter = q_tokens.intersection(trig_tokens)
+        if inter:
+            score += len(inter) / len(trig_tokens)
 
-        if score > 0:
+        if score >= min_score:
             matches.append((score, blocks[idx]))
-            if score > best_score:
-                best_score = score
 
     matches.sort(key=lambda x: x[0], reverse=True)
-    return [b for s, b in matches], best_score
+
+    if matches:
+        return [b for s, b in matches], matches[0][0]
+
+    return [], 0.0
 
 
 def ai_rerank(question, candidates):
@@ -204,56 +213,68 @@ def ai_rerank(question, candidates):
 
     try:
         desc = "\n".join(
-            f"- ID: {b.get('id')} | Triggers: {', '.join(b.get('triggers', []))}"
+            f"- {b.get('id')} | {', '.join(b.get('triggers', []))}"
             for b in candidates
         )
 
         prompt = (
             f"Domanda: {question}\n"
-            f"Blocchi:\n{desc}\n\n"
-            f"Scegli solo l'ID migliore."
+            f"Blocchi candidati:\n{desc}\n\n"
+            f"Scegli SOLO l'ID più pertinente."
         )
 
-        result = client.chat.completions.create(
+        res = client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=10,
             temperature=0.0,
         )
 
-        chosen = result.choices[0].message.content.strip()
+        chosen = res.choices[0].message.content.strip()
+
         for b in candidates:
             if b.get("id") == chosen:
                 return b
 
     except Exception as e:
-        print("[RERANK ERROR]", e)
+        print("[AI RERANK ERROR]", e)
 
     return candidates[0]
 
 
-def find_best_block(question):
+# ============================================================
+# CORE – FIND BEST BLOCK
+# ============================================================
 
-    # 🔥 1️⃣ MATCH OVERLAY FIRST
-    overlay_candidates, o_score = lexical_match_in(
-        S.overlay_index, S.overlay_blocks, question
+def find_best_block(question: str):
+
+    # 1️⃣ OVERLAY – PERMISSIVO
+    overlay_candidates, overlay_score = lexical_match_in(
+        S.overlay_index,
+        S.overlay_blocks,
+        question,
+        min_score=0.0   # SUPER PERMISSIVO
     )
 
     if overlay_candidates:
-        return ai_rerank(question, overlay_candidates), o_score
+        return ai_rerank(question, overlay_candidates), overlay_score
 
-    # 🔥 2️⃣ IF NO OVERLAY → MASTER
-    master_candidates, m_score = lexical_match_in(
-        S.master_index, S.master_blocks, question
+    # 2️⃣ MASTER – STANDARD
+    master_candidates, master_score = lexical_match_in(
+        S.master_index,
+        S.master_blocks,
+        question,
+        min_score=0.05  # più selettivo
     )
 
     if master_candidates:
-        return ai_rerank(question, master_candidates), m_score
+        return ai_rerank(question, master_candidates), master_score
 
     return None, 0.0
 
+
 # ============================================================
-#  ENDPOINTS
+# ENDPOINTS
 # ============================================================
 
 @app.get("/health")
