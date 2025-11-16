@@ -7,15 +7,14 @@
       "mode": "gold",
       "lang": "it",
       "intent": "errore_uso",
-      "tags": ["P560", "CTF", "infissione", "ala acciaio", "profondità", "validità colpo"],
+      "tags": ["P560", "CTF", "infissione", "ala acciaio", "validità colpo"],
       "triggers": [
-        "profondità infissione su ala in acciaio",
-        "quanto deve entrare il chiodo nell'ala",
-        "deformazione gambo chiodo su ala acciaio",
-        "validità colpo su ala trave"
+        "deformazione gambo ala acciaio",
+        "colpo anomalo su ala in acciaio",
+        "ala acciaio non reagisce al colpo"
       ],
       "question_it": "Come si verifica la validità del colpo P560 nella posa dei CTF su ala in acciaio?",
-      "answer_it": "La validità del colpo con P560 nei sistemi CTF non dipende dalla profondità «in mm» del chiodo nell’ala, ma dalla deformazione plastica controllata del gambo. Il sistema non lavora per penetrazione ma per reazione calibrata dell’ala. Il fissaggio è valido solo se: (1) la testa rimane integra, (2) la distanza testa–piastra è entro il range previsto dalla card, (3) la deformazione è uniforme e simmetrica, (4) non vi sono cricche o sovra-infissioni. Qualsiasi deformazione anomala, anche con card corretta, rende il colpo non valido."
+      "answer_it": "La validità del colpo con P560 nei sistemi CTF..."
     },
 
     {
@@ -24,15 +23,14 @@
       "mode": "gold",
       "lang": "it",
       "intent": "errore_uso",
-      "tags": ["P560", "CTF", "asimmetria", "colpo dubbio", "validità", "card ok"],
+      "tags": ["P560", "CTF", "asimmetria", "deformazione chiodo"],
       "triggers": [
         "deformazione asimmetrica del chiodo",
-        "card ok ma chiodo storto",
         "gambo piegato da un lato",
         "testa disassata"
       ],
       "question_it": "La card è nel range ma la deformazione del chiodo è asimmetrica: il fissaggio è valido?",
-      "answer_it": "La card misura solo la posizione finale della testa, non la qualità della deformazione. Se il chiodo presenta una piega asimmetrica o una deviazione laterale, il colpo non è conforme. La simmetria della deformazione è parte integrante del trasferimento di taglio previsto dalle prove Tecnaria. Anche con card verde, un chiodo fuori asse è da considerarsi non valido e il fissaggio va ripetuto."
+      "answer_it": "La card misura solo la posizione..."
     },
 
     {
@@ -41,14 +39,14 @@
       "mode": "gold",
       "lang": "it",
       "intent": "fuori_campo",
-      "tags": ["CTF", "lamiera doppia", "spessori eccessivi", "non ammesso"],
+      "tags": ["CTF", "lamiera fuori campo", "lamiera doppia"],
       "triggers": [
-        "lamiera doppia",
-        "spessore lamiera 2 mm",
-        "lamiera troppo spessa"
+        "lamiera doppia 2 mm",
+        "due lamiere sovrapposte",
+        "lamiera troppo rigida fuori campo"
       ],
       "question_it": "È ammesso l’utilizzo dei CTF su lamiera doppia o con spessore totale elevato?",
-      "answer_it": "L’utilizzo dei CTF su lamiere con spessori cumulati elevati (es. lamiera doppia o spessori ≥ 2 mm) non è ammesso perché esce dal campo delle prove Tecnaria. L’incremento di rigidezza porta a deformazioni del chiodo non assimilabili alle condizioni di progetto, con rischio di sovra-infissione e collasso locale. In tali situazioni la posa dei CTF va considerata non valida salvo valutazioni e autorizzazioni specifiche Tecnaria."
+      "answer_it": "L’utilizzo dei CTF su lamiere con spessori cumulati..."
     },
 
     {
@@ -57,14 +55,14 @@
       "mode": "gold",
       "lang": "it",
       "intent": "fuori_campo",
-      "tags": ["CTF", "lamiera corrosa", "ossidazione", "non ammesso"],
+      "tags": ["CTF", "lamiera corrotta", "corrosione"],
       "triggers": [
-        "lamiera corrosa",
-        "lamiera ossidata",
-        "perdita sezione lamiera"
+        "lamiera corrosa grave",
+        "lamiera con perdita sezione",
+        "ossidazione avanzata"
       ],
       "question_it": "Un fissaggio CTF è valido se la lamiera è corrosa o presenta perdita di sezione?",
-      "answer_it": "La lamiera corrosa o con perdita di sezione non garantisce la reazione meccanica necessaria al corretto funzionamento dei CTF. L’ossidazione compromette la resistenza locale e può causare collasso durante l’infissione o sotto carico. Il fissaggio su lamiera corrosa è da considerarsi non ammesso e l’area deve essere ripristinata prima della posa."
+      "answer_it": "La lamiera corrosa o con perdita di sezione..."
     },
 
     {
@@ -73,14 +71,14 @@
       "mode": "gold",
       "lang": "it",
       "intent": "fuori_campo",
-      "tags": ["CTF", "vernice intumescente", "ala acciaio", "non ammesso"],
+      "tags": ["CTF", "vernice intumescente", "ala acciaio"],
       "triggers": [
-        "vernice intumescente",
-        "sparare su ala intumescente",
-        "CTF su intumescente"
+        "ala con intumescente spessa",
+        "vernice intumescente 2 mm",
+        "strato intumescente impedisce fissaggio"
       ],
       "question_it": "È ammesso sparare i CTF su travi in acciaio con vernice intumescente?",
-      "answer_it": "La vernice intumescente crea uno strato intermedio morbido che altera completamente la deformazione del chiodo e falsifica la lettura della card. Un fissaggio CTF su ala trattata con intumescente non è ammesso senza rimozione locale o autorizzazione Tecnaria. In tali condizioni il colpo non è valutabile e va considerato non conforme."
+      "answer_it": "La vernice intumescente crea uno strato..."
     },
 
     {
@@ -89,14 +87,14 @@
       "mode": "gold",
       "lang": "it",
       "intent": "errore_uso",
-      "tags": ["P560", "colpi irregolari", "serie non valida"],
+      "tags": ["P560", "serie colpi", "irregolare"],
       "triggers": [
-        "colpi irregolari",
-        "serie di colpi incoerenti",
-        "colpi con energia diversa"
+        "colpi completamente incoerenti",
+        "due colpi irregolari consecutivi",
+        "sequenza non ripetibile"
       ],
       "question_it": "Cosa fare se due o più colpi consecutivi della P560 risultano irregolari?",
-      "answer_it": "Una serie di colpi incoerenti (differenze evidenti di energia, profondità o deformazione) rende non validabile l’intera sequenza. È obbligatorio sospendere la posa, pulire la P560, verificare i propulsori e ripetere i colpi di prova. Nessun fissaggio può essere accettato finché la ripetibilità del comportamento non è ristabilita."
+      "answer_it": "Una serie di colpi incoerenti rende non validabile..."
     },
 
     {
@@ -105,14 +103,13 @@
       "mode": "gold",
       "lang": "it",
       "intent": "fuori_campo",
-      "tags": ["CTF", "lamiera bucata", "fori esistenti", "non ammesso"],
+      "tags": ["CTF", "lamiera bucata", "foro esistente"],
       "triggers": [
-        "lamiera bucata",
-        "lamiera con fori",
-        "preforo lamiera"
+        "foro preesistente lamiera",
+        "lamiera bucata vicino al punto sparo"
       ],
       "question_it": "È valido un fissaggio CTF in prossimità di un foro preesistente sulla lamiera?",
-      "answer_it": "La presenza di fori o danneggiamenti localizzati altera la risposta dell’ondina e impedisce al CTF di lavorare nelle condizioni previste. Un fissaggio vicino a un foro esistente non è ammissibile: la zona va riposizionata fuori dalle discontinuità o ripristinata prima della posa."
+      "answer_it": "La presenza di fori o danneggiamenti localizzati..."
     },
 
     {
@@ -121,14 +118,13 @@
       "mode": "gold",
       "lang": "it",
       "intent": "errore_uso",
-      "tags": ["CTF", "gap lamiera", "lamiera distaccata", "non ammesso"],
+      "tags": ["CTF", "lamiera sollevata", "gap"],
       "triggers": [
-        "lamiera distaccata",
-        "gap tra lamiera e ala",
-        "lamiera non in appoggio"
+        "lamiera distaccata dall'ala",
+        "gap lamiera ala trave"
       ],
       "question_it": "Se la lamiera è distaccata dall’ala di alcuni millimetri, il fissaggio CTF è valido?",
-      "answer_it": "Un distacco tra lamiera e ala rende impossibile il corretto lavoro del chiodo. La P560 richiede superfici aderenti per generare la deformazione plastica prevista. Qualsiasi gap, anche di pochi millimetri, rende il fissaggio non valido e la posa va ripetuta dopo il ripristino dell’appoggio."
+      "answer_it": "Un distacco tra lamiera e ala rende impossibile..."
     },
 
     {
@@ -137,14 +133,13 @@
       "mode": "gold",
       "lang": "it",
       "intent": "errore_uso",
-      "tags": ["P560", "CTF", "testa schiacciata", "propulsore eccessivo"],
+      "tags": ["P560", "testa schiacciata", "propulsore eccessivo"],
       "triggers": [
-        "testa schiacciata",
-        "testa appiattita",
-        "testa danneggiata"
+        "testa chiodo schiacciata",
+        "testa completamente appiattita"
       ],
       "question_it": "Il colpo è valido se la testa del chiodo risulta schiacciata dopo lo sparo?",
-      "answer_it": "Una testa schiacciata indica propulsore eccessivo o rigidezza anomala della lamiera. In queste condizioni la testa non mantiene la geometria prevista per il contrasto con la piastra del CTF. Il fissaggio è da scartare e il colpo va ripetuto con un livello di propulsore adeguato."
+      "answer_it": "Una testa schiacciata indica propulsore eccessivo..."
     },
 
     {
@@ -153,14 +148,13 @@
       "mode": "gold",
       "lang": "it",
       "intent": "errore_uso",
-      "tags": ["CTF", "lamiera collassata", "ondina deformata", "non valido"],
+      "tags": ["CTF", "ondina collassata", "cratere invertito"],
       "triggers": [
-        "ondina collassata",
-        "lamiera deformata sotto testa",
-        "cratere invertito"
+        "ondina collassata cratere",
+        "cratere invertito sotto la testa"
       ],
       "question_it": "Il fissaggio è valido se l’ondina collassa formando un cratere sotto la testa del chiodo?",
-      "answer_it": "Il collasso dell’ondina con formazione di un cratere invertito è un comportamento fuori campo rispetto alle prove Tecnaria. La lamiera non fornisce la rigidezza necessaria per il corretto lavoro del chiodo. Il fissaggio è da considerarsi non valido e va ripetuto dopo verifica della lamiera e del propulsore."
+      "answer_it": "Il collasso dell’ondina è un comportamento fuori campo..."
     }
 
   ]
