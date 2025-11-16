@@ -2,29 +2,32 @@ import os
 import json
 import re
 import unicodedata
-from typing import Any, Dict, List, Optional, Set, Tuple
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-# OpenAI: secondo cervello per la scelta semantica
 from openai import OpenAI
 
-client = OpenAI()
+# ============================================================
+#  CONFIGURAZIONE BASE
+# ============================================================
 
-# ============================================================
-#  PATH / FILE
-# ============================================================
+client = OpenAI()  # usa OPENAI_API_KEY dall'ambiente
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "static", "data")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
+# File master principale: CTF + P560 (146 blocchi)
 KB_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_v3.json")
+
+# Directory overlay: patch, migliorie, nuove famiglie
+OVERLAY_DIR = os.path.join(DATA_DIR, "overlays")
 
 FALLBACK_FAMILY = "COMM"
 FALLBACK_ID = "COMM-FALLBACK-NOANSWER-0001"
@@ -37,7 +40,7 @@ FALLBACK_MESSAGE = (
 #  FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="5.0.0")
+app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="6.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,11 +49,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ============================================================
-#  STATIC UI
-# ============================================================
-
+# Static UI
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 
 @app.get("/")
 def serve_ui():
@@ -60,8 +61,14 @@ def serve_ui():
     return {"ok": True, "message": "UI non trovata"}
 
 # ============================================================
-#  MODELLI RISPOSTA
+#  MODELLI I/O
 # ============================================================
+
+class AskRequest(BaseModel):
+    question: str
+    lang: str = "it"
+    mode: str = "gold"
+
 
 class AskResponse(BaseModel):
     ok: bool
@@ -70,411 +77,308 @@ class AskResponse(BaseModel):
     id: str
     mode: str
     lang: str
+    score: float
+
 
 # ============================================================
-#  NORMALIZZAZIONE
+#  NORMALIZZAZIONE TESTO
 # ============================================================
 
 def strip_accents(s: str) -> str:
     return "".join(
-        c for c in unicodedata.normalize("NFKD", s)
-        if not unicodedata.combining(c)
+        c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
     )
 
-def normalize_text(s: str) -> str:
-    if s is None:
+
+def normalize(text: str) -> str:
+    if not isinstance(text, str):
         return ""
-    s = strip_accents(s)
-    s = s.lower()
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+    t = strip_accents(text)
+    t = t.lower()
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
 
-def tokenize_norm(s: str) -> List[str]:
-    return normalize_text(s).split()
 
-# ============================================================
-#  STATO
-# ============================================================
-
-class BrainState:
-    blocks: List[Dict[str, Any]] = []
-    tokens_by_id: Dict[str, Set[str]] = {}
-
-S = BrainState()
-
-# ============================================================
-#  LOAD KB (LEGGE SIA SCHEMA GOLD CHE LEGACY)
-# ============================================================
-
-def load_kb() -> None:
-    if not os.path.exists(KB_PATH):
-        raise RuntimeError(f"File KB non trovato: {KB_PATH}")
-
-    with open(KB_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    blocks = data.get("blocks")
-    if not isinstance(blocks, list):
-        raise RuntimeError("Struttura KB non valida: manca 'blocks'")
-
-    S.blocks = []
-    S.tokens_by_id = {}
-
-    for blk in blocks:
-        if not isinstance(blk, dict):
-            continue
-
-        blk_id = blk.get("id")
-        if not isinstance(blk_id, str):
-            continue
-
-        S.blocks.append(blk)
-        tokens: Set[str] = set()
-
-        def add_tokens(val: Any):
-            if isinstance(val, str):
-                for t in tokenize_norm(val):
-                    if t:
-                        tokens.add(t)
-            elif isinstance(val, list):
-                for v in val:
-                    if isinstance(v, str):
-                        for t in tokenize_norm(v):
-                            if t:
-                                tokens.add(t)
-
-        # Schema GOLD + legacy
-        add_tokens(blk.get("question_it"))
-        add_tokens(blk.get("question"))
-        add_tokens(blk.get("triggers", []))
-        add_tokens(blk.get("tags", []))
-
-        fam = str(blk.get("family", "")).upper()
-        if "P560" in fam:
-            tokens.add("p560")
-        if "CTF" in fam:
-            tokens.add("ctf")
-
-        S.tokens_by_id[blk_id] = tokens
-
-    print(f"[BOOT] Caricati {len(S.blocks)} blocchi GOLD da {KB_PATH}")
-
-# ============================================================
-#  SCORING (PRIMO CERVELLO: IMBUTO)
-# ============================================================
-
-def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
-    blk_id = blk.get("id", "")
-    family = str(blk.get("family", "")).upper()
-    intent = str(blk.get("intent", "")).lower()
-
-    score = 0.0
-
-    # Trigger e tag
-    for field, w in [
-        ("triggers", 10.0),
-        ("tags", 3.0),
-    ]:
-        vals = blk.get(field, [])
-        if isinstance(vals, list):
-            for v in vals:
-                tv = normalize_text(v)
-                if tv and tv in q_norm:
-                    score += w
-
-    ref = S.tokens_by_id.get(blk_id, set())
-    common = q_tokens & ref
-    score += len(common)
-
-    # Bonus famiglie
-    if "P560" in family:
-        if any(tok in q_tokens for tok in ["p560", "pistola", "sparachiodi", "chiodatrice"]):
-            score += 8
-
-    if "CTF" in family:
-        if any(tok in q_tokens for tok in ["ctf", "lamiera", "ondina", "card", "grecata"]):
-            score += 5
-
-    # Mini bias sugli intent, per cominciare a differenziare
-    # (overview / errore / controllo posa)
-    if any(kw in q_norm for kw in ["mi parli", "cos e", "cos'è", "che cos e", "che cos'è", "a cosa serve"]):
-        if intent == "overview":
-            score += 5
-        if "err" in blk_id.lower():
-            score -= 3
-
-    if any(kw in q_norm for kw in ["come verifico", "come controllo", "come faccio a sapere", "come faccio a capire"]):
-        if intent in ["controllo_posa", "controllo", "qualita_posa"]:
-            score += 5
-
-    if any(kw in q_norm for kw in ["errore", "difetto", "non valido", "fuori campo", "vietato"]):
-        if intent in ["errore_uso", "anomalia_strutturale"]:
-            score += 5
-
-    return score
-
-def find_top_blocks(q: str, top_k: int = 5) -> List[Tuple[float, Dict[str, Any]]]:
-    """Ritorna i migliori top_k blocchi (score, blk)."""
-    q_norm = normalize_text(q)
-    if not q_norm:
+def tokenize(text: str) -> List[str]:
+    t = normalize(text)
+    if not t:
         return []
+    return t.split(" ")
 
-    q_tokens = set(q_norm.split())
-    scored: List[Tuple[float, Dict[str, Any]]] = []
-
-    for blk in S.blocks:
-        s = score_block(q_norm, q_tokens, blk)
-        if s > 0:
-            scored.append((s, blk))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return scored[:top_k]
 
 # ============================================================
-#  PICK ANSWER (GOLD + LEGACY)
+#  LOAD KB: MASTER + OVERLAY
 # ============================================================
 
-def pick_answer_it(blk: Dict[str, Any]) -> Optional[str]:
-    # 1) Schema GOLD
-    ans = blk.get("answer_it")
-    if isinstance(ans, str) and ans.strip():
-        return ans.strip()
+def load_json(path: str) -> Dict[str, Any]:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-    ga = blk.get("gold_answer_it")
-    if isinstance(ga, str) and ga.strip():
-        return ga.strip()
 
-    rv = blk.get("response_variants")
-    if isinstance(rv, dict):
-        gold = rv.get("gold") or rv.get("GOLD") or {}
-        if isinstance(gold, dict):
-            txt = gold.get("it") or gold.get("IT")
-            if isinstance(txt, str) and txt.strip():
-                return txt.strip()
-
-    # 2) Schema legacy
-    ans2 = blk.get("answer")
-    if isinstance(ans2, str) and ans2.strip():
-        return ans2.strip()
-
-    ga2 = blk.get("gold_answer")
-    if isinstance(ga2, str) and ga2.strip():
-        return ga2.strip()
-
-    if isinstance(rv, dict):
-        gold2 = rv.get("gold") or rv.get("GOLD") or {}
-        if isinstance(gold2, dict):
-            txt2 = gold2.get("answer")
-            if isinstance(txt2, str) and txt2.strip():
-                return txt2.strip()
-
-    return None
-
-# ============================================================
-#  TERMINOLOGIA
-# ============================================================
-
-def enforce_terminologia(family: str, txt: str) -> str:
-    if not isinstance(txt, str):
-        return txt
-    return re.sub(r"\bperni\b", "chiodi idonei Tecnaria", txt, flags=re.IGNORECASE)
-
-# ============================================================
-#  SECONDO CERVELLO: OPENAI PER SCELTA SEMANTICA
-# ============================================================
-
-def choose_block_with_openai(question: str, candidates: List[Tuple[float, Dict[str, Any]]]) -> Dict[str, Any]:
+def load_kb() -> Dict[str, Any]:
     """
-    Usa OpenAI per scegliere, tra i top-k blocchi proposti dall'imbuto,
-    quello semanticamente più coerente con la domanda.
-    Se qualcosa va storto, ritorna comunque il migliore per score.
+    Carica:
+    - il file MASTER (ctf_system_COMPLETE_GOLD_v3.json)
+    - tutti gli OVERLAY in static/data/overlays/*.json
+    Fonde tutti i blocchi in un'unica knowledge base.
     """
-    # Fallback di default: il migliore per score
+    if not os.path.exists(KB_PATH):
+        raise FileNotFoundError(f"KB master non trovato: {KB_PATH}")
+
+    base = load_json(KB_PATH)
+    total_blocks: List[Dict[str, Any]] = base.get("blocks", [])
+
+    # Carica overlay solo se la dir esiste
+    overlay_path = Path(OVERLAY_DIR)
+    if overlay_path.exists():
+        for overlay_file in overlay_path.glob("*.json"):
+            try:
+                overlay = load_json(str(overlay_file))
+                overlay_blocks = overlay.get("blocks", [])
+                before = len(total_blocks)
+                total_blocks.extend(overlay_blocks)
+                after = len(total_blocks)
+                print(f"[OVERLAY] {overlay_file.name}: +{after - before} blocchi")
+            except Exception as e:
+                print(f"[OVERLAY ERROR] {overlay_file}: {e}")
+
+    print(f"[KB] Totale blocchi caricati (MASTER+OVERLAY): {len(total_blocks)}")
+    return {"blocks": total_blocks}
+
+
+# ============================================================
+#  INDICE IN MEMORIA
+# ============================================================
+
+class KBState:
+    blocks: List[Dict[str, Any]] = []
+    # lista di (idx_block, trigger_norm, token_set)
+    trigger_index: List[Tuple[int, str, set]] = []
+
+
+S = KBState()
+
+
+def build_index():
+    kb = load_kb()
+    S.blocks = kb.get("blocks", [])
+    S.trigger_index = []
+
+    for idx, block in enumerate(S.blocks):
+        triggers = block.get("triggers", []) or []
+        for trig in triggers:
+            t_norm = normalize(trig)
+            if not t_norm:
+                continue
+            tokens = set(tokenize(trig))
+            S.trigger_index.append((idx, t_norm, tokens))
+
+    print(f"[INDEX] Blocchi: {len(S.blocks)} – Trigger indicizzati: {len(S.trigger_index)}")
+
+
+# Caricamento all'avvio
+build_index()
+
+
+# ============================================================
+#  MOTORE DI MATCH – IMBUTO
+# ============================================================
+
+def lexical_match(question: str) -> Tuple[Optional[Dict[str, Any]], float]:
+    """
+    Imbuto lessicale:
+    1) match per substring del trigger nella domanda
+    2) se punteggi bassi, match per overlap di token
+    """
+    q_norm = normalize(question)
+    q_tokens = set(tokenize(question))
+
+    best_block = None
+    best_score = 0.0
+
+    # 1) substring-based
+    for idx, trig_norm, trig_tokens in S.trigger_index:
+        if trig_norm in q_norm:
+            score = len(trig_norm) / max(10, len(q_norm))
+            if score > best_score:
+                best_score = score
+                best_block = S.blocks[idx]
+
+    # 2) token-overlap se score troppo basso
+    if best_score < 0.25 and q_tokens:
+        for idx, trig_norm, trig_tokens in S.trigger_index:
+            if not trig_tokens:
+                continue
+            inter = q_tokens.intersection(trig_tokens)
+            if not inter:
+                continue
+            score = len(inter) / len(trig_tokens)
+            if score > best_score:
+                best_score = score
+                best_block = S.blocks[idx]
+
+    return best_block, best_score
+
+
+def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Secondo cervello OpenAI: tra i candidati già filtrati lessicalmente,
+    chiede al modello quale ID è il più pertinente.
+    """
     if not candidates:
-        return {}
+        return None
 
-    if len(candidates) == 1:
-        return candidates[0][1]
-
-    # Costruisco il contesto per OpenAI
-    model_name = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-
-    # Preparo una lista sintetica di candidati
-    blocchi_descr = []
-    for score, blk in candidates:
-        bid = blk.get("id", "SENZA-ID")
-        fam = blk.get("family", "")
-        intent = blk.get("intent", "")
-        q_it = blk.get("question_it") or blk.get("question") or ""
-        ans = pick_answer_it(blk) or ""
-        # Accorcio un po' la risposta per sicurezza
-        if len(ans) > 600:
-            ans = ans[:600] + " [...]"
-        blocchi_descr.append(
-            f"- ID: {bid}\n  family: {fam}\n  intent: {intent}\n  domanda_blocco: {q_it}\n  risposta_blocco: {ans}"
+    blocks_desc = []
+    for b in candidates:
+        blocks_desc.append(
+            f"- ID: {b.get('id','?')}\n  Family: {b.get('family','?')}\n  Triggers: {', '.join(b.get('triggers', []))}"
         )
+    blocks_text = "\n".join(blocks_desc)
 
-    blocchi_text = "\n\n".join(blocchi_descr)
+    prompt = f"""
+Sei l'assistente tecnico del motore Tecnaria-IMBUTO.
+Devi scegliere il blocco più pertinente alla domanda seguente.
 
-    system_prompt = (
-        "Sei un motore di reranking per una knowledge base tecnica di connettori Tecnaria. "
-        "Ricevi la domanda di un utente (in italiano) e alcuni blocchi candidati, "
-        "ognuno con ID, family, intent, domanda_blocco e risposta_blocco. "
-        "Devi scegliere UN SOLO blocco, quello la cui risposta risponde meglio alla domanda dell’utente. "
-        "Se nessun blocco è davvero adatto, rispondi esattamente con 'NONE'. "
-        "Rispondi SEMPRE SOLO con l'ID del blocco (es. 'P560-ERR-0003-SOVRA-INFISSIONE') oppure 'NONE'."
-    )
+Domanda utente:
+\"\"\"{question}\"\"\"
 
-    user_prompt = (
-        f"Domanda utente:\n{question}\n\n"
-        f"Blocchi candidati:\n{blocchi_text}\n\n"
-        "Indica SOLO l'ID del blocco migliore oppure 'NONE' se nessuno è adeguato."
-    )
+
+Blocchi candidati:
+{blocks_text}
+
+Rispondi SOLO con l'ID del blocco migliore, senza altro testo.
+"""
 
     try:
         completion = client.chat.completions.create(
-            model=model_name,
-            temperature=0,
+            model="gpt-4.1-mini",
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
+                {
+                    "role": "system",
+                    "content": "Sei un selettore deterministico di ID blocco Tecnaria. Rispondi solo con un ID esattamente come ti viene fornito."
+                },
+                {"role": "user", "content": prompt},
             ],
+            max_tokens=16,
+            temperature=0.0,
         )
         content = completion.choices[0].message.content.strip()
-        if not content:
-            # Nessuna risposta chiara → fallback
-            return candidates[0][1]
-
-        if content.upper().startswith("NONE"):
-            # Nessun blocco ritenuto adatto → fallback al migliore per score
-            return candidates[0][1]
-
-        chosen_id = content.strip().split()[0]
-
-        for _, blk in candidates:
-            if str(blk.get("id", "")).strip() == chosen_id:
-                return blk
-
-        # Se non trova ID esatto, fallback
-        return candidates[0][1]
-
+        for b in candidates:
+            if b.get("id") == content:
+                return b
     except Exception as e:
-        # In caso di errore API, loggare e fallback
-        print(f"[WARN] Errore OpenAI reranking: {e}")
-        return candidates[0][1]
+        print(f"[AI_RERANK ERROR] {e}")
+
+    return None
+
+
+def find_best_block(question: str) -> Tuple[Optional[Dict[str, Any]], float]:
+    """
+    Combina imbuto lessicale e, se necessario, reranking AI.
+    """
+    block, score = lexical_match(question)
+
+    if block is not None and score >= 0.40:
+        return block, score
+
+    q_norm = normalize(question)
+    q_tokens = set(tokenize(question))
+    scored: List[Tuple[float, Dict[str, Any]]] = []
+
+    for idx, trig_norm, trig_tokens in S.trigger_index:
+        base_score = 0.0
+        if trig_norm in q_norm:
+            base_score += len(trig_norm) / max(10, len(q_norm))
+        if q_tokens and trig_tokens:
+            inter = q_tokens.intersection(trig_tokens)
+            if inter:
+                base_score += len(inter) / len(trig_tokens)
+        if base_score > 0:
+            scored.append((base_score, S.blocks[idx]))
+
+    if not scored:
+        return block, score
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top_candidates = [b for s, b in scored[:5]]
+
+    ai_block = ai_rerank(question, top_candidates)
+    if ai_block is not None:
+        return ai_block, max(score, 0.5)
+
+    return block, score
+
 
 # ============================================================
-#  STARTUP
-# ============================================================
-
-@app.on_event("startup")
-def on_startup():
-    load_kb()
-
-# ============================================================
-#  HEALTH
+#  ENDPOINTS
 # ============================================================
 
 @app.get("/health")
 def health():
     return {
         "ok": True,
-        "kb_path": KB_PATH,
         "blocks_loaded": len(S.blocks),
+        "triggers_indexed": len(S.trigger_index),
+        "kb_path": KB_PATH,
+        "overlay_dir": OVERLAY_DIR,
     }
 
-# ============================================================
-#  ASK
-# ============================================================
 
 @app.post("/api/ask", response_model=AskResponse)
-async def api_ask(request: Request) -> AskResponse:
+def api_ask(req: AskRequest):
+    if req.mode.lower() != "gold":
+        raise HTTPException(status_code=400, detail="Modalità non supportata. Usa mode='gold'.")
 
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
+    question = req.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Domanda vuota.")
 
-    if not isinstance(body, dict):
-        body = {}
+    block, score = find_best_block(question)
 
-    q = (
-        body.get("q")
-        or body.get("question")
-        or body.get("message")
-        or body.get("text")
-        or ""
+    if block is None:
+        return AskResponse(
+            ok=False,
+            answer=FALLBACK_MESSAGE,
+            family=FALLBACK_FAMILY,
+            id=FALLBACK_ID,
+            mode="gold",
+            lang=req.lang,
+            score=0.0,
+        )
+
+    lang_key = f"answer_{req.lang}"
+    answer = (
+        block.get(lang_key)
+        or block.get("answer_it")
+        or block.get("answer")
+        or FALLBACK_MESSAGE
     )
 
-    if not isinstance(q, str):
-        q = str(q)
-
-    q = q.strip()
-
-    mode = str(body.get("mode") or "gold").lower()
-    lang = "it"
-
-    if mode != "gold":
-        raise HTTPException(status_code=400, detail="Usa mode=gold")
-
-    if not q:
-        return AskResponse(
-            ok=False,
-            answer="Domanda vuota.",
-            family=FALLBACK_FAMILY,
-            id=FALLBACK_ID,
-            mode="gold",
-            lang=lang,
-        )
-
-    # 1) Primo cervello: imbuto → top-k blocchi
-    top = find_top_blocks(q, top_k=5)
-    if not top:
-        return AskResponse(
-            ok=False,
-            answer=FALLBACK_MESSAGE,
-            family=FALLBACK_FAMILY,
-            id=FALLBACK_ID,
-            mode="gold",
-            lang=lang,
-        )
-
-    # 2) Secondo cervello: OpenAI sceglie il migliore tra i candidati
-    blk = choose_block_with_openai(q, top)
-    if not blk:
-        return AskResponse(
-            ok=False,
-            answer=FALLBACK_MESSAGE,
-            family=FALLBACK_FAMILY,
-            id=FALLBACK_ID,
-            mode="gold",
-            lang=lang,
-        )
-
-    txt = pick_answer_it(blk)
-    if not txt:
-        return AskResponse(
-            ok=False,
-            answer="Risposta GOLD non trovata per il blocco selezionato.",
-            family=str(blk.get("family", FALLBACK_FAMILY)),
-            id=str(blk.get("id", FALLBACK_ID)),
-            mode="gold",
-            lang=lang,
-        )
-
-    family = str(blk.get("family", FALLBACK_FAMILY))
-    txt = enforce_terminologia(family, txt)
+    family = block.get("family", "CTF_SYSTEM")
+    mode = block.get("mode", "gold")
+    block_id = block.get("id", "UNKNOWN-ID")
 
     return AskResponse(
         ok=True,
-        answer=txt,
+        answer=answer,
         family=family,
-        id=str(blk.get("id", FALLBACK_ID)),
-        mode="gold",
-        lang=lang,
+        id=block_id,
+        mode=mode,
+        lang=req.lang,
+        score=float(score),
     )
 
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", "8000"))
-    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=True)
+
+@app.post("/api/reload")
+def api_reload():
+    """
+    Permette di ricaricare KB master + overlay senza riavviare il servizio.
+    Utile quando aggiungiamo nuove patch JSON.
+    """
+    build_index()
+    return {
+        "ok": True,
+        "message": "KB ricaricato (MASTER + OVERLAY)",
+        "blocks_loaded": len(S.blocks),
+        "triggers_indexed": len(S.trigger_index),
+    }
