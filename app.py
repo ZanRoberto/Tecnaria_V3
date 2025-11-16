@@ -32,7 +32,7 @@ FALLBACK_MESSAGE = (
 #  FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="3.2.0")
+app = FastAPI(title="TECNARIA-IMBUTO GOLD CTF_SYSTEM+P560", version="4.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,25 +42,20 @@ app.add_middleware(
 )
 
 # ============================================================
-#  UI STATIC
+#  STATIC UI
 # ============================================================
 
-# monta la cartella static
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-# root → serve la tua interfaccia statica
 @app.get("/")
 def serve_ui():
     index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return {
-        "ok": True,
-        "message": "UI non trovata: manca static/index.html",
-    }
+    return {"ok": True, "message": "UI non trovata"}
 
 # ============================================================
-#  MODELLI DI RISPOSTA
+#  MODELLI RISPOSTA
 # ============================================================
 
 class AskResponse(BaseModel):
@@ -72,7 +67,7 @@ class AskResponse(BaseModel):
     lang: str
 
 # ============================================================
-#  (tutto il resto identico al tuo file)
+#  NORMALIZZAZIONE
 # ============================================================
 
 def strip_accents(s: str) -> str:
@@ -92,11 +87,19 @@ def normalize_text(s: str) -> str:
 def tokenize_norm(s: str) -> List[str]:
     return normalize_text(s).split()
 
+# ============================================================
+#  STATO
+# ============================================================
+
 class BrainState:
     blocks: List[Dict[str, Any]] = []
     tokens_by_id: Dict[str, Set[str]] = {}
 
 S = BrainState()
+
+# ============================================================
+#  LOAD KB (NUOVA VERSIONE → LEGGE SIA IT CHE LEGACY)
+# ============================================================
 
 def load_kb() -> None:
     if not os.path.exists(KB_PATH):
@@ -107,7 +110,7 @@ def load_kb() -> None:
 
     blocks = data.get("blocks")
     if not isinstance(blocks, list):
-        raise RuntimeError("Struttura KB non valida: manca 'blocks' come lista")
+        raise RuntimeError("Struttura KB non valida: manca 'blocks'")
 
     S.blocks = []
     S.tokens_by_id = {}
@@ -115,6 +118,7 @@ def load_kb() -> None:
     for blk in blocks:
         if not isinstance(blk, dict):
             continue
+
         blk_id = blk.get("id")
         if not isinstance(blk_id, str):
             continue
@@ -122,6 +126,7 @@ def load_kb() -> None:
         S.blocks.append(blk)
         tokens: Set[str] = set()
 
+        # Funzione per aggiungere token
         def add_tokens(val: Any):
             if isinstance(val, str):
                 for t in tokenize_norm(val):
@@ -134,7 +139,10 @@ def load_kb() -> None:
                             if t:
                                 tokens.add(t)
 
+        # ⚠️ LEGGE ENTRAMBI GLI SCHEMI
         add_tokens(blk.get("question_it"))
+        add_tokens(blk.get("question"))
+
         add_tokens(blk.get("triggers", []))
         add_tokens(blk.get("tags", []))
 
@@ -148,60 +156,69 @@ def load_kb() -> None:
 
     print(f"[BOOT] Caricati {len(S.blocks)} blocchi GOLD da {KB_PATH}")
 
+# ============================================================
+#  SCORING
+# ============================================================
+
 def score_block(q_norm: str, q_tokens: Set[str], blk: Dict[str, Any]) -> float:
     blk_id = blk.get("id", "")
     family = str(blk.get("family", "")).upper()
+
     score = 0.0
 
-    for field, weight in [
+    for field, w in [
         ("triggers", 10.0),
         ("tags", 3.0),
     ]:
         vals = blk.get(field, [])
-        if not isinstance(vals, list):
-            continue
-        for v in vals:
-            if not isinstance(v, str):
-                continue
-            tv = normalize_text(v)
-            if tv and tv in q_norm:
-                score += weight
+        if isinstance(vals, list):
+            for v in vals:
+                tv = normalize_text(v)
+                if tv and tv in q_norm:
+                    score += w
 
     ref = S.tokens_by_id.get(blk_id, set())
     common = q_tokens & ref
-    score += 1.0 * len(common)
+    score += len(common)
 
-    if "P560" in family or "P560" in blk_id.upper():
+    if "P560" in family:
         if any(tok in q_tokens for tok in ["p560", "pistola", "sparachiodi", "chiodatrice"]):
-            score += 8.0
+            score += 8
 
-    if "CTF" in family or "CTF_SYSTEM" in family:
-        if any(tok in q_tokens for tok in ["ctf", "lamiera", "grecata", "ondina", "card"]):
-            score += 5.0
+    if "CTF" in family:
+        if any(tok in q_tokens for tok in ["ctf", "lamiera", "ondina", "card", "grecata"]):
+            score += 5
 
     return score
 
+# ============================================================
+#  FIND BEST
+# ============================================================
+
 def find_best_block(q: str) -> Optional[Dict[str, Any]]:
     q_norm = normalize_text(q)
-    if not q_norm:
-        return None
     q_tokens = set(q_norm.split())
-
-    best: Optional[Dict[str, Any]] = None
-    best_score: float = 0.0
+    best = None
+    best_score = 0
 
     for blk in S.blocks:
         s = score_block(q_norm, q_tokens, blk)
         if s > best_score:
-            best_score = s
             best = blk
+            best_score = s
 
-    if best is None or best_score <= 0.0:
+    if best_score <= 0:
         return None
 
     return best
 
+# ============================================================
+#  PICK ANSWER (NUOVA VERSIONE → GOLD + LEGACY)
+# ============================================================
+
 def pick_answer_it(blk: Dict[str, Any]) -> Optional[str]:
+
+    # 1) Schema GOLD
     ans = blk.get("answer_it")
     if isinstance(ans, str) and ans.strip():
         return ans.strip()
@@ -212,36 +229,69 @@ def pick_answer_it(blk: Dict[str, Any]) -> Optional[str]:
 
     rv = blk.get("response_variants")
     if isinstance(rv, dict):
-        gold_block = rv.get("gold") or rv.get("GOLD") or {}
-        if isinstance(gold_block, dict):
-            txt = gold_block.get("it") or gold_block.get("IT")
+        gold = rv.get("gold") or rv.get("GOLD") or {}
+        if isinstance(gold, dict):
+            txt = gold.get("it") or gold.get("IT")
             if isinstance(txt, str) and txt.strip():
                 return txt.strip()
 
+    # 2) Schema legacy (senza _it)
+    ans2 = blk.get("answer")
+    if isinstance(ans2, str) and ans2.strip():
+        return ans2.strip()
+
+    ga2 = blk.get("gold_answer")
+    if isinstance(ga2, str) and ga2.strip():
+        return ga2.strip()
+
+    if isinstance(rv, dict):
+        gold2 = rv.get("gold") or rv.get("GOLD") or {}
+        if isinstance(gold2, dict):
+            txt2 = gold2.get("answer")
+            if isinstance(txt2, str) and txt2.strip():
+                return txt2.strip()
+
     return None
+
+# ============================================================
+#  TERMINOLOGIA
+# ============================================================
 
 def enforce_terminologia(family: str, txt: str) -> str:
     if not isinstance(txt, str):
         return txt
     return re.sub(r"\bperni\b", "chiodi idonei Tecnaria", txt, flags=re.IGNORECASE)
 
+# ============================================================
+#  STARTUP
+# ============================================================
+
 @app.on_event("startup")
 def on_startup():
     load_kb()
+
+# ============================================================
+#  HEALTH
+# ============================================================
 
 @app.get("/health")
 def health():
     return {
         "ok": True,
-        "blocks_loaded": len(S.blocks),
         "kb_path": KB_PATH,
+        "blocks_loaded": len(S.blocks),
     }
+
+# ============================================================
+#  ASK
+# ============================================================
 
 @app.post("/api/ask", response_model=AskResponse)
 async def api_ask(request: Request) -> AskResponse:
+
     try:
         body = await request.json()
-    except Exception:
+    except:
         body = {}
 
     if not isinstance(body, dict):
@@ -250,26 +300,26 @@ async def api_ask(request: Request) -> AskResponse:
     q = (
         body.get("q")
         or body.get("question")
-        or body.get("text")
         or body.get("message")
-        or body.get("input")
+        or body.get("text")
         or ""
     )
+
     if not isinstance(q, str):
-        q = str(q or "")
+        q = str(q)
 
     q = q.strip()
 
-    mode = (str(body.get("mode") or "gold")).lower()
-    lang = str(body.get("lang") or "it")
+    mode = str(body.get("mode") or "gold").lower()
+    lang = "it"
 
     if mode != "gold":
-        raise HTTPException(status_code=400, detail="Modalità non supportata. Usa mode=gold.")
+        raise HTTPException(status_code=400, detail="Usa mode=gold")
 
     if not q:
         return AskResponse(
             ok=False,
-            answer="Domanda vuota: specifica il quesito su P560, CTF o altri connettori Tecnaria.",
+            answer="Domanda vuota.",
             family=FALLBACK_FAMILY,
             id=FALLBACK_ID,
             mode="gold",
