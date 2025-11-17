@@ -17,7 +17,7 @@ from openai import OpenAI
 # CONFIG
 # ============================================================
 
-APP_VERSION = "12.4.0-STRUTTURALE"
+APP_VERSION = "12.4.1-STRUTTURALE"
 
 client = OpenAI()
 
@@ -40,7 +40,7 @@ FALLBACK_MESSAGE = (
 # ============================================================
 
 app = FastAPI(
-    title="TECNARIA GOLD – MATCHING v12.4 STRUTTURALE",
+    title="TECNARIA GOLD – MATCHING v12.4.1 STRUTTURALE",
     version=APP_VERSION,
 )
 
@@ -88,7 +88,7 @@ class AskResponse(BaseModel):
 
 def strip_accents(s: str) -> str:
     return "".join(
-        c for c in unicodedata.normalize("NNFKD", s)
+        c for c in unicodedata.normalize("NFKD", s)
         if not unicodedata.combining(c)
     )
 
@@ -157,7 +157,7 @@ reload_all()
 
 
 # ============================================================
-# MATCHING ENGINE (LESSIC + AI RERANK) – v12.4 STRUTTURALE
+# MATCHING ENGINE (LESSIC + AI RERANK) – v12.4.1 STRUTTURALE
 # ============================================================
 
 def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
@@ -253,7 +253,7 @@ def is_overview_question(q_norm: str) -> bool:
 
 
 # ============================================================
-# RERANK AI – Patch STRUTTURALE 12.4
+# RERANK AI – Patch STRUTTURALE 12.4.1
 # ============================================================
 
 def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
