@@ -4662,68 +4662,76 @@
       "answer_it": "No. Il cedimento locale altera la rigidezza dell’ondina e impedisce al chiodo idoneo Tecnaria di deformarsi secondo geometria controllata. Serve sostituire la lamiera danneggiata o spostare la posa."
     },
     {
-      "id": "CTF-KILLER-0010-LAMIERA-SPESSA-FUORI-ETA",
+      "id": "CTF-KILLER-0011-VERNICE-FALSO-POSITIVO",
       "family": "CTF_SYSTEM",
       "mode": "gold",
       "lang": "it",
-      "intent": "limite_applicazione",
+      "intent": "errore_uso",
       "tags": [
         "CTF",
-        "P560",
-        "lamiera grecata",
-        "spessore lamiera",
-        "propulsore forte",
-        "fuori campo",
-        "ETA",
-        "prove Tecnaria"
+        "strati interposti",
+        "vernice",
+        "card falsata",
+        "errore posa"
       ],
       "triggers": [
-        "lamiera più spessa rispetto alle prove Tecnaria",
-        "lamiera grecata più spessa delle prove",
-        "lamiera 1.5 mm con CTF",
-        "lamiera 2 mm con CTF",
-        "uso CTF su lamiera spessa",
-        "propulsore molto forte per attraversare la lamiera",
-        "propulsore forte per far lavorare la P560",
-        "fuori campo ETA per lamiera troppo spessa",
-        "prestazioni dichiarate con lamiera più spessa",
-        "validità CTF su lamiera fuori prove Tecnaria"
+        "vernice sotto la piastra del CTF",
+        "strato di vernice sotto la piastra",
+        "card nel verde ma c'è vernice",
+        "valori card falsati dalla vernice",
+        "vernice spessa tra lamiera e CTF",
+        "CTF su ala verniciata",
+        "vernice che non riesco a rimuovere",
+        "falsi positivi card per vernice"
       ],
-      "question_it": "Se la lamiera grecata è più spessa rispetto a quella utilizzata nelle prove Tecnaria e per far lavorare la P560 devo usare un propulsore molto forte, il fissaggio CTF è ancora coperto dalle prestazioni dichiarate oppure siamo fuori campo ETA?",
-      "answer_it": "\nQuando la lamiera grecata è significativamente più spessa rispetto a quella utilizzata nelle prove Tecnaria, il meccanismo di deformazione del chiodo idoneo Tecnaria può uscire dal campo sperimentale su cui si basano le prestazioni dichiarate.\n\nIn particolare:\n\n1. **Aumento di spessore e rigidezza della lamiera**  \n   - Maggiore spessore e rigidezza locale richiedono di solito **propulsori più energici** per attraversare la lamiera e appoggiarsi all’ala.  \n   - Questo può portare a **sovra-infissione** o a deformazioni del chiodo diverse da quelle osservate nelle prove di riferimento.\n\n2. **Necessità di propulsore molto forte**  \n   - Se per ottenere letture card apparentemente corrette sei costretto a usare propulsori di classe superiore rispetto a quelli indicati nelle istruzioni Tecnaria, significa che la configurazione lamiera–CTF–ala è **fuori dallo scenario di prova standard**.  \n   - In queste condizioni la card da sola **non è sufficiente** a garantire che il fissaggio sia equivalente a quanto certificato: stai lavorando in un campo non qualificato.\n\n3. **Copertura ETA e prestazioni dichiarate**  \n   - L’ETA e la documentazione Tecnaria coprono solo i casi in cui **spessori e tipologie di lamiera** rientrano negli intervalli provati.  \n   - Una lamiera sensibilmente più spessa, che obbliga a usare propulsori molto forti rispetto alle indicazioni usuali, va considerata **potenzialmente fuori campo ETA**, a meno di esplicita conferma da parte dell’ufficio tecnico.\n\n**Buona pratica operativa:**  \n- Non dare per validi i fissaggi solo perché la card cade nel range se la configurazione lamiera–propulsore è molto diversa da quella riportata nella documentazione Tecnaria.  \n- In presenza di lamiere più spesse o configurazioni non standard, è obbligatorio **contattare l’ufficio tecnico Tecnaria**, fornendo dettagli su spessori, tipo di lamiera, classe dei propulsori e risultati dei colpi di prova.  \n- Fino a chiarimento formale, la situazione va considerata **fuori campo rispetto alle prestazioni dichiarate**.\n\nIn sintesi, quando lamiera più spessa e propulsore molto forte sono necessari per far lavorare la P560, non si può assumere automaticamente che il sistema CTF sia coperto dall’ETA: si tratta di un caso **fuori campo** che deve essere valutato e autorizzato dall’ufficio tecnico.\n"
+      "question_it": "Se sotto la piastra del CTF trovo vernice che non riesco a rimuovere del tutto, posso considerare valido il fissaggio se la card è nel verde o rischio un falso positivo?",
+      "answer_it": "Uno strato di vernice sotto la piastra del CTF può comportarsi come uno **spessore interposto comprimibile**: la card può indicare un valore apparentemente nel verde, ma parte della distanza misurata non è acciaio–acciaio bensì vernice.\n\nSe la testa del chiodo risulta immersa nella vernice o non è evidente il contatto metallico diretto tra testa, piastra e lamiera, la lettura card può essere un **falso positivo**.\n\nIn queste condizioni:\n- la card non è affidabile come indicatore di corretta deformazione,\n- il fissaggio non può essere considerato qualificato ai fini strutturali,\n- è necessario ripulire la zona (ridurre o rimuovere la vernice) e ripetere i colpi di prova su superficie il più possibile pulita.\n\nSolo quando le letture card risultano stabili su acciaio pulito e la deformazione del chiodo è regolare, il fissaggio CTF può essere considerato valido. Fino ad allora, i colpi eseguiti su vernice spessa o non controllata sono da considerarsi **non affidabili**.\n"
     },
     {
-      "id": "CTF-KILLER-0000-LIMITI-APPLICAZIONE-LAMIERA",
+      "id": "P560-KILLER-0012-RITARDO-SPARO",
       "family": "CTF_SYSTEM",
       "mode": "gold",
       "lang": "it",
-      "intent": "limite_applicazione",
+      "intent": "errore_uso",
       "tags": [
-        "CTF",
         "P560",
-        "lamiera grecata",
-        "limiti applicazione",
-        "fuori campo",
-        "cordoni di saldatura",
-        "ondina schiacciata",
-        "deformazioni lamiera",
-        "doppia lamiera",
-        "spessori fuori range"
+        "ritardo colpo",
+        "comportamento utensile",
+        "manutenzione"
       ],
       "triggers": [
-        "in quali casi non posso usare i CTF su lamiera grecata",
-        "quando non posso usare i CTF su lamiera grecata",
-        "quando è vietato usare i CTF su lamiera grecata",
-        "limiti di applicazione dei CTF su lamiera",
-        "casi in cui i CTF non sono ammessi su lamiera grecata",
-        "quando i CTF sono fuori campo su lamiera",
-        "lamiera non idonea per CTF",
-        "condizioni che escludono l'uso dei CTF su lamiera grecata",
-        "CTF su lamiera con saldature e deformazioni",
-        "CTF su lamiera fuori spessore di prova"
+        "ritardo tra lo scatto e l'ingresso del chiodo",
+        "la P560 ha un leggero ritardo dopo lo scatto",
+        "P560 lenta",
+        "P560 non immediata",
+        "clack ritardato dopo il colpo",
+        "la pistola non spara subito",
+        "ritardo di risposta della P560"
       ],
-      "question_it": "In quali casi non posso usare i CTF su lamiera grecata?",
-      "answer_it": "I connettori CTF sono pensati per lavorare su lamiere grecate che rispettano condizioni geometriche e di supporto ben definite. \nQuando queste condizioni non sono soddisfatte, il meccanismo di deformazione del chiodo idoneo Tecnaria e l’appoggio della piastra non sono più rappresentativi delle prove Tecnaria e il fissaggio va considerato fuori campo.\n\nIn linea generale, i CTF **non dovrebbero essere utilizzati** (o vanno considerati fuori campo) nei seguenti casi:\n\n1. **Presenza di cordoni di saldatura nell’area di appoggio**  \n   - Se in corrispondenza della zona lamiera–CTF–ala è presente un **cordone di saldatura longitudinale o trasversale**, l’appoggio non è più piano e la rigidezza locale cambia in modo marcato.  \n   - Non è ammesso sparare direttamente sul cordone: la zona va considerata non utilizzabile per la posa dei CTF e i fissaggi vanno spostati su acciaio sano e regolare.\n\n2. **Ondina schiacciata, deformata o gravemente danneggiata**  \n   - Se l’ondina è stata compressa, schiacciata o localmente piegata (ad esempio per passaggi di mezzi, urti o errori di posa), la geometria di contatto tra puntale, lamiera e piastra CTF non corrisponde più alle condizioni di prova.  \n   - In queste situazioni non è garantita una deformazione corretta del chiodo: la zona va esclusa e, se necessario, vanno valutate soluzioni alternative o il ripristino della lamiera.\n\n3. **Lamiera con deformazioni e irregolarità marcate**  \n   - Bombature, rigonfiamenti, imbarcamenti o difetti di laminazione che generano **forti dislivelli locali** possono creare punti di appoggio instabili.  \n   - Se l’appoggio lamiera–ala non è stabile e ripetibile, i fissaggi CTF eseguiti in quelle zone non sono da considerarsi rappresentativi delle prestazioni dichiarate.\n\n4. **Doppia lamiera o pacchetti di lamiera non previsti**  \n   - La sovrapposizione di due lamiere grecate, o la presenza di lamiere aggiuntive non contemplate nelle prove Tecnaria, aumenta lo spessore da attraversare e modifica completamente la rigidezza del sistema.  \n   - Queste configurazioni sono in genere da considerarsi **fuori campo ETA**, salvo specifica indicazione Tecnaria.\n\n5. **Spessori lamiera fuori intervallo di prova**  \n   - Lamiere **troppo sottili** possono non garantire sufficiente vincolo al chiodo; lamiere **molto più spesse** rispetto a quelle provate richiedono propulsori più forti, con rischio di sovra-infissione e deformazioni non rappresentative.  \n   - In assenza di indicazioni esplicite, tali condizioni vanno considerate fuori campo e richiedono un confronto con l’ufficio tecnico.\n\n6. **Presenza di fori, punzonature o indebolimenti localizzati nella zona di sparo**  \n   - Grandi fori di impianti, punzonature aggressive o asportazioni di lamiera nella zona dove dovrebbe appoggiare la piastra CTF compromettono la capacità del sistema di trasferire gli sforzi.  \n   - I CTF non vanno posati a cavallo di tali discontinuità.\n\n7. **Contaminazioni o strati interposti non controllati**  \n   - Strati spessi di vernice, zincature non uniformi, prodotti anticorrosivi o altri materiali comprimibili/interposti fra lamiera e piastra possono alterare l’appoggio e rendere non rappresentative le letture card.  \n   - Se tali strati non possono essere rimossi o controllati, la zona è da considerarsi critica e potenzialmente fuori campo.\n\n**Buona pratica operativa**  \n- In presenza di uno o più dei casi sopra, i CTF su lamiera grecata **non possono essere utilizzati in modo automatico** come se fossimo nelle condizioni standard di prova.  \n- Ogni situazione va valutata dal progettista, e quando si esce chiaramente dal campo coperto dalla documentazione Tecnaria è necessario **contattare l’ufficio tecnico Tecnaria**, fornendo dettagli su lamiera, geometria, spessori e condizioni locali.  \n- Fino a chiarimento formale, queste condizioni vanno considerate **fuori campo di applicazione** dei CTF su lamiera grecata.\n\nIn sintesi, i CTF non vanno utilizzati su lamiere grecate con saldature nell’area di appoggio, ondine gravemente deformate, irregolarità marcate, spessori o configurazioni non provate (doppie lamiere, pacchetti speciali) o in presenza di fori e strati interposti che impediscono un appoggio corretto e ripetibile.\n"
+      "question_it": "Se durante lo sparo con la P560 sento un ritardo tra lo scatto e l’ingresso del chiodo, è un comportamento normale oppure indica un problema dell’utensile?",
+      "answer_it": "Un ritardo percepibile tra lo scatto della P560 e l’ingresso effettivo del chiodo **non è un comportamento normale** per l’utensile.\n\nLa P560 è progettata per lavorare con una cinematica molto rapida e lineare: lo scatto, il colpo e l’inizio della deformazione avvengono praticamente senza soluzione di continuità. Quando si avverte un “tempo morto” tra il comando e l’effetto, le cause più probabili sono:\n- attrito interno nel gruppo corsa,\n- residui di polvere di propulsore o sporco accumulato,\n- molla di ritorno parzialmente stanca o non libera,\n- cinematica non perfettamente pulita o lubrificata.\n\nIn queste condizioni l’energia e la velocità di impatto possono non essere quelle previste nelle prove Tecnaria, e il colpo può risultare **non rappresentativo** del comportamento verificato in laboratorio.\n\nOperativamente:\n- la posa strutturale con CTF va sospesa fino a ripristino dell’utensile,\n- è necessario eseguire pulizia e manutenzione secondo le indicazioni del costruttore,\n- vanno ripetuti i colpi di prova in zona rappresentativa, verificando card e deformazione del chiodo.\n\nSolo quando la P560 torna a lavorare con risposta immediata allo scatto e colpi ripetibili, è corretto riprendere la posa dei connettori CTF.\n"
+    },
+    {
+      "id": "CTF-KILLER-0013-CARD-QUASI-MINIMO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "diagnostica",
+      "tags": [
+        "CTF",
+        "card vicino minimo",
+        "pre-sovra-infissione",
+        "taratura propulsore"
+      ],
+      "triggers": [
+        "card nel verde ma molto vicina al minimo",
+        "valori card quasi al limite minimo",
+        "card borderline",
+        "card quasi fuori range",
+        "serie di colpi con card al minimo"
+      ],
+      "question_it": "Se la card è nel verde ma molto vicina al limite minimo, posso considerare il fissaggio tranquillamente valido o è un segnale di pre-sovra-infissione?",
+      "answer_it": "Una card nel verde ma **molto vicina al limite minimo** è una condizione di attenzione, non una situazione da ignorare.\n\nIn particolare, può indicare:\n- una **configurazione propulsore–lamiera–ala aggressiva**, prossima alla sovra-infissione,\n- piccoli gap tra lamiera e ala che si chiudono al colpo,\n- una sensibilità elevata del sistema a variazioni locali (spessori, appoggi, rigidezza).\n\nIl singolo colpo non è automaticamente non valido, ma la lettura va interpretata nel contesto di una **serie di colpi di prova**:\n- se pochi colpi isolati risultano al limite e la maggioranza dei valori cade in una fascia centrale del verde, il sistema può essere accettabile;\n- se invece una quota significativa di colpi è **incollata al minimo**, la taratura è troppo spinta e il rischio di sovra-infissione è concreto.\n\nOperativamente è prudente:\n- verificare che l’appoggio lamiera–ala sia continuo e stabile,\n- riesaminare la scelta del propulsore (eventualmente passando a una classe meno energica),\n- ripetere i colpi di prova fino a ottenere una distribuzione di valori card più equilibrata all’interno del range verde.\n\nIn sintesi, card sistematicamente “sul minimo” è un segnale di **pre-sovra-infissione** o di appoggio non ideale: la situazione va corretta prima di procedere con la posa in produzione.\n"
     }
   ]
 }
