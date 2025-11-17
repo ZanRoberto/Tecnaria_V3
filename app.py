@@ -37,7 +37,7 @@ FALLBACK_MESSAGE = (
 # FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA GOLD – MATCHING v12.1", version="12.1.0")
+app = FastAPI(title="TECNARIA GOLD – MATCHING v12.2 (A)", version="12.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -151,7 +151,7 @@ reload_all()
 
 
 # ============================================================
-# MATCHING ENGINE (LESSIC + AI RERANK) – v12.1
+# MATCHING ENGINE (LESSIC + AI RERANK) – v12.2
 # ============================================================
 
 def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
@@ -240,12 +240,58 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
     """
     Usa l'AI SOLO per scegliere l'ID tra i candidati.
     NON può generare testo, NON può inventare ID.
+    Patch v12.2 (A):
+    - se la domanda parla di lamiera/ala/ondina/laminazione/rigonfiamenti,
+      evitiamo blocchi che parlano SOLO di chiodi difettosi/punta danneggiata.
     """
     if not candidates:
         return None
     if len(candidates) == 1:
         return candidates[0]
 
+    # --- PATCH STRADA A: filtro "geometria vs chiodi"
+    q_norm = normalize(question)
+    geometry_terms = [
+        "lamiera", "ondina", "onda", "ala",
+        "imbarcata", "imbarcato", "imbarcatura",
+        "laminazione", "rigonfiamento", "bombatura",
+        "rigidita", "rigidezza"
+    ]
+    defect_terms = [
+        "chiodo", "chiodi", "punta", "danneggiata",
+        "danneggiato", "danneggiate", "danneggiati",
+        "difettoso", "difettosi", "difettosa"
+    ]
+
+    question_is_geometry = any(t in q_norm for t in geometry_terms)
+
+    filtered_candidates = candidates
+    if question_is_geometry:
+        tmp = []
+        for b in candidates:
+            text_block = (
+                (b.get("id") or "") + " " +
+                (b.get("question_it") or "") + " " +
+                " ".join(b.get("triggers") or [])
+            )
+            tb_norm = normalize(text_block)
+
+            has_defect = any(t in tb_norm for t in defect_terms)
+            has_geometry = any(t in tb_norm for t in geometry_terms)
+
+            # Se il blocco parla SOLO di difetti dei chiodi e NON di geometria,
+            # lo escludiamo in presenza di domanda geometrica.
+            if question_is_geometry and has_defect and not has_geometry:
+                continue
+
+            tmp.append(b)
+
+        # Se abbiamo ancora almeno un candidato dopo il filtro, usiamo quelli.
+        # Se li abbiamo esclusi tutti, torniamo alla lista originale.
+        if tmp:
+            filtered_candidates = tmp
+
+    candidates = filtered_candidates
     candidate_ids = [b.get("id") for b in candidates]
 
     try:
