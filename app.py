@@ -33,12 +33,11 @@ FALLBACK_MESSAGE = (
     "Meglio un confronto diretto con l’ufficio tecnico Tecnaria."
 )
 
-
 # ============================================================
 # FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA GOLD – MATCHING v11", version="11.0.0")
+app = FastAPI(title="TECNARIA GOLD – MATCHING v12", version="12.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -126,7 +125,7 @@ def load_overlay_blocks() -> List[Dict[str, Any]]:
         try:
             d = load_json(str(f))
             blocks.extend(d.get("blocks", []))
-        except:
+        except Exception:
             pass
     return blocks
 
@@ -152,7 +151,7 @@ reload_all()
 
 
 # ============================================================
-# MATCHING ENGINE (LESSIC + AI RERANK) – CORRETTO
+# MATCHING ENGINE (LESSIC + AI RERANK) – v12
 # ============================================================
 
 def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
@@ -179,29 +178,59 @@ def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
     return score
 
 
-def lexical_candidates(question: str, blocks: List[Dict[str, Any]], limit: int = 15):
+def score_block(question: str, block: Dict[str, Any]) -> float:
+    """
+    Punteggio complessivo di un blocco:
+    - somma dei punteggi trigger
+    - + similarità domanda_utente vs question_it del blocco
+    """
     q_norm = normalize(question)
     q_tokens = set(tokenize(question))
-    scored = []
+
+    # trigger score
+    trig_score = 0.0
+    for trigger in block.get("triggers", []) or []:
+        trig_score += score_trigger(trigger, q_tokens, q_norm)
+
+    # question_it similarity
+    q_it = block.get("question_it") or ""
+    q_it_tokens = set(tokenize(q_it)) if q_it else set()
+
+    sim_score = 0.0
+    if q_it_tokens:
+        inter = q_tokens.intersection(q_it_tokens)
+        if inter:
+            # % dei token della domanda del blocco che compaiono nella domanda utente
+            sim_score = len(inter) / len(q_it_tokens)
+            # pesiamo di più la similarità semantica della domanda
+            sim_score *= 3.0  # peso forte
+
+    total = trig_score + sim_score
+
+    # penalizza overview
+    if "OVERVIEW" in (block.get("id") or "").upper():
+        total *= 0.5
+
+    return total
+
+
+def lexical_candidates(question: str, blocks: List[Dict[str, Any]], limit: int = 15):
+    scored: List[Tuple[float, Dict[str, Any]]] = []
 
     for block in blocks:
-        block_score = 0.0
-        for trigger in block.get("triggers", []):
-            block_score += score_trigger(trigger, q_tokens, q_norm)
-
-        # penalizza overview generali
-        if "OVERVIEW" in block.get("id", "").upper():
-            block_score *= 0.5
-
-        if block_score > 0:
-            scored.append((block_score, block))
+        s = score_block(question, block)
+        if s > 0:
+            scored.append((s, block))
 
     scored.sort(key=lambda x: x[0], reverse=True)
     return scored[:limit]
 
 
 def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
-
+    """
+    Usa l'AI SOLO per scegliere l'ID tra i candidati.
+    NON può generare testo, NON può inventare ID.
+    """
     if not candidates:
         return None
     if len(candidates) == 1:
@@ -211,7 +240,8 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
 
     try:
         desc = "\n".join(
-            f"- ID:{b.get('id')} | Q:{b.get('question_it')}" for b in candidates
+            f"- ID:{b.get('id')} | Q:{b.get('question_it')}"
+            for b in candidates
         )
 
         prompt = (
@@ -220,10 +250,12 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
             f"DOMANDA:\n{question}\n\n"
             f"CANDIDATI:\n{desc}\n\n"
             "Devi restituire SOLO l'ID del blocco che risponde meglio.\n"
-            "NON DEVI GENERARE TESTO.\n"
-            "NON DEVI CREARE RISPOSTE.\n"
-            "Se nessun ID è adatto, scegli quello più vicino tra i candidati.\n"
-            "Rispondi SOLO con un ID presente nella lista."
+            "Regole specifiche:\n"
+            "- Se la domanda parla di puntale, appoggio, ondina, inclinazione della P560, "
+            "scegli blocchi che parlano di appoggio o puntale, NON blocchi che parlano di sovra-infissione o propulsore.\n"
+            "- Se la domanda parla di distanza testa–piastra, profondità o propulsore, allora scegli blocchi su sovra-infissione.\n"
+            "- Evita blocchi di OVERVIEW se esistono blocchi più specifici.\n"
+            "- Rispondi SOLO con un ID presente nella lista dei candidati.\n"
         )
 
         res = client.chat.completions.create(
@@ -235,9 +267,8 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
 
         chosen = (res.choices[0].message.content or "").strip()
 
-        # ❗ BLOCCO CHE EVITA RISPOSTE INVENTATE
         if chosen not in candidate_ids:
-            return candidates[0]     # fallback lessicale
+            return candidates[0]
 
         for b in candidates:
             if b.get("id") == chosen:
@@ -250,25 +281,24 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
 
 
 def find_best_block(question: str) -> Tuple[Dict[str, Any], float]:
-
-    # overlay → se presenti
+    # Overlay (se li userai)
     over = lexical_candidates(question, S.overlay_blocks)
     if over:
-        cands = [b for s, b in over]
-        best = ai_rerank(question, cands)
-        score = max(s for s, b in over if b is best)
-        return best, float(score)
+        over_blocks = [b for s, b in over]
+        best_o = ai_rerank(question, over_blocks)
+        best_s = max(s for s, b in over if b is best_o)
+        return best_o, float(best_s)
 
-    # master
+    # Master
     master = lexical_candidates(question, S.master_blocks)
     if not master:
         return None, 0.0
 
-    cands = [b for s, b in master]
-    best = ai_rerank(question, cands)
-    score = max(s for s, b in master if b is best)
+    master_blocks = [b for s, b in master]
+    best_m = ai_rerank(question, master_blocks)
+    best_s = max(s for s, b in master if b is best_m)
 
-    return best, float(score)
+    return best_m, float(best_s)
 
 
 # ============================================================
@@ -280,7 +310,7 @@ def health():
     return {
         "ok": True,
         "master_blocks": len(S.master_blocks),
-        "overlay_blocks": len(S.overlay_blocks)
+        "overlay_blocks": len(S.overlay_blocks),
     }
 
 
@@ -290,7 +320,7 @@ def api_reload():
     return {
         "ok": True,
         "master_blocks": len(S.master_blocks),
-        "overlay_blocks": len(S.overlay_blocks)
+        "overlay_blocks": len(S.overlay_blocks),
     }
 
 
