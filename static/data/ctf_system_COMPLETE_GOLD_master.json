@@ -25,7 +25,8 @@
         "che cos'è la chiodatrice p560 tecnaria e a cosa serve nei sistemi ctf?"
       ],
       "question_it": "Che cos'è la chiodatrice P560 Tecnaria e a cosa serve nei sistemi CTF?",
-      "answer_it": "La P560 è la chiodatrice a sparo Tecnaria progettata specificamente per la posa dei chiodi idonei Tecnaria nei sistemi collaboranti acciaio–calcestruzzo con connettori CTF. È un utensile a cartuccia che consente di fissare, con un unico colpo controllato, lamiera grecata, piastra del connettore CTF e ala della trave in acciaio, garantendo la corretta deformazione del chiodo e il trasferimento di taglio–scorrimento tra le parti. La P560 lavora con diversi livelli di propulsore, scelta che va calibrata in funzione dello spessore della lamiera e dell’ala, e prevede il controllo di qualità tramite apposita card che verifica la distanza testa–piastra dopo lo sparo. L’uso congiunto di P560, chiodi idonei Tecnaria e connettori CTF costituisce il sistema di fissaggio riconosciuto e verificato nelle prove sperimentali Tecnaria."
+      "answer_it": "La P560 è la chiodatrice a sparo Tecnaria progettata specificamente per la posa dei chiodi idonei Tecnaria nei sistemi collaboranti acciaio–calcestruzzo con connettori CTF. È un utensile a cartuccia che consente di fissare, con un unico colpo controllato, lamiera grecata, piastra del connettore CTF e ala della trave in acciaio, garantendo la corretta deformazione del chiodo e il trasferimento di taglio–scorrimento tra le parti. La P560 lavora con diversi livelli di propulsore, scelta che va calibrata in funzione dello spessore della lamiera e dell’ala, e prevede il controllo di qualità tramite apposita card che verifica la distanza testa–piastra dopo lo sparo. L’uso congiunto di P560, chiodi idonei Tecnaria e connettori CTF costituisce il sistema di fissaggio riconosciuto e verificato nelle prove sperimentali Tecnaria.",
+      "intent": "general"
     },
     {
       "id": "P560-ERR-0003-SOVRA-INFISSIONE",
@@ -52,7 +53,8 @@
         "p560"
       ],
       "question_it": "Se durante la posa con P560 il chiodo idoneo Tecnaria attraversa la lamiera e penetra troppo nell’ala in acciaio (sovra-infissione), il collegamento dei CTF rimane valido o va scartato?",
-      "answer_it": "La sovra-infissione è un difetto grave di posa. Se il chiodo idoneo Tecnaria penetra eccessivamente nell’ala, riducendo troppo la distanza tra la testa e la piastra del CTF, il meccanismo di deformazione controllata non è più quello previsto dalle prove Tecnaria. La card di controllo segnala questa condizione con valori di distanza testa–piastra inferiori al range ammissibile. In tali casi il colpo è da considerarsi non valido: il CTF associato non può essere conteggiato ai fini del calcolo e il fissaggio va ripetuto, scegliendo un propulsore meno energico e ripristinando la corretta sequenza di posa."
+      "answer_it": "La sovra-infissione è un difetto grave di posa. Se il chiodo idoneo Tecnaria penetra eccessivamente nell’ala, riducendo troppo la distanza tra la testa e la piastra del CTF, il meccanismo di deformazione controllata non è più quello previsto dalle prove Tecnaria. La card di controllo segnala questa condizione con valori di distanza testa–piastra inferiori al range ammissibile. In tali casi il colpo è da considerarsi non valido: il CTF associato non può essere conteggiato ai fini del calcolo e il fissaggio va ripetuto, scegliendo un propulsore meno energico e ripristinando la corretta sequenza di posa.",
+      "intent": "errore_posa"
     },
     {
       "id": "P560-ERR-0004-VERNICE-SPESSA",
@@ -79,7 +81,8 @@
         "occhio"
       ],
       "question_it": "La mia trave in acciaio è molto verniciata (strati multipli, spessore non noto) e il chiodo Tecnaria sembra deformarsi correttamente sulla card, ma a occhio la testa rimane immersa nella vernice. Il colpo è valido o è un falso positivo?",
-      "answer_it": "Uno strato di vernice spesso o non controllato tra testa del chiodo e piastra del CTF può generare un falso positivo: la card può restituire un valore apparentemente corretto, ma la distanza reale in acciaio risulta diversa perché parte dello spessore misurato è vernice comprimibile. Se la testa del chiodo risulta visivamente immersa nella vernice e non è chiaramente percepibile il contatto acciaio–acciaio, il colpo non può essere considerato affidabile. In queste condizioni il fissaggio va scartato, occorre rimuovere o ridurre la vernice nella zona di sparo e ripetere le prove con card su superficie pulita, fino a ottenere una deformazione coerente e ripetibile."
+      "answer_it": "Uno strato di vernice spesso o non controllato tra testa del chiodo e piastra del CTF può generare un falso positivo: la card può restituire un valore apparentemente corretto, ma la distanza reale in acciaio risulta diversa perché parte dello spessore misurato è vernice comprimibile. Se la testa del chiodo risulta visivamente immersa nella vernice e non è chiaramente percepibile il contatto acciaio–acciaio, il colpo non può essere considerato affidabile. In queste condizioni il fissaggio va scartato, occorre rimuovere o ridurre la vernice nella zona di sparo e ripetere le prove con card su superficie pulita, fino a ottenere una deformazione coerente e ripetibile.",
+      "intent": "card_ingannevole"
     },
     {
       "id": "P560-ERR-0005-CALAMINA",
@@ -106,7 +109,8 @@
         "calcolo"
       ],
       "question_it": "Il mio IPE presenta un’ala con forte calamina industriale e piccole irregolarità superficiali: la card è accettabile ma la deformazione non è perfettamente simmetrica. Il colpo è comunque utilizzabile ai fini del calcolo?",
-      "answer_it": "La calamina e le irregolarità di laminazione possono modificare localmente l’appoggio della lamiera e della piastra del CTF, producendo una deformazione del chiodo leggermente asimmetrica. Se, eseguite le prove preliminari con la card in più punti rappresentativi della trave, i valori rientrano nel range indicato da Tecnaria e la deformazione si presenta ripetibile, senza schiacciamenti anomali o pieghe eccessive, il collegamento può essere considerato accettabile. Se invece le irregolarità generano letture molto variabili o deformazioni non riconducibili agli schemi di riferimento, la zona va trattata come critica: la superficie dovrebbe essere ripulita o regolarizzata, e i colpi che non rispettano la finestra di accettazione devono essere scartati e ripetuti."
+      "answer_it": "La calamina e le irregolarità di laminazione possono modificare localmente l’appoggio della lamiera e della piastra del CTF, producendo una deformazione del chiodo leggermente asimmetrica. Se, eseguite le prove preliminari con la card in più punti rappresentativi della trave, i valori rientrano nel range indicato da Tecnaria e la deformazione si presenta ripetibile, senza schiacciamenti anomali o pieghe eccessive, il collegamento può essere considerato accettabile. Se invece le irregolarità generano letture molto variabili o deformazioni non riconducibili agli schemi di riferimento, la zona va trattata come critica: la superficie dovrebbe essere ripulita o regolarizzata, e i colpi che non rispettano la finestra di accettazione devono essere scartati e ripetuti.",
+      "intent": "contaminante_critico"
     },
     {
       "id": "P560-ERR-0007-SALDATURA-LONGITUDINALE",
@@ -132,7 +136,8 @@
         "nella"
       ],
       "question_it": "Se l’ala della trave presenta una saldatura longitudinale proprio nella zona dove dovrei sparare il chiodo dei CTF, è ancora ammesso il fissaggio oppure quella zona diventa non utilizzabile?",
-      "answer_it": "Un cordone di saldatura longitudinale in corrispondenza dell’area di appoggio lamiera–CTF–ala altera in modo marcato la geometria e la rigidezza locale, impedendo un appoggio piano e una deformazione regolare del chiodo idoneo Tecnaria. Non è ammesso sparare direttamente sul cordone; la zona va considerata non utilizzabile per la posa dei CTF. Il fissaggio deve essere spostato lateralmente su acciaio sano e regolare, mantenendo le distanze minime prescritte dalla documentazione Tecnaria e verificando con card che la deformazione rientri nei limiti ammissibili."
+      "answer_it": "Un cordone di saldatura longitudinale in corrispondenza dell’area di appoggio lamiera–CTF–ala altera in modo marcato la geometria e la rigidezza locale, impedendo un appoggio piano e una deformazione regolare del chiodo idoneo Tecnaria. Non è ammesso sparare direttamente sul cordone; la zona va considerata non utilizzabile per la posa dei CTF. Il fissaggio deve essere spostato lateralmente su acciaio sano e regolare, mantenendo le distanze minime prescritte dalla documentazione Tecnaria e verificando con card che la deformazione rientri nei limiti ammissibili.",
+      "intent": "profilo_fuori_standard"
     },
     {
       "id": "P560-ERR-0009-CEDE-LAMIERA",
@@ -158,7 +163,8 @@
         "costante,"
       ],
       "question_it": "Se durante la posa la lamiera ha un cedimento locale e i primi colpi sono stati sparati con una distanza lamiera–ala non costante, quei CTF vanno considerati validi o sono automaticamente da scartare?",
-      "answer_it": "La posa dei CTF presuppone lamiera grecata ben aderente all’ala della trave al momento dello sparo. Se, per mancanza di fissaggi provvisori o puntellazioni adeguate, la lamiera cede localmente e la distanza lamiera–ala varia durante lo sparo, la deformazione del chiodo e l’appoggio della piastra risultano alterati rispetto alle condizioni di prova. I colpi eseguiti con lamiera non stabilizzata non sono affidabili e vanno considerati non validi ai fini del calcolo: occorre stabilizzare l’appoggio (puntelli, viti, staffe temporanee) e ripetere la posa dei CTF, verificando con card che i nuovi colpi rientrino nei parametri di accettazione."
+      "answer_it": "La posa dei CTF presuppone lamiera grecata ben aderente all’ala della trave al momento dello sparo. Se, per mancanza di fissaggi provvisori o puntellazioni adeguate, la lamiera cede localmente e la distanza lamiera–ala varia durante lo sparo, la deformazione del chiodo e l’appoggio della piastra risultano alterati rispetto alle condizioni di prova. I colpi eseguiti con lamiera non stabilizzata non sono affidabili e vanno considerati non validi ai fini del calcolo: occorre stabilizzare l’appoggio (puntelli, viti, staffe temporanee) e ripetere la posa dei CTF, verificando con card che i nuovi colpi rientrino nei parametri di accettazione.",
+      "intent": "collasso_locale"
     },
     {
       "id": "P560-ERR-0010-ALA-IRREGOLARE",
@@ -184,7 +190,8 @@
         "fissaggio"
       ],
       "question_it": "Se l’ala dell’IPE è irregolare, con piccole “pance” di laminazione, e la card dà valori borderline a seconda del punto, il fissaggio dei CTF può comunque essere considerato affidabile?",
-      "answer_it": "Le irregolarità di laminazione possono rendere non uniforme l’appoggio della lamiera e della piastra del CTF, generando variazioni nei valori misurati con la card. Se le misure, eseguite in più punti rappresentativi, rientrano comunque nella finestra di accettazione Tecnaria e la deformazione del chiodo appare regolare, senza sintomi di sovra-infissione o difetti evidenti, il collegamento può essere considerato accettabile. Se invece i valori sono spesso al limite o oltre i limiti, o se la deformazione risulta distorta in modo evidente, quella zona va considerata critica: è consigliabile regolarizzare l’ala (ad esempio con molatura controllata) o valutare un dettaglio alternativo, sotto la responsabilità del progettista."
+      "answer_it": "Le irregolarità di laminazione possono rendere non uniforme l’appoggio della lamiera e della piastra del CTF, generando variazioni nei valori misurati con la card. Se le misure, eseguite in più punti rappresentativi, rientrano comunque nella finestra di accettazione Tecnaria e la deformazione del chiodo appare regolare, senza sintomi di sovra-infissione o difetti evidenti, il collegamento può essere considerato accettabile. Se invece i valori sono spesso al limite o oltre i limiti, o se la deformazione risulta distorta in modo evidente, quella zona va considerata critica: è consigliabile regolarizzare l’ala (ad esempio con molatura controllata) o valutare un dettaglio alternativo, sotto la responsabilità del progettista.",
+      "intent": "profilo_fuori_standard"
     },
     {
       "id": "P560-ERR-0012-ZINCATURA-SPESSA",
@@ -210,7 +217,8 @@
         "caldo"
       ],
       "question_it": "È possibile posare CTF su una trave zincata a caldo che presenta gocce e colature di zinco solidificato sotto l’ala, oppure queste irregolarità rendono inaffidabile la deformazione dei chiodi P560?",
-      "answer_it": "Le gocce e le colature di zinco di una zincatura a caldo irregolare possono creare appoggi puntuali e spessori non controllati tra lamiera, piastra del CTF e ala della trave. Ciò altera la distribuzione dei carichi di contatto e la deformazione del chiodo idoneo Tecnaria, vanificando il controllo tramite card. Prima della posa dei CTF, la zona deve essere preparata eliminando colature e rilievi che impediscono un appoggio piano, in modo da ripristinare una geometria compatibile con le condizioni di prova. In assenza di tale preparazione, i colpi eseguiti su zincatura irregolare non possono essere considerati affidabili e vanno scartati."
+      "answer_it": "Le gocce e le colature di zinco di una zincatura a caldo irregolare possono creare appoggi puntuali e spessori non controllati tra lamiera, piastra del CTF e ala della trave. Ciò altera la distribuzione dei carichi di contatto e la deformazione del chiodo idoneo Tecnaria, vanificando il controllo tramite card. Prima della posa dei CTF, la zona deve essere preparata eliminando colature e rilievi che impediscono un appoggio piano, in modo da ripristinare una geometria compatibile con le condizioni di prova. In assenza di tale preparazione, i colpi eseguiti su zincatura irregolare non possono essere considerati affidabili e vanno scartati.",
+      "intent": "contaminante_critico"
     },
     {
       "id": "P560-ERR-0014-VITI-AUTOPERFORANTI-VICINE",
@@ -236,7 +244,8 @@
         "alla"
       ],
       "question_it": "Se vicino al punto di sparo dei CTF sono presenti viti autoperforanti che fissano la lamiera alla trave, queste interferenze possono alterare il comportamento del chiodo e invalidare il collegamento?",
-      "answer_it": "Viti autoperforanti troppo vicine al punto di sparo possono deviare la traiettoria del chiodo idoneo Tecnaria, generare collisioni parziali o creare concentrazioni di tensione in una zona già indebolita dal foro della vite. Se il chiodo intercetta una vite o ne risulta visibilmente influenzato, il colpo deve essere considerato non valido. È buona pratica mantenere una distanza minima tra i fissaggi lamiera–trave (viti) e i punti di sparo dei CTF, seguendo le indicazioni Tecnaria. Qualora la disposizione delle viti interferisca con la posa ottimale dei CTF, va rivista la geometria dei fissaggi o valutata un’altra soluzione di dettaglio."
+      "answer_it": "Viti autoperforanti troppo vicine al punto di sparo possono deviare la traiettoria del chiodo idoneo Tecnaria, generare collisioni parziali o creare concentrazioni di tensione in una zona già indebolita dal foro della vite. Se il chiodo intercetta una vite o ne risulta visibilmente influenzato, il colpo deve essere considerato non valido. È buona pratica mantenere una distanza minima tra i fissaggi lamiera–trave (viti) e i punti di sparo dei CTF, seguendo le indicazioni Tecnaria. Qualora la disposizione delle viti interferisca con la posa ottimale dei CTF, va rivista la geometria dei fissaggi o valutata un’altra soluzione di dettaglio.",
+      "intent": "errore_posa"
     },
     {
       "id": "CTF-0008-LAMIERA-SPESSORI",
@@ -262,7 +271,8 @@
         "lamiere"
       ],
       "question_it": "Quali limiti di spessore della lamiera grecata devo rispettare per poter utilizzare i connettori CTF e cosa succede se la lamiera è più spessa (ad esempio 1,5 mm singola o due lamiere sovrapposte)?",
-      "answer_it": "I connettori CTF sono stati provati da Tecnaria su lamiere grecate con spessori entro intervalli ben definiti. In generale, spessori e configurazioni che aumentano in modo significativo la rigidezza della lamiera o lo spessore complessivo da attraversare possono alterare la deformazione del chiodo e l’ancoraggio complessivo. Una lamiera singola da 1,5 mm o due lamiere da 1,2 mm sovrapposte rientrano tipicamente in situazioni fuori campo rispetto alle prove di riferimento: l’aumento di spessore può richiedere propulsori più energici, con rischio di sovra-infissione e perdita di controllo sulla deformazione. In assenza di indicazioni specifiche Tecnaria, tali soluzioni vanno considerate non coperte dal sistema standard CTF e richiedono un confronto con l’ufficio tecnico prima di essere adottate."
+      "answer_it": "I connettori CTF sono stati provati da Tecnaria su lamiere grecate con spessori entro intervalli ben definiti. In generale, spessori e configurazioni che aumentano in modo significativo la rigidezza della lamiera o lo spessore complessivo da attraversare possono alterare la deformazione del chiodo e l’ancoraggio complessivo. Una lamiera singola da 1,5 mm o due lamiere da 1,2 mm sovrapposte rientrano tipicamente in situazioni fuori campo rispetto alle prove di riferimento: l’aumento di spessore può richiedere propulsori più energici, con rischio di sovra-infissione e perdita di controllo sulla deformazione. In assenza di indicazioni specifiche Tecnaria, tali soluzioni vanno considerate non coperte dal sistema standard CTF e richiedono un confronto con l’ufficio tecnico prima di essere adottate.",
+      "intent": "limite_sistema"
     },
     {
       "id": "CTF-0010-LAMIERA-CRICCATA",
@@ -288,7 +298,8 @@
         "automaticamente"
       ],
       "question_it": "Se la lamiera grecata presenta una micro-fessura o una criccatura proprio vicino alla zona di appoggio del CTF, il connettore può essere comunque installato o quella ondina è automaticamente esclusa?",
-      "answer_it": "Una lamiera criccata in prossimità della zona di appoggio del CTF è un punto debole che può evolvere nel tempo sotto effetto delle sollecitazioni di esercizio e della fatica. La presenza di una cricca vicino al connettore riduce l’affidabilità del trasferimento di carico tra soletta e trave e può portare a distacchi locali della lamiera. In linea di principio, le ondine lesionate dovrebbero essere escluse dalla posa dei CTF e sostituite, ove possibile, con zone sane della lamiera o con adeguati rinforzi. La valutazione finale spetta comunque al progettista, che dovrà considerare la gravità del difetto e il ruolo strutturale di quella fila di connettori."
+      "answer_it": "Una lamiera criccata in prossimità della zona di appoggio del CTF è un punto debole che può evolvere nel tempo sotto effetto delle sollecitazioni di esercizio e della fatica. La presenza di una cricca vicino al connettore riduce l’affidabilità del trasferimento di carico tra soletta e trave e può portare a distacchi locali della lamiera. In linea di principio, le ondine lesionate dovrebbero essere escluse dalla posa dei CTF e sostituite, ove possibile, con zone sane della lamiera o con adeguati rinforzi. La valutazione finale spetta comunque al progettista, che dovrà considerare la gravità del difetto e il ruolo strutturale di quella fila di connettori.",
+      "intent": "fessurazione_critica"
     },
     {
       "id": "CTF-0011-HEA-RINFORZATA-TUBOLARE",
@@ -315,7 +326,8 @@
         "profilo"
       ],
       "question_it": "In un solaio con travi HEA, un tratto dell’ala è stato rinforzato con un profilo tubolare saldato superiormente: i CTF possono essere posati anche in quella zona o è interamente fuori campo?",
-      "answer_it": "Il rinforzo dell’ala di una trave HEA mediante un profilo tubolare saldato modifica localmente la geometria e la rigidezza della sezione, aumentando lo spessore di materiale che il chiodo deve attraversare e alterando il modo in cui la piastra del CTF appoggia. Se il dettaglio è progettato e la geometria risultante è compatibile con gli spessori e le condizioni di prova del sistema CTF, i connettori possono essere utilizzati anche sul tratto rinforzato, previa verifica con card e, se necessario, con il supporto dell’ufficio tecnico Tecnaria. In assenza di un dettaglio progettuale specifico, la zona con tubolare saldato va considerata una variante da valutare caso per caso e non può essere assimilata automaticamente a una trave HEA standard."
+      "answer_it": "Il rinforzo dell’ala di una trave HEA mediante un profilo tubolare saldato modifica localmente la geometria e la rigidezza della sezione, aumentando lo spessore di materiale che il chiodo deve attraversare e alterando il modo in cui la piastra del CTF appoggia. Se il dettaglio è progettato e la geometria risultante è compatibile con gli spessori e le condizioni di prova del sistema CTF, i connettori possono essere utilizzati anche sul tratto rinforzato, previa verifica con card e, se necessario, con il supporto dell’ufficio tecnico Tecnaria. In assenza di un dettaglio progettuale specifico, la zona con tubolare saldato va considerata una variante da valutare caso per caso e non può essere assimilata automaticamente a una trave HEA standard.",
+      "intent": "profilo_fuori_standard"
     },
     {
       "id": "CTF-0012-PASSO-LAMIERA-DIVERSO",
@@ -341,7 +353,8 @@
         "degli"
       ],
       "question_it": "Se l’impresa ha montato la lamiera grecata con un passo differente rispetto al progetto, spostando quindi la posizione degli appoggi sui CTF, il sistema rimane valido o l’intero schema di collaborazione va rivisto?",
-      "answer_it": "Il passo della lamiera grecata condiziona la posizione delle nervature e, di conseguenza, la geometria degli appoggi dei CTF sulla trave. Se in cantiere la lamiera viene posata con un passo diverso da quello previsto in progetto, le posizioni dei connettori possono risultare traslate rispetto ai punti di massimo sforzo o agli schemi di calcolo utilizzati dal progettista. In questi casi non è corretto assumere che il solaio mantenga automaticamente le stesse prestazioni. La nuova disposizione dei CTF, determinata dal passo effettivo della lamiera, deve essere trasmessa al progettista strutturale, che valuterà se la soluzione è comunque accettabile o se sono necessari adeguamenti (variazione del numero di connettori, cambiamenti geometrici o modifiche di calcolo)."
+      "answer_it": "Il passo della lamiera grecata condiziona la posizione delle nervature e, di conseguenza, la geometria degli appoggi dei CTF sulla trave. Se in cantiere la lamiera viene posata con un passo diverso da quello previsto in progetto, le posizioni dei connettori possono risultare traslate rispetto ai punti di massimo sforzo o agli schemi di calcolo utilizzati dal progettista. In questi casi non è corretto assumere che il solaio mantenga automaticamente le stesse prestazioni. La nuova disposizione dei CTF, determinata dal passo effettivo della lamiera, deve essere trasmessa al progettista strutturale, che valuterà se la soluzione è comunque accettabile o se sono necessari adeguamenti (variazione del numero di connettori, cambiamenti geometrici o modifiche di calcolo).",
+      "intent": "profilo_fuori_standard"
     },
     {
       "id": "CTF-0013-HEA-IMBARCATA-INCENDIO",
@@ -367,7 +380,8 @@
         "locale"
       ],
       "question_it": "Se la trave HEA presenta un leggero imbarcamento dell’ala dovuto a un precedente surriscaldamento (incendio), posso comunque posare i CTF oppure la deformazione locale compromette il fissaggio?",
-      "answer_it": "Un imbarcamento moderato dell’ala HEA può essere compatibile con la posa dei CTF solo se la lamiera grecata riesce ad appoggiare in modo continuo e i chiodi, sparati con P560, mostrano una deformazione regolare e ripetibile alla card. Se l’imbarcamento è tale da generare appoggi puntuali, distacchi locali della lamiera o chiodi sistematicamente inclinati, la configurazione non rientra nelle condizioni di prova del sistema; in tal caso la zona va trattata come critica e può essere necessario un intervento di raddrizzamento o l’adozione di un dettaglio alternativo definito dal progettista. In ogni caso, la decisione finale deve essere assunta da chi redige le verifiche strutturali, anche sulla base dello stato globale della trave dopo l’evento termico."
+      "answer_it": "Un imbarcamento moderato dell’ala HEA può essere compatibile con la posa dei CTF solo se la lamiera grecata riesce ad appoggiare in modo continuo e i chiodi, sparati con P560, mostrano una deformazione regolare e ripetibile alla card. Se l’imbarcamento è tale da generare appoggi puntuali, distacchi locali della lamiera o chiodi sistematicamente inclinati, la configurazione non rientra nelle condizioni di prova del sistema; in tal caso la zona va trattata come critica e può essere necessario un intervento di raddrizzamento o l’adozione di un dettaglio alternativo definito dal progettista. In ogni caso, la decisione finale deve essere assunta da chi redige le verifiche strutturali, anche sulla base dello stato globale della trave dopo l’evento termico.",
+      "intent": "danno_pregresso"
     },
     {
       "id": "CTF_SYSTEM-GLB-0001-COLPI-SCARTATI-PERCENTUALE",
@@ -395,7 +409,8 @@
         "aderente"
       ],
       "question_it": "In un tratto di trave, durante la posa con P560 dei CTF su lamiera grecata, il 20–30% dei colpi viene scartato per sovra-infissione, lamiera non aderente o irregolarità dell’ala, e i connettori non vengono riposizionati uno a uno: è comunque possibile considerare valido il solaio mediando la collaborazione (ad esempio aumentando la densità dei CTF in altre zone) oppure l’assenza puntuale di chiodature conformi rende non utilizzabile, ai fini di calcolo, l’intero tratto interessato?",
-      "answer_it": "Il sistema CTF è progettato per lavorare con una distribuzione di connettori che rispetta numero, passo e condizioni di posa previste dal progetto e dalle istruzioni Tecnaria. Se in un tratto di trave il 20–30% dei colpi viene scartato e i connettori non vengono riposizionati singolarmente, la densità effettiva di collegamento risulta inferiore a quella di progetto e non è possibile considerare automaticamente valido il solaio “mediando” la collaborazione con maggiore densità altrove. La capacità a taglio–scorrimento è locale e dipende dalla presenza di chiodature conformi in ogni tratto; accumulare CTF in zone sane non compensa l’assenza di collegamenti efficaci dove le sollecitazioni sono elevate. In queste condizioni il tratto interessato non può essere assunto in calcolo come equivalente al progetto iniziale: occorre ripristinare i connettori mancanti (nuovi colpi conformi) o far ricalcolare la disposizione dei CTF dal progettista, tenendo conto della densità effettivamente realizzata."
+      "answer_it": "Il sistema CTF è progettato per lavorare con una distribuzione di connettori che rispetta numero, passo e condizioni di posa previste dal progetto e dalle istruzioni Tecnaria. Se in un tratto di trave il 20–30% dei colpi viene scartato e i connettori non vengono riposizionati singolarmente, la densità effettiva di collegamento risulta inferiore a quella di progetto e non è possibile considerare automaticamente valido il solaio “mediando” la collaborazione con maggiore densità altrove. La capacità a taglio–scorrimento è locale e dipende dalla presenza di chiodature conformi in ogni tratto; accumulare CTF in zone sane non compensa l’assenza di collegamenti efficaci dove le sollecitazioni sono elevate. In queste condizioni il tratto interessato non può essere assunto in calcolo come equivalente al progetto iniziale: occorre ripristinare i connettori mancanti (nuovi colpi conformi) o far ricalcolare la disposizione dei CTF dal progettista, tenendo conto della densità effettivamente realizzata.",
+      "intent": "procedura_controllo"
     },
     {
       "id": "CTF_SYSTEM-GLB-0002-COMPENSAZIONE-DENSITA",
@@ -422,7 +437,8 @@
         "quella"
       ],
       "question_it": "Se in un tratto la densità di CTF realizzata è inferiore a quella di progetto per errori di posa e colpi scartati, posso compensare aumentando il numero di connettori in un’altra zona della stessa trave e considerare comunque valida la collaborazione globale?",
-      "answer_it": "La collaborazione acciaio–calcestruzzo fornita dai CTF è funzione locale del numero di connettori efficaci presenti nei tratti maggiormente sollecitati. Una riduzione significativa della densità di CTF in una zona non può essere compensata, per principio, dall’aumento dei connettori in un tratto differente: la portanza e la rigidezza del solaio dipendono dalla distribuzione dei collegamenti lungo la trave, non solo dal numero totale di connettori. Eventuali compensazioni sono ammissibili solo se ricalcolate esplicitamente dal progettista strutturale, che deve verificare il nuovo schema di collaborazione con la densità effettiva. In assenza di una verifica specifica, la semplice “media” tra zone sovra-armate e sotto-armate non è accettabile."
+      "answer_it": "La collaborazione acciaio–calcestruzzo fornita dai CTF è funzione locale del numero di connettori efficaci presenti nei tratti maggiormente sollecitati. Una riduzione significativa della densità di CTF in una zona non può essere compensata, per principio, dall’aumento dei connettori in un tratto differente: la portanza e la rigidezza del solaio dipendono dalla distribuzione dei collegamenti lungo la trave, non solo dal numero totale di connettori. Eventuali compensazioni sono ammissibili solo se ricalcolate esplicitamente dal progettista strutturale, che deve verificare il nuovo schema di collaborazione con la densità effettiva. In assenza di una verifica specifica, la semplice “media” tra zone sovra-armate e sotto-armate non è accettabile.",
+      "intent": "criteri_progetto"
     },
     {
       "id": "CTF_SYSTEM-TRV-0001-DUE-IPE-AFFIANCATI",
@@ -449,7 +465,8 @@
         "presenza"
       ],
       "question_it": "In presenza di una trave composta ottenuta affiancando due profili IPE bullonati tra loro con piatti di collegamento, i CTF posati sulla lamiera in corrispondenza dell’ala superiore possono essere considerati equivalenti a quelli posati su un’unica sezione laminata, oppure questa configurazione rientra in una casistica speciale che richiede una verifica dedicata?",
-      "answer_it": "Una trave composta ottenuta affiancando due IPE con piatti e bulloni non è equivalente, in modo automatico, a un profilo laminato singolo ai fini della posa dei CTF. In corrispondenza della giunzione tra i due IPE possono essere presenti disallineamenti locali delle ali, piatti sporgenti, bulloni e discontinuità di rigidezza che modificano la deformazione dei chiodi idonei Tecnaria sparati con P560. Questa situazione non rientra nella configurazione standard considerata nelle prove sperimentali di sistema. Pertanto, i CTF posati in corrispondenza della giunzione di due IPE affiancati devono essere considerati una variante strutturale che richiede la valutazione del progettista e, se necessario, un confronto con l’ufficio tecnico Tecnaria, con dettaglio costruttivo dedicato; non possono essere assimilati automaticamente a connettori posati su un’unica trave laminata continua."
+      "answer_it": "Una trave composta ottenuta affiancando due IPE con piatti e bulloni non è equivalente, in modo automatico, a un profilo laminato singolo ai fini della posa dei CTF. In corrispondenza della giunzione tra i due IPE possono essere presenti disallineamenti locali delle ali, piatti sporgenti, bulloni e discontinuità di rigidezza che modificano la deformazione dei chiodi idonei Tecnaria sparati con P560. Questa situazione non rientra nella configurazione standard considerata nelle prove sperimentali di sistema. Pertanto, i CTF posati in corrispondenza della giunzione di due IPE affiancati devono essere considerati una variante strutturale che richiede la valutazione del progettista e, se necessario, un confronto con l’ufficio tecnico Tecnaria, con dettaglio costruttivo dedicato; non possono essere assimilati automaticamente a connettori posati su un’unica trave laminata continua.",
+      "intent": "profilo_fuori_standard"
     },
     {
       "id": "CTF_SYSTEM-TRV-0002-PIATTI-LATERALI-BULLONATI",
@@ -476,7 +493,8 @@
         "richiede"
       ],
       "question_it": "In una trave dove sono presenti piatti laterali bullonati o saldati all’anima, in prossimità dell’ala superiore, i CTF posati sulla lamiera grecata possono essere considerati pienamente efficaci oppure la presenza di piatti e bulloni richiede una valutazione specifica?",
-      "answer_it": "La presenza di piatti laterali bullonati o saldati all’anima in prossimità dell’ala superiore può alterare localmente la rigidezza e la geometria della sezione, introducendo dislivelli, spessori aggiuntivi e interferenze con l’appoggio della lamiera e dei CTF. Se i piatti e i bulloni non interferiscono con l’area di contatto lamiera–ala, non generano spessori supplementari e non condizionano la deformazione dei chiodi idonei Tecnaria, i connettori possono essere considerati assimilabili a quelli su trave semplice. Se invece la presenza di piatti e bulloni modifica l’appoggio o la traiettoria del chiodo, la configurazione deve essere trattata come variante: occorre un dettaglio costruttivo dedicato e una verifica da parte del progettista, eventualmente con il supporto dell’ufficio tecnico Tecnaria."
+      "answer_it": "La presenza di piatti laterali bullonati o saldati all’anima in prossimità dell’ala superiore può alterare localmente la rigidezza e la geometria della sezione, introducendo dislivelli, spessori aggiuntivi e interferenze con l’appoggio della lamiera e dei CTF. Se i piatti e i bulloni non interferiscono con l’area di contatto lamiera–ala, non generano spessori supplementari e non condizionano la deformazione dei chiodi idonei Tecnaria, i connettori possono essere considerati assimilabili a quelli su trave semplice. Se invece la presenza di piatti e bulloni modifica l’appoggio o la traiettoria del chiodo, la configurazione deve essere trattata come variante: occorre un dettaglio costruttivo dedicato e una verifica da parte del progettista, eventualmente con il supporto dell’ufficio tecnico Tecnaria.",
+      "intent": "profilo_fuori_standard"
     },
     {
       "id": "CTF_SYSTEM-TRV-0003-TRAVI-NON-ALLINEATE",
@@ -503,7 +521,8 @@
         "superiori"
       ],
       "question_it": "In un cantiere con trave composta da due profili affiancati non perfettamente allineati, con ali superiori a quote leggermente diverse, la posa dei CTF sulla lamiera grecata rimane valida oppure il disallineamento locale compromette il comportamento dei connettori?",
-      "answer_it": "Una differenza di quota tra le ali superiori di profili affiancati può generare deformazioni non uniformi della lamiera grecata e della piastra dei CTF, oltre a traiettorie dei chiodi idonei Tecnaria non perpendicolari. Se la lamiera riesce a poggiare in modo continuo, i chiodi sono sostanzialmente perpendicolari e la card conferma deformazioni regolari e ripetibili, la situazione può essere valutata come accettabile dal progettista. Se invece il disallineamento provoca appoggi puntuali, torsioni locali della lamiera o chiodi inclinati in modo sistematico, il comportamento dei CTF non corrisponde alla configurazione di prova e non può essere assunto come standard: occorre correggere il disallineamento o elaborare un dettaglio alternativo verificato dall’ingegnere strutturale."
+      "answer_it": "Una differenza di quota tra le ali superiori di profili affiancati può generare deformazioni non uniformi della lamiera grecata e della piastra dei CTF, oltre a traiettorie dei chiodi idonei Tecnaria non perpendicolari. Se la lamiera riesce a poggiare in modo continuo, i chiodi sono sostanzialmente perpendicolari e la card conferma deformazioni regolari e ripetibili, la situazione può essere valutata come accettabile dal progettista. Se invece il disallineamento provoca appoggi puntuali, torsioni locali della lamiera o chiodi inclinati in modo sistematico, il comportamento dei CTF non corrisponde alla configurazione di prova e non può essere assunto come standard: occorre correggere il disallineamento o elaborare un dettaglio alternativo verificato dall’ingegnere strutturale.",
+      "intent": "anomalia_geometrica"
     },
     {
       "id": "CTF_SYSTEM-TRV-0004-TRAVI-IBRIDE-SALDATE",
@@ -530,7 +549,8 @@
         "diversi"
       ],
       "question_it": "Se una trave è stata realizzata saldando tra loro profili diversi (ad esempio HEA e IPE) per ottenere una sezione ibrida non standard, i CTF posati sulla lamiera in corrispondenza di questa sezione possono essere considerati in campo ETA oppure si tratta di una configurazione fuori campo che richiede una valutazione specifica?",
-      "answer_it": "Le prove sperimentali e l’ETA dei CTF fanno riferimento a travi in acciaio di tipo standard (HE/IPE/UPN, ecc.) con geometrie e spessori di ala ben definiti. Una sezione ibrida ottenuta saldando profili diversi per creare una trave speciale non rientra nelle configurazioni tipiche di riferimento: le rigidezze locali, gli spessori, le tensioni residue di saldatura e la forma dell’ala possono essere significativamente differenti. Di conseguenza, la posa dei CTF su una trave ibrida saldata va considerata fuori campo ETA; l’eventuale utilizzo deve essere oggetto di una verifica progettuale ad hoc, con analisi della sezione composta e, se necessario, confronto con l’ufficio tecnico Tecnaria. In assenza di tale valutazione, i connettori su quella trave non dovrebbero essere assunti come pienamente equivalenti alle condizioni certificate."
+      "answer_it": "Le prove sperimentali e l’ETA dei CTF fanno riferimento a travi in acciaio di tipo standard (HE/IPE/UPN, ecc.) con geometrie e spessori di ala ben definiti. Una sezione ibrida ottenuta saldando profili diversi per creare una trave speciale non rientra nelle configurazioni tipiche di riferimento: le rigidezze locali, gli spessori, le tensioni residue di saldatura e la forma dell’ala possono essere significativamente differenti. Di conseguenza, la posa dei CTF su una trave ibrida saldata va considerata fuori campo ETA; l’eventuale utilizzo deve essere oggetto di una verifica progettuale ad hoc, con analisi della sezione composta e, se necessario, confronto con l’ufficio tecnico Tecnaria. In assenza di tale valutazione, i connettori su quella trave non dovrebbero essere assunti come pienamente equivalenti alle condizioni certificate.",
+      "intent": "profilo_fuori_standard"
     },
     {
       "id": "CTF_SYSTEM-CORR-0001-CORROSIONE-E-ALA-BUCATA",
@@ -557,7 +577,8 @@
         "fortemente"
       ],
       "question_it": "In un intervento di ripristino su travi fortemente corrose, se l’ala presenta cavità e buchi da corrosione in prossimità della zona di posa dei CTF, è comunque possibile utilizzare i connettori oppure la riduzione locale di sezione rende non affidabile il collegamento?",
-      "answer_it": "La presenza di cavità e buchi da corrosione sull’ala della trave indica una riduzione significativa della sezione resistente e una possibile concentrazione di tensioni in prossimità del punto di fissaggio dei CTF. In tali condizioni non è sufficiente valutare la sola deformazione dei chiodi idonei Tecnaria: occorre prima di tutto verificare l’idoneità residua della trave rispetto alle sollecitazioni globali e locali. Posare connettori su porzioni di ala gravemente degradate non è raccomandato; la zona dovrebbe essere ripristinata (ad esempio con piatti di rinforzo adeguatamente dimensionati e verificati) e solo sulle parti ripristinate, geometricamente regolari e strutturalmente idonee si potrà valutare la posa dei CTF. In assenza di ripristino progettato, i CTF su ala bucata non possono essere considerati affidabili."
+      "answer_it": "La presenza di cavità e buchi da corrosione sull’ala della trave indica una riduzione significativa della sezione resistente e una possibile concentrazione di tensioni in prossimità del punto di fissaggio dei CTF. In tali condizioni non è sufficiente valutare la sola deformazione dei chiodi idonei Tecnaria: occorre prima di tutto verificare l’idoneità residua della trave rispetto alle sollecitazioni globali e locali. Posare connettori su porzioni di ala gravemente degradate non è raccomandato; la zona dovrebbe essere ripristinata (ad esempio con piatti di rinforzo adeguatamente dimensionati e verificati) e solo sulle parti ripristinate, geometricamente regolari e strutturalmente idonee si potrà valutare la posa dei CTF. In assenza di ripristino progettato, i CTF su ala bucata non possono essere considerati affidabili.",
+      "intent": "corrosione_critica"
     },
     {
       "id": "CTF_SYSTEM-CORR-0002-SABBIATURA-A-ISOLE",
@@ -584,7 +605,8 @@
         "fini"
       ],
       "question_it": "In un intervento di ripristino su travi corrose, l’impresa sabbia solo alcune fasce dell’ala dove prevede di posare i CTF, lasciando altrove vecchie verniciature e ruggine residua; le prove con card eseguite in zona sabbiata risultano perfette. Ai fini della validità globale del sistema CTF è sufficiente che ogni singolo chiodo sia posato su “isole” di acciaio pulito, oppure la presenza di estese zone non trattate può compromettere la ripetibilità del comportamento del collegamento?",
-      "answer_it": "Dal punto di vista del singolo collegamento, la posa di CTF su piccole “isole” di acciaio pulito, sabbiate e geometricamente regolari, può produrre deformazioni dei chiodi idonei Tecnaria perfettamente conformi alla card e quindi localmente accettabili. Tuttavia, la presenza di estese porzioni di ala non trattate, con ruggine e verniciature irregolari, può indicare un quadro generale di degrado non controllato e rendere poco ripetibile il comportamento globale del sistema, soprattutto se in futuro saranno necessari ulteriori interventi o se parte dei connettori dovrà essere posata fuori dalle zone sabbiate. La soluzione corretta è definire, a livello progettuale, quali zone dell’ala sono strutturalmente idonee e vanno ripristinate in modo sistematico; tutte le posizioni dei CTF dovrebbero ricadere in aree trattate in modo omogeneo. L’approccio a macchia di leopardo va usato con prudenza e sempre sotto controllo del progettista."
+      "answer_it": "Dal punto di vista del singolo collegamento, la posa di CTF su piccole “isole” di acciaio pulito, sabbiate e geometricamente regolari, può produrre deformazioni dei chiodi idonei Tecnaria perfettamente conformi alla card e quindi localmente accettabili. Tuttavia, la presenza di estese porzioni di ala non trattate, con ruggine e verniciature irregolari, può indicare un quadro generale di degrado non controllato e rendere poco ripetibile il comportamento globale del sistema, soprattutto se in futuro saranno necessari ulteriori interventi o se parte dei connettori dovrà essere posata fuori dalle zone sabbiate. La soluzione corretta è definire, a livello progettuale, quali zone dell’ala sono strutturalmente idonee e vanno ripristinate in modo sistematico; tutte le posizioni dei CTF dovrebbero ricadere in aree trattate in modo omogeneo. L’approccio a macchia di leopardo va usato con prudenza e sempre sotto controllo del progettista.",
+      "intent": "corrosione_critica"
     },
     {
       "id": "CTF_SYSTEM-GETTO-0001-POSA-DOPO-PRIMO-GETTO-PARZIALE",
@@ -611,7 +633,8 @@
         "getto"
       ],
       "question_it": "Se, per errore di sequenza di cantiere, alcuni CTF vengono posati con P560 su lamiera e trave dopo un primo getto parziale di calcestruzzo (con spessore non uniforme e presenza di riprese di getto attorno ai connettori), è possibile in qualche modo recuperare la situazione con un secondo getto integrativo e considerare comunque valida la collaborazione acciaio–calcestruzzo, oppure ogni posa eseguita in queste condizioni va trattata come fuori campo ETA?",
-      "answer_it": "Le procedure di posa dei CTF e di getto del calcestruzzo prevedono che i connettori vengano installati prima del getto, in modo che il calcestruzzo fresco avvolga regolarmente i connettori e la lamiera grecata, garantendo l’aderenza e la collaborazione previste nelle prove di sistema. La posa di CTF dopo un primo getto parziale, con spessore non uniforme e riprese di getto attorno ai connettori, configura una sequenza fuori campo rispetto all’ETA e alle istruzioni Tecnaria: la geometria di ancoraggio nel calcestruzzo e le condizioni di aderenza non corrispondono più a quelle certificate. Un secondo getto integrativo può migliorare la monoliticità apparente, ma non ripristina automaticamente le condizioni di prova. In assenza di una valutazione specifica del progettista, che consideri tali connettori come elementi particolari o li escluda dal modello, le posizioni posate dopo il primo getto parziale devono essere trattate come fuori campo ETA e non vanno assunte come connettori standard."
+      "answer_it": "Le procedure di posa dei CTF e di getto del calcestruzzo prevedono che i connettori vengano installati prima del getto, in modo che il calcestruzzo fresco avvolga regolarmente i connettori e la lamiera grecata, garantendo l’aderenza e la collaborazione previste nelle prove di sistema. La posa di CTF dopo un primo getto parziale, con spessore non uniforme e riprese di getto attorno ai connettori, configura una sequenza fuori campo rispetto all’ETA e alle istruzioni Tecnaria: la geometria di ancoraggio nel calcestruzzo e le condizioni di aderenza non corrispondono più a quelle certificate. Un secondo getto integrativo può migliorare la monoliticità apparente, ma non ripristina automaticamente le condizioni di prova. In assenza di una valutazione specifica del progettista, che consideri tali connettori come elementi particolari o li escluda dal modello, le posizioni posate dopo il primo getto parziale devono essere trattate come fuori campo ETA e non vanno assunte come connettori standard.",
+      "intent": "limite_sistema"
     },
     {
       "id": "CTF_SYSTEM-GETTO-0002-CALCESTRUZZO-IN-ONDINA-PRIMA-DI-SPARO",
@@ -638,7 +661,8 @@
         "della"
       ],
       "question_it": "Se, per errore, il calcestruzzo fresco entra nelle ondine della lamiera prima della posa dei CTF e si tenta comunque di sparare con P560 attraversando lamiera e strato di calcestruzzo, i connettori così installati possono essere considerati validi oppure questa situazione è fuori campo rispetto alle condizioni di prova del sistema?",
-      "answer_it": "La presenza di calcestruzzo tra lamiera grecata e ala della trave altera radicalmente il meccanismo di fissaggio dei CTF: il chiodo idoneo Tecnaria non attraversa più solo lamiera e acciaio, ma incontra uno strato di calcestruzzo che ne modifica traiettoria, deformazione e appoggio. Questa condizione non è prevista nelle prove sperimentali di sistema ed è da considerarsi fuori campo ETA. I connettori installati sparando attraverso lamiera e calcestruzzo fresco o indurito non possono essere assunti come connettori standard CTF; di norma vanno considerati non validi ai fini del calcolo, salvo specifica e documentata verifica progettuale che ne giustifichi l’utilizzo in un modello ad hoc."
+      "answer_it": "La presenza di calcestruzzo tra lamiera grecata e ala della trave altera radicalmente il meccanismo di fissaggio dei CTF: il chiodo idoneo Tecnaria non attraversa più solo lamiera e acciaio, ma incontra uno strato di calcestruzzo che ne modifica traiettoria, deformazione e appoggio. Questa condizione non è prevista nelle prove sperimentali di sistema ed è da considerarsi fuori campo ETA. I connettori installati sparando attraverso lamiera e calcestruzzo fresco o indurito non possono essere assunti come connettori standard CTF; di norma vanno considerati non validi ai fini del calcolo, salvo specifica e documentata verifica progettuale che ne giustifichi l’utilizzo in un modello ad hoc.",
+      "intent": "errore_posa"
     },
     {
       "id": "CTF_SYSTEM-GETTO-0003-RIPRESE-E-RECUPERO",
@@ -665,7 +689,8 @@
         "zona"
       ],
       "question_it": "Se, per errori di programmazione, la soletta in calcestruzzo viene gettata in due fasi con un giunto di ripresa che cade in prossimità di una fila di CTF, è possibile considerare pienamente collaborante la sezione oppure la presenza di riprese di getto in zona connettori richiede una verifica specifica?",
-      "answer_it": "Le riprese di getto in prossimità di una fila di CTF possono influenzare l’aderenza e la continuità della soletta in calcestruzzo, soprattutto se il trattamento del giunto non è stato eseguito correttamente (scabrosità, pulizia, malta di raccordo). Per quanto i connettori possano risultare correttamente deformati e verificati con card, la presenza di un giunto di ripresa nella zona di passaggio degli sforzi tra acciaio e calcestruzzo richiede una valutazione specifica da parte del progettista. In generale, non è corretto assumere automaticamente che il comportamento corrisponda a quello di una soletta gettata in unica soluzione; il progettista potrà confermare la piena validità, imporre limitazioni o richiedere armature integrative in funzione del dettaglio esecutivo e delle azioni in gioco."
+      "answer_it": "Le riprese di getto in prossimità di una fila di CTF possono influenzare l’aderenza e la continuità della soletta in calcestruzzo, soprattutto se il trattamento del giunto non è stato eseguito correttamente (scabrosità, pulizia, malta di raccordo). Per quanto i connettori possano risultare correttamente deformati e verificati con card, la presenza di un giunto di ripresa nella zona di passaggio degli sforzi tra acciaio e calcestruzzo richiede una valutazione specifica da parte del progettista. In generale, non è corretto assumere automaticamente che il comportamento corrisponda a quello di una soletta gettata in unica soluzione; il progettista potrà confermare la piena validità, imporre limitazioni o richiedere armature integrative in funzione del dettaglio esecutivo e delle azioni in gioco.",
+      "intent": "criteri_progetto"
     },
     {
       "id": "CTF_SYSTEM-GETTO-0004-AGGIUNTA-CTF-DOPO-GETTO",
@@ -692,7 +717,8 @@
         "della"
       ],
       "question_it": "Se, dopo il completamento del getto della soletta, si decide di aggiungere ulteriori CTF sparati con P560 su lamiera e trave per aumentare la collaborazione acciaio–calcestruzzo, è possibile considerare questi connettori aggiuntivi alla stregua di quelli previsti in fase di progetto oppure tale intervento è fuori campo ETA?",
-      "answer_it": "L’aggiunta di CTF dopo il completamento del getto non rientra nella sequenza prevista dalle istruzioni Tecnaria né nelle condizioni considerate nelle prove di sistema: i connettori non risultano inglobati nel calcestruzzo fresco con il corretto sviluppo di aderenza e confinamento. Sparare chiodi idonei Tecnaria su una struttura già completata, anche se tecnicamente possibile dal punto di vista esecutivo, non produce un collegamento equivalente a quello dei CTF previsti in progetto e installati prima del getto. Tale intervento va considerato fuori campo ETA; il suo eventuale contributo deve essere valutato con un modello ad hoc dal progettista strutturale e non può essere assunto, in modo automatico, come incremento della collaborazione standard del sistema CTF."
+      "answer_it": "L’aggiunta di CTF dopo il completamento del getto non rientra nella sequenza prevista dalle istruzioni Tecnaria né nelle condizioni considerate nelle prove di sistema: i connettori non risultano inglobati nel calcestruzzo fresco con il corretto sviluppo di aderenza e confinamento. Sparare chiodi idonei Tecnaria su una struttura già completata, anche se tecnicamente possibile dal punto di vista esecutivo, non produce un collegamento equivalente a quello dei CTF previsti in progetto e installati prima del getto. Tale intervento va considerato fuori campo ETA; il suo eventuale contributo deve essere valutato con un modello ad hoc dal progettista strutturale e non può essere assunto, in modo automatico, come incremento della collaborazione standard del sistema CTF.",
+      "intent": "limite_sistema"
     },
     {
       "id": "CTF-ROSSO-0001-CEDIMENTI-CICLICI",
@@ -2875,6 +2901,1765 @@
       "question_it": "Come si distingue un problema della P560 da un problema della lamiera quando il colpo risulta anomalo?",
       "answer_it": "Se l’anomalia è sistematica e si ripete su tutta la campata, il problema è tipicamente della P560 (propulsori, puntale, pressatura o usura). Se invece l’anomalia compare solo in zone specifiche della lamiera, il problema è locale (buckling, depressioni, torsione, vernice spessa). La card fornisce un’indicazione: incoerenze ripetute = macchina; incoerenze localizzate = lamiera.",
       "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0001-P560-COLPO-A-VUOTO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "errore_uso",
+      "tags": [
+        "P560",
+        "colpo a vuoto",
+        "chiodo integro",
+        "lamiera ammaccata",
+        "fuori campo"
+      ],
+      "triggers": [
+        "P560 spara a vuoto",
+        "chiodo integro lamiera solo ammaccata",
+        "testa non si avvicina alla piastra",
+        "ammaccatura superficiale lamiera senza deformazione del chiodo"
+      ],
+      "question_it": "Durante la posa dei CTF su lamiera grecata, la P560 sta sparando a vuoto: il chiodo Tecnaria rimane integro, non si deforma, la testa non si avvicina alla piastra e la lamiera presenta solo un’ammaccatura superficiale. Questo fissaggio è valido oppure indica una condizione di fuori-campo?",
+      "answer_it": "Il comportamento descritto indica una condizione di fuori-campo per il sistema P560+CTF: se il chiodo Tecnaria rimane sostanzialmente integro, senza deformazione plastica coerente e senza avvicinamento della testa alla piastra del CTF, il meccanismo di ancoraggio previsto dalle prove Tecnaria non si attiva. L’ammaccatura superficiale della lamiera segnala solo che l’energia del colpo viene dissipata nella lamiera stessa, senza un ancoraggio efficace al supporto. In queste condizioni il fissaggio è da considerarsi NON valido, il CTF non può essere conteggiato e la zona va analizzata per capire la causa (spessore lamiera fuori campo, supporto inadeguato, errata taratura dei propulsori o presenza di interposti). La posa va sospesa, devono essere eseguiti colpi di prova in zona rappresentativa e, se il fenomeno si ripete, va sospeso l’uso della P560 su quel supporto fino a verifica Tecnaria.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0002-LAMIERA-CEDIMENTI-CICLICI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "anomalia_strutturale",
+      "tags": [
+        "lamiera",
+        "buckling",
+        "cedimenti ciclici",
+        "instabilità ondina",
+        "CTF"
+      ],
+      "triggers": [
+        "lamiera cedimenti ciclici",
+        "buckling avanti indietro ondina",
+        "lamiera instabile che cede e ritorna",
+        "ondina che vibra sotto il puntale"
+      ],
+      "question_it": "Come va gestita la posa dei connettori CTF su una lamiera grecata che manifesta cedimenti ciclici dell’ondina (buckling avanti-indietro) durante il contatto con il puntale della P560?",
+      "answer_it": "Una lamiera che presenta fenomeni di buckling locale ripetuto dell’ondina durante la posa dei CTF non è strutturalmente idonea all’ancoraggio tramite P560. L’instabilità locale fa sì che l’energia del colpo venga dissipata in spostamenti ciclici dell’ondina invece che in infissione controllata del chiodo, rendendo ingannevole sia la lettura card sia la percezione visiva del fissaggio. In queste condizioni i colpi risultano non qualificabili: i CTF associati non possono essere conteggiati e il tratto di lamiera va classificato come non idoneo. È necessario ripristinare o sostituire la lamiera fino a riportare la rigidezza locale entro i limiti di deformazione ammessi (deformazioni contenute, assenza di vibrazioni evidenti, risposta stabile al colpo di prova) e solo dopo si può riprendere la posa con nuova campagna di prove.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0003-ONDINA-COLLASSO-ASIMMETRICO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "anomalia_strutturale",
+      "tags": [
+        "lamiera",
+        "ondina",
+        "collasso",
+        "asimmetria",
+        "CTF"
+      ],
+      "triggers": [
+        "ondina collassata da un lato",
+        "collasso asimmetrico ondina",
+        "un lato dell onda cede",
+        "lamiera deformata solo da una parte"
+      ],
+      "question_it": "È possibile considerare valida la posa dei CTF su una lamiera in cui l’ondina presenta un collasso asimmetrico, con un lato che ha ceduto mentre l’altro risulta apparentemente regolare?",
+      "answer_it": "Il collasso asimmetrico dell’ondina altera la geometria locale e la rigidezza di appoggio del CTF, modificando sia la traiettoria di infissione del chiodo sia il trasferimento degli sforzi di taglio. In queste condizioni il comportamento del sistema non è più confrontabile con quello verificato nelle prove di qualificazione Tecnaria: la card può restituire una distanza apparentemente corretta, ma riferita a una configurazione geometrica non conforme. Di conseguenza la posa va considerata non valida: il tratto di lamiera con ondine collassate in modo asimmetrico deve essere escluso dalla posa CTF e, se necessario, sostituito o rinforzato fino a recuperare una geometria regolare e una rigidezza coerente con i limiti prescritti. Solo dopo il ripristino è possibile procedere con nuova serie di colpi di prova e con la posa definitiva.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0004-VERNICE-SPESSA-FALSO-POSITIVO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "verifica_card",
+      "tags": [
+        "vernice spessa",
+        "card",
+        "falso positivo",
+        "testa chiodo immersa",
+        "contatto acciaio acciaio"
+      ],
+      "triggers": [
+        "vernice spessa tra testa e piastra",
+        "testa immersa nella vernice",
+        "card misura anche lo spessore di vernice",
+        "valore card corretto ma vernice spessa"
+      ],
+      "question_it": "Come va interpretata la lettura della card quando tra testa del chiodo e piastra del CTF è presente uno strato di vernice spesso, tale da immergere parzialmente la testa e rendere poco percepibile il contatto acciaio–acciaio?",
+      "answer_it": "Uno strato di vernice eccessivo o non controllato tra testa del chiodo e piastra del CTF può generare un falso positivo nella lettura card. La card misura infatti una distanza geometrica che include anche lo spessore comprimibile della vernice, e non la sola distanza acciaio–acciaio su cui si basano le prove Tecnaria. Se la testa risulta visivamente immersa nella vernice, con contorno sfocato e impossibilità di individuare chiaramente il contatto metallo-metallo, il colpo non può essere considerato qualificato anche se il valore card rientra nel range teorico. In questi casi il fissaggio va scartato, la zona va ripulita o preparata riducendo lo spessore di vernice nei punti di sparo e le prove vanno ripetute su superficie più pulita, fino a ottenere deformazioni e letture card coerenti e ripetibili.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0005-CARD-INCLINATA-O-INSTABILE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "verifica_card",
+      "tags": [
+        "card",
+        "misura instabile",
+        "card inclinata",
+        "errore lettura"
+      ],
+      "triggers": [
+        "card scivola sulla testa del chiodo",
+        "card inclinata durante la misura",
+        "lettura card instabile",
+        "distanza card diversa se ripeto la misura"
+      ],
+      "question_it": "Se la card scivola o rimane inclinata sulla testa del chiodo durante la misura, ottenendo valori diversi a ogni prova, è possibile considerare valida la lettura oppure la verifica va ripetuta?",
+      "answer_it": "La verifica con card presuppone un appoggio stabile e ortogonale sia sulla piastra del CTF sia sulla testa del chiodo. Se la card scivola, resta inclinata o restituisce valori sensibilmente diversi a parità di colpo, la misura è da considerarsi non affidabile. In questi casi è necessario ripetere la lettura assicurandosi che i punti di contatto siano puliti, che la card sia appoggiata in modo fermo e che l’operatore non introduca momenti o torsioni durante la misurazione. Se, anche dopo un corretto posizionamento, i valori restano incoerenti rispetto alla deformazione visiva o rispetto ai colpi circostanti, il fissaggio va considerato dubbio e, prudenzialmente, escluso dal conteggio strutturale, ripetendo il colpo in posizione idonea.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0006-P560-SU-CALCESTRUZZO-NON-AMMESSO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "limite_applicazione",
+      "tags": [
+        "P560",
+        "calcestruzzo",
+        "CTF",
+        "fuori campo",
+        "travetto in c.a."
+      ],
+      "triggers": [
+        "P560 su travetto in calcestruzzo",
+        "sparare i CTF nel travetto in c.a.",
+        "chiodo P560 che entra nel calcestruzzo",
+        "validità fissaggio CTF su calcestruzzo"
+      ],
+      "question_it": "È ammesso utilizzare la P560 per fissare i connettori CTF sparando nei travetti in calcestruzzo di un solaio esistente, considerando valido il fissaggio ai fini della collaborazione strutturale?",
+      "answer_it": "La P560 e i chiodi idonei Tecnaria abbinati ai CTF sono progettati e qualificati per il fissaggio su lamiere grecate in acciaio, con condizioni geometriche e meccaniche definite. L’uso diretto su travetti in calcestruzzo di solai esistenti, al di fuori delle configurazioni sperimentate, esce dal campo di validità del sistema e non può essere considerato equivalente alle condizioni di prova. In particolare, il meccanismo di infissione nel calcestruzzo è profondamente diverso e non è coperto dall’ETA né dalla documentazione Tecnaria. Di conseguenza i fissaggi eseguiti sparando nel calcestruzzo con P560 non possono essere conteggiati per la verifica di collaborazione CTF-lamiera-trave e la soluzione va considerata non ammissibile, salvo valutazione specifica e autorizzazione Tecnaria per casi particolari.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0007-LAMIERA-NON-ADERENTE-ALLA-TRAVE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "anomalia_strutturale",
+      "tags": [
+        "lamiera distaccata",
+        "vuoto sotto lamiera",
+        "appoggio non continuo",
+        "CTF"
+      ],
+      "triggers": [
+        "lamiera non appoggia bene sulla trave",
+        "vuoto sotto la lamiera in corrispondenza del CTF",
+        "lamiera che flette prima del contatto con la trave",
+        "ondina sospesa tra due appoggi"
+      ],
+      "question_it": "Cosa succede se il CTF viene fissato su una lamiera grecata che, in corrispondenza del chiodo, non appoggia correttamente sull’ala della trave, ma risulta parzialmente sospesa o distaccata?",
+      "answer_it": "Il corretto funzionamento del sistema CTF richiede che la lamiera grecata sia in appoggio efficace sull’ala della trave o sul supporto metallico previsto, così che il chiodo idoneo Tecnaria trasferisca gli sforzi attraverso una catena continua acciaio–lamiera–trave. Se la lamiera risulta parzialmente sospesa, con un vuoto sensibile sotto l’ondina proprio in corrispondenza del CTF, il colpo tende a flettere la lamiera anziché ancorarla, alterando sia la deformazione del chiodo sia la lettura card. In queste condizioni il fissaggio non è rappresentativo delle prove di qualificazione e non può essere considerato valido ai fini strutturali; occorre ripristinare l’aderenza lamiera–trave (riporto di appoggi, correzioni locali) e ripetere i colpi in zona con appoggio continuo.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0008-TESTA-RIGATA-MA-DEFORMAZIONE-OK",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "defect",
+      "tags": [
+        "testa chiodo rigata",
+        "difetto superficiale",
+        "accettabilità colpo"
+      ],
+      "triggers": [
+        "testa del chiodo rigata",
+        "piccolo graffio sulla testa ma card ok",
+        "difetto superficiale testa chiodo",
+        "testa leggermente rigata ma deformazione simmetrica"
+      ],
+      "question_it": "Se un colpo presenta una deformazione del chiodo corretta e simmetrica, con lettura card nel campo ammesso, ma la testa mostra una leggera rigatura superficiale dovuta a un difetto locale dell’acciaio, il fissaggio può essere considerato valido?",
+      "answer_it": "Una leggera rigatura superficiale sulla testa del chiodo, non associata a cricche, schiacciamenti anomali o perdita di materiale, non compromette di per sé il funzionamento del sistema, a condizione che tutti gli altri parametri di controllo risultino conformi. Se la deformazione plastica del gambo è coerente con quella attesa, la testa è ben appoggiata alla piastra del CTF e la lettura card rientra nel range di accettazione, la rigatura superficiale può essere considerata un difetto estetico o di finitura e il colpo può essere classificato come valido. Se invece la rigatura si accompagna a asimmetrie marcate, micro-cricche o incertezze nella misura, è prudente scartare il fissaggio e ripetere il colpo.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0009-TESTA-FESSURATA-O-CRICCATA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "defect",
+      "tags": [
+        "testa chiodo criccata",
+        "rottura",
+        "difetto grave"
+      ],
+      "triggers": [
+        "testa del chiodo con cricca",
+        "testa fessurata dopo lo sparo",
+        "testa quasi divisa in due",
+        "rotta la testa del chiodo"
+      ],
+      "question_it": "Come va classificato un colpo in cui la testa del chiodo, pur apparentemente a distanza corretta dalla piastra, presenta una cricca evidente o una fessurazione che interessa una parte significativa dello spessore?",
+      "answer_it": "La presenza di cricche o fessurazioni evidenti sulla testa del chiodo dopo lo sparo è un difetto grave che compromette l’affidabilità del fissaggio. Anche in presenza di una distanza card apparentemente conforme, la testa fessurata non garantisce la capacità di mantenere nel tempo la forza di serraggio e il corretto trasferimento degli sforzi di taglio. Un chiodo con testa criccata va sempre considerato non conforme: il fissaggio è da scartare e il CTF associato non può essere conteggiato. È opportuno verificare se il fenomeno si ripete su più colpi, perché potrebbe indicare un problema di partita chiodi, propulsori troppo energici o condizioni di posa anomale da analizzare con Tecnaria.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0010-CTF-CHE-BALLA-DOPO-LO-SPARO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "anomalia_strutturale",
+      "tags": [
+        "CTF instabile",
+        "CTF che balla",
+        "ancoraggio insufficiente",
+        "lamiera deformata"
+      ],
+      "triggers": [
+        "CTF che si muove se lo tocco",
+        "connettore che balla dopo lo sparo",
+        "CTF non solidale alla lamiera",
+        "CTF che ruota leggermente"
+      ],
+      "question_it": "Se dopo lo sparo con P560 il connettore CTF risulta percepibilmente mobile al tatto, con una piccola rotazione o gioco rispetto alla lamiera, il fissaggio può essere considerato valido?",
+      "answer_it": "Un CTF correttamente fissato con P560 deve risultare solidale alla lamiera, senza giochi percepibili al tatto e senza possibilità di rotazione apprezzabile. Se il connettore “balla”, ruota o sembra muoversi rispetto alla lamiera, significa che l’ancoraggio tra chiodo, lamiera e piastra non si è sviluppato secondo il meccanismo previsto. In queste condizioni il fissaggio è da considerarsi non valido: i CTF interessati vanno esclusi dal conteggio e la causa va individuata (lamiera troppo sottile o deformata, presenza di interposti, colpo insufficiente, supporto non idoneo). Solo dopo aver ripristinato condizioni di posa corrette e verificato con una serie di colpi prova stabili è possibile riprendere la posa definitiva.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0011-LAMIERA-CON-FORI-O-TAGLI-PREESISTENTI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "limite_applicazione",
+      "tags": [
+        "lamiera forata",
+        "taglio vicino al CTF",
+        "foro preesistente",
+        "indebolimento lamiera"
+      ],
+      "triggers": [
+        "lamiera con foro vicino al CTF",
+        "taglio preesistente in corrispondenza del fissaggio",
+        "lamiera rotta dove voglio fissare",
+        "CTF vicino a un taglio della lamiera"
+      ],
+      "question_it": "È ammesso fissare un CTF con P560 in prossimità di un foro, taglio o rottura preesistente nella lamiera grecata, contando quel connettore come pienamente efficace?",
+      "answer_it": "La presenza di fori, tagli o rotture preesistenti nella lamiera in prossimità del punto di fissaggio riduce la sezione resistente effettiva e altera il percorso degli sforzi di taglio tra CTF e lamiera. Di conseguenza il comportamento non è confrontabile con quello verificato nelle prove di qualificazione, che assumono lamiera integra con caratteristiche geometriche definite. Fissare un CTF a ridosso di un foro o di un taglio significa operare fuori campo: quel connettore non può essere considerato pienamente efficace e, in linea prudenziale, va escluso dal conteggio. È preferibile spostare il fissaggio in zona di lamiera integra o, se la situazione è diffusa, prevedere il ripristino della lamiera o una verifica specifica con Tecnaria.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0012-P560-PROPULSORE-TROPPO-ENERGICO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "errore_uso",
+      "tags": [
+        "P560",
+        "propulsore troppo forte",
+        "sovra infissione",
+        "testa troppo vicina alla piastra"
+      ],
+      "triggers": [
+        "testa troppo schiacciata contro la piastra",
+        "sovra infissione del chiodo",
+        "propulsore troppo aggressivo",
+        "card sotto il minimo ammesso"
+      ],
+      "question_it": "Cosa indica una distanza card inferiore al minimo ammesso, con testa del chiodo eccessivamente schiacciata verso la piastra del CTF, e come va gestita la scelta del propulsore per la P560 in questi casi?",
+      "answer_it": "Una distanza card inferiore al limite minimo previsto indica generalmente una sovra-infissione del chiodo, spesso dovuta all’utilizzo di propulsori troppo energici rispetto alla combinazione lamiera–supporto reale. In queste condizioni il meccanismo di deformazione controllata del chiodo esce dal campo di prova: la testa può schiacciarsi in modo anomalo, il gambo subisce deformazioni non previste e il comportamento del fissaggio diventa difficile da correlare alle prestazioni dichiarate. I colpi con card sotto il minimo vanno considerati non qualificati e scartati; occorre ripetere i colpi di prova utilizzando un propulsore di classe inferiore, fino a ottenere un intervallo di distanze card stabilmente dentro il campo ammesso. Solo dopo questa taratura è corretto procedere con la posa in produzione.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0013-P560-PROPULSORE-TROPPO-DEBOLE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "errore_uso",
+      "tags": [
+        "P560",
+        "propulsore debole",
+        "infissione insufficiente",
+        "card sopra massimo"
+      ],
+      "triggers": [
+        "card oltre il massimo ammesso",
+        "testa troppo distante dalla piastra",
+        "colpo che non entra abbastanza",
+        "propulsore troppo debole"
+      ],
+      "question_it": "Se la maggior parte dei colpi presenta una distanza card superiore al massimo ammesso, con teste dei chiodi visibilmente troppo distanti dalla piastra del CTF, come va interpretata la situazione e cosa bisogna correggere?",
+      "answer_it": "Distanze card sistematicamente superiori al massimo ammesso indicano che l’energia di infissione fornita dalla P560 non è sufficiente per generare la deformazione plastica prevista nel chiodo e l’ancoraggio efficace alla lamiera e al supporto. Nella pratica questo è spesso legato a propulsori troppo deboli per lo spessore reale di lamiera, eventuali interposti o condizioni di appoggio. I colpi con card oltre il massimo vanno considerati non qualificati: non possono essere conteggiati per il dimensionamento e la posa va sospesa. È necessario ripetere i colpi di prova con una classe di propulsori superiore o dopo aver ripristinato le corrette condizioni di appoggio, fino a ottenere un campo di misure entro l’intervallo ammesso e una deformazione visivamente coerente.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0014-LAMIERA-TROPPO-SOTTILE-O-FLESSIBILE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "limite_applicazione",
+      "tags": [
+        "lamiera sottile",
+        "lamiera flessibile",
+        "ondina troppo cedevole",
+        "fuori campo"
+      ],
+      "triggers": [
+        "lamiera troppo sottile per i CTF",
+        "ondina che si piega facilmente sotto il puntale",
+        "lamiera che vibra molto allo sparo",
+        "lamiera che non oppone rigidezza alla P560"
+      ],
+      "question_it": "Cosa succede se i CTF vengono posati su una lamiera grecata che, alla prova pratica con la P560, mostra una flessibilità eccessiva dell’ondina, con forti vibrazioni e scarsa rigidezza locale?",
+      "answer_it": "Una lamiera troppo sottile o troppo flessibile rispetto al campo di applicazione previsto per il sistema CTF+P560 non è in grado di fornire la rigidezza locale necessaria per un ancoraggio ripetibile. Se l’ondina si piega vistosamente sotto il puntale, vibra in modo marcato allo sparo e la deformazione del chiodo risulta molto variabile, si è in presenza di una condizione fuori campo rispetto alle prove Tecnaria. In queste situazioni la card può restituire valori incoerenti e il comportamento dei fissaggi non è affidabile ai fini del dimensionamento. La posa va sospesa e la configurazione deve essere rivalutata: occorre verificare che la lamiera rientri negli spessori e nelle tipologie ammesse o considerare soluzioni alternative con lamiera idonea o altri sistemi di collegamento approvati.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0015-LAMIERA-CORROSA-O-CONSUMATA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "limite_applicazione",
+      "tags": [
+        "lamiera corrosa",
+        "ruggine",
+        "spessore ridotto",
+        "recupero solai esistenti"
+      ],
+      "triggers": [
+        "lamiera esistente molto corrosa",
+        "ruggine diffusa sulla lamiera",
+        "lamiera assottigliata dalla corrosione",
+        "spessore incerto per corrosione"
+      ],
+      "question_it": "È prudente posare i CTF con P560 su una lamiera esistente fortemente corrosa, con evidente riduzione di spessore e incertezza sulla capacità resistente locale?",
+      "answer_it": "La lamiera fortemente corrosa, con perdita di sezione significativa e spessore effettivo non più controllabile, esce dal contesto di applicazione tipico dei CTF posati su lamiera nuova o comunque integra. In questi casi la capacità resistente locale dell’ondina può risultare molto inferiore a quella presupposta nelle verifiche e nelle prove sperimentali. La posa dei CTF su lamiera così degradata non è prudente: il rischio è di ottenere fissaggi con resistenza non verificabile e potenziali collassi locali della lamiera sotto carico o sotto l’azione del colpo. In presenza di corrosione diffusa è necessario valutare interventi di sostituzione della lamiera, applicazione di nuova lamiera collaborante o, in alternativa, sistemi di collegamento diversi che non facciano affidamento su una lamiera strutturalmente compromessa.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0016-LAMIERA-CON-BORDO-RIALZATO-ATTORNO-AL-CHIODO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "defect",
+      "tags": [
+        "bordo rialzato",
+        "cratere",
+        "deformazione locale lamiera"
+      ],
+      "triggers": [
+        "bordino rialzato attorno al foro del chiodo",
+        "lamiera che si alza attorno alla testa",
+        "cratere invertito attorno al chiodo",
+        "deformazione a vulcano della lamiera"
+      ],
+      "question_it": "Come va interpretata la presenza di un bordo rialzato della lamiera attorno al punto di infissione del chiodo, con una sorta di piccolo 'vulcano' metallico, e quando è da considerarsi difetto grave?",
+      "answer_it": "Un leggero bordo rialzato della lamiera attorno al punto di infissione può comparire come effetto collaterale della deformazione, ma se l’entità è modesta e non altera l’appoggio tra testa del chiodo, piastra del CTF e lamiera circostante, il fenomeno può essere compatibile con un fissaggio ancora efficace. Quando invece il bordo rialzato è marcato, genera un cratere che solleva sensibilmente il piano di contatto o interferisce con il corretto appoggio del CTF e della card, la deformazione esce dal campo di accettazione. In questi casi il colpo va considerato non qualificato: è opportuno verificare la taratura dei propulsori, l’eventuale presenza di interposti e la qualità della lamiera; i fissaggi con deformazioni così anomale devono essere esclusi dal conteggio e, se il fenomeno è diffuso, occorre confrontarsi con Tecnaria.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0017-CHIODI-CON-DIFETTI-RIPETUTI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "manutenzione_P560",
+      "tags": [
+        "partita chiodi difettosa",
+        "difetti ripetuti",
+        "controllo qualità chiodi"
+      ],
+      "triggers": [
+        "più chiodi con lo stesso difetto",
+        "testa criccata su molti colpi",
+        "difetti ripetuti stessa scatola",
+        "sospetto su partita chiodi"
+      ],
+      "question_it": "Cosa bisogna fare se, durante la posa, si osserva lo stesso difetto grave (per esempio teste criccate o gambo eccessivamente piegato) ripetersi su un numero significativo di chiodi della stessa partita?",
+      "answer_it": "La ripetizione sistematica dello stesso difetto grave su più chiodi della medesima fornitura indica un possibile problema di qualità o di compatibilità tra propulsori e condizioni reali di posa. Non è prudente continuare la posa ignorando il fenomeno: i fissaggi affetti dal difetto non possono essere considerati qualificati e l’affidabilità complessiva dell’intervento risulta compromessa. In questi casi è necessario sospendere l’utilizzo di quella partita di chiodi, segregare i materiali sospetti, documentare fotograficamente il difetto e contattare Tecnaria fornendo tutti i dettagli (lotto, condizioni di posa, tarature, tipo di lamiera e supporto). Solo dopo indicazioni specifiche del produttore, eventuale sostituzione dei materiali e nuova campagna di prove è possibile riprendere la posa.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0018-P560-MANUTENZIONE-EFFETTI-SULLA-POSA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "manutenzione_P560",
+      "tags": [
+        "manutenzione P560",
+        "sporco in canna",
+        "prestazioni ridotte",
+        "colpi irregolari"
+      ],
+      "triggers": [
+        "P560 spara in modo irregolare",
+        "colpi diversi uno dall altro",
+        "pistola sporca",
+        "necessità di pulizia P560"
+      ],
+      "question_it": "In che modo la manutenzione e lo stato di pulizia della P560 possono influenzare la qualità dei fissaggi dei CTF e quando è necessario fermarsi per effettuare la manutenzione?",
+      "answer_it": "La P560 è uno strumento a sparo calibrato; il suo corretto funzionamento dipende anche dalla pulizia interna, dalla lubrificazione e dal buono stato dei componenti soggetti a usura. Sporco, residui di polvere di propulsore o mancanza di manutenzione possono generare colpi irregolari, variazioni impreviste di energia, inceppamenti e comportamento anomalo del sistema di ritorno. Quando l’operatore percepisce differenze sensibili tra un colpo e l’altro, difficoltà di inserimento dei chiodi, ritardi nello scatto o rumori anomali, è obbligatorio sospendere la posa dei CTF, eseguire le operazioni di manutenzione previste nel manuale P560 e, se necessario, far verificare lo strumento da personale autorizzato. Solo dopo avere ripristinato condizioni di funzionamento regolari e aver ripetuto con esito positivo i colpi di prova è corretto riprendere la posa strutturale.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0019-CTF-POSATO-FUORI-DAL-PASSO-CONSIGLIATO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "errore_uso",
+      "tags": [
+        "passo connettori",
+        "interasse errato",
+        "densità fissaggi"
+      ],
+      "triggers": [
+        "CTF troppo lontani tra loro",
+        "passo diverso da quello di progetto",
+        "densità connettori inferiore",
+        "ho sbagliato distribuzione CTF"
+      ],
+      "question_it": "Cosa comporta, ai fini della verifica strutturale, una posa dei CTF con passo significativamente diverso (di solito più largo) rispetto a quello previsto dal progetto o dalla documentazione Tecnaria?",
+      "answer_it": "La resistenza e la rigidezza del sistema misto dipendono direttamente dalla densità e dalla distribuzione dei connettori CTF lungo le travi e le campate. Una posa con passo sensibilmente più largo rispetto a quello di progetto riduce il numero di connettori efficaci, abbassa la capacità di trasferimento delle azioni di taglio e può portare a uno stato di sollecitazione del solaio non conforme alle verifiche. Se ci si accorge a posteriori di aver posato con passo maggiore, non è sufficiente confidare su margini di sicurezza non dimostrati: è necessario confrontarsi con il progettista strutturale e con Tecnaria, rilevare con precisione la reale distribuzione dei CTF e, se del caso, integrare con connettori aggiuntivi o ricalcolare il solaio sulla base della configurazione effettiva.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH-0020-LAMIERA-CON-VIBRAZIONI-DA-MACCHINARI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "intent": "anomalia_strutturale",
+      "tags": [
+        "vibrazioni esterne",
+        "macchinari in funzione",
+        "posa in condizioni dinamiche"
+      ],
+      "triggers": [
+        "lamiera vibra per macchinari vicini",
+        "posa CTF con cantiere in movimento",
+        "lamiera instabile per vibrazioni esterne",
+        "problemi a misurare card per vibrazioni"
+      ],
+      "question_it": "È corretto effettuare la posa dei CTF e la lettura della card su lamiere che, durante il lavoro, sono soggette a vibrazioni significative dovute a macchinari in funzione o altre sorgenti dinamiche?",
+      "answer_it": "Le operazioni di posa dei CTF con P560 e le verifiche mediante card richiedono che la lamiera sia in condizioni almeno approssimativamente statiche. Vibrazioni significative dovute a macchinari, traffico o altre sorgenti dinamiche possono alterare la risposta locale della lamiera al colpo, rendere instabile la posizione del CTF, influenzare la traiettoria del chiodo e, soprattutto, compromettere la ripetibilità e l’affidabilità delle letture card. Se le vibrazioni sono tali da rendere difficoltoso il mantenimento del puntale o della card in posizione, è opportuno sospendere la posa durante il funzionamento delle sorgenti di vibrazione o prevedere una fase dedicata in condizioni più stabili. Solo in assenza di vibrazioni rilevanti è possibile considerare pienamente rappresentative le misure di controllo.",
+      "lang": "it"
+    },
+    {
+      "id": "CTF-PATCH2-0001-INFISSIONE-ALA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "P560",
+        "CTF",
+        "infissione",
+        "ala acciaio",
+        "validità colpo"
+      ],
+      "triggers": [
+        "deformazione gambo ala acciaio",
+        "colpo anomalo su ala in acciaio",
+        "ala acciaio non reagisce al colpo"
+      ],
+      "question_it": "Come si verifica la validità del colpo P560 nella posa dei CTF su ala in acciaio?",
+      "answer_it": "La validità del colpo con P560 nei sistemi CTF..."
+    },
+    {
+      "id": "CTF-PATCH2-0002-ASIMMETRIA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "P560",
+        "CTF",
+        "asimmetria",
+        "deformazione chiodo"
+      ],
+      "triggers": [
+        "deformazione asimmetrica del chiodo",
+        "gambo piegato da un lato",
+        "testa disassata"
+      ],
+      "question_it": "La card è nel range ma la deformazione del chiodo è asimmetrica: il fissaggio è valido?",
+      "answer_it": "La card misura solo la posizione..."
+    },
+    {
+      "id": "CTF-PATCH2-0003-LAMIERA-DOPPIA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "fuori_campo",
+      "tags": [
+        "CTF",
+        "lamiera fuori campo",
+        "lamiera doppia"
+      ],
+      "triggers": [
+        "lamiera doppia 2 mm",
+        "due lamiere sovrapposte",
+        "lamiera troppo rigida fuori campo"
+      ],
+      "question_it": "È ammesso l’utilizzo dei CTF su lamiera doppia o con spessore totale elevato?",
+      "answer_it": "L’utilizzo dei CTF su lamiere con spessori cumulati..."
+    },
+    {
+      "id": "CTF-PATCH2-0004-LAMIERA-CORROSA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "fuori_campo",
+      "tags": [
+        "CTF",
+        "lamiera corrotta",
+        "corrosione"
+      ],
+      "triggers": [
+        "lamiera corrosa grave",
+        "lamiera con perdita sezione",
+        "ossidazione avanzata"
+      ],
+      "question_it": "Un fissaggio CTF è valido se la lamiera è corrosa o presenta perdita di sezione?",
+      "answer_it": "La lamiera corrosa o con perdita di sezione..."
+    },
+    {
+      "id": "CTF-PATCH2-0005-INTUMESCENTE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "fuori_campo",
+      "tags": [
+        "CTF",
+        "vernice intumescente",
+        "ala acciaio"
+      ],
+      "triggers": [
+        "ala con intumescente spessa",
+        "vernice intumescente 2 mm",
+        "strato intumescente impedisce fissaggio"
+      ],
+      "question_it": "È ammesso sparare i CTF su travi in acciaio con vernice intumescente?",
+      "answer_it": "La vernice intumescente crea uno strato..."
+    },
+    {
+      "id": "CTF-PATCH2-0006-COLPI-IRREGOLARI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "P560",
+        "serie colpi",
+        "irregolare"
+      ],
+      "triggers": [
+        "colpi completamente incoerenti",
+        "due colpi irregolari consecutivi",
+        "sequenza non ripetibile"
+      ],
+      "question_it": "Cosa fare se due o più colpi consecutivi della P560 risultano irregolari?",
+      "answer_it": "Una serie di colpi incoerenti rende non validabile..."
+    },
+    {
+      "id": "CTF-PATCH2-0007-FORI-PREESISTENTI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "fuori_campo",
+      "tags": [
+        "CTF",
+        "lamiera bucata",
+        "foro esistente"
+      ],
+      "triggers": [
+        "foro preesistente lamiera",
+        "lamiera bucata vicino al punto sparo"
+      ],
+      "question_it": "È valido un fissaggio CTF in prossimità di un foro preesistente sulla lamiera?",
+      "answer_it": "La presenza di fori o danneggiamenti localizzati..."
+    },
+    {
+      "id": "CTF-PATCH2-0008-GAP-LAMIERA-ALA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "CTF",
+        "lamiera sollevata",
+        "gap"
+      ],
+      "triggers": [
+        "lamiera distaccata dall'ala",
+        "gap lamiera ala trave"
+      ],
+      "question_it": "Se la lamiera è distaccata dall’ala di alcuni millimetri, il fissaggio CTF è valido?",
+      "answer_it": "Un distacco tra lamiera e ala rende impossibile..."
+    },
+    {
+      "id": "CTF-PATCH2-0009-TESTA-SCHIACCIATA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "P560",
+        "testa schiacciata",
+        "propulsore eccessivo"
+      ],
+      "triggers": [
+        "testa chiodo schiacciata",
+        "testa completamente appiattita"
+      ],
+      "question_it": "Il colpo è valido se la testa del chiodo risulta schiacciata dopo lo sparo?",
+      "answer_it": "Una testa schiacciata indica propulsore eccessivo..."
+    },
+    {
+      "id": "CTF-PATCH2-0010-ONDINA-COLLASSATA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "CTF",
+        "ondina collassata",
+        "cratere invertito"
+      ],
+      "triggers": [
+        "ondina collassata cratere",
+        "cratere invertito sotto la testa"
+      ],
+      "question_it": "Il fissaggio è valido se l’ondina collassa formando un cratere sotto la testa del chiodo?",
+      "answer_it": "Il collasso dell’ondina è un comportamento fuori campo..."
+    },
+    {
+      "id": "CTF-0101-P560-COLPO-PERFETTO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_colpo",
+      "tags": [
+        "P560",
+        "CTF",
+        "controllo colpo",
+        "card",
+        "colpo corretto",
+        "sem_verde"
+      ],
+      "triggers": [
+        "come riconosco un colpo P560 perfetto",
+        "come deve essere un colpo corretto P560",
+        "colpo ideale P560 su CTF",
+        "aspetto corretto della testa del chiodo",
+        "comportamento corretto chiodo lamiera card",
+        "parametri per dire che il colpo è valido",
+        "come verifico un fissaggio P560 ben riuscito"
+      ],
+      "question_it": "Qual è il comportamento corretto di chiodo, lamiera e card in un colpo P560 perfettamente riuscito su un connettore CTF?",
+      "answer_it": "Un colpo P560 può essere considerato perfettamente riuscito quando tutti gli elementi coinvolti – chiodo idoneo Tecnaria, lamiera grecata, piastra del CTF e ala della trave – si comportano in modo coerente con le prove Tecnaria.\n\nIn pratica, le condizioni da verificare sono:\n\n1. **Deformazione del chiodo**  \n   - Il gambo non deve rimanere dritto: deve mostrare una deformazione plastica regolare, evitando curvature brusche o pieghe a S.  \n   - La **testa** mantiene la forma sostanzialmente circolare, senza cricche, fenditure o appiattimenti anomali; può presentare un leggero schiacciamento uniforme, ma non deve risultare ovale o tagliente.\n\n2. **Risultato sulla card di controllo**  \n   - La distanza testa–piastra, misurata con la card Tecnaria, deve ricadere nel **range verde** indicato per il sistema CTF.  \n   - Le letture ripetute nella stessa zona devono essere coerenti: piccoli scostamenti sono fisiologici, ma non devono comparire valori alternati fuori range.\n\n3. **Comportamento della lamiera grecata**  \n   - L’ondina non deve collassare né presentare deformazioni violente o lacerazioni; una leggera impronta del puntale e un piccolo avvallamento locale sono normali.  \n   - Non devono comparire tagli radiali, spaccature o sollevamenti circolari pronunciati attorno al chiodo.\n\n4. **Posizione e stabilità del CTF**  \n   - La piastra del connettore deve appoggiare **pienamente e stabilmente** sulla lamiera, senza giochi verticali percepibili e senza rotazioni evidenti sotto una modesta sollecitazione manuale.  \n   - Non deve “ballare” né produrre tic o scricchiolii quando viene sollecitata.\n\n5. **Comportamento globale in zona di prova**  \n   - In una sequenza di colpi di prova in zona rappresentativa, la maggior parte dei fissaggi deve mostrare lo stesso comportamento: deformazione del chiodo simile, valori di card allineati, assenza di anomalie ripetitive.\n\nQuando tutte queste condizioni sono rispettate, il colpo P560 è da considerarsi **VERDE**: il fissaggio è valido e il CTF può essere conteggiato nel calcolo della collaborazione lamiera–trave."
+    },
+    {
+      "id": "CTF-0102-P560-COLPI-DI-PROVA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_colpo",
+      "tags": [
+        "P560",
+        "CTF",
+        "colpi di prova",
+        "avvio cantiere",
+        "turni lavoro",
+        "controllo qualità"
+      ],
+      "triggers": [
+        "ogni quanto devo fare i colpi di prova P560",
+        "colpi di prova P560 all'inizio del turno",
+        "devo fare prove all'avvio del cantiere",
+        "procedura colpi di prova con P560",
+        "quanti colpi di prova servono",
+        "colpo di prova ogni turno di lavoro",
+        "test iniziali P560 prima di posare i CTF"
+      ],
+      "question_it": "Quando e come è corretto eseguire i colpi di prova con la P560 per verificare la qualità dei fissaggi dei CTF?",
+      "answer_it": "I colpi di prova con la P560 non sono un’operazione una tantum all’avvio del cantiere, ma fanno parte della procedura ordinaria di controllo qualità dei fissaggi CTF. Servono a verificare che, nelle condizioni reali di posa (lamiera, trave, propulsore, utensile), il sistema lavori all’interno del campo previsto.\n\nLa procedura di buona pratica può essere così schematizzata:\n\n1. **All’avvio del cantiere o del sistema CTF**  \n   - In una zona rappresentativa del solaio (stessa lamiera, stessa trave, stessa configurazione generale), eseguire una serie di **colpi di prova** con P560 e chiodi idonei Tecnaria.  \n   - Controllare per ciascun colpo la distanza testa–piastra con la card Tecnaria e l’aspetto della deformazione del chiodo.\n\n2. **All’inizio di ogni turno di lavoro o dopo una lunga pausa**  \n   - Eseguire almeno **alcuni colpi di prova** in zona rappresentativa, soprattutto se l’utensile è rimasto fermo a lungo, se le condizioni climatiche sono cambiate sensibilmente (temperatura, umidità) o se si è intervenuti su propulsori o manutenzione.  \n   - L’obiettivo è verificare che il comportamento non sia cambiato rispetto ai colpi di prova iniziali.\n\n3. **Ogni volta che cambia una condizione significativa**  \n   - Cambio di **spessore lamiera**, di **tipo di trave** o di zona del solaio con rigidezza diversa.  \n   - Uso di una **partita diversa di chiodi** o di **propulsori**.  \n   - Manutenzione straordinaria o sostituzione di componenti della P560.\n\n4. **Cosa fare se i colpi di prova danno esito negativo**  \n   - Se una quota significativa di colpi di prova risulta fuori range o con deformazioni anomale, la posa strutturale deve essere **sospesa**.  \n   - Vanno verificati: scelta del propulsore, stato dell’utensile, condizioni della lamiera e dell’ala, presenza di strati interposti o situazioni fuori campo.  \n   - Solo dopo avere ripristinato un comportamento regolare (colpi di prova nuovamente nel range verde) è corretto riprendere la posa dei CTF.\n\nIn sintesi, i colpi di prova con P560 vanno eseguiti **all’avvio del sistema, all’inizio dei turni significativi e ogni volta che qualcosa cambia**, e costituiscono la base per considerare rappresentative le letture card durante la posa dei connettori."
+    },
+    {
+      "id": "CTF-0103-P560-SOVRA-INFISSIONE-INTERMITTENTE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "P560",
+        "CTF",
+        "sovra-infissione",
+        "difetti ripetuti",
+        "manutenzione utensile",
+        "propulsori"
+      ],
+      "triggers": [
+        "un colpo su cinque è sovrainfisso",
+        "ogni tanto la testa è troppo vicina alla piastra",
+        "sovra infissione intermittente P560",
+        "distanza testa piastra troppo bassa ogni tanto",
+        "colpo troppo forte ogni pochi fissaggi",
+        "serie di colpi con uno ogni tanto fuori range"
+      ],
+      "question_it": "Cosa devo fare se, in una serie di fissaggi con la P560, circa un colpo su cinque risulta sovra-infisso rispetto al range corretto della card?",
+      "answer_it": "Una sovra-infissione isolata può essere un evento occasionale; quando però, in una stessa zona e con le stesse condizioni, **un colpo su cinque** o con frequenza simile risulta con distanza testa–piastra inferiore al limite ammesso, la situazione non è più casuale ma indica un problema di sistema.\n\nI casi tipici sono:\n\n1. **Scelta o stato del propulsore**  \n   - Propulsore troppo energico rispetto a spessore di lamiera e ala.  \n   - Propulsori non omogenei nella stessa partita (cartucce con energia diversa).  \n   - Errato accoppiamento tra livello di propulsore e configurazione lamiera–trave.\n\n2. **Condizioni dell’utensile P560**  \n   - Meccanismo interno non perfettamente pulito o lubrificato, con variazioni di energia tra un colpo e l’altro.  \n   - Usura o gioco anomalo di componenti interni che alterano la cinematica del colpo.\n\n3. **Condizioni locali della lamiera o del supporto**  \n   - Zone con appoggi diversi o rigidezza locale maggiore che producono una risposta più rigida solo in alcuni punti.  \n   - Presenza di strati interposti o piccole irregolarità non evidenti a vista.\n\nIn queste condizioni:\n\n- I colpi con distanza testa–piastra **sotto il range verde** sono da considerare **NON validi**, e i CTF corrispondenti **non possono essere conteggiati**.  \n- La posa strutturale deve essere **temporaneamente sospesa** in quella zona.  \n- Occorre verificare, con il supporto di Tecnaria se necessario, la corretta scelta dei propulsori, lo stato della P560 e le condizioni di lamiera e trave.\n\nSolo dopo avere individuato e risolto la causa (e aver ripetuto colpi di prova con esito regolare) è corretto riprendere la posa e considerare validi i fissaggi successivi."
+    },
+    {
+      "id": "CTF-0104-P560-LAMIERA-FREDDA-INVERNO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "condizioni_ambientali",
+      "tags": [
+        "P560",
+        "CTF",
+        "temperatura",
+        "inverno",
+        "lamiera fredda",
+        "controllo colpo"
+      ],
+      "triggers": [
+        "posare CTF d'inverno con lamiera fredda",
+        "effetto della temperatura sulla P560",
+        "lamiera a 0 gradi card affidabile",
+        "posso fidarmi della card con lamiera molto fredda",
+        "colpo P560 con lamiera a temperatura sotto zero",
+        "controllo colpo in inverno"
+      ],
+      "question_it": "Posso fidarmi della lettura della card e del comportamento del chiodo quando lavoro in inverno con lamiera molto fredda (prossima o inferiore a 0 °C)?",
+      "answer_it": "La temperatura della lamiera e dell’ambiente può influenzare il comportamento globale del sistema P560+CTF, ma non cambia i principi fondamentali del controllo del colpo. Anche in inverno, con lamiera molto fredda, restano validi i criteri basati su card e deformazione del chiodo, a patto che si adottino alcune cautele.\n\nIn pratica:\n\n1. **Materiali e deformazione**  \n   - A basse temperature l’acciaio della lamiera e della trave è più rigido e meno duttile; questo può rendere la deformazione del chiodo leggermente meno marcata, ma non deve stravolgere il meccanismo di ancoraggio.  \n   - Finché la distanza testa–piastra rientra nel range verde e la geometria della deformazione è regolare, il colpo resta valido.\n\n2. **Condensa, gelo, umidità superficiale**  \n   - Il vero problema non è la temperatura in sé, ma la possibile **presenza di condensa, brina o ghiaccio** sulla lamiera, che possono alterare l’appoggio del puntale, favorire slittamenti e falsare la lettura card.  \n   - In presenza di condensa evidente o brina, è buona pratica **rimuovere l’umidità** nella zona di posa e ripetere colpi di prova rappresentativi.\n\n3. **Procedura consigliata in inverno**  \n   - Eseguire sempre **colpi di prova** all’inizio del turno nelle condizioni termiche reali (lamiera fredda) e verificare che i valori card siano stabili e in range.  \n   - Se si osservano anomalie sistematiche (valori molto vicini al limite, deformazioni irregolari, scivolamento del puntale), sospendere la posa e confrontarsi con l’ufficio tecnico Tecnaria.\n\nIn sintesi, il lavoro in inverno con lamiera fredda è compatibile con il sistema CTF, ma richiede maggiore attenzione all’**umidità superficiale** e una più frequente verifica tramite colpi di prova. La validità del fissaggio resta sempre legata alla combinazione di card nel range e deformazione corretta del chiodo."
+    },
+    {
+      "id": "CTF-0105-P560-SPESSORI-PROVVISORI-PUNTALE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "P560",
+        "CTF",
+        "puntale",
+        "spessori provvisori",
+        "uso scorretto utensile",
+        "sicurezza"
+      ],
+      "triggers": [
+        "posso mettere uno spessore sotto il puntale",
+        "usare spessori provvisori per far appoggiare la P560",
+        "P560 non appoggia bene sulla lamiera posso mettere uno spessore",
+        "correggere la profondità con uno spessore",
+        "adattare il puntale della P560 con una piastrina",
+        "uso improprio del puntale P560"
+      ],
+      "question_it": "Se la P560 non appoggia bene sulla lamiera perché l’ondina è molto profonda o la geometria è scomoda, posso usare uno spessore provvisorio sotto il puntale per migliorare l’appoggio?",
+      "answer_it": "No, l’impiego di **spessori provvisori, piastrine, listelli o altri elementi non previsti** tra puntale della P560 e lamiera è una pratica non ammessa e potenzialmente pericolosa.\n\nLa P560 e i chiodi idonei Tecnaria sono stati provati e qualificati in condizioni ben definite, che prevedono:\n\n- appoggio diretto del puntale sulla lamiera,  \n- cinematica controllata del colpo,  \n- deformazione del chiodo coerente con la rigidezza del sistema lamiera–CTF–ala.\n\nInserire uno spessore non previsto tra puntale e lamiera può comportare:\n\n1. **Alterazione dell’energia trasmessa**  \n   - Lo spessore può assorbire o deviare parte dell’energia, rendendo il colpo meno controllato.  \n   - Può generare sovra-infissioni o, al contrario, infissioni insufficienti non rilevabili correttamente dalla card.\n\n2. **Perdita di stabilità e sicurezza**  \n   - Il puntale non lavora più come progettato: aumenta il rischio di scivolamento, colpi non perpendicolari e ritorni imprevisti.  \n   - Si creano condizioni non coperte dalle prove Tecnaria, con possibili implicazioni di sicurezza per l’operatore.\n\n3. **Fuori campo rispetto alle prove di qualificazione**  \n   - Qualsiasi modifica “artigianale” dell’appoggio del puntale porta il sistema fuori dalle condizioni di prova e rende inaffidabile il controllo card.\n\nSe la P560 non riesce ad appoggiare correttamente:\n\n- va verificata la **configurazione di lamiera e CTF** (posizionamento, altezza ondina, compatibilità del sistema);  \n- se il problema persiste, è necessario contattare l’ufficio tecnico Tecnaria per valutare **una diversa soluzione di dettaglio**, non l’uso di spessori improvvisati.  \n\nL’uso di spessori provvisori sotto il puntale deve quindi essere considerato **non ammesso**."
+    },
+    {
+      "id": "CTF-0106-LAMIERA-CORROSIONE-SUPERFICIALE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "lamiera grecata",
+        "corrosione",
+        "ossidazione superficiale",
+        "idoneità supporto",
+        "fuori campo"
+      ],
+      "triggers": [
+        "posso usare i CTF su lamiera leggermente corrosa",
+        "lamiera con ossidazione superficiale posso sparare",
+        "lamiera un po' arrugginita CTF ammessi",
+        "corrosione superficiale lamiera grecata",
+        "differenza tra corrosione superficiale e perdita di sezione",
+        "quando la ruggine della lamiera è accettabile per i CTF"
+      ],
+      "question_it": "I connettori CTF possono essere usati su una lamiera grecata che presenta solo una corrosione superficiale, senza evidenti perdite di sezione o fori passanti?",
+      "answer_it": "La corrosione della lamiera grecata è un tema critico perché la riduzione di sezione e la presenza di difetti localizzati possono compromettere sia la capacità resistente della lamiera sia l’affidabilità del fissaggio P560+CTF.\n\nÈ necessario distinguere due situazioni:\n\n1. **Corrosione superficiale moderata (ossidazione leggera)**  \n   - Si tratta di una patina superficiale di ruggine, senza assottigliamenti evidenti, senza **microfori passanti** e senza bordi sfrangiati.  \n   - In queste condizioni, se la lamiera conserva uno spessore sostanzialmente integro e rispetta il campo di spessori previsti per i CTF, l’uso dei connettori è in linea di principio **ammissibile**, previo giudizio del progettista sulla capacità residua della lamiera nel sistema solaio.  \n   - È comunque buona pratica eseguire colpi di prova e verificare che non si generino lacerazioni, crateri o deformazioni anomale attorno al chiodo.\n\n2. **Corrosione avanzata con perdita di sezione**  \n   - Quando sono presenti **sfogliature, bordi mangiati, assottigliamenti marcati, microfori o fori passanti**, la lamiera non può più essere considerata equivalente a quella delle prove Tecnaria.  \n   - In tali casi i fissaggi CTF vanno considerati **non ammissibili** e la lamiera non è idonea a svolgere il ruolo strutturale previsto; è necessario valutare interventi di ripristino o soluzioni alternative.\n\nIn sintesi: una **ossidazione superficiale, senza significativa perdita di sezione**, può essere compatibile con l’uso dei CTF, a patto che la lamiera rientri ancora nello spessore di progetto e che non compaiano lacerazioni al colpo. Ogni situazione intermedia va valutata con attenzione dal progettista e, in caso di dubbio, condivisa con l’ufficio tecnico Tecnaria."
+    },
+    {
+      "id": "CTF-0107-PIASTRA-CTF-NON-ADERENTE-LAMIERA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "CTF",
+        "P560",
+        "piastra non aderente",
+        "gioco verticale",
+        "fissaggio non valido"
+      ],
+      "triggers": [
+        "piastra del CTF non appoggia bene alla lamiera",
+        "CTF sollevato dalla lamiera dopo lo sparo",
+        "piastra che non aderisce completamente",
+        "CTF con gioco verticale sulla lamiera",
+        "connettore che si muove in su e giù",
+        "cosa significa se la piastra non tocca la lamiera"
+      ],
+      "question_it": "Cosa significa se, dopo lo sparo con P560, la piastra del connettore CTF non appoggia completamente sulla lamiera e mostra un piccolo gioco verticale?",
+      "answer_it": "Un connettore CTF correttamente posato deve risultare **solidale** con lamiera e ala della trave: la piastra superiore deve appoggiare pienamente sulla lamiera, senza giochi verticali percepibili.\n\nSe, dopo lo sparo, la piastra del CTF:\n\n- non aderisce completamente alla lamiera,  \n- presenta un **gioco verticale anche lieve**,  \n- si muove in su e in giù o produce tic/scricchiolii quando viene sollecitata,\n\nil fissaggio è da considerare **non conforme** per diversi motivi:\n\n1. **Mancato serraggio tra CTF, lamiera e ala**  \n   - Il chiodo non sta esercitando il corretto serraggio, quindi il trasferimento di taglio tra lamiera e trave non è quello previsto dalle prove Tecnaria.  \n   - Il gioco può evolvere nel tempo, con ulteriori allentamenti e fenomeni di fatica locale.\n\n2. **Possibili cause operative**  \n   - Deformazione irregolare del chiodo o infissione insufficiente.  \n   - Zona di lamiera non perfettamente aderente all’ala (gap locale).  \n   - Presenza di corpi estranei o spessori imprevisti tra piastra, lamiera e ala.  \n   - Colpo non perpendicolare o puntale non appoggiato correttamente.\n\n3. **Conseguenze sulla validità del fissaggio**  \n   - Un CTF con piastra non aderente non può essere considerato equivalente a un fissaggio valido:  \n     il connettore deve essere **considerato non conteggiabile** ai fini delle verifiche strutturali.  \n   - È necessario ripetere il fissaggio in una zona idonea, dopo aver verificato e corretto la causa (condizioni di lamiera, parametri P560, eventuali interferenze).\n\nIn conclusione, la presenza di gioco verticale sulla piastra del CTF è un indicatore chiaro di **fissaggio non valido**: il colpo è da scartare e la posa va ripetuta in condizioni corrette."
+    },
+    {
+      "id": "CTF-0108-PROPULSORE-TROPPO-ENERGICO-CARD-OK",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_colpo",
+      "tags": [
+        "P560",
+        "propulsore",
+        "energia colpo",
+        "card",
+        "sovra-infissione potenziale"
+      ],
+      "triggers": [
+        "propulsore forse troppo forte ma card nel range",
+        "come capire se il propulsore è troppo energico",
+        "card verde ma sospetto propulsore troppo alto",
+        "livello propulsore e deformazione chiodo",
+        "posso usare propulsore più forte se card è ok",
+        "controllo propulsore P560 con card"
+      ],
+      "question_it": "Come posso capire se il propulsore scelto per la P560 è troppo energico anche quando la card mostra valori ancora nel range ammesso?",
+      "answer_it": "La card è uno strumento fondamentale di controllo, ma da sola non esaurisce la valutazione del colpo. Un propulsore eccessivamente energico può in alcuni casi produrre valori ancora formalmente nel range, ma segnali di comportamento anomalo sugli elementi del sistema.\n\nPer valutare se il propulsore è troppo energico occorre considerare congiuntamente:\n\n1. **Posizione della misura nel range**  \n   - Se la distanza testa–piastra si colloca sistematicamente **vicinissima al limite inferiore** del range verde, il sistema è “al limite” e una piccola variazione può portare in sovra-infissione.  \n   - Un comportamento più equilibrato prevede valori distribuiti nella parte centrale del range.\n\n2. **Aspetto della deformazione del chiodo**  \n   - Un propulsore troppo energico tende a generare deformazioni più violente:  \n     gambo con curvature brusche, testa che inizia a deformarsi in modo non regolare, segni di schiacciamento incipiente.  \n   - Anche in presenza di card ancora accettabile, deformazioni eccessivamente “tirate” sono un campanello d’allarme.\n\n3. **Effetti sulla lamiera e sulla piastra del CTF**  \n   - Ondina fortemente schiacciata, crateri, o inizio di lacerazioni attorno al chiodo sono segni di energia troppo alta.  \n   - Piccoli sollevamenti circolari o impronte molto marcate del puntale indicano che la lamiera sta lavorando fuori dal regime previsto.\n\n4. **Coerenza su più colpi di prova**  \n   - Se su una serie di colpi di prova diversi fissaggi risultano borderline (quasi sovra-infissi) o qualcuno già fuori range, il livello di propulsore va considerato **inadeguato**.\n\nIn queste situazioni è prudente:\n\n- valutare l’uso di un propulsore di livello **inferiore**,  \n- ripetere una serie di colpi di prova in zona rappresentativa,  \n- adottare come configurazione definitiva quella che produce deformazioni regolari e valori card stabili nella parte centrale del range.\n\nIn sintesi, il controllo del propulsore non si basa solo sul fatto che la card sia “ancora verde”, ma sull’osservazione integrata di card, deformazione del chiodo e risposta della lamiera. Se più indicatori convergono verso un comportamento troppo aggressivo, il propulsore va ridotto."
+    },
+    {
+      "id": "CTF-0109-LAMIERA-BAGNATA-CONDENSA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "condizioni_ambientali",
+      "tags": [
+        "CTF",
+        "P560",
+        "lamiera bagnata",
+        "condensa",
+        "umidità superficiale",
+        "controllo colpo"
+      ],
+      "triggers": [
+        "posare CTF su lamiera bagnata",
+        "condensa sulla lamiera card affidabile",
+        "lamiera umida al mattino posso sparare",
+        "colpo P560 con brina o acqua sulla lamiera",
+        "influenza della condensa sulla P560",
+        "lamiera bagnata e lettura card"
+      ],
+      "question_it": "Posso considerare affidabili i colpi P560 e le letture della card se la lamiera è bagnata per condensa o leggera pioggia?",
+      "answer_it": "La presenza di acqua, condensa o brina sulla lamiera non modifica le caratteristiche meccaniche dell’acciaio, ma può influenzare in modo significativo le condizioni di contatto tra puntale, lamiera e card, compromettendo la ripetibilità del controllo.\n\nI principali effetti sono:\n\n1. **Slittamento del puntale e della card**  \n   - Un velo d’acqua o di condensa riduce l’attrito: il puntale può **scivolare** nei primi istanti del colpo, alterando la perpendicolarità o la posizione del chiodo.  \n   - Anche la card può aderire peggio, rendendo meno precisa la lettura della distanza testa–piastra.\n\n2. **Accumulo localizzato di acqua**  \n   - Piccole pozze o gocce possono comportarsi come uno strato interposto comprimibile, introducendo variabilità nella risposta locale della lamiera.\n\n3. **Effetto sulla ripetibilità dei colpi di prova**  \n   - In condizioni di lamiera bagnata è più probabile osservare valori di card meno stabili tra un colpo e l’altro, a parità di configurazione.\n\n**Buona pratica operativa:**\n\n- Evitare, per quanto possibile, la posa strutturale dei CTF su **lamiera visibilmente bagnata** in modo non uniforme.  \n- Se si deve operare in presenza di condensa leggera, è opportuno:  \n  - asciugare la zona di prova,  \n  - eseguire una serie di colpi di prova nel punto più sfavorevole,  \n  - verificare che le letture card siano comunque stabili e coerenti.  \n- Se la variabilità è elevata o compaiono anomalie, la posa va **rimandata** o va migliorato il controllo dell’umidità (coperture provvisorie, asciugatura, ecc.).\n\nIn sintesi, la lamiera leggermente bagnata non rende automaticamente non valido il sistema, ma richiede una maggiore attenzione e, in molti casi, la scelta prudente è **rimandare la posa** o lavorare dopo aver ripristinato una superficie asciutta e stabile."
+    },
+    {
+      "id": "CTF-0110-FORI-RIEMPITI-SILICONE-LAMIERA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "lamiera grecata",
+        "fori preesistenti",
+        "silicone",
+        "fuori campo",
+        "errore posa"
+      ],
+      "triggers": [
+        "fori nella lamiera riempiti con silicone",
+        "posare CTF vicino a fori tamponati",
+        "lamiera bucata chiusa con silicone",
+        "uso di CTF su lamiera con fori sigillati",
+        "ammesso CTF su lamiera riparata con silicone",
+        "CTF su lamiera con vecchi fori impianti"
+      ],
+      "question_it": "È ammesso posare i CTF su una lamiera grecata che presenta fori preesistenti (ad esempio di impianti) semplicemente riempiti o sigillati con silicone o mastici?",
+      "answer_it": "I fori preesistenti nella lamiera grecata, soprattutto se localizzati in prossimità della zona di posa dei CTF, sono un elemento critico perché riducono l’area resistente effettiva e concentrano le tensioni. La semplice sigillatura con silicone o altri mastici **non ripristina la capacità meccanica originaria** della lamiera.\n\nIn particolare:\n\n1. **Silicone e mastici non sono materiali strutturali**  \n   - Servono a garantire tenuta all’aria o all’acqua, ma non hanno rigidezza e resistenza comparabili all’acciaio.  \n   - Non contribuiscono in modo significativo al trasferimento di sforzi e non ricostituiscono lo spessore perduto.\n\n2. **Effetto sui fissaggi CTF**  \n   - Se il chiodo P560 viene posato in una zona prossima a un foro sigillato, la distribuzione delle tensioni nella lamiera è alterata:  \n     si possono avere deformazioni e lacerazioni anomale, anche se la card dovesse risultare temporaneamente nel range.  \n   - Il comportamento di lungo termine (fatica, cicli di carico) non è assimilabile a quello delle prove Tecnaria.\n\n3. **Valutazione di ammissibilità**  \n   - Una lamiera con fori preesistenti **non può essere considerata ripristinata strutturalmente** dalla sola sigillatura con silicone.  \n   - La posa di CTF in prossimità di questi fori va considerata **fuori campo** rispetto alla configurazione di prova standard.\n\nIn conclusione, la presenza di fori preesistenti semplicemente riempiti con silicone non è compatibile con l’impiego standard dei CTF in quella zona. La progettazione deve:\n\n- evitare la posa in corrispondenza di fori o zone fortemente indebolite,  \n- oppure prevedere un intervento di rinforzo locale della lamiera con elementi metallici adeguati (da valutare e dimensionare caso per caso),  \n- confrontarsi con Tecnaria per definire una soluzione tecnicamente corretta.\n\nIl fissaggio dei CTF su lamiera “riparata” solo con silicone va quindi considerato **non ammesso** nell’ambito del sistema standard."
+    },
+    {
+      "id": "CTF-0111-P560-VIBRAZIONI-UTENSILE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "manutenzione_utensile",
+      "tags": [
+        "P560",
+        "vibrazioni utensile",
+        "manutenzione",
+        "colpi irregolari",
+        "sicurezza"
+      ],
+      "triggers": [
+        "la P560 vibra molto in mano",
+        "vibrazioni anomale della P560",
+        "perché la P560 vibra più del solito",
+        "vibrazione utensile durante lo sparo",
+        "vibrazioni eccessive della pistola a sparo",
+        "P560 che vibra può alterare la card"
+      ],
+      "question_it": "Cosa significa se durante l’uso la P560 vibra più del solito in mano e il rinculo risulta meno controllato?",
+      "answer_it": "Un aumento sensibile delle vibrazioni percepite sull’utensile P560 durante lo sparo è un segnale di possibile anomalia del sistema e non va trascurato. La P560 è progettata per lavorare con un rinculo controllato e ripetibile; quando l’operatore avverte vibrazioni superiori al normale, si possono presentare:\n\n1. **Problemi interni all’utensile**  \n   - Usura o gioco eccessivo di componenti mobili.  \n   - Mancanza di lubrificazione o presenza di residui di polvere di propulsore nelle sedi interne.  \n   - Parziale bloccaggio di meccanismi di ritorno.\n\n2. **Ripercussioni sul fissaggio**  \n   - Minore controllo della perpendicolarità e della stabilità del puntale in fase di colpo.  \n   - Possibile variabilità dell’energia trasmessa al chiodo tra un colpo e l’altro.  \n   - Maggior rischio di colpi non perfettamente centrati o con deformazioni non regolari.\n\n3. **Azioni da intraprendere**  \n   - Sospendere l’uso strutturale della P560 e procedere a **pulizia e manutenzione** secondo le istruzioni Tecnaria.  \n   - Verificare lo stato dei propulsori e dei chiodi, scartando lotti sospetti.  \n   - Se le vibrazioni persistono, far controllare l’utensile da personale autorizzato.\n\nFinché la causa delle vibrazioni anomale non è stata individuata e risolta, la posa dei CTF con quella P560 va considerata **non affidabile**: è necessario intervenire sull’utensile prima di proseguire con i fissaggi strutturali."
+    },
+    {
+      "id": "CTF-0112-LAMIERA-ONDULATA-STOCCAGGIO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "lamiera grecata",
+        "ondulazioni",
+        "stoccaggio errato",
+        "idoneità posa"
+      ],
+      "triggers": [
+        "lamiera ondulata per stoccaggio errato",
+        "lamiera non perfettamente planare posso posare CTF",
+        "ondulazioni lunghe della lamiera prima della posa",
+        "lamiera accartocciata leggermente CTF ammessi",
+        "effetto stoccaggio su lamiera grecata",
+        "lamiera con onde aggiuntive da stoccaggio"
+      ],
+      "question_it": "Posso posare i connettori CTF su una lamiera grecata che presenta ondulazioni aggiuntive dovute a stoccaggio scorretto, pur non essendo bucata o lacerata?",
+      "answer_it": "Ondulazioni anomale della lamiera dovute a stoccaggio scorretto (pieghe, rigonfiamenti localizzati, onde non previste dal profilo) possono alterare in modo significativo il comportamento del sistema CTF, anche se la lamiera non è bucata o visibilmente danneggiata.\n\nGli effetti principali sono:\n\n1. **Appoggio non uniforme sulla trave**  \n   - La lamiera può non aderire correttamente all’ala, generando **gap locali** che riducono il serraggio tra lamiera e trave.  \n   - Il chiodo P560 può lavorare in condizioni di rigidezza locale anomala, con deformazioni non rappresentative delle prove.\n\n2. **Alterazione della risposta al colpo**  \n   - In zone più “alte” o più “molle” la lamiera può flettersi maggiormente, portando a deformazioni irregolari del chiodo e valori di card meno ripetibili.  \n   - In presenza di pieghe marcate, è più probabile l’innesco di lacerazioni o fessurazioni localizzate.\n\n3. **Valutazione operativa**  \n   - Ondulazioni lievi, diffuse e prive di pieghe nette possono essere gestite, previa verifica in sito con colpi di prova e controlli accurati.  \n   - Pieghe marcate, creste improvvise o deformazioni locali che impediscono un buon appoggio lamiera–ala indicano che quella zona **non è idonea** alla posa standard dei CTF.\n\nIn caso di lamiera ondulata per stoccaggio errato è necessario:\n\n- verificare la reale geometria e l’appoggio sulla trave,  \n- eseguire colpi di prova in zona rappresentativa,  \n- se compaiono deformazioni anomale, gap evidenti o lacerazioni, considerare la lamiera **non idonea** e valutare un ripristino o una soluzione alternativa, confrontandosi con Tecnaria."
+    },
+    {
+      "id": "CTF-0113-P560-PUNTALE-NON-SCENDE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "manutenzione_utensile",
+      "tags": [
+        "P560",
+        "puntale",
+        "inceppamento",
+        "manutenzione",
+        "uso scorretto"
+      ],
+      "triggers": [
+        "la P560 fa fatica ad appoggiare il puntale",
+        "puntale che non scende bene",
+        "P560 dura da caricare sulla lamiera",
+        "puntale che gratta o si blocca",
+        "difficoltà ad abbassare il puntale P560"
+      ],
+      "question_it": "Cosa può significare se il puntale della P560 fa fatica a scendere e ad appoggiarsi correttamente sulla lamiera prima dello sparo?",
+      "answer_it": "Il puntale della P560 deve potersi muovere in modo fluido e deciso, garantendo un appoggio stabile e perpendicolare sulla lamiera prima dell’innesco del colpo. Se l’operatore percepisce una resistenza anomala o una corsa “grattata” o incompleta, la situazione va considerata un segnale di anomalia.\n\nPossibili cause sono:\n\n1. **Sporco e residui interni**  \n   - Accumulo di polvere di propulsore, scaglie metalliche o altri detriti nelle guide del puntale.  \n   - Mancanza di pulizia periodica secondo il manuale Tecnaria.\n\n2. **Usura o danneggiamento del meccanismo**  \n   - Deformazioni locali del puntale o delle parti scorrevoli.  \n   - Componenti interni usurati che ostacolano una corsa regolare.\n\n3. **Appoggio non corretto sulla lamiera**  \n   - Geometria locale della lamiera non idonea (spigoli, pieghe, gradini) che impediscono un contatto pieno e stabile.\n\nIn queste condizioni:\n\n- Il colpo **non deve essere forzato**: utilizzare la P560 con puntale che non scende correttamente può generare colpi obliqui, deformazioni irregolari del chiodo e rischi per l’operatore.  \n- È necessario sospendere l’uso, procedere a **pulizia e ispezione del puntale**, e, se il problema persiste, sottoporre l’utensile a verifica tecnica.\n\nFinché il puntale non torna a scendere e ad appoggiare in modo fluido e stabile, la posa dei CTF con quella P560 va considerata **non conforme**."
+    },
+    {
+      "id": "CTF-0114-POLVERE-METALLICA-AL-COLPO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_colpo",
+      "tags": [
+        "P560",
+        "polvere metallica",
+        "attrito",
+        "lamiera",
+        "anomalie colpo"
+      ],
+      "triggers": [
+        "nuvola di polvere metallica al colpo",
+        "spruzzo di limatura quando sparo",
+        "polvere di metallo attorno al chiodo",
+        "perché vedo polvere metallica dopo lo sparo",
+        "micro scintille e polvere metallica P560",
+        "segni di abrasione lamiera al colpo"
+      ],
+      "question_it": "Cosa significa se, durante lo sparo con P560, vedo una piccola nuvola di polvere metallica o residui attorno alla zona di impatto sulla lamiera?",
+      "answer_it": "La presenza di polvere metallica o di residui evidenti attorno alla zona di impatto indica che, durante il colpo, si sta generando **abrasione anomala** tra puntale, lamiera e chiodo. Non è un comportamento tipico di un sistema che lavora in regime corretto.\n\nPossibili interpretazioni sono:\n\n1. **Attrito eccessivo o contatto improprio**  \n   - Il puntale può non appoggiare in modo pulito e perpendicolare, strisciando sulla lamiera prima o durante il colpo.  \n   - La lamiera può presentare spigoli vivi, gradini o difetti locali che accentuano l’abrasione.\n\n2. **Superficie della lamiera compromessa**  \n   - Presenza di vecchie lavorazioni (tagli con flessibile, bave, difetti di laminazione) che generano rimozione di materiale al colpo.  \n   - Zone con rivestimenti duri o inhomogenei che reagiscono in modo non regolare.\n\n3. **Stato del puntale e dell’utensile**  \n   - Puntale usurato, con bordi non più regolari.  \n   - Necessità di manutenzione o sostituzione di componenti.\n\nOperativamente:\n\n- è opportuno **sospendere i fissaggi** in quella zona, verificare le condizioni della lamiera (eventuali lavorazioni pregresse) e lo stato del puntale;  \n- se il fenomeno persiste su più colpi in condizioni apparentemente normali, la P560 va sottoposta a manutenzione e la zona di lamiera considerata critica.\n\nUn colpo che genera abrasione visibile non può essere considerato “perfettamente rappresentativo”: il CTF fissato in queste condizioni va valutato con particolare prudenza e, in caso di dubbio, il fissaggio va ripetuto in zona integra e regolare."
+    },
+    {
+      "id": "CTF-0115-TESTA-LUCIDA-CHIODI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_materiali",
+      "tags": [
+        "P560",
+        "chiodi Tecnaria",
+        "testa lucida",
+        "attrito",
+        "partita chiodi"
+      ],
+      "triggers": [
+        "testa dei chiodi molto lucida dopo i colpi",
+        "perché i chiodi diventano lucidi",
+        "cambio aspetto della testa del chiodo",
+        "testa che si lucida con P560",
+        "segni di strofinamento sulla testa del chiodo"
+      ],
+      "question_it": "Cosa può indicare il fatto che, dopo alcuni colpi, la testa dei chiodi appare insolitamente lucida rispetto al normale?",
+      "answer_it": "Un leggero cambiamento di aspetto superficiale della testa del chiodo può essere fisiologico, ma una lucentezza marcata e diffusa su molti chiodi è un segnale da osservare con attenzione, perché può indicare **attrito anomalo** o contatti non previsti.\n\nPossibili cause sono:\n\n1. **Scorrimento o rotazione anomala**  \n   - Se il chiodo scorre o ruota all’interno dell’utensile in modo non regolare, la testa può sfregare contro superfici metalliche, lucidandosi.  \n   - Ciò può essere legato a usura delle sedi interne o a lubrificazione non corretta.\n\n2. **Differenza di finitura nella partita di chiodi**  \n   - Alcune partite possono presentare finiture superficiali leggermente diverse; se però l’aspetto lucido è associato a deformazioni irregolari o valori di card instabili, la partita va verificata con Tecnaria.\n\n3. **Segnale indiretto di condizioni borderline**  \n   - Se la testa diventa lucida insieme a deformazioni molto “tirate” (valori di card al limite inferiore del range, lamiera segnata) può essere indice di **energia di colpo elevata** e sfregamenti aggiuntivi.\n\nOperativamente, se la sola lucentezza non è accompagnata da altri sintomi (deformazioni anomale, card instabile, rumori insoliti), il sistema può restare in esercizio, mantenendo però una **sorveglianza più attenta**. Se invece la testa lucida si associa ad altri indicatori di criticità, è prudente:\n\n- verificare lo stato della P560 (pulizia, lubrificazione, usura),  \n- documentare il comportamento della partita di chiodi e confrontarsi con Tecnaria."
+    },
+    {
+      "id": "CTF-0116-LAMIERA-AMMACCATA-PREESISTENTE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "lamiera grecata",
+        "ammaccature",
+        "difetti preesistenti",
+        "idoneità posa"
+      ],
+      "triggers": [
+        "posare CTF su lamiera già ammaccata",
+        "lamiera con piccole ammaccature posso sparare",
+        "fissaggio su lamiera deformata da impatti",
+        "ammaccature preesistenti attorno al punto di posa",
+        "lamiera con colpi precedenti e CTF",
+        "validità CTF su lamiera danneggiata"
+      ],
+      "question_it": "Il fissaggio CTF è affidabile se viene eseguito in corrispondenza di una zona di lamiera grecata già ammaccata o deformata da urti precedenti?",
+      "answer_it": "Le ammaccature preesistenti della lamiera indicano che in quella zona l’elemento non lavora più come una semplice lastra integra: spessori efficaci, rigidezza e distribuzione delle tensioni risultano alterati.\n\nDal punto di vista del sistema CTF:\n\n1. **Modifica della rigidezza locale**  \n   - Una lamiera ammaccata può risultare più “molle” o, al contrario, localmente incrudita.  \n   - La risposta al colpo P560 può essere diversa rispetto alle zone integre, con deformazioni del chiodo non rappresentative.\n\n2. **Rischio di lacerazioni e instabilità**  \n   - Nelle zone già deformate sono più probabili l’innesco di microfessure, strappi o concentrazioni di tensione attorno al chiodo.  \n   - La capacità della lamiera di collaborare al taglio con la trave può risultare ridotta.\n\n3. **Buona pratica operativa**  \n   - Evitare, per quanto possibile, la posa dei CTF in corrispondenza di ammaccature evidenti, creste ripiegate o zone palesemente danneggiate.  \n   - Preferire, a parità di passo, punti di fissaggio in zone integre della lamiera.\n\nSe per motivi geometrici è inevitabile lavorare in prossimità di ammaccature, è necessario:\n\n- valutare con attenzione la gravità del danno,  \n- eseguire colpi di prova in zona rappresentativa,  \n- in caso di deformazioni anomale o lacerazioni, considerare quella lamiera **non idonea** e prevedere interventi di ripristino o soluzioni di rinforzo da definire con il progettista e con Tecnaria."
+    },
+    {
+      "id": "CTF-0117-ECO-ANOMALO-RUMORE-SORDO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_colpo",
+      "tags": [
+        "P560",
+        "rumore del colpo",
+        "eco anomalo",
+        "rumore sordo",
+        "diagnostica qualitativa"
+      ],
+      "triggers": [
+        "rumore del colpo diverso dal solito",
+        "eco molto forte P560",
+        "colpo con rumore sordo",
+        "il suono del colpo è cambiato",
+        "rumore metallico forte dopo il colpo",
+        "posso fidarmi se il colpo suona diverso"
+      ],
+      "question_it": "Se durante la posa dei CTF con P560 il rumore del colpo risulta molto diverso dal solito (più sordo o con eco metallico anomalo), cosa devo fare?",
+      "answer_it": "Il rumore del colpo P560 non è un parametro di controllo codificato come la card, ma nella pratica di cantiere rappresenta un utile **segnale qualitativo**. Un cambiamento evidente del suono (rumore più sordo, eco anomalo, colpo molto più “secco” o molto più “vuoto”) indica spesso che qualcosa nelle condizioni di posa è cambiato.\n\nPossibili interpretazioni:\n\n1. **Variazione delle condizioni di supporto**  \n   - Passaggio da una zona ben appoggiata a una con gap tra lamiera e ala.  \n   - Presenza di cavità, materiali interposti o modifiche locali della rigidezza (giunti, irrigidimenti, vuoti).\n\n2. **Variazione nelle condizioni dell’utensile o dei propulsori**  \n   - Cartuccia con energia anomala rispetto alle precedenti.  \n   - Componenti interni della P560 che hanno cambiato comportamento (usura, grippaggio parziale).\n\n3. **Variazione nelle condizioni della lamiera**  \n   - Zone con spessore diverso, lamiera danneggiata, saldature o riparazioni locali.\n\nOperativamente, un singolo colpo con rumore diverso non basta per concludere che il fissaggio sia non valido, ma è un chiaro invito a **controllare con maggiore attenzione**:\n\n- verificare la card e l’aspetto del chiodo in quella zona;  \n- confrontare con colpi eseguiti poco prima e poco dopo in condizioni simili;  \n- se si riscontra una correlazione tra rumore anomalo e deformazioni fuori standard o valori card al limite, la posa va sospesa e la situazione approfondita.\n\nIn sintesi, il rumore del colpo è un indicatore ausiliario: se cambia in modo evidente, va sempre abbinato a un controllo più rigoroso di card e deformazioni, senza considerare automatico che il fissaggio sia valido."
+    },
+    {
+      "id": "CTF-0118-CTF-GIUNTO-DILATAZIONE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_dettaglio",
+      "tags": [
+        "CTF",
+        "giunto di dilatazione",
+        "dettagli costruttivi",
+        "compatibilità sistema"
+      ],
+      "triggers": [
+        "CTF vicino a giunto di dilatazione",
+        "posare CTF sul giunto",
+        "uso CTF in corrispondenza di giunto",
+        "lamiera su giunto di dilatazione e CTF",
+        "ammesso usare CTF a cavallo di un giunto",
+        "comportamento CTF vicino al giunto"
+      ],
+      "question_it": "È corretto utilizzare i connettori CTF in corrispondenza o in prossimità di un giunto di dilatazione del solaio o della struttura?",
+      "answer_it": "I connettori CTF sono progettati per garantire la collaborazione tra lamiera grecata, calcestruzzo e trave in acciaio all’interno di un tratto strutturalmente continuo. Un giunto di dilatazione, per definizione, introduce una **discontinuità di deformazione** tra due porzioni di struttura.\n\nIn prossimità di un giunto di dilatazione occorre considerare:\n\n1. **Differenze di movimento**  \n   - Le due parti separate dal giunto possono muoversi in modo relativo per effetti termici, reologici o di carico.  \n   - I CTF posati a cavallo del giunto o troppo vicino ad esso possono trovarsi a lavorare in condizioni non previste, con sollecitazioni non solo da taglio–scorrimento ma da spostamenti relativi indesiderati.\n\n2. **Compatibilità con il dettaglio di giunto**  \n   - I giunti di dilatazione sono in genere dettagliati con soluzioni specifiche per il pacchetto solaio; l’inserimento di connettori CTF in quelle zone deve essere valutato e disegnato dal progettista.  \n   - L’uso standard del sistema CTF non copre automaticamente tutti i dettagli di giunto.\n\n3. **Raccomandazione operativa**  \n   - In assenza di un disegno di dettaglio che preveda esplicitamente la presenza di CTF in prossimità del giunto, è prudente **non utilizzare** i connettori a cavallo o immediatamente a ridosso del giunto di dilatazione.  \n   - La progettazione deve definire con chiarezza quali elementi garantiscono la continuità locale e quali, invece, sono lasciati liberi di muoversi.\n\nIn conclusione, l’impiego dei CTF in corrispondenza di giunti di dilatazione non è una situazione standard: va espressamente previsto e dettagliato dal progettista strutturale. In mancanza di tale specifica, è corretto considerare la zona di giunto come **fuori campo** per il sistema CTF standard."
+    },
+    {
+      "id": "CTF-0119-P560-COLPO-INCLINATO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "P560",
+        "colpo inclinato",
+        "chiodo storto",
+        "fissaggio non valido"
+      ],
+      "triggers": [
+        "posso sparare CTF con P560 inclinata",
+        "chiodo entrato storto di qualche grado",
+        "colpo non perpendicolare alla lamiera",
+        "P560 inclinata per raggiungere un punto difficile",
+        "chiodo inclinato 5 7 gradi è valido",
+        "validità fissaggio se chiodo non è dritto"
+      ],
+      "question_it": "Se per raggiungere un punto difficile uso la P560 leggermente inclinata e il chiodo entra con un’inclinazione di alcuni gradi rispetto alla perpendicolare, il fissaggio può essere considerato valido?",
+      "answer_it": "Il sistema P560+CTF è stato concepito e provato per lavorare con colpi **perpendicolari** alla lamiera e all’ala della trave. L’inclinazione del colpo modifica il modo in cui il chiodo attraversa lamiera, piastra del CTF e ala, e altera il meccanismo di deformazione previsto.\n\nGli effetti principali di un colpo inclinato sono:\n\n1. **Traiettoria obliqua e minore area di contatto**  \n   - Il chiodo può attraversare lamiera e ala con uno spessore effettivo ridotto e con zone di contatto meno estese.  \n   - La deformazione plastica del gambo non è più simmetrica, con possibili concentrazioni di tensione.\n\n2. **Alterazione del serraggio lamiera–CTF–ala**  \n   - Un chiodo inclinato può non esercitare un serraggio uniforme sulla piastra del CTF.  \n   - È più probabile la presenza di gioco o di micro-movimenti del connettore nel tempo.\n\n3. **Fuori campo rispetto alle prove**  \n   - Le prove sperimentali Tecnaria sono state condotte con colpi perpendicolari; fissaggi ottenuti con P560 inclinata non sono assimilabili alle condizioni di prova.\n\nOperativamente:\n\n- i fissaggi realizzati con P560 volutamente inclinata vanno considerati **non validi**, salvo casi particolari espressamente valutati e autorizzati da Tecnaria;  \n- eventuali chiodi chiaramente inclinati rilevati in controllo devono essere considerati **colpi da scartare** e i relativi CTF **non conteggiabili** nel dimensionamento.\n\nPer punti difficili da raggiungere è necessario valutare una diversa disposizione dei CTF o soluzioni di dettaglio alternative, non forzare colpi obliqui."
+    },
+    {
+      "id": "CTF-0120-LAMIERA-INSTABILE-TAC-TAC",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "lamiera instabile",
+        "tac tac sotto i piedi",
+        "appoggio lamiera",
+        "controllo posa"
+      ],
+      "triggers": [
+        "lamiera che fa tac tac sotto i piedi",
+        "lamiera che si muove quando cammino",
+        "lamiera non ben appoggiata alla trave",
+        "lamiera tipo tamburo posso posare CTF",
+        "vibrazioni della lamiera durante la posa",
+        "lamiera che flette e rumore sotto carico"
+      ],
+      "question_it": "Se durante il camminamento sento la lamiera grecata fare un rumore tipo \"tac-tac\" o comportarsi come un tamburo, posso comunque considerarla idonea per la posa dei CTF con P560?",
+      "answer_it": "Una lamiera che produce rumori secchi (“tac-tac”) o che si comporta come un tamburo sotto il peso dell’operatore indica in genere una **mancata o insufficiente aderenza** all’ala della trave o ai supporti sottostanti. In queste condizioni la risposta locale al colpo P560 può essere molto diversa rispetto a una lamiera bene appoggiata.\n\nEffetti da considerare:\n\n1. **Gap tra lamiera e supporto**  \n   - Se esiste un vuoto tra lamiera e ala, il chiodo non lavora più serrando due elementi solidali, ma una lamiera “sospesa” che può flettersi e vibrare.  \n   - Il meccanismo di deformazione del chiodo e il serraggio risultante non sono quelli delle prove Tecnaria.\n\n2. **Variabilità dei colpi**  \n   - In zone instabili è più facile ottenere colpi con deformazioni irregolari e valori card meno ripetibili, anche a parità di propulsore.  \n   - La lettura della card può essere falsata dal movimento locale della lamiera.\n\n3. **Buona pratica operativa**  \n   - Prima di posare i CTF, va verificato che la lamiera sia **correttamente appoggiata e vincolata** ai supporti previsti (travi, arcarecci, ecc.).  \n   - Se il comportamento “a tamburo” è marcato, la posa dei CTF va sospesa finché non si è ripristinato un appoggio adeguato o non si è valutata una soluzione alternativa.\n\nIn sintesi, una lamiera che si muove sensibilmente e produce rumori secchi sotto il passaggio dell’operatore non può essere considerata automaticamente idonea alla posa dei CTF: è un segnale di possibile **gap strutturale** che va analizzato e risolto prima di procedere con i fissaggi strutturali."
+    },
+    {
+      "id": "CTF-0121-LAMIERA-OLIO-CONTAMINAZIONE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "lamiera",
+        "olio",
+        "contaminazione superficiale",
+        "aderenza puntale",
+        "fuori campo"
+      ],
+      "triggers": [
+        "lamiera con olio posso sparare",
+        "residui di olio sulla lamiera e P560",
+        "lamiera sporca di olio card affidabile",
+        "chiodo su lamiera oleosa",
+        "perché la lamiera unta è un problema",
+        "lamiera scivolosa olio P560"
+      ],
+      "question_it": "La lamiera grecata presenta residui di olio o lubrificanti superficiali dovuti alla produzione o alla movimentazione: posso considerarla idonea alla posa dei CTF con P560?",
+      "answer_it": "La presenza di olio, lubrificanti o sostanze scivolose sulla lamiera grecata rappresenta una condizione non standard e potenzialmente critica per la posa dei CTF.\n\nGli effetti principali sono:\n\n1. **Scivolamento del puntale**  \n   - Il puntale della P560 potrebbe non appoggiarsi in modo stabile, scivolando nei primi istanti del colpo.  \n   - Questo può generare colpi non perpendicolari, con deformazioni irregolari del chiodo.\n\n2. **Alterazione della lettura card**  \n   - Uno strato di olio limita l’attrito e può creare micro-variazioni nell’altezza di riferimento per la card.  \n   - La ripetibilità della misura potrebbe risultare compromessa.\n\n3. **Dispersione dell’energia del colpo**  \n   - L’olio può favorire una flessione eccessiva della lamiera durante l’impatto, soprattutto se presente in modo non uniforme.\n\n**Buona pratica operativa:**\n\n- Pulire accuratamente la zona di posa prima dei colpi di prova e dei fissaggi strutturali.  \n- Eseguire colpi di prova su lamiera pulita per verificare comportamento del chiodo e stabilità dei valori card.  \n- Se l’olio penetra in micro-fessure o rimane intrappolato nei rilievi della lamiera, considerare la zona **non idonea** fino a completo ripristino.\n\nIn conclusione, l’uso dei CTF su lamiera contaminata da olio non è consigliato: fino alla rimozione dell’agente contaminante, la zona deve essere considerata **non idonea** alla posa strutturale."
+    },
+    {
+      "id": "CTF-0122-ZINCATURA-HDG-PESANTE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "zincatura HDG",
+        "rivestimenti",
+        "lamiera spessa",
+        "aderenza puntale"
+      ],
+      "triggers": [
+        "lamiera zincatura pesante HDG",
+        "spessore zincatura influisce sul colpo",
+        "lamiera con zincatura molto spessa",
+        "rivestimento zincato HDG e P560",
+        "card con zincatura pesante",
+        "posso usare CTF su zincatura forte"
+      ],
+      "question_it": "La lamiera grecata presenta una zincatura a caldo (HDG) con spessore molto elevato: il sistema P560 + CTF può essere utilizzato normalmente?",
+      "answer_it": "Le lamiera con zincatura a caldo molto spessa (HDG pesante) presentano uno strato di rivestimento più duro e più spesso rispetto a una zincatura standard.\n\nGli effetti principali sul sistema CTF sono:\n\n1. **Modifica dell’interazione puntale–lamiera**  \n   - Uno strato di zinco molto spesso può creare una superficie meno omogenea, aumentando o irregolarizzando l’attrito nelle prime fasi del colpo.\n\n2. **Energia richiesta per attraversare la lamiera**  \n   - In alcuni casi può essere necessaria energia leggermente maggiore; in altri, il rivestimento può schiacciarsi in modo imprevedibile.  \n   - È possibile osservare deformazioni del chiodo meno regolari.\n\n3. **Ripetibilità della lettura card**  \n   - Se il rivestimento ha spessori irregolari, la lettura card può diventare meno stabile.\n\n**Buona pratica:**\n\n- Eseguire colpi di prova in zona rappresentativa.  \n- Verificare che deformazione del chiodo e card risultino nel **range verde** e che non compaiano cricche o sfogliature dello strato HDG.  \n- In presenza di deformazioni anomale, cratere attorno al chiodo o letture instabili, la lamiera va considerata **fuori campo**.\n\nIn sintesi, la zincatura HDG pesante non è automaticamente compatibile: è una condizione che richiede **colpi di prova obbligatori** e verifica accurata di comportamento e ripetibilità."
+    },
+    {
+      "id": "CTF-0123-SCHIUMA-POLIURETANICA-SOTTO-LAMIERA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "schiuma poliuretanica",
+        "interposto",
+        "lamiera isolata",
+        "fuori campo"
+      ],
+      "triggers": [
+        "schiuma sotto la lamiera posso posare CTF",
+        "poliuretano sotto lamiera e P560",
+        "lamiera appoggiata su schiuma espansa",
+        "materiale morbido sotto lamiera CTF",
+        "isolante espanso sotto lamiera colpo P560"
+      ],
+      "question_it": "Cosa succede se i CTF vengono posati in una zona dove sotto la lamiera è presente schiuma poliuretanica espansa o altro materiale morbido?",
+      "answer_it": "La presenza di schiuma poliuretanica o altri materiali morbidi sotto la lamiera altera radicalmente il meccanismo di trasferimento degli sforzi previsto per il sistema CTF.\n\nEffetti principali:\n\n1. **Lamiera non appoggiata alla trave**  \n   - La lamiera “galleggia” sul materiale morbido e non è stabilmente serrata contro l’ala.  \n   - Il chiodo non può lavorare secondo la cinematica delle prove Tecnaria.\n\n2. **Deformazioni non rappresentative**  \n   - Il colpo può apparire buono (card nel range verde), ma in realtà la lamiera si schiaccia nel materiale morbido, falsando la lettura.\n\n3. **Serraggio non garantito**  \n   - Il CTF non si connette a un sistema rigido lamiera–trave, ma a un elemento parzialmente deformabile.\n\nIn conclusione, la posa di CTF in zone dove sotto la lamiera è presente schiuma, silicone espanso, materiali isolanti morbidi o riempitivi **non è ammessa**.  \nLa zona deve essere ripristinata rimuovendo il materiale interposto o va adottata una soluzione alternativa concordata con Tecnaria."
+    },
+    {
+      "id": "CTF-0124-TUBO-ELETTRICO-SOTTO-LAMIERA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "tubo elettrico",
+        "impianti",
+        "ostacoli sotto lamiera",
+        "fuori campo"
+      ],
+      "triggers": [
+        "tubo sotto lamiera P560",
+        "posso sparare se sotto passa un tubo",
+        "CTF con tubo elettrico aderente sotto lamiera",
+        "ostacoli sotto lamiera e colpo P560",
+        "colpo P560 vicino a tubo impianti"
+      ],
+      "question_it": "È ammesso posare i CTF in una zona in cui sotto la lamiera passa un piccolo tubo elettrico aderente?",
+      "answer_it": "La presenza di un tubo aderente sotto la lamiera modifica localmente la rigidezza e il comportamento allo schiacciamento della lamiera. Ciò può alterare l’interazione tra puntale, lamiera e ala e portare a deformazioni non rappresentative.\n\nEffetti:\n\n1. **Lamiera non correttamente appoggiata**  \n   - L’appoggio diventa puntuale e non pieno.  \n   - Il colpo P560 può lavorare con rigidezza locale anomala.\n\n2. **Rischio di schiacciamento del tubo**  \n   - Il tubo può deformarsi o rompersi durante lo sparo.\n\n3. **Lettura card non affidabile**  \n   - La deformazione del chiodo può risultare falsata da questa discontinuità.\n\nIn sintesi, la posa di CTF in corrispondenza di tubazioni aderenti sotto la lamiera **non è ammessa**.  \nOccorre spostare il punto di posa o modificare la disposizione degli impianti."
+    },
+    {
+      "id": "CTF-0125-LAMIERA-SALDATA-LOCALMENTE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "lamiera saldata",
+        "riparazioni lamiera",
+        "zona termicamente alterata"
+      ],
+      "triggers": [
+        "lamiera con saldatura posso posare CTF",
+        "saldatura traversale lamiera e P560",
+        "zona saldata lamiera idonea per CTF",
+        "CTF su riparazioni con saldatura",
+        "effetto calore saldatura su lamiera P560"
+      ],
+      "question_it": "La lamiera presenta una saldatura trasversale o una riparazione locale con cordone di saldatura: posso posare i CTF in quella zona?",
+      "answer_it": "Le zone saldate modificano in modo significativo la microstruttura, la durezza e la rigidezza locale della lamiera. Inoltre possono presentare irregolarità geometriche che alterano l’appoggio del puntale.\n\nPer questi motivi:\n\n1. **Effetti metallurgici**  \n   - La saldatura genera una zona termicamente alterata con caratteristiche meccaniche diverse da quelle della lamiera originale.  \n   - La risposta alla deformazione del chiodo può essere imprevedibile.\n\n2. **Irregolarità geometriche**  \n   - Il cordone di saldatura crea un rilievo che impedisce un appoggio corretto e stabile.\n\n3. **Rischio di cricche e lacerazioni**  \n   - La lamiera attorno alla saldatura può presentare tensioni residue che facilitano la formazione di cricche al colpo.\n\nIn conclusione, la zona saldata va considerata **non idonea** alla posa dei CTF con sistema P560.  \nIl fissaggio deve essere spostato in una parte integra o deve essere progettato un dettaglio alternativo."
+    },
+    {
+      "id": "CTF-0126-P560-SCINTILLA-AL-COLPO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_colpo",
+      "tags": [
+        "P560",
+        "scintilla",
+        "flash al colpo",
+        "attrito",
+        "anomalia colpo"
+      ],
+      "triggers": [
+        "vedo scintille quando sparo",
+        "flash metallico al colpo",
+        "micro scintilla P560",
+        "perché vedo una scintilla quando sparo",
+        "scintilla al colpo normale"
+      ],
+      "question_it": "Se durante lo sparo con P560 appare una micro-scintilla o un piccolo flash metallico, cosa significa?",
+      "answer_it": "Una micro-scintilla o un piccolo flash visibile durante lo sparo indica quasi sempre una condizione **non standard** del contatto puntale–lamiera.\n\nPossibili cause:\n\n1. **Attrito anomalo o strisciamento**  \n   - Il puntale può graffiare la lamiera prima del colpo.  \n   - Presenza di difetti locali, bave o bordi taglienti.\n\n2. **Usura utensile**  \n   - Un puntale usurato può generare contatti non corretti.\n\n3. **Contaminazioni superficiali**  \n   - Residui metallici, abrasivo, ossido duro.\n\nOperativamente:\n\n- Sospendere la posa e ispezionare lamiera e utensile.  \n- Se il fenomeno si ripete, la zona deve essere considerata **non idonea** per la posa standard.\n\nIl fissaggio ottenuto con scintilla non può essere considerato automaticamente valido: va controllata la card e l'aspetto del chiodo con particolare prudenza."
+    },
+    {
+      "id": "CTF-0127-SOLLEVAMENTO-CIRCOLARE-POSTCOLPO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_colpo",
+      "tags": [
+        "lamiera",
+        "sollevamento circolare",
+        "deformazione anomala",
+        "CTF",
+        "validità colpo"
+      ],
+      "triggers": [
+        "lamiera si solleva attorno al chiodo",
+        "sollevamento circolare del punto di colpo",
+        "lamiera che si alza dopo sparo",
+        "corona attorno al fissaggio",
+        "bozzo circolare attorno al chiodo"
+      ],
+      "question_it": "Se dopo lo sparo attorno al chiodo compare un sollevamento circolare della lamiera, il fissaggio può essere considerato valido?",
+      "answer_it": "Un piccolo avvallamento o una lieve impronta del puntale sono normali. Un **sollevamento circolare** marcato attorno al punto di impatto indica invece un comportamento anomalo.\n\nPossibili cause:\n\n1. **Lamiera che flette verso l’alto**  \n   - L’energia del colpo non si trasmette correttamente alla trave.  \n   - Presenza di un gap sotto lamiera.\n\n2. **Rigidezza locale insufficiente**  \n   - Lamiera troppo sottile o lamiera non perfettamente appoggiata.\n\n3. **Deformazione impropria del chiodo**  \n   - Il chiodo può essere entrato male, generando sollevamento per trazione locale.\n\nIl fissaggio va considerato **non affidabile**, salvo verifiche specifiche: un sollevamento circolare è un segnale che la lamiera non ha lavorato nel regime previsto.\n\nIn caso di dubbio:  \n- eseguire colpi di prova in zona integra,  \n- verificare se il fenomeno è ripetibile,  \n- considerare quella zona **fuori campo**."
+    },
+    {
+      "id": "CTF-0128-CARTA-VALORI-ALTALENANTI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_colpo",
+      "tags": [
+        "P560",
+        "card altalenante",
+        "ripetibilità colpo",
+        "diagnostica"
+      ],
+      "triggers": [
+        "valori card altalenanti",
+        "card un colpo è basso e uno è alto",
+        "card non ripetibile",
+        "letture card incoerenti",
+        "differenze improvvise valori card"
+      ],
+      "question_it": "Cosa significa se, in una stessa zona, i valori della card oscillano sensibilmente tra un colpo e l'altro pur non essendoci differenze evidenti nelle condizioni di posa?",
+      "answer_it": "Valori card molto diversi tra colpi consecutivi sono un segnale di **instabilità del sistema**. La variabilità può derivare da:\n\n1. **Problemi di appoggio lamiera–ala**  \n   - Anche un gap minimo può produrre flettere la lamiera in modo imprevedibile.\n\n2. **Condizioni dell’utensile**  \n   - Energia del colpo non costante.\n\n3. **Condizioni della lamiera**  \n   - Zone con rigidezza diversa.\n\nLa posa deve essere **sospesa**, individuata la causa, e ripresa solo dopo che i colpi sono tornati ripetibili.\n\nUn sistema che produce card incoerenti **non è in regime corretto**, e quei fissaggi non possono considerarsi equivalenti alle prove Tecnaria."
+    },
+    {
+      "id": "CTF-0129-P560-DEGRADAZIONE-PROGRESSIVA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "manutenzione_utensile",
+      "tags": [
+        "P560",
+        "degradazione colpi",
+        "manutenzione periodica",
+        "trend negativo"
+      ],
+      "triggers": [
+        "colpi sempre più bassi card",
+        "degradazione progressiva deformazione",
+        "collasso energia P560 dopo molti colpi",
+        "perché colpi peggiorano con il tempo",
+        "trend negativo card"
+      ],
+      "question_it": "Se dopo numerosi colpi la deformazione del chiodo tende progressivamente verso valori prossimi al limite inferiore della card, pur restando nel range, cosa significa?",
+      "answer_it": "Un trend degradante (progressivo avvicinamento al limite inferiore) indica che il sistema non è più nelle condizioni ideali.\n\nPossibili cause:\n\n1. **Utensile che perde energia**  \n   - Molla indebolita, attriti interni, usura.\n\n2. **Propulsori con energia non costante**  \n   - Partita disomogenea.\n\n3. **Contaminazioni o sporco**  \n   - Residui che riducono la scorrevolezza.\n\nUn trend negativo è un segnale evidente: il sistema va **manutenuto** e i colpi di prova devono tornare centrali nel range.\n\nFinché non torna la stabilità, la posa strutturale non è consigliabile."
+    },
+    {
+      "id": "CTF-0130-RISONANZE-ACUSTICHE-LAMIERA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "diagnostica_cantiere",
+      "tags": [
+        "CTF",
+        "lamiera",
+        "risonanza",
+        "suono lamiera",
+        "diagnostica acustica"
+      ],
+      "triggers": [
+        "lamiera suona come un gong",
+        "risonanza acustica lamiera",
+        "lamiera molto sonora posso posare CTF",
+        "effetto campana lamiera",
+        "lamiera vibra come un gong al colpo"
+      ],
+      "question_it": "Una lamiera che risuona come un \"gong\" quando viene percossa o calpestata è idonea alla posa dei CTF con P560?",
+      "answer_it": "Una lamiera che presenta una forte risonanza acustica, con comportamento \"a campana\" o \"a gong\", indica che l’appoggio sulla trave non è pieno o che la lamiera presenta tensioni residue o zone non vincolate.\n\nQuesto comportamento produce:\n\n1. **Flessibilità anomala**  \n   - La lamiera lavora come una membrana, non come elemento ben vincolato.\n\n2. **Risposta imprevedibile al colpo**  \n   - Il chiodo può penetrare con deformazioni molto diverse dal previsto.\n\n3. **Letture card non affidabili**  \n   - Valori molto variabili.\n\nIn conclusione, una lamiera con risonanza marcata non è automaticamente idonea: occorre ripristinare un appoggio corretto o cambiare posizione del fissaggio.\n"
+    },
+    {
+      "id": "CTF-0131-LAMIERA-RITORNO-ELASTICO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "comportamento_lamiera",
+      "tags": [
+        "CTF",
+        "lamiera",
+        "ritorno elastico",
+        "post-colpo",
+        "comportamento anomalo"
+      ],
+      "triggers": [
+        "lamiera torna su dopo il colpo",
+        "lamiera si rialza dopo 2 secondi",
+        "ritorno elastico lamiera P560",
+        "lamiera che rimbalza dopo sparo",
+        "comportamento elastico post colpo"
+      ],
+      "question_it": "Cosa significa se, dopo un colpo P560, la lamiera si solleva leggermente 1–3 secondi dopo lo sparo (ritorno elastico ritardato)?",
+      "answer_it": "Il ritorno elastico ritardato della lamiera dopo un colpo P560 non è un comportamento previsto nelle condizioni normali.\n\nIndica quasi sempre:\n\n1. **Appoggio insufficiente sulla trave**  \n   - La lamiera non è ben aderente e flette durante l’impatto, tornando poi alla posizione iniziale.\n\n2. **Gap locale lamiera–ala**  \n   - Anche pochi millimetri di vuoto generano una risposta elastica post-colpo.\n\n3. **Serraggio non corretto del chiodo**  \n   - Il chiodo può aver lavorato in modo non rappresentativo.\n\nIn questi casi:\n\n- il fissaggio va considerato **non affidabile**,  \n- occorre verificare l’appoggio della lamiera e ripetere colpi di prova in zona integra.\n\nIl ritorno elastico è un segnale di **fuori campo**."
+    },
+    {
+      "id": "CTF-0132-LAMIERA-ONDULAZIONE-POST-GETTO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "comportamento_lamiera",
+      "tags": [
+        "CTF",
+        "lamiera",
+        "autolivellante",
+        "gonfiore",
+        "ondulazione",
+        "posizione non idonea"
+      ],
+      "triggers": [
+        "lamiera gonfia per autolivellante",
+        "ondulazione da getto sopra lamiera",
+        "lamiera gonfiata dopo cementizio",
+        "rigonfiamento lamiera per getto autolivellante",
+        "lamiera deformata dopo getto"
+      ],
+      "question_it": "È idonea alla posa dei CTF una lamiera che presenta ondulazioni localizzate dovute al gonfiore del calcestruzzo autolivellante posato sopra?",
+      "answer_it": "No. Le ondulazioni causate da getto autolivellante indicano che la lamiera ha subito una deformazione non prevista.\n\nEffetti:\n\n- modifica della rigidezza locale,  \n- possibili zone concave/alterate,  \n- appoggio irregolare sulla trave.\n\nIl risultato è un comportamento al colpo **non rappresentativo**, con rischio di deformazione irregolare del chiodo.\n\nLa lamiera va considerata **non idonea** nella zona deformata."
+    },
+    {
+      "id": "CTF-0133-DOPPIO-COLPO-CLACK",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "manutenzione_utensile",
+      "tags": [
+        "P560",
+        "doppio colpo",
+        "clack",
+        "anomalie",
+        "molla utensile"
+      ],
+      "triggers": [
+        "doppio colpo P560",
+        "rumore clack dopo colpo",
+        "perché sento un clack dopo lo sparo",
+        "doppia battuta P560",
+        "colpo con due rumori"
+      ],
+      "question_it": "Cosa significa se, durante l’uso della P560, dopo il colpo si sente un secondo rumore metallico (tipo 'clack')?",
+      "answer_it": "Un rumore 'clack' immediatamente successivo al colpo indica che un componente interno della P560 non sta ritornando correttamente in sede.\n\nLe cause più comuni sono:\n\n- molla di ritorno stanca o sporca,  \n- attriti interni non uniformi,  \n- residui metallici o polvere di propulsore.\n\nIl fenomeno è un segnale di **manutenzione necessaria**. La posa strutturale va sospesa finché l’utensile non torna a funzionare con cinematica regolare."
+    },
+    {
+      "id": "CTF-0134-TORSIONE-GAMBO-INFISSIONE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_colpo",
+      "tags": [
+        "CTF",
+        "chiodo",
+        "torsione",
+        "deformazione anomala",
+        "infissione"
+      ],
+      "triggers": [
+        "chiodo ruota durante infissione",
+        "gambo presenta torsione",
+        "chiodo sembra ruotato",
+        "torsione gambo colpo P560",
+        "rotazione chiodo anomala"
+      ],
+      "question_it": "Se dopo il colpo il gambo del chiodo presenta una torsione spirale o deformazione torsionale, cosa significa?",
+      "answer_it": "La torsione del gambo del chiodo non è una deformazione compatibile con un colpo P560 eseguito in condizioni corrette.\n\nIndica:\n\n1. **Contatto irregolare con lamiera o ala**, che induce una rotazione indesiderata.  \n2. **Colpo non perfettamente perpendicolare**,  \n3. **Attrito anomalo** o superfici sporche.\n\nUn chiodo torsionato → fissaggio **non valido**. Va ripetuto in zona idonea."
+    },
+    {
+      "id": "CTF-0135-SPORCIZIA-POLVERE-CEMENTO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "lamiera",
+        "cemento fresco",
+        "polvere",
+        "aderenza puntale"
+      ],
+      "triggers": [
+        "lamiera sporca di cemento fresco",
+        "cemento fresco sulla lamiera posso sparare",
+        "polvere da cantiere lamiera CTF",
+        "Cemento sul punto di posa P560",
+        "residui di cemento influiscono sulla card"
+      ],
+      "question_it": "Se sulla lamiera sono presenti residui di cemento fresco o polvere cementizia, posso considerare la zona idonea alla posa dei CTF?",
+      "answer_it": "No. I residui di cemento fresco o la polvere cementizia creano uno strato friabile e disomogeneo che altera l'appoggio del puntale.\n\nEffetti:\n\n- slittamento,  \n- appoggio irregolare,  \n- letture card falsate.\n\nLa laminazione deve essere **pulita e asciutta** prima della posa.\n\nFino alla rimozione totale → zona **non idonea**."
+    },
+    {
+      "id": "CTF-0136-MICROFRATTURE-ZINCATURA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_supporto",
+      "tags": [
+        "CTF",
+        "zincatura",
+        "microfratture",
+        "rivestimento",
+        "difetti lamiera"
+      ],
+      "triggers": [
+        "micro crepa nella zincatura",
+        "linea nera radiale zincatura",
+        "zincatura che si crepa al colpo",
+        "microfratture zincatura CTF",
+        "rivestimento che si apre"
+      ],
+      "question_it": "Se attorno al punto di impatto compare una micro-linea nera radiale nella zincatura, il fissaggio è valido?",
+      "answer_it": "La comparsa di una microfrattura radiale nella zincatura indica che la lamiera ha subito una sollecitazione localizzata elevata.\n\nPuò essere indice di:\n\n- eccessiva energia di colpo,  \n- spessore lamiera non uniforme,  \n- presenza di tensioni residue.\n\nIl fissaggio va considerato sospetto:  \n- controllare card,  \n- eseguire colpi di prova.\n\nSe il fenomeno è ripetuto → **fuori campo**."
+    },
+    {
+      "id": "CTF-0137-LAMIERA-MARTELLATA-RIPRISTINO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "lamiera martellata",
+        "ripristino",
+        "riparazioni",
+        "fuori campo"
+      ],
+      "triggers": [
+        "lamiera martellata posso sparare",
+        "lamiera ripristinata con martello",
+        "lamiera battuta e CTF",
+        "riparazione lamiera colpi CTF ammessi",
+        "lamiera piegata ribattuta martello"
+      ],
+      "question_it": "Una lamiera che è stata martellata o ribattuta per correggere una deformazione può essere considerata idonea alla posa dei CTF?",
+      "answer_it": "No. La ribattitura altera la geometria e la microstruttura della lamiera.\n\nEffetti:\n- incrudimento,  \n- spessori non uniformi,  \n- tensioni residue.\n\nIl sistema CTF richiede lamiera **integra e non lavorata**.\n\nLa zona martellata è da considerare **non idonea**."
+    },
+    {
+      "id": "CTF-0138-GAMBO-DEFORMATO-A-S",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "controllo_colpo",
+      "tags": [
+        "P560",
+        "CTF",
+        "gambo deformato",
+        "deformazione a S",
+        "colpo anomalo"
+      ],
+      "triggers": [
+        "gambo piegato a S",
+        "chiodo deformato a S dopo colpo",
+        "gambo non regolare",
+        "perché il chiodo ha forma a S",
+        "colpo anomalo gambo a S"
+      ],
+      "question_it": "Cosa indica un chiodo che, dopo l’infissione, presenta una deformazione a 'S'?",
+      "answer_it": "La deformazione a 'S' indica un’azione combinata di:\n\n- colpo non perpendicolare,  \n- doppio contatto irregolare lungo la penetrazione,  \n- lamiera o ala con disomogeneità.\n\nUn fissaggio con gambo a 'S' è **non valido** e va ripetuto in zona adeguata."
+    },
+    {
+      "id": "CTF-0139-ACQUA-SOTTO-LAMIERA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "lamiera",
+        "acqua stagnante",
+        "umidità",
+        "infissione"
+      ],
+      "triggers": [
+        "acqua sotto lamiera",
+        "goccia acqua sotto punto di posa",
+        "acqua tra lamiera e trave",
+        "umidità sotto lamiera e CTF",
+        "lamiera con acqua sotto posso sparare"
+      ],
+      "question_it": "Una piccola goccia o lama d’acqua sotto la lamiera può alterare la qualità del fissaggio con P560?",
+      "answer_it": "Sì. L’acqua interposta impedisce l’appoggio pieno lamiera–ala.\n\nEffetti:\n\n- lamiera che flette,  \n- energia dispersa,  \n- deformazioni non coerenti.\n\nFino a completa asciugatura → **non idoneo**."
+    },
+    {
+      "id": "CTF-0140-CALCESTRUZZO-ESPANSIVO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "idoneita_supporto",
+      "tags": [
+        "CTF",
+        "calcestruzzo espansivo",
+        "irregolarità sotto lamiera",
+        "rigidezza anomala"
+      ],
+      "triggers": [
+        "calcestruzzo gonfiato sotto lamiera",
+        "calcestruzzo espansivo sotto onda",
+        "rigonfiamento sotto lamiera CTF",
+        "pressione sotto lamiera influisce colpo",
+        "materiale che spinge lamiera verso l alto"
+      ],
+      "question_it": "Il calcestruzzo espansivo o gonfiato localmente sotto la lamiera può compromettere il fissaggio CTF?",
+      "answer_it": "Sì. Il calcestruzzo espanso crea un appoggio localizzato e non uniforme.\n\nQuesto porta a:\n\n- rigidezza locale alterata,  \n- lamiera spinta verso l’alto,  \n- deformazioni del chiodo imprevedibili.\n\nZona da considerare **non idonea** per la posa standard."
+    },
+    {
+      "id": "CTF-KILLER-0001-LAMIERA-DOPPIO-STRATO-CEDIMENTO",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "lamiera_danneggiata",
+      "tags": [
+        "CTF",
+        "lamiera",
+        "doppio strato",
+        "instabilità ondina"
+      ],
+      "triggers": [
+        "lamiera doppio strato",
+        "due lamiere sovrapposte",
+        "ondina su doppia lamiera",
+        "cedimento doppio strato"
+      ],
+      "question_it": "Cosa succede se, per errore di posa, la lamiera grecata presenta un tratto con doppio strato sovrapposto e devo posare comunque i CTF?",
+      "answer_it": "Il doppio strato di lamiera altera radicalmente la deformazione controllata del chiodo idoneo Tecnaria: l’ondina superiore cede in modo indipendente da quella inferiore, generando instabilità laterale del gambo. Il fissaggio su doppio strato è fuori campo ETA. Serve rimuovere la lamiera superiore o ripristinare la continuità prima di procedere con la posa."
+    },
+    {
+      "id": "CTF-KILLER-0002-LAMIERA-GHIACCIATA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "condizioni_ambientali",
+      "tags": [
+        "CTF",
+        "lamiera",
+        "ghiaccio",
+        "aderenza",
+        "temperatura"
+      ],
+      "triggers": [
+        "lamiera ghiacciata",
+        "ghiaccio ondina",
+        "sparare su ghiaccio",
+        "lamiera fredda"
+      ],
+      "question_it": "È possibile posare i CTF su una lamiera grecata ghiacciata o molto fredda?",
+      "answer_it": "No. La presenza di ghiaccio tra lamiera e ala impedisce la corretta trasmissione di forza durante la deformazione del chiodo idoneo Tecnaria. La card segnalerà deformazioni anomale e il fissaggio è da considerarsi non valido. È necessario rimuovere completamente il ghiaccio e ripristinare condizioni asciutte prima della posa."
+    },
+    {
+      "id": "CTF-KILLER-0003-LAMIERA-VIBRAZIONI-MACCHINARI",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "CTF",
+        "lamiera",
+        "vibrazioni",
+        "posa dinamica"
+      ],
+      "triggers": [
+        "lamiera vibra",
+        "macchinari vicino",
+        "vibrazioni sparo",
+        "colpo instabile"
+      ],
+      "question_it": "Se durante lo sparo la lamiera vibra a causa di macchinari in funzione, il CTF risulta comunque valido?",
+      "answer_it": "Le vibrazioni durante lo sparo impediscono alla P560 di scaricare correttamente l’energia nell’asse del chiodo idoneo Tecnaria. La deformazione può risultare incompleta, eccentrica o instabile. Il colpo è da considerare non valido: è necessario sospendere la posa finché la lamiera non è completamente stabile."
+    },
+    {
+      "id": "CTF-KILLER-0004-ONDINA-SCHIACCIATA-OPERATORE",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "lamiera_danneggiata",
+      "tags": [
+        "CTF",
+        "ondina schiacciata",
+        "deformazione locale"
+      ],
+      "triggers": [
+        "ondina schiacciata",
+        "operatore schiaccia lamiera",
+        "lamiera deformata camminando"
+      ],
+      "question_it": "Un’ondina schiacciata dall’operatore può compromettere la validità del fissaggio CTF?",
+      "answer_it": "Sì. L’ondina schiacciata altera la cinematica locale del chiodo idoneo Tecnaria, generando deformazioni non conformi e instabilità laterale. In queste condizioni il colpo è quasi sempre non valido. Serve ripristinare la geometria della lamiera o spostare il punto di fissaggio."
+    },
+    {
+      "id": "CTF-KILLER-0005-LAMIERA-INCISIONE-TERMICA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "lamiera_danneggiata",
+      "tags": [
+        "CTF",
+        "lamiera",
+        "taglio termico",
+        "calore"
+      ],
+      "triggers": [
+        "taglio termico",
+        "lamiera plasma",
+        "bordo bruciato",
+        "lamiera incisata"
+      ],
+      "question_it": "La presenza di incisioni o bordi bruciati da taglio termico sulla lamiera influisce sul comportamento dei CTF?",
+      "answer_it": "Sì. Le incisioni termiche creano zone di indebolimento e microfessure che possono far collassare l’ondina sotto l’azione del chiodo idoneo Tecnaria. I fissaggi posizionati in queste zone sono fuori campo ETA. È necessario spostare il punto di posa su lamiera integra."
+    },
+    {
+      "id": "P560-KILLER-0001-GRILLETTO-DURO",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_uso",
+      "tags": [
+        "P560",
+        "grilletto duro",
+        "colpo incompleto"
+      ],
+      "triggers": [
+        "grilletto duro",
+        "P560 dura",
+        "scatto difficile",
+        "colpo incompleto"
+      ],
+      "question_it": "La P560 presenta un grilletto insolitamente duro prima dello sparo: è un sintomo di colpo incompleto?",
+      "answer_it": "Sì. Un grilletto duro indica spesso accumulo di residui nella camera di scoppio o nel pistone di trasmissione. La P560 potrebbe non scaricare correttamente l’energia, generando un chiodo idoneo Tecnaria con deformazione insufficiente. Occorre pulire e lubrificare la pistola prima di continuare."
+    },
+    {
+      "id": "P560-KILLER-0002-CHIODI-DI-LOTTO-DIVERSO",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "procedura_controllo",
+      "tags": [
+        "P560",
+        "lotti propulsore",
+        "deformazione anomala"
+      ],
+      "triggers": [
+        "lotti diversi",
+        "propulsori diversi",
+        "comportamento differente",
+        "energia diversa"
+      ],
+      "question_it": "L’uso di propulsori provenienti da lotti diversi può alterare la deformazione dei chiodi idonei Tecnaria?",
+      "answer_it": "Sì. Lotti diversi possono presentare variazioni minime ma significative nell'energia di scoppio. Questo produce deformazioni non uniformi nei chiodi idonei Tecnaria e può aumentare la percentuale di colpi scartati. È consigliabile utilizzare propulsori appartenenti allo stesso lotto durante l’intero cantiere."
+    },
+    {
+      "id": "P560-KILLER-0003-PISTOLA-NON-IN-APPPOGGIO",
+      "family": "P560",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "errore_posa",
+      "tags": [
+        "P560",
+        "appoggio incompleto",
+        "colpo falso"
+      ],
+      "triggers": [
+        "pistola non appoggiata",
+        "P560 non battuta",
+        "colpo falso",
+        "posizione non corretta"
+      ],
+      "question_it": "Se la P560 non è completamente in appoggio sull’ala, il colpo produce un fissaggio valido?",
+      "answer_it": "No. Senza appoggio completo la P560 non trasferisce correttamente l’energia e il chiodo idoneo Tecnaria entra con inclinazione o con deformazione insufficiente. Il colpo è da considerarsi non valido."
+    },
+    {
+      "id": "CTF-KILLER-0006-UMIDITA-TRA-LAMIERA-E-ALA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "condizioni_ambientali",
+      "tags": [
+        "CTF",
+        "umidità",
+        "aderenza",
+        "deformazione chiodo"
+      ],
+      "triggers": [
+        "umidità ala",
+        "lamiera bagnata",
+        "acqua in ondina",
+        "posare su bagnato"
+      ],
+      "question_it": "La presenza di umidità tra ondina e ala può alterare la cinematica del chiodo idoneo Tecnaria?",
+      "answer_it": "Sì. L’acqua riduce l’aderenza di contatto e disperde parte dell’energia di infissione. La deformazione controllata potrebbe risultare insufficiente o asimmetrica. Il colpo è da ripetere dopo asciugatura completa."
+    },
+    {
+      "id": "CTF-KILLER-0007-SOVRACCARICO-LOCALE-LAMIERA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "lamiera_danneggiata",
+      "tags": [
+        "CTF",
+        "lamiera",
+        "sovraccarico",
+        "cedimento locale"
+      ],
+      "triggers": [
+        "lamiera schiacciata muletti",
+        "sovraccarico lamiera",
+        "ondina ceduta"
+      ],
+      "question_it": "Una lamiera schiacciata da carichi accidentali (muletti, materiali) può ancora ospitare CTF validi?",
+      "answer_it": "No. Il cedimento locale altera la rigidezza dell’ondina e impedisce al chiodo idoneo Tecnaria di deformarsi secondo geometria controllata. Serve sostituire la lamiera danneggiata o spostare la posa."
     }
   ]
 }
