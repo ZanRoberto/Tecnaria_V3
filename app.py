@@ -17,7 +17,7 @@ from openai import OpenAI
 # CONFIG
 # ============================================================
 
-APP_VERSION = "12.5.0-DIAGNOSTIC"
+APP_VERSION = "12.6.0-DIAGNOSTIC-LIMITI"
 
 client = OpenAI()
 
@@ -40,7 +40,7 @@ FALLBACK_MESSAGE = (
 # ============================================================
 
 app = FastAPI(
-    title="TECNARIA GOLD – MATCHING v12.5.0 DIAGNOSTIC",
+    title="TECNARIA GOLD – MATCHING v12.6.0 DIAGNOSTIC+LIMITI",
     version=APP_VERSION,
 )
 
@@ -157,7 +157,7 @@ reload_all()
 
 
 # ============================================================
-# MATCHING ENGINE (LESSIC + AI RERANK) – v12.5.0
+# MATCHING ENGINE (LESSIC + AI RERANK) – v12.6.0
 # ============================================================
 
 def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
@@ -253,7 +253,7 @@ def is_overview_question(q_norm: str) -> bool:
 
 
 # ============================================================
-# RERANK AI – v12.5 con DIAGNOSTIC SAFE
+# RERANK AI – v12.6 con DIAGNOSTIC SAFE + LIMITI
 # ============================================================
 
 def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -269,6 +269,8 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
     Patch v12.5 DIAGNOSTIC SAFE:
       se la domanda è di tipo 'come verifico / come controllo / come faccio a capire se'
       escludere blocchi killer/errore/fuori campo e preferire blocchi neutri di verifica.
+    Patch v12.6 LIMITI:
+      per domande 'in quali casi non posso usare...' preferire il blocco limiti di applicazione.
     """
     if not candidates:
         return None
@@ -291,6 +293,20 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
         "come faccio a essere sicuro", "come faccio a essere certo"
     ]
     question_is_diagnostic = any(t in q_norm for t in diagnostic_terms)
+
+    # -------------------------
+    # Riconoscimento domande sui LIMITI CTF (v12.6)
+    # -------------------------
+    limit_terms = [
+        "in quali casi non posso usare i ctf",
+        "in quali casi non posso usare i ctf su lamiera",
+        "quando non posso usare i ctf",
+        "quando non è possibile usare i ctf",
+        "limiti di applicazione dei ctf",
+        "casi in cui i ctf non sono ammessi",
+        "quando i ctf sono fuori campo",
+    ]
+    question_is_limits = any(t in q_norm for t in limit_terms)
 
     # -------------------------
     # PATCH 12.4: riconoscimento "caso strutturale"
@@ -322,7 +338,7 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
                 "spesso", "spessore", "fuori campo", "fuori eta",
                 "doppia lamiera", "due lamiere", "lamiera sovrapposta",
                 "non rappresentativa", "prove tecnaria",
-                "sovra infissione", "propulsore", "spess", "1 5", "1 2",
+                "sovra infissione", "sovra-infissione", "propulsore",
                 "rigidezza aumentata", "rigidita aumentata"
             ])
 
@@ -359,7 +375,7 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
             )
             if any(k in tb_norm for k in [
                 "errore", "fuori campo", "non valido", "non ammesso",
-                "sovra infissione", "deformazione anomala"
+                "sovra infissione", "sovra-infissione", "deformazione anomala"
             ]):
                 killer_like.append(b)
             else:
@@ -406,27 +422,30 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
     if question_is_diagnostic:
         safe_candidates = []
         for b in candidates:
-            tb_norm = normalize(
-                (b.get("id") or "") + " " +
-                (b.get("question_it") or "") + " " +
-                " ".join(b.get("triggers") or []) + " " +
-                " ".join(b.get("tags") or [])
-            )
+            combined_text = " ".join(filter(None, [
+                b.get("id") or "",
+                b.get("question_it") or "",
+                " ".join(b.get("triggers") or []),
+                " ".join(b.get("tags") or []),
+            ]))
+            tb_norm = normalize(combined_text)
 
             is_killer_like = False
 
             # ID che contengono pattern di errore
-            if any(tag in (b.get("id") or "").upper() for tag in ["ERR", "KILLER"]):
+            if any(tag in (b.get("id") or "").upper() for tag in ["ERR", "KILLER", "LIMITE", "LIMITI"]):
                 is_killer_like = True
 
-            # Testo che parla di errore / non valido / fuori campo
-            if any(term in tb_norm for term in [
+            # Testo che parla di errore / non valido / fuori campo / difetto
+            killer_terms = [
                 "errore", "errore di posa", "fuori campo",
                 "non valido", "non ammesso", "da considerarsi non valido",
                 "difetto", "difettoso", "anomalia", "anomala",
                 "sovra infissione", "sovra-infissione",
-                "deformazione anomala", "colpo non valido"
-            ]):
+                "deformazione anomala", "colpo non valido",
+                "testa schiacciata", "propulsore eccessivo"
+            ]
+            if any(term in tb_norm for term in killer_terms):
                 is_killer_like = True
 
             if not is_killer_like:
@@ -436,8 +455,23 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
         if safe_candidates:
             candidates = safe_candidates
 
+    # -------------------------
+    # PATCH 12.6: domande sui LIMITI → preferisci blocco limiti applicazione
+    # -------------------------
+    if question_is_limits:
+        preferred = []
+        others = []
+        for b in candidates:
+            bid = (b.get("id") or "").upper()
+            if "LIMITI-APPLICAZIONE-LAMIERA" in bid:
+                preferred.append(b)
+            else:
+                others.append(b)
+        if preferred:
+            candidates = preferred + others
+
     # ====================================
-    # AI RERANK (come in 12.3/12.4)
+    # AI RERANK
     # ====================================
 
     candidate_ids = [b.get("id") for b in candidates]
@@ -460,6 +494,7 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
             "- Evita chiodi difettosi se la domanda parla di geometria.\n"
             "- Se la domanda parla di spessore lamiera / fuori ETA, scegli blocchi relativi a fuori campo.\n"
             "- Se la domanda è su 'come verificare / controllare', scegli blocchi che descrivono la verifica e NON blocchi di errore/fuori campo.\n"
+            "- Se la domanda chiede 'in quali casi non posso usare i CTF', scegli il blocco che elenca i limiti di applicazione.\n"
             "- Rispondi SOLO con un ID presente nella lista dei candidati.\n"
         )
 
