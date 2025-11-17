@@ -4660,6 +4660,37 @@
       ],
       "question_it": "Una lamiera schiacciata da carichi accidentali (muletti, materiali) può ancora ospitare CTF validi?",
       "answer_it": "No. Il cedimento locale altera la rigidezza dell’ondina e impedisce al chiodo idoneo Tecnaria di deformarsi secondo geometria controllata. Serve sostituire la lamiera danneggiata o spostare la posa."
+    },
+    {
+      "id": "CTF-KILLER-0010-LAMIERA-SPESSA-FUORI-ETA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "limite_applicazione",
+      "tags": [
+        "CTF",
+        "P560",
+        "lamiera grecata",
+        "spessore lamiera",
+        "propulsore forte",
+        "fuori campo",
+        "ETA",
+        "prove Tecnaria"
+      ],
+      "triggers": [
+        "lamiera più spessa rispetto alle prove Tecnaria",
+        "lamiera grecata più spessa delle prove",
+        "lamiera 1.5 mm con CTF",
+        "lamiera 2 mm con CTF",
+        "uso CTF su lamiera spessa",
+        "propulsore molto forte per attraversare la lamiera",
+        "propulsore forte per far lavorare la P560",
+        "fuori campo ETA per lamiera troppo spessa",
+        "prestazioni dichiarate con lamiera più spessa",
+        "validità CTF su lamiera fuori prove Tecnaria"
+      ],
+      "question_it": "Se la lamiera grecata è più spessa rispetto a quella utilizzata nelle prove Tecnaria e per far lavorare la P560 devo usare un propulsore molto forte, il fissaggio CTF è ancora coperto dalle prestazioni dichiarate oppure siamo fuori campo ETA?",
+      "answer_it": "\nQuando la lamiera grecata è significativamente più spessa rispetto a quella utilizzata nelle prove Tecnaria, il meccanismo di deformazione del chiodo idoneo Tecnaria può uscire dal campo sperimentale su cui si basano le prestazioni dichiarate.\n\nIn particolare:\n\n1. **Aumento di spessore e rigidezza della lamiera**  \n   - Maggiore spessore e rigidezza locale richiedono di solito **propulsori più energici** per attraversare la lamiera e appoggiarsi all’ala.  \n   - Questo può portare a **sovra-infissione** o a deformazioni del chiodo diverse da quelle osservate nelle prove di riferimento.\n\n2. **Necessità di propulsore molto forte**  \n   - Se per ottenere letture card apparentemente corrette sei costretto a usare propulsori di classe superiore rispetto a quelli indicati nelle istruzioni Tecnaria, significa che la configurazione lamiera–CTF–ala è **fuori dallo scenario di prova standard**.  \n   - In queste condizioni la card da sola **non è sufficiente** a garantire che il fissaggio sia equivalente a quanto certificato: stai lavorando in un campo non qualificato.\n\n3. **Copertura ETA e prestazioni dichiarate**  \n   - L’ETA e la documentazione Tecnaria coprono solo i casi in cui **spessori e tipologie di lamiera** rientrano negli intervalli provati.  \n   - Una lamiera sensibilmente più spessa, che obbliga a usare propulsori molto forti rispetto alle indicazioni usuali, va considerata **potenzialmente fuori campo ETA**, a meno di esplicita conferma da parte dell’ufficio tecnico.\n\n**Buona pratica operativa:**  \n- Non dare per validi i fissaggi solo perché la card cade nel range se la configurazione lamiera–propulsore è molto diversa da quella riportata nella documentazione Tecnaria.  \n- In presenza di lamiere più spesse o configurazioni non standard, è obbligatorio **contattare l’ufficio tecnico Tecnaria**, fornendo dettagli su spessori, tipo di lamiera, classe dei propulsori e risultati dei colpi di prova.  \n- Fino a chiarimento formale, la situazione va considerata **fuori campo rispetto alle prestazioni dichiarate**.\n\nIn sintesi, quando lamiera più spessa e propulsore molto forte sono necessari per far lavorare la P560, non si può assumere automaticamente che il sistema CTF sia coperto dall’ETA: si tratta di un caso **fuori campo** che deve essere valutato e autorizzato dall’ufficio tecnico.\n"
     }
   ]
 }
