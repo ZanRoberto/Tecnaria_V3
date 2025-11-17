@@ -4662,153 +4662,32 @@
       "answer_it": "No. Il cedimento locale altera la rigidezza dell’ondina e impedisce al chiodo idoneo Tecnaria di deformarsi secondo geometria controllata. Serve sostituire la lamiera danneggiata o spostare la posa."
     },
     {
-      "id": "CTF-KILLER-COLPO-STORTO-002",
+      "id": "CTF-P560-0008-CODICI-CHIODI-CTF",
       "family": "CTF_SYSTEM",
       "mode": "gold",
       "lang": "it",
-      "intent": "errore_uso",
+      "intent": "informazioni_prodotti",
       "tags": [
+        "CTF",
         "P560",
-        "CTF",
-        "colpo storto",
-        "chiodo inclinato",
-        "colpo non valido"
+        "codici chiodi",
+        "codici prodotti",
+        "lunghezze",
+        "fornitura",
+        "componenti"
       ],
-      "triggers": [],
-      "question_it": "Se un colpo entra storto ma la piastra del CTF sembra stabile, lo conto?",
-      "answer_it": "No. Un colpo P560 con chiodo chiaramente **inclinato** non può essere considerato valido, anche se la piastra del CTF a prima vista sembra stabile.\n\nQuando il chiodo idoneo Tecnaria non entra perpendicolare a lamiera–CTF–ala succede che:\n\n- il **gambo** lavora con una plastificazione non simmetrica, con pieghe locali non previste dalle prove Tecnaria;  \n- il **serraggio** tra piastra, lamiera e ala diventa eccentrico, con contatto acciaio–acciaio non uniforme;  \n- il collegamento può perdere rigidezza nel tempo, con rischio di allentamenti e fatica locale.\n\nAnche con card nel verde, un chiodo entrato storto è da considerare **non conforme**:  \nil CTF relativo **non va conteggiato** nelle verifiche strutturali e il colpo va ripetuto in una posizione idonea, con puntale P560 in appoggio corretto e perpendicolare."
-    },
-    {
-      "id": "P560-KILLER-PUNTALE-SCIVOLA-002",
-      "family": "P560",
-      "mode": "gold",
-      "lang": "it",
-      "intent": "errore_uso",
-      "tags": [
-        "P560",
-        "puntale",
-        "scivola",
-        "lamiera bagnata",
-        "colpo non valido"
+      "triggers": [
+        "codici chiodi",
+        "codice chiodi Tecnaria",
+        "che chiodi servono",
+        "quali chiodi usare P560",
+        "codici CTF",
+        "misure CTF",
+        "lunghezze connettori CTF",
+        "codice prodotto CTF"
       ],
-      "triggers": [],
-      "question_it": "È normale che il puntale ogni tanto scivola un po’? La card mi esce giusta.",
-      "answer_it": "No. Lo **slittamento del puntale** sulla lamiera indica un appoggio non stabile e rende il colpo P560 **non affidabile**, anche se la card risulta nel verde.\n\nCause tipiche:\n\n- lamiera **bagnata, unta, polverosa** o con vernice molto liscia;  \n- ondina localmente deformata o imbarcata;  \n- forza di appoggio del puntale insufficiente o mal direzionata da parte dell’operatore.\n\nSe il puntale scivola:\n\n- la traiettoria del chiodo può non essere più assiale;  \n- la deformazione del chiodo non è più rappresentativa delle prove Tecnaria;  \n- la card può dare un **falso senso di sicurezza**.\n\nI colpi eseguiti con puntale che scivola vanno considerati **non validi**:  \nbisogna pulire/asciugare la lamiera, ristabilire un appoggio stabile e ripetere prima i colpi di prova e poi la posa in produzione."
-    },
-    {
-      "id": "CTF-KILLER-FORO-VICINO-ONDINA-001",
-      "family": "CTF_SYSTEM",
-      "mode": "gold",
-      "lang": "it",
-      "intent": "limite_applicazione",
-      "tags": [
-        "CTF",
-        "foro",
-        "lamiera bucata",
-        "fuori campo"
-      ],
-      "triggers": [],
-      "question_it": "Se la lamiera ha un buco vicino all’ondina il CTF lavora lo stesso?",
-      "answer_it": "No. Un **foro significativo** in prossimità della zona di appoggio lamiera–CTF–ala riduce l’area resistente della lamiera e altera la rigidezza locale, quindi il collegamento non è più rappresentativo delle prove Tecnaria.\n\nSuccede che:\n\n- la lamiera non trasferisce più correttamente il **taglio** verso il CTF;  \n- aumenta il rischio di **strappi e deformazioni locali** attorno al foro;  \n- l’appoggio del CTF risulta eccentrico o parziale.\n\nOperativamente:\n\n- il CTF **non va posato** a cavallo o a ridosso di fori di impianti o punzonature importanti;  \n- il fissaggio va spostato su lamiera **continua e integra**, oppure va studiato un dettaglio alternativo con il progettista e l’ufficio tecnico Tecnaria.\n\nI fissaggi CTF realizzati in corrispondenza di fori rilevanti vicino all’ondina vanno considerati **fuori campo** e non conteggiati nel calcolo."
-    },
-    {
-      "id": "CTF-KILLER-GIOCO-CTF-CARD-OK-001",
-      "family": "CTF_SYSTEM",
-      "mode": "gold",
-      "lang": "it",
-      "intent": "errore_uso",
-      "tags": [
-        "CTF",
-        "gioco",
-        "tic tic",
-        "card verde",
-        "non valido"
-      ],
-      "triggers": [],
-      "question_it": "Se la card è nel verde ma si sente un tic-tic muovendo il CTF, è valido?",
-      "answer_it": "No. Se la card è nel verde ma il CTF presenta **gioco verticale** o si sente un tic-tic quando lo si muove, il fissaggio **non è valido**.\n\nUn collegamento corretto deve avere:\n\n- piastra del CTF **ben appoggiata** sulla lamiera, senza giochi percepibili;  \n- assenza di rotazioni o scricchiolii sotto modesta sollecitazione manuale.\n\nSe c’è gioco:\n\n- il serraggio tra piastra, lamiera e ala è **incompleto**;  \n- il trasferimento di taglio non è quello previsto dalle prove Tecnaria;  \n- nel tempo possono comparire ulteriori allentamenti.\n\nIn questa situazione il CTF **non va conteggiato** nelle verifiche: occorre capire la causa (appoggio lamiera–ala, propulsore, strati interposti, deformazioni locali) e ripetere il fissaggio in condizioni corrette, fino a ottenere un connettore stabile, senza tic-tic e con card nel range."
-    },
-    {
-      "id": "CTF-LIMITE-LAMIERA-DOPPIA-PROPULSORE-001",
-      "family": "CTF_SYSTEM",
-      "mode": "gold",
-      "lang": "it",
-      "intent": "limite_applicazione",
-      "tags": [
-        "CTF",
-        "lamiera doppia",
-        "propulsore forte",
-        "fuori campo",
-        "ETA"
-      ],
-      "triggers": [],
-      "question_it": "Se aumento il propulsore perché la lamiera è doppia, ho ancora un fissaggio valido?",
-      "answer_it": "L’uso di CTF su **lamiera doppia** o sensibilmente più spessa di quella delle prove Tecnaria, con propulsori molto più energici, va considerato **fuori campo** rispetto allo scenario standard.\n\nEffetti:\n\n- la deformazione del chiodo esce dal campo provato (rischio di **sovra-infissione**);  \n- la card può rimanere nel verde ma non è più sufficiente a garantire equivalenza con le prestazioni dichiarate;  \n- la configurazione geometrica lamiera–CTF–ala non è quella coperta dall’ETA.\n\nOperativamente:\n\n- non basta “spingere di più” col propulsore per far passare il chiodo;  \n- la situazione va trattata come **potenzialmente fuori campo ETA**;  \n- è necessario contattare l’ufficio tecnico Tecnaria con dettagli su spessori, tipo di lamiera, classe di propulsore e risultati dei colpi di prova.\n\nFino a chiarimento formale, i fissaggi su lamiera doppia con propulsori molto forti **non devono essere assunti come strutturalmente qualificati**."
-    },
-    {
-      "id": "CTF-KILLER-CTF-RUOTA-001",
-      "family": "CTF_SYSTEM",
-      "mode": "gold",
-      "lang": "it",
-      "intent": "errore_uso",
-      "tags": [
-        "CTF",
-        "ruota",
-        "gioco",
-        "collegamento non valido"
-      ],
-      "triggers": [],
-      "question_it": "Se il CTF ruota leggermente quando lo tocco ma la card è perfetta, è buono?",
-      "answer_it": "No. Un CTF che **ruota** o si muove quando lo tocchi, anche con card perfetta, non è correttamente serrato e va considerato **non valido**.\n\nQuesto indica che:\n\n- l’appoggio piastra–lamiera–ala non è pieno;  \n- il serraggio del chiodo non blocca il connettore come nelle condizioni di prova;  \n- nel tempo, la rotazione può trasformarsi in gioco e perdita di rigidezza del collegamento.\n\nIl comportamento corretto prevede un CTF **solidale** a lamiera e trave, senza gioco percepibile.  \nSe il connettore ruota, va escluso dal conteggio e il fissaggio va ripetuto dopo aver verificato lamiera, appoggio e parametri P560."
-    },
-    {
-      "id": "CTF-KILLER-LAMIERA-CEDE-1MM-001",
-      "family": "CTF_SYSTEM",
-      "mode": "gold",
-      "lang": "it",
-      "intent": "errore_uso",
-      "tags": [
-        "CTF",
-        "lamiera cede",
-        "impronta profonda",
-        "fuori campo"
-      ],
-      "triggers": [],
-      "question_it": "Se card e deformazione sono OK ma la lamiera ha ceduto per 1 mm sotto il colpo, è rappresentativo?",
-      "answer_it": "No. Un **cedimento permanente marcato** dell’ondina (circa 1 mm) sotto il colpo indica che la lamiera sta lavorando fuori dal regime previsto e che parte della deformazione è assorbita dalla lamiera, non dal chiodo.\n\nConseguenze:\n\n- la geometria di appoggio lamiera–CTF–ala cambia rispetto alle prove Tecnaria;  \n- la card può risultare nel verde ma essere **ingannevole**, perché misura anche lo schiacciamento della lamiera;  \n- il comportamento locale diventa molto sensibile a piccole variazioni (spessore, rigidezza, appoggio).\n\nIn questo caso il fissaggio va considerato **non rappresentativo** delle prestazioni dichiarate:  \nbisogna capire perché la lamiera cede (spessore insufficiente, corrosione, appoggio discontinuo, propulsore troppo energico), ripristinare una lamiera idonea e ripetere i colpi di prova.  \nI CTF posati nella zona che ha ceduto non devono essere conteggiati nel calcolo."
-    },
-    {
-      "id": "CTF-LIMITE-LAMIERA-TROPPO-RIGIDA-001",
-      "family": "CTF_SYSTEM",
-      "mode": "gold",
-      "lang": "it",
-      "intent": "limite_applicazione",
-      "tags": [
-        "CTF",
-        "lamiera rigida",
-        "spessore elevato",
-        "propulsore forte",
-        "fuori campo"
-      ],
-      "triggers": [],
-      "question_it": "Cosa succede se sparo su una lamiera troppo rigida?",
-      "answer_it": "Su una lamiera **molto rigida o molto più spessa** rispetto a quella delle prove Tecnaria, la P560 deve lavorare con energia maggiore e il comportamento del chiodo può uscire dal campo provato.\n\nPossibili effetti:\n\n- necessità di **propulsori più forti**, con rischio di sovra-infissione;  \n- deformazioni della testa e del gambo più violente, non assimilabili a quelle di prova;  \n- crateri, lacerazioni o danneggiamenti locali della lamiera.\n\nAnche con card nel verde, un sistema che lavora su lamiera molto più rigida/spessa non è automaticamente coperto dall’ETA.  \nQuesti casi vanno trattati come **fuori campo**: servono colpi di prova documentati e confronto con l’ufficio tecnico Tecnaria prima di assumere la configurazione come valida ai fini strutturali."
-    },
-    {
-      "id": "CTF-LIMITE-LAMIERA-TROPPO-MORBIDA-001",
-      "family": "CTF_SYSTEM",
-      "mode": "gold",
-      "lang": "it",
-      "intent": "limite_applicazione",
-      "tags": [
-        "CTF",
-        "lamiera sottile",
-        "lamiera morbida",
-        "fuori campo"
-      ],
-      "triggers": [],
-      "question_it": "Cosa succede se sparo su una lamiera troppo morbida?",
-      "answer_it": "Una lamiera troppo **morbida o troppo sottile** non offre rigidezza sufficiente per far lavorare correttamente il sistema CTF–P560.\n\nRischi principali:\n\n- **collasso o lacerazione** dell’ondina già durante il colpo;  \n- ancoraggio insufficiente del chiodo nella lamiera;  \n- deformazioni locali pronunciate che non corrispondono alle condizioni di prova.\n\nIn queste condizioni, anche se la card sembra accettabile, il fissaggio è da considerarsi **fuori campo** rispetto alle prestazioni dichiarate:  \nl’uso dei CTF su lamiere al di sotto degli spessori minimi indicati va evitato, e va valutata una soluzione alternativa (lamiera sostitutiva, rinforzi, altro sistema) insieme a progettista e ufficio tecnico."
+      "question_it": "Mi dai il codice dei chiodi per la P560 e i codici dei connettitori CTF con le relative lunghezze?",
+      "answer_it": "Per la posa dei CTF su lamiera grecata con utensile P560, Tecnaria prevede esclusivamente **chiodi idonei Tecnaria** e **connettori CTF certificati ETA**. Di seguito la codifica completa dei componenti.\n\n### **1) Chiodi idonei Tecnaria per P560 (uso esclusivo)**\nI chiodi sono forniti in confezioni dedicate con **codice Tecnaria** e **lunghezza nominale**.\n\n- **HSBR14** → chiodo Tecnaria da **14 mm** (utilizzo standard in lamiera grecata con ala in acciaio ≤ 12 mm)\n- **HSBR16** → chiodo Tecnaria da **16 mm** (configurazioni con lamiera più rigida o ala più spessa)\n- **HSBR18** → chiodo Tecnaria da **18 mm** (casi particolari su lamiere ad alta rigidezza o ali con tolleranze geometriche maggiori)\n\nSolo questi **chiodi idonei Tecnaria** garantiscono la deformazione controllata prevista dalle prove Tecnaria. L’uso di chiodi non originali annulla la conformità del sistema.\n\n---\n### **2) Codici dei connettori CTF Tecnaria**\nI CTF sono disponibili in diverse lunghezze, indicate dal suffisso del codice.\n\n- **CTF 60** → altezza 60 mm\n- **CTF 75** → altezza 75 mm\n- **CTF 100** → altezza 100 mm\n- **CTF 120** → altezza 120 mm\n\nCodici commerciali completi:\n- **CTF-060**\n- **CTF-075**\n- **CTF-100**\n- **CTF-120**\n\nLa scelta della lunghezza dipende:\n- dallo spessore della soletta in calcestruzzo,\n- dalla lamiera grecata,\n- dalla richiesta di collaborazione,\n- dalle verifiche di taglio–scorrimento previste dal progetto strutturale.\n\n---\n### **Nota tecnica importante**\nPer mantenere la conformità al sistema certificato, ogni fissaggio CTF deve avvenire tramite:\n- **P560 Tecnaria**,\n- **chiodi HSBR14/16/18**,\n- **card Tecnaria** per la verifica della distanza testa–piastra.\n\nQualsiasi variazione (chiodi non idonei, utensili generici, connettori non originali) rende il sistema **non conforme** alle prestazioni dichiarate nell’ETA e nelle prove Tecnaria."
     }
   ]
 }
