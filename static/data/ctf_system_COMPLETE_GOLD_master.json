@@ -4783,6 +4783,31 @@
       ],
       "question_it": "Se la P560 lascia un’impronta molto marcata sull’ondina ma la card rimane coerente, è normale oppure indica un problema di appoggio lamiera–ala o di propulsore troppo energico?",
       "answer_it": "Un’impronta molto marcata sull’ondina durante i colpi di prova **non è un comportamento neutro**, anche se la card fornisce valori nel verde.\n\nQuesto fenomeno può indicare due condizioni critiche:\n\n1. **Lamiera non perfettamente in appoggio all’ala (gap locale)**  \n   Se esiste anche un piccolo gioco tra lamiera e ala, la lamiera può “cedere” sotto il puntale, generando un’impronta profonda.  \n   In questo caso la card può risultare coerente ma **non rappresentativa**, perché lo schiacciamento dell’ondina compensa parte della deformazione reale del chiodo.\n\n2. **Propulsore leggermente troppo energico per la configurazione reale**  \n   Se la P560 attraversa la lamiera “troppo facilmente”, la deformazione del chiodo si avvicina alla zona di **pre-sovra-infissione**:  \n   la testa può risultare più schiacciata, e la card può stabilizzarsi verso il limite minimo.\n\n**Cosa verificare operativamente:**\n- controllare che la lamiera sia perfettamente aderente all’ala (puntellazione, fissaggi provvisori, continuità dell’appoggio),  \n- analizzare la **serie** di colpi, non il singolo valore: molte impronte marcate = sistema fuori equilibrio,  \n- valutare l’uso di un **propulsore meno energico**,  \n- ripetere i colpi di prova dopo aver ripristinato l’appoggio.\n\nIn sintesi:  \nun’impronta eccessiva dell’ondina, anche con card corretta, è un segnale diagnostico che richiede attenzione.  \nNon va considerata una condizione normale e **va risolta prima della posa in produzione**.\n"
+    },
+    {
+      "id": "CTF-KILLER-0015-ONDINA-IMBARCATA-CARD-FALSA",
+      "family": "CTF_SYSTEM",
+      "mode": "gold",
+      "lang": "it",
+      "intent": "diagnostica",
+      "tags": [
+        "CTF",
+        "lamiera imbarcata",
+        "ondina verso l'alto",
+        "card falsa",
+        "appoggio non continuo",
+        "fuori campo"
+      ],
+      "triggers": [
+        "lamiera leggermente imbarcata verso l'alto",
+        "ondina imbarcata ma card corretta",
+        "lamiera non perfettamente piana ma card nel verde",
+        "p560 su lamiera imbarcata",
+        "card corretta ma lamiera non appoggia bene",
+        "card nel verde con ondina verso l'alto"
+      ],
+      "question_it": "La P560 può dare risultati falsati se la lamiera è leggermente imbarcata verso l’alto anche se la card è corretta?",
+      "answer_it": "Sì, la P560 può dare risultati falsati se la lamiera è anche solo leggermente imbarcata verso l’alto, anche quando la card fornisce valori nel verde.\n\nUna lamiera imbarcata crea un appoggio **non continuo** tra lamiera grecata e ala della trave. In queste condizioni il comportamento del sistema P560–chiodo idoneo Tecnaria–CTF non è più perfettamente rappresentativo delle prove Tecnaria.\n\nI meccanismi critici sono principalmente tre:\n\n1. **Flettenza locale dell’ondina durante il colpo**  \n   - Parte dell’energia del colpo viene assorbita dalla deformazione della lamiera, che prima si flette e poi rientra.  \n   - Il puntale può lavorare con una perpendicolarità non ideale e la deformazione del chiodo risulta più “morbida” o non uniforme.\n\n2. **Card nel verde per compensazione geometrica**  \n   - La card misura una distanza testa–piastra a colpo avvenuto, non la qualità della deformazione lungo il percorso.  \n   - Se la lamiera ha ceduto e poi è tornata verso la posizione iniziale, il valore finale può ricadere nel range verde **per compensazione**, pur non corrispondendo a una deformazione realmente conforme.\n\n3. **Scarsa ripetibilità dei colpi in zona imbarcata**  \n   - In una zona imbarcata è frequente osservare valori di card e impronte dell’ondina meno ripetibili rispetto a una lamiera ben appoggiata.  \n   - Questa variabilità è un segnale di sistema **fuori equilibrio** rispetto alle condizioni di prova.\n\n**Cosa fare operativamente:**  \n- evitare, per quanto possibile, la posa strutturale dei CTF in zone con lamiera visibilmente imbarcata verso l’alto;  \n- ripristinare l’appoggio lamiera–ala (puntellazione, fissaggi provvisori, correzione delle deformazioni locali);  \n- eseguire una serie di colpi di prova su zona stabilizzata, verificando che card e deformazioni risultino regolari e ripetibili.\n\nIn sintesi, una lamiera leggermente imbarcata verso l’alto può generare **falsi verdi** sulla card: la lettura non va considerata automaticamente valida e la zona va trattata come potenzialmente **fuori campo** fino a ripristino di un appoggio corretto.\n"
     }
   ]
 }
