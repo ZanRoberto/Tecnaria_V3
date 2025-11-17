@@ -17,7 +17,7 @@ from openai import OpenAI
 # CONFIG
 # ============================================================
 
-APP_VERSION = "12.3.0"
+APP_VERSION = "12.4.0-STRUTTURALE"
 
 client = OpenAI()
 
@@ -40,7 +40,7 @@ FALLBACK_MESSAGE = (
 # ============================================================
 
 app = FastAPI(
-    title="TECNARIA GOLD – MATCHING v12.3 (A)",
+    title="TECNARIA GOLD – MATCHING v12.4 STRUTTURALE",
     version=APP_VERSION,
 )
 
@@ -88,7 +88,7 @@ class AskResponse(BaseModel):
 
 def strip_accents(s: str) -> str:
     return "".join(
-        c for c in unicodedata.normalize("NFKD", s)
+        c for c in unicodedata.normalize("NNFKD", s)
         if not unicodedata.combining(c)
     )
 
@@ -157,7 +157,7 @@ reload_all()
 
 
 # ============================================================
-# MATCHING ENGINE (LESSIC + AI RERANK) – v12.3
+# MATCHING ENGINE (LESSIC + AI RERANK) – v12.4 STRUTTURALE
 # ============================================================
 
 def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
@@ -216,9 +216,7 @@ def score_block(question: str, block: Dict[str, Any]) -> float:
     if q_it_tokens:
         inter = q_tokens.intersection(q_it_tokens)
         if inter:
-            # % dei token della domanda del blocco che compaiono nella domanda utente
             sim_score = len(inter) / len(q_it_tokens)
-            # pesiamo di più la similarità semantica della domanda
             sim_score *= 3.0  # peso forte
 
     total = trig_score + sim_score
@@ -243,53 +241,30 @@ def lexical_candidates(question: str, blocks: List[Dict[str, Any]], limit: int =
 
 
 def is_overview_question(q_norm: str) -> bool:
-    """
-    Domande del tipo:
-    - mi parli della P560?
-    - parlami dei CTF
-    - cos e la P560
-    - che cos e il CTF
-    - fammi una panoramica...
-    """
     patterns = [
-        "mi parli della",
-        "mi parli del",
-        "mi parli di ",
-        "parlami della",
-        "parlami del",
-        "parlami di ",
-        "cos e ",
-        "cosa e ",
-        "cos e la",
-        "cos e il",
-        "cosa e la",
-        "cosa e il",
-        "che cos e",
-        "che cosa e",
-        "che cos e la",
-        "che cos e il",
-        "che cosa e la",
-        "che cosa e il",
-        "overview",
-        "panoramica",
-        "descrizione della",
-        "descrizione del",
-        "descrivimi la",
-        "descrivimi il",
+        "mi parli della", "mi parli del", "mi parli di ",
+        "parlami della", "parlami del", "parlami di ",
+        "cos e ", "cosa e ", "che cos e", "che cosa e",
+        "overview", "panoramica",
+        "descrizione della", "descrizione del",
+        "descrivimi la", "descrivimi il",
     ]
     return any(p in q_norm for p in patterns)
 
 
+# ============================================================
+# RERANK AI – Patch STRUTTURALE 12.4
+# ============================================================
+
 def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Usa l'AI SOLO per scegliere l'ID tra i candidati.
-    NON può generare testo, NON può inventare ID.
-    Patch v12.2 (A):
-    - se la domanda parla di lamiera/ala/ondina/laminazione/rigonfiamenti,
-      evitiamo blocchi che parlano SOLO di chiodi difettosi/punta danneggiata.
-    Patch v12.3:
-    - se la domanda contiene negazioni 'non posso', 'in quali casi non', 'quando non',
-      preferiamo blocchi killer / fuori campo / errore/limite.
+    Patch v12.2 STRADA A: geometria vs chiodi difettosi.
+    Patch v12.3: negazioni → killer.
+    Patch v12.4 STRUTTURALE:
+      se la domanda riguarda spessori lamiera / lamiera doppia /
+      propulsore forte / fuori ETA / prove Tecnaria →
+      usare SOLO killer strutturali ed escludere killer ambientali.
     """
     if not candidates:
         return None
@@ -298,50 +273,82 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
 
     q_norm = normalize(question)
 
-    # ---------- PATCH v12.3: negazioni -> preferire blocchi "killer/errore/fuori campo"
-    neg_patterns = [
-        "non posso",
-        "in quali casi non",
-        "quando non posso",
-        "quando non si puo",
-        "quando non si puo ",
-        "quando non si puo usare",
-        "quando non e ammesso",
-        "quando non e valido",
-        "quando non e consentito",
-        "non e valido",
-        "non e ammesso",
-        "non si puo usare",
-        "non si deve usare",
-        "non devo usare",
-        "fuori campo",
-    ]
-    question_has_negation = any(p in q_norm for p in neg_patterns)
+    # -------------------------
+    # PATCH 12.4: riconoscimento "caso strutturale"
+    # -------------------------
 
-    if question_has_negation:
-        killer_like: List[Dict[str, Any]] = []
-        others: List[Dict[str, Any]] = []
+    structural_terms = [
+        "spessa", "spessore", "spess", "1 2", "1 5", "2 0",
+        "due lamiere", "doppia lamiera", "lamiera doppia", "sovrappost",
+        "propulsore forte", "propulsore molto forte",
+        "classe alta", "potenza alta",
+        "fuori eta", "fuori campo", "non coperto", "coperto dalle prestazioni",
+        "prestazioni dichiarate",
+        "prove tecnaria", "non rappresentativo",
+        "deformazione non rappresentativa",
+    ]
+
+    question_is_structural = any(t in q_norm for t in structural_terms)
+
+    if question_is_structural:
+        structural_killers = []
+        others = []
+
         for b in candidates:
             bid = (b.get("id") or "").upper()
-            text_block = (
+            text_block = (b.get("question_it") or "") + " " + " ".join(b.get("triggers") or [])
+            tb_norm = normalize(text_block)
+
+            # Killer strutturali = blocchi che parlano di:
+            # - lamiera spessa / fuori campo
+            # - doppia lamiera
+            # - deformazione non rappresentativa
+            # - sovra-infissione dovuta a spessore
+            # - condizioni fuori prova Tecnaria
+            # - non coperto ETA
+            is_structural = any(key in tb_norm for key in [
+                "spesso", "spessore", "fuori campo", "fuori eta",
+                "doppia lamiera", "due lamiere", "lamiera sovrapposta",
+                "non rappresentativa", "prove tecnaria",
+                "sovra infissione", "propulsore", "spess", "1 5", "1 2",
+                "rigidezza aumentata", "rigidita aumentata"
+            ])
+
+            # Killer ambientali da ESCLUDERE
+            is_ambient = any(key in tb_norm for key in [
+                "ghiaccio", "acqua", "condensa", "bagnata", "umidita",
+                "vibrazione", "vibra", "puntale scivola",
+                "sporco", "residui", "clack",
+            ])
+
+            if is_structural and not is_ambient:
+                structural_killers.append(b)
+            else:
+                others.append(b)
+
+        if structural_killers:
+            candidates = structural_killers
+
+    # -------------------------
+    # PATCH 12.3: negazioni → killer
+    # -------------------------
+    neg_patterns = [
+        "non posso", "in quali casi non", "quando non posso",
+        "quando non si puo", "non e valido", "non e ammesso",
+        "non si deve", "non coperto", "non rappresentativo",
+    ]
+    if any(p in q_norm for p in neg_patterns):
+        killer_like = []
+        others = []
+        for b in candidates:
+            tb_norm = normalize(
                 (b.get("question_it") or "") + " " +
                 " ".join(b.get("triggers") or [])
             )
-            tb_norm = normalize(text_block)
-
-            is_killer_id = (
-                "KILLER" in bid
-                or "ERR" in bid
-                or "FUORI" in bid
-            )
-            is_killer_text = (
-                "errore" in tb_norm
-                or "fuori campo" in tb_norm
-                or "non ammesso" in tb_norm
-                or "non valido" in tb_norm
-            )
-
-            if is_killer_id or is_killer_text:
+            if any(k in tb_norm for k in [
+                "errore", "fuori campo", "non valido", "non ammesso",
+                "sovra infissione", "deformazione anomala"
+            ]):
                 killer_like.append(b)
             else:
                 others.append(b)
@@ -349,47 +356,45 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
         if killer_like:
             candidates = killer_like
 
-    # ---------- PATCH STRADA A (v12.2): geometria vs chiodi difettosi
+    # -------------------------
+    # PATCH STRADA A (12.2): geometria vs chiodi difettosi
+    # -------------------------
+
     geometry_terms = [
-        "lamiera", "ondina", "onda", "ala",
-        "imbarcata", "imbarcato", "imbarcatura",
+        "lamiera", "ondina", "onda", "ala", "imbarcata",
         "laminazione", "rigonfiamento", "bombatura",
         "rigidita", "rigidezza"
     ]
     defect_terms = [
         "chiodo", "chiodi", "punta", "danneggiata",
-        "danneggiato", "danneggiate", "danneggiati",
-        "difettoso", "difettosi", "difettosa"
+        "danneggiato", "difettoso", "difettosi"
     ]
-
     question_is_geometry = any(t in q_norm for t in geometry_terms)
 
-    filtered_candidates = candidates
     if question_is_geometry:
-        tmp: List[Dict[str, Any]] = []
+        geometric = []
         for b in candidates:
-            text_block = (
+            tb_norm = normalize(
                 (b.get("id") or "") + " " +
                 (b.get("question_it") or "") + " " +
                 " ".join(b.get("triggers") or [])
             )
-            tb_norm = normalize(text_block)
-
             has_defect = any(t in tb_norm for t in defect_terms)
             has_geometry = any(t in tb_norm for t in geometry_terms)
 
-            # Se il blocco parla SOLO di difetti dei chiodi e NON di geometria,
-            # lo escludiamo in presenza di domanda geometrica.
-            if question_is_geometry and has_defect and not has_geometry:
+            if has_defect and not has_geometry:
                 continue
+            geometric.append(b)
+        if geometric:
+            candidates = geometric
 
-            tmp.append(b)
+    # ====================================
+    # AI RERANK (come in 12.3)
+    # ====================================
 
-        if tmp:
-            filtered_candidates = tmp
-
-    candidates = filtered_candidates
     candidate_ids = [b.get("id") for b in candidates]
+    if not candidates:
+        return None
 
     try:
         desc = "\n".join(
@@ -403,11 +408,9 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
             f"DOMANDA:\n{question}\n\n"
             f"CANDIDATI:\n{desc}\n\n"
             "Devi restituire SOLO l'ID del blocco che risponde meglio.\n"
-            "Regole specifiche:\n"
-            "- Se la domanda parla di puntale, appoggio, ondina, inclinazione della P560, "
-            "scegli blocchi che parlano di appoggio o puntale, NON blocchi che parlano di sovra-infissione o propulsore.\n"
-            "- Se la domanda parla di distanza testa–piastra, profondità o propulsore, allora scegli blocchi su sovra-infissione.\n"
-            "- Evita blocchi di OVERVIEW se esistono blocchi più specifici.\n"
+            "- Evita overview se ci sono blocchi specifici.\n"
+            "- Evita chiodi difettosi se la domanda parla di geometria.\n"
+            "- Se la domanda parla di spessore lamiera / fuori ETA, scegli blocchi relativi a fuori campo.\n"
             "- Rispondi SOLO con un ID presente nella lista dei candidati.\n"
         )
 
@@ -420,12 +423,10 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
 
         chosen = (res.choices[0].message.content or "").strip()
 
-        if chosen not in candidate_ids:
-            return candidates[0]
-
-        for b in candidates:
-            if b.get("id") == chosen:
-                return b
+        if chosen in candidate_ids:
+            for b in candidates:
+                if b.get("id") == chosen:
+                    return b
 
     except Exception as e:
         print("[AI RERANK ERROR]", e)
@@ -433,15 +434,14 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
     return candidates[0]
 
 
+# ============================================================
+# BEST BLOCK
+# ============================================================
+
 def find_best_block(question: str) -> Tuple[Dict[str, Any], float]:
-    """
-    - overlay prima (se presenti)
-    - overview prioritizzate quando la domanda è chiaramente "parlami di / cos'è / panoramica"
-    - altrimenti matching standard con AI rerank
-    """
     q_norm = normalize(question)
 
-    # 1) Overlay (se li userai in futuro)
+    # 1. Overlay
     over_scored = lexical_candidates(question, S.overlay_blocks)
     if over_scored:
         over_blocks = [b for s, b in over_scored]
@@ -449,32 +449,27 @@ def find_best_block(question: str) -> Tuple[Dict[str, Any], float]:
         best_s = max(s for s, b in over_scored if b is best_o)
         return best_o, float(best_s)
 
-    # 2) Se la domanda è chiaramente "overview", filtriamo i blocchi OVERVIEW
-    master_blocks = S.master_blocks
-
+    # 2. Overview
     if is_overview_question(q_norm):
         overview_blocks = [
-            b for b in master_blocks
-            if "OVERVIEW" in (b.get("id") or "").upper()
+            b for b in S.master_blocks if "OVERVIEW" in (b.get("id") or "").upper()
         ]
-        if overview_blocks:
-            scored = lexical_candidates(question, overview_blocks)
-            if scored:
-                blocks = [b for s, b in scored]
-                best = ai_rerank(question, blocks)
-                best_score = max(s for s, b in scored if b is best)
-                return best, float(best_score)
+        scored = lexical_candidates(question, overview_blocks)
+        if scored:
+            blocks = [b for s, b in scored]
+            best = ai_rerank(question, blocks)
+            best_s = max(s for s, b in scored if b is best)
+            return best, float(best_s)
 
-    # 3) Matching standard su master
-    master_scored = lexical_candidates(question, master_blocks)
+    # 3. Master
+    master_scored = lexical_candidates(question, S.master_blocks)
     if not master_scored:
         return None, 0.0
 
-    master_candidates = [b for s, b in master_scored]
-    best_m = ai_rerank(question, master_candidates)
-    best_s = max(s for s, b in master_scored if b is best_m)
-
-    return best_m, float(best_s)
+    master_blocks = [b for s, b in master_scored]
+    best = ai_rerank(question, master_blocks)
+    best_s = max(s for s, b in master_scored if b is best)
+    return best, float(best_s)
 
 
 # ============================================================
