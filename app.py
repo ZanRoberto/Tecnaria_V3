@@ -13,7 +13,6 @@ from fastapi.responses import FileResponse
 
 from openai import OpenAI
 
-
 # ============================================================
 # CONFIG
 # ============================================================
@@ -39,7 +38,7 @@ FALLBACK_MESSAGE = (
 # FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA GOLD – MATCHING v10", version="10.0.0")
+app = FastAPI(title="TECNARIA GOLD – MATCHING v11", version="11.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -119,7 +118,7 @@ def load_master_blocks() -> List[Dict[str, Any]]:
 
 
 def load_overlay_blocks() -> List[Dict[str, Any]]:
-    blocks: List[Dict[str, Any]] = []
+    blocks = []
     p = Path(OVERLAY_DIR)
     if not p.exists():
         return blocks
@@ -127,19 +126,18 @@ def load_overlay_blocks() -> List[Dict[str, Any]]:
         try:
             d = load_json(str(f))
             blocks.extend(d.get("blocks", []))
-        except Exception as e:
-            print("[OVERLAY ERROR]", f, e)
+        except:
+            pass
     return blocks
 
 
 # ============================================================
-# STATO KB (IN MEMORIA)
+# STATE
 # ============================================================
 
 class KBState:
     master_blocks: List[Dict[str, Any]] = []
     overlay_blocks: List[Dict[str, Any]] = []
-
 
 S = KBState()
 
@@ -147,103 +145,85 @@ S = KBState()
 def reload_all():
     S.master_blocks = load_master_blocks()
     S.overlay_blocks = load_overlay_blocks()
-    print(f"[KB] master={len(S.master_blocks)} overlay={len(S.overlay_blocks)}")
+    print(f"[KB LOADED] master={len(S.master_blocks)} overlay={len(S.overlay_blocks)}")
 
 
 reload_all()
 
 
 # ============================================================
-# MATCHING – SOLO LOGICA (NESSUN CAMBIO AI BLOCCHI)
+# MATCHING ENGINE (LESSIC + AI RERANK) – CORRETTO
 # ============================================================
 
 def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
     trig_norm = normalize(trigger)
     if not trig_norm:
         return 0.0
-    trig_tokens = set(trig_norm.split())
 
+    trig_tokens = set(trig_norm.split())
     score = 0.0
 
-    # 1) MATCH TOTALE
-    if trig_norm == q_norm:
-        score += 5.0
-
-    # 2) TUTTI I TOKEN DEL TRIGGER PRESENTI
+    # 1) token match totale
     if trig_tokens and trig_tokens.issubset(q_tokens):
         score += 3.0
 
-    # 3) MATCH PARZIALE (>= metà token)
+    # 2) match parziale > metà token
     inter = trig_tokens.intersection(q_tokens)
-    if trig_tokens:
-        if len(inter) >= max(1, len(trig_tokens) // 2):
-            score += len(inter) / len(trig_tokens)
+    if trig_tokens and len(inter) >= max(1, len(trig_tokens) // 2):
+        score += len(inter) / len(trig_tokens)
 
-    # 4) SUBSTRING SIGNIFICATIVA
-    if trig_norm in q_norm and len(trig_norm) >= 10:
+    # 3) substring significativa
+    if len(trig_norm) >= 10 and trig_norm in q_norm:
         score += 0.5
 
     return score
 
 
-def lexical_candidates(question: str, blocks: List[Dict[str, Any]], max_candidates: int = 15):
+def lexical_candidates(question: str, blocks: List[Dict[str, Any]], limit: int = 15):
     q_norm = normalize(question)
     q_tokens = set(tokenize(question))
-
-    scored: List[Tuple[float, Dict[str, Any]]] = []
+    scored = []
 
     for block in blocks:
-        local_score = 0.0
-        triggers = block.get("triggers", []) or []
-        for trig in triggers:
-            local_score += score_trigger(trig, q_tokens, q_norm)
+        block_score = 0.0
+        for trigger in block.get("triggers", []):
+            block_score += score_trigger(trigger, q_tokens, q_norm)
 
-        # Penalizza gli OVERVIEW se ci sono alternative
-        bid = block.get("id", "")
-        if "OVERVIEW" in bid.upper():
-            local_score *= 0.5
+        # penalizza overview generali
+        if "OVERVIEW" in block.get("id", "").upper():
+            block_score *= 0.5
 
-        if local_score > 0:
-            scored.append((local_score, block))
+        if block_score > 0:
+            scored.append((block_score, block))
 
     scored.sort(key=lambda x: x[0], reverse=True)
-    return scored[:max_candidates]
+    return scored[:limit]
 
 
 def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Usa OpenAI per scegliere il blocco migliore tra i candidati.
-    Non cambia i blocchi, sceglie solo l'ID.
-    """
+
     if not candidates:
         return None
     if len(candidates) == 1:
         return candidates[0]
 
-    try:
-        desc_lines = []
-        for b in candidates:
-            bid = b.get("id", "UNKNOWN")
-            fam = b.get("family", "")
-            q_it = b.get("question_it") or ""
-            tags = ", ".join(b.get("tags", []) or [])
-            desc_lines.append(f"- ID: {bid} | family: {fam} | domanda: {q_it} | tags: {tags}")
+    candidate_ids = [b.get("id") for b in candidates]
 
-        desc = "\n".join(desc_lines)
+    try:
+        desc = "\n".join(
+            f"- ID:{b.get('id')} | Q:{b.get('question_it')}" for b in candidates
+        )
 
         prompt = (
-            "Sei un motore di instradamento interno. "
-            "Ti do una domanda dell'utente e una lista di blocchi di knowledge base. "
-            "Ogni blocco ha ID, famiglia e testo della domanda a cui risponde.\n\n"
-            f"DOMANDA UTENTE:\n{question}\n\n"
-            f"BLOCCHI CANDIDATI:\n{desc}\n\n"
-            "Devi rispondere SOLO con l'ID del blocco che risponde meglio alla domanda.\n"
-            "Regole:\n"
-            "- Preferisci blocchi che spiegano procedure o condizioni quando la domanda inizia con 'come', 'in quali casi', 'quando'.\n"
-            "- Evita blocchi di 'overview generale' se esistono blocchi più specifici.\n"
-            "- Se la domanda chiede limiti o divieti ('in quali casi non posso usare', 'quando non è ammesso'), "
-            "scegli blocchi che parlano di limiti, fuori campo, divieti.\n"
-            "- Rispondi SOLO con l'ID esatto, senza altro testo."
+            "Sei un motore di routing per una knowledge base. "
+            "Ti do una domanda utente e una lista di blocchi possibili.\n\n"
+            f"DOMANDA:\n{question}\n\n"
+            f"CANDIDATI:\n{desc}\n\n"
+            "Devi restituire SOLO l'ID del blocco che risponde meglio.\n"
+            "NON DEVI GENERARE TESTO.\n"
+            "NON DEVI CREARE RISPOSTE.\n"
+            "Se nessun ID è adatto, scegli quello più vicino tra i candidati.\n"
+            "Rispondi SOLO con un ID presente nella lista."
         )
 
         res = client.chat.completions.create(
@@ -254,45 +234,41 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
         )
 
         chosen = (res.choices[0].message.content or "").strip()
+
+        # ❗ BLOCCO CHE EVITA RISPOSTE INVENTATE
+        if chosen not in candidate_ids:
+            return candidates[0]     # fallback lessicale
+
         for b in candidates:
             if b.get("id") == chosen:
                 return b
 
     except Exception as e:
-        print("[AI_RERANK_ERROR]", e)
+        print("[AI RERANK ERROR]", e)
 
-    # Fallback: il migliore lessicale
     return candidates[0]
 
 
 def find_best_block(question: str) -> Tuple[Dict[str, Any], float]:
-    """
-    1) overlay (se presenti)
-    2) master
-    3) ai-rerank tra i candidati
-    """
-    # Overlay prioritari (se li userai in futuro)
-    overlay_scored = lexical_candidates(question, S.overlay_blocks)
-    if overlay_scored:
-        overlay_blocks = [b for s, b in overlay_scored]
-        best_overlay = ai_rerank(question, overlay_blocks)
-        best_score = max(s for s, b in overlay_scored if b is best_overlay)
-        return best_overlay, float(best_score)
 
-    # Master
-    master_scored = lexical_candidates(question, S.master_blocks)
-    if not master_scored:
+    # overlay → se presenti
+    over = lexical_candidates(question, S.overlay_blocks)
+    if over:
+        cands = [b for s, b in over]
+        best = ai_rerank(question, cands)
+        score = max(s for s, b in over if b is best)
+        return best, float(score)
+
+    # master
+    master = lexical_candidates(question, S.master_blocks)
+    if not master:
         return None, 0.0
 
-    master_blocks = [b for s, b in master_scored]
-    best_master = ai_rerank(question, master_blocks)
-    best_score = 0.0
-    for s, b in master_scored:
-        if b is best_master:
-            best_score = s
-            break
+    cands = [b for s, b in master]
+    best = ai_rerank(question, cands)
+    score = max(s for s, b in master if b is best)
 
-    return best_master, float(best_score)
+    return best, float(score)
 
 
 # ============================================================
@@ -304,7 +280,7 @@ def health():
     return {
         "ok": True,
         "master_blocks": len(S.master_blocks),
-        "overlay_blocks": len(S.overlay_blocks),
+        "overlay_blocks": len(S.overlay_blocks)
     }
 
 
@@ -314,7 +290,7 @@ def api_reload():
     return {
         "ok": True,
         "master_blocks": len(S.master_blocks),
-        "overlay_blocks": len(S.overlay_blocks),
+        "overlay_blocks": len(S.overlay_blocks)
     }
 
 
@@ -322,7 +298,7 @@ def api_reload():
 def api_ask(req: AskRequest):
 
     if req.mode.lower() != "gold":
-        raise HTTPException(400, "Modalità non supportata (solo 'gold').")
+        raise HTTPException(400, "Modalità non supportata (solo gold).")
 
     question = (req.question or "").strip()
     if not question:
@@ -344,7 +320,6 @@ def api_ask(req: AskRequest):
     answer = (
         block.get(f"answer_{req.lang}")
         or block.get("answer_it")
-        or block.get("answer")
         or FALLBACK_MESSAGE
     )
 
@@ -355,5 +330,5 @@ def api_ask(req: AskRequest):
         id=block.get("id", "UNKNOWN-ID"),
         mode=block.get("mode", "gold"),
         lang=req.lang,
-        score=float(score),
+        score=float(score)
     )
