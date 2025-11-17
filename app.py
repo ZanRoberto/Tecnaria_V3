@@ -37,7 +37,7 @@ FALLBACK_MESSAGE = (
 # FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA GOLD – MATCHING v12", version="12.0.0")
+app = FastAPI(title="TECNARIA GOLD – MATCHING v12.1", version="12.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -151,24 +151,34 @@ reload_all()
 
 
 # ============================================================
-# MATCHING ENGINE (LESSIC + AI RERANK) – v12
+# MATCHING ENGINE (LESSIC + AI RERANK) – v12.1
 # ============================================================
 
 def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
+    """
+    Punteggio di un singolo trigger.
+    Patch v12.1: i trigger con UNA SOLA PAROLA (es. 'ctf', 'posare')
+    vengono ignorati perché troppo generici e rumorosi.
+    """
     trig_norm = normalize(trigger)
     if not trig_norm:
         return 0.0
 
     trig_tokens = set(trig_norm.split())
+
+    # ❗ Trigger troppo generici (una sola parola) → li ignoriamo
+    if len(trig_tokens) <= 1:
+        return 0.0
+
     score = 0.0
 
     # 1) token match totale
-    if trig_tokens and trig_tokens.issubset(q_tokens):
+    if trig_tokens.issubset(q_tokens):
         score += 3.0
 
     # 2) match parziale > metà token
     inter = trig_tokens.intersection(q_tokens)
-    if trig_tokens and len(inter) >= max(1, len(trig_tokens) // 2):
+    if len(inter) >= max(1, len(trig_tokens) // 2):
         score += len(inter) / len(trig_tokens)
 
     # 3) substring significativa
