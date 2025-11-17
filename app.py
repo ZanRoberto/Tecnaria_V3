@@ -17,6 +17,8 @@ from openai import OpenAI
 # CONFIG
 # ============================================================
 
+APP_VERSION = "12.3.0"
+
 client = OpenAI()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -37,7 +39,10 @@ FALLBACK_MESSAGE = (
 # FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA GOLD – MATCHING v12.2 (A)", version="12.2.0")
+app = FastAPI(
+    title="TECNARIA GOLD – MATCHING v12.3 (A)",
+    version=APP_VERSION,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -138,6 +143,7 @@ class KBState:
     master_blocks: List[Dict[str, Any]] = []
     overlay_blocks: List[Dict[str, Any]] = []
 
+
 S = KBState()
 
 
@@ -151,7 +157,7 @@ reload_all()
 
 
 # ============================================================
-# MATCHING ENGINE (LESSIC + AI RERANK) – v12.2
+# MATCHING ENGINE (LESSIC + AI RERANK) – v12.3
 # ============================================================
 
 def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
@@ -166,7 +172,7 @@ def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
 
     trig_tokens = set(trig_norm.split())
 
-    # ❗ Trigger troppo generici (una sola parola) → li ignoriamo
+    # Trigger troppo generici (una sola parola) → li ignoriamo
     if len(trig_tokens) <= 1:
         return 0.0
 
@@ -217,7 +223,7 @@ def score_block(question: str, block: Dict[str, Any]) -> float:
 
     total = trig_score + sim_score
 
-    # penalizza overview
+    # penalizza overview se ci sono candidati più specifici
     if "OVERVIEW" in (block.get("id") or "").upper():
         total *= 0.5
 
@@ -236,6 +242,44 @@ def lexical_candidates(question: str, blocks: List[Dict[str, Any]], limit: int =
     return scored[:limit]
 
 
+def is_overview_question(q_norm: str) -> bool:
+    """
+    Domande del tipo:
+    - mi parli della P560?
+    - parlami dei CTF
+    - cos e la P560
+    - che cos e il CTF
+    - fammi una panoramica...
+    """
+    patterns = [
+        "mi parli della",
+        "mi parli del",
+        "mi parli di ",
+        "parlami della",
+        "parlami del",
+        "parlami di ",
+        "cos e ",
+        "cosa e ",
+        "cos e la",
+        "cos e il",
+        "cosa e la",
+        "cosa e il",
+        "che cos e",
+        "che cosa e",
+        "che cos e la",
+        "che cos e il",
+        "che cosa e la",
+        "che cosa e il",
+        "overview",
+        "panoramica",
+        "descrizione della",
+        "descrizione del",
+        "descrivimi la",
+        "descrivimi il",
+    ]
+    return any(p in q_norm for p in patterns)
+
+
 def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Usa l'AI SOLO per scegliere l'ID tra i candidati.
@@ -243,14 +287,69 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
     Patch v12.2 (A):
     - se la domanda parla di lamiera/ala/ondina/laminazione/rigonfiamenti,
       evitiamo blocchi che parlano SOLO di chiodi difettosi/punta danneggiata.
+    Patch v12.3:
+    - se la domanda contiene negazioni 'non posso', 'in quali casi non', 'quando non',
+      preferiamo blocchi killer / fuori campo / errore/limite.
     """
     if not candidates:
         return None
     if len(candidates) == 1:
         return candidates[0]
 
-    # --- PATCH STRADA A: filtro "geometria vs chiodi"
     q_norm = normalize(question)
+
+    # ---------- PATCH v12.3: negazioni -> preferire blocchi "killer/errore/fuori campo"
+    neg_patterns = [
+        "non posso",
+        "in quali casi non",
+        "quando non posso",
+        "quando non si puo",
+        "quando non si puo ",
+        "quando non si puo usare",
+        "quando non e ammesso",
+        "quando non e valido",
+        "quando non e consentito",
+        "non e valido",
+        "non e ammesso",
+        "non si puo usare",
+        "non si deve usare",
+        "non devo usare",
+        "fuori campo",
+    ]
+    question_has_negation = any(p in q_norm for p in neg_patterns)
+
+    if question_has_negation:
+        killer_like: List[Dict[str, Any]] = []
+        others: List[Dict[str, Any]] = []
+        for b in candidates:
+            bid = (b.get("id") or "").upper()
+            text_block = (
+                (b.get("question_it") or "") + " " +
+                " ".join(b.get("triggers") or [])
+            )
+            tb_norm = normalize(text_block)
+
+            is_killer_id = (
+                "KILLER" in bid
+                or "ERR" in bid
+                or "FUORI" in bid
+            )
+            is_killer_text = (
+                "errore" in tb_norm
+                or "fuori campo" in tb_norm
+                or "non ammesso" in tb_norm
+                or "non valido" in tb_norm
+            )
+
+            if is_killer_id or is_killer_text:
+                killer_like.append(b)
+            else:
+                others.append(b)
+
+        if killer_like:
+            candidates = killer_like
+
+    # ---------- PATCH STRADA A (v12.2): geometria vs chiodi difettosi
     geometry_terms = [
         "lamiera", "ondina", "onda", "ala",
         "imbarcata", "imbarcato", "imbarcatura",
@@ -267,7 +366,7 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
 
     filtered_candidates = candidates
     if question_is_geometry:
-        tmp = []
+        tmp: List[Dict[str, Any]] = []
         for b in candidates:
             text_block = (
                 (b.get("id") or "") + " " +
@@ -286,8 +385,6 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
 
             tmp.append(b)
 
-        # Se abbiamo ancora almeno un candidato dopo il filtro, usiamo quelli.
-        # Se li abbiamo esclusi tutti, torniamo alla lista originale.
         if tmp:
             filtered_candidates = tmp
 
@@ -337,22 +434,45 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
 
 
 def find_best_block(question: str) -> Tuple[Dict[str, Any], float]:
-    # Overlay (se li userai)
-    over = lexical_candidates(question, S.overlay_blocks)
-    if over:
-        over_blocks = [b for s, b in over]
+    """
+    - overlay prima (se presenti)
+    - overview prioritizzate quando la domanda è chiaramente "parlami di / cos'è / panoramica"
+    - altrimenti matching standard con AI rerank
+    """
+    q_norm = normalize(question)
+
+    # 1) Overlay (se li userai in futuro)
+    over_scored = lexical_candidates(question, S.overlay_blocks)
+    if over_scored:
+        over_blocks = [b for s, b in over_scored]
         best_o = ai_rerank(question, over_blocks)
-        best_s = max(s for s, b in over if b is best_o)
+        best_s = max(s for s, b in over_scored if b is best_o)
         return best_o, float(best_s)
 
-    # Master
-    master = lexical_candidates(question, S.master_blocks)
-    if not master:
+    # 2) Se la domanda è chiaramente "overview", filtriamo i blocchi OVERVIEW
+    master_blocks = S.master_blocks
+
+    if is_overview_question(q_norm):
+        overview_blocks = [
+            b for b in master_blocks
+            if "OVERVIEW" in (b.get("id") or "").upper()
+        ]
+        if overview_blocks:
+            scored = lexical_candidates(question, overview_blocks)
+            if scored:
+                blocks = [b for s, b in scored]
+                best = ai_rerank(question, blocks)
+                best_score = max(s for s, b in scored if b is best)
+                return best, float(best_score)
+
+    # 3) Matching standard su master
+    master_scored = lexical_candidates(question, master_blocks)
+    if not master_scored:
         return None, 0.0
 
-    master_blocks = [b for s, b in master]
-    best_m = ai_rerank(question, master_blocks)
-    best_s = max(s for s, b in master if b is best_m)
+    master_candidates = [b for s, b in master_scored]
+    best_m = ai_rerank(question, master_candidates)
+    best_s = max(s for s, b in master_scored if b is best_m)
 
     return best_m, float(best_s)
 
@@ -365,6 +485,7 @@ def find_best_block(question: str) -> Tuple[Dict[str, Any], float]:
 def health():
     return {
         "ok": True,
+        "version": APP_VERSION,
         "master_blocks": len(S.master_blocks),
         "overlay_blocks": len(S.overlay_blocks),
     }
@@ -375,6 +496,7 @@ def api_reload():
     reload_all()
     return {
         "ok": True,
+        "version": APP_VERSION,
         "master_blocks": len(S.master_blocks),
         "overlay_blocks": len(S.overlay_blocks),
     }
