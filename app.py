@@ -17,7 +17,7 @@ from openai import OpenAI
 # CONFIG
 # ============================================================
 
-APP_VERSION = "12.4.1-STRUTTURALE"
+APP_VERSION = "12.5.0-DIAGNOSTIC"
 
 client = OpenAI()
 
@@ -40,7 +40,7 @@ FALLBACK_MESSAGE = (
 # ============================================================
 
 app = FastAPI(
-    title="TECNARIA GOLD – MATCHING v12.4.1 STRUTTURALE",
+    title="TECNARIA GOLD – MATCHING v12.5.0 DIAGNOSTIC",
     version=APP_VERSION,
 )
 
@@ -157,7 +157,7 @@ reload_all()
 
 
 # ============================================================
-# MATCHING ENGINE (LESSIC + AI RERANK) – v12.4.1 STRUTTURALE
+# MATCHING ENGINE (LESSIC + AI RERANK) – v12.5.0
 # ============================================================
 
 def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
@@ -253,18 +253,22 @@ def is_overview_question(q_norm: str) -> bool:
 
 
 # ============================================================
-# RERANK AI – Patch STRUTTURALE 12.4.1
+# RERANK AI – v12.5 con DIAGNOSTIC SAFE
 # ============================================================
 
 def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Usa l'AI SOLO per scegliere l'ID tra i candidati.
+
     Patch v12.2 STRADA A: geometria vs chiodi difettosi.
     Patch v12.3: negazioni → killer.
     Patch v12.4 STRUTTURALE:
       se la domanda riguarda spessori lamiera / lamiera doppia /
       propulsore forte / fuori ETA / prove Tecnaria →
       usare SOLO killer strutturali ed escludere killer ambientali.
+    Patch v12.5 DIAGNOSTIC SAFE:
+      se la domanda è di tipo 'come verifico / come controllo / come faccio a capire se'
+      escludere blocchi killer/errore/fuori campo e preferire blocchi neutri di verifica.
     """
     if not candidates:
         return None
@@ -272,6 +276,21 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
         return candidates[0]
 
     q_norm = normalize(question)
+
+    # -------------------------
+    # Riconoscimento domande DIAGNOSTICHE (v12.5)
+    # -------------------------
+    diagnostic_terms = [
+        "come verifico", "come faccio a verificare",
+        "come controllo", "come faccio a controllare",
+        "come faccio a capire se", "come posso capire se",
+        "come posso verificare", "come si verifica",
+        "come si controlla", "verificare se", "controllare se",
+        "come faccio a sapere se", "come posso essere sicuro",
+        "come posso essere certa", "come posso essere certo",
+        "come faccio a essere sicuro", "come faccio a essere certo"
+    ]
+    question_is_diagnostic = any(t in q_norm for t in diagnostic_terms)
 
     # -------------------------
     # PATCH 12.4: riconoscimento "caso strutturale"
@@ -295,17 +314,10 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
         others = []
 
         for b in candidates:
-            bid = (b.get("id") or "").upper()
             text_block = (b.get("question_it") or "") + " " + " ".join(b.get("triggers") or [])
             tb_norm = normalize(text_block)
 
-            # Killer strutturali = blocchi che parlano di:
-            # - lamiera spessa / fuori campo
-            # - doppia lamiera
-            # - deformazione non rappresentativa
-            # - sovra-infissione dovuta a spessore
-            # - condizioni fuori prova Tecnaria
-            # - non coperto ETA
+            # Killer strutturali
             is_structural = any(key in tb_norm for key in [
                 "spesso", "spessore", "fuori campo", "fuori eta",
                 "doppia lamiera", "due lamiere", "lamiera sovrapposta",
@@ -388,8 +400,44 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
         if geometric:
             candidates = geometric
 
+    # -------------------------
+    # PATCH 12.5: domande DIAGNOSTICHE → escludi killer
+    # -------------------------
+    if question_is_diagnostic:
+        safe_candidates = []
+        for b in candidates:
+            tb_norm = normalize(
+                (b.get("id") or "") + " " +
+                (b.get("question_it") or "") + " " +
+                " ".join(b.get("triggers") or []) + " " +
+                " ".join(b.get("tags") or [])
+            )
+
+            is_killer_like = False
+
+            # ID che contengono pattern di errore
+            if any(tag in (b.get("id") or "").upper() for tag in ["ERR", "KILLER"]):
+                is_killer_like = True
+
+            # Testo che parla di errore / non valido / fuori campo
+            if any(term in tb_norm for term in [
+                "errore", "errore di posa", "fuori campo",
+                "non valido", "non ammesso", "da considerarsi non valido",
+                "difetto", "difettoso", "anomalia", "anomala",
+                "sovra infissione", "sovra-infissione",
+                "deformazione anomala", "colpo non valido"
+            ]):
+                is_killer_like = True
+
+            if not is_killer_like:
+                safe_candidates.append(b)
+
+        # Se abbiamo almeno un candidato “sicuro”, usiamo solo quelli
+        if safe_candidates:
+            candidates = safe_candidates
+
     # ====================================
-    # AI RERANK (come in 12.3)
+    # AI RERANK (come in 12.3/12.4)
     # ====================================
 
     candidate_ids = [b.get("id") for b in candidates]
@@ -411,6 +459,7 @@ def ai_rerank(question: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]
             "- Evita overview se ci sono blocchi specifici.\n"
             "- Evita chiodi difettosi se la domanda parla di geometria.\n"
             "- Se la domanda parla di spessore lamiera / fuori ETA, scegli blocchi relativi a fuori campo.\n"
+            "- Se la domanda è su 'come verificare / controllare', scegli blocchi che descrivono la verifica e NON blocchi di errore/fuori campo.\n"
             "- Rispondi SOLO con un ID presente nella lista dei candidati.\n"
         )
 
