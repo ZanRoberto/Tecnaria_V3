@@ -3,16 +3,14 @@ import json
 import re
 import unicodedata
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-
 from openai import OpenAI
-
 
 # ============================================================
 # CONFIG
@@ -24,23 +22,20 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "static", "data")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-# 🔴 QUI LA MODIFICA: ora punta al master nuovo
 MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
-OVERLAY_DIR = os.path.join(DATA_DIR, "overlays")
 
 FALLBACK_FAMILY = "COMM"
 FALLBACK_ID = "COMM-FALLBACK-NOANSWER-0001"
 FALLBACK_MESSAGE = (
-    "Per questa domanda non trovo una risposta GOLD nei dati caricati. "
-    "Meglio un confronto diretto con l’ufficio tecnico Tecnaria."
+    "Per questa domanda non trovo una risposta GOLD appropriata. "
+    "Meglio confrontarsi con l’ufficio tecnico Tecnaria."
 )
-
 
 # ============================================================
 # FASTAPI
 # ============================================================
 
-app = FastAPI(title="TECNARIA GOLD – OverlayFirst", version="8.0.0")
+app = FastAPI(title="TECNARIA GOLD – MATCHING DEFINITIVO", version="9.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,27 +52,7 @@ def index():
     path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(path):
         return FileResponse(path)
-    return {"ok": True, "message": "UI non trovata"}
-
-
-# ============================================================
-# MODELLI
-# ============================================================
-
-class AskRequest(BaseModel):
-    question: str
-    lang: str = "it"
-    mode: str = "gold"
-
-
-class AskResponse(BaseModel):
-    ok: bool
-    answer: str
-    family: str
-    id: str
-    mode: str
-    lang: str
-    score: float
+    return {"ok": True, "message": "UI mancante"}
 
 
 # ============================================================
@@ -90,204 +65,104 @@ def strip_accents(s: str) -> str:
         if not unicodedata.combining(c)
     )
 
-
 def normalize(t: str) -> str:
     if not isinstance(t, str):
         return ""
     t = strip_accents(t)
-    t = t.lower().strip()
-    t = re.sub(r"\s+", " ", t)
+    t = t.lower()
+    t = re.sub(r"[^a-z0-9àèéìòùç\s]", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
     return t
-
 
 def tokenize(text: str) -> List[str]:
     return normalize(text).split(" ")
 
 
 # ============================================================
+# MODELLO
+# ============================================================
+
+class AskRequest(BaseModel):
+    question: str
+    lang: str = "it"
+    mode: str = "gold"
+
+class AskResponse(BaseModel):
+    ok: bool
+    answer: str
+    family: str
+    id: str
+    mode: str
+    lang: str
+    score: float
+
+
+# ============================================================
 # LOAD KB
 # ============================================================
 
-def load_json(path: str) -> Dict[str, Any]:
+def load_json(path: str):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 def load_master():
     return load_json(MASTER_PATH).get("blocks", [])
 
 
-def load_overlays():
-    blocks = []
-    p = Path(OVERLAY_DIR)
-    if not p.exists():
-        return blocks
-    for f in p.glob("*.json"):
-        try:
-            d = load_json(str(f))
-            blocks.extend(d.get("blocks", []))
-        except Exception as e:
-            print("[OVERLAY ERROR]", f, e)
-    return blocks
-
-
 # ============================================================
-# STATE
+# MATCHING DEFINITIVO
 # ============================================================
 
-class KBState:
-    master_blocks = []
-    overlay_blocks = []
-    master_index = []
-    overlay_index = []
+def score_trigger(trigger: str, q_tokens: set, q_norm: str) -> float:
+    trig_norm = normalize(trigger)
+    trig_tokens = set(trig_norm.split())
 
-S = KBState()
+    score = 0.0
 
+    # 1) MATCH TOTALE
+    if trig_norm == q_norm:
+        score += 5.0
 
-# ============================================================
-# INDEX BUILD
-# ============================================================
+    # 2) TUTTI I TOKEN DEL TRIGGER PRESENTI
+    if trig_tokens.issubset(q_tokens):
+        score += 3.0
 
-def build_index():
-    S.master_blocks = load_master()
-    S.overlay_blocks = load_overlays()
+    # 3) MATCH PARZIALE (>= metà token)
+    inter = trig_tokens.intersection(q_tokens)
+    if len(inter) >= max(1, len(trig_tokens) // 2):
+        score += len(inter) / len(trig_tokens)
 
-    S.master_index = []
-    S.overlay_index = []
+    # 4) MATCH SEMANTICO (substring significativa)
+    if trig_norm in q_norm and len(trig_norm) >= 8:
+        score += 1.0
 
-    # Overlay index
-    for idx, block in enumerate(S.overlay_blocks):
-        for trig in block.get("triggers", []) or []:
-            norm = normalize(trig)
-            if norm:
-                S.overlay_index.append((idx, norm, set(tokenize(trig))))
-
-    # Master index
-    for idx, block in enumerate(S.master_blocks):
-        for trig in block.get("triggers", []) or []:
-            norm = normalize(trig)
-            if norm:
-                S.master_index.append((idx, norm, set(tokenize(trig))))
-
-    print(f"[INDEX] overlay={len(S.overlay_blocks)} master={len(S.master_blocks)}")
+    return score
 
 
-build_index()
-
-
-# ============================================================
-# MATCHING
-# ============================================================
-
-def lexical_match_in(index_list, blocks, question, min_score=0.0):
+def find_best_block(question: str, blocks: List[Dict]) -> Tuple[Dict, float]:
     q_norm = normalize(question)
     q_tokens = set(tokenize(question))
 
-    matches = []
+    scored = []
 
-    for idx, trig_norm, trig_tokens in index_list:
-        score = 0.0
+    for block in blocks:
+        local_score = 0.0
+        for trig in block.get("triggers", []):
+            local_score += score_trigger(trig, q_tokens, q_norm)
 
-        # substring
-        if trig_norm in q_norm:
-            score += len(trig_norm) / max(10, len(q_norm))
+        if local_score > 0:
+            scored.append((local_score, block))
 
-        # token overlap
-        inter = q_tokens.intersection(trig_tokens)
-        if inter:
-            score += len(inter) / len(trig_tokens)
+    if not scored:
+        return None, 0.0
 
-        if score >= min_score:
-            matches.append((score, blocks[idx]))
-
-    matches.sort(key=lambda x: x[0], reverse=True)
-
-    if matches:
-        return [b for s, b in matches], matches[0][0]
-
-    return [], 0.0
-
-
-def ai_rerank(question, candidates):
-    if not candidates or len(candidates) == 1:
-        return candidates[0] if candidates else None
-
-    try:
-        desc = "\n".join(
-            f"- {b.get('id')} | {', '.join(b.get('triggers', []))}"
-            for b in candidates
-        )
-
-        prompt = (
-            f"Domanda: {question}\n"
-            f"Blocchi candidati:\n{desc}\n\n"
-            f"Scegli SOLO l'ID più pertinente."
-        )
-
-        res = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=10,
-            temperature=0.0,
-        )
-
-        chosen = res.choices[0].message.content.strip()
-
-        for b in candidates:
-            if b.get("id") == chosen:
-                return b
-
-    except Exception as e:
-        print("[AI RERANK ERROR]", e)
-
-    return candidates[0]
-
-
-# ============================================================
-# CORE – FIND BEST BLOCK
-# ============================================================
-
-def find_best_block(question: str):
-
-    # 1️⃣ OVERLAY – PERMISSIVO
-    overlay_candidates, overlay_score = lexical_match_in(
-        S.overlay_index,
-        S.overlay_blocks,
-        question,
-        min_score=0.0   # SUPER PERMISSIVO
-    )
-
-    if overlay_candidates:
-        return ai_rerank(question, overlay_candidates), overlay_score
-
-    # 2️⃣ MASTER – STANDARD
-    master_candidates, master_score = lexical_match_in(
-        S.master_index,
-        S.master_blocks,
-        question,
-        min_score=0.05  # più selettivo
-    )
-
-    if master_candidates:
-        return ai_rerank(question, master_candidates), master_score
-
-    return None, 0.0
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored[0][1], scored[0][0]
 
 
 # ============================================================
 # ENDPOINTS
 # ============================================================
-
-@app.get("/health")
-def health():
-    return {
-        "ok": True,
-        "overlay_blocks": len(S.overlay_blocks),
-        "master_blocks": len(S.master_blocks),
-        "overlay_index": len(S.overlay_index),
-        "master_index": len(S.master_index),
-    }
-
 
 @app.post("/api/ask", response_model=AskResponse)
 def api_ask(req: AskRequest):
@@ -295,11 +170,9 @@ def api_ask(req: AskRequest):
     if req.mode.lower() != "gold":
         raise HTTPException(400, "Modalità non supportata.")
 
-    q = req.question.strip()
-    if not q:
-        raise HTTPException(400, "Domanda vuota.")
+    blocks = load_master()
 
-    block, score = find_best_block(q)
+    block, score = find_best_block(req.question, blocks)
 
     if block is None:
         return AskResponse(
@@ -315,7 +188,6 @@ def api_ask(req: AskRequest):
     answer = (
         block.get(f"answer_{req.lang}")
         or block.get("answer_it")
-        or block.get("answer")
         or FALLBACK_MESSAGE
     )
 
@@ -323,18 +195,17 @@ def api_ask(req: AskRequest):
         ok=True,
         answer=answer,
         family=block.get("family", "CTF_SYSTEM"),
-        id=block.get("id", "UNKNOWN-ID"),
+        id=block.get("id", "UNKNOWN"),
         mode=block.get("mode", "gold"),
         lang=req.lang,
         score=float(score)
     )
 
 
-@app.post("/api/reload")
-def reload_kb():
-    build_index()
+@app.get("/health")
+def health():
+    blocks = load_master()
     return {
         "ok": True,
-        "overlay_blocks": len(S.overlay_blocks),
-        "master_blocks": len(S.master_blocks),
+        "master_blocks": len(blocks),
     }
