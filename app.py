@@ -1,175 +1,217 @@
 import os
 import json
 import re
-import asyncio
+import traceback
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+
 from pydantic import BaseModel
+from openai import OpenAI
 
-# ---------------------------------------------------------
-# OPENAI CLIENT - VERSIONE ASYNC (necessaria per Render)
-# ---------------------------------------------------------
-import openai
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# ====================================================
+#   OPENAI CLIENT  (FIX DEFINITIVO v14.5)
+# ====================================================
 
-async def ask_external_gpt(question: str) -> str:
-    """
-    Versione ASINCRONA della chiamata GPT.
-    Se fallisce → ritorna None.
-    """
-    try:
-        response = await openai.ChatCompletion.acreate(
-            model="gpt-4.1-mini",
-            messages=[
-                {"role": "system", "content": 
-                 "Rispondi SOLO su argomenti di Tecnaria S.p.A. "
-                 "CTF, P560, lamiera grecata, card, limiti di posa, ETA, prove Tecnaria. "
-                 "Se la domanda non riguarda Tecnaria, rispondi SOLO: 'Fuori dominio'."},
-                {"role": "user", "content": question}
-            ],
-            max_tokens=500,
-            temperature=0.2
-        )
-        return response.choices[0].message["content"].strip()
-    except Exception:
-        return None
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+if not os.environ.get("OPENAI_API_KEY"):
+    print("⚠️  ATTENZIONE: OPENAI_API_KEY NON TROVATA NELL'AMBIENTE RENDER!")
+    print("    Il motore GPT non funzionerà finché non la inserisci correttamente.")
 
 
-# ---------------------------------------------------------
-# PATH E CARICAMENTO KB JSON
-# ---------------------------------------------------------
+# ====================================================
+#  PATHS
+# ====================================================
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 DATA_DIR = os.path.join(STATIC_DIR, "data")
 MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
 
-app = FastAPI()
+# ====================================================
+#  FASTAPI
+# ====================================================
 
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+if os.path.isdir(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
-# ---------------------------------------------------------
-# LOAD KNOWLEDGE BASE
-# ---------------------------------------------------------
-if os.path.exists(MASTER_PATH):
-    with open(MASTER_PATH, "r", encoding="utf-8") as f:
-        MASTER_KB = json.load(f)
-else:
-    MASTER_KB = []
+# ====================================================
+# Load JSON Knowledge Base
+# ====================================================
+
+def load_master_blocks():
+    try:
+        with open(MASTER_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("blocks", [])
+    except Exception as e:
+        print("ERRORE CARICANDO MASTER JSON:", e)
+        return []
+
+MASTER_BLOCKS = load_master_blocks()
+print(f"[KB LOADED] master={len(MASTER_BLOCKS)}")
 
 
-# ---------------------------------------------------------
-# MODEL PER /api/ask
-# ---------------------------------------------------------
+# ====================================================
+# Input model
+# ====================================================
+
 class AskRequest(BaseModel):
     question: str
 
 
-# ---------------------------------------------------------
-# MATCHER INTERNO JSON
-# ---------------------------------------------------------
-def match_json(question: str):
-    """
-    Ritorna il miglior blocco dal JSON, oppure None.
-    Matching semantico semplificato.
-    """
+# ====================================================
+# Matching dei blocchi (logica esistente, migliorata)
+# ====================================================
+
+def score_block(question: str, block: dict) -> float:
     q = question.lower()
-    best_score = 0
-    best_block = None
 
-    for b in MASTER_KB:
-        score = 0
+    score = 0.0
 
-        # match nei trigger
-        for t in b.get("triggers", []):
-            if t.lower() in q:
-                score += 3
+    # 1. Triggers
+    for trig in block.get("triggers", []):
+        if trig.lower() in q:
+            score += 4
 
-        # match nel testo domanda
-        if b.get("question_it") and b["question_it"].lower() in q:
-            score += 2
+    # 2. Keywords
+    for kw in block.get("tags", []):
+        if kw.lower() in q:
+            score += 1.2
 
-        if score > best_score:
-            best_score = score
-            best_block = b
+    # 3. Intent
+    intent = block.get("intent", "").lower()
+    if intent and intent in q:
+        score += 2
 
-    return best_block
-
-
-# ---------------------------------------------------------
-# JUDGE: sceglie tra GPT e JSON
-# ---------------------------------------------------------
-async def judge_answer(question, gpt_answer, json_block):
-    """
-    Regole:
-    1) Se GPT ha risposto 'Fuori dominio' → usa JSON
-    2) Se GPT è None → usa JSON
-    3) Se JSON esiste ed è molto coerente → preferisci JSON
-    4) Default → GPT
-    """
-
-    # Caso 1: GPT ha risposto fuori dominio
-    if gpt_answer is None or "fuori dominio" in gpt_answer.lower():
-        if json_block:
-            return json_block["answer_it"]
-        return "Non trovo risposta né in GPT né nel database Tecnaria."
-
-    # Caso 2: JSON molto forte
-    if json_block:
-        # Heuristic per capire se JSON è molto coerente
-        if any(t.lower() in question.lower() for t in json_block.get("triggers", [])):
-            # JSON vince
-            return json_block["answer_it"]
-
-    # Caso 3: GPT vince
-    return gpt_answer
+    return score
 
 
-# ---------------------------------------------------------
-# API: PAGINA PRINCIPALE (INTERFACCIA)
-# ---------------------------------------------------------
+def get_best_local_answer(question: str):
+    scored = []
+    for b in MASTER_BLOCKS:
+        scored.append((b, score_block(question, b)))
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    if scored[0][1] < 1.5:
+        return None
+
+    return scored[0][0]
+
+
+# ====================================================
+#  MOTORE GPT: ricerca + risposta
+# ====================================================
+
+async def ask_gpt(question: str):
+    try:
+        prompt = (
+            f"Rispondi SOLO sulla base dei dati TECNARIA (CTF, P560, lamiera grecata). "
+            f"Se la domanda non riguarda Tecnaria o va fuori tema, rispondi: 'Fuori campo Tecnaria'.\n\n"
+            f"Domanda: {question}\nRisposta:"
+        )
+
+        completion = client.responses.create(
+            model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+            input=prompt
+        )
+
+        answer = completion.output_text
+        return answer
+
+    except Exception as e:
+        print("🔥 ERRORE GPT:", e)
+        traceback.print_exc()
+        return None
+
+
+# ====================================================
+#  ROUTES
+# ====================================================
+
 @app.get("/")
-async def serve_ui():
+def root():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
-# ---------------------------------------------------------
-# API PRINCIPALE /api/ask (motore 14.4)
-# ---------------------------------------------------------
 @app.post("/api/ask")
-async def ask_api(req: AskRequest):
-    q = req.question.strip()
+async def ask_api(req: AskRequest, request: Request):
+    question = req.question.strip()
 
-    # 1) Avvia in parallelo GPT + JSON
-    gpt_task = asyncio.create_task(ask_external_gpt(q))
-    json_block = match_json(q)
+    try:
+        # ===============================
+        # 1) LOCAL GOLD MATCH
+        # ===============================
 
-    # 2) Attendi GPT
-    gpt_answer = await gpt_task
+        local_block = get_best_local_answer(question)
 
-    # 3) Scegli il migliore
-    final_answer = await judge_answer(q, gpt_answer, json_block)
+        # ===============================
+        # 2) GPT ANSWER (motore web)
+        # ===============================
 
-    return {
-        "answer": final_answer,
-        "mode": "v14.4",
-        "used_gpt": gpt_answer,
-        "used_json": json_block
-    }
+        gpt_answer = await ask_gpt(question)
 
+        # ===============================
+        # 3) JUDGE MODE (scegli la migliore)
+        # ===============================
 
-# ---------------------------------------------------------
-# HEALTH CHECK
-# ---------------------------------------------------------
-@app.get("/health")
-async def health():
-    return {"status": "OK", "version": "14.4", "master_blocks": len(MASTER_KB)}
+        judged = None
+
+        judge_prompt = f"""
+Sei il motore JUDGE. Devi valutare due risposte alla stessa domanda relativa a Tecnaria S.p.A.
+
+DOMANDA:
+{question}
+
+RISPOSTA A (local JSON):
+{local_block.get("answer_it") if local_block else "NESSUNA"}
+
+RISPOSTA B (GPT):
+{gpt_answer if gpt_answer else "NESSUNA"}
+
+ISTRUZIONE:
+Scegli la risposta più completa, fedele alla documentazione Tecnaria (CTF, P560, lamiera), tecnica, ingegneristica, e più utile al cliente.  
+Rispondi SOLO con la versione finale, senza spiegazioni.
+"""
+
+        judge_completion = client.responses.create(
+            model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+            input=judge_prompt
+        )
+
+        judged = judge_completion.output_text
+
+        if not judged or judged.strip() == "":
+            judged = gpt_answer or (local_block["answer_it"] if local_block else "")
+
+        # ===============================
+        # 4) OUTPUT JSON
+        # ===============================
+
+        return {
+            "final_answer": judged,
+            "local_used": local_block is not None,
+            "gpt_used": gpt_answer is not None,
+            "local_score": score_block(question, local_block) if local_block else 0,
+            "version": "14.5"
+        }
+
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(
+            {"error": "Errore motore GOLD 14.5", "details": str(e)},
+            status_code=500
+        )
