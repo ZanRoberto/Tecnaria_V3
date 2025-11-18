@@ -1,215 +1,448 @@
-import os
-import json
-import re
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
-from openai import OpenAI
-from fastapi.staticfiles import StaticFiles
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Assistente Tecnaria • Modalità GOLD</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #050b16;
+      --bg-card: #0f172a;
+      --accent: #f97316;
+      --accent-soft: #fed7aa20;
+      --text: #e5e7eb;
+      --text-soft: #9ca3af;
+      --danger: #f97373;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #020617, #020617 40%, #000);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+    }
+    .app-shell {
+      display: flex;
+      width: 100%;
+      height: 100vh;
+      max-width: 1400px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, #020617 0%, #020617 60%, #030712 100%);
+      color: var(--text);
+    }
+    .sidebar {
+      width: 260px;
+      padding: 24px 18px;
+      border-right: 1px solid #1e293b;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      background: radial-gradient(circle at top left, #020617, #020617 45%, #020617 100%);
+    }
+    .logo-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #1f2937;
+    }
+    .logo {
+      width: 120px;
+      height: 120px;
+      border-radius: 24px;
+      background: #111827;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 1px #f97316, 0 16px 40px rgba(0,0,0,0.75);
+      position: relative;
+      overflow: hidden;
+    }
+    .logo::before {
+      content: "T";
+      font-size: 72px;
+      font-weight: 900;
+      color: #f97316;
+      text-shadow: 0 0 40px rgba(249, 115, 22, 0.7);
+    }
+    .logo-text-main {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #f9fafb;
+    }
+    .logo-text-sub {
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-soft);
+    }
+    .sidebar-section-title {
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-soft);
+      margin-bottom: 8px;
+    }
+    .quick-buttons { display: flex; flex-direction: column; gap: 8px; }
+    .quick-btn {
+      width: 100%;
+      text-align: left;
+      padding: 10px 10px;
+      font-size: 13px;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease-out;
+    }
+    .quick-btn span { font-size: 16px; }
+    .quick-btn:hover {
+      border-color: #f97316;
+      background: #0b1120;
+      box-shadow: 0 0 0 1px #f9731620, 0 0 40px rgba(249,115,22,0.15);
+      transform: translateY(-1px);
+    }
+    .hint-box {
+      margin-top: auto;
+      padding: 12px 12px;
+      border-radius: 18px;
+      border: 1px solid #1e293b;
+      background: radial-gradient(circle at top, rgba(249,115,22,0.12), #020617 55%);
+      font-size: 11px;
+      color: var(--text-soft);
+      line-height: 1.45;
+    }
+    .hint-box strong { color: #f97316; font-weight: 600; }
+    .main-panel {
+      flex: 1;
+      padding: 16px 24px 20px 24px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #1e293b;
+      margin-bottom: 10px;
+    }
+    .panel-title { display: flex; flex-direction: column; gap: 3px; }
+    .panel-title-main { font-size: 18px; font-weight: 600; color: #f9fafb; }
+    .panel-title-sub { font-size: 12px; color: var(--text-soft); }
+    .status-pill {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #022c22;
+      color: #6ee7b7;
+      border: 1px solid #064e3b;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34,197,94,0.2);
+    }
+    .chat-window {
+      flex: 1;
+      margin-top: 10px;
+      border-radius: 24px;
+      border: 1px solid #1f2937;
+      background: radial-gradient(circle at top left, #020617, #020617 55%, #020617 100%);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.75);
+    }
+    .chat-body {
+      flex: 1;
+      padding: 18px 18px 12px 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .msg {
+      max-width: 78%;
+      padding: 10px 12px;
+      border-radius: 18px;
+      font-size: 14px;
+      line-height: 1.5;
+      position: relative;
+      border: 1px solid transparent;
+      box-shadow: 0 12px 35px rgba(0,0,0,0.55);
+    }
+    .msg.user {
+      margin-left: auto;
+      background: radial-gradient(circle at top, #f97316, #ea580c);
+      color: #111827;
+      border-color: rgba(255,255,255,0.08);
+    }
+    .msg.bot {
+      margin-right: auto;
+      background: linear-gradient(145deg, #020617, #020617);
+      border-color: #1f2937;
+      color: var(--text);
+    }
+    .msg-meta {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--text-soft);
+      display: flex;
+      gap: 8px;
+    }
+    .msg-meta span {
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      background: #020617;
+    }
+    .msg-meta span.mode-gold {
+      border-color: #f97316;
+      color: #fed7aa;
+      background: #0b1120;
+    }
+    .chat-input {
+      padding: 10px 14px 14px 14px;
+      border-top: 1px solid #1f2937;
+      background: linear-gradient(to top, #020617, #020617);
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .input-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      box-shadow: inset 0 0 0 1px #020617;
+      transition: all 0.15s ease-out;
+    }
+    .input-row input:focus {
+      border-color: #f97316;
+      box-shadow: 0 0 0 1px rgba(249,115,22,0.3), 0 0 32px rgba(249,115,22,0.25);
+      background: #020617;
+    }
+    .input-row button {
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      color: #111827;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 12px 30px rgba(249,115,22,0.45);
+      transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
+    }
+    .input-row button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 45px rgba(249,115,22,0.75);
+    }
+    .input-row button:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 24px rgba(249,115,22,0.45);
+    }
+    .input-row button span { font-size: 16px; }
+    .small-hint {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-soft);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .small-hint span { opacity: 0.9; }
+    @media (max-width: 960px) {
+      .app-shell { flex-direction: column; }
+      .sidebar {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      .chat-window { margin-top: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar">
+      <div class="logo-card">
+        <div class="logo"></div>
+        <div class="logo-text-main">TECNARIA</div>
+        <div class="logo-text-sub">Assistenza tecnica GOLD</div>
+      </div>
+      <div>
+        <div class="sidebar-section-title">Scorciatoie smart</div>
+        <div class="quick-buttons">
+          <button class="quick-btn" onclick="quick('Controllo colpo P560')">
+            <span>✓</span> Controllo colpo P560
+          </button>
+          <button class="quick-btn" onclick="quick('Lamiera / card dubbia')">
+            <span>✓</span> Lamiera / card dubbia
+          </button>
+          <button class="quick-btn" onclick="quick('Divieti di posa CTF')">
+            <span>✓</span> Divieti di posa CTF
+          </button>
+        </div>
+      </div>
+      <div class="hint-box">
+        <strong>Modalità GOLD</strong><br />
+        Risposte tecnico–ingegneristiche basate sui dati Tecnaria (ETA,
+        documentazione ufficiale, prove di laboratorio) con controlli logici
+        per evitare usi fuori campo.
+      </div>
+    </div>
+    <div class="main-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="panel-title-main">Assistente Tecnaria • Modalità GOLD</div>
+          <div class="panel-title-sub">
+            CTF su lamiera grecata + P560 • Controllo colpi, card e limiti di posa
+          </div>
+        </div>
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          Motore GOLD attivo • v14.x
+        </div>
+      </div>
+      <div class="chat-window">
+        <div id="chat" class="chat-body">
+          <div class="msg bot">
+            Benvenuto nell’assistente tecnico GOLD Tecnaria.<br /><br />
+            Puoi chiedermi:
+            <ul>
+              <li>come verificare se un colpo P560 è valido;</li>
+              <li>cosa fare con card sospette o lamiere irregolari;</li>
+              <li>in quali casi i CTF su lamiera non sono ammessi.</li>
+            </ul>
+            <div class="msg-meta">
+              <span>Famiglia: CTF_SYSTEM</span>
+              <span class="mode-gold">Mode: GOLD</span>
+              <span>Lang: it</span>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input">
+          <div class="input-row">
+            <input
+              id="q"
+              type="text"
+              autocomplete="off"
+              placeholder="Scrivi la tua domanda su CTF / P560 / lamiera…"
+              onkeydown="if (event.key === 'Enter') send()"
+            />
+            <button onclick="send()">
+              Invia
+              <span>➜</span>
+            </button>
+          </div>
+          <div class="small-hint">
+            <span>
+              Suggerimenti: “Come verifico un colpo P560?”, “Lamiera con vernice
+              spessa, la card è affidabile?”.
+            </span>
+            <span>Risposte basate su dati Tecnaria.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-client = OpenAI()
+  <script>
+    function addMessage(text, who, meta) {
+      const chat = document.getElementById("chat");
+      const box = document.createElement("div");
+      box.className = "msg " + who;
+      box.innerText = text;
 
-# ============================================================
-# PATH / FILE
-# ============================================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+      if (who === "bot" && meta) {
+        const metaDiv = document.createElement("div");
+        metaDiv.className = "msg-meta";
 
-# Static folder detection (robusta)
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-if not os.path.exists(STATIC_DIR):
-    STATIC_DIR = "static"
+        if (meta.id) {
+          const s = document.createElement("span");
+          s.textContent = "ID: " + meta.id;
+          metaDiv.appendChild(s);
+        }
+        if (meta.family) {
+          const s = document.createElement("span");
+          s.textContent = "Famiglia: " + meta.family;
+          metaDiv.appendChild(s);
+        }
+        if (meta.mode) {
+          const s = document.createElement("span");
+          s.textContent = "Mode: " + meta.mode;
+          s.classList.add("mode-gold");
+          metaDiv.appendChild(s);
+        }
+        if (meta.lang) {
+          const s = document.createElement("span");
+          s.textContent = "Lang: " + meta.lang;
+          metaDiv.appendChild(s);
+        }
 
-DATA_DIR = os.path.join(STATIC_DIR, "data")
-MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
+        box.appendChild(metaDiv);
+      }
 
-# ============================================================
-# FASTAPI SETUP
-# ============================================================
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Serve static files ALWAYS
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
-
-# ============================================================
-# LOAD MASTER
-# ============================================================
-def load_master():
-    with open(MASTER_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return data.get("blocks", [])
-
-MASTER_BLOCKS = load_master()
-
-# ============================================================
-# MODEL REQUEST
-# ============================================================
-class AskRequest(BaseModel):
-    question: str
-    lang: str = "it"
-
-# ============================================================
-# NORMALIZATION
-# ============================================================
-def normalize(text: str) -> str:
-    text = text.lower()
-    text = re.sub(r"[^a-z0-9àèéìòùç_\- ]+", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
-
-# ============================================================
-# INTERNAL MATCHING
-# ============================================================
-def lexical_match_score(q_norm, block):
-    score = 0
-    for trig in block.get("triggers", []):
-        trig_norm = normalize(trig)
-        if trig_norm in q_norm:
-            score += 3
-        elif any(t in q_norm for t in trig_norm.split()):
-            score += 1
-    return score
-
-def pick_internal_answer(question: str):
-    q_norm = normalize(question)
-    candidates = []
-    for blk in MASTER_BLOCKS:
-        score = lexical_match_score(q_norm, blk)
-        if score > 0:
-            candidates.append((score, blk))
-    if not candidates:
-        return None
-    candidates.sort(key=lambda x: x[0], reverse=True)
-    return candidates[0][1]
-
-
-# ============================================================
-# EXTERNAL GPT
-# ============================================================
-def ask_external_gpt(question: str):
-    prompt = f"""
-Rispondi come assistente tecnico Tecnaria.
-Domanda: {question}
-Risposta:"""
-
-    try:
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-        )
-        return resp.choices[0].message.content.strip()
-    except:
-        return None
-
-
-# ============================================================
-# JUDGE
-# ============================================================
-def choose_best_answer(user_question: str, internal: str, external: str):
-    if internal and not external:
-        return internal, "internal"
-    if external and not internal:
-        return external, "external"
-    if not internal and not external:
-        return None, None
-
-    judge_prompt = f"""
-Sei un giudice tecnico Tecnaria.
-Scegli quale risposta è tecnicamente più corretta.
-
-DOMANDA: {user_question}
-
-RISPOSTA A (interna):
-{internal}
-
-RISPOSTA B (esterna):
-{external}
-
-Rispondi SOLO con 'A' o 'B'.
-"""
-
-    try:
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": judge_prompt}],
-            temperature=0,
-        )
-        judge = resp.choices[0].message.content.strip()
-
-        if judge == "A":
-            return internal, "internal"
-        else:
-            return external, "external"
-    except:
-        return internal, "internal"
-
-# ============================================================
-# AUTO SAVE
-# ============================================================
-def save_new_block(question: str, answer: str):
-    new_block = {
-        "id": f"AUTO-{len(MASTER_BLOCKS)+1:05d}",
-        "family": "AUTO",
-        "mode": "gold",
-        "lang": "it",
-        "intent": "auto_generated",
-        "tags": ["auto", "external", "generated"],
-        "triggers": [question],
-        "question_it": question,
-        "answer_it": answer,
+      chat.appendChild(box);
+      chat.scrollTop = chat.scrollHeight;
     }
 
-    MASTER_BLOCKS.append(new_block)
+    function quick(text) {
+      document.getElementById("q").value = text;
+      send();
+    }
 
-    with open(MASTER_PATH, "w", encoding="utf-8") as f:
-        json.dump({"blocks": MASTER_BLOCKS}, f, indent=2, ensure_ascii=False)
+    async function send() {
+      const q = document.getElementById("q").value.trim();
+      if (!q) return;
 
+      addMessage(q, "user");
+      document.getElementById("q").value = "";
 
-# ============================================================
-# ROUTES
-# ============================================================
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q, lang: "it" })
+      });
 
-@app.get("/")
-def home():
-    """FORZA SEMPRE IL RENDERING DELL’INTERFACCIA."""
-    index_path = os.path.join(STATIC_DIR, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"error": f"index.html non trovato in {index_path}"}
+      const data = await res.json();
 
-
-@app.get("/health")
-def health():
-    return {"status": "ok", "blocks": len(MASTER_BLOCKS)}
-
-
-@app.post("/api/ask")
-def api_ask(req: AskRequest):
-    user_q = req.question.strip()
-
-    # 1) internal
-    internal_block = pick_internal_answer(user_q)
-    internal_answer = internal_block["answer_it"] if internal_block else None
-
-    # 2) external
-    external_answer = ask_external_gpt(user_q)
-
-    # 3) judge
-    final, origin = choose_best_answer(user_q, internal_answer, external_answer)
-
-    if final is None:
-        return {"answer": "Nessuna risposta trovata.", "origin": "none"}
-
-    # 4) auto-add blocks
-    if origin == "external":
-        save_new_block(user_q, final)
-
-    return {"answer": final, "origin": origin}
+      addMessage(
+        data.answer || "Nessuna risposta.",
+        "bot",
+        { id: data.id, family: data.family, mode: data.mode, lang: data.lang }
+      );
+    }
+  </script>
+</body>
+</html>
