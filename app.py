@@ -1,219 +1,175 @@
 import os
 import json
 import re
+import asyncio
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from openai import OpenAI
 
-# ============================================================
-# CONFIG
-# ============================================================
+# ---------------------------------------------------------
+# OPENAI CLIENT - VERSIONE ASYNC (necessaria per Render)
+# ---------------------------------------------------------
+import openai
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-DATA_DIR = os.path.join(STATIC_DIR, "data")
-
-MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
-OVERLAY_PATH = os.path.join(DATA_DIR, "overlay_dynamic.json")
-
-# ============================================================
-# LOAD KB
-# ============================================================
-
-def load_json(path):
-    if not os.path.exists(path):
-        return {"blocks": []}
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-master_kb = load_json(MASTER_PATH)
-overlay_kb = load_json(OVERLAY_PATH)
-
-
-# ============================================================
-# FAST FILTERING FOR MATCHING
-# ============================================================
-
-def normalize_text(t: str) -> str:
-    t = t.lower()
-    t = re.sub(r"[^a-z0-9àèéìòùç\s]", " ", t)
-    return re.sub(r"\s+", " ", t).strip()
-
-
-def match_blocks(user_q: str, blocks):
-    nq = normalize_text(user_q)
-    best = []
-
-    for b in blocks:
-        score = 0
-
-        # Trigger match
-        for trig in b.get("triggers", []):
-            if normalize_text(trig) in nq:
-                score += 4
-
-        # Keyword match
-        for w in nq.split():
-            if w in normalize_text(b.get("question_it", "")):
-                score += 1
-
-        if score > 0:
-            best.append((score, b))
-
-    best.sort(key=lambda x: x[0], reverse=True)
-    return [b for _, b in best[:3]]
-
-
-# ============================================================
-# AI CALL
-# ============================================================
-
-def ask_chatgpt(question: str) -> str:
+async def ask_external_gpt(question: str) -> str:
+    """
+    Versione ASINCRONA della chiamata GPT.
+    Se fallisce → ritorna None.
+    """
     try:
-        r = client.chat.completions.create(
-            model="gpt-5.1",
+        response = await openai.ChatCompletion.acreate(
+            model="gpt-4.1-mini",
             messages=[
-                {"role": "system", "content": (
-                    "Sei l'ingegnere capo Tecnaria Spa (Bassano). "
-                    "Rispondi solo su CTF, P560, lamiera grecata, CTL, VCEM, CTCEM, Diapason. "
-                    "Tono GOLD tecnico aziendale. "
-                    "Vietato inventare prodotti non Tecnaria. "
-                    "Rispondi in italiano."
-                )},
+                {"role": "system", "content": 
+                 "Rispondi SOLO su argomenti di Tecnaria S.p.A. "
+                 "CTF, P560, lamiera grecata, card, limiti di posa, ETA, prove Tecnaria. "
+                 "Se la domanda non riguarda Tecnaria, rispondi SOLO: 'Fuori dominio'."},
                 {"role": "user", "content": question}
             ],
-            max_tokens=800,
+            max_tokens=500,
             temperature=0.2
         )
-        return r.choices[0].message.content.strip()
-    except:
+        return response.choices[0].message["content"].strip()
+    except Exception:
         return None
 
 
-# ============================================================
-# JUDGE INTERNO
-# ============================================================
-
-def judge_answer(question, ai_answer, kb_answers):
-    """
-    Decide la migliore risposta:
-    - se AI è ottima → vince AI
-    - se JSON è più aderente → vince JSON
-    - se AI è fuori contesto → JSON
-    """
-
-    try:
-        judge = client.chat.completions.create(
-            model="gpt-5.1",
-            messages=[
-                {"role": "system", "content": (
-                    "Devi giudicare quale risposta è tecnicamente più corretta "
-                    "e 100% conforme alla documentazione Tecnaria Spa. "
-                    "Rispondi SOLO con: AI / KB."
-                )},
-                {"role": "user", "content": f"Domanda: {question}"},
-                {"role": "assistant", "content": f"Risposta AI: {ai_answer}"},
-                {"role": "assistant", "content": f"Risposte KB: {json.dumps(kb_answers, ensure_ascii=False)}"},
-            ],
-            max_tokens=5,
-            temperature=0
-        )
-
-        result = judge.choices[0].message.content.strip().upper()
-        if "AI" in result:
-            return "AI"
-        return "KB"
-
-    except:
-        return "KB"
-
-
-# ============================================================
-# SAVE IMPROVED ANSWERS TO OVERLAY
-# ============================================================
-
-def save_overlay(question, answer):
-    overlay_kb["blocks"].append({
-        "id": f"OVER-{len(overlay_kb['blocks'])+1}",
-        "question_it": question,
-        "answer_it": answer,
-        "mode": "gold",
-        "family": "AUTO",
-        "triggers": [question.lower()],
-        "lang": "it"
-    })
-
-    with open(OVERLAY_PATH, "w", encoding="utf-8") as f:
-        json.dump(overlay_kb, f, ensure_ascii=False, indent=2)
-
-
-# ============================================================
-# MODELLI FASTAPI
-# ============================================================
-
-class AskModel(BaseModel):
-    question: str
-
-
-# ============================================================
-# FASTAPI SETUP
-# ============================================================
+# ---------------------------------------------------------
+# PATH E CARICAMENTO KB JSON
+# ---------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+DATA_DIR = os.path.join(STATIC_DIR, "data")
+MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
+# ---------------------------------------------------------
+# LOAD KNOWLEDGE BASE
+# ---------------------------------------------------------
+if os.path.exists(MASTER_PATH):
+    with open(MASTER_PATH, "r", encoding="utf-8") as f:
+        MASTER_KB = json.load(f)
+else:
+    MASTER_KB = []
+
+
+# ---------------------------------------------------------
+# MODEL PER /api/ask
+# ---------------------------------------------------------
+class AskRequest(BaseModel):
+    question: str
+
+
+# ---------------------------------------------------------
+# MATCHER INTERNO JSON
+# ---------------------------------------------------------
+def match_json(question: str):
+    """
+    Ritorna il miglior blocco dal JSON, oppure None.
+    Matching semantico semplificato.
+    """
+    q = question.lower()
+    best_score = 0
+    best_block = None
+
+    for b in MASTER_KB:
+        score = 0
+
+        # match nei trigger
+        for t in b.get("triggers", []):
+            if t.lower() in q:
+                score += 3
+
+        # match nel testo domanda
+        if b.get("question_it") and b["question_it"].lower() in q:
+            score += 2
+
+        if score > best_score:
+            best_score = score
+            best_block = b
+
+    return best_block
+
+
+# ---------------------------------------------------------
+# JUDGE: sceglie tra GPT e JSON
+# ---------------------------------------------------------
+async def judge_answer(question, gpt_answer, json_block):
+    """
+    Regole:
+    1) Se GPT ha risposto 'Fuori dominio' → usa JSON
+    2) Se GPT è None → usa JSON
+    3) Se JSON esiste ed è molto coerente → preferisci JSON
+    4) Default → GPT
+    """
+
+    # Caso 1: GPT ha risposto fuori dominio
+    if gpt_answer is None or "fuori dominio" in gpt_answer.lower():
+        if json_block:
+            return json_block["answer_it"]
+        return "Non trovo risposta né in GPT né nel database Tecnaria."
+
+    # Caso 2: JSON molto forte
+    if json_block:
+        # Heuristic per capire se JSON è molto coerente
+        if any(t.lower() in question.lower() for t in json_block.get("triggers", [])):
+            # JSON vince
+            return json_block["answer_it"]
+
+    # Caso 3: GPT vince
+    return gpt_answer
+
+
+# ---------------------------------------------------------
+# API: PAGINA PRINCIPALE (INTERFACCIA)
+# ---------------------------------------------------------
 @app.get("/")
-def root():
+async def serve_ui():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
-# ============================================================
-# ENGINE
-# ============================================================
-
+# ---------------------------------------------------------
+# API PRINCIPALE /api/ask (motore 14.4)
+# ---------------------------------------------------------
 @app.post("/api/ask")
-def api_ask(data: AskModel):
+async def ask_api(req: AskRequest):
+    q = req.question.strip()
 
-    q = data.question.strip()
+    # 1) Avvia in parallelo GPT + JSON
+    gpt_task = asyncio.create_task(ask_external_gpt(q))
+    json_block = match_json(q)
 
-    # 1) Prova AI
-    ai_answer = ask_chatgpt(q)
+    # 2) Attendi GPT
+    gpt_answer = await gpt_task
 
-    # 2) Cerca nel KB
-    kb_candidates = match_blocks(q, master_kb["blocks"] + overlay_kb["blocks"])
-    kb_best = kb_candidates[0]["answer_it"] if kb_candidates else None
+    # 3) Scegli il migliore
+    final_answer = await judge_answer(q, gpt_answer, json_block)
 
-    # 3) Fail-safe
-    if ai_answer is None and kb_best:
-        return {"answer": kb_best, "source": "KB_FAILSAFE"}
-
-    if ai_answer is None and kb_best is None:
-        return {"answer": "Non trovo nulla né in AI né in KB. Serve chiarimento.", "source": "FAILSAFE_EMPTY"}
-
-    # 4) Judge interno
-    if kb_best:
-        chosen = judge_answer(q, ai_answer, kb_candidates)
-        if chosen == "AI":
-            save_overlay(q, ai_answer)
-            return {"answer": ai_answer, "source": "AI"}
-        else:
-            return {"answer": kb_best, "source": "KB"}
-    else:
-        save_overlay(q, ai_answer)
-        return {"answer": ai_answer, "source": "AI_NO_KB"}
-
-
-@app.get("/health")
-def health():
     return {
-        "status": "Tecnaria Bot v14.3 MISTO FAIL-SAFE attivo",
-        "master_blocks": len(master_kb["blocks"]),
-        "overlay_blocks": len(overlay_kb["blocks"])
+        "answer": final_answer,
+        "mode": "v14.4",
+        "used_gpt": gpt_answer,
+        "used_json": json_block
     }
+
+
+# ---------------------------------------------------------
+# HEALTH CHECK
+# ---------------------------------------------------------
+@app.get("/health")
+async def health():
+    return {"status": "OK", "version": "14.4", "master_blocks": len(MASTER_KB)}
