@@ -15,35 +15,28 @@ from openai import OpenAI
 client = OpenAI()
 
 # ============================================================
-# CONFIG PATH
+#  PATH / FILE
 # ============================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "static", "data")
+
 STATIC_DIR = os.path.join(BASE_DIR, "static")
+if not os.path.exists(STATIC_DIR):
+    STATIC_DIR = "static"
 
-KB_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
-
-# Folder for external/new candidates
-NEW_GOLD_DIR = os.path.join(DATA_DIR, "new_gold_candidates")
-os.makedirs(NEW_GOLD_DIR, exist_ok=True)
-
-NEW_GOLD_LOG = os.path.join(DATA_DIR, "new_gold_candidates.jsonl")
-
-FALLBACK_MESSAGE = (
-    "Per questa domanda non trovo una risposta GOLD nei dati. "
-    "Contatta l'ufficio tecnico Tecnaria per una verifica specifica."
-)
+DATA_DIR = os.path.join(STATIC_DIR, "data")
+MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
+CANDIDATES_PATH = os.path.join(DATA_DIR, "candidates.jsonl")
 
 # ============================================================
-# FastAPI setup
+# FASTAPI SETUP
 # ============================================================
 
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -51,13 +44,19 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # ============================================================
-# Load KB
+# KB LOAD
 # ============================================================
 
-with open(KB_PATH, "r", encoding="utf-8") as f:
-    KB = json.load(f)
+def load_master_blocks(path: str) -> List[Dict[str, Any]]:
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Master KB file not found: {path}")
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    blocks = data.get("blocks", [])
+    print(f"[KB LOADED] master={len(blocks)} overlay=0")
+    return blocks
 
-MASTER_BLOCKS = KB.get("blocks", [])
+MASTER_BLOCKS: List[Dict[str, Any]] = load_master_blocks(MASTER_PATH)
 
 # ============================================================
 # MODELS
@@ -75,160 +74,257 @@ class AskRequest(BaseModel):
 def normalize(text: str) -> str:
     text = text.lower()
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"[^a-z0-9 ]+", " ", text)
+    text = re.sub(r"[^a-z0-9\s]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
 
-def trigger_score(question: str, triggers: List[str]) -> float:
+def tokenize(text: str) -> List[str]:
+    return normalize(text).split()
+
+
+def keyword_score(question_tokens: List[str], block: Dict[str, Any]) -> float:
     """
-    Simple lexical score:
-    +0.3 for each trigger found
+    Punteggio lessicale puro: trigger + question_it.
     """
-    q = normalize(question)
+    qset = set(question_tokens)
+
+    triggers = block.get("triggers", [])
+    if isinstance(triggers, str):
+        triggers = [triggers]
+
     score = 0.0
-    for t in triggers:
-        if normalize(t) in q:
-            score += 0.3
-    return min(score, 1.0)
+
+    for trig in triggers:
+        t_tokens = set(tokenize(trig))
+        if not t_tokens:
+            continue
+        common = qset & t_tokens
+        if common:
+            score += len(common) / len(t_tokens)
+
+    q_text = block.get("question_it", "")
+    if q_text:
+        qt_tokens = set(tokenize(q_text))
+        if qt_tokens:
+            common_q = qset & qt_tokens
+            if common_q:
+                score += 0.5 * (len(common_q) / len(qt_tokens))
+
+    fam = block.get("family", "")
+    if fam:
+        fam_tokens = set(tokenize(fam))
+        if fam_tokens & qset:
+            score += 0.2
+
+    tags = block.get("tags", [])
+    if isinstance(tags, str):
+        tags = [tags]
+    for tag in tags:
+        tag_tokens = set(tokenize(tag))
+        if tag_tokens & qset:
+            score += 0.1
+
+    return score
 
 
-def match_json_block(question: str) -> Optional[Dict[str, Any]]:
+def apply_ctf_p560_logic(question: str, blocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Partial soft match: compute trigger score for each block.
+    Rafforzamento logico per domande su P560 / CTF / card / lamiera ecc.
+    NON tocca i file JSON, lavora solo sul ranking in memoria.
     """
-    best_block = None
-    best_score = 0.0
+    q_norm = normalize(question)
+    tokens = set(q_norm.split())
 
-    for b in MASTER_BLOCKS:
-        triggers = b.get("triggers", [])
-        s = trigger_score(question, triggers)
-        if s > best_score:
-            best_score = s
-            best_block = b
+    is_p560 = "p560" in tokens or "p 560" in question.lower()
+    is_ctf = "ctf" in tokens
+    has_card = "card" in tokens
+    has_lamiera = "lamiera" in tokens or "grecata" in tokens
+    has_colpo = "colpo" in tokens or "colpi" in tokens
 
-    if best_score < 0.15:  # threshold: below this it's almost chance
+    boosted: List[Dict[str, Any]] = []
+    for b in blocks:
+        fam = b.get("family", "").upper()
+        intent = b.get("intent", "") or ""
+        tags = " ".join(b.get("tags", []))
+        qtext = b.get("question_it", "")
+
+        bonus = 0.0
+
+        if is_p560 and "P560" in fam:
+            bonus += 1.5
+        if is_p560 and "P560" in tags.upper():
+            bonus += 0.8
+        if is_p560 and "P560" in qtext.upper():
+            bonus += 0.5
+
+        if is_ctf and "CTF_SYSTEM" in fam:
+            bonus += 1.0
+
+        if has_card and ("card" in qtext.lower() or "card" in tags.lower()):
+            bonus += 0.7
+
+        if has_lamiera and ("lamiera" in qtext.lower() or "lamiera" in tags.lower()):
+            bonus += 0.7
+
+        if has_colpo and ("colpo" in qtext.lower() or "colpi" in qtext.lower()):
+            bonus += 0.5
+
+        if "KILLER" in b.get("id", "").upper():
+            bonus += 0.3
+
+        b = dict(b)
+        b["_logic_bonus"] = bonus
+        boosted.append(b)
+
+    return boosted
+
+
+def match_block(question: str, blocks: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Matching ibrido:
+    - punteggio lessicale base
+    - boost logico P560/CTF
+    """
+    if not question.strip():
         return None
 
-    return best_block
+    q_tokens = tokenize(question)
+    boosted_blocks = apply_ctf_p560_logic(question, blocks)
+
+    scored: List[Dict[str, Any]] = []
+    for b in boosted_blocks:
+        base = keyword_score(q_tokens, b)
+        bonus = b.get("_logic_bonus", 0.0)
+        score = base + bonus
+        if "p560" in normalize(question) and "P560" in b.get("family", "").upper():
+            score += 1.0
+        b = dict(b)
+        b["_score"] = score
+        scored.append(b)
+
+    scored.sort(key=lambda x: x.get("_score", 0.0), reverse=True)
+
+    if not scored:
+        return None
+
+    best = scored[0]
+    if best.get("_score", 0.0) < 0.2:
+        return None
+
+    return best
 
 
 # ============================================================
-# EXTERNAL SEARCH (ChatGPT)
+# OPENAI HELPERS (ESTERNO)
 # ============================================================
 
-def ask_external_gpt(question: str) -> str:
+def openai_answer(question: str) -> str:
     """
-    Query GPT with hard constraints: respond ONLY about Tecnaria SPA topics.
+    Chiede a OpenAI una risposta "esterna" stile ChatGPT ma
+    strettamente limitata al contesto Tecnaria.
     """
+    system_msg = (
+        "Sei l'assistente tecnico Tecnaria. Rispondi solo su argomenti "
+        "legati ai prodotti, cataloghi, documentazione e applicazioni Tecnaria. "
+        "Se la domanda è fuori da questo perimetro, rispondi in modo neutro ma "
+        "non inventare nulla al di fuori del contesto Tecnaria."
+    )
+
+    completion = client.responses.create(
+        model="gpt-4.1-mini",
+        input=[
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": question},
+        ],
+        max_output_tokens=800,
+    )
+
     try:
-        completion = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Rispondi solo con informazioni tecniche reali, coerenti con "
-                        "Tecnaria S.p.A. (Bassano del Grappa), i suoi prodotti (CTF, VCEM, "
-                        "CTCEM, CTL, CTL MAXI, P560, Diapason) e la loro documentazione. "
-                        "Se la domanda non riguarda strettamente questi argomenti, "
-                        "rispondi: 'Fuori dominio Tecnaria'."
-                    ),
-                },
-                {"role": "user", "content": question},
-            ],
-            max_tokens=600,
-        )
-        answer = completion.choices[0].message["content"].strip()
-        return answer
-
+        return completion.output_text
     except Exception:
-        return "Errore GPT esterno"
+        return "Non sono riuscito a recuperare una risposta esterna affidabile."
 
 
-# ============================================================
-# JUDGE AI — confronta JSON vs esterna
-# ============================================================
-
-def judge_response(question: str, json_ans: str, ext_ans: str) -> str:
+def judge_response(question: str, json_answer: str, external_answer: str) -> str:
     """
-    Force GPT to act only as a judge and output *ESTERNA* or *JSON*.
+    Decide se è migliore la risposta del JSON o quella esterna.
+    Ritorna:
+    - 'JSON'      -> usare solo la risposta del master JSON
+    - 'ESTERNA'   -> usare la risposta esterna e salvarla come candidato
     """
+    prompt = (
+        "Sei un giudice tecnico. Ti do una domanda e due risposte:\n"
+        "• RISPOSTA_JSON: proveniente dal master JSON Tecnaria (più sicura se pertinente)\n"
+        "• RISPOSTA_ESTERNA: proveniente da ChatGPT (potenzialmente più aggiornata)\n\n"
+        "Devi scegliere quale delle due è MIGLIORE per la domanda, tenendo conto di:\n"
+        "- aderenza al contesto Tecnaria (prodotti CTF, P560, VCEM, ecc.)\n"
+        "- correttezza tecnica e assenza di fantasie\n"
+        "- chiarezza e completezza.\n\n"
+        "Rispondi SOLO con una parola: JSON oppure ESTERNA."
+    )
+
+    messages = [
+        {"role": "system", "content": prompt},
+        {
+            "role": "user",
+            "content": f"DOMANDA: {question}\n\nRISPOSTA_JSON:\n{json_answer}\n\nRISPOSTA_ESTERNA:\n{external_answer}",
+        },
+    ]
+
+    completion = client.responses.create(
+        model="gpt-4.1-mini",
+        input=messages,
+        max_output_tokens=10,
+    )
+
     try:
-        completion = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Sei un arbitro tecnico. Devi scegliere quale risposta è "
-                        "maggiormente corretta (tecnicamente e rispetto a Tecnaria). "
-                        "Rispondi SOLO con una parola: 'JSON' o 'ESTERNA'."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"DOMANDA: {question}\n\n"
-                        f"RISPOSTA_JSON:\n{json_ans}\n\n"
-                        f"RISPOSTA_ESTERNA:\n{ext_ans}\n\n"
-                        "Qual è corretta?"
-                    ),
-                },
-            ],
-            max_tokens=20,
-        )
-        verdict = completion.choices[0].message["content"].strip().upper()
-        if "ESTERNA" in verdict:
-            return "ESTERNA"
-        return "JSON"
+        raw = completion.output_text.strip().upper()
     except Exception:
         return "JSON"
 
+    if "ESTERNA" in raw and "JSON" not in raw:
+        return "ESTERNA"
+    return "JSON"
 
-# ============================================================
-# SAVE NEW GOLD CANDIDATE
-# ============================================================
 
-def save_new_candidate(question: str, external_answer: str):
+def save_new_candidate(question: str, answer: str) -> None:
     """
-    Save in .jsonl + individual file.
+    Salva in un file .jsonl i nuovi QA esterni che il giudice ha scelto come migliori,
+    per futura integrazione manuale nel master JSON.
     """
+    os.makedirs(os.path.dirname(CANDIDATES_PATH), exist_ok=True)
     record = {
         "question": question,
-        "answer_external": external_answer,
+        "answer": answer,
     }
-
-    # JSONL
-    with open(NEW_GOLD_LOG, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
-
-    # Individual file
-    safe_name = re.sub(r"[^a-zA-Z0-9]+", "_", question)[:80]
-    fp = os.path.join(NEW_GOLD_DIR, f"{safe_name}.json")
-
-    with open(fp, "w", encoding="utf-8") as f:
-        json.dump(record, f, indent=2, ensure_ascii=False)
+    try:
+        with open(CANDIDATES_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"[CANDIDATE_SAVE_ERROR] {e}")
 
 
 # ============================================================
-# MAIN ENDPOINT
+# API
 # ============================================================
 
 @app.post("/api/ask")
-async def ask(req: AskRequest):
+async def ask(req: AskRequest, request: Request):
     question = req.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Domanda vuota.")
 
-    # 1) Query esterna GPT
-    external_answer = ask_external_gpt(question)
+    # 1) Tentativo con JSON GOLD (ibrido lessicale + logica)
+    block = match_block(question, MASTER_BLOCKS)
+    json_answer = ""
+    if block:
+        json_answer = block.get("answer_it", "").strip()
 
-    # 2) Query JSON KB
-    block = match_json_block(question)
-    json_answer = block.get("answer_it") if block else None
+    # 2) In parallelo: risposta esterna (ChatGPT) limitata al mondo Tecnaria
+    external_answer = openai_answer(question)
 
-    # Se entrambe falliscono
-    if not external_answer and not json_answer:
-        return {"answer": FALLBACK_MESSAGE}
-
-    # 3) Judge (ALWAYS — per tua richiesta "1")
+    # 3) Giudice (usa modello leggero) – per tua richiesta "1")
     verdict = judge_response(question, json_answer or "", external_answer or "")
 
     if verdict == "ESTERNA":
@@ -245,5 +341,20 @@ async def ask(req: AskRequest):
 
 
 @app.get("/")
-def root():
-    return {"status": "Tecnaria Bot v14.0 attivo", "master_blocks": len(MASTER_BLOCKS)}
+async def root():
+    """
+    Serve la UI Tecnaria GOLD (index.html nella cartella static).
+    """
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    return FileResponse(index_path)
+
+
+@app.get("/health")
+def health():
+    """
+    Endpoint di stato usato da Render / ping esterni.
+    """
+    return {
+        "status": "Tecnaria Bot v14.1 attivo",
+        "master_blocks": len(MASTER_BLOCKS),
+    }
