@@ -1,291 +1,210 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-  <meta charset="UTF-8" />
-  <title>TECNARIA • Sinapsi GOLD – Assistenza Tecnica</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: system-ui, sans-serif;
-      background: #0d1117;
-      color: #e5e7eb;
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
+import os
+import json
+import re
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from openai import OpenAI
+
+client = OpenAI()
+
+# ============================================================
+# PATH / FILE
+# ============================================================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+DATA_DIR = os.path.join(STATIC_DIR, "data")
+MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
+
+# ============================================================
+# FASTAPI SETUP
+# ============================================================
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ============================================================
+# LOAD MASTER
+# ============================================================
+def load_master():
+    with open(MASTER_PATH, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return data.get("blocks", [])
+
+MASTER_BLOCKS = load_master()
+
+# ============================================================
+# MODEL REQUEST
+# ============================================================
+class AskRequest(BaseModel):
+    question: str
+    lang: str = "it"
+
+# ============================================================
+# HELPERS
+# ============================================================
+def normalize(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9àèéìòùç_\- ]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def lexical_match_score(q_norm, block):
+    """Punteggio semplice basato su parole chiave."""
+    score = 0
+    for trig in block.get("triggers", []):
+        trig_norm = normalize(trig)
+        if trig_norm in q_norm:
+            score += 3
+        elif any(t in q_norm for t in trig_norm.split()):
+            score += 1
+    return score
+
+
+def pick_internal_answer(question: str):
+    """Matching interno classico."""
+    q_norm = normalize(question)
+    candidates = []
+
+    for blk in MASTER_BLOCKS:
+        score = lexical_match_score(q_norm, blk)
+        if score > 0:
+            candidates.append((score, blk))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates[0][1]
+
+
+def ask_external_gpt(question: str):
+    """Chiede un parere esterno (ChatGPT) in stile Tecnaria."""
+    prompt = f"""
+Sei l’assistente tecnico di Tecnaria. Rispondi in modo tecnico e conciso.
+Domanda: {question}
+Risposta:
+"""
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+        )
+        return resp.choices[0].message.content.strip()
+    except Exception:
+        return None
+
+
+def choose_best_answer(user_question: str, internal: str, external: str):
+    """Judge: decide se è migliore interna o esterna."""
+    if internal and not external:
+        return internal, "internal"
+    if external and not internal:
+        return external, "external"
+    if not internal and not external:
+        return None, None
+
+    prompt = f"""
+Sei un giudice Tecnaria.
+
+Domanda: {user_question}
+
+Risposta A (interna):
+{internal}
+
+Risposta B (esterna):
+{external}
+
+Quale risposta è TECNICAMENTE più corretta, precisa e coerente con il dominio CTF/P560 Tecnaria?
+Rispondi SOLO con: A oppure B.
+"""
+
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+        )
+        judge = resp.choices[0].message.content.strip()
+
+        if judge == "A":
+            return internal, "internal"
+        else:
+            return external, "external"
+    except:
+        return internal, "internal"
+
+
+def save_new_block(question: str, answer: str):
+    """Salva automaticamente una nuova GOLD block se la risposta viene dall’esterno."""
+    new_block = {
+        "id": f"AUTO-{len(MASTER_BLOCKS)+1:05d}",
+        "family": "AUTO",
+        "mode": "gold",
+        "lang": "it",
+        "intent": "auto_generated",
+        "tags": ["auto", "external", "generated"],
+        "triggers": [question],
+        "question_it": question,
+        "answer_it": answer,
     }
 
-    /* Sidebar */
-    .sidebar {
-      width: 270px;
-      background: #111827;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid #1f2937;
+    MASTER_BLOCKS.append(new_block)
+
+    with open(MASTER_PATH, "w", encoding="utf-8") as f:
+        json.dump({"blocks": MASTER_BLOCKS}, f, indent=2, ensure_ascii=False)
+
+
+# ============================================================
+# ROUTES
+# ============================================================
+
+@app.get("/", response_class=FileResponse)
+def home():
+    """Ripristina la UI."""
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "blocks": len(MASTER_BLOCKS)}
+
+
+@app.post("/api/ask")
+def api_ask(req: AskRequest):
+    user_q = req.question.strip()
+
+    # 1) Matching interno
+    internal_block = pick_internal_answer(user_q)
+    internal_answer = (
+        internal_block["answer_it"] if internal_block else None
+    )
+
+    # 2) Risposta esterna ChatGPT
+    external_answer = ask_external_gpt(user_q)
+
+    # 3) Judge
+    final_answer, origin = choose_best_answer(
+        user_q, internal_answer, external_answer
+    )
+
+    if final_answer is None:
+        return {
+            "answer": "Nessuna risposta trovata.",
+            "origin": "none",
+        }
+
+    # Salvataggio automatico dei nuovi blocchi
+    if origin == "external":
+        save_new_block(user_q, final_answer)
+
+    return {
+        "answer": final_answer,
+        "origin": origin,
     }
-
-    .logo-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: 25px;
-    }
-
-    .logo-container img {
-      width: 120px;
-      height: auto;
-      border-radius: 8px;
-    }
-
-    .title {
-      margin-top: 12px;
-      font-size: 14px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      text-align: center;
-      color: #f97316;
-      font-weight: 700;
-    }
-
-    .subtitle {
-      font-size: 11px;
-      color: #9ca3af;
-      margin-top: 4px;
-      text-align: center;
-    }
-
-    /* Quick buttons */
-    .quick-buttons {
-      margin-top: 25px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .quick-buttons button {
-      background: #f97316;
-      border: none;
-      padding: 10px;
-      border-radius: 6px;
-      color: #111827;
-      font-size: 13px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: 0.15s;
-    }
-
-    .quick-buttons button:hover {
-      background: #fb923c;
-    }
-
-    /* Main chat area */
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-
-    .header {
-      padding: 14px 20px;
-      background: #111827;
-      border-bottom: 1px solid #1f2937;
-      font-size: 16px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-    }
-
-    /* Chat body */
-    .chat {
-      flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-
-    .msg {
-      max-width: 75%;
-      padding: 12px 14px;
-      border-radius: 10px;
-      font-size: 14px;
-      line-height: 1.45em;
-      white-space: pre-wrap;
-    }
-
-    .user {
-      align-self: flex-end;
-      background: #f97316;
-      color: #111827;
-      font-weight: 600;
-    }
-
-    .bot {
-      align-self: flex-start;
-      background: #1f2937;
-      border: 1px solid #374151;
-    }
-
-    /* Meta info */
-    .meta {
-      font-size: 10px;
-      opacity: 0.6;
-      margin-top: 6px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .meta span {
-      background: #111827;
-      padding: 3px 6px;
-      border-radius: 6px;
-      border: 1px solid #1f2937;
-    }
-
-    /* Input area */
-    .input-area {
-      padding: 12px 20px;
-      background: #111827;
-      border-top: 1px solid #1f2937;
-      display: flex;
-      gap: 10px;
-    }
-
-    textarea {
-      flex: 1;
-      background: #0d1117;
-      border: 1px solid #374151;
-      border-radius: 6px;
-      padding: 10px;
-      font-size: 14px;
-      color: #e5e7eb;
-      resize: none;
-      height: 48px;
-    }
-
-    textarea:focus {
-      outline: none;
-      border: 1px solid #f97316;
-    }
-
-    .send-btn {
-      background: #f97316;
-      border: none;
-      color: #111827;
-      width: 90px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .send-btn:hover {
-      background: #fb923c;
-    }
-
-  </style>
-</head>
-<body>
-
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="logo-container">
-      <img src="/static/img/logo.jpg" alt="Tecnaria Logo" />
-      <div class="title">TECNARIA</div>
-      <div class="subtitle">Assistenza tecnica GOLD</div>
-    </div>
-
-    <!-- Quick buttons -->
-    <div class="quick-buttons">
-      <button onclick="quick('Come verifico se un colpo P560 è valido?')">
-        ✓ Controllo colpo P560
-      </button>
-      <button onclick="quick('La card mi dà un valore corretto ma la lamiera vibra: posso fidarmi?')">
-        ✓ Lamiera / card dubbia
-      </button>
-      <button onclick="quick('In quali casi non posso usare i CTF su lamiera grecata?')">
-        ✓ Divieti di posa CTF
-      </button>
-    </div>
-  </div>
-
-  <!-- Main -->
-  <div class="main">
-    <div class="header">Assistente Tecnaria • Modalità GOLD</div>
-
-    <div class="chat" id="chat"></div>
-
-    <div class="input-area">
-      <textarea id="q" placeholder="Scrivi la tua domanda…"></textarea>
-      <button class="send-btn" onclick="send()">Invia</button>
-    </div>
-  </div>
-
-  <script>
-    const chat = document.getElementById("chat");
-
-    function addMessage(text, type, meta = null) {
-      const box = document.createElement("div");
-      box.className = "msg " + type;
-      box.textContent = text;
-
-      const wrap = document.createElement("div");
-      wrap.appendChild(box);
-
-      if (meta) {
-        const m = document.createElement("div");
-        m.className = "meta";
-
-        m.innerHTML = `
-          <span>ID: ${meta.id}</span>
-          <span>Famiglia: ${meta.family}</span>
-          <span>Mode: ${meta.mode}</span>
-          <span>Lang: ${meta.lang}</span>
-        `;
-
-        wrap.appendChild(m);
-      }
-
-      chat.appendChild(wrap);
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    function quick(text) {
-      document.getElementById("q").value = text;
-      send();
-    }
-
-    async function send() {
-      const q = document.getElementById("q").value.trim();
-      if (!q) return;
-
-      // Add user message
-      addMessage(q, "user");
-      document.getElementById("q").value = "";
-
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: q,
-          lang: "it",
-          mode: "gold"
-        })
-      });
-
-      const data = await res.json();
-
-      addMessage(
-        data.answer || "Nessuna risposta.",
-        "bot",
-        { id: data.id, family: data.family, mode: data.mode, lang: data.lang }
-      );
-    }
-  </script>
-
-</body>
-</html>
