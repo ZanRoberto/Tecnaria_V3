@@ -1,573 +1,249 @@
 import os
 import json
-from fastapi import FastAPI, Request
+import re
+from typing import List, Dict, Any, Optional
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from openai import OpenAI
-
-# ============================================================
-# CONFIG
-# ============================================================
-
-DATA_PATH = "static/data/ctf_system_COMPLETE_GOLD_master.json"
-OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
-
-client = OpenAI(api_key=OPENAI_KEY)
-
-app = FastAPI()
-
-# ============================================================
-# CORS
-# ============================================================
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ============================================================
-# MODELLI
-# ============================================================
-
-class AskRequest(BaseModel):
-    question: str
-
-# ============================================================
-# STATIC / INDEX
-# ============================================================
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/")
-def serve_index():
-    return FileResponse("static/index.html")
-
-# ============================================================
-# FUNZIONI UTILI
-# ============================================================
-
-def load_json():
-    try:
-        with open(DATA_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return {"blocks": []}
-
-
-def semantic_match(question: str, data):
-    """Match molto semplice per individuare il blocco più probabile."""
-    q_lower = question.lower()
-    best = None
-    best_score = 0
-
-    for block in data.get("blocks", []):
-        score = 0
-
-        for t in block.get("triggers", []):
-            if t.lower() in q_lower:
-                score += 3
-
-        if block.get("family", "").lower() in q_lower:
-            score += 2
-
-        if block.get("intent", "").lower() in q_lower:
-            score += 1
-
-        if score > best_score:
-            best_score = score
-            best = block
-
-    return best, best_score
-
-
-def ask_chatgpt(question: str):
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {"role": "system",
-                 "content": "Rispondi SOLO su temi di Tecnaria S.p.A., CTF, P560, chiodi idonei Tecnaria, lamiera grecata, posa strutturale. Tecnico, preciso, nessuna fantasia."},
-                {"role": "user", "content": question}
-            ],
-            max_tokens=500
-        )
-        return response.choices[0].message["content"]
-    except Exception as e:
-        return None
-
-# ============================================================
-# LOGICA DI RISPOSTA "MISTO FAIL-SAFE"
-# ============================================================
-
-def choose_best_answer(question, llm_answer, json_block, json_score):
-    """
-    Ordine di priorità:
-    1) Se ChatGPT dà risposta valida → vince LLM
-    2) Se LLM è None → usa JSON
-    3) Se JSON è debole (score < 2) → comunque vince LLM
-    """
-    if llm_answer and len(llm_answer.strip()) > 20:
-        return llm_answer, "ChatGPT"
-
-    if json_block:
-        return json_block.get("answer_it", "Nessuna risposta valida"), json_block.get("id", "JSON")
-
-    return "Nessuna risposta disponibile.", "Nessuna"
-
-# ============================================================
-# API ASK
-# ============================================================
-
-@app.post("/api/ask")
-async def ask_api(req: AskRequest):
-    question = req.question.strip()
-    if not question:
-        return {"answer": "Domanda vuota.", "source": "N/A"}
-
-    # 1) CHATGPT FIRST
-    llm_answer = ask_chatgpt(question)
-
-    # 2) JSON SECOND
-    data = load_json()
-    json_block, json_score = semantic_match(question, data)
-
-    if json_block:
-        json_answer = json_block.get("answer_it", "")
-    else:
-        json_answer = None
-
-    # 3) SCELTA MIGLIORE
-    final_answer, source = choose_best_answer(question, llm_answer, json_block, json_score)
-
-    return {
-        "answer": final_answer,
-        "source": source
-    }
-
-# ============================================================
-# HEALTH CHECK
-# ============================================================
-
-@app.get("/health")
-def health():
-    return {"status": "ok", "version": "14.7"}
-import os
-import json
-import re
-import unicodedata
-from typing import Any, Dict, List, Optional, Tuple
-
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-
-from pydantic import BaseModel
 
 from openai import OpenAI
 
 # ============================================================
-#  PATH / FILE
+# CONFIG BASE
 # ============================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 DATA_DIR = os.path.join(STATIC_DIR, "data")
+MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
 
-KB_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o").strip() or "gpt-4o"
 
-# Cartella per i candidati GOLD nuovi (salvati da ChatGPT esterno)
-NEW_GOLD_DIR = os.path.join(DATA_DIR, "new_gold_candidates")
-os.makedirs(NEW_GOLD_DIR, exist_ok=True)
-
-NEW_GOLD_LOG = os.path.join(NEW_GOLD_DIR, "new_gold_index.json")
-
-FALLBACK_FAMILY = "COMM"
-FALLBACK_ID = "COMM-FALLBACK-NOANSWER-0001"
-FALLBACK_MESSAGE = (
-    "Per questa domanda non trovo una risposta GOLD nei dati caricati. "
-    "Meglio un confronto diretto con l’ufficio tecnico Tecnaria, indicando tipo di solaio, "
-    "famiglia di connettori (CTF, P560, CTL, CTL MAXI, VCEM, CTCEM, DIAPASON) e quadro "
-    "statico. In questo modo il supporto sarà rapido e mirato."
-)
-
-# ============================================================
-#  OPENAI CLIENT (per ChatGPT esterno)
-# ============================================================
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client: Optional[OpenAI] = None
+client = None
 if OPENAI_API_KEY:
-    client = OpenAI()
+    client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ============================================================
-#  FASTAPI APP
+# FASTAPI APP
 # ============================================================
 
-app = FastAPI(title="Tecnaria GOLD Bot v14.6")
+app = FastAPI(title="Tecnaria Bot v14.7")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # front e back sono sullo stesso dominio, ma così siamo tranquilli
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve /static (immagini, CSS, index.html, ecc.)
+# mount static
+if not os.path.isdir(STATIC_DIR):
+    os.makedirs(STATIC_DIR, exist_ok=True)
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 # ============================================================
-#  MODELLI
+# MODELLI
 # ============================================================
 
-class AskRequest(BaseModel):
+class QuestionRequest(BaseModel):
     question: str
-    lang: str = "it"
+
+
+class AnswerResponse(BaseModel):
+    answer: str
+    source: str
+    meta: Dict[str, Any]
 
 
 # ============================================================
-#  UTILITY NORMALIZZAZIONE TESTO
+# CARICAMENTO KB
 # ============================================================
 
-def normalize_text(s: str) -> str:
-    if not s:
-        return ""
-    s = s.lower()
-    s = unicodedata.normalize("NFKD", s)
-    s = "".join(c for c in s if not unicodedata.combining(c))
-    s = re.sub(r"[^a-z0-9àèéìòóùçãõüäöß\s]", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+KB_BLOCKS: List[Dict[str, Any]] = []
 
 
-# ============================================================
-#  CARICAMENTO KB
-# ============================================================
+def load_kb() -> None:
+    global KB_BLOCKS
+    if not os.path.exists(MASTER_PATH):
+        print(f"[WARN] MASTER_PATH non trovato: {MASTER_PATH}")
+        KB_BLOCKS = []
+        return
 
-def load_kb(path: str) -> List[Dict[str, Any]]:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"KB file not found: {path}")
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    blocks = data.get("blocks", [])
-    return blocks
+    try:
+        with open(MASTER_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict) and "blocks" in data:
+            KB_BLOCKS = data["blocks"]
+        elif isinstance(data, list):
+            KB_BLOCKS = data
+        else:
+            KB_BLOCKS = []
+        print(f"[INFO] KB caricata: {len(KB_BLOCKS)} blocchi")
+    except Exception as e:
+        print(f"[ERROR] caricando KB: {e}")
+        KB_BLOCKS = []
 
 
-MASTER_BLOCKS: List[Dict[str, Any]] = []
-try:
-    MASTER_BLOCKS = load_kb(KB_PATH)
-    print(f"[KB LOADED] master={len(MASTER_BLOCKS)} overlay=0")
-except Exception as e:
-    print(f"[KB ERROR] {e}")
+load_kb()
 
 
-# ============================================================
-#  MATCHING SEMPLICE SUI BLOCKS
-# ============================================================
+def normalize(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"[^\w\sàèéìòóùç]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
-def score_block(block: Dict[str, Any], q_norm: str) -> float:
+
+def score_block(question_norm: str, block: Dict[str, Any]) -> float:
     """
-    Matching lessicale grezzo: serve per avere un "best_json_answer"
-    anche quando c'è ChatGPT esterno.
+    Matching ultra-semplice per sicurezza:
+    - contiamo le parole chiave in comune tra domanda e triggers / question_it.
     """
-    score = 0.0
-    triggers = block.get("triggers", [])
-    question_it = block.get("question_it") or ""
-    answer_it = block.get("answer_it") or ""
-
-    haystack = " ".join(triggers + [question_it, answer_it])
-    haystack_norm = normalize_text(haystack)
-
-    if not haystack_norm:
+    triggers = " ".join(block.get("triggers", []))
+    q_it = block.get("question_it", "")
+    text = normalize(triggers + " " + q_it)
+    if not text:
         return 0.0
 
-    for term in q_norm.split():
-        if term in haystack_norm:
-            score += 1.0
+    q_words = set(question_norm.split())
+    b_words = set(text.split())
+    common = q_words & b_words
+    if not common:
+        return 0.0
 
-    tags = block.get("tags", [])
-    tags_norm = " ".join(tags).lower()
-    for term in ["ctf", "p560", "lamiera", "card", "chiodo", "tecnaria"]:
-        if term in q_norm and term in tags_norm:
-            score += 0.5
-
-    if block.get("mode", "").lower() == "gold":
-        score += 0.3
-
-    return score
+    # piccolo punteggio normalizzato
+    return len(common) / max(len(q_words), 1)
 
 
-def find_best_json_answer(question: str, lang: str = "it") -> Optional[Dict[str, Any]]:
-    q_norm = normalize_text(question)
+def match_from_kb(question: str, threshold: float = 0.18) -> Optional[Dict[str, Any]]:
+    if not KB_BLOCKS:
+        return None
+    qn = normalize(question)
     best_block = None
     best_score = 0.0
-
-    for block in MASTER_BLOCKS:
-        if block.get("lang", "it") != lang:
-            continue
-        s = score_block(block, q_norm)
+    for b in KB_BLOCKS:
+        s = score_block(qn, b)
         if s > best_score:
             best_score = s
-            best_block = block
-
-    if not best_block or best_score <= 0.0:
+            best_block = b
+    if best_score < threshold:
         return None
-
-    answer_key = f"answer_{lang}"
-    question_key = f"question_{lang}"
-
-    return {
-        "id": best_block.get("id"),
-        "family": best_block.get("family"),
-        "question": best_block.get(question_key) or "",
-        "answer": best_block.get(answer_key) or "",
-        "score": best_score,
-        "mode": best_block.get("mode", ""),
-    }
+    return best_block
 
 
 # ============================================================
-#  CHATGPT ESTERNO (LLM)
+# LLM: CHATGPT FIRST
 # ============================================================
 
-async def ask_external_gpt(question: str, lang: str = "it") -> Optional[str]:
-    """
-    Chiama ChatGPT esterno (OpenAI Responses API) con istruzioni chiare:
-    - parlare SOLO di Tecnaria S.p.A. (Bassano del Grappa)
-    - se non è ambito Tecnaria, dire che è fuori ambito
-    """
+SYSTEM_PROMPT = """
+Sei l'assistente tecnico GOLD di Tecnaria S.p.A. (Bassano del Grappa).
+Rispondi SOLO su prodotti, sistemi e applicazioni Tecnaria (CTF, P560, CTL, CTL MAXI, VCEM, CTCEM, DIAPASON, ecc.).
+Se la domanda non riguarda in modo chiaro Tecnaria, spiega che l'ambito è fuori campo e invita a contattare l'ufficio tecnico.
+
+Stile:
+- linguaggio tecnico-ingegneristico chiaro, niente marketing
+- risposte strutturate in punti quando utile
+- cita SEMPRE esplicitamente che si tratta di sistemi Tecnaria S.p.A.
+"""
+
+
+def call_chatgpt(question: str) -> str:
     if client is None:
-        return None
-
-    system_prompt = (
-        "Sei l'assistente tecnico-commerciale ufficiale di Tecnaria S.p.A. "
-        "(Bassano del Grappa). Devi rispondere SOLO su prodotti, sistemi e "
-        "applicazioni Tecnaria (CTF, P560, CTL, CTL MAXI, VCEM, CTCEM, DIAPASON, ecc.). "
-        "Se la domanda non riguarda Tecnaria, rispondi chiaramente che è fuori ambito. "
-        "Stile: tecnico, preciso, modalità GOLD."
-    )
+        return (
+            "Al momento il motore ChatGPT esterno non è disponibile "
+            "(OPENAI_API_KEY mancante). Contatta l'ufficio tecnico Tecnaria."
+        )
 
     try:
-        resp = client.responses.create(
-            model="gpt-4.1-mini",
-            reasoning={"effort": "medium"},
-            input=[
-                {
-                    "role": "system",
-                    "content": system_prompt,
-                },
-                {
-                    "role": "user",
-                    "content": f"[Lingua: {lang}]\nDomanda: {question}",
-                },
+        completion = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": question},
             ],
-            max_output_tokens=900,
+            temperature=0.2,
         )
-        content = resp.output[0].content[0].text
-        return content.strip()
+        return completion.choices[0].message.content.strip()
     except Exception as e:
-        print(f"[EXTERNAL GPT ERROR] {e}")
-        return None
-
-
-# ============================================================
-#  SALVATAGGIO CANDIDATI GOLD (NUOVE RISPOSTE)
-# ============================================================
-
-def save_new_candidate(question: str, answer: str, source: str) -> None:
-    """
-    Salva una nuova Q/A proposta da ChatGPT esterno per futura integrazione nel master JSON.
-    """
-    os.makedirs(NEW_GOLD_DIR, exist_ok=True)
-
-    # Log indice
-    if os.path.exists(NEW_GOLD_LOG):
-        try:
-            with open(NEW_GOLD_LOG, "r", encoding="utf-8") as f:
-                log_data = json.load(f)
-        except Exception:
-            log_data = {"items": []}
-    else:
-        log_data = {"items": []}
-
-    item_id = f"CAND-{len(log_data['items'])+1:05d}"
-
-    filename = os.path.join(NEW_GOLD_DIR, f"{item_id}.json")
-    payload = {
-        "id": item_id,
-        "question": question,
-        "answer": answer,
-        "source": source,
-    }
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
-
-    log_data["items"].append(
-        {
-            "id": item_id,
-            "file": os.path.basename(filename),
-            "source": source,
-        }
-    )
-    with open(NEW_GOLD_LOG, "w", encoding="utf-8") as f:
-        json.dump(log_data, f, ensure_ascii=False, indent=2)
-
-    print(f"[NEW GOLD CANDIDATE] {item_id} saved from {source}")
-
-
-# ============================================================
-#  GIUDICE: CONFRONTO EXTERNAL vs JSON
-# ============================================================
-
-async def ask_judge(
-    question: str, external_answer: Optional[str], json_answer: Optional[str]
-) -> str:
-    """
-    Usa ChatGPT come GIUDICE:
-    - gli passo la domanda + risposta esterna + risposta JSON
-    - deve dirmi quale usare: "chatgpt", "json" oppure "mix"
-    """
-    if client is None:
-        # Se non c'è il client, per sicurezza preferisco JSON
-        return "json" if json_answer else "none"
-
-    if not external_answer and not json_answer:
-        return "none"
-    if external_answer and not json_answer:
-        return "chatgpt"
-    if json_answer and not external_answer:
-        return "json"
-
-    judge_prompt = (
-        "Sei il GIUDICE TECNICO del bot Tecnaria.\n"
-        "Ricevi:\n"
-        "- la domanda dell'utente\n"
-        "- una risposta generata da ChatGPT esterno (basata sul web e sulle tue conoscenze)\n"
-        "- una risposta proveniente dal JSON interno (kb Tecnaria)\n\n"
-        "Devi decidere quale risposta è MIGLIORE per un contesto tecnico-strutturale reale.\n"
-        "Criteri:\n"
-        "1) correttezza tecnica rispetto ai prodotti Tecnaria\n"
-        "2) aderenza al perimetro Tecnaria S.p.A.\n"
-        "3) chiarezza e utilità pratica per progettista/cantiere.\n\n"
-        "Rispondi SOLO con una di queste parole:\n"
-        "- 'chatgpt' se è meglio la risposta esterna\n"
-        "- 'json' se è meglio la risposta JSON\n"
-        "- 'mix' se sono entrambe utili e ha senso combinarle\n"
-        "- 'none' se nessuna delle due è utilizzabile."
-    )
-
-    try:
-        resp = client.responses.create(
-            model="gpt-4.1-mini",
-            input=[
-                {"role": "system", "content": judge_prompt},
-                {
-                    "role": "user",
-                    "content": (
-                        f"DOMANDA:\n{question}\n\n"
-                        f"RISPOSTA_CHATGPT:\n{external_answer}\n\n"
-                        f"RISPOSTA_JSON:\n{json_answer}\n\n"
-                        "Decidi quale usare (chatgpt/json/mix/none)."
-                    ),
-                },
-            ],
-            max_output_tokens=50,
+        print(f"[ERROR] chiamando ChatGPT: {e}")
+        return (
+            "Si è verificato un errore nella chiamata al motore esterno. "
+            "Per sicurezza, contatta direttamente l’ufficio tecnico Tecnaria."
         )
-        verdict = resp.output[0].content[0].text.strip().lower()
-        verdict = verdict.split()[0]
-        if verdict not in {"chatgpt", "json", "mix", "none"}:
-            return "json" if json_answer else "chatgpt"
-        return verdict
-    except Exception as e:
-        print(f"[JUDGE ERROR] {e}")
-        # Se il giudice fallisce, preferisco il JSON (più controllato)
-        return "json" if json_answer else "chatgpt"
 
 
 # ============================================================
-#  ENDPOINTS
+# ENDPOINTS
 # ============================================================
 
-@app.get("/", response_class=FileResponse)
-async def root():
-    """Serve la UI principale Tecnaria (index.html)."""
+@app.get("/")
+async def root() -> FileResponse:
     index_path = os.path.join(STATIC_DIR, "index.html")
+    if not os.path.exists(index_path):
+        raise HTTPException(status_code=500, detail="index.html non trovato")
     return FileResponse(index_path)
 
 
-@app.get("/health")
-def health():
+@app.get("/api/status")
+async def status():
     return {
-        "status": "Tecnaria Bot v14.6 attivo",
-        "master_blocks": len(MASTER_BLOCKS),
+        "status": "Tecnaria Bot v14.7 attivo",
+        "kb_blocks": len(KB_BLOCKS),
+        "openai_enabled": bool(OPENAI_API_KEY),
+        "model": OPENAI_MODEL,
     }
 
 
-@app.post("/api/ask")
-async def ask(req: AskRequest):
-    if not req.question or not req.question.strip():
-        raise HTTPException(status_code=400, detail="Domanda vuota.")
+@app.post("/api/ask", response_model=AnswerResponse)
+async def api_ask(req: QuestionRequest):
+    question = (req.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Domanda vuota")
 
-    question = req.question.strip()
-    lang = req.lang or "it"
+    try:
+        # 1) ChatGPT FIRST
+        gpt_answer = call_chatgpt(question)
 
-    # 1) Tentativo ChatGPT esterno (sempre per primo, come richiesto)
-    external_answer = await ask_external_gpt(question, lang=lang)
+        # 2) Tentativo match KB per verifica / confronto
+        kb_block = match_from_kb(question)
+        kb_answer = None
+        kb_id = None
+        if kb_block:
+            kb_answer = kb_block.get("answer_it") or kb_block.get("answer", "")
+            kb_id = kb_block.get("id")
 
-    # 2) Tentativo JSON interno (sempre calcolato per avere un confronto)
-    best_json = find_best_json_answer(question, lang=lang)
-    json_answer = best_json.get("answer") if best_json else None
+        # 3) Strategia semplice: per ora VINCE SEMPRE GPT
+        final_answer = gpt_answer
 
-    # 3) Se non c'è proprio nulla, fallback duro
-    if not external_answer and not json_answer:
-        return {
-            "answer": FALLBACK_MESSAGE,
-            "source": "fallback",
+        meta: Dict[str, Any] = {
+            "used_chatgpt": True,
+            "used_kb": kb_block is not None,
+            "kb_id": kb_id,
         }
 
-    # 4) Se c'è solo una delle due, usiamo quella
-    if external_answer and not json_answer:
-        # Salvo come candidato GOLD
-        save_new_candidate(question, external_answer, source="chatgpt_only")
-        return {
-            "answer": external_answer,
-            "source": "chatgpt",
-        }
+        # In futuro possiamo far decidere a ChatGPT quale delle due è migliore,
+        # ma per il collaudo cliente basta così.
 
-    if json_answer and not external_answer:
-        return {
-            "answer": json_answer,
-            "source": "json",
-        }
-
-    # 5) Abbiamo entrambe → chiedo al GIUDICE
-    verdict = await ask_judge(question, external_answer, json_answer)
-
-    if verdict == "chatgpt":
-        save_new_candidate(question, external_answer, source="chatgpt_wins")
-        final = external_answer
-    elif verdict == "json":
-        final = json_answer
-    elif verdict == "mix":
-        combined = (
-            "Risposta da ChatGPT esterno (validata):\n"
-            f"{external_answer}\n\n"
-            "Integrazione dalla knowledge base Tecnaria (JSON):\n"
-            f"{json_answer}"
+        return AnswerResponse(
+            answer=final_answer,
+            source="chatgpt_first",
+            meta=meta,
         )
-        save_new_candidate(question, combined, source="mix")
-        final = combined
-    else:
-        # 'none' → come massima prudenza torno al fallback
-        final = FALLBACK_MESSAGE
 
-    return {
-        "answer": final,
-        "source": verdict.lower(),
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] /api/ask: {e}")
+        # NON lasciamo mai la UI senza testo
+        return AnswerResponse(
+            answer=f"[ERRORE] Si è verificato un problema interno: {e}",
+            source="error",
+            meta={"exception": str(e)},
+        )
