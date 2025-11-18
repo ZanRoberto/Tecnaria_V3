@@ -1,6 +1,128 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+    <meta charset="UTF-8">
+    <title>Tecnaria Bot 14.7</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            background:#f2f2f2;
+            font-family: Arial, sans-serif;
+            margin:0;
+            padding:0;
+        }
+
+        #container {
+            width: 100%;
+            max-width: 900px;
+            margin: 30px auto;
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align:center;
+            font-size:28px;
+            color:#333;
+        }
+
+        #question {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #aaa;
+            border-radius: 6px;
+            resize: none;
+        }
+
+        button {
+            margin-top: 12px;
+            width: 100%;
+            padding: 14px;
+            font-size: 17px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #004c99;
+        }
+
+        #answerBox {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 6px;
+            background: #fafafa;
+            border: 1px solid #ddd;
+            min-height: 120px;
+            white-space: pre-wrap;
+        }
+
+        #sourceTag {
+            margin-top: 5px;
+            font-size: 13px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+<div id="container">
+
+    <h1>Tecnaria Bot • v14.7</h1>
+
+    <textarea id="question" rows="4" placeholder="Scrivi una domanda su CTF, P560, lamiera..."></textarea>
+
+    <button onclick="sendQuestion()">Invia domanda</button>
+
+    <div id="answerBox"></div>
+    <div id="sourceTag"></div>
+</div>
+
+<script>
+async function sendQuestion() {
+    const q = document.getElementById("question").value.trim();
+    if (!q) {
+        alert("Inserisci una domanda.");
+        return;
+    }
+
+    document.getElementById("answerBox").innerHTML = "⏳ Attendere risposta...";
+    document.getElementById("sourceTag").innerHTML = "";
+
+    try {
+        const res = await fetch("/api/ask", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({question: q})
+        });
+
+        const data = await res.json();
+
+        document.getElementById("answerBox").innerHTML = data.answer || "Nessuna risposta.";
+
+        if (data.source) {
+            document.getElementById("sourceTag").innerHTML = "Fonte: " + data.source;
+        }
+
+    } catch (err) {
+        document.getElementById("answerBox").innerHTML = "Errore di comunicazione.";
+    }
+}
+</script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="it">
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tecnaria GOLD</title>
