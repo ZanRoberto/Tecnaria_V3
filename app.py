@@ -1,5 +1,162 @@
 import os
 import json
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from openai import OpenAI
+
+# ============================================================
+# CONFIG
+# ============================================================
+
+DATA_PATH = "static/data/ctf_system_COMPLETE_GOLD_master.json"
+OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
+
+client = OpenAI(api_key=OPENAI_KEY)
+
+app = FastAPI()
+
+# ============================================================
+# CORS
+# ============================================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ============================================================
+# MODELLI
+# ============================================================
+
+class AskRequest(BaseModel):
+    question: str
+
+# ============================================================
+# STATIC / INDEX
+# ============================================================
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+def serve_index():
+    return FileResponse("static/index.html")
+
+# ============================================================
+# FUNZIONI UTILI
+# ============================================================
+
+def load_json():
+    try:
+        with open(DATA_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return {"blocks": []}
+
+
+def semantic_match(question: str, data):
+    """Match molto semplice per individuare il blocco più probabile."""
+    q_lower = question.lower()
+    best = None
+    best_score = 0
+
+    for block in data.get("blocks", []):
+        score = 0
+
+        for t in block.get("triggers", []):
+            if t.lower() in q_lower:
+                score += 3
+
+        if block.get("family", "").lower() in q_lower:
+            score += 2
+
+        if block.get("intent", "").lower() in q_lower:
+            score += 1
+
+        if score > best_score:
+            best_score = score
+            best = block
+
+    return best, best_score
+
+
+def ask_chatgpt(question: str):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system",
+                 "content": "Rispondi SOLO su temi di Tecnaria S.p.A., CTF, P560, chiodi idonei Tecnaria, lamiera grecata, posa strutturale. Tecnico, preciso, nessuna fantasia."},
+                {"role": "user", "content": question}
+            ],
+            max_tokens=500
+        )
+        return response.choices[0].message["content"]
+    except Exception as e:
+        return None
+
+# ============================================================
+# LOGICA DI RISPOSTA "MISTO FAIL-SAFE"
+# ============================================================
+
+def choose_best_answer(question, llm_answer, json_block, json_score):
+    """
+    Ordine di priorità:
+    1) Se ChatGPT dà risposta valida → vince LLM
+    2) Se LLM è None → usa JSON
+    3) Se JSON è debole (score < 2) → comunque vince LLM
+    """
+    if llm_answer and len(llm_answer.strip()) > 20:
+        return llm_answer, "ChatGPT"
+
+    if json_block:
+        return json_block.get("answer_it", "Nessuna risposta valida"), json_block.get("id", "JSON")
+
+    return "Nessuna risposta disponibile.", "Nessuna"
+
+# ============================================================
+# API ASK
+# ============================================================
+
+@app.post("/api/ask")
+async def ask_api(req: AskRequest):
+    question = req.question.strip()
+    if not question:
+        return {"answer": "Domanda vuota.", "source": "N/A"}
+
+    # 1) CHATGPT FIRST
+    llm_answer = ask_chatgpt(question)
+
+    # 2) JSON SECOND
+    data = load_json()
+    json_block, json_score = semantic_match(question, data)
+
+    if json_block:
+        json_answer = json_block.get("answer_it", "")
+    else:
+        json_answer = None
+
+    # 3) SCELTA MIGLIORE
+    final_answer, source = choose_best_answer(question, llm_answer, json_block, json_score)
+
+    return {
+        "answer": final_answer,
+        "source": source
+    }
+
+# ============================================================
+# HEALTH CHECK
+# ============================================================
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "version": "14.7"}
+import os
+import json
 import re
 import unicodedata
 from typing import Any, Dict, List, Optional, Tuple
