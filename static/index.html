@@ -1,11 +1,12 @@
 import os
 import json
 import re
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from openai import OpenAI
+from fastapi.staticfiles import StaticFiles
 
 client = OpenAI()
 
@@ -13,7 +14,12 @@ client = OpenAI()
 # PATH / FILE
 # ============================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Static folder detection (robusta)
 STATIC_DIR = os.path.join(BASE_DIR, "static")
+if not os.path.exists(STATIC_DIR):
+    STATIC_DIR = "static"
+
 DATA_DIR = os.path.join(STATIC_DIR, "data")
 MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
 
@@ -21,12 +27,17 @@ MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
 # FASTAPI SETUP
 # ============================================================
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve static files ALWAYS
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 
 # ============================================================
 # LOAD MASTER
@@ -46,16 +57,17 @@ class AskRequest(BaseModel):
     lang: str = "it"
 
 # ============================================================
-# HELPERS
+# NORMALIZATION
 # ============================================================
 def normalize(text: str) -> str:
     text = text.lower()
     text = re.sub(r"[^a-z0-9àèéìòùç_\- ]+", " ", text)
     return re.sub(r"\s+", " ", text).strip()
 
-
+# ============================================================
+# INTERNAL MATCHING
+# ============================================================
 def lexical_match_score(q_norm, block):
-    """Punteggio semplice basato su parole chiave."""
     score = 0
     for trig in block.get("triggers", []):
         trig_norm = normalize(trig)
@@ -65,44 +77,43 @@ def lexical_match_score(q_norm, block):
             score += 1
     return score
 
-
 def pick_internal_answer(question: str):
-    """Matching interno classico."""
     q_norm = normalize(question)
     candidates = []
-
     for blk in MASTER_BLOCKS:
         score = lexical_match_score(q_norm, blk)
         if score > 0:
             candidates.append((score, blk))
-
     if not candidates:
         return None
-
     candidates.sort(key=lambda x: x[0], reverse=True)
     return candidates[0][1]
 
 
+# ============================================================
+# EXTERNAL GPT
+# ============================================================
 def ask_external_gpt(question: str):
-    """Chiede un parere esterno (ChatGPT) in stile Tecnaria."""
     prompt = f"""
-Sei l’assistente tecnico di Tecnaria. Rispondi in modo tecnico e conciso.
+Rispondi come assistente tecnico Tecnaria.
 Domanda: {question}
-Risposta:
-"""
+Risposta:"""
+
     try:
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
+            temperature=0.1,
         )
         return resp.choices[0].message.content.strip()
-    except Exception:
+    except:
         return None
 
 
+# ============================================================
+# JUDGE
+# ============================================================
 def choose_best_answer(user_question: str, internal: str, external: str):
-    """Judge: decide se è migliore interna o esterna."""
     if internal and not external:
         return internal, "internal"
     if external and not internal:
@@ -110,25 +121,25 @@ def choose_best_answer(user_question: str, internal: str, external: str):
     if not internal and not external:
         return None, None
 
-    prompt = f"""
-Sei un giudice Tecnaria.
+    judge_prompt = f"""
+Sei un giudice tecnico Tecnaria.
+Scegli quale risposta è tecnicamente più corretta.
 
-Domanda: {user_question}
+DOMANDA: {user_question}
 
-Risposta A (interna):
+RISPOSTA A (interna):
 {internal}
 
-Risposta B (esterna):
+RISPOSTA B (esterna):
 {external}
 
-Quale risposta è TECNICAMENTE più corretta, precisa e coerente con il dominio CTF/P560 Tecnaria?
-Rispondi SOLO con: A oppure B.
+Rispondi SOLO con 'A' o 'B'.
 """
 
     try:
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": judge_prompt}],
             temperature=0,
         )
         judge = resp.choices[0].message.content.strip()
@@ -140,9 +151,10 @@ Rispondi SOLO con: A oppure B.
     except:
         return internal, "internal"
 
-
+# ============================================================
+# AUTO SAVE
+# ============================================================
 def save_new_block(question: str, answer: str):
-    """Salva automaticamente una nuova GOLD block se la risposta viene dall’esterno."""
     new_block = {
         "id": f"AUTO-{len(MASTER_BLOCKS)+1:05d}",
         "family": "AUTO",
@@ -165,10 +177,13 @@ def save_new_block(question: str, answer: str):
 # ROUTES
 # ============================================================
 
-@app.get("/", response_class=FileResponse)
+@app.get("/")
 def home():
-    """Ripristina la UI."""
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    """FORZA SEMPRE IL RENDERING DELL’INTERFACCIA."""
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"error": f"index.html non trovato in {index_path}"}
 
 
 @app.get("/health")
@@ -180,31 +195,21 @@ def health():
 def api_ask(req: AskRequest):
     user_q = req.question.strip()
 
-    # 1) Matching interno
+    # 1) internal
     internal_block = pick_internal_answer(user_q)
-    internal_answer = (
-        internal_block["answer_it"] if internal_block else None
-    )
+    internal_answer = internal_block["answer_it"] if internal_block else None
 
-    # 2) Risposta esterna ChatGPT
+    # 2) external
     external_answer = ask_external_gpt(user_q)
 
-    # 3) Judge
-    final_answer, origin = choose_best_answer(
-        user_q, internal_answer, external_answer
-    )
+    # 3) judge
+    final, origin = choose_best_answer(user_q, internal_answer, external_answer)
 
-    if final_answer is None:
-        return {
-            "answer": "Nessuna risposta trovata.",
-            "origin": "none",
-        }
+    if final is None:
+        return {"answer": "Nessuna risposta trovata.", "origin": "none"}
 
-    # Salvataggio automatico dei nuovi blocchi
+    # 4) auto-add blocks
     if origin == "external":
-        save_new_block(user_q, final_answer)
+        save_new_block(user_q, final)
 
-    return {
-        "answer": final_answer,
-        "origin": origin,
-    }
+    return {"answer": final, "origin": origin}
