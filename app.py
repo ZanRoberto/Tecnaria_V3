@@ -3,9 +3,9 @@ import json
 import re
 from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -18,7 +18,9 @@ from openai import OpenAI
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 DATA_DIR = os.path.join(STATIC_DIR, "data")
+
 MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
+COMM_PATH = os.path.join(DATA_DIR, "COMM.json")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o").strip() or "gpt-4o"
@@ -35,18 +37,16 @@ app = FastAPI(title="Tecnaria Bot v14.7")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # front e back sono sullo stesso dominio, ma così siamo tranquilli
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# mount static
 if not os.path.isdir(STATIC_DIR):
     os.makedirs(STATIC_DIR, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
 
 # ============================================================
 # MODELLI
@@ -61,9 +61,18 @@ class AnswerResponse(BaseModel):
     source: str
     meta: Dict[str, Any]
 
+# ============================================================
+# NORMALIZZAZIONE TESTO
+# ============================================================
+
+def normalize(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"[^\w\sàèéìòóùç]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
 # ============================================================
-# CARICAMENTO KB
+# CARICAMENTO KB TECNICA (per futuro uso, ora solo meta)
 # ============================================================
 
 KB_BLOCKS: List[Dict[str, Any]] = []
@@ -91,21 +100,7 @@ def load_kb() -> None:
         KB_BLOCKS = []
 
 
-load_kb()
-
-
-def normalize(text: str) -> str:
-    text = text.lower()
-    text = re.sub(r"[^\w\sàèéìòóùç]", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
 def score_block(question_norm: str, block: Dict[str, Any]) -> float:
-    """
-    Matching ultra-semplice per sicurezza:
-    - contiamo le parole chiave in comune tra domanda e triggers / question_it.
-    """
     triggers = " ".join(block.get("triggers", []))
     q_it = block.get("question_it", "")
     text = normalize(triggers + " " + q_it)
@@ -118,7 +113,6 @@ def score_block(question_norm: str, block: Dict[str, Any]) -> float:
     if not common:
         return 0.0
 
-    # piccolo punteggio normalizzato
     return len(common) / max(len(q_words), 1)
 
 
@@ -138,19 +132,125 @@ def match_from_kb(question: str, threshold: float = 0.18) -> Optional[Dict[str, 
     return best_block
 
 
+load_kb()
+
 # ============================================================
-# LLM: CHATGPT FIRST
+# CARICAMENTO COMM (dati aziendali/commerciali)
+# ============================================================
+
+COMM_ITEMS: List[Dict[str, Any]] = []
+
+
+def load_comm() -> None:
+    global COMM_ITEMS
+    if not os.path.exists(COMM_PATH):
+        print(f"[WARN] COMM_PATH non trovato: {COMM_PATH}")
+        COMM_ITEMS = []
+        return
+
+    try:
+        with open(COMM_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, dict) and "items" in data:
+            COMM_ITEMS = data["items"]
+        elif isinstance(data, list):
+            COMM_ITEMS = data
+        else:
+            COMM_ITEMS = []
+        print(f"[INFO] COMM caricata: {len(COMM_ITEMS)} blocchi COMM")
+    except Exception as e:
+        print(f"[ERROR] caricando COMM: {e}")
+        COMM_ITEMS = []
+
+
+def is_commercial_question(q: str) -> bool:
+    """
+    Riconosce domande aziendali/commerciali (dati azienda, contatti, P.IVA, indirizzo, SDI, orari, ecc.)
+    che devono essere risposte SOLO da COMM.json.
+    """
+    q = q.lower()
+    keywords = [
+        "partita iva", "p.iva", "p iva", "codice fiscale",
+        "rea", "registro imprese", "camera di commercio",
+        "indirizzo", "sede", "dove si trova tecnaria",
+        "telefono", "numero di telefono", "recapito",
+        "email", "mail", "posta elettronica",
+        "orari", "orario", "apertura", "chiusura",
+        "codice sdi", "sdi", "codice destinatario",
+        "fatturazione elettronica",
+        "dati aziendali", "dati societari", "azienda tecnaria"
+    ]
+    return any(k in q for k in keywords)
+
+
+def match_comm(question: str) -> Optional[Dict[str, Any]]:
+    """
+    Matching molto semplice su COMM.json basato sui tag.
+    """
+    if not COMM_ITEMS:
+        return None
+
+    q = normalize(question)
+    best = None
+    best_score = 0
+
+    for item in COMM_ITEMS:
+        local_score = 0
+        for tag in item.get("tags", []):
+            tag_norm = tag.lower()
+            if tag_norm and tag_norm in q:
+                local_score += 1
+
+        if local_score > best_score:
+            best_score = local_score
+            best = item
+
+    return best if best_score >= 1 else None
+
+
+load_comm()
+
+# ============================================================
+# LLM: CHATGPT CON PROMPT TECNARIA GOLD
 # ============================================================
 
 SYSTEM_PROMPT = """
-Sei l'assistente tecnico GOLD di Tecnaria S.p.A. (Bassano del Grappa).
-Rispondi SOLO su prodotti, sistemi e applicazioni Tecnaria (CTF, P560, CTL, CTL MAXI, VCEM, CTCEM, DIAPASON, ecc.).
-Se la domanda non riguarda in modo chiaro Tecnaria, spiega che l'ambito è fuori campo e invita a contattare l'ufficio tecnico.
+Sei un tecnico–commerciale senior di Tecnaria S.p.A. con più di 20 anni di esperienza
+su:
+- CTF + P560 + lamiera grecata per solai misti acciaio–cls,
+- VCEM / CTCEM per solai in laterocemento,
+- CTL / CTL MAXI per solai legno–calcestruzzo,
+- DIAPASON per travetti in laterocemento,
+- sistemi di posa, controllo colpi, card, limiti di validità e normativa collegata.
 
-Stile:
-- linguaggio tecnico-ingegneristico chiaro, niente marketing
-- risposte strutturate in punti quando utile
-- cita SEMPRE esplicitamente che si tratta di sistemi Tecnaria S.p.A.
+REGOLE OBBLIGATORIE (NON DEROGABILI):
+
+1. Rispondi SOLO nel mondo Tecnaria S.p.A. (prodotti, sistemi, posa, normative correlate).
+   Non usare mai esempi generici o riferiti ad altri produttori.
+2. NON inventare MAI numeri:
+   - numero di chiodi,
+   - distanze,
+   - spessori,
+   - lunghezze,
+   - profondità,
+   - valori di resistenza.
+   Se il dato numerico non è certo o non è esplicitamente noto, scrivi chiaramente:
+   "Questo valore va verificato nelle istruzioni Tecnaria o con l’Ufficio Tecnico."
+3. Per i CTF cita SEMPRE la chiodatrice P560 e i “chiodi idonei Tecnaria”.
+4. Per il sistema DIAPASON: NON utilizza chiodi. È fissato con UNA vite strutturale su travetti in laterocemento.
+   Non dire mai che DIAPASON utilizza chiodi o la P560.
+5. Se nella domanda compaiono più famiglie (es. CTF e DIAPASON), distingui SEMPRE le due famiglie
+   e spiega separatamente il loro funzionamento.
+6. Non inventare mai dati aziendali (indirizzi, orari, nominativi, numeri di telefono):
+   questi aspetti sono gestiti da moduli dedicati del sistema.
+7. Stile di risposta:
+   - linguaggio tecnico–ingegneristico, chiaro, aziendale;
+   - niente marketing, niente frasi vaghe;
+   - quando serve, usa elenco puntato per chiarezza;
+   - resta concentrato sul problema specifico della domanda.
+
+Se la domanda è palesemente fuori dal mondo Tecnaria, spiega che il sistema è pensato
+solo per rispondere su prodotti e applicazioni Tecnaria.
 """
 
 
@@ -158,7 +258,7 @@ def call_chatgpt(question: str) -> str:
     if client is None:
         return (
             "Al momento il motore ChatGPT esterno non è disponibile "
-            "(OPENAI_API_KEY mancante). Contatta l'ufficio tecnico Tecnaria."
+            "(OPENAI_API_KEY mancante). Contatta l'Ufficio Tecnico Tecnaria."
         )
 
     try:
@@ -175,9 +275,8 @@ def call_chatgpt(question: str) -> str:
         print(f"[ERROR] chiamando ChatGPT: {e}")
         return (
             "Si è verificato un errore nella chiamata al motore esterno. "
-            "Per sicurezza, contatta direttamente l’ufficio tecnico Tecnaria."
+            "Per sicurezza, contatta direttamente l’Ufficio Tecnico Tecnaria."
         )
-
 
 # ============================================================
 # ENDPOINTS
@@ -196,6 +295,7 @@ async def status():
     return {
         "status": "Tecnaria Bot v14.7 attivo",
         "kb_blocks": len(KB_BLOCKS),
+        "comm_blocks": len(COMM_ITEMS),
         "openai_enabled": bool(OPENAI_API_KEY),
         "model": OPENAI_MODEL,
     }
@@ -203,47 +303,58 @@ async def status():
 
 @app.post("/api/ask", response_model=AnswerResponse)
 async def api_ask(req: QuestionRequest):
-    question = (req.question or "").strip()
-    if not question:
+    question_raw = (req.question or "").strip()
+    if not question_raw:
         raise HTTPException(status_code=400, detail="Domanda vuota")
 
+    q_norm = question_raw.lower()
+
     try:
-        # 1) ChatGPT FIRST
-        gpt_answer = call_chatgpt(question)
+        # 1️⃣ DOMANDE AZIENDALI / COMMERCIALI → SOLO COMM.JSON
+        if is_commercial_question(q_norm):
+            comm_block = match_comm(q_norm)
+            if comm_block:
+                answer = comm_block["response_variants"]["gold"]["it"]
+                return AnswerResponse(
+                    answer=answer,
+                    source="json_comm",
+                    meta={"comm_id": comm_block.get("id")}
+                )
+            else:
+                # fallback commerciale se non troviamo nulla in COMM
+                fallback = (
+                    "Le informazioni richieste rientrano nei dati aziendali/commerciali. "
+                    "Non risultano però disponibili nel modulo corrente; per sicurezza "
+                    "è necessario fare riferimento ai canali ufficiali Tecnaria."
+                )
+                return AnswerResponse(
+                    answer=fallback,
+                    source="json_comm_fallback",
+                    meta={}
+                )
 
-        # 2) Tentativo match KB per verifica / confronto
-        kb_block = match_from_kb(question)
-        kb_answer = None
-        kb_id = None
-        if kb_block:
-            kb_answer = kb_block.get("answer_it") or kb_block.get("answer", "")
-            kb_id = kb_block.get("id")
+        # 2️⃣ DOMANDE TECNICHE → SOLO CHATGPT (con profilo Tecnaria GOLD)
+        gpt_answer = call_chatgpt(question_raw)
 
-        # 3) Strategia semplice: per ora VINCE SEMPRE GPT
-        final_answer = gpt_answer
-
-        meta: Dict[str, Any] = {
-            "used_chatgpt": True,
-            "used_kb": kb_block is not None,
-            "kb_id": kb_id,
-        }
-
-        # In futuro possiamo far decidere a ChatGPT quale delle due è migliore,
-        # ma per il collaudo cliente basta così.
+        # opzionale: cerchiamo un eventuale blocco KB solo per meta / debug
+        kb_block = match_from_kb(question_raw)
+        kb_id = kb_block.get("id") if kb_block else None
 
         return AnswerResponse(
-            answer=final_answer,
-            source="chatgpt_first",
-            meta=meta,
+            answer=gpt_answer,
+            source="chatgpt_gold_tecnaria",
+            meta={
+                "used_chatgpt": True,
+                "kb_id": kb_id,
+            },
         )
 
     except HTTPException:
         raise
     except Exception as e:
         print(f"[ERROR] /api/ask: {e}")
-        # NON lasciamo mai la UI senza testo
         return AnswerResponse(
-            answer=f"[ERRORE] Si è verificato un problema interno: {e}",
+            answer="Si è verificato un problema interno. Contatta l’Ufficio Tecnico Tecnaria.",
             source="error",
             meta={"exception": str(e)},
         )
