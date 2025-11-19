@@ -27,7 +27,7 @@
       "tags": ["ordine", "conferma", "consegna", "urgenza", "COMM"],
       "response_variants": {
         "gold": {
-          "it": "L’ordine deve citare l’offerta Tecnaria. Dopo la ricezione viene inviata conferma con disponibilità e tempi di consegna. Per urgenze contattare prima dell’invio per pianificare eventuali corsie rapide."
+          "it": "L’ordine deve citare l’offerta Tecnaria. Dopo la ricezione viene invigita conferma con disponibilità e tempi di consegna. Per urgenze contattare prima dell’invio per pianificare eventuali corsie rapide."
         }
       }
     },
@@ -197,7 +197,7 @@
       "tags": ["GOLD", "CANONICO", "narrativa", "deterministico", "COMM"],
       "response_variants": {
         "gold": {
-          "it": "Il sistema eroga risposte GOLD complete e narrative ma deterministiche. Per una versione sintetica usare la parola chiave CANONICO prima della domanda."
+          "it": "Il sistema eroga risposte GOLD complete e narrative ma determinate. Per una versione sintetica usare la parola chiave CANONICO prima della domanda."
         }
       }
     },
@@ -238,6 +238,108 @@
       "response_variants": {
         "gold": {
           "it": "Per offerta CTL/CTL MAXI indicare: sezione/essenza della trave in legno, spessore della soletta, passo e lunghezze. Per legni storici o fessurati allegare foto e, se necessario, prevedere prove a campione."
+        }
+      }
+    },
+
+    <!-- 🚀 NUOVI BLOCCHI INSERITI (DATI UFFICIALI) -->
+
+    {
+      "id": "COMM-1025",
+      "family": "COMM",
+      "tags": [
+        "azienda",
+        "dati aziendali",
+        "partita iva",
+        "codice fiscale",
+        "rea",
+        "identità",
+        "COMM"
+      ],
+      "response_variants": {
+        "gold": {
+          "it": "TECNARIA S.p.A. è la società che produce i sistemi di connessione per solai e rinforzo strutturale. La sede è a Bassano del Grappa (VI) e il codice fiscale/partita IVA è 01277680243, con iscrizione al Registro Imprese REA VI-157347. Questi sono i dati aziendali ufficiali da utilizzare per documenti, ordini e contratti."
+        }
+      }
+    },
+    {
+      "id": "COMM-1026",
+      "family": "COMM",
+      "tags": [
+        "sede",
+        "indirizzo",
+        "ubicazione",
+        "dove si trova tecnaria",
+        "COMM"
+      ],
+      "response_variants": {
+        "gold": {
+          "it": "La sede di Tecnaria S.p.A. si trova a Bassano del Grappa (VI), in Viale Pecori Giraldi 55, CAP 36061. Questo è l’indirizzo di riferimento per la corrispondenza ufficiale e per eventuali spedizioni o resi secondo le condizioni generali di vendita."
+        }
+      }
+    },
+    {
+      "id": "COMM-1027",
+      "family": "COMM",
+      "tags": [
+        "contatti",
+        "telefono",
+        "email",
+        "uffici",
+        "COMM"
+      ],
+      "response_variants": {
+        "gold": {
+          "it": "I contatti generali di Tecnaria S.p.A. sono: telefono +39 0424 50 20 29 ed email info@tecnaria.com. Le richieste vengono smistate agli uffici competenti secondo la tipologia (tecnico, commerciale, amministrativo)."
+        }
+      }
+    },
+    {
+      "id": "COMM-1028",
+      "family": "COMM",
+      "tags": [
+        "sito",
+        "canali web",
+        "online",
+        "documentazione",
+        "COMM"
+      ],
+      "response_variants": {
+        "gold": {
+          "it": "Il sito istituzionale di riferimento è www.tecnaria.com, dove sono disponibili cataloghi, documentazione tecnica, listini, moduli di contatto e comunicazioni ufficiali. È il canale principale per reperire informazioni aggiornate sui prodotti e sulle istruzioni di posa."
+        }
+      }
+    },
+    {
+      "id": "COMM-1029",
+      "family": "COMM",
+      "tags": [
+        "fatturazione elettronica",
+        "SDI",
+        "codice destinatario",
+        "fatture",
+        "COMM"
+      ],
+      "response_variants": {
+        "gold": {
+          "it": "Per la fatturazione elettronica verso Tecnaria S.p.A. il codice destinatario SDI è J6URRTW. In fattura vanno riportati la ragione sociale completa, la sede di Bassano del Grappa e il codice fiscale/partita IVA 01277680243."
+        }
+      }
+    },
+    {
+      "id": "COMM-1030",
+      "family": "COMM",
+      "tags": [
+        "informazioni aziendali particolari",
+        "organigramma",
+        "nominativi",
+        "dati non pubblici",
+        "fuori ambito",
+        "COMM"
+      ],
+      "response_variants": {
+        "gold": {
+          "it": "Per ragioni di riservatezza il sistema non fornisce nominativi, organigrammi interni o dati aziendali non pubblici. Vengono restituiti solo i dati ufficiali disponibili e le informazioni tecniche e commerciali sui prodotti Tecnaria. Per esigenze specifiche è necessario un contatto diretto tramite i canali ufficiali."
         }
       }
     }
