@@ -5,13 +5,9 @@
   <title>TECNARIA Sinapsi</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- STILE INLINE: NESSUN ALTRO FILE CSS -->
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -21,7 +17,7 @@
       color: #ffffff;
     }
 
-    /* HEADER ------------------------------------------------------------*/
+    /* HEADER */
     .header {
       display: flex;
       align-items: center;
@@ -89,7 +85,7 @@
       opacity: 0.85;
     }
 
-    /* LAYOUT ------------------------------------------------------------*/
+    /* LAYOUT */
     .main {
       padding: 24px 26px 26px;
       display: flex;
@@ -138,7 +134,6 @@
       opacity: 0.7;
     }
 
-    /* TEXTAREA ------------------------------------------------------------*/
     .question-box {
       width: 100%;
       min-height: 170px;
@@ -157,7 +152,6 @@
       color: rgba(255,255,255,0.45);
     }
 
-    /* BOTTONI ------------------------------------------------------------*/
     .mode-row {
       display: flex;
       flex-wrap: wrap;
@@ -192,12 +186,10 @@
       border-radius: 50%;
     }
 
-    .btn-mode.gold span.dot {
-      background: #ffcc66;
-    }
-    .btn-mode.furba span.dot {
-      background: #7fd0ff;
-    }
+    .btn-mode.gold span.dot { background: #ffcc66; }
+    .btn-mode.classica span.dot { background: #7fd0ff; }
+    .btn-mode.turbo span.dot { background: #ff5a5a; }
+    .btn-mode.empatica span.dot { background: #8cffb5; }
 
     .btn-mode.active {
       background: linear-gradient(90deg, #ef6c00, #d45d00);
@@ -237,7 +229,6 @@
       opacity: 0.7;
     }
 
-    /* RISPOSTA ------------------------------------------------------------*/
     .answer-area {
       background: radial-gradient(circle at top left, #283040 0, #151823 50%, #0f1117 100%);
       border-radius: 16px;
@@ -269,13 +260,9 @@
       color: #f5b46a;
     }
 
-    /* RESPONSIVE ------------------------------------------------------------*/
     @media (max-width: 900px) {
-      .main {
-        flex-direction: column;
-      }
+      .main { flex-direction: column; }
     }
-
   </style>
 </head>
 
@@ -285,41 +272,45 @@
       <img src="/static/assets/logo.png" alt="Tecnaria Logo" class="logo" onerror="this.style.display='none';" />
       <div class="title-block">
         <h1>TECNARIA Sinapsi</h1>
-        <p class="subtitle">Assistente tecnico strutturale · sistemi misti · P560 · CTF · DIAPASON</p>
+        <p class="subtitle">Assistente tecnico strutturale · GOLD · CLASSICA · TURBO · EMPATICA</p>
       </div>
     </div>
     <div class="header-right">
       <div class="status-pill">
         <span class="status-dot"></span>
-        <span>GOLD / FURBA online</span>
+        <span>Backend online</span>
       </div>
       <div class="dataset-info">
-        Backend: /api/ask (GOLD) · /api/ask_furba (FURBA)
+        /api/ask · /api/ask_classica · /api/ask_turbo · /api/ask_empatica
       </div>
     </div>
   </header>
 
   <main class="main">
-    <!-- SINISTRA: DOMANDA -->
     <section class="panel left-panel">
       <div class="panel-title-row">
         <div>
           <div class="panel-title">Domanda</div>
-          <div class="panel-subtitle">Scrivi una domanda sul mondo Tecnaria (CTF, P560, DIAPASON, VCEM, CTL…)</div>
+          <div class="panel-subtitle">Scrivi una domanda Tecnaria o generale (a seconda della modalità)</div>
         </div>
       </div>
 
-      <textarea id="question" class="question-box" placeholder="Esempio: 'Mi parli del connettore CTF?' oppure 'Quanti chiodi servono per fissare un CTF?'"></textarea>
+      <textarea id="question" class="question-box"
+        placeholder="Esempio: 'Mi parli del connettore CTF Tecnaria?' oppure 'Spiegami cosa fa un connettore per solai misti.'"></textarea>
 
       <div class="mode-row">
         <div class="modes">
           <button id="goldBtn" class="btn-mode gold">
-            <span class="dot"></span>
-            GOLD Tecnaria
+            <span class="dot"></span> GOLD Tecnaria
           </button>
-          <button id="furbaBtn" class="btn-mode furba active">
-            <span class="dot"></span>
-            Modalità Furba
+          <button id="classicaBtn" class="btn-mode classica active">
+            <span class="dot"></span> CLASSICA
+          </button>
+          <button id="turboBtn" class="btn-mode turbo">
+            <span class="dot"></span> TURBO
+          </button>
+          <button id="empaticaBtn" class="btn-mode empatica">
+            <span class="dot"></span> EMPATICA
           </button>
         </div>
       </div>
@@ -332,22 +323,21 @@
       </div>
 
       <p class="hint">
-        Suggerimento: indica sempre tipo di solaio, travi, spessori, luce delle campate e problemi (fessurazioni, umidità, degrado).
+        GOLD: risposta strutturale Tecnaria · CLASSICA: come ChatGPT · TURBO: più brillante · EMPATICA: più umana.
       </p>
     </section>
 
-    <!-- DESTRA: RISPOSTA -->
     <section class="panel right-panel">
       <div class="panel-title-row">
         <div>
           <div class="panel-title">Risposta</div>
-          <div class="panel-subtitle">Esito dell’assistente (GOLD deterministico o FURBA tipo ChatGPT)</div>
+          <div class="panel-subtitle">Esito dell'assistente nella modalità selezionata</div>
         </div>
       </div>
 
       <div id="answerBox" class="answer-area">
         <span class="answer-placeholder">
-          La risposta apparirà qui. Scegli la modalità (FURBA o GOLD) e invia una domanda.
+          La risposta apparirà qui. Scegli la modalità (GOLD / CLASSICA / TURBO / EMPATICA) e invia una domanda.
         </span>
       </div>
 
@@ -357,34 +347,40 @@
     </section>
   </main>
 
-  <!-- JS INLINE: NESSUN ALTRO FILE -->
   <script>
-    let mode = "furba";  // default richiesto
+    let mode = "classica";
 
     const goldBtn = document.getElementById("goldBtn");
-    const furbaBtn = document.getElementById("furbaBtn");
+    const classicaBtn = document.getElementById("classicaBtn");
+    const turboBtn = document.getElementById("turboBtn");
+    const empaticaBtn = document.getElementById("empaticaBtn");
     const sendBtn = document.getElementById("sendBtn");
     const qEl = document.getElementById("question");
     const answerBox = document.getElementById("answerBox");
     const metaBox = document.getElementById("metaBox");
 
-    goldBtn.addEventListener("click", () => {
-      mode = "gold";
-      goldBtn.classList.add("active");
-      furbaBtn.classList.remove("active");
-    });
+    function setMode(newMode) {
+      mode = newMode;
+      [goldBtn, classicaBtn, turboBtn, empaticaBtn].forEach(btn => btn.classList.remove("active"));
+      if (newMode === "gold") goldBtn.classList.add("active");
+      if (newMode === "classica") classicaBtn.classList.add("active");
+      if (newMode === "turbo") turboBtn.classList.add("active");
+      if (newMode === "empatica") empaticaBtn.classList.add("active");
+    }
 
-    furbaBtn.addEventListener("click", () => {
-      mode = "furba";
-      furbaBtn.classList.add("active");
-      goldBtn.classList.remove("active");
-    });
+    goldBtn.addEventListener("click", () => setMode("gold"));
+    classicaBtn.addEventListener("click", () => setMode("classica"));
+    turboBtn.addEventListener("click", () => setMode("turbo"));
+    empaticaBtn.addEventListener("click", () => setMode("empatica"));
 
     async function sendQuestion() {
       const question = qEl.value.trim();
       if (!question) return;
 
-      const endpoint = mode === "gold" ? "/api/ask" : "/api/ask_furba";
+      let endpoint = "/api/ask_classica";
+      if (mode === "gold") endpoint = "/api/ask";
+      else if (mode === "turbo") endpoint = "/api/ask_turbo";
+      else if (mode === "empatica") endpoint = "/api/ask_empatica";
 
       answerBox.textContent = "Sto pensando…";
       metaBox.textContent = "Chiamata a " + endpoint + " in corso…";
@@ -398,8 +394,9 @@
 
         const data = await res.json();
         answerBox.textContent = data.answer || "— nessuna risposta —";
-        metaBox.textContent = "source: " + (data.source || "?") + "\\n" +
-                              "meta: " + JSON.stringify(data.meta || {}, null, 2);
+        metaBox.textContent =
+          "source: " + (data.source || "?") + "\n" +
+          "meta: " + JSON.stringify(data.meta || {}, null, 2);
       } catch (err) {
         answerBox.textContent = "Errore di comunicazione con il backend.";
         metaBox.textContent = String(err);
