@@ -253,6 +253,12 @@ Se la domanda è palesemente fuori dal mondo Tecnaria, spiega che il sistema è 
 solo per rispondere su prodotti e applicazioni Tecnaria.
 """
 
+# Prompt "furbo" in stile ChatGPT app (generale, fluido)
+FURBA_SYSTEM_PROMPT = """
+Sei ChatGPT in modalità conversazionale generale.
+Rispondi in modo chiaro, fluido e completo, come nell'interfaccia ufficiale di ChatGPT.
+Non essere eccessivamente prudente: prova a dare sempre una risposta utile e ben formulata.
+"""
 
 def call_chatgpt(question: str) -> str:
     if client is None:
@@ -276,6 +282,35 @@ def call_chatgpt(question: str) -> str:
         return (
             "Si è verificato un errore nella chiamata al motore esterno. "
             "Per sicurezza, contatta direttamente l’Ufficio Tecnico Tecnaria."
+        )
+
+
+def call_chatgpt_furba(question: str) -> str:
+    """
+    Versione 'furba': usa il modello in modo molto simile alla ChatGPT app,
+    senza vincoli Tecnaria, massima fluidità e completezza.
+    """
+    if client is None:
+        return (
+            "Il motore ChatGPT esterno non è disponibile "
+            "(OPENAI_API_KEY mancante)."
+        )
+
+    try:
+        completion = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": FURBA_SYSTEM_PROMPT},
+                {"role": "user", "content": question},
+            ],
+            temperature=0.4,  # un po' più “vivace” della versione tecnica
+            top_p=1.0,
+        )
+        return completion.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"[ERROR] chiamando ChatGPT (furba): {e}")
+        return (
+            "Si è verificato un errore nella chiamata al motore esterno in modalità furba."
         )
 
 # ============================================================
@@ -356,5 +391,34 @@ async def api_ask(req: QuestionRequest):
         return AnswerResponse(
             answer="Si è verificato un problema interno. Contatta l’Ufficio Tecnico Tecnaria.",
             source="error",
+            meta={"exception": str(e)},
+        )
+
+
+@app.post("/api/ask_furba", response_model=AnswerResponse)
+async def api_ask_furba(req: QuestionRequest):
+    """
+    Endpoint 'furbo': usa direttamente il modello in stile ChatGPT app,
+    senza passare dal COMM.json o dalla KB Tecnaria.
+    Utile per demo, domande generali o confronto con ChatGPT “puro”.
+    """
+    question_raw = (req.question or "").strip()
+    if not question_raw:
+        raise HTTPException(status_code=400, detail="Domanda vuota")
+
+    try:
+        answer = call_chatgpt_furba(question_raw)
+        return AnswerResponse(
+            answer=answer,
+            source="chatgpt_furba",
+            meta={"used_chatgpt_furba": True},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] /api/ask_furba: {e}")
+        return AnswerResponse(
+            answer="Si è verificato un problema interno in modalità furba.",
+            source="error_furba",
             meta={"exception": str(e)},
         )
