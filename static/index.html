@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
-  <title>TECNARIA Sinapsi</title>
+  <title>TECNARIA Sinapsi – GOLD</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
@@ -152,52 +152,6 @@
       color: rgba(255,255,255,0.45);
     }
 
-    .mode-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 10px;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .modes {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .btn-mode {
-      padding: 6px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(23, 30, 43, 0.9);
-      color: #f0f0f0;
-      font-size: 12px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .btn-mode span.dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
-
-    .btn-mode.gold span.dot { background: #ffcc66; }
-    .btn-mode.classica span.dot { background: #7fd0ff; }
-    .btn-mode.turbo span.dot { background: #ff5a5a; }
-    .btn-mode.empatica span.dot { background: #8cffb5; }
-
-    .btn-mode.active {
-      background: linear-gradient(90deg, #ef6c00, #d45d00);
-      border-color: #ffb96a;
-      color: #ffffff;
-      box-shadow: 0 0 14px rgba(239,108,0,0.7);
-    }
-
     .send-wrapper {
       margin-top: 12px;
       display: flex;
@@ -271,8 +225,8 @@
     <div class="header-left">
       <img src="/static/assets/logo.png" alt="Tecnaria Logo" class="logo" onerror="this.style.display='none';" />
       <div class="title-block">
-        <h1>TECNARIA Sinapsi</h1>
-        <p class="subtitle">Assistente tecnico strutturale · GOLD · CLASSICA · TURBO · EMPATICA</p>
+        <h1>TECNARIA Sinapsi – GOLD</h1>
+        <p class="subtitle">Assistente tecnico strutturale · Modalità GOLD Tecnaria</p>
       </div>
     </div>
     <div class="header-right">
@@ -281,7 +235,7 @@
         <span>Backend online</span>
       </div>
       <div class="dataset-info">
-        /api/ask · /api/ask_classica · /api/ask_turbo · /api/ask_empatica
+        Endpoint: /api/ask (GOLD Tecnaria)
       </div>
     </div>
   </header>
@@ -291,53 +245,43 @@
       <div class="panel-title-row">
         <div>
           <div class="panel-title">Domanda</div>
-          <div class="panel-subtitle">Scrivi una domanda Tecnaria o generale (a seconda della modalità)</div>
+          <div class="panel-subtitle">
+            Scrivi qui la domanda sui sistemi Tecnaria (CTF, P560, CTL, VCEM, CTCEM, DIAPASON, GTS…)
+          </div>
         </div>
       </div>
 
       <textarea id="question" class="question-box"
-        placeholder="Esempio: 'Mi parli del connettore CTF Tecnaria?' oppure 'Spiegami cosa fa un connettore per solai misti.'"></textarea>
-
-      <div class="mode-row">
-        <div class="modes">
-          <button id="goldBtn" class="btn-mode gold">
-            <span class="dot"></span> GOLD Tecnaria
-          </button>
-          <button id="classicaBtn" class="btn-mode classica active">
-            <span class="dot"></span> CLASSICA
-          </button>
-          <button id="turboBtn" class="btn-mode turbo">
-            <span class="dot"></span> TURBO
-          </button>
-          <button id="empaticaBtn" class="btn-mode empatica">
-            <span class="dot"></span> EMPATICA
-          </button>
-        </div>
-      </div>
+        placeholder="Esempi:
+- Mi parli del connettore CTF Tecnaria?
+- Quanti connettori devo prevedere per un solaio con profili IPE?
+- Come si fissa il sistema DIAPASON su travetti in laterocemento?
+- È valido il fissaggio se il chiodo P560 entra nel calcestruzzo del travetto?"></textarea>
 
       <div class="send-wrapper">
         <button id="sendBtn" class="btn-send">
-          Chiedi
+          Chiedi in GOLD
           <span class="arrow">➜</span>
         </button>
       </div>
 
       <p class="hint">
-        GOLD: risposta strutturale Tecnaria · CLASSICA: come ChatGPT · TURBO: più brillante · EMPATICA: più umana.
+        La modalità GOLD utilizza un prompt tecnico–ingegneristico dedicato a Tecnaria S.p.A., con controlli su P560, CTF,
+        DIAPASON, CTL, VCEM, CTCEM e sugli errori di posa. Nessuna risposta su prodotti non Tecnaria.
       </p>
     </section>
 
     <section class="panel right-panel">
       <div class="panel-title-row">
         <div>
-          <div class="panel-title">Risposta</div>
-          <div class="panel-subtitle">Esito dell'assistente nella modalità selezionata</div>
+          <div class="panel-title">Risposta GOLD</div>
+          <div class="panel-subtitle">Esito dell'assistente Tecnaria in modalità GOLD</div>
         </div>
       </div>
 
       <div id="answerBox" class="answer-area">
         <span class="answer-placeholder">
-          La risposta apparirà qui. Scegli la modalità (GOLD / CLASSICA / TURBO / EMPATICA) e invia una domanda.
+          La risposta GOLD apparirà qui. Formula una domanda sui prodotti e sistemi Tecnaria S.p.A. e premi “Chiedi in GOLD”.
         </span>
       </div>
 
@@ -348,45 +292,20 @@
   </main>
 
   <script>
-    let mode = "classica";
-
-    const goldBtn = document.getElementById("goldBtn");
-    const classicaBtn = document.getElementById("classicaBtn");
-    const turboBtn = document.getElementById("turboBtn");
-    const empaticaBtn = document.getElementById("empaticaBtn");
     const sendBtn = document.getElementById("sendBtn");
     const qEl = document.getElementById("question");
     const answerBox = document.getElementById("answerBox");
     const metaBox = document.getElementById("metaBox");
 
-    function setMode(newMode) {
-      mode = newMode;
-      [goldBtn, classicaBtn, turboBtn, empaticaBtn].forEach(btn => btn.classList.remove("active"));
-      if (newMode === "gold") goldBtn.classList.add("active");
-      if (newMode === "classica") classicaBtn.classList.add("active");
-      if (newMode === "turbo") turboBtn.classList.add("active");
-      if (newMode === "empatica") empaticaBtn.classList.add("active");
-    }
-
-    goldBtn.addEventListener("click", () => setMode("gold"));
-    classicaBtn.addEventListener("click", () => setMode("classica"));
-    turboBtn.addEventListener("click", () => setMode("turbo"));
-    empaticaBtn.addEventListener("click", () => setMode("empatica"));
-
     async function sendQuestion() {
       const question = qEl.value.trim();
       if (!question) return;
 
-      let endpoint = "/api/ask_classica";
-      if (mode === "gold") endpoint = "/api/ask";
-      else if (mode === "turbo") endpoint = "/api/ask_turbo";
-      else if (mode === "empatica") endpoint = "/api/ask_empatica";
-
-      answerBox.textContent = "Sto pensando…";
-      metaBox.textContent = "Chiamata a " + endpoint + " in corso…";
+      answerBox.textContent = "Sto pensando in modalità GOLD Tecnaria…";
+      metaBox.textContent = "Chiamata a /api/ask (GOLD) in corso…";
 
       try {
-        const res = await fetch(endpoint, {
+        const res = await fetch("/api/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question })
