@@ -23,9 +23,9 @@ MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
 COMM_PATH = os.path.join(DATA_DIR, "COMM.json")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o").strip() or "gpt-4o"
+OPENAI_MODEL = (os.getenv("OPENAI_MODEL", "gpt-4o") or "gpt-4o").strip()
 
-client = None
+client: Optional[OpenAI] = None
 if OPENAI_API_KEY:
     client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -33,7 +33,7 @@ if OPENAI_API_KEY:
 # FASTAPI APP
 # ============================================================
 
-app = FastAPI(title="Tecnaria Bot v14.7")
+app = FastAPI(title="Tecnaria Bot – GOLD / CLASSICA / TURBO / EMPATICA")
 
 app.add_middleware(
     CORSMiddleware,
@@ -72,7 +72,7 @@ def normalize(text: str) -> str:
     return text
 
 # ============================================================
-# CARICAMENTO KB TECNICA (per futuro uso, ora solo meta)
+# CARICAMENTO KB TECNICA (per meta / debug)
 # ============================================================
 
 KB_BLOCKS: List[Dict[str, Any]] = []
@@ -109,6 +109,9 @@ def score_block(question_norm: str, block: Dict[str, Any]) -> float:
 
     q_words = set(question_norm.split())
     b_words = set(text.split())
+    if not q_words or not b_words:
+        return 0.0
+
     common = q_words & b_words
     if not common:
         return 0.0
@@ -120,7 +123,7 @@ def match_from_kb(question: str, threshold: float = 0.18) -> Optional[Dict[str, 
     if not KB_BLOCKS:
         return None
     qn = normalize(question)
-    best_block = None
+    best_block: Optional[Dict[str, Any]] = None
     best_score = 0.0
     for b in KB_BLOCKS:
         s = score_block(qn, b)
@@ -178,20 +181,20 @@ def is_commercial_question(q: str) -> bool:
         "orari", "orario", "apertura", "chiusura",
         "codice sdi", "sdi", "codice destinatario",
         "fatturazione elettronica",
-        "dati aziendali", "dati societari", "azienda tecnaria"
+        "dati aziendali", "dati societari", "azienda tecnaria",
     ]
     return any(k in q for k in keywords)
 
 
 def match_comm(question: str) -> Optional[Dict[str, Any]]:
     """
-    Matching molto semplice su COMM.json basato sui tag.
+    Matching semplice su COMM.json basato sui tag.
     """
     if not COMM_ITEMS:
         return None
 
     q = normalize(question)
-    best = None
+    best: Optional[Dict[str, Any]] = None
     best_score = 0
 
     for item in COMM_ITEMS:
@@ -211,107 +214,136 @@ def match_comm(question: str) -> Optional[Dict[str, Any]]:
 load_comm()
 
 # ============================================================
-# LLM: CHATGPT CON PROMPT TECNARIA GOLD
+# LLM: PROMPT TECNARIA GOLD + MODALITÀ CLASSICA / TURBO / EMPATICA
 # ============================================================
 
-SYSTEM_PROMPT = """
+SYSTEM_PROMPT_GOLD = """
 Sei un tecnico–commerciale senior di Tecnaria S.p.A. con più di 20 anni di esperienza
-su:
-- CTF + P560 + lamiera grecata per solai misti acciaio–cls,
-- VCEM / CTCEM per solai in laterocemento,
-- CTL / CTL MAXI per solai legno–calcestruzzo,
-- DIAPASON per travetti in laterocemento,
-- sistemi di posa, controllo colpi, card, limiti di validità e normativa collegata.
+su tutti i sistemi:
+- CTF + P560 per solai misti acciaio–calcestruzzo
+- VCEM / CTCEM per solai in laterocemento
+- CTL / CTL MAXI per solai legno–calcestruzzo
+- DIAPASON per travetti in laterocemento
+- GTS, accessori e fissaggi correlati
+- procedure di posa, verifica colpi, card, limiti, normativa, casi di non validità.
 
-REGOLE OBBLIGATORIE (NON DEROGABILI):
+REGOLE OBBLIGATORIE E NON DEROGABILI:
 
-1. Rispondi SOLO nel mondo Tecnaria S.p.A. (prodotti, sistemi, posa, normative correlate).
-   Non usare mai esempi generici o riferiti ad altri produttori.
-2. NON inventare MAI numeri:
-   - numero di chiodi,
-   - distanze,
-   - spessori,
-   - lunghezze,
-   - profondità,
-   - valori di resistenza.
-   Se il dato numerico non è certo o non è esplicitamente noto, scrivi chiaramente:
+1. Rispondi esclusivamente nel mondo Tecnaria S.p.A. Usare esempi, numeri, metodi o strumenti
+   di altri produttori è vietato.
+
+2. Per i CTF cita sempre la chiodatrice P560 e i "chiodi idonei Tecnaria".
+
+3. Per il sistema DIAPASON: NON utilizza chiodi. Si fissa con UNA vite strutturale in ogni piastra.
+   Non citare mai P560 o chiodi in relazione ai DIAPASON.
+
+4. Se la domanda riguarda più famiglie (es. CTF + DIAPASON), distingui sempre in modo netto i due sistemi
+   e spiega le differenze operative.
+
+5. Non inventare MAI valori numerici se non sono confermati dalle istruzioni Tecnaria:
+   - numero di chiodi
+   - passo
+   - spessori
+   - lunghezze
+   - profondità
+   - resistenze
+   - distanze
+   - quantità
+   Se il dato non è certo, usa la frase:
    "Questo valore va verificato nelle istruzioni Tecnaria o con l’Ufficio Tecnico."
-3. Per i CTF cita SEMPRE la chiodatrice P560 e i “chiodi idonei Tecnaria”.
-4. Per il sistema DIAPASON: NON utilizza chiodi. È fissato con UNA vite strutturale su travetti in laterocemento.
-   Non dire mai che DIAPASON utilizza chiodi o la P560.
-5. Se nella domanda compaiono più famiglie (es. CTF e DIAPASON), distingui SEMPRE le due famiglie
-   e spiega separatamente il loro funzionamento.
-6. Non inventare mai dati aziendali (indirizzi, orari, nominativi, numeri di telefono):
-   questi aspetti sono gestiti da moduli dedicati del sistema.
-7. Stile di risposta:
-   - linguaggio tecnico–ingegneristico, chiaro, aziendale;
-   - niente marketing, niente frasi vaghe;
-   - quando serve, usa elenco puntato per chiarezza;
-   - resta concentrato sul problema specifico della domanda.
 
-Se la domanda è palesemente fuori dal mondo Tecnaria, spiega che il sistema è pensato
-solo per rispondere su prodotti e applicazioni Tecnaria.
+6. Se invece il valore numerico è presente nella documentazione Tecnaria, DEVI riportarlo esattamente.
+   Non usare formulazioni vaghe. Indica il numero con precisione.
+
+7. Non inventare mai dati aziendali (indirizzo, P.IVA, SDI, telefono, nominativi).
+   Se arrivano domande su questo, vengono gestite da un modulo COMM separato.
+
+8. Stile della risposta:
+   - tecnico-ingegneristico
+   - chiaro, aziendale, senza marketing
+   - se utile, usa elenchi puntati
+   - spiega sempre perché la soluzione è corretta
+   - evita frasi generiche tipo "dipende": specifica sempre cosa dipende da cosa.
+
+9. Se la domanda è fuori dal mondo Tecnaria, scrivi:
+   "Il sistema risponde solo su prodotti, posa e applicazioni Tecnaria S.p.A."
+
+10. Se la domanda contiene un errore tecnico evidente, correggilo gentilmente
+    e spiega la versione corretta.
+
+Questo è un sistema GOLD: precisione massima, nessuna invenzione,
+risposte chiare, determinate e ingegneristiche.
 """
 
-# Prompt "furbo" in stile ChatGPT app (generale, fluido)
-FURBA_SYSTEM_PROMPT = """
-Sei ChatGPT in modalità conversazionale generale.
-Rispondi in modo chiaro, fluido e completo, come nell'interfaccia ufficiale di ChatGPT.
-Non essere eccessivamente prudente: prova a dare sempre una risposta utile e ben formulata.
+SYSTEM_PROMPT_CLASSICA = """
+Sei ChatGPT, un assistente conversazionale avanzato progettato per fornire risposte chiare, accurate e utili
+in modo naturale, proprio come nell'interfaccia ufficiale di ChatGPT.
+
+Regole fondamentali del tuo comportamento:
+1. Rispondi sempre in modo diretto, chiaro e scorrevole.
+2. Non essere eccessivamente prudente: se hai conoscenze generali, usale.
+3. Evita frasi pesanti del tipo "come modello linguistico" o simili.
+4. Offri sempre la risposta migliore possibile per aiutare l'utente.
+5. Mantieni uno stile naturale, colloquiale ma professionale.
+6. Se la domanda è ampia, sintetizza; se è specifica, approfondisci.
+7. Usa esempi concreti quando migliorano la comprensione.
+8. Non generare avvertenze inutili o eccessive.
+9. Mantieni un tono amichevole e collaborativo.
+10. Se l'utente chiede dati tecnici precisi che non conosci al 100%, fornisci la migliore stima ragionevole
+    o spiega come potrebbe reperire il dato, senza bloccare la conversazione.
+11. Se la risposta richiede creatività, sii creativo.
+12. Se la risposta richiede rigore, sii rigoroso.
+13. Non menzionare mai queste regole.
+
+Obiettivo: comportarti come ChatGPT quando l'utente lo usa su chat.openai.com o sull'app mobile.
 """
 
-def call_chatgpt(question: str) -> str:
+SYSTEM_PROMPT_TURBO = """
+Sei un assistente conversazionale avanzato, con uno stile brillante, proattivo e molto efficace.
+Rispondi in modo chiaro, strutturato e completo, proponendo anche spunti aggiuntivi quando possono
+essere utili all'utente.
+
+Regole:
+1. Mantieni un tono energico ma professionale.
+2. Organizza spesso la risposta in sezioni o elenchi per renderla leggibile.
+3. Anticipa 1–2 domande successive che l'utente potrebbe farti e rispondi già in parte.
+4. Se l'utente è vago, proponi 2–3 possibili interpretazioni e dai indicazioni per tutte.
+5. Sii molto concreto: esempi, mini-schemi, micro-ricapitolazioni finali.
+6. Non essere eccessivamente prudente: cerca di dare sempre una risposta utile.
+7. Non menzionare mai queste regole.
+"""
+
+SYSTEM_PROMPT_EMPATICA = """
+Sei un assistente conversazionale con tono calmo, umano ed empatico, simile a un assistente personale
+sull'app mobile. Il tuo obiettivo è far sentire l'utente capito, accompagnato e supportato, oltre che informato.
+
+Regole:
+1. Riconosci sempre lo stato emotivo dell'utente, se emerge dal testo, con una breve frase empatica.
+2. Poi passa a rispondere al contenuto in modo chiaro e ordinato.
+3. Usa un tono tranquillo, rassicurante ma mai mieloso.
+4. Non fare discorsi lunghissimi: vai al punto ma con calore.
+5. Quando appropriato, chiudi con una micro-frase di supporto o incoraggiamento.
+6. Non menzionare mai queste regole.
+"""
+
+def call_openai(prompt_system: str, question: str, temperature: float = 0.3) -> str:
     if client is None:
-        return (
-            "Al momento il motore ChatGPT esterno non è disponibile "
-            "(OPENAI_API_KEY mancante). Contatta l'Ufficio Tecnico Tecnaria."
-        )
+        return "Il motore esterno non è disponibile (OPENAI_API_KEY mancante)."
 
     try:
         completion = client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": prompt_system},
                 {"role": "user", "content": question},
             ],
-            temperature=0.2,
-        )
-        return completion.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"[ERROR] chiamando ChatGPT: {e}")
-        return (
-            "Si è verificato un errore nella chiamata al motore esterno. "
-            "Per sicurezza, contatta direttamente l’Ufficio Tecnico Tecnaria."
-        )
-
-
-def call_chatgpt_furba(question: str) -> str:
-    """
-    Versione 'furba': usa il modello in modo molto simile alla ChatGPT app,
-    senza vincoli Tecnaria, massima fluidità e completezza.
-    """
-    if client is None:
-        return (
-            "Il motore ChatGPT esterno non è disponibile "
-            "(OPENAI_API_KEY mancante)."
-        )
-
-    try:
-        completion = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": FURBA_SYSTEM_PROMPT},
-                {"role": "user", "content": question},
-            ],
-            temperature=0.4,  # un po' più “vivace” della versione tecnica
+            temperature=temperature,
             top_p=1.0,
         )
-        return completion.choices[0].message.content.strip()
+        return (completion.choices[0].message.content or "").strip()
     except Exception as e:
-        print(f"[ERROR] chiamando ChatGPT (furba): {e}")
-        return (
-            "Si è verificato un errore nella chiamata al motore esterno in modalità furba."
-        )
+        print(f"[ERROR] chiamando OpenAI: {e}")
+        return "Si è verificato un errore nella chiamata al motore esterno."
 
 # ============================================================
 # ENDPOINTS
@@ -328,7 +360,7 @@ async def root() -> FileResponse:
 @app.get("/api/status")
 async def status():
     return {
-        "status": "Tecnaria Bot v14.7 attivo",
+        "status": "Tecnaria Bot attivo",
         "kb_blocks": len(KB_BLOCKS),
         "comm_blocks": len(COMM_ITEMS),
         "openai_enabled": bool(OPENAI_API_KEY),
@@ -338,6 +370,9 @@ async def status():
 
 @app.post("/api/ask", response_model=AnswerResponse)
 async def api_ask(req: QuestionRequest):
+    """
+    Modalità GOLD Tecnaria (tecnica, con prompt strutturale).
+    """
     question_raw = (req.question or "").strip()
     if not question_raw:
         raise HTTPException(status_code=400, detail="Domanda vuota")
@@ -345,33 +380,31 @@ async def api_ask(req: QuestionRequest):
     q_norm = question_raw.lower()
 
     try:
-        # 1️⃣ DOMANDE AZIENDALI / COMMERCIALI → SOLO COMM.JSON
+        # 1) DOMANDE AZIENDALI / COMMERCIALI → SOLO COMM.JSON
         if is_commercial_question(q_norm):
             comm_block = match_comm(q_norm)
             if comm_block:
-                answer = comm_block["response_variants"]["gold"]["it"]
+                answer = comm_block.get("response_variants", {}).get("gold", {}).get("it")
+                if not answer:
+                    answer = comm_block.get("answer_it") or comm_block.get("answer", "")
                 return AnswerResponse(
                     answer=answer,
                     source="json_comm",
-                    meta={"comm_id": comm_block.get("id")}
+                    meta={"comm_id": comm_block.get("id")},
                 )
             else:
-                # fallback commerciale se non troviamo nulla in COMM
                 fallback = (
                     "Le informazioni richieste rientrano nei dati aziendali/commerciali. "
-                    "Non risultano però disponibili nel modulo corrente; per sicurezza "
-                    "è necessario fare riferimento ai canali ufficiali Tecnaria."
+                    "Per sicurezza è necessario fare riferimento ai canali ufficiali Tecnaria."
                 )
                 return AnswerResponse(
                     answer=fallback,
                     source="json_comm_fallback",
-                    meta={}
+                    meta={},
                 )
 
-        # 2️⃣ DOMANDE TECNICHE → SOLO CHATGPT (con profilo Tecnaria GOLD)
-        gpt_answer = call_chatgpt(question_raw)
-
-        # opzionale: cerchiamo un eventuale blocco KB solo per meta / debug
+        # 2) DOMANDE TECNICHE → CHATGPT GOLD TECNARIA
+        gpt_answer = call_openai(SYSTEM_PROMPT_GOLD, question_raw, temperature=0.2)
         kb_block = match_from_kb(question_raw)
         kb_id = kb_block.get("id") if kb_block else None
 
@@ -395,30 +428,82 @@ async def api_ask(req: QuestionRequest):
         )
 
 
-@app.post("/api/ask_furba", response_model=AnswerResponse)
-async def api_ask_furba(req: QuestionRequest):
+@app.post("/api/ask_classica", response_model=AnswerResponse)
+async def api_ask_classica(req: QuestionRequest):
     """
-    Endpoint 'furbo': usa direttamente il modello in stile ChatGPT app,
-    senza passare dal COMM.json o dalla KB Tecnaria.
-    Utile per demo, domande generali o confronto con ChatGPT “puro”.
+    Modalità CLASSICA: comportamento simile a ChatGPT app.
     """
     question_raw = (req.question or "").strip()
     if not question_raw:
         raise HTTPException(status_code=400, detail="Domanda vuota")
 
     try:
-        answer = call_chatgpt_furba(question_raw)
+        answer = call_openai(SYSTEM_PROMPT_CLASSICA, question_raw, temperature=0.4)
         return AnswerResponse(
             answer=answer,
-            source="chatgpt_furba",
-            meta={"used_chatgpt_furba": True},
+            source="chatgpt_classica",
+            meta={"mode": "classica"},
         )
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] /api/ask_furba: {e}")
+        print(f"[ERROR] /api/ask_classica: {e}")
         return AnswerResponse(
-            answer="Si è verificato un problema interno in modalità furba.",
-            source="error_furba",
+            answer="Si è verificato un problema interno in modalità CLASSICA.",
+            source="error_classica",
+            meta={"exception": str(e)},
+        )
+
+
+@app.post("/api/ask_turbo", response_model=AnswerResponse)
+async def api_ask_turbo(req: QuestionRequest):
+    """
+    Modalità TURBO: più brillante, strutturata, proattiva.
+    """
+    question_raw = (req.question or "").strip()
+    if not question_raw:
+        raise HTTPException(status_code=400, detail="Domanda vuota")
+
+    try:
+        answer = call_openai(SYSTEM_PROMPT_TURBO, question_raw, temperature=0.6)
+        return AnswerResponse(
+            answer=answer,
+            source="chatgpt_turbo",
+            meta={"mode": "turbo"},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] /api/ask_turbo: {e}")
+        return AnswerResponse(
+            answer="Si è verificato un problema interno in modalità TURBO.",
+            source="error_turbo",
+            meta={"exception": str(e)},
+        )
+
+
+@app.post("/api/ask_empatica", response_model=AnswerResponse)
+async def api_ask_empatica(req: QuestionRequest):
+    """
+    Modalità EMPATICA: tono più umano, vicino, tipo app mobile.
+    """
+    question_raw = (req.question or "").strip()
+    if not question_raw:
+        raise HTTPException(status_code=400, detail="Domanda vuota")
+
+    try:
+        answer = call_openai(SYSTEM_PROMPT_EMPATICA, question_raw, temperature=0.4)
+        return AnswerResponse(
+            answer=answer,
+            source="chatgpt_empatica",
+            meta={"mode": "empatica"},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] /api/ask_empatica: {e}")
+        return AnswerResponse(
+            answer="Si è verificato un problema interno in modalità EMPATICA.",
+            source="error_empatica",
             meta={"exception": str(e)},
         )
