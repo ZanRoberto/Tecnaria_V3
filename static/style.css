@@ -1,157 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+let mode = "gold";
 
-body {
-    margin: 0;
-    padding: 0;
-    background: #1B1B1B;
-    font-family: 'Inter', sans-serif;
-    color: #ffffff;
-}
+document.getElementById("goldBtn").addEventListener("click", () => {
+    mode = "gold";
+    document.getElementById("goldBtn").classList.add("active");
+    document.getElementById("furbaBtn").classList.remove("active");
+});
 
-/* HEADER ------------------------------------------------------------*/
+document.getElementById("furbaBtn").addEventListener("click", () => {
+    mode = "furba";
+    document.getElementById("furbaBtn").classList.add("active");
+    document.getElementById("goldBtn").classList.remove("active");
+});
 
-.header {
-    background: linear-gradient(90deg, #ef6c00, #d45d00);
-    padding: 18px 32px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0px 4px 20px rgba(0,0,0,0.4);
-}
 
-.header-left {
-    display: flex;
-    align-items: center;
-}
+document.getElementById("sendBtn").addEventListener("click", async () => {
+    const question = document.getElementById("question").value.trim();
+    if (!question) return;
 
-.logo {
-    width: 72px;
-    height: auto;
-    margin-right: 20px;
-}
+    const endpoint = mode === "gold" ? "/api/ask" : "/api/ask_furba";
 
-.title-block h1 {
-    margin: 0;
-    font-size: 28px;
-    font-weight: 700;
-}
+    const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question })
+    });
 
-.subtitle {
-    margin: 2px 0 0;
-    font-size: 14px;
-    opacity: 0.85;
-}
+    const data = await res.json();
 
-/* STATUS */
-.header-status {
-    display: flex;
-    align-items: center;
-    font-size: 16px;
-}
-
-.dot-online {
-    width: 14px;
-    height: 14px;
-    background: #00d67a;
-    border-radius: 50%;
-    margin-right: 8px;
-}
-
-/* LAYOUT ------------------------------------------------------------*/
-
-.container {
-    display: flex;
-    padding: 25px;
-    gap: 28px;
-}
-
-.left-panel, .right-panel {
-    background: #212121;
-    padding: 25px;
-    border-radius: 14px;
-    flex: 1;
-    box-shadow: 0 0 25px rgba(0,0,0,0.45);
-}
-
-.panel-title {
-    font-size: 20px;
-    margin-bottom: 14px;
-    font-weight: 600;
-    border-bottom: 1px solid #333;
-    padding-bottom: 8px;
-}
-
-/* TEXTAREA ------------------------------------------------------------*/
-
-textarea {
-    width: 100%;
-    height: 180px;
-    background: #2b2b2b;
-    border: 1px solid #444;
-    border-radius: 10px;
-    padding: 14px;
-    resize: none;
-    color: #fff;
-    font-size: 15px;
-    outline: none;
-}
-
-/* BUTTONS ------------------------------------------------------------*/
-
-.btn-mode {
-    padding: 8px 14px;
-    margin-right: 8px;
-    border-radius: 8px;
-    background: #333;
-    color: #fff;
-    border: 1px solid #555;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.btn-mode.active {
-    background: #ef6c00;
-    border-color: #ef6c00;
-}
-
-.btn-send {
-    margin-top: 20px;
-    width: 160px;
-    padding: 12px 0;
-    font-size: 16px;
-    background: linear-gradient(90deg, #ef6c00, #d45d00);
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    color: #fff;
-    font-weight: 600;
-    box-shadow: 0 0 20px rgba(239,108,0,0.6);
-}
-
-/* ANSWER BOX ------------------------------------------------------------*/
-
-.answer-box {
-    margin-top: 15px;
-    background: #2b2b2b;
-    border-radius: 10px;
-    padding: 20px;
-    min-height: 240px;
-    white-space: pre-wrap;
-}
-
-.meta-box {
-    background: #1e1e1e;
-    margin-top: 12px;
-    padding: 12px;
-    border-radius: 8px;
-    font-size: 13px;
-    opacity: 0.85;
-}
-
-/* HINT ------------------------------------------------------------*/
-
-.hint {
-    margin-top: 18px;
-    font-size: 13px;
-    opacity: 0.75;
-}
+    document.getElementById("answerBox").textContent = data.answer || "—";
+    document.getElementById("metaBox").textContent = JSON.stringify(data.meta, null, 2);
+});
