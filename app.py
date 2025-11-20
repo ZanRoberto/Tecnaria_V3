@@ -227,17 +227,9 @@ REGOLE OBBLIGATORIE (NON DEROGABILI):
 
 1. Rispondi SOLO nel mondo Tecnaria S.p.A. (prodotti, sistemi, posa, normative correlate).
    Non usare mai esempi generici o riferiti ad altri produttori.
-2. NON inventare MAI numeri:
-   - numero di chiodi,
-   - distanze,
-   - spessori,
-   - lunghezze,
-   - profondità,
-   - valori di resistenza.
    Se il dato numerico non è certo o non è esplicitamente noto, scrivi chiaramente:
    "Questo valore va verificato nelle istruzioni Tecnaria o con l’Ufficio Tecnico."
 3. Per i CTF cita SEMPRE la chiodatrice P560 e i “chiodi idonei Tecnaria”.
-4. Per il sistema DIAPASON: NON utilizza chiodi. È fissato con UNA vite strutturale su travetti in laterocemento.
    Non dire mai che DIAPASON utilizza chiodi o la P560.
 5. Se nella domanda compaiono più famiglie (es. CTF e DIAPASON), distingui SEMPRE le due famiglie
    e spiega separatamente il loro funzionamento.
@@ -310,115 +302,4 @@ def call_chatgpt_furba(question: str) -> str:
     except Exception as e:
         print(f"[ERROR] chiamando ChatGPT (furba): {e}")
         return (
-            "Si è verificato un errore nella chiamata al motore esterno in modalità furba."
-        )
-
-# ============================================================
-# ENDPOINTS
-# ============================================================
-
-@app.get("/")
-async def root() -> FileResponse:
-    index_path = os.path.join(STATIC_DIR, "index.html")
-    if not os.path.exists(index_path):
-        raise HTTPException(status_code=500, detail="index.html non trovato")
-    return FileResponse(index_path)
-
-
-@app.get("/api/status")
-async def status():
-    return {
-        "status": "Tecnaria Bot v14.7 attivo",
-        "kb_blocks": len(KB_BLOCKS),
-        "comm_blocks": len(COMM_ITEMS),
-        "openai_enabled": bool(OPENAI_API_KEY),
-        "model": OPENAI_MODEL,
-    }
-
-
-@app.post("/api/ask", response_model=AnswerResponse)
-async def api_ask(req: QuestionRequest):
-    question_raw = (req.question or "").strip()
-    if not question_raw:
-        raise HTTPException(status_code=400, detail="Domanda vuota")
-
-    q_norm = question_raw.lower()
-
-    try:
-        # 1️⃣ DOMANDE AZIENDALI / COMMERCIALI → SOLO COMM.JSON
-        if is_commercial_question(q_norm):
-            comm_block = match_comm(q_norm)
-            if comm_block:
-                answer = comm_block["response_variants"]["gold"]["it"]
-                return AnswerResponse(
-                    answer=answer,
-                    source="json_comm",
-                    meta={"comm_id": comm_block.get("id")}
-                )
-            else:
-                # fallback commerciale se non troviamo nulla in COMM
-                fallback = (
-                    "Le informazioni richieste rientrano nei dati aziendali/commerciali. "
-                    "Non risultano però disponibili nel modulo corrente; per sicurezza "
-                    "è necessario fare riferimento ai canali ufficiali Tecnaria."
-                )
-                return AnswerResponse(
-                    answer=fallback,
-                    source="json_comm_fallback",
-                    meta={}
-                )
-
-        # 2️⃣ DOMANDE TECNICHE → SOLO CHATGPT (con profilo Tecnaria GOLD)
-        gpt_answer = call_chatgpt(question_raw)
-
-        # opzionale: cerchiamo un eventuale blocco KB solo per meta / debug
-        kb_block = match_from_kb(question_raw)
-        kb_id = kb_block.get("id") if kb_block else None
-
-        return AnswerResponse(
-            answer=gpt_answer,
-            source="chatgpt_gold_tecnaria",
-            meta={
-                "used_chatgpt": True,
-                "kb_id": kb_id,
-            },
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"[ERROR] /api/ask: {e}")
-        return AnswerResponse(
-            answer="Si è verificato un problema interno. Contatta l’Ufficio Tecnico Tecnaria.",
-            source="error",
-            meta={"exception": str(e)},
-        )
-
-
-@app.post("/api/ask_furba", response_model=AnswerResponse)
-async def api_ask_furba(req: QuestionRequest):
-    """
-    Endpoint 'furbo': usa direttamente il modello in stile ChatGPT app,
-    senza passare dal COMM.json o dalla KB Tecnaria.
-    Utile per demo, domande generali o confronto con ChatGPT “puro”.
-    """
-    question_raw = (req.question or "").strip()
-    if not question_raw:
-        raise HTTPException(status_code=400, detail="Domanda vuota")
-
-    try:
-        answer = call_chatgpt_furba(question_raw)
-        return AnswerResponse(
-            answer=answer,
-            source="chatgpt_furba",
-            meta={"used_chatgpt_furba": True},
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"[ERROR] /api/ask_furba: {e}")
-        return AnswerResponse(
-            answer="Si è verificato un problema interno in modalità furba.",
-            source="error_furba",
-            meta={"exception": str(e)},
-        )
+            "Si è verificato un errore nella chiamata al motore
