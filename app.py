@@ -33,7 +33,7 @@ if OPENAI_API_KEY:
 # FASTAPI APP
 # ============================================================
 
-app = FastAPI(title="Tecnaria Bot v14.7")
+app = FastAPI(title="Tecnaria Bot v15.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -72,7 +72,7 @@ def normalize(text: str) -> str:
     return text
 
 # ============================================================
-# CARICAMENTO KB TECNICA (per futuro uso, ora solo meta)
+# CARICAMENTO KB TECNICA (per meta / debug)
 # ============================================================
 
 KB_BLOCKS: List[Dict[str, Any]] = []
@@ -185,7 +185,7 @@ def is_commercial_question(q: str) -> bool:
 
 def match_comm(question: str) -> Optional[Dict[str, Any]]:
     """
-    Matching molto semplice su COMM.json basato sui tag.
+    Matching semplice su COMM.json basato sui tag.
     """
     if not COMM_ITEMS:
         return None
@@ -211,46 +211,65 @@ def match_comm(question: str) -> Optional[Dict[str, Any]]:
 load_comm()
 
 # ============================================================
-# LLM: CHATGPT CON PROMPT TECNARIA GOLD
+# LLM: PROMPT TECNARIA GOLD + MODALITÀ FURBA
 # ============================================================
 
 SYSTEM_PROMPT = """
 Sei un tecnico–commerciale senior di Tecnaria S.p.A. con più di 20 anni di esperienza
-su:
-- CTF + P560 + lamiera grecata per solai misti acciaio–cls,
-- VCEM / CTCEM per solai in laterocemento,
-- CTL / CTL MAXI per solai legno–calcestruzzo,
-- DIAPASON per travetti in laterocemento,
-- sistemi di posa, controllo colpi, card, limiti di validità e normativa collegata.
+su tutti i sistemi:
+- CTF + P560 per solai misti acciaio–calcestruzzo
+- VCEM / CTCEM per solai in laterocemento
+- CTL / CTL MAXI per solai legno–calcestruzzo
+- DIAPASON per travetti in laterocemento
+- GTS, accessori e fissaggi correlati
+- procedure di posa, verifica colpi, card, limiti, normativa, casi di non validità.
 
-REGOLE OBBLIGATORIE (NON DEROGABILI):
+REGOLE OBBLIGATORIE E NON DEROGABILI:
 
-1. Rispondi SOLO nel mondo Tecnaria S.p.A. (prodotti, sistemi, posa, normative correlate).
-   Non usare mai esempi generici o riferiti ad altri produttori.
-2. NON inventare MAI numeri:
-   - numero di chiodi,
-   - distanze,
-   - spessori,
-   - lunghezze,
-   - profondità,
-   - valori di resistenza.
-   Se il dato numerico non è certo o non è esplicitamente noto, scrivi chiaramente:
-   "Questo valore va verificato nelle istruzioni Tecnaria o con l’Ufficio Tecnico."
-3. Per i CTF cita SEMPRE la chiodatrice P560 e i “chiodi idonei Tecnaria”.
-4. Per il sistema DIAPASON: NON utilizza chiodi. È fissato con UNA vite strutturale su travetti in laterocemento.
-   Non dire mai che DIAPASON utilizza chiodi o la P560.
-5. Se nella domanda compaiono più famiglie (es. CTF e DIAPASON), distingui SEMPRE le due famiglie
-   e spiega separatamente il loro funzionamento.
-6. Non inventare mai dati aziendali (indirizzi, orari, nominativi, numeri di telefono):
-   questi aspetti sono gestiti da moduli dedicati del sistema.
-7. Stile di risposta:
-   - linguaggio tecnico–ingegneristico, chiaro, aziendale;
-   - niente marketing, niente frasi vaghe;
-   - quando serve, usa elenco puntato per chiarezza;
-   - resta concentrato sul problema specifico della domanda.
+1. Rispondi esclusivamente nel mondo Tecnaria S.p.A. Usare esempi, numeri, metodi o strumenti
+   di altri produttori è vietato.
 
-Se la domanda è palesemente fuori dal mondo Tecnaria, spiega che il sistema è pensato
-solo per rispondere su prodotti e applicazioni Tecnaria.
+2. Per i CTF cita sempre la chiodatrice P560 e i “chiodi idonei Tecnaria”.
+
+3. Per il sistema DIAPASON: NON utilizza chiodi. Si fissa con UNA vite strutturale in ogni piastra.
+   Non citare mai P560 o chiodi in relazione ai DIAPASON.
+
+4. Se la domanda riguarda più famiglie (es. CTF + DIAPASON), distingui sempre in modo netto i due sistemi
+   e spiega le differenze operative.
+
+5. Non inventare MAI valori numerici se non sono confermati dalle istruzioni Tecnaria:
+   - numero di chiodi
+   - passo
+   - spessori
+   - lunghezze
+   - profondità
+   - resistenze
+   - distanze
+   - quantità
+   Se il dato non è certo, usa la frase:
+   “Questo valore va verificato nelle istruzioni Tecnaria o con l’Ufficio Tecnico.”
+
+6. Se invece il valore numerico è presente nella documentazione Tecnaria, DEVI riportarlo esattamente.
+   Non usare formulazioni vaghe. Indica il numero con precisione.
+
+7. Non inventare mai dati aziendali (indirizzo, P.IVA, SDI, telefono, nominativi).
+   Se arrivano domande su questo, vengono gestite da un modulo COMM separato.
+
+8. Stile della risposta:
+   - tecnico-ingegneristico
+   - chiaro, aziendale, senza marketing
+   - se utile, usa elenchi puntati
+   - spiega sempre perché la soluzione è corretta
+   - evita frasi generiche tipo “dipende”: specifica sempre cosa dipende da cosa.
+
+9. Se la domanda è fuori dal mondo Tecnaria, scrivi:
+   “Il sistema risponde solo su prodotti, posa e applicazioni Tecnaria S.p.A.”
+
+10. Se la domanda contiene un errore tecnico evidente, correggilo gentilmente
+    e spiega la versione corretta.
+
+Questo è un sistema GOLD: precisione massima, nessuna invenzione,
+risposte chiare, determinate e ingegneristiche.
 """
 
 FURBA_SYSTEM_PROMPT = """
@@ -264,7 +283,10 @@ def call_chatgpt(question: str) -> str:
     Versione tecnica GOLD: profilo Tecnaria, prudente e coerente con le regole interne.
     """
     if client is None:
-        return "Al momento il motore ChatGPT esterno non è disponibile (OPENAI_API_KEY mancante). Contatta l'Ufficio Tecnico Tecnaria."
+        return (
+            "Al momento il motore ChatGPT esterno non è disponibile "
+            "(OPENAI_API_KEY mancante). Contatta l'Ufficio Tecnico Tecnaria."
+        )
 
     try:
         completion = client.chat.completions.create(
@@ -277,8 +299,11 @@ def call_chatgpt(question: str) -> str:
         )
         return completion.choices[0].message.content.strip()
     except Exception as e:
-        print(f"[ERROR] chiamando ChatGPT: {e}")
-        return "Si è verificato un errore nella chiamata al motore esterno. Per sicurezza, contatta direttamente l'Ufficio Tecnico Tecnaria."
+        print(f"[ERROR] chiamando ChatGPT (GOLD): {e}")
+        return (
+            "Si è verificato un errore nella chiamata al motore esterno in modalità GOLD. "
+            "Per sicurezza, contatta direttamente l'Ufficio Tecnico Tecnaria."
+        )
 
 
 def call_chatgpt_furba(question: str) -> str:
@@ -320,7 +345,7 @@ async def root() -> FileResponse:
 @app.get("/api/status")
 async def status():
     return {
-        "status": "Tecnaria Bot v14.7 attivo",
+        "status": "Tecnaria Bot v15.0 attivo",
         "kb_blocks": len(KB_BLOCKS),
         "comm_blocks": len(COMM_ITEMS),
         "openai_enabled": bool(OPENAI_API_KEY),
@@ -330,6 +355,9 @@ async def status():
 
 @app.post("/api/ask", response_model=AnswerResponse)
 async def api_ask(req: QuestionRequest):
+    """
+    Modalità GOLD Tecnaria (tecnica, con prompt strutturale).
+    """
     question_raw = (req.question or "").strip()
     if not question_raw:
         raise HTTPException(status_code=400, detail="Domanda vuota")
@@ -348,7 +376,6 @@ async def api_ask(req: QuestionRequest):
                     meta={"comm_id": comm_block.get("id")}
                 )
             else:
-                # fallback commerciale se non troviamo nulla in COMM
                 fallback = (
                     "Le informazioni richieste rientrano nei dati aziendali/commerciali. "
                     "Non risultano però disponibili nel modulo corrente; per sicurezza "
@@ -360,10 +387,9 @@ async def api_ask(req: QuestionRequest):
                     meta={}
                 )
 
-        # 2️⃣ DOMANDE TECNICHE → SOLO CHATGPT (con profilo Tecnaria GOLD)
+        # 2️⃣ DOMANDE TECNICHE → CHATGPT GOLD TECNARIA
         gpt_answer = call_chatgpt(question_raw)
 
-        # opzionale: cerchiamo un eventuale blocco KB solo per meta / debug
         kb_block = match_from_kb(question_raw)
         kb_id = kb_block.get("id") if kb_block else None
 
@@ -391,8 +417,8 @@ async def api_ask(req: QuestionRequest):
 async def api_ask_furba(req: QuestionRequest):
     """
     Endpoint 'furbo': usa direttamente il modello in stile ChatGPT app,
-    senza passare dal COMM.json o dalla KB Tecnaria.
-    Utile per demo, domande generali o confronto con ChatGPT “puro”.
+    senza passare da COMM o dalla KB Tecnaria.
+    Default della nuova interfaccia.
     """
     question_raw = (req.question or "").strip()
     if not question_raw:
