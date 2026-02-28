@@ -6,7 +6,7 @@ pydantic-core==2.20.0
 orjson==3.10.7
 gunicorn==21.2.0
 openai>=1.51.0
-
+psycopg2-binary
 
 
 
