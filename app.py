@@ -25,12 +25,9 @@ COMM_PATH = os.path.join(DATA_DIR, "COMM.json")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL_ENV = (os.getenv("OPENAI_MODEL", "gpt-4o") or "gpt-4o").strip()
 
-# Vector Store dimostrativo: listino Mitsubishi caricato su OpenAI Storage.
-# In produzione impostare OPENAI_VECTOR_STORE_ID con l'ID dello store Tecnaria.
-OPENAI_VECTOR_STORE_ID = os.getenv(
-    "OPENAI_VECTOR_STORE_ID",
-    "vs_6aaa5f4e5ed081918dfcc9ba5c786f87",
-).strip()
+# Identificativo documentale custodito esclusivamente tra le variabili riservate
+# del servizio: non deve essere scritto nel codice o inviato al browser.
+OPENAI_VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
 OPENAI_DOCUMENT_MODEL = (
     os.getenv("OPENAI_DOCUMENT_MODEL", "gpt-5.6-sol") or "gpt-5.6-sol"
 ).strip()
@@ -384,6 +381,27 @@ Se il dato non e' documentato, scrivi esattamente:
 "Informazione non trovata nel documento collegato."
 Segnala che il listino Mitsubishi e' storico e viene usato soltanto per il collaudo.
 Non presentarlo mai come documentazione Tecnaria e non formulare offerte definitive.
+Scrivi in testo semplice: non usare Markdown, asterischi, intestazioni tecniche o dettagli
+sull'infrastruttura impiegata per la ricerca.
+"""
+
+DOCUMENT_NARRATOR_PROMPT = """
+Sei il NARRATORE DOCUMENTALE. Ricevi la domanda dell'utente e le evidenze recuperate
+dal documento. Analizza l'intento, controlla che codice, descrizione, prezzo e pagina
+siano coerenti e segnala internamente eventuali dati mancanti. Non aggiungere conoscenze
+esterne, non correggere numeri e non inventare informazioni. La tua analisi sarà passata
+al Risponditore e non deve contenere dettagli sull'infrastruttura di ricerca.
+"""
+
+DOCUMENT_RESPONDER_PROMPT = """
+Sei il RISPONDITORE DOCUMENTALE. Produci la risposta finale usando soltanto le evidenze
+del documento e il controllo del Narratore. Riporta con precisione codice, descrizione,
+prezzo, pagina e nome del documento quando disponibili. Se il dato manca, scrivi:
+"Informazione non trovata nel documento collegato."
+Non citare mai Vector Store, File Search, OpenAI, modelli, embedding, API o identificativi
+tecnici. Non mostrare l'analisi interna del Narratore. Scrivi in italiano, in testo semplice,
+senza Markdown e senza asterischi. Ricorda che il listino Mitsubishi è storico, usato
+soltanto per il collaudo, non è documentazione Tecnaria e non costituisce offerta.
 """
 
 
@@ -412,6 +430,32 @@ def call_document_test(question: str) -> str:
         print(f"[ERROR] File Search: {e}")
         return "Si è verificato un errore durante la ricerca nel listino di collaudo."
 
+
+def call_narratore_risponditore(question: str) -> str:
+    """Ricerca le evidenze, le verifica con il Narratore e genera la risposta pubblica."""
+    evidence = call_document_test(question)
+
+    narrator_input = (
+        f"DOMANDA UTENTE:\n{question}\n\n"
+        f"EVIDENZE DOCUMENTALI:\n{evidence}"
+    )
+    narrator_analysis = call_openai(
+        DOCUMENT_NARRATOR_PROMPT,
+        narrator_input,
+        temperature=0.1,
+    )
+
+    responder_input = (
+        f"DOMANDA UTENTE:\n{question}\n\n"
+        f"EVIDENZE DOCUMENTALI:\n{evidence}\n\n"
+        f"CONTROLLO INTERNO DEL NARRATORE:\n{narrator_analysis}"
+    )
+    return call_openai(
+        DOCUMENT_RESPONDER_PROMPT,
+        responder_input,
+        temperature=0.1,
+    )
+
 # ============================================================
 # ENDPOINTS
 # ============================================================
@@ -436,11 +480,7 @@ async def status():
         "status": "Tecnaria Bot attivo (GOLD only)",
         "kb_blocks": len(KB_BLOCKS),
         "comm_blocks": len(COMM_ITEMS),
-        "openai_api_key_present": bool(OPENAI_API_KEY),
-        "openai_model_env": OPENAI_MODEL_ENV,
-        "openai_model_effective": "gpt-5.1",
-        "document_test_enabled": bool(OPENAI_VECTOR_STORE_ID),
-        "document_test_model": OPENAI_DOCUMENT_MODEL,
+        "narratore_risponditore": "attivo",
     }
 
 
@@ -466,18 +506,14 @@ async def api_ask(req: QuestionRequest):
             if not document_question:
                 return AnswerResponse(
                     answer="Scrivi la domanda dopo /listino.",
-                    source="vector_store_test_help",
+                    source="narratore_risponditore",
                     meta={},
                 )
-            document_answer = call_document_test(document_question)
+            document_answer = call_narratore_risponditore(document_question)
             return AnswerResponse(
                 answer=document_answer,
-                source="openai_file_search_test",
-                meta={
-                    "used_file_search": True,
-                    "test_only": True,
-                    "vector_store_id": OPENAI_VECTOR_STORE_ID,
-                },
+                source="narratore_risponditore",
+                meta={},
             )
 
         # 1) DOMANDE AZIENDALI / COMMERCIALI → SOLO COMM.JSON
