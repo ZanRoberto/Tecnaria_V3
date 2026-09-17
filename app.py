@@ -32,6 +32,21 @@ OPENAI_DOCUMENT_MODEL = (
     os.getenv("OPENAI_DOCUMENT_MODEL", "gpt-5.6-sol") or "gpt-5.6-sol"
 ).strip()
 
+# Il motore NAR/SUP resta universale. Questi valori descrivono soltanto
+# l'azienda e il patrimonio documentale collegati alla singola installazione.
+DOCUMENT_CONTEXT = os.getenv(
+    "DOCUMENT_CONTEXT",
+    "Catalogo LAGO ELEMENTS February 2024 IT/EN",
+).strip()
+DOCUMENT_DISCLAIMER = os.getenv(
+    "DOCUMENT_DISCLAIMER",
+    (
+        "I dati appartengono al catalogo LAGO ELEMENTS February 2024 IT/EN; "
+        "prezzi e condizioni devono essere verificati commercialmente prima "
+        "di formulare un'offerta definitiva."
+    ),
+).strip()
+
 client: Optional[OpenAI] = None
 if OPENAI_API_KEY:
     client = OpenAI(api_key=OPENAI_API_KEY)
@@ -368,92 +383,149 @@ def call_openai(prompt_system: str, question: str, temperature: float = 0.3) -> 
         return "Si è verificato un errore nella chiamata al motore esterno."
 
 
-DOCUMENT_TEST_PROMPT = """
-AMBIENTE DI CONSULTAZIONE DEL CATALOGO LAGO ELEMENTS FEBRUARY 2024 IT/EN.
+DOCUMENT_RETRIEVAL_PROMPT = """
+Sei il RICERCATORE DOCUMENTALE di un motore professionale universale.
+L'ambiente documentale corrente e': {document_context}.
 
-Interroga esclusivamente i documenti disponibili tramite File Search.
-Non usare la memoria generale del modello e non cercare informazioni esterne.
-Non inventare codici, prezzi, caratteristiche, accessori o compatibilita'.
-Per i codici prodotto cerca prima una corrispondenza esatta.
-Riporta numeri, prezzi e descrizioni esattamente come compaiono nel documento.
-Indica sempre il nome del documento e, quando disponibile, la pagina o il riferimento.
-Se il dato non e' documentato, scrivi esattamente:
-"Informazione non trovata nel documento collegato."
-Indica che prezzi e condizioni appartengono all'edizione February 2024 e devono essere
-verificati commercialmente prima di formulare un'offerta definitiva.
-Scrivi in testo semplice: non usare Markdown, asterischi, intestazioni tecniche o dettagli
-sull'infrastruttura impiegata per la ricerca.
+Usa esclusivamente i documenti collegati. Non usare memoria generale, web o supposizioni.
+Il tuo compito non e' formulare la risposta finale, ma preparare un DOSSIER DI EVIDENZE
+completo, verificabile e utile al Narratore.
+
+METODO UNIVERSALE:
+1. Comprendi se la richiesta e' una ricerca esatta, una spiegazione, un confronto oppure
+   una richiesta di consiglio/soluzione.
+2. Per una ricerca esatta verifica prima la corrispondenza esatta di codici e riferimenti.
+3. Per confronti o consigli non fermarti al primo risultato compatibile: recupera piu'
+   candidati pertinenti, fino a 8 quando disponibili.
+4. Per ogni candidato riporta soltanto dati documentati: identificativo, descrizione,
+   funzione/destinazione, caratteristiche, misure, condizioni, prezzo, documento e pagina.
+5. Conserva le differenze importanti tra candidati. Non decidere che tutti i risultati che
+   superano una soglia minima siano equivalenti.
+6. Distingui un dato mancante da un dato non applicabile e da un dato contraddittorio.
+7. Se fonti o versioni discordano, riportale entrambe con documento, pagina e versione.
+8. Non combinare nella stessa affermazione valori provenienti da prodotti, righe o pagine
+   differenti, salvo che il documento dichiari esplicitamente la relazione.
+9. Non inventare mai numeri, caratteristiche, compatibilita', motivazioni o relazioni.
+10. Indica sempre documento e pagina/riferimento quando disponibili.
+
+Restituisci un dossier leggibile e neutrale. Non scegliere ancora il vincitore e non citare
+mai strumenti, infrastruttura, API, modelli o identificativi tecnici.
 """
 
 DOCUMENT_NARRATOR_PROMPT = """
-Sei il NARRATORE DOCUMENTALE. Ricevi la domanda dell'utente e le evidenze recuperate
-dal documento. Analizza l'intento, controlla che codice, descrizione, prezzo e pagina
-siano coerenti e segnala internamente eventuali dati mancanti. Non aggiungere conoscenze
-esterne, non correggere numeri e non inventare informazioni. La tua analisi sarà passata
-al Risponditore e non deve contenere dettagli sull'infrastruttura di ricerca.
+Sei il NARRATORE ANALITICO di un motore universale. Lavori in qualsiasi settore e non devi
+applicare regole fisse legate a uno specifico prodotto, documento o mercato.
+
+Ricevi la richiesta originale e un dossier di sole evidenze documentali. Devi costruire
+internamente la struttura decisionale prima che il Superrisponditore parli con l'utente.
+
+METODO OBBLIGATORIO:
+1. Classifica la richiesta: ricerca_esatta, spiegazione, confronto o raccomandazione.
+2. Identifica l'obiettivo reale dell'utente.
+3. Separa:
+   - vincoli obbligatori;
+   - preferenze e priorita';
+   - valori approssimativi e tolleranze;
+   - destinazione d'uso;
+   - informazioni mancanti capaci di cambiare la decisione.
+4. Valuta ogni candidato su quattro livelli:
+   - AMMISSIBILITA': rispetta tutti i vincoli obbligatori?
+   - PERTINENZA: soddisfa realmente il bisogno e la funzione richiesta?
+   - OPPORTUNITA': e' preferibile alle alternative documentate?
+   - DIMOSTRABILITA': ogni affermazione e' sostenuta da documento e riferimento?
+5. Distingui sempre "formalmente compatibile" da "realmente consigliabile".
+6. Non trasformare automaticamente un limite massimo/minimo in un valore obiettivo.
+7. Non usare un singolo attributo per decidere quando la richiesta contiene piu' esigenze.
+8. Penalizza dati mancanti, funzione incerta, scostamenti rilevanti e prove insufficienti.
+9. Se manca un dato decisivo, non simulare certezza: prepara una sola domanda critica.
+10. Se non esiste una soluzione dimostrabile, dichiaralo invece di forzare una proposta.
+
+Produci un'analisi interna concisa con: tipo richiesta, obiettivo, vincoli, preferenze,
+candidati esclusi e motivo, graduatoria dei candidati ammissibili, scelta motivata,
+alternative, dati mancanti, eventuale domanda critica e riferimenti documentali.
+Non aggiungere conoscenze esterne e non citare l'infrastruttura.
 """
 
 DOCUMENT_RESPONDER_PROMPT = """
-Sei il RISPONDITORE DOCUMENTALE. Produci la risposta finale usando soltanto le evidenze
-del documento e il controllo del Narratore. Riporta con precisione codice, descrizione,
-prezzo, pagina e nome del documento quando disponibili. Se il dato manca, scrivi:
-"Informazione non trovata nel documento collegato."
-Non citare mai Vector Store, File Search, OpenAI, modelli, embedding, API o identificativi
-tecnici. Non mostrare l'analisi interna del Narratore. Scrivi in italiano, in testo semplice,
-senza Markdown e senza asterischi. Specifica che i dati appartengono al catalogo LAGO
-ELEMENTS February 2024 IT/EN e non costituiscono un'offerta commerciale definitiva.
+Sei il SUPERRISPONDITORE DOCUMENTALE. Trasforma il lavoro del Narratore in una risposta
+professionale, utile e comprensibile, valida in qualsiasi settore.
+
+REGOLE OBBLIGATORIE:
+1. Usa soltanto il dossier documentale e il controllo del Narratore.
+2. Rispondi direttamente all'obiettivo dell'utente, non limitarti a ripetere parole trovate.
+3. Per una ricerca esatta restituisci il dato esatto e la sua prova.
+4. Per una raccomandazione presenta come principale soltanto una soluzione che superi
+   ammissibilita', pertinenza, opportunita' e dimostrabilita'.
+5. Spiega perche' la soluzione e' adatta e quali compromessi presenta.
+6. Se utile, presenta alternative chiarendo quando sarebbero preferibili.
+7. Se manca un dato decisivo, comunica cio' che e' gia' certo e poni una sola domanda finale.
+8. Se le fonti sono contraddittorie, mostra il conflitto senza scegliere arbitrariamente.
+9. Se una informazione non e' documentata, scrivi: "Informazione non trovata nel documento collegato."
+10. Riporta documento e pagina/riferimento per le affermazioni determinanti.
+11. Non rimandare genericamente l'utente alla consultazione del documento: fornisci la
+    soluzione e usa il riferimento come prova.
+12. Non mostrare l'analisi interna e non citare Vector Store, File Search, OpenAI, modelli,
+    embedding, API o identificativi tecnici.
+
+Scrivi in italiano, in testo semplice, senza Markdown e senza asterischi.
+In chiusura aggiungi questa nota, senza modificarne il significato:
+{document_disclaimer}
 """
 
 
-def call_document_test(question: str) -> str:
-    """Interroga il Vector Store dimostrativo tramite Responses API + File Search."""
+def call_document_retrieval(question: str) -> str:
+    """Costruisce un dossier di evidenze, senza formulare la risposta finale."""
     if client is None:
         return "Il motore esterno non è disponibile (OPENAI_API_KEY mancante)."
     if not OPENAI_VECTOR_STORE_ID:
-        return "Vector Store non configurato (OPENAI_VECTOR_STORE_ID mancante)."
+        return "Archivio documentale non configurato."
 
     try:
         response = client.responses.create(
             model=OPENAI_DOCUMENT_MODEL,
-            instructions=DOCUMENT_TEST_PROMPT,
+            instructions=DOCUMENT_RETRIEVAL_PROMPT.format(
+                document_context=DOCUMENT_CONTEXT,
+            ),
             input=question,
             tools=[{
                 "type": "file_search",
                 "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
-                "max_num_results": 12,
+                "max_num_results": 30,
             }],
             include=["file_search_call.results"],
         )
-        answer = (response.output_text or "").strip()
-        return answer or "Informazione non trovata nel documento collegato."
+        dossier = (response.output_text or "").strip()
+        return dossier or "Informazione non trovata nel documento collegato."
     except Exception as e:
-        print(f"[ERROR] File Search: {e}")
-        return "Si è verificato un errore durante la ricerca nel listino di collaudo."
+        print(f"[ERROR] ricerca documentale: {e}")
+        return "Si è verificato un errore durante la ricerca documentale."
 
 
 def call_narratore_risponditore(question: str) -> str:
-    """Ricerca le evidenze, le verifica con il Narratore e genera la risposta pubblica."""
-    evidence = call_document_test(question)
+    """Pipeline universale: ricerca, comprensione, confronto e risposta dimostrabile."""
+    evidence_dossier = call_document_retrieval(question)
 
     narrator_input = (
-        f"DOMANDA UTENTE:\n{question}\n\n"
-        f"EVIDENZE DOCUMENTALI:\n{evidence}"
+        f"RICHIESTA ORIGINALE:\n{question}\n\n"
+        f"DOSSIER DI EVIDENZE DOCUMENTALI:\n{evidence_dossier}"
     )
     narrator_analysis = call_openai(
         DOCUMENT_NARRATOR_PROMPT,
         narrator_input,
-        temperature=0.1,
+        temperature=0.0,
     )
 
     responder_input = (
-        f"DOMANDA UTENTE:\n{question}\n\n"
-        f"EVIDENZE DOCUMENTALI:\n{evidence}\n\n"
+        f"RICHIESTA ORIGINALE:\n{question}\n\n"
+        f"DOSSIER DI EVIDENZE DOCUMENTALI:\n{evidence_dossier}\n\n"
         f"CONTROLLO INTERNO DEL NARRATORE:\n{narrator_analysis}"
     )
     return call_openai(
-        DOCUMENT_RESPONDER_PROMPT,
+        DOCUMENT_RESPONDER_PROMPT.format(
+            document_disclaimer=DOCUMENT_DISCLAIMER,
+        ),
         responder_input,
-        temperature=0.1,
+        temperature=0.0,
     )
 
 # ============================================================
