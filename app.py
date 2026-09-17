@@ -491,6 +491,74 @@ In chiusura aggiungi questa nota, senza modificarne il significato:
 {document_disclaimer}
 """
 
+DOCUMENT_QUICK_PROMPT = """
+Sei il NARRATORE-RISPONDITORE DOCUMENTALE in modalita' RAPIDA GUIDATA.
+L'ambiente documentale corrente e': {document_context}.
+
+Usa esclusivamente i documenti collegati. Non usare memoria generale, web o supposizioni.
+Devi comprendere il bisogno dell'utente, confrontare i risultati pertinenti e dare una risposta
+utile in una sola elaborazione, senza mostrare il ragionamento interno.
+
+METODO OBBLIGATORIO:
+1. Separa vincoli tassativi, preferenze, valori approssimativi e destinazione d'uso.
+2. Escludi i candidati che violano un vincolo tassativo.
+3. Non trasformare automaticamente un limite massimo/minimo nel valore da massimizzare o
+   minimizzare. Parole come basso, compatto o economico non significano automaticamente
+   il piu' basso, il piu' piccolo o il meno caro.
+4. Scegli una proposta principale equilibrata valutando insieme funzione, misure,
+   caratteristiche, prezzo e qualita' delle prove documentali.
+5. Distingui sempre una soluzione formalmente compatibile da una realmente consigliabile.
+6. Non combinare valori appartenenti a prodotti o pagine differenti.
+7. Non inventare dati. Se un'informazione richiesta non e' documentata, scrivi:
+   "Informazione non trovata nel documento collegato."
+8. Riporta documento e pagina/riferimento per la proposta principale e per le alternative.
+9. Non rimandare l'utente a leggere il documento: dai direttamente la risposta.
+10. Non citare strumenti, Vector Store, File Search, OpenAI, API, modelli o identificativi tecnici.
+
+FORMATO RAPIDO OBBLIGATORIO:
+- Apri con una sola proposta principale: nome/codice, dati determinanti, prezzo se pertinente,
+  documento e pagina.
+- Spiega in massimo 4 punti perche' e' adatta e segnala il compromesso principale.
+- Mostra al massimo 2 alternative, ciascuna in 2-3 righe, solo se davvero significative.
+- Concludi con UNA domanda guidata che possa cambiare la scelta o avviare l'approfondimento.
+- Non superare normalmente 350 parole. Evita tabelle estese e liste complete di tutte le finiture;
+  fornisci gli altri dettagli soltanto se l'utente li chiede.
+- Scrivi in italiano, testo semplice, senza Markdown e senza asterischi.
+
+In chiusura aggiungi questa nota, senza modificarne il significato:
+{document_disclaimer}
+"""
+
+
+def call_document_quick(question: str) -> str:
+    """Modalita' predefinita: una sola chiamata con ricerca e risposta guidata."""
+    if client is None:
+        return "Il motore esterno non è disponibile (OPENAI_API_KEY mancante)."
+    if not OPENAI_VECTOR_STORE_ID:
+        return "Archivio documentale non configurato."
+
+    try:
+        response = client.responses.create(
+            model=OPENAI_DOCUMENT_MODEL,
+            instructions=DOCUMENT_QUICK_PROMPT.format(
+                document_context=DOCUMENT_CONTEXT,
+                document_disclaimer=DOCUMENT_DISCLAIMER,
+            ),
+            input=question,
+            tools=[{
+                "type": "file_search",
+                "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
+                "max_num_results": 10,
+            }],
+            reasoning={"effort": "low"},
+            max_output_tokens=1800,
+        )
+        answer = (response.output_text or "").strip()
+        return answer or "Informazione non trovata nel documento collegato."
+    except Exception as e:
+        print(f"[ERROR] risposta documentale rapida: {e}")
+        return "Si è verificato un errore durante la ricerca documentale."
+
 
 def call_document_retrieval(question: str) -> str:
     """Costruisce un dossier di evidenze, senza formulare la risposta finale."""
@@ -590,24 +658,53 @@ async def api_ask(req: QuestionRequest):
     q_norm = question_raw.lower()
 
     try:
-        # MODALITA' CATALOGO LAGO. Sono accettati tre comandi equivalenti.
+        # MODALITA' DOCUMENTALE:
+        # - /catalogo, /lago, /listino e /rapido: risposta rapida guidata (1 chiamata)
+        # - /globale: analisi estesa completa (3 chiamate)
         document_prefix = next(
-            (prefix for prefix in ("/catalogo", "/lago", "/listino") if q_norm.startswith(prefix)),
+            (
+                prefix
+                for prefix in ("/catalogo", "/lago", "/listino", "/rapido", "/globale")
+                if q_norm.startswith(prefix)
+            ),
             None,
         )
         if document_prefix:
             document_question = question_raw[len(document_prefix):].strip()
+            document_mode = "globale" if document_prefix == "/globale" else "rapido"
+
+            # Consente anche: /catalogo /globale domanda...
+            nested_mode = next(
+                (
+                    mode_prefix
+                    for mode_prefix in ("/globale", "/rapido")
+                    if document_question.lower().startswith(mode_prefix)
+                ),
+                None,
+            )
+            if nested_mode:
+                document_mode = "globale" if nested_mode == "/globale" else "rapido"
+                document_question = document_question[len(nested_mode):].strip()
+
             if not document_question:
                 return AnswerResponse(
-                    answer="Scrivi la domanda dopo /catalogo.",
+                    answer=(
+                        "Scrivi la domanda dopo /catalogo. "
+                        "Usa /globale soltanto quando desideri l'analisi completa."
+                    ),
                     source="narratore_risponditore",
-                    meta={},
+                    meta={"mode": document_mode},
                 )
-            document_answer = call_narratore_risponditore(document_question)
+
+            if document_mode == "globale":
+                document_answer = call_narratore_risponditore(document_question)
+            else:
+                document_answer = call_document_quick(document_question)
+
             return AnswerResponse(
                 answer=document_answer,
                 source="narratore_risponditore",
-                meta={},
+                meta={"mode": document_mode},
             )
 
         # 1) DOMANDE AZIENDALI / COMMERCIALI → SOLO COMM.JSON
