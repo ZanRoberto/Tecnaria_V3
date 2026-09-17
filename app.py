@@ -486,7 +486,9 @@ REGOLE OBBLIGATORIE:
     punteggio, pipeline o evidenze recuperate. Non citare Vector Store, File Search, OpenAI,
     modelli, embedding, API o identificativi tecnici.
 
-Scrivi in italiano, in testo semplice, senza Markdown e senza asterischi.
+Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
+Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
+Scrivi in testo semplice, senza Markdown e senza asterischi.
 In chiusura aggiungi questa nota, senza modificarne il significato:
 {document_disclaimer}
 """
@@ -505,15 +507,28 @@ METODO OBBLIGATORIO:
 3. Non trasformare automaticamente un limite massimo/minimo nel valore da massimizzare o
    minimizzare. Parole come basso, compatto o economico non significano automaticamente
    il piu' basso, il piu' piccolo o il meno caro.
-4. Scegli una proposta principale equilibrata valutando insieme funzione, misure,
+4. Se l'utente dichiara di non avere ancora scelto tra due priorita' opposte (per esempio
+   profilo molto basso oppure maggiore contenimento), NON scegliere uno dei due estremi.
+   La proposta principale deve essere una variante intermedia documentata che conservi
+   entrambe le possibilita'. Gli estremi vanno mostrati soltanto come alternative. Se non
+   esiste una variante intermedia dimostrabile, poni la domanda decisiva invece di forzare
+   una scelta estrema.
+5. Scegli una proposta principale equilibrata valutando insieme funzione, misure,
    caratteristiche, prezzo e qualita' delle prove documentali.
-5. Distingui sempre una soluzione formalmente compatibile da una realmente consigliabile.
-6. Non combinare valori appartenenti a prodotti o pagine differenti.
-7. Non inventare dati. Se un'informazione richiesta non e' documentata, scrivi:
+6. Distingui sempre una soluzione formalmente compatibile da una realmente consigliabile.
+7. Non combinare valori appartenenti a prodotti o pagine differenti.
+8. Non inventare dati. Se un'informazione richiesta non e' documentata, scrivi:
    "Informazione non trovata nel documento collegato."
-8. Riporta documento e pagina/riferimento per la proposta principale e per le alternative.
-9. Non rimandare l'utente a leggere il documento: dai direttamente la risposta.
-10. Non citare strumenti, Vector Store, File Search, OpenAI, API, modelli o identificativi tecnici.
+9. Riporta sempre documento e numero di pagina per la proposta principale e per le
+   alternative. Un codice o il nome di una sezione non sostituiscono il numero di pagina.
+   Se la pagina non e' presente nei risultati, dichiaralo esplicitamente.
+10. Non rimandare l'utente a leggere il documento: dai direttamente la risposta.
+11. Non citare strumenti, Vector Store, File Search, OpenAI, API, modelli o identificativi tecnici.
+12. Non dedurre capacita', organizzazione interna, comodita' o superiorita' da sole misure
+    esterne. Se presenti una valutazione ragionevole ma non dichiarata dal documento,
+    chiamala esplicitamente "valutazione orientativa".
+13. Non definire una variante piu' bassa, alta, economica o capiente se i dati riportati
+    sono uguali o non consentono il confronto.
 
 FORMATO RAPIDO OBBLIGATORIO:
 - Apri con una sola proposta principale: nome/codice, dati determinanti, prezzo se pertinente,
@@ -521,9 +536,11 @@ FORMATO RAPIDO OBBLIGATORIO:
 - Spiega in massimo 4 punti perche' e' adatta e segnala il compromesso principale.
 - Mostra al massimo 2 alternative, ciascuna in 2-3 righe, solo se davvero significative.
 - Concludi con UNA domanda guidata che possa cambiare la scelta o avviare l'approfondimento.
-- Non superare normalmente 350 parole. Evita tabelle estese e liste complete di tutte le finiture;
+- Non superare normalmente 260 parole. Evita tabelle estese e liste complete di tutte le finiture;
   fornisci gli altri dettagli soltanto se l'utente li chiede.
-- Scrivi in italiano, testo semplice, senza Markdown e senza asterischi.
+- Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
+  Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
+  Scrivi in testo semplice, senza Markdown e senza asterischi.
 
 In chiusura aggiungi questa nota, senza modificarne il significato:
 {document_disclaimer}
@@ -551,7 +568,7 @@ def call_document_quick(question: str) -> str:
                 "max_num_results": 10,
             }],
             reasoning={"effort": "low"},
-            max_output_tokens=1800,
+            max_output_tokens=1100,
         )
         answer = (response.output_text or "").strip()
         return answer or "Informazione non trovata nel documento collegato."
@@ -588,32 +605,73 @@ def call_document_retrieval(question: str) -> str:
         return "Si è verificato un errore durante la ricerca documentale."
 
 
+DOCUMENT_FULL_PROMPT = """
+Sei il NARRATORE-SUPERRISPONDITORE DOCUMENTALE in modalita' ANALISI COMPLETA.
+L'ambiente documentale corrente e': {document_context}.
+
+Usa esclusivamente i documenti collegati. In un'unica elaborazione devi cercare, verificare,
+confrontare e spiegare le soluzioni pertinenti, senza mostrare passaggi o ragionamenti interni.
+
+REGOLE:
+1. Separa vincoli tassativi, preferenze, tolleranze, destinazione d'uso e dati mancanti.
+2. Escludi le soluzioni che violano vincoli tassativi e non confondere compatibilita'
+   dimensionale con reale opportunita'.
+3. Non trasformare limiti massimi o minimi in obiettivi automatici.
+4. Se l'utente e' indeciso tra priorita' opposte, la proposta principale deve essere una
+   soluzione intermedia documentata, non uno degli estremi. Mostra gli estremi come scenari
+   alternativi. Se non esiste una soluzione intermedia dimostrabile, poni la domanda decisiva.
+5. Presenta una proposta principale equilibrata e fino a 5 alternative realmente diverse,
+   organizzate per scenario o priorita'. Evita varianti ridondanti.
+6. Per ogni soluzione riporta codice, dati determinanti, prezzo pertinente, compromesso,
+   nome del documento e numero di pagina.
+7. Un codice o una sezione non sostituiscono la pagina. Se la pagina non e' disponibile,
+   scrivi: "Numero di pagina non trovato nel documento collegato."
+8. Non inventare dati e non combinare valori di prodotti o pagine differenti.
+9. Non dedurre capacita' interna, organizzazione, comodita' o superiorita' dalle sole misure
+   esterne. Ogni inferenza inevitabile deve essere chiamata "valutazione orientativa".
+10. Non definire una soluzione piu' bassa, alta, economica o capiente se i dati sono uguali
+   o insufficienti per dimostrarlo.
+11. Non usare conoscenze esterne, non rimandare genericamente al catalogo e non citare
+    strumenti, Vector Store, File Search, OpenAI, API, modelli o identificativi tecnici.
+12. Concludi con una sintesi netta e UNA domanda capace di cambiare la scelta.
+13. Non superare normalmente 700 parole.
+
+Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
+Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
+Scrivi in testo semplice, senza Markdown e senza asterischi.
+In chiusura aggiungi questa nota, senza modificarne il significato:
+{document_disclaimer}
+"""
+
+
 def call_narratore_risponditore(question: str) -> str:
-    """Pipeline universale: ricerca, comprensione, confronto e risposta dimostrabile."""
-    evidence_dossier = call_document_retrieval(question)
+    """Analisi completa in una sola chiamata documentale."""
+    if client is None:
+        return "Il motore esterno non è disponibile (OPENAI_API_KEY mancante)."
+    if not OPENAI_VECTOR_STORE_ID:
+        return "Archivio documentale non configurato."
 
-    narrator_input = (
-        f"RICHIESTA ORIGINALE:\n{question}\n\n"
-        f"DOSSIER DI EVIDENZE DOCUMENTALI:\n{evidence_dossier}"
-    )
-    narrator_analysis = call_openai(
-        DOCUMENT_NARRATOR_PROMPT,
-        narrator_input,
-        temperature=0.0,
-    )
-
-    responder_input = (
-        f"RICHIESTA ORIGINALE:\n{question}\n\n"
-        f"DOSSIER DI EVIDENZE DOCUMENTALI:\n{evidence_dossier}\n\n"
-        f"CONTROLLO INTERNO DEL NARRATORE:\n{narrator_analysis}"
-    )
-    return call_openai(
-        DOCUMENT_RESPONDER_PROMPT.format(
-            document_disclaimer=DOCUMENT_DISCLAIMER,
-        ),
-        responder_input,
-        temperature=0.0,
-    )
+    try:
+        response = client.responses.create(
+            model=OPENAI_DOCUMENT_MODEL,
+            instructions=DOCUMENT_FULL_PROMPT.format(
+                document_context=DOCUMENT_CONTEXT,
+                document_disclaimer=DOCUMENT_DISCLAIMER,
+            ),
+            input=question,
+            tools=[{
+                "type": "file_search",
+                "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
+                "max_num_results": 14,
+            }],
+            reasoning={"effort": "low"},
+            max_output_tokens=2600,
+        )
+        answer = (response.output_text or "").strip()
+        return answer or "Informazione non trovata nel documento collegato."
+    except Exception as e:
+        print(f"[ERROR] analisi documentale completa: {e}")
+        return "Si è verificato un errore durante l'analisi documentale completa."
 
 # ============================================================
 # ENDPOINTS
@@ -660,7 +718,7 @@ async def api_ask(req: QuestionRequest):
     try:
         # MODALITA' DOCUMENTALE:
         # - /catalogo, /lago, /listino e /rapido: risposta rapida guidata (1 chiamata)
-        # - /globale: analisi estesa completa (3 chiamate)
+        # - /globale: analisi estesa completa (1 chiamata)
         document_prefix = next(
             (
                 prefix
