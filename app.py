@@ -548,26 +548,49 @@ In chiusura aggiungi questa nota, senza modificarne il significato:
 
 
 def call_document_quick(question: str) -> str:
-    """Modalita' predefinita: una sola chiamata con ricerca e risposta guidata."""
+    """Modalita' predefinita: recupero verificabile, poi risposta breve guidata."""
     if client is None:
         return "Il motore esterno non è disponibile (OPENAI_API_KEY mancante)."
     if not OPENAI_VECTOR_STORE_ID:
         return "Archivio documentale non configurato."
 
     try:
+        # La ricerca viene separata dalla redazione della risposta. In questo modo
+        # il modello non puo' sacrificare i candidati documentali per rispondere
+        # velocemente o fermarsi alla prima corrispondenza.
+        dossier = call_document_retrieval(question)
+        if dossier.startswith("Si è verificato un errore"):
+            return dossier
+
+        quick_response_rules = """
+MODALITA' RISPOSTA CONSIGLIATA:
+- Produci una risposta breve, normalmente entro 300 parole.
+- Apri con una sola proposta principale documentata.
+- Se l'utente e' indeciso tra priorita' opposte, la proposta principale deve essere
+  una soluzione intermedia documentata; gli estremi sono soltanto alternative.
+- Riporta nome/codice, dati determinanti, prezzo pertinente, documento e pagina.
+- Spiega in massimo quattro punti perche' e' adatta e il compromesso principale.
+- Mostra al massimo due alternative realmente differenti.
+- Non dedurre la capacita' interna dalle sole dimensioni esterne: in assenza di un
+  dato documentato, definisci ogni confronto di capacita' una valutazione orientativa.
+- Concludi con una sola domanda che possa cambiare concretamente la scelta.
+- Scrivi in testo semplice, senza Markdown e senza asterischi.
+"""
+
+        response_input = (
+            "RICHIESTA ORIGINALE:\n"
+            f"{question}\n\n"
+            "EVIDENZE DOCUMENTALI RECUPERATE:\n"
+            f"{dossier}\n\n"
+            "Formula ora la risposta consigliata usando esclusivamente queste evidenze."
+        )
         response = client.responses.create(
             model=OPENAI_DOCUMENT_MODEL,
-            instructions=DOCUMENT_QUICK_PROMPT.format(
-                document_context=DOCUMENT_CONTEXT,
+            instructions=(DOCUMENT_RESPONDER_PROMPT + quick_response_rules).format(
                 document_disclaimer=DOCUMENT_DISCLAIMER,
             ),
-            input=question,
-            tools=[{
-                "type": "file_search",
-                "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
-                "max_num_results": 10,
-            }],
-            reasoning={"effort": "low"},
+            input=response_input,
+            reasoning={"effort": "medium"},
             max_output_tokens=1100,
         )
         answer = (response.output_text or "").strip()
