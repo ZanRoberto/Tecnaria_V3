@@ -524,9 +524,10 @@ METODO OBBLIGATORIO:
    Se la pagina non e' presente nei risultati, dichiaralo esplicitamente.
 10. Non rimandare l'utente a leggere il documento: dai direttamente la risposta.
 11. Non citare strumenti, Vector Store, File Search, OpenAI, API, modelli o identificativi tecnici.
-12. Non dedurre capacita', organizzazione interna, comodita' o superiorita' da sole misure
-    esterne. Se presenti una valutazione ragionevole ma non dichiarata dal documento,
-    chiamala esplicitamente "valutazione orientativa".
+12. Non inventare misure interne, volume utile, numero di oggetti contenibili o dotazioni
+    non dichiarate. Puoi confrontare normalmente le dimensioni esterne documentate. Parla
+    dell'assenza delle misure interne soltanto quando quel dato e' davvero decisivo per la
+    richiesta; in tal caso usa una frase semplice e concreta, senza formule tecniche.
 13. Non definire una variante piu' bassa, alta, economica o capiente se i dati riportati
     sono uguali o non consentono il confronto.
 
@@ -571,8 +572,8 @@ MODALITA' RISPOSTA CONSIGLIATA:
 - Riporta nome/codice, dati determinanti, prezzo pertinente, documento e pagina.
 - Spiega in massimo quattro punti perche' e' adatta e il compromesso principale.
 - Mostra al massimo due alternative realmente differenti.
-- Non dedurre la capacita' interna dalle sole dimensioni esterne: in assenza di un
-  dato documentato, definisci ogni confronto di capacita' una valutazione orientativa.
+- Non inventare misure o volume interni. Confronta normalmente le dimensioni esterne e
+  menziona l'assenza delle misure interne soltanto se e' determinante per la scelta.
 - Concludi con una sola domanda che possa cambiare concretamente la scelta.
 - Scrivi in testo semplice, senza Markdown e senza asterischi.
 """
@@ -650,8 +651,9 @@ REGOLE:
 7. Un codice o una sezione non sostituiscono la pagina. Se la pagina non e' disponibile,
    scrivi: "Numero di pagina non trovato nel documento collegato."
 8. Non inventare dati e non combinare valori di prodotti o pagine differenti.
-9. Non dedurre capacita' interna, organizzazione, comodita' o superiorita' dalle sole misure
-   esterne. Ogni inferenza inevitabile deve essere chiamata "valutazione orientativa".
+9. Non inventare misure interne, volume utile o dotazioni non dichiarate. Confronta
+   normalmente le dimensioni esterne documentate e segnala l'assenza di misure interne
+   soltanto quando e' realmente determinante per rispondere alla domanda.
 10. Non definire una soluzione piu' bassa, alta, economica o capiente se i dati sono uguali
    o insufficienti per dimostrarlo.
 11. Non usare conoscenze esterne, non rimandare genericamente al catalogo e non citare
