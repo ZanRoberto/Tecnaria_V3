@@ -1,19 +1,11 @@
 import os
 import json
 import re
-import html
-import secrets
-import subprocess
-import sys
-import threading
-import time
-import uuid
-from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -55,12 +47,6 @@ DOCUMENT_DISCLAIMER = os.getenv(
     ),
 ).strip()
 
-# Area amministrativa separata dall'interfaccia pubblica. Se la variabile non
-# e' configurata, le relative pagine restano completamente disabilitate.
-INDEX_ADMIN_TOKEN = os.getenv("INDEX_ADMIN_TOKEN", "").strip()
-INDEX_WORK_DIR = Path(os.getenv("INDEX_WORK_DIR", "/tmp/narratore-indexer"))
-INDEX_WORK_DIR.mkdir(parents=True, exist_ok=True)
-
 client: Optional[OpenAI] = None
 if OPENAI_API_KEY:
     client = OpenAI(api_key=OPENAI_API_KEY)
@@ -96,91 +82,6 @@ class AnswerResponse(BaseModel):
     answer: str
     source: str
     meta: Dict[str, Any]
-
-
-INDEX_JOB: Dict[str, Any] = {
-    "state": "idle",
-    "message": "Nessuna indicizzazione avviata.",
-    "started_at": None,
-    "finished_at": None,
-    "output": None,
-    "log": "",
-}
-INDEX_JOB_LOCK = threading.Lock()
-
-
-def _admin_allowed(token: str) -> bool:
-    return bool(INDEX_ADMIN_TOKEN) and secrets.compare_digest(
-        str(token or ""), INDEX_ADMIN_TOKEN
-    )
-
-
-def _set_index_job(**values: Any) -> None:
-    with INDEX_JOB_LOCK:
-        INDEX_JOB.update(values)
-
-
-def _run_index_job(pdf_path: Path, mode: str) -> None:
-    output_path = INDEX_WORK_DIR / f"indice-{pdf_path.stem}-{int(time.time())}.md"
-    checkpoint_path = output_path.with_suffix(".checkpoint.jsonl")
-    command = [
-        sys.executable,
-        str(Path(BASE_DIR) / "document_indexer.py"),
-        str(pdf_path),
-        "--output",
-        str(output_path),
-        "--checkpoint",
-        str(checkpoint_path),
-        "--batch-size",
-        "3",
-    ]
-    if mode == "pilot":
-        command.extend(["--printed-pages", "31,36,43,51,52"])
-
-    _set_index_job(
-        state="running",
-        message=(
-            "Analisi campione in corso: pagine 31, 36, 43, 51 e 52."
-            if mode == "pilot"
-            else "Indicizzazione completa in corso."
-        ),
-        started_at=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-        finished_at=None,
-        output=None,
-        log="",
-    )
-    try:
-        completed = subprocess.run(
-            command,
-            cwd=BASE_DIR,
-            capture_output=True,
-            text=True,
-            timeout=60 * 60 * 6,
-            check=False,
-        )
-        combined = ((completed.stdout or "") + "\n" + (completed.stderr or "")).strip()
-        if completed.returncode == 0 and output_path.exists():
-            _set_index_job(
-                state="completed",
-                message="Nuovo indice generato. Ora deve essere verificato prima della sostituzione.",
-                finished_at=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-                output=str(output_path),
-                log=combined[-12000:],
-            )
-        else:
-            _set_index_job(
-                state="failed",
-                message="Indicizzazione non completata. L'indice attuale non e' stato modificato.",
-                finished_at=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-                log=combined[-12000:],
-            )
-    except Exception as exc:
-        _set_index_job(
-            state="failed",
-            message="Indicizzazione interrotta. L'indice attuale non e' stato modificato.",
-            finished_at=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-            log=str(exc),
-        )
 
 # ============================================================
 # NORMALIZZAZIONE TESTO
@@ -800,99 +701,6 @@ def call_narratore_risponditore(question: str) -> str:
 # ============================================================
 # ENDPOINTS
 # ============================================================
-
-@app.get("/admin/documenti", response_class=HTMLResponse)
-async def document_admin() -> HTMLResponse:
-    if not INDEX_ADMIN_TOKEN:
-        raise HTTPException(status_code=404, detail="Area non configurata")
-    page = """<!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gestione documenti</title><style>
-body{font-family:Arial,sans-serif;background:#121212;color:#f4f0e9;margin:0;padding:32px}
-main{max-width:760px;margin:auto;background:#1d222b;border:1px solid #3c424d;border-radius:18px;padding:28px}
-h1{margin-top:0}label{display:block;margin:18px 0 7px;font-weight:700}input,select,button{box-sizing:border-box;width:100%;padding:13px;border-radius:10px;border:1px solid #777;font-size:16px}
-button{margin-top:22px;background:#eadbc7;color:#111;font-weight:800;cursor:pointer}.note{color:#c8c8c8;line-height:1.45}.safe{color:#71e7a1;font-weight:700}
-</style></head><body><main>
-<h1>Gestione documenti</h1>
-<p class="safe">L'indice attualmente in uso non verrà cancellato o sostituito.</p>
-<form action="/admin/documenti/avvia" method="post" enctype="multipart/form-data">
-<label>Codice amministratore</label><input name="token" type="password" required autocomplete="off">
-<label>Documento PDF</label><input name="document" type="file" accept="application/pdf,.pdf" required>
-<label>Tipo di prova</label><select name="mode"><option value="pilot">Prova controllata sulle pagine campione</option><option value="full">Indicizzazione completa</option></select>
-<button type="submit">Carica e avvia l'analisi</button></form>
-<p class="note">Inizia con la prova controllata. Il risultato verrà verificato prima di qualsiasi sostituzione.</p>
-</main></body></html>"""
-    return HTMLResponse(page)
-
-
-@app.post("/admin/documenti/avvia", response_class=HTMLResponse)
-async def start_document_indexing(
-    token: str = Form(...),
-    mode: str = Form("pilot"),
-    document: UploadFile = File(...),
-) -> HTMLResponse:
-    if not _admin_allowed(token):
-        raise HTTPException(status_code=403, detail="Codice amministratore non valido")
-    if mode not in {"pilot", "full"}:
-        raise HTTPException(status_code=400, detail="Modalita' non valida")
-    if INDEX_JOB.get("state") == "running":
-        raise HTTPException(status_code=409, detail="Una indicizzazione e' gia' in corso")
-    filename = Path(document.filename or "documento.pdf").name
-    if Path(filename).suffix.lower() != ".pdf":
-        raise HTTPException(status_code=400, detail="E' richiesto un file PDF")
-
-    destination = INDEX_WORK_DIR / f"{uuid.uuid4().hex}-{filename}"
-    size = 0
-    with destination.open("wb") as stream:
-        while True:
-            chunk = await document.read(1024 * 1024)
-            if not chunk:
-                break
-            size += len(chunk)
-            if size > 200 * 1024 * 1024:
-                stream.close()
-                destination.unlink(missing_ok=True)
-                raise HTTPException(status_code=413, detail="PDF superiore a 200 MB")
-            stream.write(chunk)
-    await document.close()
-    if size < 5 or destination.read_bytes()[:5] != b"%PDF-":
-        destination.unlink(missing_ok=True)
-        raise HTTPException(status_code=400, detail="Il file caricato non e' un PDF valido")
-
-    threading.Thread(target=_run_index_job, args=(destination, mode), daemon=True).start()
-    safe_token = html.escape(token, quote=True)
-    return HTMLResponse(f"""<!doctype html><html lang="it"><head><meta charset="utf-8">
-<meta http-equiv="refresh" content="5;url=/admin/documenti/stato?token={safe_token}">
-<style>body{{font-family:Arial;background:#121212;color:#fff;padding:40px}}main{{max-width:700px;margin:auto}}</style></head>
-<body><main><h1>Documento ricevuto</h1><p>Analisi avviata in sicurezza.</p>
-<p>Tra pochi secondi verrà mostrato lo stato dell'elaborazione.</p></main></body></html>""")
-
-
-@app.get("/admin/documenti/stato", response_class=HTMLResponse)
-async def document_indexing_status(token: str) -> HTMLResponse:
-    if not _admin_allowed(token):
-        raise HTTPException(status_code=403, detail="Codice amministratore non valido")
-    with INDEX_JOB_LOCK:
-        job = dict(INDEX_JOB)
-    refresh = "<meta http-equiv='refresh' content='8'>" if job["state"] == "running" else ""
-    download = ""
-    if job.get("state") == "completed" and job.get("output"):
-        download = f"<p><a href='/admin/documenti/risultato?token={html.escape(token, quote=True)}'>Scarica il nuovo indice da verificare</a></p>"
-    return HTMLResponse(f"""<!doctype html><html lang="it"><head><meta charset="utf-8">{refresh}
-<style>body{{font-family:Arial;background:#121212;color:#fff;padding:40px}}main{{max-width:800px;margin:auto}}pre{{white-space:pre-wrap;background:#07090c;padding:18px;border-radius:10px}}</style></head>
-<body><main><h1>Stato: {html.escape(str(job.get('state')))}</h1>
-<p>{html.escape(str(job.get('message')))}</p><p>Avvio: {html.escape(str(job.get('started_at') or '-'))}</p>
-{download}<pre>{html.escape(str(job.get('log') or 'Elaborazione in corso...'))}</pre></main></body></html>""")
-
-
-@app.get("/admin/documenti/risultato")
-async def download_indexing_result(token: str) -> FileResponse:
-    if not _admin_allowed(token):
-        raise HTTPException(status_code=403, detail="Codice amministratore non valido")
-    output = INDEX_JOB.get("output")
-    if INDEX_JOB.get("state") != "completed" or not output or not Path(output).exists():
-        raise HTTPException(status_code=404, detail="Risultato non disponibile")
-    return FileResponse(output, filename=Path(output).name, media_type="text/markdown")
 
 @app.get("/")
 async def root() -> FileResponse:
