@@ -666,21 +666,13 @@ def call_document_quick(
         # velocemente o fermarsi alla prima corrispondenza.
         has_conversation_context = bool(previous_question and previous_answer)
         if has_conversation_context:
-            retrieval_question = (
-                "RICERCA DI APPROFONDIMENTO VINCOLATA. "
-                "Verifica esclusivamente i prodotti, i codici e le varianti gia' "
-                "presenti nella RISPOSTA PRECEDENTE. Non cercare prodotti sostitutivi. "
-                "Mantieni tutti i vincoli della DOMANDA PRECEDENTE.\n\n"
-                f"DOMANDA PRECEDENTE:\n{previous_question}\n\n"
-                f"RISPOSTA PRECEDENTE:\n{previous_answer}\n\n"
-                f"RICHIESTA ATTUALE:\n{question}"
-            )
+            # Una prosecuzione non deve riaprire la ricerca: il risultato precedente
+            # e' l'insieme chiuso e verificato da confrontare o approfondire.
+            dossier = previous_answer
         else:
-            retrieval_question = question
-
-        dossier = call_document_retrieval(retrieval_question)
-        if dossier.startswith("Si è verificato un errore"):
-            return dossier
+            dossier = call_document_retrieval(question)
+            if dossier.startswith("Si è verificato un errore"):
+                return dossier
 
         quick_response_rules = """
 MODALITA' RISPOSTA CONSIGLIATA:
@@ -704,6 +696,8 @@ MODALITA' RISPOSTA CONSIGLIATA:
         if has_conversation_context:
             quick_response_rules += """
 MODALITA' PROSECUZIONE VINCOLATA:
+- NON eseguire una nuova selezione nel catalogo: le evidenze disponibili coincidono
+  con la RISPOSTA PRECEDENTE.
 - Confronta o approfondisci ESCLUSIVAMENTE i prodotti e i codici presenti nella
   RISPOSTA PRECEDENTE.
 - Mantieni tutti i vincoli tassativi espressi nella DOMANDA PRECEDENTE.
@@ -712,6 +706,8 @@ MODALITA' PROSECUZIONE VINCOLATA:
 - Se un dato di uno dei prodotti non e' verificabile nelle evidenze, dichiaralo per
   quel dato specifico senza cambiare prodotto.
 - Non trasformare la richiesta in una nuova selezione iniziale.
+- Non applicare l'istruzione generale di proporre una nuova soluzione principale e
+  nuove alternative: rispondi soltanto alla RICHIESTA ATTUALE.
 """
 
         conversation_block = ""
