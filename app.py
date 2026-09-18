@@ -1,11 +1,19 @@
 import os
 import json
 import re
+import html
+import secrets
+import subprocess
+import sys
+import threading
+import time
+import uuid
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -47,6 +55,12 @@ DOCUMENT_DISCLAIMER = os.getenv(
     ),
 ).strip()
 
+# Area amministrativa separata dall'interfaccia pubblica. Se la variabile non
+# e' configurata, le relative pagine restano completamente disabilitate.
+INDEX_ADMIN_TOKEN = os.getenv("INDEX_ADMIN_TOKEN", "").strip()
+INDEX_WORK_DIR = Path(os.getenv("INDEX_WORK_DIR", "/tmp/narratore-indexer"))
+INDEX_WORK_DIR.mkdir(parents=True, exist_ok=True)
+
 client: Optional[OpenAI] = None
 if OPENAI_API_KEY:
     client = OpenAI(api_key=OPENAI_API_KEY)
@@ -76,12 +90,99 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 class QuestionRequest(BaseModel):
     question: str
+    previous_question: Optional[str] = None
+    previous_answer: Optional[str] = None
 
 
 class AnswerResponse(BaseModel):
     answer: str
     source: str
     meta: Dict[str, Any]
+
+
+INDEX_JOB: Dict[str, Any] = {
+    "state": "idle",
+    "message": "Nessuna indicizzazione avviata.",
+    "started_at": None,
+    "finished_at": None,
+    "output": None,
+    "log": "",
+}
+INDEX_JOB_LOCK = threading.Lock()
+
+
+def _admin_allowed(token: str) -> bool:
+    return bool(INDEX_ADMIN_TOKEN) and secrets.compare_digest(
+        str(token or ""), INDEX_ADMIN_TOKEN
+    )
+
+
+def _set_index_job(**values: Any) -> None:
+    with INDEX_JOB_LOCK:
+        INDEX_JOB.update(values)
+
+
+def _run_index_job(pdf_path: Path, mode: str) -> None:
+    output_path = INDEX_WORK_DIR / f"indice-{pdf_path.stem}-{int(time.time())}.md"
+    checkpoint_path = output_path.with_suffix(".checkpoint.jsonl")
+    command = [
+        sys.executable,
+        str(Path(BASE_DIR) / "document_indexer.py"),
+        str(pdf_path),
+        "--output",
+        str(output_path),
+        "--checkpoint",
+        str(checkpoint_path),
+        "--batch-size",
+        "3",
+    ]
+    if mode == "pilot":
+        command.extend(["--printed-pages", "31,36,43,51,52"])
+
+    _set_index_job(
+        state="running",
+        message=(
+            "Analisi campione in corso: pagine 31, 36, 43, 51 e 52."
+            if mode == "pilot"
+            else "Indicizzazione completa in corso."
+        ),
+        started_at=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+        finished_at=None,
+        output=None,
+        log="",
+    )
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=60 * 60 * 6,
+            check=False,
+        )
+        combined = ((completed.stdout or "") + "\n" + (completed.stderr or "")).strip()
+        if completed.returncode == 0 and output_path.exists():
+            _set_index_job(
+                state="completed",
+                message="Nuovo indice generato. Ora deve essere verificato prima della sostituzione.",
+                finished_at=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+                output=str(output_path),
+                log=combined[-12000:],
+            )
+        else:
+            _set_index_job(
+                state="failed",
+                message="Indicizzazione non completata. L'indice attuale non e' stato modificato.",
+                finished_at=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+                log=combined[-12000:],
+            )
+    except Exception as exc:
+        _set_index_job(
+            state="failed",
+            message="Indicizzazione interrotta. L'indice attuale non e' stato modificato.",
+            finished_at=time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
+            log=str(exc),
+        )
 
 # ============================================================
 # NORMALIZZAZIONE TESTO
@@ -548,7 +649,11 @@ In chiusura aggiungi questa nota, senza modificarne il significato:
 """
 
 
-def call_document_quick(question: str) -> str:
+def call_document_quick(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+) -> str:
     """Modalita' predefinita: recupero verificabile, poi risposta breve guidata."""
     if client is None:
         return "Il motore esterno non è disponibile (OPENAI_API_KEY mancante)."
@@ -559,7 +664,21 @@ def call_document_quick(question: str) -> str:
         # La ricerca viene separata dalla redazione della risposta. In questo modo
         # il modello non puo' sacrificare i candidati documentali per rispondere
         # velocemente o fermarsi alla prima corrispondenza.
-        dossier = call_document_retrieval(question)
+        has_conversation_context = bool(previous_question and previous_answer)
+        if has_conversation_context:
+            retrieval_question = (
+                "RICERCA DI APPROFONDIMENTO VINCOLATA. "
+                "Verifica esclusivamente i prodotti, i codici e le varianti gia' "
+                "presenti nella RISPOSTA PRECEDENTE. Non cercare prodotti sostitutivi. "
+                "Mantieni tutti i vincoli della DOMANDA PRECEDENTE.\n\n"
+                f"DOMANDA PRECEDENTE:\n{previous_question}\n\n"
+                f"RISPOSTA PRECEDENTE:\n{previous_answer}\n\n"
+                f"RICHIESTA ATTUALE:\n{question}"
+            )
+        else:
+            retrieval_question = question
+
+        dossier = call_document_retrieval(retrieval_question)
         if dossier.startswith("Si è verificato un errore"):
             return dossier
 
@@ -576,14 +695,42 @@ MODALITA' RISPOSTA CONSIGLIATA:
   menziona l'assenza delle misure interne soltanto se e' determinante per la scelta.
 - Concludi con una sola domanda che possa cambiare concretamente la scelta.
 - Scrivi in testo semplice, senza Markdown e senza asterischi.
+- Se sono presenti DOMANDA PRECEDENTE e RISPOSTA PRECEDENTE, usale per risolvere
+  riferimenti come "questa soluzione", "le alternative", "confrontale" o "approfondisci".
+- La RICHIESTA ATTUALE resta sempre l'istruzione da eseguire. Non chiedere nuovamente
+  codici o nomi gia' presenti nella RISPOSTA PRECEDENTE.
 """
 
+        if has_conversation_context:
+            quick_response_rules += """
+MODALITA' PROSECUZIONE VINCOLATA:
+- Confronta o approfondisci ESCLUSIVAMENTE i prodotti e i codici presenti nella
+  RISPOSTA PRECEDENTE.
+- Mantieni tutti i vincoli tassativi espressi nella DOMANDA PRECEDENTE.
+- Non introdurre, proporre o sostituire altri prodotti, salvo richiesta esplicita
+  dell'utente di cercare nuove alternative.
+- Se un dato di uno dei prodotti non e' verificabile nelle evidenze, dichiaralo per
+  quel dato specifico senza cambiare prodotto.
+- Non trasformare la richiesta in una nuova selezione iniziale.
+"""
+
+        conversation_block = ""
+        if has_conversation_context:
+            conversation_block = (
+                "DOMANDA PRECEDENTE (contiene anche i vincoli da mantenere):\n"
+                f"{previous_question}\n\n"
+                "RISPOSTA PRECEDENTE (insieme dei prodotti bloccato):\n"
+                f"{previous_answer}\n\n"
+            )
+
         response_input = (
-            "RICHIESTA ORIGINALE:\n"
+            f"{conversation_block}"
+            "RICHIESTA ATTUALE:\n"
             f"{question}\n\n"
             "EVIDENZE DOCUMENTALI RECUPERATE:\n"
             f"{dossier}\n\n"
-            "Formula ora la risposta consigliata usando esclusivamente queste evidenze."
+            "Formula ora la risposta usando esclusivamente queste evidenze e rispettando "
+            "l'eventuale insieme bloccato della risposta precedente."
         )
         response = client.responses.create(
             model=OPENAI_DOCUMENT_MODEL,
@@ -627,6 +774,19 @@ def call_document_retrieval(question: str) -> str:
     except Exception as e:
         print(f"[ERROR] ricerca documentale: {e}")
         return "Si è verificato un errore durante la ricerca documentale."
+
+
+def is_document_followup(question: str) -> bool:
+    """Riconosce una prosecuzione senza trasformare ogni nuova domanda in memoria."""
+    q = normalize(question)
+    markers = (
+        "adesso", "ora confronta", "confronta le", "confronta i", "confrontale",
+        "queste soluzioni", "questi prodotti", "le tre soluzioni", "i tre prodotti",
+        "quella", "quello", "la prima", "la seconda", "la terza", "approfondisci",
+        "appena proposto", "appena indicato", "senza chiedermi nuovamente",
+        "tra queste", "tra questi", "delle alternative", "della soluzione",
+    )
+    return any(marker in q for marker in markers)
 
 
 DOCUMENT_FULL_PROMPT = """
@@ -701,6 +861,99 @@ def call_narratore_risponditore(question: str) -> str:
 # ============================================================
 # ENDPOINTS
 # ============================================================
+
+@app.get("/admin/documenti", response_class=HTMLResponse)
+async def document_admin() -> HTMLResponse:
+    if not INDEX_ADMIN_TOKEN:
+        raise HTTPException(status_code=404, detail="Area non configurata")
+    page = """<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gestione documenti</title><style>
+body{font-family:Arial,sans-serif;background:#121212;color:#f4f0e9;margin:0;padding:32px}
+main{max-width:760px;margin:auto;background:#1d222b;border:1px solid #3c424d;border-radius:18px;padding:28px}
+h1{margin-top:0}label{display:block;margin:18px 0 7px;font-weight:700}input,select,button{box-sizing:border-box;width:100%;padding:13px;border-radius:10px;border:1px solid #777;font-size:16px}
+button{margin-top:22px;background:#eadbc7;color:#111;font-weight:800;cursor:pointer}.note{color:#c8c8c8;line-height:1.45}.safe{color:#71e7a1;font-weight:700}
+</style></head><body><main>
+<h1>Gestione documenti</h1>
+<p class="safe">L'indice attualmente in uso non verrà cancellato o sostituito.</p>
+<form action="/admin/documenti/avvia" method="post" enctype="multipart/form-data">
+<label>Codice amministratore</label><input name="token" type="password" required autocomplete="off">
+<label>Documento PDF</label><input name="document" type="file" accept="application/pdf,.pdf" required>
+<label>Tipo di prova</label><select name="mode"><option value="pilot">Prova controllata sulle pagine campione</option><option value="full">Indicizzazione completa</option></select>
+<button type="submit">Carica e avvia l'analisi</button></form>
+<p class="note">Inizia con la prova controllata. Il risultato verrà verificato prima di qualsiasi sostituzione.</p>
+</main></body></html>"""
+    return HTMLResponse(page)
+
+
+@app.post("/admin/documenti/avvia", response_class=HTMLResponse)
+async def start_document_indexing(
+    token: str = Form(...),
+    mode: str = Form("pilot"),
+    document: UploadFile = File(...),
+) -> HTMLResponse:
+    if not _admin_allowed(token):
+        raise HTTPException(status_code=403, detail="Codice amministratore non valido")
+    if mode not in {"pilot", "full"}:
+        raise HTTPException(status_code=400, detail="Modalita' non valida")
+    if INDEX_JOB.get("state") == "running":
+        raise HTTPException(status_code=409, detail="Una indicizzazione e' gia' in corso")
+    filename = Path(document.filename or "documento.pdf").name
+    if Path(filename).suffix.lower() != ".pdf":
+        raise HTTPException(status_code=400, detail="E' richiesto un file PDF")
+
+    destination = INDEX_WORK_DIR / f"{uuid.uuid4().hex}-{filename}"
+    size = 0
+    with destination.open("wb") as stream:
+        while True:
+            chunk = await document.read(1024 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > 200 * 1024 * 1024:
+                stream.close()
+                destination.unlink(missing_ok=True)
+                raise HTTPException(status_code=413, detail="PDF superiore a 200 MB")
+            stream.write(chunk)
+    await document.close()
+    if size < 5 or destination.read_bytes()[:5] != b"%PDF-":
+        destination.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail="Il file caricato non e' un PDF valido")
+
+    threading.Thread(target=_run_index_job, args=(destination, mode), daemon=True).start()
+    safe_token = html.escape(token, quote=True)
+    return HTMLResponse(f"""<!doctype html><html lang="it"><head><meta charset="utf-8">
+<meta http-equiv="refresh" content="5;url=/admin/documenti/stato?token={safe_token}">
+<style>body{{font-family:Arial;background:#121212;color:#fff;padding:40px}}main{{max-width:700px;margin:auto}}</style></head>
+<body><main><h1>Documento ricevuto</h1><p>Analisi avviata in sicurezza.</p>
+<p>Tra pochi secondi verrà mostrato lo stato dell'elaborazione.</p></main></body></html>""")
+
+
+@app.get("/admin/documenti/stato", response_class=HTMLResponse)
+async def document_indexing_status(token: str) -> HTMLResponse:
+    if not _admin_allowed(token):
+        raise HTTPException(status_code=403, detail="Codice amministratore non valido")
+    with INDEX_JOB_LOCK:
+        job = dict(INDEX_JOB)
+    refresh = "<meta http-equiv='refresh' content='8'>" if job["state"] == "running" else ""
+    download = ""
+    if job.get("state") == "completed" and job.get("output"):
+        download = f"<p><a href='/admin/documenti/risultato?token={html.escape(token, quote=True)}'>Scarica il nuovo indice da verificare</a></p>"
+    return HTMLResponse(f"""<!doctype html><html lang="it"><head><meta charset="utf-8">{refresh}
+<style>body{{font-family:Arial;background:#121212;color:#fff;padding:40px}}main{{max-width:800px;margin:auto}}pre{{white-space:pre-wrap;background:#07090c;padding:18px;border-radius:10px}}</style></head>
+<body><main><h1>Stato: {html.escape(str(job.get('state')))}</h1>
+<p>{html.escape(str(job.get('message')))}</p><p>Avvio: {html.escape(str(job.get('started_at') or '-'))}</p>
+{download}<pre>{html.escape(str(job.get('log') or 'Elaborazione in corso...'))}</pre></main></body></html>""")
+
+
+@app.get("/admin/documenti/risultato")
+async def download_indexing_result(token: str) -> FileResponse:
+    if not _admin_allowed(token):
+        raise HTTPException(status_code=403, detail="Codice amministratore non valido")
+    output = INDEX_JOB.get("output")
+    if INDEX_JOB.get("state") != "completed" or not output or not Path(output).exists():
+        raise HTTPException(status_code=404, detail="Risultato non disponibile")
+    return FileResponse(output, filename=Path(output).name, media_type="text/markdown")
 
 @app.get("/")
 async def root() -> FileResponse:
@@ -779,15 +1032,36 @@ async def api_ask(req: QuestionRequest):
                     meta={"mode": document_mode},
                 )
 
+            previous_question = (req.previous_question or "").strip()
+            previous_answer = (req.previous_answer or "").strip()
+            has_saved_context = bool(previous_question and previous_answer)
+            has_context = has_saved_context and (
+                document_mode == "globale" or is_document_followup(document_question)
+            )
+
             if document_mode == "globale":
-                document_answer = call_narratore_risponditore(document_question)
+                if has_context:
+                    global_question = (
+                        "CONFRONTO VINCOLATO: mantieni i prodotti e tutti i vincoli "
+                        "della conversazione precedente. Non introdurre altri prodotti.\n\n"
+                        f"DOMANDA PRECEDENTE:\n{previous_question}\n\n"
+                        f"RISPOSTA PRECEDENTE:\n{previous_answer}\n\n"
+                        f"RICHIESTA ATTUALE:\n{document_question}"
+                    )
+                else:
+                    global_question = document_question
+                document_answer = call_narratore_risponditore(global_question)
             else:
-                document_answer = call_document_quick(document_question)
+                document_answer = call_document_quick(
+                    document_question,
+                    previous_question=previous_question if has_context else "",
+                    previous_answer=previous_answer if has_context else "",
+                )
 
             return AnswerResponse(
                 answer=document_answer,
                 source="narratore_risponditore",
-                meta={"mode": document_mode},
+                meta={"mode": document_mode, "conversation_context_used": has_context},
             )
 
         # 1) DOMANDE AZIENDALI / COMMERCIALI → SOLO COMM.JSON
