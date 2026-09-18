@@ -47,6 +47,12 @@ DOCUMENT_DISCLAIMER = os.getenv(
     ),
 ).strip()
 
+# Interruttore commerciale: per impostazione predefinita la funzione non e'
+# visibile. Su Render puo' essere attivata impostando il valore a "true".
+ENABLE_COMMERCIAL_PROPOSAL = os.getenv(
+    "ENABLE_COMMERCIAL_PROPOSAL", "false"
+).strip().lower() in {"1", "true", "yes", "on"}
+
 client: Optional[OpenAI] = None
 if OPENAI_API_KEY:
     client = OpenAI(api_key=OPENAI_API_KEY)
@@ -796,6 +802,7 @@ async def status():
         "kb_blocks": len(KB_BLOCKS),
         "comm_blocks": len(COMM_ITEMS),
         "narratore_risponditore": "attivo",
+        "commercial_proposal_enabled": ENABLE_COMMERCIAL_PROPOSAL,
     }
 
 
