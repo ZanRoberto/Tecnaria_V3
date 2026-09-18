@@ -371,6 +371,7 @@ def run_indexing(
     batch_size: int,
     checkpoint_path: Path,
     upload_vector_store: bool = False,
+    printed_pages: Optional[set[str]] = None,
 ) -> None:
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if not api_key:
@@ -381,6 +382,12 @@ def run_indexing(
 
     pages = extract_pdf_pages(pdf_path)
     usable = [p for p in pages if p.text]
+    if printed_pages:
+        usable = [p for p in usable if str(p.printed_page or "") in printed_pages]
+        if not usable:
+            raise RuntimeError(
+                "Nessuna delle pagine stampate richieste e' stata riconosciuta nel PDF"
+            )
     profile_path = output_path.with_suffix(".profile.json")
     if profile_path.exists():
         profile = json.loads(profile_path.read_text(encoding="utf-8"))
@@ -454,6 +461,10 @@ def main() -> int:
     parser.add_argument("--batch-size", type=int, default=3)
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument(
+        "--printed-pages",
+        help="Pagine stampate da indicizzare, separate da virgola (es. 31,36,43,51,52)",
+    )
+    parser.add_argument(
         "--upload-vector-store",
         action="store_true",
         help="Carica l'indice completato nel Vector Store configurato",
@@ -468,6 +479,11 @@ def main() -> int:
             max(1, args.batch_size),
             checkpoint,
             upload_vector_store=args.upload_vector_store,
+            printed_pages=(
+                {x.strip() for x in args.printed_pages.split(",") if x.strip()}
+                if args.printed_pages
+                else None
+            ),
         )
         print(args.output)
         return 0
