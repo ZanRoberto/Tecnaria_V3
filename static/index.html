@@ -233,6 +233,109 @@
       font-style: italic;
     }
 
+    .work-state {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 175px;
+    }
+
+    .work-head {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .work-spinner {
+      width: 38px;
+      height: 38px;
+      flex: 0 0 38px;
+      border-radius: 50%;
+      border: 3px solid rgba(216,197,173,0.18);
+      border-top-color: #f4efe9;
+      border-right-color: #d8c5ad;
+      animation: spin 0.9s linear infinite;
+      box-shadow: 0 0 18px rgba(216,197,173,0.18);
+    }
+
+    .work-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .work-detail {
+      margin-top: 4px;
+      color: #cfc7bd;
+      font-size: 12px;
+    }
+
+    .work-progress {
+      height: 5px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+    }
+
+    .work-progress::after {
+      content: "";
+      display: block;
+      width: 38%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, transparent, #d8c5ad, #ffffff, transparent);
+      animation: scan 1.7s ease-in-out infinite;
+    }
+
+    .work-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .work-step {
+      padding: 9px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.025);
+      color: rgba(255,255,255,0.42);
+      font-size: 10px;
+      text-align: center;
+      transition: all 0.35s ease;
+    }
+
+    .work-step.active {
+      color: #ffffff;
+      border-color: rgba(216,197,173,0.65);
+      background: rgba(216,197,173,0.12);
+      box-shadow: 0 0 14px rgba(216,197,173,0.12);
+    }
+
+    .work-step.done {
+      color: #79efa9;
+      border-color: rgba(73,255,156,0.25);
+    }
+
+    .work-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: rgba(255,255,255,0.62);
+      font-size: 11px;
+    }
+
+    .work-time {
+      color: #f0ddc5;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes scan {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(330%); }
+    }
+
     .meta-area {
       margin-top: 10px;
       background: rgba(8, 10, 14, 0.9);
@@ -251,6 +354,7 @@
 
     @media (max-width: 900px) {
       .main { flex-direction: column; }
+      .work-steps { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
 </head>
@@ -341,6 +445,53 @@
     const metaBox = document.getElementById("metaBox");
     const answerTitle = document.getElementById("answerTitle");
     const answerSubtitle = document.getElementById("answerSubtitle");
+    let previousQuestion = "";
+    let previousAnswer = "";
+    let activityTimer = null;
+
+    const activityPhases = [
+      { after: 0,  title: "Comprendo la richiesta", detail: "Distinguo vincoli obbligatori e preferenze." },
+      { after: 12, title: "Cerco nel catalogo", detail: "Individuo i prodotti e le varianti pertinenti." },
+      { after: 30, title: "Confronto le soluzioni", detail: "Escludo le configurazioni che non rispettano i limiti." },
+      { after: 55, title: "Verifico i dati", detail: "Controllo codici, misure, prezzi e riferimenti." },
+      { after: 80, title: "Preparo la risposta", detail: "Sto completando la proposta e le alternative documentate." }
+    ];
+
+    function renderActivity(elapsedSeconds, isFull) {
+      let phaseIndex = 0;
+      activityPhases.forEach((phase, index) => {
+        if (elapsedSeconds >= phase.after) phaseIndex = index;
+      });
+      const phase = activityPhases[phaseIndex];
+      const visualStep = Math.min(phaseIndex, 3);
+      const labels = ["Richiesta", "Catalogo", "Confronto", "Verifica"];
+
+      answerBox.innerHTML = `
+        <div class="work-state" role="status" aria-live="polite">
+          <div class="work-head">
+            <div class="work-spinner" aria-hidden="true"></div>
+            <div>
+              <div class="work-title">${phase.title}</div>
+              <div class="work-detail">${phase.detail}</div>
+            </div>
+          </div>
+          <div class="work-progress" aria-hidden="true"></div>
+          <div class="work-steps">
+            ${labels.map((label, index) => {
+              const state = index < visualStep ? "done" : (index === visualStep ? "active" : "");
+              const mark = index < visualStep ? "✓ " : "";
+              return `<div class="work-step ${state}">${mark}${label}</div>`;
+            }).join("")}
+          </div>
+          <div class="work-foot">
+            <span>${isFull ? "Analisi completa in corso" : "Risposta consigliata in preparazione"}</span>
+            <span class="work-time">${elapsedSeconds} s</span>
+          </div>
+        </div>`;
+      metaBox.textContent = elapsedSeconds < 60
+        ? "Il motore sta lavorando sul catalogo. Mantieni aperta questa pagina."
+        : "La verifica sta richiedendo più tempo del normale, ma è ancora in corso.";
+    }
 
     async function sendQuestion(mode = "recommended") {
       const question = qEl.value.trim();
@@ -354,12 +505,11 @@
       answerSubtitle.textContent = isFull
         ? "Confronto esteso delle soluzioni documentate"
         : "La proposta più pertinente, con alternative essenziali";
-      answerBox.textContent = isFull
-        ? "Sto confrontando tutte le soluzioni disponibili nel catalogo…"
-        : "Sto cercando la soluzione più pertinente nel catalogo…";
-      metaBox.textContent = isFull
-        ? "Analisi completa in corso: può richiedere più tempo."
-        : "Ricerca della risposta consigliata in corso…";
+      renderActivity(0, isFull);
+      activityTimer = window.setInterval(() => {
+        const elapsed = Math.floor((performance.now() - startedAt) / 1000);
+        renderActivity(elapsed, isFull);
+      }, 1000);
       sendBtn.disabled = true;
       fullBtn.disabled = true;
 
@@ -367,11 +517,19 @@
         const res = await fetch("/api/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: backendQuestion })
+          body: JSON.stringify({
+            question: backendQuestion,
+            previous_question: previousQuestion,
+            previous_answer: previousAnswer
+          })
         });
 
         const data = await res.json();
         answerBox.textContent = data.answer || "— nessuna risposta —";
+        if (data.answer) {
+          previousQuestion = question;
+          previousAnswer = data.answer;
+        }
         const elapsedSeconds = ((performance.now() - startedAt) / 1000).toFixed(1);
         metaBox.textContent = isFull
           ? "Analisi completa terminata in " + elapsedSeconds + " secondi."
@@ -380,6 +538,10 @@
         answerBox.textContent = "Non è stato possibile completare la ricerca. Riprova tra qualche momento.";
         metaBox.textContent = "Collegamento momentaneamente non disponibile.";
       } finally {
+        if (activityTimer) {
+          window.clearInterval(activityTimer);
+          activityTimer = null;
+        }
         sendBtn.disabled = false;
         fullBtn.disabled = false;
       }
