@@ -1,6 +1,8 @@
 import os
 import json
 import re
+import math
+from collections import Counter
 from typing import List, Dict, Any, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -22,15 +24,30 @@ DATA_DIR = os.path.join(STATIC_DIR, "data")
 MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
 COMM_PATH = os.path.join(DATA_DIR, "COMM.json")
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-OPENAI_MODEL_ENV = (os.getenv("OPENAI_MODEL", "gpt-4o") or "gpt-4o").strip()
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
+DEEPSEEK_MODEL = (os.getenv("DEEPSEEK_MODEL", "deepseek-chat") or "deepseek-chat").strip()
+DEEPSEEK_BASE_URL = (
+    os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    or "https://api.deepseek.com"
+).strip()
 
-# Identificativo documentale custodito esclusivamente tra le variabili riservate
-# del servizio: non deve essere scritto nel codice o inviato al browser.
+# Selettore del motore documentale:
+# - deepseek_local: indice locale + DeepSeek
+# - openai_vector: Vector Store + OpenAI
+# - automatic: prova OpenAI Vector e, in caso di errore, passa a DeepSeek locale
+SEARCH_ENGINE = (os.getenv("SEARCH_ENGINE", "deepseek_local") or "deepseek_local").strip().lower()
+if SEARCH_ENGINE not in {"deepseek_local", "openai_vector", "automatic"}:
+    print(f"[WARN] SEARCH_ENGINE non valido: {SEARCH_ENGINE}; uso deepseek_local")
+    SEARCH_ENGINE = "deepseek_local"
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
 OPENAI_DOCUMENT_MODEL = (
-    os.getenv("OPENAI_DOCUMENT_MODEL", "gpt-5.6-sol") or "gpt-5.6-sol"
+    os.getenv("OPENAI_DOCUMENT_MODEL", "gpt-4o") or "gpt-4o"
 ).strip()
+
+# Archivio locale indicizzato. Non dipende da OpenAI o da un Vector Store.
+DOCUMENT_INDEX_PATH = os.path.join(DATA_DIR, "document_index_COMPLETO.txt")
 
 # Il motore NAR/SUP resta universale. Questi valori descrivono soltanto
 # l'azienda e il patrimonio documentale collegati alla singola installazione.
@@ -54,8 +71,12 @@ ENABLE_COMMERCIAL_PROPOSAL = os.getenv(
 ).strip().lower() in {"1", "true", "yes", "on"}
 
 client: Optional[OpenAI] = None
+if DEEPSEEK_API_KEY:
+    client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
+
+openai_client: Optional[OpenAI] = None
 if OPENAI_API_KEY:
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ============================================================
 # FASTAPI APP
@@ -100,6 +121,184 @@ def normalize(text: str) -> str:
     text = re.sub(r"[^\w\sàèéìòóùç]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+
+# ============================================================
+# INDICE DOCUMENTALE LOCALE
+# ============================================================
+
+DOCUMENT_PAGES: List[Dict[str, Any]] = []
+
+SEARCH_STOPWORDS = {
+    "a", "ad", "al", "alla", "alle", "anche", "che", "con", "da", "dal",
+    "dalla", "de", "dei", "del", "della", "delle", "di", "e", "ed", "gli",
+    "ha", "i", "il", "in", "la", "le", "lo", "ma", "mi", "non", "o", "per",
+    "piu", "quale", "quali", "questa", "questo", "sono", "su", "tra", "un",
+    "una", "uno", "the", "and", "or", "of", "to", "for", "with", "is", "are",
+    "this", "that", "from", "what", "which", "please", "indica", "proponi",
+    "spiega", "soluzione", "alternative", "alternativa", "prodotto", "prodotti",
+}
+
+
+def search_tokens(text: str) -> List[str]:
+    """Token robusti per codici, misure e termini in italiano/inglese."""
+    folded = normalize(text.replace(",", "."))
+    tokens = re.findall(r"[a-zàèéìòóùç0-9][a-zàèéìòóùç0-9_.-]*", folded)
+    return [t for t in tokens if len(t) >= 2 and t not in SEARCH_STOPWORDS]
+
+
+def load_document_index() -> None:
+    global DOCUMENT_PAGES
+    DOCUMENT_PAGES = []
+    if not os.path.exists(DOCUMENT_INDEX_PATH):
+        print(f"[WARN] indice documentale non trovato: {DOCUMENT_INDEX_PATH}")
+        return
+
+    try:
+        with open(DOCUMENT_INDEX_PATH, "r", encoding="utf-8", errors="replace") as f:
+            raw = f.read()
+
+        marker = re.compile(r"(?m)^## PAGINA PDF\s+(\d+)\s*$")
+        matches = list(marker.finditer(raw))
+        for index, match in enumerate(matches):
+            start = match.start()
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(raw)
+            page_text = raw[start:end].strip()
+            page_number = int(match.group(1))
+            page_token_list = search_tokens(page_text)
+            DOCUMENT_PAGES.append({
+                "page": page_number,
+                "text": page_text,
+                "normalized": normalize(page_text),
+                "token_counts": Counter(page_token_list),
+                "token_set": set(page_token_list),
+            })
+
+        print(
+            f"[INFO] indice locale caricato: {len(DOCUMENT_PAGES)} pagine, "
+            f"{len(raw)} caratteri"
+        )
+    except Exception as e:
+        print(f"[ERROR] caricando indice locale: {e}")
+        DOCUMENT_PAGES = []
+
+
+def expand_multilingual_query(question: str) -> str:
+    """Traduce solo le parole di ricerca quando la domanda usa un alfabeto non latino."""
+    if not re.search(r"[\u0400-\u04ff\u0370-\u03ff\u0600-\u06ff]", question):
+        return question
+    if client is None:
+        return question
+    try:
+        response = client.chat.completions.create(
+            model=DEEPSEEK_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Converti la richiesta in una riga di parole chiave italiane e inglesi "
+                        "utili per cercare in un catalogo bilingue. Conserva esattamente numeri, "
+                        "misure e codici. Non rispondere alla domanda e non aggiungere spiegazioni."
+                    ),
+                },
+                {"role": "user", "content": question},
+            ],
+            temperature=0.0,
+            max_tokens=180,
+        )
+        keywords = (response.choices[0].message.content or "").strip()
+        return f"{question}\n{keywords}" if keywords else question
+    except Exception as e:
+        print(f"[WARN] espansione multilingua non riuscita: {e}")
+        return question
+
+
+def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
+    """Recupera localmente pagine verificabili senza servizi vettoriali esterni."""
+    if not DOCUMENT_PAGES:
+        return ""
+
+    expanded = expand_multilingual_query(query)
+    tokens = search_tokens(expanded)
+    codes = set(re.findall(r"\b[A-Z0-9][A-Z0-9_-]{3,}\b", query.upper()))
+    numbers = set(re.findall(r"\b\d+(?:[.,]\d+)?\b", query))
+
+    token_df = {
+        token: sum(1 for page in DOCUMENT_PAGES if token in page["token_set"])
+        for token in set(tokens)
+    }
+    scored: List[tuple[float, int]] = []
+    for idx, page in enumerate(DOCUMENT_PAGES):
+        text_norm = page["normalized"]
+        text_upper = page["text"].upper()
+        score = 0.0
+
+        for token in set(tokens):
+            occurrences = page["token_counts"].get(token, 0)
+            if occurrences:
+                rarity = math.log((len(DOCUMENT_PAGES) + 1) / (token_df[token] + 1)) + 1
+                weight = 3.0 if any(ch.isdigit() for ch in token) else 1.0
+                score += weight * rarity * (1.0 + math.log(occurrences))
+
+        for code in codes:
+            if code in text_upper:
+                score += 80.0
+        for number in numbers:
+            normalized_number = number.replace(",", ".")
+            if normalized_number in page["token_set"]:
+                score += 2.0
+
+        phrase = normalize(query)
+        if phrase and len(phrase) > 8 and phrase in text_norm:
+            score += 100.0
+        if score > 0:
+            scored.append((score, idx))
+
+    scored.sort(key=lambda item: item[0], reverse=True)
+    selected: List[int] = []
+
+    # Per confronti generici tra mobili TV recupera l'intera famiglia di schede prodotto.
+    # Le misure richieste sono limiti: non devono essere cercate come valori esatti.
+    query_norm = normalize(expanded)
+    if re.search(r"\btv\b", query_norm):
+        for idx, page in enumerate(DOCUMENT_PAGES):
+            header = normalize(page["text"][:900])
+            if "tv units" in header and "optional optionals" not in header:
+                selected.append(idx)
+
+    for score, idx in scored:
+        if idx not in selected:
+            selected.append(idx)
+        if len(selected) >= max_pages and not re.search(r"\btv\b", query_norm):
+            break
+
+    # Per i codici esatti includi anche la pagina adiacente, spesso sede di optional/note.
+    if codes:
+        for _, idx in scored[:4]:
+            for neighbour in (idx - 1, idx + 1):
+                if 0 <= neighbour < len(DOCUMENT_PAGES) and neighbour not in selected:
+                    selected.append(neighbour)
+                if len(selected) >= max_pages + 2:
+                    break
+
+    if not selected:
+        return ""
+
+    blocks: List[str] = []
+    total_chars = 0
+    max_chars = 220000 if re.search(r"\btv\b", query_norm) else 70000
+    for idx in selected:
+        page = DOCUMENT_PAGES[idx]
+        block = f"\n===== PAGINA PDF {page['page']} =====\n{page['text']}\n"
+        if total_chars + len(block) > max_chars:
+            remaining = max_chars - total_chars
+            if remaining > 1500:
+                blocks.append(block[:remaining])
+            break
+        blocks.append(block)
+        total_chars += len(block)
+
+    return "".join(blocks).strip()
 
 # ============================================================
 # CARICAMENTO KB TECNICA (per meta / debug)
@@ -239,6 +438,7 @@ def match_comm(question: str) -> Optional[Dict[str, Any]]:
 
 
 load_comm()
+load_document_index()
 
 # ============================================================
 # LLM: PROMPT TECNARIA GOLD
@@ -367,17 +567,16 @@ def is_situational(question: str) -> bool:
     return any(t in q for t in triggers)
 
 
-def call_openai(prompt_system: str, question: str, temperature: float = 0.3) -> str:
+def call_deepseek(prompt_system: str, question: str, temperature: float = 0.3) -> str:
     """
-    Wrapper unico per chiamare OpenAI.
-    Modello FORZATO a gpt-5.1 (ignora OPENAI_MODEL_ENV).
+    Wrapper unico per chiamare DeepSeek tramite API compatibile OpenAI.
     """
     if client is None:
-        return "Il motore esterno non è disponibile (OPENAI_API_KEY mancante)."
+        return "Il motore esterno non è disponibile (DEEPSEEK_API_KEY mancante)."
 
     try:
         completion = client.chat.completions.create(
-            model="gpt-5.1",
+            model=DEEPSEEK_MODEL,
             messages=[
                 {"role": "system", "content": prompt_system},
                 {"role": "user", "content": question},
@@ -387,7 +586,7 @@ def call_openai(prompt_system: str, question: str, temperature: float = 0.3) -> 
         )
         return (completion.choices[0].message.content or "").strip()
     except Exception as e:
-        print(f"[ERROR] chiamando OpenAI: {e}")
+        print(f"[ERROR] chiamando DeepSeek: {e}")
         return "Si è verificato un errore nella chiamata al motore esterno."
 
 
@@ -594,27 +793,27 @@ def build_document_query(
     return query, True
 
 
-def call_document_quick(
+def call_document_quick_local(
     question: str,
     previous_question: str = "",
     previous_answer: str = "",
 ) -> str:
-    """Modalita' predefinita: recupero verificabile, poi risposta breve guidata."""
+    """Modalita' predefinita: ricerca locale e risposta breve DeepSeek."""
     if client is None:
-        return "Il motore esterno non è disponibile (OPENAI_API_KEY mancante)."
-    if not OPENAI_VECTOR_STORE_ID:
-        return "Archivio documentale non configurato."
+        return "Il motore esterno non è disponibile (DEEPSEEK_API_KEY mancante)."
+    if not DOCUMENT_PAGES:
+        return "Archivio documentale locale non configurato."
 
     try:
-        # La ricerca viene separata dalla redazione della risposta. In questo modo
-        # il modello non puo' sacrificare i candidati documentali per rispondere
-        # velocemente o fermarsi alla prima corrispondenza.
         document_query, is_followup = build_document_query(
             question, previous_question, previous_answer
         )
-        dossier = call_document_retrieval(document_query)
-        if dossier.startswith("Si è verificato un errore"):
-            return dossier
+        dossier = retrieve_local_evidence(document_query, max_pages=10)
+        if not dossier:
+            return (
+                "Informazione non trovata nel documento collegato.\n\n"
+                + DOCUMENT_DISCLAIMER
+            )
 
         quick_response_rules = """
 MODALITA' RISPOSTA CONSIGLIATA:
@@ -648,16 +847,21 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
             f"{dossier}\n\n"
             "Formula ora la risposta consigliata usando esclusivamente queste evidenze."
         )
-        response = client.responses.create(
-            model=OPENAI_DOCUMENT_MODEL,
-            instructions=(DOCUMENT_RESPONDER_PROMPT + quick_response_rules).format(
-                document_disclaimer=DOCUMENT_DISCLAIMER,
-            ),
-            input=response_input,
-            reasoning={"effort": "medium"},
-            max_output_tokens=1100,
+        response = client.chat.completions.create(
+            model=DEEPSEEK_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (DOCUMENT_RESPONDER_PROMPT + quick_response_rules).format(
+                        document_disclaimer=DOCUMENT_DISCLAIMER,
+                    ),
+                },
+                {"role": "user", "content": response_input},
+            ],
+            temperature=0.1,
+            max_tokens=1300,
         )
-        answer = (response.output_text or "").strip()
+        answer = (response.choices[0].message.content or "").strip()
         return answer or "Informazione non trovata nel documento collegato."
     except Exception as e:
         print(f"[ERROR] risposta documentale rapida: {e}")
@@ -665,31 +869,9 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
 
 
 def call_document_retrieval(question: str) -> str:
-    """Costruisce un dossier di evidenze, senza formulare la risposta finale."""
-    if client is None:
-        return "Il motore esterno non è disponibile (OPENAI_API_KEY mancante)."
-    if not OPENAI_VECTOR_STORE_ID:
-        return "Archivio documentale non configurato."
-
-    try:
-        response = client.responses.create(
-            model=OPENAI_DOCUMENT_MODEL,
-            instructions=DOCUMENT_RETRIEVAL_PROMPT.format(
-                document_context=DOCUMENT_CONTEXT,
-            ),
-            input=question,
-            tools=[{
-                "type": "file_search",
-                "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
-                "max_num_results": 30,
-            }],
-            include=["file_search_call.results"],
-        )
-        dossier = (response.output_text or "").strip()
-        return dossier or "Informazione non trovata nel documento collegato."
-    except Exception as e:
-        print(f"[ERROR] ricerca documentale: {e}")
-        return "Si è verificato un errore durante la ricerca documentale."
+    """Compatibilita': restituisce direttamente le pagine recuperate localmente."""
+    dossier = retrieve_local_evidence(question, max_pages=12)
+    return dossier or "Informazione non trovata nel documento collegato."
 
 
 DOCUMENT_FULL_PROMPT = """
@@ -732,16 +914,16 @@ In chiusura aggiungi questa nota, senza modificarne il significato:
 """
 
 
-def call_narratore_risponditore(
+def call_narratore_risponditore_local(
     question: str,
     previous_question: str = "",
     previous_answer: str = "",
 ) -> str:
-    """Analisi completa in una sola chiamata documentale."""
+    """Analisi completa: ricerca locale e una chiamata DeepSeek."""
     if client is None:
-        return "Il motore esterno non è disponibile (OPENAI_API_KEY mancante)."
-    if not OPENAI_VECTOR_STORE_ID:
-        return "Archivio documentale non configurato."
+        return "Il motore esterno non è disponibile (DEEPSEEK_API_KEY mancante)."
+    if not DOCUMENT_PAGES:
+        return "Archivio documentale locale non configurato."
 
     try:
         document_query, is_followup = build_document_query(
@@ -759,22 +941,191 @@ alternative e vincoli gia' stabiliti. Non sostituirli con altri candidati salvo 
 esplicita. Se manca una prova documentale, dichiaralo senza cambiare prodotto.
 """
 
-        response = client.responses.create(
-            model=OPENAI_DOCUMENT_MODEL,
-            instructions=full_instructions,
-            input=document_query,
-            tools=[{
-                "type": "file_search",
-                "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
-                "max_num_results": 14,
-            }],
-            reasoning={"effort": "low"},
-            max_output_tokens=2600,
+        dossier = retrieve_local_evidence(document_query, max_pages=14)
+        if not dossier:
+            return (
+                "Informazione non trovata nel documento collegato.\n\n"
+                + DOCUMENT_DISCLAIMER
+            )
+        response_input = (
+            "RICHIESTA:\n"
+            f"{document_query}\n\n"
+            "ESTRATTI DOCUMENTALI CON PAGINE:\n"
+            f"{dossier}\n\n"
+            "Rispondi utilizzando esclusivamente gli estratti sopra riportati."
         )
-        answer = (response.output_text or "").strip()
+        response = client.chat.completions.create(
+            model=DEEPSEEK_MODEL,
+            messages=[
+                {"role": "system", "content": full_instructions},
+                {"role": "user", "content": response_input},
+            ],
+            temperature=0.1,
+            max_tokens=3000,
+        )
+        answer = (response.choices[0].message.content or "").strip()
         return answer or "Informazione non trovata nel documento collegato."
     except Exception as e:
         print(f"[ERROR] analisi documentale completa: {e}")
+        return "Si è verificato un errore durante l'analisi documentale completa."
+
+
+def call_openai_vector_retrieval(question: str, max_results: int = 30) -> str:
+    """Cerca le evidenze nel Vector Store OpenAI. Solleva l'errore per consentire il fallback."""
+    if openai_client is None:
+        raise RuntimeError("OPENAI_API_KEY mancante")
+    if not OPENAI_VECTOR_STORE_ID:
+        raise RuntimeError("OPENAI_VECTOR_STORE_ID mancante")
+
+    response = openai_client.responses.create(
+        model=OPENAI_DOCUMENT_MODEL,
+        instructions=DOCUMENT_RETRIEVAL_PROMPT.format(
+            document_context=DOCUMENT_CONTEXT,
+        ),
+        input=question,
+        tools=[{
+            "type": "file_search",
+            "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
+            "max_num_results": max_results,
+        }],
+        include=["file_search_call.results"],
+    )
+    dossier = (response.output_text or "").strip()
+    return dossier or "Informazione non trovata nel documento collegato."
+
+
+def call_document_quick_vector(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+) -> str:
+    """Risposta consigliata tramite OpenAI Vector Store."""
+    document_query, is_followup = build_document_query(
+        question, previous_question, previous_answer
+    )
+    dossier = call_openai_vector_retrieval(document_query, max_results=30)
+
+    quick_response_rules = """
+MODALITA' RISPOSTA CONSIGLIATA:
+- Produci una risposta breve, normalmente entro 300 parole.
+- Apri con una sola proposta principale documentata.
+- Riporta nome/codice, dati determinanti, prezzo pertinente, documento e pagina.
+- Spiega in massimo quattro punti perche' e' adatta e il compromesso principale.
+- Mostra al massimo due alternative realmente differenti.
+- Non inventare misure, prezzi, dotazioni o compatibilita'.
+- Concludi con una sola domanda che possa cambiare concretamente la scelta.
+- Scrivi in testo semplice, senza Markdown e senza asterischi.
+"""
+    if is_followup:
+        quick_response_rules += """
+CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
+- Rispondi sugli stessi prodotti e codici presenti nella risposta precedente.
+- Non sostituire prodotti o alternative salvo richiesta esplicita.
+- Mantieni validi i vincoli obbligatori gia' stabiliti.
+"""
+
+    response_input = (
+        "RICHIESTA ORIGINALE:\n"
+        f"{document_query}\n\n"
+        "EVIDENZE DOCUMENTALI RECUPERATE:\n"
+        f"{dossier}\n\n"
+        "Formula la risposta usando esclusivamente queste evidenze."
+    )
+    response = openai_client.responses.create(
+        model=OPENAI_DOCUMENT_MODEL,
+        instructions=(DOCUMENT_RESPONDER_PROMPT + quick_response_rules).format(
+            document_disclaimer=DOCUMENT_DISCLAIMER,
+        ),
+        input=response_input,
+        max_output_tokens=1300,
+    )
+    answer = (response.output_text or "").strip()
+    return answer or "Informazione non trovata nel documento collegato."
+
+
+def call_narratore_risponditore_vector(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+) -> str:
+    """Analisi completa tramite OpenAI Vector Store."""
+    document_query, is_followup = build_document_query(
+        question, previous_question, previous_answer
+    )
+    instructions = DOCUMENT_FULL_PROMPT.format(
+        document_context=DOCUMENT_CONTEXT,
+        document_disclaimer=DOCUMENT_DISCLAIMER,
+    )
+    if is_followup:
+        instructions += """
+\nCONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
+Mantieni gli stessi prodotti, codici, alternative e vincoli del turno precedente.
+Non sostituirli salvo richiesta esplicita dell'utente.
+"""
+
+    response = openai_client.responses.create(
+        model=OPENAI_DOCUMENT_MODEL,
+        instructions=instructions,
+        input=document_query,
+        tools=[{
+            "type": "file_search",
+            "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
+            "max_num_results": 40,
+        }],
+        include=["file_search_call.results"],
+        max_output_tokens=3000,
+    )
+    answer = (response.output_text or "").strip()
+    return answer or "Informazione non trovata nel documento collegato."
+
+
+def active_document_engine() -> str:
+    """Restituisce il motore effettivamente configurato, senza esporre chiavi o ID."""
+    if SEARCH_ENGINE == "automatic":
+        vector_ready = bool(openai_client and OPENAI_VECTOR_STORE_ID)
+        return "automatic_vector_first" if vector_ready else "automatic_local_fallback"
+    return SEARCH_ENGINE
+
+
+def call_document_quick(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+) -> str:
+    """Seleziona il motore rapido configurato e gestisce l'eventuale fallback."""
+    if SEARCH_ENGINE == "deepseek_local":
+        return call_document_quick_local(question, previous_question, previous_answer)
+    try:
+        return call_document_quick_vector(question, previous_question, previous_answer)
+    except Exception as e:
+        print(f"[ERROR] OpenAI Vector rapido: {e}")
+        if SEARCH_ENGINE == "automatic":
+            print("[INFO] fallback automatico a DeepSeek locale")
+            return call_document_quick_local(question, previous_question, previous_answer)
+        return "Si è verificato un errore durante la ricerca documentale."
+
+
+def call_narratore_risponditore(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+) -> str:
+    """Seleziona il motore completo configurato e gestisce l'eventuale fallback."""
+    if SEARCH_ENGINE == "deepseek_local":
+        return call_narratore_risponditore_local(
+            question, previous_question, previous_answer
+        )
+    try:
+        return call_narratore_risponditore_vector(
+            question, previous_question, previous_answer
+        )
+    except Exception as e:
+        print(f"[ERROR] OpenAI Vector completo: {e}")
+        if SEARCH_ENGINE == "automatic":
+            print("[INFO] fallback automatico a DeepSeek locale")
+            return call_narratore_risponditore_local(
+                question, previous_question, previous_answer
+            )
         return "Si è verificato un errore durante l'analisi documentale completa."
 
 # ============================================================
@@ -801,6 +1152,12 @@ async def status():
         "status": "Narratore-Risponditore LAGO attivo",
         "kb_blocks": len(KB_BLOCKS),
         "comm_blocks": len(COMM_ITEMS),
+        "document_pages": len(DOCUMENT_PAGES),
+        "document_index_loaded": bool(DOCUMENT_PAGES),
+        "engine": active_document_engine(),
+        "engine_requested": SEARCH_ENGINE,
+        "deepseek_ready": bool(client and DOCUMENT_PAGES),
+        "openai_vector_ready": bool(openai_client and OPENAI_VECTOR_STORE_ID),
         "narratore_risponditore": "attivo",
         "commercial_proposal_enabled": ENABLE_COMMERCIAL_PROPOSAL,
     }
@@ -875,6 +1232,7 @@ async def api_ask(req: QuestionRequest):
                 source="narratore_risponditore",
                 meta={
                     "mode": document_mode,
+                    "engine": active_document_engine(),
                     "used_previous_context": bool(
                         previous_question
                         and previous_answer
@@ -908,7 +1266,7 @@ async def api_ask(req: QuestionRequest):
         # 2) DESCRIZIONE SITUAZIONALE → NARRATORE + SUPERRISPONDITORE
         if is_situational(question_raw):
             # Step 1: Narratore legge la situazione
-            analisi_narratore = call_openai(
+            analisi_narratore = call_deepseek(
                 SYSTEM_PROMPT_NARRATORE,
                 question_raw,
                 temperature=0.2
@@ -920,7 +1278,7 @@ async def api_ask(req: QuestionRequest):
                 f"ANALISI NARRATORE:\n{analisi_narratore}\n\n"
                 f"Ora dai la risposta tecnica completa."
             )
-            risposta_super = call_openai(
+            risposta_super = call_deepseek(
                 SYSTEM_PROMPT_SUPERRISPONDITORE,
                 contesto_super,
                 temperature=0.2
@@ -938,20 +1296,20 @@ async def api_ask(req: QuestionRequest):
                 meta={
                     "narratore": analisi_narratore,
                     "superrisponditore": risposta_super,
-                    "used_chatgpt": True,
+                    "used_deepseek": True,
                 },
             )
 
-        # 3) DOMANDE TECNICHE DIRETTE → CHATGPT GOLD TECNARIA
-        gpt_answer = call_openai(SYSTEM_PROMPT_GOLD, question_raw, temperature=0.2)
+        # 3) DOMANDE TECNICHE DIRETTE → DEEPSEEK GOLD TECNARIA
+        gpt_answer = call_deepseek(SYSTEM_PROMPT_GOLD, question_raw, temperature=0.2)
         kb_block = match_from_kb(question_raw)
         kb_id = kb_block.get("id") if kb_block else None
 
         return AnswerResponse(
             answer=gpt_answer,
-            source="chatgpt_gold_tecnaria",
+            source="deepseek_gold_tecnaria",
             meta={
-                "used_chatgpt": True,
+                "used_deepseek": True,
                 "kb_id": kb_id,
             },
         )
