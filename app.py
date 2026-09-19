@@ -810,11 +810,15 @@ REGOLE ASSOLUTE:
 4. Applica ogni limite soltanto alla grandezza e all'unita' cui si riferisce. Non confondere
    larghezza, altezza, profondita', peso, prezzo, quantita' o altre proprieta'.
 5. Se le unita' sono convertibili, convertile prima del confronto.
-6. Elimina dalla proposta principale e dalle alternative ogni candidato che viola anche un
-   solo vincolo tassativo.
-7. Non inventare un sostituto, un codice, un prezzo o una caratteristica. Se la bozza non
-   contiene piu' una soluzione sicuramente conforme, dichiaralo chiaramente e chiedi il dato
-   necessario oppure indica che serve una nuova ricerca documentale.
+6. Elimina completamente dalla proposta principale e dalle alternative ogni candidato che
+   viola anche un solo vincolo tassativo. Non citarlo, non elencarlo e non usarlo come
+   alternativa negativa, salvo che l'utente chieda espressamente quali candidati sono stati
+   esclusi e perche'.
+7. Non inventare un sostituto, un codice, un prezzo o una caratteristica. Se restano meno
+   alternative conformi di quante richieste, presenta soltanto quelle conformi e dichiara in
+   una frase che non sono state trovate altre alternative sicuramente compatibili. Se non
+   resta alcuna soluzione conforme, dichiaralo chiaramente e indica che serve una nuova
+   ricerca documentale.
 8. Correggi anche frasi logicamente contraddittorie come "184 e' entro 180" o "rispetta tutti
    i limiti" quando i valori riportati dimostrano il contrario.
 9. Conserva lingua, riferimenti documentali, disclaimer e informazioni corrette della bozza.
