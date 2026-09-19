@@ -793,6 +793,83 @@ def build_document_query(
     return query, True
 
 
+CONSTRAINT_VALIDATOR_PROMPT = """
+Sei il CONTROLLORE UNIVERSALE DEI VINCOLI di un sistema documentale professionale.
+Ricevi la richiesta originale e una bozza di risposta gia' prodotta.
+
+Devi restituire direttamente la risposta finale corretta, senza descrivere il controllo.
+
+REGOLE ASSOLUTE:
+1. Individua tutti i vincoli tassativi espressi dall'utente: massimi, minimi, intervalli,
+   uguaglianze, quantita', dimensioni, peso, capacita', prezzo, date, caratteristiche,
+   compatibilita', esclusioni e condizioni obbligatorie.
+2. Controlla matematicamente ogni numero. Un valore superiore a un massimo o inferiore a
+   un minimo e' incompatibile, anche quando lo scostamento e' piccolo.
+3. Non trasformare mai una tolleranza in una deroga. Esempio generale: se il massimo e' X,
+   qualsiasi valore maggiore di X deve essere escluso.
+4. Applica ogni limite soltanto alla grandezza e all'unita' cui si riferisce. Non confondere
+   larghezza, altezza, profondita', peso, prezzo, quantita' o altre proprieta'.
+5. Se le unita' sono convertibili, convertile prima del confronto.
+6. Elimina dalla proposta principale e dalle alternative ogni candidato che viola anche un
+   solo vincolo tassativo.
+7. Non inventare un sostituto, un codice, un prezzo o una caratteristica. Se la bozza non
+   contiene piu' una soluzione sicuramente conforme, dichiaralo chiaramente e chiedi il dato
+   necessario oppure indica che serve una nuova ricerca documentale.
+8. Correggi anche frasi logicamente contraddittorie come "184 e' entro 180" o "rispetta tutti
+   i limiti" quando i valori riportati dimostrano il contrario.
+9. Conserva lingua, riferimenti documentali, disclaimer e informazioni corrette della bozza.
+10. Non citare questo controllo, modelli, API, strumenti o infrastrutture.
+
+La conformita' ai vincoli viene prima dell'eleganza della risposta.
+"""
+
+
+def validate_document_answer(
+    question: str,
+    draft_answer: str,
+    provider: str,
+) -> str:
+    """Revisione strutturale universale prima di consegnare la risposta all'utente."""
+    if not draft_answer.strip():
+        return draft_answer
+
+    validation_input = (
+        "RICHIESTA ORIGINALE:\n"
+        f"{question}\n\n"
+        "BOZZA DA CONTROLLARE:\n"
+        f"{draft_answer}\n\n"
+        "Restituisci soltanto la risposta finale corretta."
+    )
+    try:
+        if provider == "openai_vector":
+            if openai_client is None:
+                return draft_answer
+            response = openai_client.responses.create(
+                model=OPENAI_DOCUMENT_MODEL,
+                instructions=CONSTRAINT_VALIDATOR_PROMPT,
+                input=validation_input,
+                max_output_tokens=1600,
+            )
+            checked = (response.output_text or "").strip()
+        else:
+            if client is None:
+                return draft_answer
+            response = client.chat.completions.create(
+                model=DEEPSEEK_MODEL,
+                messages=[
+                    {"role": "system", "content": CONSTRAINT_VALIDATOR_PROMPT},
+                    {"role": "user", "content": validation_input},
+                ],
+                temperature=0.0,
+                max_tokens=1600,
+            )
+            checked = (response.choices[0].message.content or "").strip()
+        return checked or draft_answer
+    except Exception as e:
+        print(f"[WARN] controllo universale dei vincoli non riuscito: {e}")
+        return draft_answer
+
+
 def call_document_quick_local(
     question: str,
     previous_question: str = "",
@@ -862,7 +939,9 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
             max_tokens=1300,
         )
         answer = (response.choices[0].message.content or "").strip()
-        return answer or "Informazione non trovata nel documento collegato."
+        if not answer:
+            return "Informazione non trovata nel documento collegato."
+        return validate_document_answer(document_query, answer, "deepseek_local")
     except Exception as e:
         print(f"[ERROR] risposta documentale rapida: {e}")
         return "Si è verificato un errore durante la ricerca documentale."
@@ -964,7 +1043,9 @@ esplicita. Se manca una prova documentale, dichiaralo senza cambiare prodotto.
             max_tokens=3000,
         )
         answer = (response.choices[0].message.content or "").strip()
-        return answer or "Informazione non trovata nel documento collegato."
+        if not answer:
+            return "Informazione non trovata nel documento collegato."
+        return validate_document_answer(document_query, answer, "deepseek_local")
     except Exception as e:
         print(f"[ERROR] analisi documentale completa: {e}")
         return "Si è verificato un errore durante l'analisi documentale completa."
@@ -1040,7 +1121,9 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
         max_output_tokens=1300,
     )
     answer = (response.output_text or "").strip()
-    return answer or "Informazione non trovata nel documento collegato."
+    if not answer:
+        return "Informazione non trovata nel documento collegato."
+    return validate_document_answer(document_query, answer, "openai_vector")
 
 
 def call_narratore_risponditore_vector(
@@ -1076,7 +1159,9 @@ Non sostituirli salvo richiesta esplicita dell'utente.
         max_output_tokens=3000,
     )
     answer = (response.output_text or "").strip()
-    return answer or "Informazione non trovata nel documento collegato."
+    if not answer:
+        return "Informazione non trovata nel documento collegato."
+    return validate_document_answer(document_query, answer, "openai_vector")
 
 
 def active_document_engine() -> str:
@@ -1158,6 +1243,7 @@ async def status():
         "engine_requested": SEARCH_ENGINE,
         "deepseek_ready": bool(client and DOCUMENT_PAGES),
         "openai_vector_ready": bool(openai_client and OPENAI_VECTOR_STORE_ID),
+        "universal_constraint_validator": True,
         "narratore_risponditore": "attivo",
         "commercial_proposal_enabled": ENABLE_COMMERCIAL_PROPOSAL,
     }
