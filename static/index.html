@@ -936,8 +936,13 @@
         const identifiers = beforeStatus.match(/\b[A-Z0-9][A-Z0-9._\/-]{2,}\b/gi) || [];
         const implicitCode = [...identifiers].reverse().find((value) => /\d/.test(value));
         const code = (explicitCode ? explicitCode[1] : implicitCode || "").replace(/[.,;:]$/, "");
+        const name = cleanProposalText(
+          beforeStatus
+            .replace(new RegExp(`(?:codice\\s*)?${code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"), "")
+            .replace(/[,:;\-\s]+$/, "")
+        );
         if (code && !rows.some((item) => item.code.toLowerCase() === code.toLowerCase())) {
-          rows.push({ code, status: statusMatch[1].toUpperCase(), segment: row });
+          rows.push({ code, name: name || "Prodotto", status: statusMatch[1].toUpperCase(), segment: row });
         }
       }
       if (rows.length) return rows;
@@ -957,6 +962,7 @@
         const statusMatch = segment.match(/\b(VERIFICATO|VERIFICA NECESSARIA)\b/i);
         return {
           code: item.code,
+          name: "Prodotto",
           status: statusMatch ? statusMatch[1].toUpperCase() : "DA CONFERMARE",
           segment,
         };
@@ -981,7 +987,8 @@
     function addProposalOption(candidate, label) {
       const option = document.createElement("option");
       option.value = candidate.code;
-      option.textContent = `${label} · ${candidate.code} · ${candidate.status}`;
+      const pending = candidate.status === "VERIFICA NECESSARIA" ? " · alcuni dati da confermare" : "";
+      option.textContent = `${label} · ${candidate.name} · codice ${candidate.code}${pending}`;
       proposalSolution.appendChild(option);
     }
 
@@ -1032,16 +1039,33 @@
 
     function proposalSummary(candidate) {
       if (!candidate) return "Seleziona un prodotto per preparare il preventivo.";
-      const text = candidate.segment;
-      const dimensions = text.match(/(?:Larghezza[^.]*\.|Dimensioni?[^.]*\.)/i);
-      const prices = text.match(/Prezzi?[^.]*\./i);
-      const page = text.match(/Pagina\s+\d+/i);
-      const verification = text.match(/(?:Da confermare[^.]*|ma\s+[^.]*non\s+(?:e'|è)\s+documentat[^.]*)\.?/i);
-      const lines = [`Codice: ${candidate.code}`, `Stato documentale: ${candidate.status}`];
-      if (dimensions) lines.push(cleanProposalText(dimensions[0]));
-      if (prices) lines.push(cleanProposalText(prices[0]));
-      if (page) lines.push(`Riferimento catalogo: ${page[0]}`);
-      if (verification) lines.push(`Verifica aperta: ${cleanProposalText(verification[0])}`);
+      const selectableAt = previousAnswer.search(/PRODOTTI SELEZIONABILI PER LA PROPOSTA/i);
+      const narrative = selectableAt >= 0 ? previousAnswer.slice(0, selectableAt) : previousAnswer;
+      const codeAt = narrative.toLowerCase().indexOf(candidate.code.toLowerCase());
+      const context = codeAt >= 0
+        ? narrative.slice(codeAt, Math.min(narrative.length, codeAt + 1600))
+        : candidate.segment;
+      const dimensions = context.match(/larghezza\s*[^.;]{0,45}(?:cm)?[,;]\s*profondit[aà]\s*[^.;]{0,45}(?:cm)?[,;]\s*altezza\s*[^.;]{0,45}(?:cm)?/i)
+        || context.match(/\b\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?\s*cm\b/i);
+      const finishes = context.match(/(?:finiture?|disponibile)[^.]{0,260}\./i);
+      const prices = context.match(/Prezzi?(?:\s+documentati)?[\s\S]*?(?=Requisito\s+non\s+documentato|Alternative|PRODOTTI\s+SELEZIONABILI|$)/i);
+      const page = context.match(/pagin(?:a|e)\s+\d+(?:\s*[-–]\s*\d+)?/i)
+        || candidate.segment.match(/pagin(?:a|e)\s+\d+(?:\s*[-–]\s*\d+)?/i);
+      const whyBlock = narrative.match(/Perch[eéè]\s+(?:è|e'|questa|questo)[^:]*:\s*([\s\S]*?)(?=Prezzi?|Requisito\s+non\s+documentato|Alternative|PRODOTTI\s+SELEZIONABILI)/i);
+      const verification = candidate.segment.match(/VERIFICA NECESSARIA\s*:\s*([^.]*)/i)
+        || context.match(/Requisito\s+non\s+documentato\s*:\s*([^.]*)/i);
+      const lines = [
+        `PRODOTTO\n${candidate.name}`,
+        `CODICE\n${candidate.code}`
+      ];
+      if (dimensions) lines.push(`DIMENSIONI\n${cleanProposalText(dimensions[0])}`);
+      if (finishes) lines.push(`FINITURE\n${cleanProposalText(finishes[0])}`);
+      if (prices) lines.push(`PREZZI DI LISTINO\n${cleanProposalText(prices[0])}`);
+      if (whyBlock && recommendedProposalCode.toLowerCase() === candidate.code.toLowerCase()) {
+        lines.push(`PERCHÉ TE LO PROPONIAMO\n${cleanProposalText(whyBlock[1]).replace(/\s*-\s*/g, "; ")}`);
+      }
+      if (page) lines.push(`RIFERIMENTO CATALOGO\n${cleanProposalText(page[0])}`);
+      if (verification) lines.push(`DA CONFERMARE CON IL RIVENDITORE\n${cleanProposalText(verification[1] || verification[0])}`);
       return lines.join("\n");
     }
 
@@ -1061,7 +1085,7 @@
       docDate.textContent = today;
       docFinish.textContent = finish;
       docOptions.textContent = options;
-      docSolution.textContent = solution;
+      docSolution.textContent = `${candidate.name} · codice ${candidate.code}`;
       docNotes.textContent = notes || "La configurazione definitiva verrà verificata con il rivenditore.";
       docAnalysis.textContent = proposalSummary(candidate);
       docReference.textContent = `Riferimento ${solution}`;
@@ -1071,7 +1095,7 @@
       if (!commercialProposalEnabled || !previousAnswer) return;
       populateProposalSolutions(false);
       const candidate = selectedCandidate();
-      docSolution.textContent = candidate ? candidate.code : "Prodotto da selezionare";
+      docSolution.textContent = candidate ? `${candidate.name} · codice ${candidate.code}` : "Prodotto da selezionare";
       docAnalysis.textContent = candidate
         ? proposalSummary(candidate)
         : "Seleziona il prodotto da preventivare. Nessuna alternativa sarà inserita automaticamente.";
