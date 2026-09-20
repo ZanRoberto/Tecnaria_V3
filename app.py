@@ -2,6 +2,7 @@ import os
 import json
 import re
 import math
+import time
 from collections import Counter
 from typing import List, Dict, Any, Optional
 
@@ -147,6 +148,23 @@ def search_tokens(text: str) -> List[str]:
     return [t for t in tokens if len(t) >= 2 and t not in SEARCH_STOPWORDS]
 
 
+def extract_document_codes(text: str) -> set[str]:
+    """Estrae codici prodotto plausibili senza scambiare parole normali per codici."""
+    candidates = re.findall(r"\b[A-Za-z0-9][A-Za-z0-9_-]{3,}\b", text or "")
+    codes: set[str] = set()
+    for candidate in candidates:
+        # Un codice deve contenere almeno una cifra. I codici solo numerici
+        # sono accettati da 5 cifre in su, evitando prezzi, anni e misure.
+        if len(candidate) < 5:
+            continue
+        if not any(ch.isdigit() for ch in candidate):
+            continue
+        if candidate.isdigit() and len(candidate) < 5:
+            continue
+        codes.add(candidate.upper())
+    return codes
+
+
 def load_document_index() -> None:
     global DOCUMENT_PAGES
     DOCUMENT_PAGES = []
@@ -220,7 +238,7 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
 
     expanded = expand_multilingual_query(query)
     tokens = search_tokens(expanded)
-    codes = set(re.findall(r"\b[A-Z0-9][A-Z0-9_-]{3,}\b", query.upper()))
+    codes = extract_document_codes(query)
     numbers = set(re.findall(r"\b\d+(?:[.,]\d+)?\b", query))
 
     token_df = {
@@ -257,28 +275,48 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
     scored.sort(key=lambda item: item[0], reverse=True)
     selected: List[int] = []
 
-    # Per confronti generici tra mobili TV recupera l'intera famiglia di schede prodotto.
-    # Le misure richieste sono limiti: non devono essere cercate come valori esatti.
+    # Se sono presenti codici esatti (tipico approfondimento), recupera prima e soltanto
+    # le pagine che li contengono e poche pagine adiacenti. Questo evita di reinviare
+    # l'intero catalogo a ogni domanda successiva.
     query_norm = normalize(expanded)
-    if re.search(r"\btv\b", query_norm):
+    if codes:
+        exact_matches: List[int] = []
+        for idx, page in enumerate(DOCUMENT_PAGES):
+            text_upper = page["text"].upper()
+            if any(code in text_upper for code in codes):
+                exact_matches.append(idx)
+        for idx in exact_matches:
+            for candidate_idx in (idx, idx - 1, idx + 1):
+                if (
+                    0 <= candidate_idx < len(DOCUMENT_PAGES)
+                    and candidate_idx not in selected
+                    and len(selected) < max_pages
+                ):
+                    selected.append(candidate_idx)
+
+    # Solo nella prima ricerca generica sui mobili TV amplia alle schede della famiglia,
+    # ma rispetta sempre il numero massimo di pagine.
+    if not codes and re.search(r"\btv\b", query_norm):
         for idx, page in enumerate(DOCUMENT_PAGES):
             header = normalize(page["text"][:900])
             if "tv units" in header and "optional optionals" not in header:
                 selected.append(idx)
+            if len(selected) >= max_pages:
+                break
 
     for score, idx in scored:
         if idx not in selected:
             selected.append(idx)
-        if len(selected) >= max_pages and not re.search(r"\btv\b", query_norm):
+        if len(selected) >= max_pages:
             break
 
     # Per i codici esatti includi anche la pagina adiacente, spesso sede di optional/note.
-    if codes:
+    if codes and len(selected) < max_pages:
         for _, idx in scored[:4]:
             for neighbour in (idx - 1, idx + 1):
                 if 0 <= neighbour < len(DOCUMENT_PAGES) and neighbour not in selected:
                     selected.append(neighbour)
-                if len(selected) >= max_pages + 2:
+                if len(selected) >= max_pages:
                     break
 
     if not selected:
@@ -286,8 +324,8 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
 
     blocks: List[str] = []
     total_chars = 0
-    max_chars = 220000 if re.search(r"\btv\b", query_norm) else 70000
-    for idx in selected:
+    max_chars = 32000 if codes else 50000
+    for idx in selected[:max_pages]:
         page = DOCUMENT_PAGES[idx]
         block = f"\n===== PAGINA PDF {page['page']} =====\n{page['text']}\n"
         if total_chars + len(block) > max_chars:
@@ -780,12 +818,18 @@ def build_document_query(
     if not followup:
         return question, False
 
+    # La memoria serve per continuita', ma non deve trasformarsi in un nuovo catalogo.
+    # Conserviamo integralmente la domanda precedente (dove sono espressi i vincoli)
+    # e limitiamo la risposta precedente alla parte utile per codici e scelte.
+    compact_previous_question = previous_question[:2500]
+    compact_previous_answer = previous_answer[:5000]
+
     query = (
         "DOMANDA ATTUALE:\n"
         f"{question}\n\n"
         "CONTESTO VINCOLANTE DEL TURNO PRECEDENTE:\n"
-        f"Domanda precedente: {previous_question}\n"
-        f"Risposta precedente: {previous_answer}\n\n"
+        f"Domanda precedente: {compact_previous_question}\n"
+        f"Risposta precedente: {compact_previous_answer}\n\n"
         "La domanda attuale e' un approfondimento. Cerca e verifica gli stessi prodotti, "
         "codici e alternative nominati nella risposta precedente. Non sostituirli con altri "
         "prodotti, salvo richiesta esplicita dell'utente."
@@ -852,7 +896,7 @@ def validate_document_answer(
                 model=OPENAI_DOCUMENT_MODEL,
                 instructions=CONSTRAINT_VALIDATOR_PROMPT,
                 input=validation_input,
-                max_output_tokens=1600,
+                max_output_tokens=1000,
             )
             checked = (response.output_text or "").strip()
         else:
@@ -865,7 +909,7 @@ def validate_document_answer(
                     {"role": "user", "content": validation_input},
                 ],
                 temperature=0.0,
-                max_tokens=1600,
+                max_tokens=1000,
             )
             checked = (response.choices[0].message.content or "").strip()
         return checked or draft_answer
@@ -886,10 +930,13 @@ def call_document_quick_local(
         return "Archivio documentale locale non configurato."
 
     try:
+        total_started = time.perf_counter()
         document_query, is_followup = build_document_query(
             question, previous_question, previous_answer
         )
+        retrieval_started = time.perf_counter()
         dossier = retrieve_local_evidence(document_query, max_pages=10)
+        retrieval_seconds = time.perf_counter() - retrieval_started
         if not dossier:
             return (
                 "Informazione non trovata nel documento collegato.\n\n"
@@ -928,6 +975,7 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
             f"{dossier}\n\n"
             "Formula ora la risposta consigliata usando esclusivamente queste evidenze."
         )
+        generation_started = time.perf_counter()
         response = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
             messages=[
@@ -943,9 +991,33 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
             max_tokens=1300,
         )
         answer = (response.choices[0].message.content or "").strip()
+        generation_seconds = time.perf_counter() - generation_started
         if not answer:
             return "Informazione non trovata nel documento collegato."
-        return validate_document_answer(document_query, answer, "deepseek_local")
+        # Al controllo finale passiamo i vincoli originari in forma pulita, senza il dossier
+        # e senza la risposta precedente, che potrebbero confondere il confronto numerico.
+        validation_request = question
+        if is_followup and previous_question:
+            validation_request = (
+                "VINCOLI STABILITI NELLA DOMANDA PRECEDENTE:\n"
+                f"{previous_question[:2500]}\n\n"
+                "DOMANDA ATTUALE:\n"
+                f"{question}"
+            )
+        validation_started = time.perf_counter()
+        checked = validate_document_answer(
+            validation_request, answer, "deepseek_local"
+        )
+        validation_seconds = time.perf_counter() - validation_started
+        total_seconds = time.perf_counter() - total_started
+        print(
+            "[TIMING] deepseek_local rapido "
+            f"followup={is_followup} pages_chars={len(dossier)} "
+            f"retrieval={retrieval_seconds:.2f}s "
+            f"generation={generation_seconds:.2f}s "
+            f"validation={validation_seconds:.2f}s total={total_seconds:.2f}s"
+        )
+        return checked
     except Exception as e:
         print(f"[ERROR] risposta documentale rapida: {e}")
         return "Si è verificato un errore durante la ricerca documentale."
