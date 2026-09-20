@@ -920,6 +920,28 @@
       const source = sectionMatch ? sectionMatch[1] : answer;
       const stop = source.search(/(?:Quale\s+(?:dei|prodotto)|I dati appartengono|Prezzi e condizioni)/i);
       const text = stop >= 0 ? source.slice(0, stop) : source;
+
+      // Formato strutturato più comune: una riga per prodotto, con stato
+      // documentale. Il codice può essere preceduto da "codice" oppure essere
+      // semplicemente l'ultimo identificativo prima dello stato.
+      const rows = [];
+      const rowMatcher = /^\s*[-•]\s*(.+)$/gm;
+      let rowMatch;
+      while ((rowMatch = rowMatcher.exec(text)) !== null) {
+        const row = cleanProposalText(rowMatch[1]);
+        const statusMatch = row.match(/\b(VERIFICATO|VERIFICA NECESSARIA)\b/i);
+        if (!statusMatch) continue;
+        const beforeStatus = row.slice(0, statusMatch.index).replace(/[,:;\-\s]+$/, "");
+        const explicitCode = beforeStatus.match(/(?:codice|cod\.)\s*[:\-]?\s*([A-Z0-9][A-Z0-9._\/-]{2,})/i);
+        const identifiers = beforeStatus.match(/\b[A-Z0-9][A-Z0-9._\/-]{2,}\b/gi) || [];
+        const implicitCode = [...identifiers].reverse().find((value) => /\d/.test(value));
+        const code = (explicitCode ? explicitCode[1] : implicitCode || "").replace(/[.,;:]$/, "");
+        if (code && !rows.some((item) => item.code.toLowerCase() === code.toLowerCase())) {
+          rows.push({ code, status: statusMatch[1].toUpperCase(), segment: row });
+        }
+      }
+      if (rows.length) return rows;
+
       const matcher = /(?:codice|cod\.)\s*[:\-]?\s*([A-Z0-9][A-Z0-9._\/-]{2,})/gi;
       const found = [];
       let match;
