@@ -825,15 +825,39 @@ In chiusura aggiungi questa nota, senza modificarne il significato:
 def is_contextual_followup(question: str) -> bool:
     """Riconosce una domanda che dipende esplicitamente dalla risposta precedente."""
     q = normalize(question)
-    markers = (
+    explicit_markers = (
         "soluzione consigliata", "proposta consigliata", "soluzione precedente",
         "risposta precedente", "alternativa compatibile", "le alternative",
         "tra le soluzioni", "tra la soluzione", "tra i prodotti",
         "quella consigliata", "quello consigliato", "la prima", "la seconda",
         "il primo", "il secondo", "entrambe", "entrambi", "queste soluzioni",
-        "questi prodotti", "approfondisci", "confrontale", "confrontali",
+        "questi prodotti", "prodotti appena individuati", "prodotti individuati",
+        "soluzioni appena individuate", "soluzioni individuate", "prodotti trovati",
+        "soluzioni trovate", "quelli trovati", "quelle trovate", "sopra indicati",
+        "sopra indicate", "appena indicati", "appena indicate", "stessi codici",
+        "classificane", "verificali", "verificale", "approfondisci",
+        "confrontale", "confrontali",
     )
-    return any(marker in q for marker in markers)
+    if any(marker in q for marker in explicit_markers):
+        return True
+
+    # Riconoscimento universale di riferimenti anaforici: funziona con prodotti,
+    # procedure, documenti, soluzioni o codici di qualunque settore.
+    reference_words = (
+        "appena", "precedente", "precedenti", "sopra", "questo", "questa",
+        "questi", "queste", "quello", "quella", "quelli", "quelle",
+        "ciascuno", "ciascuna", "entrambi", "entrambe", "stesso", "stessa",
+        "stessi", "stesse", "suddetto", "suddetta", "suddetti", "suddette",
+    )
+    referenced_objects = (
+        "prodotto", "prodotti", "soluzione", "soluzioni", "alternativa",
+        "alternative", "codice", "codici", "risposta", "risultato", "risultati",
+        "documento", "documenti", "procedura", "procedure", "proposta", "proposte",
+    )
+    return (
+        any(word in q.split() for word in reference_words)
+        and any(obj in q.split() for obj in referenced_objects)
+    )
 
 
 def build_document_query(
