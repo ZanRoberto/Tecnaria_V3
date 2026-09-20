@@ -522,6 +522,9 @@
 
     .room-btn.primary { background: #111111; color: #ffffff; }
     .room-btn.light { background: #ffffff; color: #111111; border: 1px solid #bdb2a7; }
+    .room-btn:disabled { opacity: 0.42; cursor: not-allowed; }
+    .alternative-choice { margin-top: 9px; }
+    .selection-note { margin-top: 8px; color: #6b645d; font-size: 10px; line-height: 1.4; }
 
     .proposal-document {
       width: 100%;
@@ -682,10 +685,10 @@
 
       <div id="proposalInvite" class="proposal-invite">
         <div class="proposal-copy">
-          <strong>Vuoi ricevere una proposta personalizzata?</strong>
-          <span>Senza impegno, costruita sulla soluzione appena individuata.</span>
+          <strong>Vuoi preparare un preventivo preliminare?</strong>
+          <span>Scegli il prodotto: le alternative restano separate e facoltative.</span>
         </div>
-        <button id="proposalBtn" class="btn-send" type="button">Crea la proposta ➜</button>
+        <button id="proposalBtn" class="btn-send" type="button">Scegli il prodotto ➜</button>
       </div>
 
       <div id="metaBox" class="meta-area">
@@ -711,14 +714,16 @@
         <div class="proposal-form">
           <h2 class="proposal-section-title">Personalizza la proposta</h2>
           <p class="proposal-section-copy">
-            Conferma la soluzione individuata e aggiungi soltanto le informazioni che desideri.
-            Il documento rimane una proposta preliminare e non vincolante.
+            Scegli il prodotto da preventivare e completa i dati essenziali.
+            Nel documento entrerà soltanto il prodotto selezionato, senza la narrazione del confronto.
           </p>
 
           <div class="field-grid">
             <div class="field-group full">
-              <label for="proposalSolution">Soluzione selezionata</label>
+              <label for="proposalSolution">Prodotto da preventivare</label>
               <select id="proposalSolution"></select>
+              <button id="proposalAlternatives" class="room-btn light alternative-choice" type="button" hidden>Voglio vedere anche le alternative</button>
+              <div id="proposalSelectionNote" class="selection-note"></div>
             </div>
             <div class="field-group">
               <label for="proposalCustomer">Nome del cliente</label>
@@ -763,11 +768,11 @@
                 <div class="doc-meta-card"><span>Optional</span><strong id="docOptions">Da definire</strong></div>
               </div>
               <div class="doc-choice">
-                <div class="doc-choice-label">Soluzione individuata</div>
-                <div id="docSolution" class="doc-choice-name">Soluzione da selezionare</div>
+              <div class="doc-choice-label">Prodotto selezionato</div>
+              <div id="docSolution" class="doc-choice-name">Prodotto da selezionare</div>
                 <div id="docNotes" class="doc-config">La configurazione definitiva verrà verificata con il rivenditore.</div>
               </div>
-              <div class="doc-analysis-title">Perché questa proposta</div>
+              <div class="doc-analysis-title">Dati del prodotto e condizioni</div>
               <div id="docAnalysis" class="doc-analysis"></div>
               <div class="doc-note">
                 Proposta preliminare senza impegno. Prezzi, disponibilità, configurazioni,
@@ -800,6 +805,8 @@
     const proposalRoom = document.getElementById("proposalRoom");
     const proposalClose = document.getElementById("proposalClose");
     const proposalSolution = document.getElementById("proposalSolution");
+    const proposalAlternatives = document.getElementById("proposalAlternatives");
+    const proposalSelectionNote = document.getElementById("proposalSelectionNote");
     const proposalCustomer = document.getElementById("proposalCustomer");
     const proposalEmail = document.getElementById("proposalEmail");
     const proposalFinish = document.getElementById("proposalFinish");
@@ -819,6 +826,9 @@
     let previousAnswer = "";
     let activityTimer = null;
     let commercialProposalEnabled = false;
+    let proposalCandidates = [];
+    let recommendedProposalCode = "";
+    let rememberedRecommendedCode = "";
 
     const activityPhases = [
       { after: 0,  title: "Comprendo la richiesta", detail: "Distinguo vincoli obbligatori e preferenze." },
@@ -901,37 +911,117 @@
 
     loadFeatureFlags();
 
-    function extractSolutionCodes(answer) {
-      const codes = [];
-      const matcher = /(?:codice|cod\.)\s*[:\-]?\s*([A-Z0-9][A-Z0-9._\/-]{2,})/gi;
-      let match;
-      while ((match = matcher.exec(answer)) !== null) {
-        const code = match[1].replace(/[.,;:]$/, "");
-        if (!codes.some((existing) => existing.toLowerCase() === code.toLowerCase())) {
-          codes.push(code);
-        }
-      }
-      return codes;
+    function cleanProposalText(value) {
+      return (value || "").replace(/\\?\*\*/g, "").replace(/\s+/g, " ").trim();
     }
 
-    function populateProposalSolutions() {
-      const codes = extractSolutionCodes(previousAnswer);
-      proposalSolution.innerHTML = "";
-      if (!codes.length) {
-        const option = document.createElement("option");
-        option.value = "Soluzione consigliata nella risposta";
-        option.textContent = "Soluzione consigliata nella risposta";
-        proposalSolution.appendChild(option);
-        return;
+    function extractProposalCandidates(answer) {
+      const sectionMatch = answer.match(/PRODOTTI SELEZIONABILI PER LA PROPOSTA([\s\S]*)/i);
+      const source = sectionMatch ? sectionMatch[1] : answer;
+      const stop = source.search(/(?:Quale\s+(?:dei|prodotto)|I dati appartengono|Prezzi e condizioni)/i);
+      const text = stop >= 0 ? source.slice(0, stop) : source;
+      const matcher = /(?:codice|cod\.)\s*[:\-]?\s*([A-Z0-9][A-Z0-9._\/-]{2,})/gi;
+      const found = [];
+      let match;
+      while ((match = matcher.exec(text)) !== null) {
+        const code = match[1].replace(/[.,;:]$/, "");
+        if (!found.some((item) => item.code.toLowerCase() === code.toLowerCase())) {
+          found.push({ code, start: match.index });
+        }
       }
-      codes.forEach((code, index) => {
-        const option = document.createElement("option");
-        option.value = code;
-        option.textContent = index === 0
-          ? `Soluzione consigliata · ${code}`
-          : `Alternativa ${index} · ${code}`;
-        proposalSolution.appendChild(option);
+      return found.map((item, index) => {
+        const end = index + 1 < found.length ? found[index + 1].start : text.length;
+        const segment = cleanProposalText(text.slice(item.start, end));
+        const statusMatch = segment.match(/\b(VERIFICATO|VERIFICA NECESSARIA)\b/i);
+        return {
+          code: item.code,
+          status: statusMatch ? statusMatch[1].toUpperCase() : "DA CONFERMARE",
+          segment,
+        };
       });
+    }
+
+    function findRecommendedCode(answer, candidates) {
+      const patterns = [
+        /PRODOTTO CONSIGLIATO E SELEZIONABILE[^\n]*?(?:codice\s*)?([A-Z0-9][A-Z0-9._\/-]{2,})/i,
+        /(?:soluzione|prodotto)\s+(?:piu'|più)\s+pertinente[^\n.]*?codice\s*([A-Z0-9][A-Z0-9._\/-]{2,})/i,
+        /soluzione\s+inizialmente\s+(?:piu'|più)\s+equilibrata[^\n.]*?codice\s*([A-Z0-9][A-Z0-9._\/-]{2,})/i,
+      ];
+      for (const pattern of patterns) {
+        const match = answer.match(pattern);
+        if (match && candidates.some((item) => item.code.toLowerCase() === match[1].toLowerCase())) {
+          return match[1];
+        }
+      }
+      return "";
+    }
+
+    function addProposalOption(candidate, label) {
+      const option = document.createElement("option");
+      option.value = candidate.code;
+      option.textContent = `${label} · ${candidate.code} · ${candidate.status}`;
+      proposalSolution.appendChild(option);
+    }
+
+    function populateProposalSolutions(showAlternatives = false) {
+      proposalCandidates = extractProposalCandidates(previousAnswer);
+      recommendedProposalCode = findRecommendedCode(previousAnswer, proposalCandidates);
+      if (!recommendedProposalCode && rememberedRecommendedCode) {
+        const stillAvailable = proposalCandidates.some(
+          (item) => item.code.toLowerCase() === rememberedRecommendedCode.toLowerCase()
+        );
+        if (stillAvailable) recommendedProposalCode = rememberedRecommendedCode;
+      }
+      proposalSolution.innerHTML = "";
+
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Seleziona il prodotto da preventivare";
+      placeholder.disabled = true;
+      placeholder.selected = !recommendedProposalCode;
+      proposalSolution.appendChild(placeholder);
+
+      const recommended = proposalCandidates.find(
+        (item) => item.code.toLowerCase() === recommendedProposalCode.toLowerCase()
+      );
+      if (recommended) {
+        addProposalOption(recommended, "Prodotto consigliato");
+        proposalSolution.value = recommended.code;
+        if (showAlternatives) {
+          proposalCandidates.filter((item) => item !== recommended)
+            .forEach((item) => addProposalOption(item, "Alternativa"));
+        }
+      } else {
+        proposalCandidates.forEach((item) => addProposalOption(item, "Prodotto selezionabile"));
+      }
+
+      proposalAlternatives.hidden = !(recommended && proposalCandidates.length > 1 && !showAlternatives);
+      proposalSelectionNote.textContent = recommended
+        ? "Il prodotto consigliato è pronto. Le alternative restano fuori dal preventivo salvo tua richiesta."
+        : "Non è stato indicato un vincitore certo: scegli esplicitamente il prodotto da preventivare.";
+      const ready = Boolean(proposalSolution.value);
+      proposalUpdate.disabled = !ready;
+      proposalPrint.disabled = !ready;
+    }
+
+    function selectedCandidate() {
+      const value = proposalSolution.value.toLowerCase();
+      return proposalCandidates.find((item) => item.code.toLowerCase() === value);
+    }
+
+    function proposalSummary(candidate) {
+      if (!candidate) return "Seleziona un prodotto per preparare il preventivo.";
+      const text = candidate.segment;
+      const dimensions = text.match(/(?:Larghezza[^.]*\.|Dimensioni?[^.]*\.)/i);
+      const prices = text.match(/Prezzi?[^.]*\./i);
+      const page = text.match(/Pagina\s+\d+/i);
+      const verification = text.match(/(?:Da confermare[^.]*|ma\s+[^.]*non\s+(?:e'|è)\s+documentat[^.]*)\.?/i);
+      const lines = [`Codice: ${candidate.code}`, `Stato documentale: ${candidate.status}`];
+      if (dimensions) lines.push(cleanProposalText(dimensions[0]));
+      if (prices) lines.push(cleanProposalText(prices[0]));
+      if (page) lines.push(`Riferimento catalogo: ${page[0]}`);
+      if (verification) lines.push(`Verifica aperta: ${cleanProposalText(verification[0])}`);
+      return lines.join("\n");
     }
 
     function updateProposalPreview() {
@@ -939,7 +1029,9 @@
       const finish = proposalFinish.value.trim() || "Da definire";
       const options = proposalOptions.value.trim() || "Da definire";
       const notes = proposalNotes.value.trim();
-      const solution = proposalSolution.value || "Soluzione consigliata";
+      const solution = proposalSolution.value;
+      const candidate = selectedCandidate();
+      if (!solution || !candidate) return;
       const today = new Intl.DateTimeFormat("it-IT", {
         day: "2-digit", month: "long", year: "numeric"
       }).format(new Date());
@@ -950,14 +1042,19 @@
       docOptions.textContent = options;
       docSolution.textContent = solution;
       docNotes.textContent = notes || "La configurazione definitiva verrà verificata con il rivenditore.";
-      docAnalysis.textContent = previousAnswer || "La motivazione documentale apparirà dopo la ricerca.";
+      docAnalysis.textContent = proposalSummary(candidate);
       docReference.textContent = `Riferimento ${solution}`;
     }
 
     function openProposalRoom() {
       if (!commercialProposalEnabled || !previousAnswer) return;
-      populateProposalSolutions();
-      updateProposalPreview();
+      populateProposalSolutions(false);
+      const candidate = selectedCandidate();
+      docSolution.textContent = candidate ? candidate.code : "Prodotto da selezionare";
+      docAnalysis.textContent = candidate
+        ? proposalSummary(candidate)
+        : "Seleziona il prodotto da preventivare. Nessuna alternativa sarà inserita automaticamente.";
+      docReference.textContent = candidate ? `Riferimento ${candidate.code}` : "Riferimento —";
       proposalRoom.classList.add("open");
       proposalRoom.setAttribute("aria-hidden", "false");
       document.body.style.overflow = "hidden";
@@ -1005,6 +1102,11 @@
         const data = await res.json();
         answerBox.textContent = data.answer || "— nessuna risposta —";
         if (data.answer) {
+          const answerCandidates = extractProposalCandidates(data.answer);
+          const answerRecommended = findRecommendedCode(data.answer, answerCandidates);
+          const usedPreviousContext = data.meta && data.meta.used_previous_context === true;
+          if (!usedPreviousContext) rememberedRecommendedCode = "";
+          if (answerRecommended) rememberedRecommendedCode = answerRecommended;
           previousQuestion = question;
           previousAnswer = data.answer;
           showNextActions();
@@ -1031,8 +1133,22 @@
 
     proposalBtn.addEventListener("click", openProposalRoom);
     proposalClose.addEventListener("click", closeProposalRoom);
+    proposalSolution.addEventListener("change", () => {
+      const ready = Boolean(proposalSolution.value);
+      proposalUpdate.disabled = !ready;
+      proposalPrint.disabled = !ready;
+      if (ready) updateProposalPreview();
+    });
+    proposalAlternatives.addEventListener("click", () => {
+      const current = proposalSolution.value;
+      populateProposalSolutions(true);
+      if (current) proposalSolution.value = current;
+      proposalAlternatives.hidden = true;
+      proposalSelectionNote.textContent = "Le alternative sono disponibili per la scelta, ma nel preventivo entrerà soltanto il prodotto selezionato.";
+    });
     proposalUpdate.addEventListener("click", updateProposalPreview);
     proposalPrint.addEventListener("click", () => {
+      if (!proposalSolution.value) return;
       updateProposalPreview();
       window.print();
     });
