@@ -976,17 +976,16 @@
 
       const placeholder = document.createElement("option");
       placeholder.value = "";
-      placeholder.textContent = "Seleziona il prodotto da preventivare";
+      placeholder.textContent = "Scegli ora il prodotto da preventivare";
       placeholder.disabled = true;
-      placeholder.selected = !recommendedProposalCode;
+      placeholder.selected = true;
       proposalSolution.appendChild(placeholder);
 
       const recommended = proposalCandidates.find(
         (item) => item.code.toLowerCase() === recommendedProposalCode.toLowerCase()
       );
       if (recommended) {
-        addProposalOption(recommended, "Prodotto consigliato");
-        proposalSolution.value = recommended.code;
+        addProposalOption(recommended, "Prodotto suggerito dal confronto");
         if (showAlternatives) {
           proposalCandidates.filter((item) => item !== recommended)
             .forEach((item) => addProposalOption(item, "Alternativa"));
@@ -997,7 +996,7 @@
 
       proposalAlternatives.hidden = !(recommended && proposalCandidates.length > 1 && !showAlternatives);
       proposalSelectionNote.textContent = recommended
-        ? "Il prodotto consigliato è pronto. Le alternative restano fuori dal preventivo salvo tua richiesta."
+        ? "Il sistema ha indicato un prodotto, ma il preventivo resta vuoto finché non lo scegli personalmente."
         : "Non è stato indicato un vincitore certo: scegli esplicitamente il prodotto da preventivare.";
       const ready = Boolean(proposalSolution.value);
       proposalUpdate.disabled = !ready;
