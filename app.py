@@ -695,6 +695,13 @@ METODO OBBLIGATORIO:
     se funzione, dimensione, prestazione o capacita' sono ancora indeterminate.
 12. Se manca un dato decisivo, non simulare certezza: prepara una sola domanda critica.
 13. Se non esiste una soluzione dimostrabile, dichiaralo invece di forzare una proposta.
+14. Classifica ogni candidato identificato in quattro stati:
+    - VERIFICATO: tutti i requisiti obbligatori sono provati;
+    - VERIFICA NECESSARIA: il candidato esiste, nessuna prova lo rende incompatibile, ma
+      uno o piu' requisiti non sono documentati;
+    - INCOMPATIBILE: almeno un dato documentato viola un requisito;
+    - NON IDENTIFICATO: esistenza o identita' non sono dimostrate.
+    Non confondere mai assenza di informazione con incompatibilita'.
 
 Produci un'analisi interna concisa con: tipo richiesta, obiettivo, vincoli, preferenze,
 candidati esclusi e motivo, graduatoria dei candidati ammissibili, scelta motivata,
@@ -735,16 +742,23 @@ REGOLE OBBLIGATORIE:
     maggiore ventilazione, capacita', accessibilita' o migliore gestione elettronica.
 17. Se mancano i dati decisivi per stabilire un vincitore su un criterio richiesto, dichiaralo
     chiaramente. Non assegnare comunque un vincitore arbitrario.
-18. Nelle richieste di scelta, confronto o raccomandazione, dopo la spiegazione aggiungi una
-    sezione intitolata esattamente "PRODOTTI SELEZIONABILI PER LA PROPOSTA". Elenca soltanto
-    prodotti che rispettano tutti i vincoli obbligatori e che hanno codice identificabile.
-    Per ciascuno indica nome, codice e motivo concreto per cui puo' essere portato in proposta.
-    Non inserire prodotti incompatibili, neppure come esempio negativo.
-19. Se un solo prodotto e' chiaramente preferibile e documentato, scrivi anche:
+18. Distingui sempre quattro stati universali, senza regole legate a una marca o settore:
+    - VERIFICATO: esistenza e tutti i requisiti obbligatori sono documentati;
+    - VERIFICA NECESSARIA: il prodotto esiste ed e' identificato, nessun dato documentato
+      viola i requisiti, ma manca la prova di uno o piu' requisiti;
+    - INCOMPATIBILE: almeno un dato documentato viola un requisito obbligatorio;
+    - NON IDENTIFICATO: mancano codice o riferimento sufficienti a provare l'esistenza.
+    Un dato mancante non equivale mai a un dato contrario.
+19. Nelle richieste di scelta, confronto o raccomandazione aggiungi una sezione intitolata
+    esattamente "PRODOTTI SELEZIONABILI PER LA PROPOSTA". Inserisci i prodotti VERIFICATI
+    e quelli in VERIFICA NECESSARIA. Per ciascuno indica nome, codice, stato e, se necessario,
+    i requisiti ancora da confermare. Non inserire prodotti INCOMPATIBILI o NON IDENTIFICATI.
+    I prodotti in VERIFICA NECESSARIA possono entrare soltanto in una proposta preliminare,
+    che deve riportare chiaramente le verifiche ancora aperte.
+20. Se un solo prodotto e' chiaramente preferibile e documentato, scrivi anche:
     "PRODOTTO CONSIGLIATO E SELEZIONABILE PER LA PROPOSTA: [nome e codice]".
-    Se invece il criterio decisivo non e' documentato, presenta le opzioni conformi come
-    selezionabili e chiedi all'utente quale desidera portare in proposta, senza fingere una
-    superiorita' non dimostrabile.
+    Se invece il criterio decisivo non e' documentato, presenta i prodotti esistenti senza
+    fingere una superiorita' e chiedi quale portare in proposta preliminare.
 
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
@@ -874,10 +888,10 @@ REGOLE ASSOLUTE:
    alternativa negativa, salvo che l'utente chieda espressamente quali candidati sono stati
    esclusi e perche'.
 7. Non inventare un sostituto, un codice, un prezzo o una caratteristica. Se restano meno
-   alternative conformi di quante richieste, presenta soltanto quelle conformi e dichiara in
-   una frase che non sono state trovate altre alternative sicuramente compatibili. Se non
-   resta alcuna soluzione conforme, dichiaralo chiaramente e indica che serve una nuova
-   ricerca documentale.
+   prodotti VERIFICATI di quanti richiesti, conserva anche i prodotti esistenti in VERIFICA
+   NECESSARIA e indica con precisione quali requisiti restano da confermare. Non dichiarare
+   che non esiste alcuna soluzione quando esistono prodotti identificati senza prove
+   documentali di incompatibilita'.
 8. Correggi anche frasi logicamente contraddittorie come "184 e' entro 180" o "rispetta tutti
    i limiti" quando i valori riportati dimostrano il contrario.
 9. Conserva lingua, riferimenti documentali, disclaimer e informazioni corrette della bozza.
@@ -886,11 +900,14 @@ REGOLE ASSOLUTE:
     larghezza, profondita' o prezzo non prova da sola migliore ventilazione, accessibilita',
     capacita' interna o gestione degli apparecchi.
 12. Se la bozza attribuisce un vincitore ma i dati decisivi richiesti non sono documentati,
-    sostituisci quella conclusione con una dichiarazione di non determinabilita'. Conserva
-    comunque i candidati conformi in una sezione finale intitolata esattamente
-    "PRODOTTI SELEZIONABILI PER LA PROPOSTA", con nome e codice di ciascuno.
-13. Nella sezione dei prodotti selezionabili non devono mai comparire candidati che violano
-    anche un solo vincolo obbligatorio.
+    sostituisci quella conclusione con una dichiarazione di non determinabilita'.
+13. Classifica ogni candidato identificato come VERIFICATO, VERIFICA NECESSARIA,
+    INCOMPATIBILE o NON IDENTIFICATO. Un'informazione mancante produce VERIFICA NECESSARIA,
+    non INCOMPATIBILE. Usa INCOMPATIBILE soltanto quando esiste una prova documentale contraria.
+14. Nella sezione "PRODOTTI SELEZIONABILI PER LA PROPOSTA" conserva sia i candidati
+    VERIFICATI sia quelli in VERIFICA NECESSARIA. Per questi ultimi indica esattamente cosa
+    resta da confermare e specifica che la proposta e' preliminare. Escludi soltanto i
+    candidati INCOMPATIBILI o NON IDENTIFICATI.
 
 La conformita' ai vincoli viene prima dell'eleganza della risposta.
 """
@@ -983,9 +1000,13 @@ MODALITA' RISPOSTA CONSIGLIATA:
   semplici differenze nelle dimensioni esterne, salvo esplicita prova documentale.
 - Se i dati richiesti per scegliere un vincitore non sono documentati, dichiaralo e non
   scegliere arbitrariamente.
-- Nelle richieste di scelta o confronto, termina con la sezione esatta
-  "PRODOTTI SELEZIONABILI PER LA PROPOSTA", elencando soltanto nome e codice dei candidati
-  pienamente conformi. Chiedi quale di questi l'utente desidera portare in proposta.
+- Classifica i candidati come VERIFICATO, VERIFICA NECESSARIA, INCOMPATIBILE o NON IDENTIFICATO.
+  Un requisito non documentato significa VERIFICA NECESSARIA, non incompatibilita'.
+- Nelle richieste di scelta o confronto termina con la sezione esatta
+  "PRODOTTI SELEZIONABILI PER LA PROPOSTA". Elenca nome, codice e stato dei candidati
+  VERIFICATI e di quelli in VERIFICA NECESSARIA; per questi ultimi indica cosa resta da
+  confermare nella proposta preliminare. Non elencare INCOMPATIBILI o NON IDENTIFICATI.
+- Chiedi quale prodotto l'utente desidera portare in proposta.
 - Scrivi in testo semplice, senza Markdown e senza asterischi.
 """
 
@@ -1092,10 +1113,12 @@ REGOLE:
 12. Concludi con una sintesi netta e UNA domanda capace di cambiare la scelta.
 13. Non superare normalmente 700 parole.
 14. Non dedurre prestazioni o vantaggi non documentati da semplici differenze dimensionali.
-15. Nelle richieste di scelta o confronto termina con "PRODOTTI SELEZIONABILI PER LA
-    PROPOSTA" ed elenca soltanto nome e codice dei candidati pienamente conformi. Se i dati
-    decisivi non permettono di stabilire un vincitore, dichiaralo e lascia la scelta esplicita
-    all'utente tra i prodotti conformi.
+15. Classifica i candidati come VERIFICATO, VERIFICA NECESSARIA, INCOMPATIBILE o NON
+    IDENTIFICATO. Un dato mancante non e' una prova di incompatibilita'.
+16. Nelle richieste di scelta o confronto termina con "PRODOTTI SELEZIONABILI PER LA
+    PROPOSTA" ed elenca nome, codice e stato dei candidati VERIFICATI e di quelli in VERIFICA
+    NECESSARIA. Per questi ultimi indica le verifiche aperte da riportare nella proposta
+    preliminare. Escludi soltanto INCOMPATIBILI e NON IDENTIFICATI.
 
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
@@ -1210,9 +1233,13 @@ MODALITA' RISPOSTA CONSIGLIATA:
 - Non dedurre prestazioni, ventilazione, accessibilita', capacita' o gestione elettronica
   da semplici differenze dimensionali senza una prova documentale esplicita.
 - Se i dati decisivi non permettono un vincitore, dichiaralo invece di sceglierne uno.
+- Classifica i candidati come VERIFICATO, VERIFICA NECESSARIA, INCOMPATIBILE o NON IDENTIFICATO.
+  Un requisito non documentato significa VERIFICA NECESSARIA, non incompatibilita'.
 - Nelle richieste di scelta o confronto termina con la sezione esatta
-  "PRODOTTI SELEZIONABILI PER LA PROPOSTA", elencando soltanto nome e codice dei candidati
-  pienamente conformi, quindi chiedi quale l'utente desidera portare in proposta.
+  "PRODOTTI SELEZIONABILI PER LA PROPOSTA". Elenca nome, codice e stato dei candidati
+  VERIFICATI e di quelli in VERIFICA NECESSARIA, indicando per questi ultimi cosa deve essere
+  confermato nella proposta preliminare. Escludi soltanto INCOMPATIBILI e NON IDENTIFICATI.
+- Chiedi quale prodotto l'utente desidera portare in proposta.
 - Scrivi in testo semplice, senza Markdown e senza asterischi.
 """
     if is_followup:
