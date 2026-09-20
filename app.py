@@ -730,6 +730,21 @@ REGOLE OBBLIGATORIE:
 15. Non mostrare l'analisi interna e non usare parole come dossier, ranking interno,
     punteggio, pipeline o evidenze recuperate. Non citare Vector Store, File Search, OpenAI,
     modelli, embedding, API o identificativi tecnici.
+16. Non dedurre la superiorita' di un prodotto da caratteristiche non collegate direttamente
+    alla richiesta. Per esempio, una minore altezza esterna non dimostra automaticamente
+    maggiore ventilazione, capacita', accessibilita' o migliore gestione elettronica.
+17. Se mancano i dati decisivi per stabilire un vincitore su un criterio richiesto, dichiaralo
+    chiaramente. Non assegnare comunque un vincitore arbitrario.
+18. Nelle richieste di scelta, confronto o raccomandazione, dopo la spiegazione aggiungi una
+    sezione intitolata esattamente "PRODOTTI SELEZIONABILI PER LA PROPOSTA". Elenca soltanto
+    prodotti che rispettano tutti i vincoli obbligatori e che hanno codice identificabile.
+    Per ciascuno indica nome, codice e motivo concreto per cui puo' essere portato in proposta.
+    Non inserire prodotti incompatibili, neppure come esempio negativo.
+19. Se un solo prodotto e' chiaramente preferibile e documentato, scrivi anche:
+    "PRODOTTO CONSIGLIATO E SELEZIONABILE PER LA PROPOSTA: [nome e codice]".
+    Se invece il criterio decisivo non e' documentato, presenta le opzioni conformi come
+    selezionabili e chiedi all'utente quale desidera portare in proposta, senza fingere una
+    superiorita' non dimostrabile.
 
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
@@ -867,6 +882,15 @@ REGOLE ASSOLUTE:
    i limiti" quando i valori riportati dimostrano il contrario.
 9. Conserva lingua, riferimenti documentali, disclaimer e informazioni corrette della bozza.
 10. Non citare questo controllo, modelli, API, strumenti o infrastrutture.
+11. Elimina motivazioni non dimostrate o logicamente scollegate. Una differenza di altezza,
+    larghezza, profondita' o prezzo non prova da sola migliore ventilazione, accessibilita',
+    capacita' interna o gestione degli apparecchi.
+12. Se la bozza attribuisce un vincitore ma i dati decisivi richiesti non sono documentati,
+    sostituisci quella conclusione con una dichiarazione di non determinabilita'. Conserva
+    comunque i candidati conformi in una sezione finale intitolata esattamente
+    "PRODOTTI SELEZIONABILI PER LA PROPOSTA", con nome e codice di ciascuno.
+13. Nella sezione dei prodotti selezionabili non devono mai comparire candidati che violano
+    anche un solo vincolo obbligatorio.
 
 La conformita' ai vincoli viene prima dell'eleganza della risposta.
 """
@@ -955,6 +979,13 @@ MODALITA' RISPOSTA CONSIGLIATA:
 - Non inventare misure o volume interni. Confronta normalmente le dimensioni esterne e
   menziona l'assenza delle misure interne soltanto se e' determinante per la scelta.
 - Concludi con una sola domanda che possa cambiare concretamente la scelta.
+- Non dedurre migliore ventilazione, accessibilita', capacita' o gestione elettronica da
+  semplici differenze nelle dimensioni esterne, salvo esplicita prova documentale.
+- Se i dati richiesti per scegliere un vincitore non sono documentati, dichiaralo e non
+  scegliere arbitrariamente.
+- Nelle richieste di scelta o confronto, termina con la sezione esatta
+  "PRODOTTI SELEZIONABILI PER LA PROPOSTA", elencando soltanto nome e codice dei candidati
+  pienamente conformi. Chiedi quale di questi l'utente desidera portare in proposta.
 - Scrivi in testo semplice, senza Markdown e senza asterischi.
 """
 
@@ -1060,6 +1091,11 @@ REGOLE:
     strumenti, Vector Store, File Search, OpenAI, API, modelli o identificativi tecnici.
 12. Concludi con una sintesi netta e UNA domanda capace di cambiare la scelta.
 13. Non superare normalmente 700 parole.
+14. Non dedurre prestazioni o vantaggi non documentati da semplici differenze dimensionali.
+15. Nelle richieste di scelta o confronto termina con "PRODOTTI SELEZIONABILI PER LA
+    PROPOSTA" ed elenca soltanto nome e codice dei candidati pienamente conformi. Se i dati
+    decisivi non permettono di stabilire un vincitore, dichiaralo e lascia la scelta esplicita
+    all'utente tra i prodotti conformi.
 
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
@@ -1171,6 +1207,12 @@ MODALITA' RISPOSTA CONSIGLIATA:
 - Mostra al massimo due alternative realmente differenti.
 - Non inventare misure, prezzi, dotazioni o compatibilita'.
 - Concludi con una sola domanda che possa cambiare concretamente la scelta.
+- Non dedurre prestazioni, ventilazione, accessibilita', capacita' o gestione elettronica
+  da semplici differenze dimensionali senza una prova documentale esplicita.
+- Se i dati decisivi non permettono un vincitore, dichiaralo invece di sceglierne uno.
+- Nelle richieste di scelta o confronto termina con la sezione esatta
+  "PRODOTTI SELEZIONABILI PER LA PROPOSTA", elencando soltanto nome e codice dei candidati
+  pienamente conformi, quindi chiedi quale l'utente desidera portare in proposta.
 - Scrivi in testo semplice, senza Markdown e senza asterischi.
 """
     if is_followup:
