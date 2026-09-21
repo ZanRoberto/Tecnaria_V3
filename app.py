@@ -979,6 +979,84 @@ REGOLE ASSOLUTE:
 La conformita' ai vincoli viene prima dell'eleganza della risposta.
 """
 
+INDEPENDENT_RELEASE_GATE = """
+Sei un revisore indipendente. NON riscrivere la risposta. Controlla richiesta,
+risposta finale e citazioni documentali con attenzione alla funzione effettiva
+richiesta dal cliente, oltre a numeri e prezzi. Restituisci SOLO un oggetto JSON:
+{"approved": true/false, "reason": "breve motivo", "missing": "dato indispensabile mancante"}.
+approved=false se una soluzione consigliata o selezionabile viola un requisito
+obbligatorio, se una prestazione viene dedotta da una misura che non la prova,
+se la risposta afferma un fatto contraddetto dalle fonti, o se manca la prova
+di un requisito indispensabile ma il prodotto e' definito VERIFICATO.
+Una richiesta per due persone esclude un prodotto per una persona. Una richiesta
+di piano di lavoro incluso esclude una libreria senza piano. Un elemento
+appoggiato a terra non offre volume libero sottostante. Questi sono esempi:
+applica la logica a ogni catalogo e a ogni settore. Non trattare un prodotto
+incompatibile come semplice VERIFICA NECESSARIA.
+Se un requisito resta aperto ed e' dichiarato esplicitamente come tale nella
+proposta preliminare, puo' essere ammesso soltanto se nessun dato lo contraddice.
+Se le fonti non consentono di verificare una raccomandazione, usa approved=false.
+"""
+
+
+def release_gate_decision(payload: str) -> tuple[bool, str]:
+    """Un verdetto assente o non interpretabile non autorizza una proposta."""
+    try:
+        cleaned = payload.strip()
+        if cleaned.startswith("```"):
+            cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned).strip()
+        verdict = json.loads(cleaned)
+        if verdict.get("approved") is True:
+            return True, ""
+        reason = str(verdict.get("reason") or verdict.get("missing") or "verifica incompleta")
+        return False, reason[:220]
+    except (ValueError, TypeError, AttributeError):
+        return False, "verifica documentale incompleta"
+
+
+def independent_release_gate(question: str, answer: str, evidence: str, provider: str) -> str:
+    """Blocca la pubblicazione di consigli non verificati, separatamente dalla narrazione."""
+    if not answer.strip() or "PRODOTTI SELEZIONABILI PER LA PROPOSTA" not in answer:
+        return answer
+    if not evidence.strip():
+        return "Non posso ancora verificare una soluzione da proporre con i documenti disponibili."
+    material = (
+        f"RICHIESTA:\n{question[:3000]}\n\n"
+        f"RISPOSTA FINALE:\n{answer[:10500]}\n\n"
+        f"FONTI:\n{evidence[:26000]}"
+    )
+    try:
+        if provider == "openai_vector":
+            response = openai_client.responses.create(
+                model=OPENAI_DOCUMENT_MODEL,
+                instructions=INDEPENDENT_RELEASE_GATE,
+                input=material,
+                max_output_tokens=250,
+            )
+            verdict = (response.output_text or "").strip()
+        else:
+            response = client.chat.completions.create(
+                model=DEEPSEEK_MODEL,
+                messages=[
+                    {"role": "system", "content": INDEPENDENT_RELEASE_GATE},
+                    {"role": "user", "content": material},
+                ],
+                temperature=0.0,
+                max_tokens=250,
+            )
+            verdict = (response.choices[0].message.content or "").strip()
+        approved, reason = release_gate_decision(verdict)
+        if approved:
+            return answer
+        print(f"[WARN] risposta non pubblicata dal controllo indipendente: {reason}")
+    except Exception as exc:
+        print(f"[WARN] controllo indipendente non disponibile: {exc}")
+    return (
+        "Non posso ancora indicare con sicurezza un prodotto per questa richiesta. "
+        "I requisiti e i dati dei documenti devono essere verificati prima di "
+        "consigliare una soluzione o preparare una proposta."
+    )
+
 
 def validate_document_answer(
     question: str,
@@ -1142,7 +1220,7 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
             f"generation={generation_seconds:.2f}s "
             f"validation={validation_seconds:.2f}s total={total_seconds:.2f}s"
         )
-        return checked
+        return independent_release_gate(validation_request, checked, dossier, "deepseek_local")
     except Exception as e:
         print(f"[ERROR] risposta documentale rapida: {e}")
         return "Si è verificato un errore durante la ricerca documentale."
@@ -1258,7 +1336,8 @@ esplicita. Se manca una prova documentale, dichiaralo senza cambiare prodotto.
         answer = (response.choices[0].message.content or "").strip()
         if not answer:
             return "Informazione non trovata nel documento collegato."
-        return validate_document_answer(document_query, answer, "deepseek_local", dossier)
+        checked = validate_document_answer(document_query, answer, "deepseek_local", dossier)
+        return independent_release_gate(document_query, checked, dossier, "deepseek_local")
     except Exception as e:
         print(f"[ERROR] analisi documentale completa: {e}")
         return "Si è verificato un errore durante l'analisi documentale completa."
@@ -1346,7 +1425,8 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
     answer = (response.output_text or "").strip()
     if not answer:
         return "Informazione non trovata nel documento collegato."
-    return validate_document_answer(document_query, answer, "openai_vector", dossier)
+    checked = validate_document_answer(document_query, answer, "openai_vector", dossier)
+    return independent_release_gate(document_query, checked, dossier, "openai_vector")
 
 
 def call_narratore_risponditore_vector(
@@ -1384,7 +1464,9 @@ Non sostituirli salvo richiesta esplicita dell'utente.
     answer = (response.output_text or "").strip()
     if not answer:
         return "Informazione non trovata nel documento collegato."
-    return validate_document_answer(document_query, answer, "openai_vector")
+    dossier = call_openai_vector_retrieval(document_query, max_results=30)
+    checked = validate_document_answer(document_query, answer, "openai_vector", dossier)
+    return independent_release_gate(document_query, checked, dossier, "openai_vector")
 
 
 def active_document_engine() -> str:
