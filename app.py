@@ -1065,6 +1065,12 @@ H. ESCLUSO O NON INDICATO. Scrivi che un prodotto NON ha una caratteristica solt
    documento lo dice esplicitamente, citando la dicitura e la pagina. Se il documento tace,
    scrivi "non indicato nel documento" e tieni i due gruppi separati: non riunirli mai nella
    stessa frase o nello stesso elenco.
+I. RICERCA ESATTA. Se la richiesta chiede i dati di un codice o di un prodotto nominato,
+   rispondi con i dati richiesti e la pagina che li prova (per i prezzi, anche la pagina
+   delle condizioni che ne definisce la natura, se presente negli estratti). Niente
+   "perche' e' adatta", niente compromessi e niente domanda di scelta: l'utente ha gia'
+   scelto. Le versioni dello stesso prodotto si possono citare in una riga. Nella sezione
+   PRODOTTI SELEZIONABILI indica soltanto il codice richiesto.
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
 Scrivi in testo semplice, senza Markdown e senza asterischi.
@@ -1493,6 +1499,12 @@ H. ESCLUSO O NON INDICATO. Scrivi che un prodotto NON ha una caratteristica solt
    documento lo dice esplicitamente, citando la dicitura e la pagina. Se il documento tace,
    scrivi "non indicato nel documento" e tieni i due gruppi separati: non riunirli mai nella
    stessa frase o nello stesso elenco.
+I. RICERCA ESATTA. Se la richiesta chiede i dati di un codice o di un prodotto nominato,
+   rispondi con i dati richiesti e la pagina che li prova (per i prezzi, anche la pagina
+   delle condizioni che ne definisce la natura, se presente negli estratti). Niente
+   "perche' e' adatta", niente compromessi e niente domanda di scelta: l'utente ha gia'
+   scelto. Le versioni dello stesso prodotto si possono citare in una riga. Nella sezione
+   PRODOTTI SELEZIONABILI indica soltanto il codice richiesto.
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
 Scrivi in testo semplice, senza Markdown e senza asterischi.
