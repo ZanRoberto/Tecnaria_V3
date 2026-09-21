@@ -298,16 +298,6 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
                 ):
                     selected.append(candidate_idx)
 
-    # Solo nella prima ricerca generica sui mobili TV amplia alle schede della famiglia,
-    # ma rispetta sempre il numero massimo di pagine.
-    if not codes and re.search(r"\btv\b", query_norm):
-        for idx, page in enumerate(DOCUMENT_PAGES):
-            header = normalize(page["text"][:900])
-            if "tv units" in header and "optional optionals" not in header:
-                selected.append(idx)
-            if len(selected) >= max_pages:
-                break
-
     for score, idx in scored:
         if idx not in selected:
             selected.append(idx)
@@ -773,6 +763,12 @@ REGOLE OBBLIGATORIE:
 23. Per ogni prezzo verifica che codice, configurazione, misura e categoria
     coincidano nella stessa riga della fonte. Non assegnare un prezzo a una
     categoria o a un optional se l'associazione non e' documentata.
+24. Interpreta i requisiti come condizioni simultanee. Una caratteristica
+    che contraddice la funzione richiesta rende il candidato INCOMPATIBILE:
+    non puo' diventare proposta principale ne' selezionabile, anche se soddisfa
+    altri requisiti. Un prodotto a terra non crea spazio libero sotto; un prodotto
+    singolo non soddisfa una richiesta per due persone. Applica la stessa logica
+    a qualunque settore e a qualsiasi incompatibilita' documentata.
 
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
@@ -823,6 +819,10 @@ METODO OBBLIGATORIO:
     lo spazio libero sottostante va riportato soltanto se documentato.
 15. Le taglie e configurazioni dello stesso modello sono varianti, non soluzioni
     realmente differenti, salvo differenza funzionale espressamente documentata.
+16. Prima della proposta identifica tutte le condizioni obbligatorie, comprese
+    funzione e destinazione d'uso. Scarta immediatamente una scheda che ne
+    contraddice una: non descrivere mai un prodotto incompatibile come il piu'
+    adatto per poi relegare l'incompatibilita' tra i compromessi.
 
 FORMATO RAPIDO OBBLIGATORIO:
 - Apri con una sola proposta principale: nome/codice, dati determinanti, prezzo se pertinente,
@@ -964,6 +964,17 @@ REGOLE ASSOLUTE:
     se non e' documentato il vantaggio pertinente alla richiesta.
 18. Se mancano evidenze sufficienti per controllare una frase, non dichiararla
     verificata: mantieni soltanto i dati supportati e le verifiche aperte.
+19. Esegui un controllo di coerenza globale prima di scrivere: se la risposta
+    stessa ammette che un candidato viola la funzione o destinazione richiesta,
+    rimuovilo dalla proposta principale, dalle alternative compatibili e dalla
+    sezione dei selezionabili. INCOMPATIBILE prevale su VERIFICA NECESSARIA:
+    non usare due stati diversi per lo stesso prodotto. Un prodotto appoggiato
+    a terra non fornisce spazio libero sotto; una versione per una persona non
+    soddisfa la richiesta esplicita per due. Valido per ogni classe di prodotto.
+20. Non interpretare una mancanza di appoggi sotto una struttura appoggiata a
+    terra come spazio libero: controlla che la caratteristica citata realizzi
+    davvero l'obiettivo dell'utente. Se l'evidenza e' insufficiente, chiedi la
+    verifica pertinente invece di inventare un vincitore.
 
 La conformita' ai vincoli viene prima dell'eleganza della risposta.
 """
@@ -996,7 +1007,7 @@ def validate_document_answer(
                 model=OPENAI_DOCUMENT_MODEL,
                 instructions=CONSTRAINT_VALIDATOR_PROMPT,
                 input=validation_input,
-                max_output_tokens=1000,
+                max_output_tokens=1800,
             )
             checked = (response.output_text or "").strip()
         else:
@@ -1009,7 +1020,7 @@ def validate_document_answer(
                     {"role": "user", "content": validation_input},
                 ],
                 temperature=0.0,
-                max_tokens=1000,
+                max_tokens=1800,
             )
             checked = (response.choices[0].message.content or "").strip()
         return checked or draft_answer
@@ -1059,6 +1070,9 @@ MODALITA' RISPOSTA CONSIGLIATA:
   semplici differenze nelle dimensioni esterne, salvo esplicita prova documentale.
 - Se i dati richiesti per scegliere un vincitore non sono documentati, dichiaralo e non
   scegliere arbitrariamente.
+- Prima di scegliere controlla funzione e destinazione d'uso oltre alle misure:
+  un prodotto che ne contraddice una e' INCOMPATIBILE e non e' proponibile,
+  nemmeno come VERIFICA NECESSARIA. Non presentare la contraddizione come compromesso.
 - Classifica i candidati come VERIFICATO, VERIFICA NECESSARIA, INCOMPATIBILE o NON IDENTIFICATO.
   Un requisito non documentato significa VERIFICA NECESSARIA, non incompatibilita'.
 - Nelle richieste di scelta o confronto termina con la sezione esatta
@@ -1178,6 +1192,11 @@ REGOLE:
     PROPOSTA" ed elenca nome, codice e stato dei candidati VERIFICATI e di quelli in VERIFICA
     NECESSARIA. Per questi ultimi indica le verifiche aperte da riportare nella proposta
     preliminare. Escludi soltanto INCOMPATIBILI e NON IDENTIFICATI.
+17. Tutti i requisiti obbligatori devono valere insieme. Un candidato che
+    contraddice la funzione o destinazione d'uso richiesta e' INCOMPATIBILE,
+    anche se soddisfa prezzo o misure; non puo' essere proposta principale.
+18. Chiama variante una taglia o configurazione dello stesso modello; non
+    trasformarla in alternativa funzionalmente differente senza prova.
 
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
