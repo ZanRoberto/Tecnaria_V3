@@ -77,11 +77,7 @@ ENABLE_COMMERCIAL_PROPOSAL = os.getenv(
 
 client: Optional[OpenAI] = None
 if DEEPSEEK_API_KEY:
-    # Nessun tentativo automatico che prolunghi la richiesta oltre il tempo del browser.
-    client = OpenAI(
-        api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL,
-        timeout=38.0, max_retries=0,
-    )
+    client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
 
 openai_client: Optional[OpenAI] = None
 if OPENAI_API_KEY:
@@ -201,17 +197,14 @@ def page_family_key(page_text: str) -> Optional[tuple]:
     title = ""
     for line in page_text.splitlines():
         stripped = line.strip()
-        if (
-            not stripped or stripped.startswith("## PAGINA PDF")
-            or stripped.startswith("PAGINA_PDF:")
-            or stripped.startswith("PAGINA_CATALOGO:")
-            or stripped.startswith("```")
-        ):
+        if not stripped or stripped.startswith("## PAGINA PDF"):
             continue
         title = stripped
         break
-    heading = re.split(r"\s{2,}|//|:", title, maxsplit=1)[0]
-    words = [word.upper() for word in re.findall(r"[A-Za-z0-9]+", heading)]
+    match = re.match(r"([A-Z0-9][A-Z0-9_\-]*(?:[ _][A-Z0-9][A-Z0-9_\-]*)*)", title)
+    if not match:
+        return None
+    words = [w for w in re.split(r"[ _\-]+", match.group(1)) if w]
     if not words or len(words[0]) < 3 or not re.search(r"[A-Z]", words[0]):
         return None
     return (words[0], words[-1]) if len(words) > 1 else (words[0],)
@@ -230,8 +223,34 @@ def extract_document_codes(text: str) -> set[str]:
             continue
         if candidate.isdigit() and len(candidate) < 5:
             continue
+        # Una misura (160x200, 90X200X30) non e' un codice: prima veniva cercata come
+        # codice e trascinava nel contesto tutte le pagine che la contengono.
+        if MEASURE_PATTERN.fullmatch(candidate):
+            continue
         codes.add(candidate.upper())
     return codes
+
+
+MEASURE_PATTERN = re.compile(r"\d+(?:[.,]\d+)?(?:[xX×]\d+(?:[.,]\d+)?)+")
+SIZE_PATTERN = re.compile(r"(?<![\d.,])(\d{2,3})\s*[xX×]\s*(\d{3})(?![\d.,])")
+CODE_TOKEN_PATTERN = re.compile(r"\b[A-Z][A-Z0-9_-]*\d[A-Z0-9_-]*\b")
+CODE_SIZES: Dict[str, set] = {}
+
+
+def build_code_sizes() -> None:
+    """Associa a ogni codice le misure scritte sulla sua stessa riga di listino
+    (es. 'Q 152 x 203 ... FLU0440' -> 152x203). Serve a filtrare i prodotti
+    selezionabili quando l'utente ha fissato una misura."""
+    CODE_SIZES.clear()
+    for page in DOCUMENT_PAGES:
+        for line in page["text"].splitlines():
+            sizes = {f"{a}x{b}" for a, b in SIZE_PATTERN.findall(line)}
+            if len(sizes) != 1:
+                continue  # riga ambigua: nessuna associazione
+            for code in CODE_TOKEN_PATTERN.findall(line.upper()):
+                if MEASURE_PATTERN.fullmatch(code) or len(code) < 5:
+                    continue
+                CODE_SIZES.setdefault(code, set()).update(sizes)
 
 
 def load_document_index() -> None:
@@ -257,12 +276,14 @@ def load_document_index() -> None:
                 "page": page_number,
                 "text": page_text,
                 "compact": compact_page_text(page_text),
+                "codes": extract_document_codes(page_text),
                 "family": page_family_key(page_text),
                 "normalized": normalize(page_text),
                 "token_counts": Counter(page_token_list),
                 "token_set": set(page_token_list),
             })
 
+        build_code_sizes()
         families = Counter(p["family"] for p in DOCUMENT_PAGES if p["family"])
         print(
             f"[INFO] indice locale caricato: {len(DOCUMENT_PAGES)} pagine, "
@@ -296,7 +317,7 @@ def plan_search_terms(question: str) -> str:
     if client is None:
         return ""
     try:
-        response = client.with_options(timeout=5.0, max_retries=0).chat.completions.create(
+        response = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
             messages=[
                 {"role": "system", "content": SEARCH_PLANNER_PROMPT},
@@ -312,19 +333,6 @@ def plan_search_terms(question: str) -> str:
         return ""
 
 
-def functional_search_fallback(question: str) -> str:
-    """Termini funzionali trasversali quando il pianificatore esterno non risponde."""
-    q = normalize(question)
-    additions = []
-    if any(phrase in q for phrase in ("spazio libero sotto", "sgombro sotto", "senza gambe")):
-        additions.extend(("sospeso", "fissato parete", "wall-mounted", "floating"))
-    if any(phrase in q for phrase in ("lavorare al computer", "piano di lavoro", "postazione lavoro")):
-        additions.extend(("scrivania", "desk", "worktop"))
-    if "matrimoniale" in q or "due persone" in q:
-        additions.extend(("160x200", "180x200", "double", "king"))
-    return " ".join(additions)
-
-
 def expand_multilingual_query(question: str) -> str:
     """Compatibilita': restituisce domanda + lessico del catalogo pianificato."""
     terms = plan_search_terms(question)
@@ -332,7 +340,7 @@ def expand_multilingual_query(question: str) -> str:
 
 
 FAMILY_MAX_PAGES = 25          # oltre questa soglia il titolo non identifica un prodotto
-LOCAL_CONTEXT_MAX_CHARS = 36000  # risposta rapida: fonti pertinenti senza sovraccaricare l'API
+LOCAL_CONTEXT_MAX_CHARS = 60000
 
 
 def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
@@ -349,7 +357,7 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
     if not DOCUMENT_PAGES:
         return ""
 
-    planned_terms = plan_search_terms(query) or functional_search_fallback(query)
+    planned_terms = plan_search_terms(query)
     excluded = negated_search_tokens(query)
     question_tokens = [t for t in search_tokens(query) if t not in excluded]
     planned_tokens = [t for t in search_tokens(planned_terms) if t not in excluded]
@@ -370,7 +378,6 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
     scored: List[tuple[float, int]] = []
     phrase = normalize(query)
     for idx, page in enumerate(DOCUMENT_PAGES):
-        text_upper = page["text"].upper()
         score = 0.0
         for token, base_weight in token_weights.items():
             occurrences = page["token_counts"].get(token, 0)
@@ -378,9 +385,7 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
                 rarity = math.log((len(DOCUMENT_PAGES) + 1) / (token_df[token] + 1)) + 1
                 weight = base_weight * (3.0 if any(ch.isdigit() for ch in token) else 1.0)
                 score += weight * rarity * (1.0 + math.log(occurrences))
-        for code in codes:
-            if code in text_upper:
-                score += 80.0
+        score += 80.0 * len(codes & page.get("codes", set()))
         for number in numbers:
             if number.replace(",", ".") in page["token_set"]:
                 score += 2.0
@@ -398,17 +403,30 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
 
     query_norm = normalize(query + " " + planned_terms)
     if codes:
-        # Approfondimento su codici esatti: comportamento invariato.
+        # Approfondimento su codici esatti (tipico secondo turno).
+        # 1) pagine che contengono i codici, prima quelle che ne contengono di piu';
+        matches = []
         for idx, page in enumerate(DOCUMENT_PAGES):
-            if any(code in page["text"].upper() for code in codes):
-                for candidate_idx in (idx, idx - 1, idx + 1):
-                    if len(selected) < max_pages:
-                        add(candidate_idx)
+            hits = len(codes & page.get("codes", set()))
+            if hits:
+                matches.append((hits, idx))
+        matches.sort(key=lambda item: (-item[0], item[1]))
+        for _, idx in matches:
+            add(idx)
+        # 2) la famiglia di quei prodotti, tavole tecniche comprese: i dettagli costruttivi
+        #    (quote, appoggi, montaggio) non stanno sulla pagina del listino;
+        for _, idx in matches[:3]:
+            fam = DOCUMENT_PAGES[idx].get("family")
+            if fam:
+                for other_idx, other in enumerate(DOCUMENT_PAGES):
+                    if other.get("family") == fam:
+                        add(other_idx)
+        # 3) poi i punteggi.
         for _, idx in scored:
-            if len(selected) >= max_pages:
+            if len(selected) >= max(max_pages, 30):
                 break
             add(idx)
-        max_chars = 32000
+        max_chars = LOCAL_CONTEXT_MAX_CHARS
     else:
         if re.search(r"\btv\b", query_norm):
             for idx, page in enumerate(DOCUMENT_PAGES):
@@ -1099,49 +1117,6 @@ La conformita' ai vincoli viene prima dell'eleganza della risposta.
 VALIDATOR_MAX_TOKENS = 3200
 
 
-def primary_conflict(question: str, answer: str) -> str:
-    """Intercetta contraddizioni dichiarate dalla risposta sulla proposta principale."""
-    asked = normalize(question)
-    primary = normalize(answer.split("\n\n", 1)[0][:1200])
-    if re.search(r"\bmatrimonial\w*\b|\bdue persone\b|\bdue posti\b", asked):
-        if re.search(r"\bsingol\w*\b|\b(?:90|100)\s*x\s*200\b", primary):
-            return "prodotto per una persona proposto per due"
-    if re.search(r"spazio libero sotto|sgombro sotto|sotto il letto", asked):
-        if re.search(r"(?:letto|pianale|base) a terra|poggia (?:direttamente )?a terra|floor standing", primary):
-            return "prodotto a terra proposto per liberare spazio sotto"
-    return ""
-
-
-def repair_quick_answer(question: str, answer: str, evidence: str) -> str:
-    """Corregge solo una contraddizione accertata; non avvia una terza chiamata abituale."""
-    reason = primary_conflict(question, answer)
-    if not reason:
-        return answer
-    print(f"[WARN] risposta incompatibile da correggere: {reason}")
-    try:
-        response = client.chat.completions.create(
-            model=DEEPSEEK_MODEL,
-            messages=[
-                {"role": "system", "content": (
-                    "La proposta precedente viola un requisito obbligatorio: " + reason +
-                    ". Usa SOLO gli estratti seguenti. Cerca una soluzione compatibile, "
-                    "indicando codice, misura, prezzo e pagina documentati. "
-                    "Escludi il prodotto incompatibile dalla proposta e dal preventivo. "
-                    "Se nessuna soluzione e' provata, spiega quale prova manca. "
-                    "Rispondi nella lingua dell'utente."
-                )},
-                {"role": "user", "content": f"DOMANDA:\n{question[:2000]}\nFONTI:\n{evidence[:25000]}"},
-            ],
-            temperature=0.0, max_tokens=1100,
-        )
-        corrected = (response.choices[0].message.content or "").strip()
-        if corrected and not primary_conflict(question, corrected):
-            return corrected
-    except Exception as exc:
-        print(f"[WARN] correzione mirata fallita: {exc}")
-    return "Non posso verificare una soluzione che soddisfi tutti i requisiti richiesti."
-
-
 def validate_document_answer(
     question: str,
     draft_answer: str,
@@ -1286,9 +1261,9 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
                 f"{question}"
             )
         validation_started = time.perf_counter()
-        # La modalita' rapida evita il terzo passaggio LLM da 3200 token,
-        # che puo' lasciare il browser in attesa fino alla scadenza della richiesta.
-        checked = repair_quick_answer(validation_request, answer, dossier)
+        checked = validate_document_answer(
+            validation_request, answer, "deepseek_local"
+        )
         validation_seconds = time.perf_counter() - validation_started
         total_seconds = time.perf_counter() - total_started
         print(
@@ -1605,6 +1580,102 @@ def call_narratore_risponditore(
             )
         return "Si è verificato un errore durante l'analisi documentale completa."
 
+
+SELECTABLE_HEADER = "PRODOTTI SELEZIONABILI PER LA PROPOSTA"
+RECOMMENDED_PREFIX = "PRODOTTO CONSIGLIATO E SELEZIONABILE PER LA PROPOSTA"
+
+
+def requested_sizes(question: str, previous_question: str = "", followup: bool = False) -> set:
+    """Misure fissate esplicitamente dall'utente: prima la domanda attuale, poi,
+    solo se e' un approfondimento, quella precedente."""
+    current = {f"{a}x{b}" for a, b in SIZE_PATTERN.findall(question or "")}
+    if current:
+        return current
+    if followup:
+        return {f"{a}x{b}" for a, b in SIZE_PATTERN.findall(previous_question or "")}
+    return set()
+
+
+def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
+    """Filtro deterministico della sezione PRODOTTI SELEZIONABILI.
+
+    Un codice resta selezionabile solo se la sua misura documentata (riga di listino)
+    e' tra quelle fissate dall'utente. Codici senza misura documentata restano (dato non
+    trovato != incompatibile). Se resta un solo prodotto non si chiede di scegliere di
+    nuovo: viene dichiarato come prodotto consigliato e selezionabile."""
+    if not answer or not allowed_sizes or SELECTABLE_HEADER not in answer.upper():
+        return answer
+
+    def size_ok(code: str) -> bool:
+        sizes = CODE_SIZES.get(code)
+        return (not sizes) or bool(sizes & allowed_sizes)
+
+    def line_codes(line: str) -> List[str]:
+        return [c for c in CODE_TOKEN_PATTERN.findall(line.upper()) if c in CODE_SIZES]
+
+    header_at = answer.upper().index(SELECTABLE_HEADER)
+    head, section = answer[:header_at], answer[header_at:]
+    lines = section.splitlines()
+    kept_lines: List[str] = [lines[0]]
+    kept: Dict[str, str] = {}
+    tail_lines: List[str] = []
+    removed: List[str] = []
+    recommended_code = ""
+    in_tail = False
+    for line in lines[1:]:
+        codes = line_codes(line)
+        if RECOMMENDED_PREFIX in line.upper():
+            if codes and size_ok(codes[0]):
+                recommended_code = codes[0]
+            continue  # riscritta in fondo, coerente con il filtro
+        is_item = bool(codes) or bool(re.match(r"\s*(?:[-•*]|\d+[.)])\s+", line))
+        if not in_tail and codes:
+            if not all(size_ok(c) for c in codes[:1]):
+                removed.append(codes[0])
+                continue
+            kept.setdefault(codes[0], line)
+            kept_lines.append(line)
+            continue
+        if not in_tail and line.strip() and not is_item:
+            in_tail = True
+        (tail_lines if in_tail else kept_lines).append(line)
+
+    # anche un "consigliato" scritto prima della sezione deve rispettare la misura
+    head_rec = re.search(rf"{RECOMMENDED_PREFIX}\s*:([^\n]*)", head, re.I)
+    if head_rec:
+        codes = line_codes(head_rec.group(1))
+        if codes and not size_ok(codes[0]):
+            removed.append(codes[0])
+            head = head[:head_rec.start()] + head[head_rec.end():]
+        elif codes:
+            recommended_code = recommended_code or codes[0]
+
+    if not removed:
+        return answer
+    print(f"[SELEZIONABILI] misura richiesta={sorted(allowed_sizes)} rimossi={removed}")
+
+    if len(kept) == 1:
+        recommended_code = next(iter(kept))
+        # il prodotto e' gia' determinato: niente nuova richiesta di scelta
+        tail_lines = [
+            t for t in tail_lines
+            if not re.search(
+                r"\b(quale|quali|scegli|preferisci|desideri portare|vuoi portare)\b", t, re.I
+            )
+        ]
+    elif not kept:
+        kept_lines.append(
+            "Nessun prodotto documentato corrisponde alla misura indicata "
+            f"({', '.join(sorted(allowed_sizes))})."
+        )
+    if recommended_code and recommended_code in kept:
+        label = re.sub(r"^\s*(?:[-•*]|\d+[.)])\s*", "", kept[recommended_code]).strip()
+        label = re.split(r"\s+[-–]\s+(?:VERIFICATO|VERIFICA NECESSARIA)", label, flags=re.I)[0]
+        label = re.sub(rf",?\s*(?:codice\s+)?{re.escape(recommended_code)}\b", "", label, flags=re.I).strip(" ,-")
+        kept_lines.append(f"{RECOMMENDED_PREFIX}: codice {recommended_code} - {label}")
+    return head.rstrip() + "\n\n" + "\n".join(kept_lines + tail_lines)
+
+
 # ============================================================
 # ENDPOINTS
 # ============================================================
@@ -1720,6 +1791,15 @@ async def api_ask(req: QuestionRequest):
                 document_answer = call_document_quick(
                     document_question, previous_question, previous_answer
                 )
+
+            is_followup_turn = bool(
+                previous_question and previous_answer
+                and is_contextual_followup(document_question)
+            )
+            document_answer = enforce_selectable_constraints(
+                document_answer,
+                requested_sizes(document_question, previous_question, is_followup_turn),
+            )
 
             return AnswerResponse(
                 answer=document_answer,
