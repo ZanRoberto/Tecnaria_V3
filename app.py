@@ -378,6 +378,9 @@ def load_document_index() -> None:
         build_code_sizes()
         PAGE_BY_NUMBER.clear()
         PAGE_BY_NUMBER.update({p["page"]: p for p in DOCUMENT_PAGES})
+        VOCABULARY.clear()
+        for p in DOCUMENT_PAGES:
+            VOCABULARY.update(p["token_set"])
         build_code_rows()
         KNOWN_ROOTS.clear()  # ricalcolate al primo controllo, dopo il caricamento
         families = Counter(p["family"] for p in DOCUMENT_PAGES if p["family"])
@@ -490,6 +493,119 @@ def format_code_rows(codes: List[str], max_chars: int = 14000) -> str:
     return "\n".join(blocks)
 
 
+def format_evidence_rows(dossier: str, max_chars: int = 14000) -> str:
+    """Righe di listino delle SOLE pagine inviate al modello. Prima le pagine della
+    famiglia piu' rappresentata (il prodotto su cui si decide), poi le altre. Un codice
+    presente su molte pagine (accessorio) compare una volta sola: senza questa regola le
+    luci o i pannelli ripetuti riempivano il blocco e sparivano le righe dei prodotti."""
+    pages = [int(p) for p in re.findall(r"===== PAGINA PDF (\d+) =====", dossier)]
+    families = Counter(PAGE_BY_NUMBER[p].get("family") for p in pages if p in PAGE_BY_NUMBER)
+    families.pop(None, None)
+    order = sorted(
+        range(len(pages)),
+        key=lambda i: (-families.get(PAGE_BY_NUMBER.get(pages[i], {}).get("family"), 0), i),
+    )
+    blocks: List[str] = []
+    seen_codes: set = set()
+    total = 0
+    last_context = None
+    for i in order:
+        page_number = pages[i]
+        page = PAGE_BY_NUMBER.get(page_number)
+        if not page:
+            continue
+        for line in (page.get("compact") or "").splitlines():
+            for code in extract_document_codes(line):
+                if code not in CODE_ROWS or code in seen_codes:
+                    continue
+                seen_codes.add(code)
+                row = next((r for r in CODE_ROWS[code] if r["page"] == page_number), None)
+                if row is None:
+                    continue
+                context_key = (page_number, row["header"], row["description"])
+                block = f"- {code} | pagina {page_number} | riga: {row['text'][:220]}"
+                if context_key != last_context:
+                    block = (
+                        f"[pagina {page_number} | {row['title'][:70]}]\n"
+                        f"  colonne: {row['header'][:200]}\n"
+                        f"  descrizione: {row['description'][:140]}\n" + block
+                    )
+                    last_context = context_key
+                if total + len(block) > max_chars:
+                    return "\n".join(blocks)
+                blocks.append(block)
+                total += len(block)
+    return "\n".join(blocks)
+
+
+def exclusion_evidence_note(question: str, dossier: str, max_items: int = 12) -> str:
+    """Il Narratore cerca da solo le prove CONTRO cio' che l'utente esclude ("senza X"):
+    righe delle pagine inviate che nominano X (anche in forma diversa: gambe -> gamba).
+    Le mette davanti al modello prima che scriva, cosi' un requisito non viene dichiarato
+    soddisfatto quando una tavola tecnica dice il contrario."""
+    feature_cues = {"senza", "niente", "nessun", "nessuna", "nessuno", "without", "no"}
+    excluded: set = set()
+    for clause in re.split(r"[.;:!?,\n]", (question or "").lower()):
+        words = re.findall(r"[a-zà-ÿ]+", clause)
+        for i, word in enumerate(words):
+            if word in feature_cues:
+                for follower in words[i + 1:i + 7]:
+                    # si escludono caratteristiche, non azioni: "senza chiamarle" non conta
+                    if re.search(r"(?:are|ere|ire|arl[aeio]|erl[aeio]|irl[aeio])$", follower):
+                        break
+                    excluded.add(follower)
+    stems = {
+        token[:-1] if len(token) >= 5 else token
+        for token in excluded
+        if len(token) >= 4 and token not in SEARCH_STOPWORDS
+    }
+    vocabulary = VOCABULARY or set()
+    stems = {s for s in stems if any(w.startswith(s) for w in vocabulary)}
+    if not stems:
+        return ""
+    pages = [int(p) for p in re.findall(r"===== PAGINA PDF (\d+) =====", dossier)]
+    # prima le pagine della famiglia principale (quella su cui si decide), come le righe
+    families = Counter(PAGE_BY_NUMBER[p].get("family") for p in pages if p in PAGE_BY_NUMBER)
+    families.pop(None, None)
+    pages = [pages[i] for i in sorted(
+        range(len(pages)),
+        key=lambda i: (-families.get(PAGE_BY_NUMBER.get(pages[i], {}).get("family"), 0), i),
+    )]
+    hits: List[str] = []
+    per_family: Counter = Counter()
+    for page_number in pages:
+        page = PAGE_BY_NUMBER.get(page_number)
+        if not page:
+            continue
+        family = page.get("family")
+        for line in (page.get("compact") or "").splitlines():
+            if CODE_HEADER_PATTERN.search(line) or line == page_title_line(page["text"]).strip():
+                continue  # intestazioni e titoli non sono prove
+            words = re.findall(r"[a-zà-ÿ]+", line.lower())
+            matched = sorted({s for s in stems for w in words if w.startswith(s)})
+            if not matched or per_family[family] >= 2:
+                continue
+            title = re.sub(r"\s{2,}", " ", page_title_line(page["text"]))[:50]
+            hit = f"- pagina {page_number} ({title}): {line[:160]}"
+            if hit in hits:
+                continue
+            per_family[family] += 1
+            hits.append(hit)
+            if len(hits) >= max_items:
+                break
+        if len(hits) >= max_items:
+            break
+    if not hits:
+        return ""
+    return (
+        "\n\nPROVE DA CONFRONTARE CON CIO' CHE L'UTENTE ESCLUDE ("
+        + ", ".join(sorted(stems)) + "...): righe delle pagine inviate che ne parlano. "
+        "Per ogni prodotto proposto dichiara se l'elemento escluso e' presente, assente o "
+        "non indicato, citando queste righe; non dichiarare un requisito soddisfatto se una "
+        "di queste righe riguarda quel prodotto e dice il contrario.\n" + "\n".join(hits)
+    )
+
+
 def codes_in_evidence(dossier: str) -> List[str]:
     """Codici presenti nelle pagine recuperate, nell'ordine in cui compaiono."""
     ordered: List[str] = []
@@ -506,6 +622,7 @@ def codes_in_evidence(dossier: str) -> List[str]:
 
 PAGE_BY_NUMBER: Dict[int, Dict[str, Any]] = {}
 KNOWN_ROOTS: set = set()
+VOCABULARY: set = set()
 
 
 SEARCH_PLANNER_PROMPT = """
@@ -1184,7 +1301,8 @@ REGOLE OBBLIGATORIE:
     Un dato mancante non equivale mai a un dato contrario.
 19. Nelle richieste di scelta, confronto o raccomandazione aggiungi una sezione intitolata
     esattamente "PRODOTTI SELEZIONABILI PER LA PROPOSTA". Inserisci i prodotti VERIFICATI
-    e quelli in VERIFICA NECESSARIA. Per ciascuno indica nome, codice, stato e, se necessario,
+    e quelli in VERIFICA NECESSARIA, entro il numero massimo di righe indicato dal formato.
+    Per ciascuno indica nome, codice, stato e, se necessario,
     i requisiti ancora da confermare. Non inserire prodotti INCOMPATIBILI o NON IDENTIFICATI.
     I prodotti in VERIFICA NECESSARIA possono entrare soltanto in una proposta preliminare,
     che deve riportare chiaramente le verifiche ancora aperte.
@@ -1487,66 +1605,86 @@ def validate_document_answer(
 # risposta nel formato dell'intento -> controllo vincoli (solo se ci sono limiti numerici)
 # -> controllo documentale deterministico con correzione mirata.
 
-FORMAT_RACCOMANDAZIONE = """
-MODALITA' RISPOSTA CONSIGLIATA:
-- Produci una risposta breve, normalmente entro 300 parole.
-- Apri con una sola proposta principale documentata.
-- Se l'utente e' indeciso tra priorita' opposte, la proposta principale deve essere
-  una soluzione intermedia documentata; gli estremi sono soltanto alternative.
-- Riporta nome/codice, dati determinanti, prezzo pertinente, documento e pagina.
-- Spiega in massimo quattro punti perche' e' adatta e il compromesso principale.
-- Mostra al massimo due alternative realmente differenti.
-- Non inventare misure o volume interni. Confronta normalmente le dimensioni esterne e
-  menziona l'assenza delle misure interne soltanto se e' determinante per la scelta.
-- Concludi con una sola domanda che possa cambiare concretamente la scelta.
-- Non dedurre migliore ventilazione, accessibilita', capacita' o gestione elettronica da
-  semplici differenze nelle dimensioni esterne, salvo esplicita prova documentale.
-- Se i dati richiesti per scegliere un vincitore non sono documentati, dichiaralo e non
-  scegliere arbitrariamente.
-- Classifica i candidati come VERIFICATO, VERIFICA NECESSARIA, INCOMPATIBILE o NON IDENTIFICATO.
-  Un requisito non documentato significa VERIFICA NECESSARIA, non incompatibilita'.
-- Nelle richieste di scelta o confronto termina con la sezione esatta
-  "PRODOTTI SELEZIONABILI PER LA PROPOSTA". Elenca nome, codice e stato dei candidati
-  VERIFICATI e di quelli in VERIFICA NECESSARIA; per questi ultimi indica cosa resta da
-  confermare nella proposta preliminare. Non elencare INCOMPATIBILI o NON IDENTIFICATI.
-- Chiedi quale prodotto l'utente desidera portare in proposta.
-- Scrivi in testo semplice, senza Markdown e senza asterischi.
+LAYOUT_COMMON = """
+FORMA OBBLIGATORIA (testo semplice, niente Markdown, niente asterischi, niente tabelle):
+- Massimo 200 parole prima della sezione dei selezionabili. Frasi brevi.
+- Un solo codice per prodotto: quello della misura o versione richiesta (se l'utente non
+  l'ha indicata, la misura standard della classe richiesta). Le altre misure in UNA riga:
+  "Disponibile anche in: ...". Mai elenchi di tutti i codici di una pagina.
+- Non descrivere i prodotti scartati uno per uno: al massimo una riga che dice quali
+  tipologie sono escluse e perche'.
+- Nella sezione PRODOTTI SELEZIONABILI PER LA PROPOSTA al massimo 3 righe, una per
+  prodotto, nella forma: "- Nome prodotto, codice XXX - VERIFICATO" oppure
+  "- Nome prodotto, codice XXX - VERIFICA NECESSARIA: cosa resta da confermare".
 """
+
+FORMAT_RACCOMANDAZIONE = """
+FORMATO RACCOMANDAZIONE. Scrivi esattamente queste sezioni, nell'ordine, con il titolo
+in maiuscolo su una riga propria; ometti una sezione solo se non ha contenuto.
+
+RISPOSTA
+Una o due frasi: prodotto consigliato, codice, misura, prezzo, pagina.
+
+PERCHE'
+Al massimo 3 righe che iniziano con "- ", ciascuna con la prova (pagina).
+
+DA SAPERE
+Solo cio' che il cliente deve sapere prima di scegliere: requisiti non pienamente
+rispettati, elementi presenti che l'utente voleva evitare, montaggio, quote. Con pagina.
+
+VERSIONI
+Solo se esistono versioni dello stesso prodotto: al massimo 4 righe "- cosa cambia:
+codice, prezzo, pagina" (per la stessa misura della risposta).
+
+ALTERNATIVA
+Al massimo una, solo se e' davvero diversa e utile: una riga con codice, prezzo, pagina.
+
+DOMANDA
+Una sola domanda su una scelta dell'utente.
+
+PRODOTTI SELEZIONABILI PER LA PROPOSTA
+"""+ LAYOUT_COMMON
 
 FORMAT_ESATTA = """
-FORMATO RICERCA ESATTA:
-- Rispondi subito con i dati richiesti del codice o del prodotto nominato: descrizione,
-  misure, varianti di prezzo, prezzo, pagina.
-- Usa le RIGHE DI LISTINO per attribuire ogni numero alla sua colonna.
-- Versioni dello stesso prodotto: al massimo una riga.
-- Niente motivazioni di adeguatezza, compromessi, alternative o domande di scelta.
-- Chiudi con la sezione "PRODOTTI SELEZIONABILI PER LA PROPOSTA" con il solo codice
-  richiesto, stato VERIFICATO.
-- Scrivi in testo semplice, senza Markdown e senza asterischi.
-"""
+FORMATO RICERCA ESATTA. Sezioni, titolo in maiuscolo su una riga propria:
+
+RISPOSTA
+I dati richiesti del codice o del prodotto nominato in due o tre frasi: che cos'e',
+misure, prezzo (con le varianti di prezzo se ci sono), pagina. Usa le RIGHE DI LISTINO
+per attribuire ogni numero alla sua colonna.
+
+VERSIONI
+Solo se esistono versioni dello stesso prodotto: una riga.
+
+PRODOTTI SELEZIONABILI PER LA PROPOSTA
+Il solo codice richiesto, stato VERIFICATO. Nessuna motivazione, nessuna alternativa,
+nessuna domanda di scelta.
+"""+ LAYOUT_COMMON
 
 FORMAT_CONFERMA = """
-FORMATO CONFERMA DI UNA SCELTA:
-- L'utente ha scelto una versione di una soluzione gia' discussa: individua il codice che
-  corrisponde esattamente alle scelte indicate (misura, versione, finitura) e confermalo
-  con dati, prezzo e pagina, usando le RIGHE DI LISTINO.
-- Rispondi a ogni domanda aggiuntiva cercando anche nelle schede tecniche della stessa
-  famiglia di prodotto.
-- Nessuna alternativa, salvo che la combinazione scelta non esista: in quel caso dillo e
-  indica la combinazione documentata piu' vicina.
-- Chiudi con "PRODOTTI SELEZIONABILI PER LA PROPOSTA" con il solo codice scelto e
-  nessuna domanda di scelta.
-- Scrivi in testo semplice, senza Markdown e senza asterischi.
-"""
+FORMATO CONFERMA DI UNA SCELTA. Sezioni, titolo in maiuscolo su una riga propria:
+
+RISPOSTA
+Il codice che corrisponde esattamente alle scelte indicate (misura, versione, finitura),
+con prezzo e pagina, usando le RIGHE DI LISTINO. Se la combinazione non esiste, dillo e
+indica la combinazione documentata piu' vicina.
+
+DETTAGLI RICHIESTI
+Una riga "- " per ogni domanda aggiuntiva dell'utente, con la prova (pagina), cercando
+anche nelle schede tecniche della stessa famiglia.
+
+PRODOTTI SELEZIONABILI PER LA PROPOSTA
+Il solo codice scelto. Nessuna alternativa, nessuna domanda di scelta.
+"""+ LAYOUT_COMMON
 
 FORMAT_CONFRONTO = """
-FORMATO CONFRONTO:
+FORMATO CONFRONTO (sezioni RISPOSTA, DIFFERENZE, DOMANDA, poi i selezionabili):
 - Confronta le soluzioni nominate sugli stessi attributi, con dati e pagina di ciascuna.
 - Evidenzia le differenze; non proclamare un vincitore se l'utente non ha dato un criterio.
 - Chiudi con "PRODOTTI SELEZIONABILI PER LA PROPOSTA" con le soluzioni confrontate e UNA
   domanda sul criterio di scelta dell'utente.
 - Scrivi in testo semplice, senza Markdown e senza asterischi.
-"""
+"""+ LAYOUT_COMMON
 
 FORMAT_SPIEGAZIONE = """
 FORMATO SPIEGAZIONE:
@@ -1663,13 +1801,15 @@ def run_local_pipeline(
         if not dossier:
             return "Informazione non trovata nel documento collegato.\n\n" + DOCUMENT_DISCLAIMER
 
-        # righe leggibili: prima i codici citati da utente e turno precedente
+        # righe leggibili: prima i codici citati da utente e turno precedente, poi le righe
+        # delle pagine inviate (famiglia principale prima, accessori ripetuti una volta)
         priority = [c for _, c in codes_mentioned(question + " " + (
             previous_answer if is_followup else ""))]
-        row_codes = list(dict.fromkeys(
-            [c for c in priority if c in CODE_ROWS] + codes_in_evidence(dossier)
-        ))
-        rows_text = format_code_rows(row_codes, 12000)
+        priority = list(dict.fromkeys(c for c in priority if c in CODE_ROWS))
+        rows_text = format_code_rows(priority, 4000) if priority else ""
+        evidence_rows = format_evidence_rows(dossier, 14000 - len(rows_text))
+        rows_text = "\n".join(part for part in (rows_text, evidence_rows) if part)
+        row_codes = re.findall(r"^- (\S+) \|", rows_text, re.M)
 
         if mode == "globale" and intent in {"raccomandazione", "confronto"}:
             system_prompt = DOCUMENT_FULL_PROMPT.format(
@@ -1680,7 +1820,7 @@ def run_local_pipeline(
             system_prompt = (DOCUMENT_RESPONDER_PROMPT + FORMAT_BY_INTENT[intent]).format(
                 document_disclaimer=DOCUMENT_DISCLAIMER
             )
-            max_tokens = 3000 if mode == "globale" else 1500
+            max_tokens = 3000 if mode == "globale" else 1100
         if is_followup:
             system_prompt += FOLLOWUP_RULES
 
@@ -1689,6 +1829,8 @@ def run_local_pipeline(
             f"TIPO DI RICHIESTA: {intent}"
             + dimension_constraint_note(question, previous_question, is_followup)
             + absent_category_note(plan)
+            + exclusion_evidence_note(question + (" " + previous_question if is_followup else ""),
+                                      dossier)
             + (f"\n\nRIGHE DI LISTINO CON INTESTAZIONI DI COLONNA (usale per attribuire "
                f"correttamente ogni numero):\n{rows_text}" if rows_text else "")
             + f"\n\nEVIDENZE DOCUMENTALI (pagine complete):\n{dossier}\n\n"
@@ -2083,20 +2225,26 @@ def codes_mentioned(text: str) -> List[tuple]:
     if not KNOWN_ROOTS:
         KNOWN_ROOTS.update(known_code_roots())
     roots = KNOWN_ROOTS
-    for match in re.finditer(r"\b[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*\b|\b\d{5,}\b", text):
-        token = match.group(0).upper()
+    for match in re.finditer(
+        r"\b[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*(?:\s*/\s*[A-Za-z0-9]+)*\b|\b\d{5,}\b", text
+    ):
+        token = re.sub(r"\s+", "", match.group(0).upper())
         if MEASURE_PATTERN.fullmatch(token) or len(token) < 5:
             continue
         if token in CODE_ROWS:
             found.append((match.start(), token))
             continue
         if re.search(r"[-/]", token):
-            # intervallo o elenco di codici: si verificano le parti, mai il token intero
-            offset = 0
-            for part in re.split(r"[-/]", token):
-                if part in CODE_ROWS:
-                    found.append((match.start() + token.find(part, offset), part))
-                offset += len(part) + 1
+            # intervallo o elenco di codici, anche abbreviato: FLU2210/2220/2230 vale
+            # FLU2210, FLU2220, FLU2230. Si verificano le parti, mai il token intero.
+            parts = re.split(r"[-/]", token)
+            first = parts[0]
+            for part in parts:
+                candidate = part
+                if part.isdigit() and first and len(part) < len(first):
+                    candidate = first[: len(first) - len(part)] + part
+                if candidate in CODE_ROWS:
+                    found.append((match.start(), candidate))
             continue
         if code_root(token) and code_root(token) in roots:
             found.append((match.start(), token))
@@ -2137,7 +2285,14 @@ def check_answer_facts(answer: str) -> List[Dict[str, Any]]:
                                    "frase": sentence.strip()[:240]})
                 continue
             rows = CODE_ROWS[code]
-            allowed_numbers = set().union(*(row["near_numbers"] for row in rows))
+            # un prezzo e' accettato se appartiene alla riga di QUALSIASI codice della
+            # stessa frase: negli elenchi ("A, B e C a 4.560 / 4.595 / 4.799") l'ordine dei
+            # numeri non dice a quale codice appartengono; un falso allarme davanti al
+            # cliente costa piu' di un'attribuzione non verificata dentro un elenco
+            sentence_codes = {c for _, c in mentions if c in CODE_ROWS} | {code}
+            allowed_numbers = set().union(*(
+                row["near_numbers"] for c in sentence_codes for row in CODE_ROWS[c]
+            ))
             pages_of_code = {row["page"] for row in rows}
             families = {PAGE_BY_NUMBER[p].get("family") for p in pages_of_code if p in PAGE_BY_NUMBER}
             # della famiglia valgono solo le schede tecniche (pagine senza codici di listino):
