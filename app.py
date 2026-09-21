@@ -289,8 +289,10 @@ def extract_document_codes(text: str) -> set[str]:
 MEASURE_PATTERN = re.compile(r"\d+(?:[.,]\d+)?(?:[xX×]\d+(?:[.,]\d+)?)+")
 # Misure a 2 o 3 dimensioni in qualunque settore: 160x200, 60 x 120 x 30, 2,5x10.
 SIZE_PATTERN = re.compile(
-    r"(?<![\d.,])(\d{1,4}(?:[.,]\d+)?)\s*[xX×]\s*(\d{1,4}(?:[.,]\d+)?)"
-    r"(?:\s*[xX×]\s*(\d{1,4}(?:[.,]\d+)?))?(?![\d.,])"
+    # confini: niente cifra (o cifra+separatore decimale) prima, niente cifra (o separatore
+    # decimale+cifra) dopo; la punteggiatura di fine frase ("180 x 200," / "200.") e' ammessa.
+    r"(?<!\d)(?<!\d[.,])(\d{1,4}(?:[.,]\d+)?)\s*[xX×]\s*(\d{1,4}(?:[.,]\d+)?)"
+    r"(?:\s*[xX×]\s*(\d{1,4}(?:[.,]\d+)?))?(?!\d)(?![.,]\d)"
 )
 
 
