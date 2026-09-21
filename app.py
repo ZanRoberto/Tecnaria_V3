@@ -77,7 +77,11 @@ ENABLE_COMMERCIAL_PROPOSAL = os.getenv(
 
 client: Optional[OpenAI] = None
 if DEEPSEEK_API_KEY:
-    client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
+    # Nessun tentativo automatico che prolunghi la richiesta oltre il tempo del browser.
+    client = OpenAI(
+        api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL,
+        timeout=38.0, max_retries=0,
+    )
 
 openai_client: Optional[OpenAI] = None
 if OPENAI_API_KEY:
@@ -197,14 +201,17 @@ def page_family_key(page_text: str) -> Optional[tuple]:
     title = ""
     for line in page_text.splitlines():
         stripped = line.strip()
-        if not stripped or stripped.startswith("## PAGINA PDF"):
+        if (
+            not stripped or stripped.startswith("## PAGINA PDF")
+            or stripped.startswith("PAGINA_PDF:")
+            or stripped.startswith("PAGINA_CATALOGO:")
+            or stripped.startswith("```")
+        ):
             continue
         title = stripped
         break
-    match = re.match(r"([A-Z0-9][A-Z0-9_\-]*(?:[ _][A-Z0-9][A-Z0-9_\-]*)*)", title)
-    if not match:
-        return None
-    words = [w for w in re.split(r"[ _\-]+", match.group(1)) if w]
+    heading = re.split(r"\s{2,}|//|:", title, maxsplit=1)[0]
+    words = [word.upper() for word in re.findall(r"[A-Za-z0-9]+", heading)]
     if not words or len(words[0]) < 3 or not re.search(r"[A-Z]", words[0]):
         return None
     return (words[0], words[-1]) if len(words) > 1 else (words[0],)
@@ -289,7 +296,7 @@ def plan_search_terms(question: str) -> str:
     if client is None:
         return ""
     try:
-        response = client.chat.completions.create(
+        response = client.with_options(timeout=5.0, max_retries=0).chat.completions.create(
             model=DEEPSEEK_MODEL,
             messages=[
                 {"role": "system", "content": SEARCH_PLANNER_PROMPT},
@@ -305,6 +312,19 @@ def plan_search_terms(question: str) -> str:
         return ""
 
 
+def functional_search_fallback(question: str) -> str:
+    """Termini funzionali trasversali quando il pianificatore esterno non risponde."""
+    q = normalize(question)
+    additions = []
+    if any(phrase in q for phrase in ("spazio libero sotto", "sgombro sotto", "senza gambe")):
+        additions.extend(("sospeso", "fissato parete", "wall-mounted", "floating"))
+    if any(phrase in q for phrase in ("lavorare al computer", "piano di lavoro", "postazione lavoro")):
+        additions.extend(("scrivania", "desk", "worktop"))
+    if "matrimoniale" in q or "due persone" in q:
+        additions.extend(("160x200", "180x200", "double", "king"))
+    return " ".join(additions)
+
+
 def expand_multilingual_query(question: str) -> str:
     """Compatibilita': restituisce domanda + lessico del catalogo pianificato."""
     terms = plan_search_terms(question)
@@ -312,7 +332,7 @@ def expand_multilingual_query(question: str) -> str:
 
 
 FAMILY_MAX_PAGES = 25          # oltre questa soglia il titolo non identifica un prodotto
-LOCAL_CONTEXT_MAX_CHARS = 60000
+LOCAL_CONTEXT_MAX_CHARS = 36000  # risposta rapida: fonti pertinenti senza sovraccaricare l'API
 
 
 def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
@@ -329,7 +349,7 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
     if not DOCUMENT_PAGES:
         return ""
 
-    planned_terms = plan_search_terms(query)
+    planned_terms = plan_search_terms(query) or functional_search_fallback(query)
     excluded = negated_search_tokens(query)
     question_tokens = [t for t in search_tokens(query) if t not in excluded]
     planned_tokens = [t for t in search_tokens(planned_terms) if t not in excluded]
@@ -1079,6 +1099,49 @@ La conformita' ai vincoli viene prima dell'eleganza della risposta.
 VALIDATOR_MAX_TOKENS = 3200
 
 
+def primary_conflict(question: str, answer: str) -> str:
+    """Intercetta contraddizioni dichiarate dalla risposta sulla proposta principale."""
+    asked = normalize(question)
+    primary = normalize(answer.split("\n\n", 1)[0][:1200])
+    if re.search(r"\bmatrimonial\w*\b|\bdue persone\b|\bdue posti\b", asked):
+        if re.search(r"\bsingol\w*\b|\b(?:90|100)\s*x\s*200\b", primary):
+            return "prodotto per una persona proposto per due"
+    if re.search(r"spazio libero sotto|sgombro sotto|sotto il letto", asked):
+        if re.search(r"(?:letto|pianale|base) a terra|poggia (?:direttamente )?a terra|floor standing", primary):
+            return "prodotto a terra proposto per liberare spazio sotto"
+    return ""
+
+
+def repair_quick_answer(question: str, answer: str, evidence: str) -> str:
+    """Corregge solo una contraddizione accertata; non avvia una terza chiamata abituale."""
+    reason = primary_conflict(question, answer)
+    if not reason:
+        return answer
+    print(f"[WARN] risposta incompatibile da correggere: {reason}")
+    try:
+        response = client.chat.completions.create(
+            model=DEEPSEEK_MODEL,
+            messages=[
+                {"role": "system", "content": (
+                    "La proposta precedente viola un requisito obbligatorio: " + reason +
+                    ". Usa SOLO gli estratti seguenti. Cerca una soluzione compatibile, "
+                    "indicando codice, misura, prezzo e pagina documentati. "
+                    "Escludi il prodotto incompatibile dalla proposta e dal preventivo. "
+                    "Se nessuna soluzione e' provata, spiega quale prova manca. "
+                    "Rispondi nella lingua dell'utente."
+                )},
+                {"role": "user", "content": f"DOMANDA:\n{question[:2000]}\nFONTI:\n{evidence[:25000]}"},
+            ],
+            temperature=0.0, max_tokens=1100,
+        )
+        corrected = (response.choices[0].message.content or "").strip()
+        if corrected and not primary_conflict(question, corrected):
+            return corrected
+    except Exception as exc:
+        print(f"[WARN] correzione mirata fallita: {exc}")
+    return "Non posso verificare una soluzione che soddisfi tutti i requisiti richiesti."
+
+
 def validate_document_answer(
     question: str,
     draft_answer: str,
@@ -1223,9 +1286,9 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
                 f"{question}"
             )
         validation_started = time.perf_counter()
-        checked = validate_document_answer(
-            validation_request, answer, "deepseek_local"
-        )
+        # La modalita' rapida evita il terzo passaggio LLM da 3200 token,
+        # che puo' lasciare il browser in attesa fino alla scadenza della richiesta.
+        checked = repair_quick_answer(validation_request, answer, dossier)
         validation_seconds = time.perf_counter() - validation_started
         total_seconds = time.perf_counter() - total_started
         print(
