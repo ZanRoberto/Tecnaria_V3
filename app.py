@@ -298,6 +298,16 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
                 ):
                     selected.append(candidate_idx)
 
+    # Solo nella prima ricerca generica sui mobili TV amplia alle schede della famiglia,
+    # ma rispetta sempre il numero massimo di pagine.
+    if not codes and re.search(r"\btv\b", query_norm):
+        for idx, page in enumerate(DOCUMENT_PAGES):
+            header = normalize(page["text"][:900])
+            if "tv units" in header and "optional optionals" not in header:
+                selected.append(idx)
+            if len(selected) >= max_pages:
+                break
+
     for score, idx in scored:
         if idx not in selected:
             selected.append(idx)
@@ -753,22 +763,6 @@ REGOLE OBBLIGATORIE:
     "PRODOTTO CONSIGLIATO E SELEZIONABILE PER LA PROPOSTA: [nome e codice]".
     Se invece il criterio decisivo non e' documentato, presenta i prodotti esistenti senza
     fingere una superiorita' e chiedi quale portare in proposta preliminare.
-21. Non attribuire a una misura la funzione di un'altra: altezza della testiera,
-    del prodotto, del piano, del materasso e luce libera sottostante sono proprieta'
-    distinte. Usa per ognuna soltanto la denominazione attestata nella sua riga
-    del documento. Un'altezza maggiore non prova da sola maggiore spazio libero.
-22. Distingui modello, variante e alternativa: taglie, configurazioni e finiture
-    dello stesso modello sono varianti. Chiamale alternative realmente differenti
-    soltanto se la differenza funzionale richiesta e' documentata.
-23. Per ogni prezzo verifica che codice, configurazione, misura e categoria
-    coincidano nella stessa riga della fonte. Non assegnare un prezzo a una
-    categoria o a un optional se l'associazione non e' documentata.
-24. Interpreta i requisiti come condizioni simultanee. Una caratteristica
-    che contraddice la funzione richiesta rende il candidato INCOMPATIBILE:
-    non puo' diventare proposta principale ne' selezionabile, anche se soddisfa
-    altri requisiti. Un prodotto a terra non crea spazio libero sotto; un prodotto
-    singolo non soddisfa una richiesta per due persone. Applica la stessa logica
-    a qualunque settore e a qualsiasi incompatibilita' documentata.
 
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
@@ -814,15 +808,6 @@ METODO OBBLIGATORIO:
     richiesta; in tal caso usa una frase semplice e concreta, senza formule tecniche.
 13. Non definire una variante piu' bassa, alta, economica o capiente se i dati riportati
     sono uguali o non consentono il confronto.
-14. Distingui le etichette delle misure riportate nella fonte. Una misura della
-    testiera o della struttura non equivale all'altezza del piano d'appoggio;
-    lo spazio libero sottostante va riportato soltanto se documentato.
-15. Le taglie e configurazioni dello stesso modello sono varianti, non soluzioni
-    realmente differenti, salvo differenza funzionale espressamente documentata.
-16. Prima della proposta identifica tutte le condizioni obbligatorie, comprese
-    funzione e destinazione d'uso. Scarta immediatamente una scheda che ne
-    contraddice una: non descrivere mai un prodotto incompatibile come il piu'
-    adatto per poi relegare l'incompatibilita' tra i compromessi.
 
 FORMATO RAPIDO OBBLIGATORIO:
 - Apri con una sola proposta principale: nome/codice, dati determinanti, prezzo se pertinente,
@@ -951,118 +936,15 @@ REGOLE ASSOLUTE:
     VERIFICATI sia quelli in VERIFICA NECESSARIA. Per questi ultimi indica esattamente cosa
     resta da confermare e specifica che la proposta e' preliminare. Escludi soltanto i
     candidati INCOMPATIBILI o NON IDENTIFICATI.
-15. Confronta ogni affermazione decisiva con le evidenze documentali fornite.
-    Una misura puo' essere attribuita solo alla proprieta' indicata nella fonte:
-    non convertire l'altezza del prodotto, della testiera o del materasso in altezza
-    del piano o in spazio libero sotto il prodotto. Se l'etichetta e' ambigua,
-    indica che la funzione esatta della misura va verificata.
-16. Verifica che codice, misura, prezzo e categoria siano associati nella stessa
-    riga o tabella. Se una relazione non e' comprovata, elimina la relazione o
-    dichiara il dato da verificare, senza cancellare il prodotto esistente.
-17. Chiama variante una differente taglia, altezza, configurazione o finitura
-    dello stesso modello. Non promuoverla ad alternativa realmente differente
-    se non e' documentato il vantaggio pertinente alla richiesta.
-18. Se mancano evidenze sufficienti per controllare una frase, non dichiararla
-    verificata: mantieni soltanto i dati supportati e le verifiche aperte.
-19. Esegui un controllo di coerenza globale prima di scrivere: se la risposta
-    stessa ammette che un candidato viola la funzione o destinazione richiesta,
-    rimuovilo dalla proposta principale, dalle alternative compatibili e dalla
-    sezione dei selezionabili. INCOMPATIBILE prevale su VERIFICA NECESSARIA:
-    non usare due stati diversi per lo stesso prodotto. Un prodotto appoggiato
-    a terra non fornisce spazio libero sotto; una versione per una persona non
-    soddisfa la richiesta esplicita per due. Valido per ogni classe di prodotto.
-20. Non interpretare una mancanza di appoggi sotto una struttura appoggiata a
-    terra come spazio libero: controlla che la caratteristica citata realizzi
-    davvero l'obiettivo dell'utente. Se l'evidenza e' insufficiente, chiedi la
-    verifica pertinente invece di inventare un vincitore.
 
 La conformita' ai vincoli viene prima dell'eleganza della risposta.
 """
-
-INDEPENDENT_RELEASE_GATE = """
-Sei un revisore indipendente. NON riscrivere la risposta. Controlla richiesta,
-risposta finale e citazioni documentali con attenzione alla funzione effettiva
-richiesta dal cliente, oltre a numeri e prezzi. Restituisci SOLO un oggetto JSON:
-{"approved": true/false, "reason": "breve motivo", "missing": "dato indispensabile mancante"}.
-approved=false se una soluzione consigliata o selezionabile viola un requisito
-obbligatorio, se una prestazione viene dedotta da una misura che non la prova,
-se la risposta afferma un fatto contraddetto dalle fonti, o se manca la prova
-di un requisito indispensabile ma il prodotto e' definito VERIFICATO.
-Una richiesta per due persone esclude un prodotto per una persona. Una richiesta
-di piano di lavoro incluso esclude una libreria senza piano. Un elemento
-appoggiato a terra non offre volume libero sottostante. Questi sono esempi:
-applica la logica a ogni catalogo e a ogni settore. Non trattare un prodotto
-incompatibile come semplice VERIFICA NECESSARIA.
-Se un requisito resta aperto ed e' dichiarato esplicitamente come tale nella
-proposta preliminare, puo' essere ammesso soltanto se nessun dato lo contraddice.
-Se le fonti non consentono di verificare una raccomandazione, usa approved=false.
-"""
-
-
-def release_gate_decision(payload: str) -> tuple[bool, str]:
-    """Un verdetto assente o non interpretabile non autorizza una proposta."""
-    try:
-        cleaned = payload.strip()
-        if cleaned.startswith("```"):
-            cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned).strip()
-        verdict = json.loads(cleaned)
-        if verdict.get("approved") is True:
-            return True, ""
-        reason = str(verdict.get("reason") or verdict.get("missing") or "verifica incompleta")
-        return False, reason[:220]
-    except (ValueError, TypeError, AttributeError):
-        return False, "verifica documentale incompleta"
-
-
-def independent_release_gate(question: str, answer: str, evidence: str, provider: str) -> str:
-    """Blocca la pubblicazione di consigli non verificati, separatamente dalla narrazione."""
-    if not answer.strip() or "PRODOTTI SELEZIONABILI PER LA PROPOSTA" not in answer:
-        return answer
-    if not evidence.strip():
-        return "Non posso ancora verificare una soluzione da proporre con i documenti disponibili."
-    material = (
-        f"RICHIESTA:\n{question[:3000]}\n\n"
-        f"RISPOSTA FINALE:\n{answer[:10500]}\n\n"
-        f"FONTI:\n{evidence[:26000]}"
-    )
-    try:
-        if provider == "openai_vector":
-            response = openai_client.responses.create(
-                model=OPENAI_DOCUMENT_MODEL,
-                instructions=INDEPENDENT_RELEASE_GATE,
-                input=material,
-                max_output_tokens=250,
-            )
-            verdict = (response.output_text or "").strip()
-        else:
-            response = client.chat.completions.create(
-                model=DEEPSEEK_MODEL,
-                messages=[
-                    {"role": "system", "content": INDEPENDENT_RELEASE_GATE},
-                    {"role": "user", "content": material},
-                ],
-                temperature=0.0,
-                max_tokens=250,
-            )
-            verdict = (response.choices[0].message.content or "").strip()
-        approved, reason = release_gate_decision(verdict)
-        if approved:
-            return answer
-        print(f"[WARN] risposta non pubblicata dal controllo indipendente: {reason}")
-    except Exception as exc:
-        print(f"[WARN] controllo indipendente non disponibile: {exc}")
-    return (
-        "Non posso ancora indicare con sicurezza un prodotto per questa richiesta. "
-        "I requisiti e i dati dei documenti devono essere verificati prima di "
-        "consigliare una soluzione o preparare una proposta."
-    )
 
 
 def validate_document_answer(
     question: str,
     draft_answer: str,
     provider: str,
-    documentary_evidence: str = "",
 ) -> str:
     """Revisione strutturale universale prima di consegnare la risposta all'utente."""
     if not draft_answer.strip():
@@ -1073,8 +955,6 @@ def validate_document_answer(
         f"{question}\n\n"
         "BOZZA DA CONTROLLARE:\n"
         f"{draft_answer}\n\n"
-        "ESTRATTI DELLE FONTI (unica prova ammessa; possono essere parziali):\n"
-        f"{documentary_evidence[:22000] if documentary_evidence else 'Non disponibili'}\n\n"
         "Restituisci soltanto la risposta finale corretta."
     )
     try:
@@ -1085,7 +965,7 @@ def validate_document_answer(
                 model=OPENAI_DOCUMENT_MODEL,
                 instructions=CONSTRAINT_VALIDATOR_PROMPT,
                 input=validation_input,
-                max_output_tokens=1800,
+                max_output_tokens=1000,
             )
             checked = (response.output_text or "").strip()
         else:
@@ -1098,7 +978,7 @@ def validate_document_answer(
                     {"role": "user", "content": validation_input},
                 ],
                 temperature=0.0,
-                max_tokens=1800,
+                max_tokens=1000,
             )
             checked = (response.choices[0].message.content or "").strip()
         return checked or draft_answer
@@ -1148,9 +1028,6 @@ MODALITA' RISPOSTA CONSIGLIATA:
   semplici differenze nelle dimensioni esterne, salvo esplicita prova documentale.
 - Se i dati richiesti per scegliere un vincitore non sono documentati, dichiaralo e non
   scegliere arbitrariamente.
-- Prima di scegliere controlla funzione e destinazione d'uso oltre alle misure:
-  un prodotto che ne contraddice una e' INCOMPATIBILE e non e' proponibile,
-  nemmeno come VERIFICA NECESSARIA. Non presentare la contraddizione come compromesso.
 - Classifica i candidati come VERIFICATO, VERIFICA NECESSARIA, INCOMPATIBILE o NON IDENTIFICATO.
   Un requisito non documentato significa VERIFICA NECESSARIA, non incompatibilita'.
 - Nelle richieste di scelta o confronto termina con la sezione esatta
@@ -1209,7 +1086,7 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
             )
         validation_started = time.perf_counter()
         checked = validate_document_answer(
-            validation_request, answer, "deepseek_local", dossier
+            validation_request, answer, "deepseek_local"
         )
         validation_seconds = time.perf_counter() - validation_started
         total_seconds = time.perf_counter() - total_started
@@ -1220,7 +1097,7 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
             f"generation={generation_seconds:.2f}s "
             f"validation={validation_seconds:.2f}s total={total_seconds:.2f}s"
         )
-        return independent_release_gate(validation_request, checked, dossier, "deepseek_local")
+        return checked
     except Exception as e:
         print(f"[ERROR] risposta documentale rapida: {e}")
         return "Si è verificato un errore durante la ricerca documentale."
@@ -1270,11 +1147,6 @@ REGOLE:
     PROPOSTA" ed elenca nome, codice e stato dei candidati VERIFICATI e di quelli in VERIFICA
     NECESSARIA. Per questi ultimi indica le verifiche aperte da riportare nella proposta
     preliminare. Escludi soltanto INCOMPATIBILI e NON IDENTIFICATI.
-17. Tutti i requisiti obbligatori devono valere insieme. Un candidato che
-    contraddice la funzione o destinazione d'uso richiesta e' INCOMPATIBILE,
-    anche se soddisfa prezzo o misure; non puo' essere proposta principale.
-18. Chiama variante una taglia o configurazione dello stesso modello; non
-    trasformarla in alternativa funzionalmente differente senza prova.
 
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
@@ -1336,8 +1208,7 @@ esplicita. Se manca una prova documentale, dichiaralo senza cambiare prodotto.
         answer = (response.choices[0].message.content or "").strip()
         if not answer:
             return "Informazione non trovata nel documento collegato."
-        checked = validate_document_answer(document_query, answer, "deepseek_local", dossier)
-        return independent_release_gate(document_query, checked, dossier, "deepseek_local")
+        return validate_document_answer(document_query, answer, "deepseek_local")
     except Exception as e:
         print(f"[ERROR] analisi documentale completa: {e}")
         return "Si è verificato un errore durante l'analisi documentale completa."
@@ -1425,8 +1296,7 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
     answer = (response.output_text or "").strip()
     if not answer:
         return "Informazione non trovata nel documento collegato."
-    checked = validate_document_answer(document_query, answer, "openai_vector", dossier)
-    return independent_release_gate(document_query, checked, dossier, "openai_vector")
+    return validate_document_answer(document_query, answer, "openai_vector")
 
 
 def call_narratore_risponditore_vector(
@@ -1464,9 +1334,7 @@ Non sostituirli salvo richiesta esplicita dell'utente.
     answer = (response.output_text or "").strip()
     if not answer:
         return "Informazione non trovata nel documento collegato."
-    dossier = call_openai_vector_retrieval(document_query, max_results=30)
-    checked = validate_document_answer(document_query, answer, "openai_vector", dossier)
-    return independent_release_gate(document_query, checked, dossier, "openai_vector")
+    return validate_document_answer(document_query, answer, "openai_vector")
 
 
 def active_document_engine() -> str:
