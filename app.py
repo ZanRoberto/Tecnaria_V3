@@ -149,8 +149,9 @@ SEARCH_STOPWORDS = {
     "pagine", "misura", "misure", "catalogo", "esigenza", "esigenze", "meglio", "risponde",
     "possibile", "versione", "versioni", "differenza", "differenze", "diversi", "diverse",
     "stesso", "stessa", "stessi", "stesse", "dello", "degli", "se", "più", "altri", "altre",
-    "altro", "esistono", "esiste", "mio", "mia", "miei", "mie", "deve", "devono", "chiamarle",
-    "chiamarli", "dedurre", "code", "price", "page", "which", "best",
+    "altro", "esistono", "esiste", "mio", "mia", "miei", "mie", "deve", "devono", "code",
+    # unita' di misura: accompagnano un vincolo numerico, non identificano un prodotto
+    "cm", "mm", "mt", "kg", "gr", "lt", "ml", "kw", "cm2", "mm2", "m2", "m3", "price", "page", "which", "best",
 }
 
 # Parole che introducono un'esclusione: i termini che seguono NON vanno cercati,
@@ -186,28 +187,82 @@ def compact_page_text(text: str) -> str:
     """Riduce gli spazi dell'impaginazione PDF: stesse informazioni, meta' dei caratteri."""
     lines = [re.sub(r"[ \t]{2,}", "  ", line).strip() for line in (text or "").splitlines()]
     return "\n".join(
-        line for line in lines if line and not line.startswith("## PAGINA PDF")
+        line for line in lines
+        if line
+        and not line.startswith("## PAGINA PDF")
+        and not line.startswith("```")
+        and not re.fullmatch(r"PAGINA_PDF\s*:\s*\S*", line)
     )
 
 
-def page_family_key(page_text: str) -> Optional[tuple]:
-    """Famiglia di prodotto dal titolo di pagina (es. 'FLUTTUA BED', 'FLUTTUA WILDWOOD BED',
-    'FLUTTUA_BED' -> ('FLUTTUA', 'BED')). Serve a recuperare insieme listino, versioni e
-    tavole tecniche dello stesso prodotto. Universale: usa solo il titolo in maiuscolo."""
-    title = ""
+def _title_word_ok(word: str) -> bool:
+    """Parola da titolo: contiene cifre (36e8, V16) o lettere in prevalenza maiuscole."""
+    letters = [ch for ch in word if ch.isalpha()]
+    if any(ch.isdigit() for ch in word):
+        return bool(letters) or len(word) >= 2
+    return bool(letters) and sum(ch.isupper() for ch in letters) / len(letters) >= 0.6
+
+
+def page_title_line(page_text: str) -> str:
+    """Prima riga di contenuto della pagina (dopo intestazioni e metadati dell'indice)."""
     for line in page_text.splitlines():
         stripped = line.strip()
-        if not stripped or stripped.startswith("## PAGINA PDF"):
+        if (
+            not stripped
+            or stripped.startswith("## PAGINA PDF")
+            or stripped.startswith("```")
+            or re.fullmatch(r"[A-Z_]+\s*:\s*\S*", stripped)
+        ):
             continue
-        title = stripped
-        break
-    match = re.match(r"([A-Z0-9][A-Z0-9_\-]*(?:[ _][A-Z0-9][A-Z0-9_\-]*)*)", title)
-    if not match:
-        return None
-    words = [w for w in re.split(r"[ _\-]+", match.group(1)) if w]
-    if not words or len(words[0]) < 3 or not re.search(r"[A-Z]", words[0]):
-        return None
-    return (words[0], words[-1]) if len(words) > 1 else (words[0],)
+        return stripped
+    return ""
+
+
+def page_family_key(page_text: str) -> Optional[tuple]:
+    """Unita' documentale dal titolo di pagina, per qualunque impaginazione:
+    'FLUTTUA BED' / 'FLUTTUA WILDWOOD BED' / 'FLUTTUA_BED' -> ('FLUTTUA', 'BED');
+    '36e8 TV UNITS' e '2658    36e8 TV UNITS' -> ('36E8', 'UNITS'); 'N.O.W. TV UNITS' -> ('NOW', 'UNITS').
+    Regole generali: salta metadati e numeri iniziali, taglia a separatori di colonna,
+    accetta solo parole da titolo. Se non c'e' un titolo, decide la radice dei codici."""
+    content_lines = []
+    for line in page_text.splitlines():
+        stripped = line.strip()
+        # Salta intestazione e metadati dell'indice ("## PAGINA PDF 423",
+        # "PAGINA_PDF: 423", "PAGINA_CATALOGO: 423", recinto ```text).
+        if (
+            not stripped
+            or stripped.startswith("## PAGINA PDF")
+            or stripped.startswith("```")
+            or re.fullmatch(r"[A-Z_]+\s*:\s*\S*", stripped)
+        ):
+            continue
+        content_lines.append(stripped)
+        if len(content_lines) >= 3:
+            break
+    for line in content_lines:
+        for segment in re.split(r"\s{2,}|//|\s\|\s|\s[-–]\s", line):
+            words = segment.replace("_", " ").split()
+            while words and re.fullmatch(r"[\d.,]+", words[0]):
+                words.pop(0)  # quote o numeri davanti al titolo
+            title_words: List[str] = []
+            for word in words:
+                if not _title_word_ok(word):
+                    break
+                title_words.append(re.sub(r"[^A-Z0-9]", "", word.upper()))
+            title_words = [w for w in title_words if w]
+            if not title_words or not re.search(r"[A-Z]", "".join(title_words)):
+                continue
+            if len("".join(title_words)) < 3:
+                continue
+            # singolare/plurale sono lo stesso prodotto (UNIT/UNITS, TABLE/TABLES)
+            last = title_words[-1]
+            if len(last) > 3 and last.endswith("S") and not last.endswith("SS"):
+                last = last[:-1]
+            return (title_words[0], last) if len(title_words) > 1 else (title_words[0],)
+        # la prima riga con lettere decide: se non e' un titolo, niente titolo
+        if re.search(r"[A-Za-z]{3,}", line):
+            return None
+    return None
 
 
 def extract_document_codes(text: str) -> set[str]:
@@ -232,9 +287,41 @@ def extract_document_codes(text: str) -> set[str]:
 
 
 MEASURE_PATTERN = re.compile(r"\d+(?:[.,]\d+)?(?:[xX×]\d+(?:[.,]\d+)?)+")
-SIZE_PATTERN = re.compile(r"(?<![\d.,])(\d{2,3})\s*[xX×]\s*(\d{3})(?![\d.,])")
+# Misure a 2 o 3 dimensioni in qualunque settore: 160x200, 60 x 120 x 30, 2,5x10.
+SIZE_PATTERN = re.compile(
+    r"(?<![\d.,])(\d{1,4}(?:[.,]\d+)?)\s*[xX×]\s*(\d{1,4}(?:[.,]\d+)?)"
+    r"(?:\s*[xX×]\s*(\d{1,4}(?:[.,]\d+)?))?(?![\d.,])"
+)
+
+
+def find_sizes(text: str) -> set:
+    """Misure normalizzate ('60,5 X 120' -> '60.5x120')."""
+    return {
+        "x".join(part.replace(",", ".") for part in groups if part)
+        for groups in SIZE_PATTERN.findall(text or "")
+    }
 CODE_TOKEN_PATTERN = re.compile(r"\b[A-Z][A-Z0-9_-]*\d[A-Z0-9_-]*\b")
 CODE_SIZES: Dict[str, set] = {}
+
+
+def code_root(code: str) -> str:
+    """Radice alfabetica di un codice (FLU0450 -> FLU, CTF090 -> CTF)."""
+    match = re.match(r"[A-Z]{2,}", code)
+    return match.group(0) if match else ""
+
+
+def assign_code_root_families() -> None:
+    """Per le pagine senza titolo riconoscibile l'unita' documentale e' la radice di codice
+    dominante sulla pagina. Cosi' il raggruppamento non dipende dall'impaginazione di un
+    singolo editore: funziona con titoli in maiuscolo, con soli codici o con entrambi."""
+    for page in DOCUMENT_PAGES:
+        if page.get("family"):
+            continue
+        roots = Counter(code_root(c) for c in page.get("codes", set()) if code_root(c))
+        if roots:
+            root, count = roots.most_common(1)[0]
+            if count >= 2:
+                page["family"] = ("CODICI", root)
 
 
 def build_code_sizes() -> None:
@@ -244,7 +331,7 @@ def build_code_sizes() -> None:
     CODE_SIZES.clear()
     for page in DOCUMENT_PAGES:
         for line in page["text"].splitlines():
-            sizes = {f"{a}x{b}" for a, b in SIZE_PATTERN.findall(line)}
+            sizes = find_sizes(line)
             if len(sizes) != 1:
                 continue  # riga ambigua: nessuna associazione
             for code in CODE_TOKEN_PATTERN.findall(line.upper()):
@@ -278,11 +365,13 @@ def load_document_index() -> None:
                 "compact": compact_page_text(page_text),
                 "codes": extract_document_codes(page_text),
                 "family": page_family_key(page_text),
+                "title_tokens": set(search_tokens(page_title_line(page_text))),
                 "normalized": normalize(page_text),
                 "token_counts": Counter(page_token_list),
                 "token_set": set(page_token_list),
             })
 
+        assign_code_root_families()
         build_code_sizes()
         families = Counter(p["family"] for p in DOCUMENT_PAGES if p["family"])
         print(
@@ -295,15 +384,18 @@ def load_document_index() -> None:
 
 
 SEARCH_PLANNER_PROMPT = """
-Sei il PIANIFICATORE DI RICERCA di un catalogo tecnico bilingue italiano/inglese.
-Ricevi la richiesta di un cliente. NON rispondere alla domanda.
-Restituisci UNA sola riga di parole chiave con cui il catalogo descrive i prodotti
-che soddisfano la richiesta:
-- categoria di prodotto in italiano e in inglese;
-- soluzioni costruttive che realizzano l'esigenza espressa (esempio: "senza gambe" ->
-  fissato a parete, wall-mounted, sospeso; "poco profondo" -> profondita' ridotta, depth);
-- denominazioni commerciali di misura tradotte nelle misure standard (esempio:
-  matrimoniale -> 160x200 180x200 double; singolo -> 90x200 single);
+Sei il PIANIFICATORE DI RICERCA di un motore documentale universale.
+Documento collegato: {document_context}.
+Ricevi la richiesta di un utente. NON rispondere alla domanda.
+Restituisci UNA sola riga di parole chiave con cui un documento di quel settore descrive
+le soluzioni che soddisfano la richiesta, in italiano e nelle altre lingue del documento:
+- la categoria della soluzione cercata;
+- le soluzioni tecniche o costruttive che realizzano l'esigenza espressa con parole comuni,
+  cioe' il nome tecnico della funzione e non la sua descrizione (esempi di altri settori:
+  "non deve temere la pioggia" -> IP65 impermeabile waterproof; "si monta senza forare"
+  -> fissaggio adesivo, adhesive; "regge un carico elevato" -> portata, load capacity);
+- le denominazioni commerciali di taglia o classe tradotte nei valori standard del settore
+  (esempi: taglia L -> misure della taglia; diametro nominale DN50 -> 50 mm);
 - numeri, misure e codici presenti nella richiesta, invariati.
 NON includere le parole che il cliente esclude o nega (dopo "senza", "non", "tranne").
 NON includere parole di servizio come codice, prezzo, pagina, differenza, versioni.
@@ -320,7 +412,8 @@ def plan_search_terms(question: str) -> str:
         response = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
             messages=[
-                {"role": "system", "content": SEARCH_PLANNER_PROMPT},
+                {"role": "system", "content": SEARCH_PLANNER_PROMPT.format(
+                    document_context=DOCUMENT_CONTEXT)},
                 {"role": "user", "content": question[:3000]},
             ],
             temperature=0.0,
@@ -339,6 +432,7 @@ def expand_multilingual_query(question: str) -> str:
     return f"{question}\n{terms}" if terms else question
 
 
+FAMILY_BREADTH = 8            # quante unita' documentali diverse proporre come alternative
 FAMILY_MAX_PAGES = 25          # oltre questa soglia il titolo non identifica un prodotto
 LOCAL_CONTEXT_MAX_CHARS = 60000
 
@@ -346,13 +440,14 @@ LOCAL_CONTEXT_MAX_CHARS = 60000
 def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
     """Recupera localmente pagine verificabili senza servizi vettoriali esterni.
 
-    Correzioni rispetto alla versione precedente (caso "letto matrimoniale senza gambe"):
-    1. i termini negati dall'utente non vengono piu' cercati;
-    2. le parole di servizio (codice, prezzo, pagina...) non pesano;
-    3. un pianificatore traduce il bisogno nel lessico del catalogo (matrimoniale -> 160x200,
-       senza gambe -> fissato a parete);
-    4. la famiglia di prodotto piu' pertinente viene recuperata intera: listino, versioni e
-       tavole tecniche, dove stanno i dettagli costruttivi (es. la gamba telescopica).
+    Principi universali (validi per qualunque documento e settore):
+    1. i termini che l'utente esclude ("senza X", "non X") non vengono cercati;
+    2. le parole di servizio della domanda (codice, prezzo, pagina...) non pesano;
+    3. un pianificatore traduce il bisogno espresso a parole comuni nel lessico tecnico
+       del documento collegato;
+    4. l'unita' documentale piu' pertinente (stesso prodotto: listino, versioni, schede
+       tecniche) viene recuperata intera, perche' i dettagli decisivi stanno spesso nelle
+       schede tecniche e non nella pagina del listino.
     """
     if not DOCUMENT_PAGES:
         return ""
@@ -383,8 +478,19 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
             occurrences = page["token_counts"].get(token, 0)
             if occurrences:
                 rarity = math.log((len(DOCUMENT_PAGES) + 1) / (token_df[token] + 1)) + 1
-                weight = base_weight * (3.0 if any(ch.isdigit() for ch in token) else 1.0)
+                # Numeri puri (180, 72) sono vincoli da verificare, non l'identita' di cio'
+                # che si cerca: pesano poco. Identificativi alfanumerici (36e8, dn50) pesano molto.
+                if re.fullmatch(r"[\d.,]+", token):
+                    weight = base_weight * 0.5
+                elif any(ch.isdigit() for ch in token):
+                    weight = base_weight * 3.0
+                else:
+                    weight = base_weight
                 score += weight * rarity * (1.0 + math.log(occurrences))
+                # Il titolo dice che cosa e' la pagina: una parola cercata nel titolo
+                # identifica il prodotto, la stessa parola nel corpo e' solo un dettaglio.
+                if token in page.get("title_tokens", ()):
+                    score += 3.0 * weight * rarity
         score += 80.0 * len(codes & page.get("codes", set()))
         for number in numbers:
             if number.replace(",", ".") in page["token_set"]:
@@ -415,9 +521,10 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
             add(idx)
         # 2) la famiglia di quei prodotti, tavole tecniche comprese: i dettagli costruttivi
         #    (quote, appoggi, montaggio) non stanno sulla pagina del listino;
+        family_sizes = Counter(p.get("family") for p in DOCUMENT_PAGES if p.get("family"))
         for _, idx in matches[:3]:
             fam = DOCUMENT_PAGES[idx].get("family")
-            if fam:
+            if fam and family_sizes[fam] <= FAMILY_MAX_PAGES:
                 for other_idx, other in enumerate(DOCUMENT_PAGES):
                     if other.get("family") == fam:
                         add(other_idx)
@@ -428,18 +535,25 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
             add(idx)
         max_chars = LOCAL_CONTEXT_MAX_CHARS
     else:
-        if re.search(r"\btv\b", query_norm):
-            for idx, page in enumerate(DOCUMENT_PAGES):
-                header = normalize(page["text"][:900])
-                if "tv units" in header and "optional optionals" not in header:
-                    add(idx)
-                if len(selected) >= max_pages:
-                    break
-
         family_pages: Dict[tuple, List[int]] = {}
         for idx, page in enumerate(DOCUMENT_PAGES):
             if page.get("family"):
                 family_pages.setdefault(page["family"], []).append(idx)
+
+        # Categoria richiesta: parole della domanda (o del lessico) che nel documento
+        # compaiono nei titoli di piu' pagine, cioe' nomi di categoria ("TV", "BED", ...).
+        # Le alternative si cercano prima dentro quella categoria, poi altrove.
+        category_tokens = {
+            token for token in token_weights
+            if not re.fullmatch(r"[\d.,]+", token)
+            and sum(1 for page in DOCUMENT_PAGES if token in page.get("title_tokens", ())) >= 2
+        }
+
+        def in_category(fam: tuple) -> bool:
+            return any(
+                category_tokens & DOCUMENT_PAGES[i].get("title_tokens", set())
+                for i in family_pages.get(fam, [])
+            )
 
         # Ordine delle famiglie secondo la miglior pagina di ciascuna.
         family_order: List[tuple] = []
@@ -451,10 +565,14 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
             if fam not in best_page_of_family:
                 best_page_of_family[fam] = idx
                 family_order.append(fam)
-            if len(family_order) >= 4:
-                break
+        if category_tokens:
+            family_order = (
+                [f for f in family_order if in_category(f)]
+                + [f for f in family_order if not in_category(f)]
+            )
+        family_order = family_order[:FAMILY_BREADTH]
 
-        # 1) ampiezza: la pagina migliore delle prime 4 famiglie (alternative reali);
+        # 1) ampiezza: la pagina migliore delle prime famiglie (alternative reali);
         for fam in family_order:
             add(best_page_of_family[fam])
         # 2) profondita': la prima famiglia intera, versioni e tavole tecniche comprese;
@@ -919,17 +1037,18 @@ A. ESCLUSIONI. Se l'utente esclude un elemento ("senza X", "niente X"), cercalo 
    Se X e' presente in ogni candidato, NON dichiarare il requisito soddisfatto: scrivi che
    nessun prodotto documentato lo rispetta integralmente, proponi quello che lo avvicina di
    piu' e indica con precisione cosa resta di X, con la pagina che lo prova.
-B. MISURE COMMERCIALI. Denominazioni come singolo, una piazza e mezza, matrimoniale, queen,
-   king indicano una classe di misura: la proposta principale deve appartenere a quella
-   classe. Non proporre mai una misura di classe diversa da quella richiesta. Se la
-   corrispondenza tra denominazione e misura non e' scritta nel documento, dichiaralo in una
-   frase e usa la misura standard piu' diffusa, mostrando le altre misure disponibili.
-C. VERSIONI. Pagine con lo stesso nome base di prodotto e codici con lo stesso prefisso sono
-   versioni dello stesso prodotto: presentale come versioni (per esempio con o senza
-   testiera, altezze, finiture), spiegando cosa cambia, e non come prodotti diversi.
+B. TAGLIE E CLASSI. Quando l'utente usa una denominazione di taglia o classe (formato,
+   taglia, portata, diametro nominale, classe di misura commerciale), la proposta principale
+   deve appartenere a quella classe; non proporre mai una classe diversa da quella richiesta.
+   Se la corrispondenza tra denominazione e valori non e' scritta nel documento, dichiaralo
+   in una frase, usa la corrispondenza standard del settore e mostra le altre classi disponibili.
+C. VERSIONI. Pagine con lo stesso nome base di prodotto e codici con la stessa radice sono
+   versioni dello stesso prodotto: presentale come versioni (per esempio accessori, altezze,
+   finiture, portate), spiegando cosa cambia, e non come prodotti diversi.
 D. GRANDEZZE. Rispondi sulla grandezza chiesta. Non ricavare una grandezza da un'altra non
-   collegata (esempio: lo spazio libero sotto un elemento non si ricava dall'altezza di un
-   altro elemento). Usa la quota documentata; se non esiste, dichiaralo.
+   collegata (l'ingombro totale non e' la quota di un componente, la portata di un elemento
+   non e' quella dell'insieme). Cerca la quota anche nelle schede e nei disegni tecnici;
+   se non esiste, dichiaralo.
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
 Scrivi in testo semplice, senza Markdown e senza asterischi.
@@ -1230,6 +1349,7 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
             "EVIDENZE DOCUMENTALI RECUPERATE:\n"
             f"{dossier}\n\n"
             "Formula ora la risposta consigliata usando esclusivamente queste evidenze."
+            + dimension_constraint_note(question, previous_question, is_followup)
         )
         generation_started = time.perf_counter()
         response = client.chat.completions.create(
@@ -1331,17 +1451,18 @@ A. ESCLUSIONI. Se l'utente esclude un elemento ("senza X", "niente X"), cercalo 
    Se X e' presente in ogni candidato, NON dichiarare il requisito soddisfatto: scrivi che
    nessun prodotto documentato lo rispetta integralmente, proponi quello che lo avvicina di
    piu' e indica con precisione cosa resta di X, con la pagina che lo prova.
-B. MISURE COMMERCIALI. Denominazioni come singolo, una piazza e mezza, matrimoniale, queen,
-   king indicano una classe di misura: la proposta principale deve appartenere a quella
-   classe. Non proporre mai una misura di classe diversa da quella richiesta. Se la
-   corrispondenza tra denominazione e misura non e' scritta nel documento, dichiaralo in una
-   frase e usa la misura standard piu' diffusa, mostrando le altre misure disponibili.
-C. VERSIONI. Pagine con lo stesso nome base di prodotto e codici con lo stesso prefisso sono
-   versioni dello stesso prodotto: presentale come versioni (per esempio con o senza
-   testiera, altezze, finiture), spiegando cosa cambia, e non come prodotti diversi.
+B. TAGLIE E CLASSI. Quando l'utente usa una denominazione di taglia o classe (formato,
+   taglia, portata, diametro nominale, classe di misura commerciale), la proposta principale
+   deve appartenere a quella classe; non proporre mai una classe diversa da quella richiesta.
+   Se la corrispondenza tra denominazione e valori non e' scritta nel documento, dichiaralo
+   in una frase, usa la corrispondenza standard del settore e mostra le altre classi disponibili.
+C. VERSIONI. Pagine con lo stesso nome base di prodotto e codici con la stessa radice sono
+   versioni dello stesso prodotto: presentale come versioni (per esempio accessori, altezze,
+   finiture, portate), spiegando cosa cambia, e non come prodotti diversi.
 D. GRANDEZZE. Rispondi sulla grandezza chiesta. Non ricavare una grandezza da un'altra non
-   collegata (esempio: lo spazio libero sotto un elemento non si ricava dall'altezza di un
-   altro elemento). Usa la quota documentata; se non esiste, dichiaralo.
+   collegata (l'ingombro totale non e' la quota di un componente, la portata di un elemento
+   non e' quella dell'insieme). Cerca la quota anche nelle schede e nei disegni tecnici;
+   se non esiste, dichiaralo.
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
 Scrivi in testo semplice, senza Markdown e senza asterischi.
@@ -1389,6 +1510,7 @@ esplicita. Se manca una prova documentale, dichiaralo senza cambiare prodotto.
             "ESTRATTI DOCUMENTALI CON PAGINE:\n"
             f"{dossier}\n\n"
             "Rispondi utilizzando esclusivamente gli estratti sopra riportati."
+            + dimension_constraint_note(question, previous_question, is_followup)
         )
         response = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
@@ -1478,6 +1600,7 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
         "EVIDENZE DOCUMENTALI RECUPERATE:\n"
         f"{dossier}\n\n"
         "Formula la risposta usando esclusivamente queste evidenze."
+            + dimension_constraint_note(question, previous_question, is_followup)
     )
     response = openai_client.responses.create(
         model=OPENAI_DOCUMENT_MODEL,
@@ -1516,7 +1639,8 @@ Non sostituirli salvo richiesta esplicita dell'utente.
     response = openai_client.responses.create(
         model=OPENAI_DOCUMENT_MODEL,
         instructions=instructions,
-        input=document_query,
+        input=document_query
+        + dimension_constraint_note(question, previous_question, is_followup),
         tools=[{
             "type": "file_search",
             "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
@@ -1588,12 +1712,27 @@ RECOMMENDED_PREFIX = "PRODOTTO CONSIGLIATO E SELEZIONABILE PER LA PROPOSTA"
 def requested_sizes(question: str, previous_question: str = "", followup: bool = False) -> set:
     """Misure fissate esplicitamente dall'utente: prima la domanda attuale, poi,
     solo se e' un approfondimento, quella precedente."""
-    current = {f"{a}x{b}" for a, b in SIZE_PATTERN.findall(question or "")}
+    current = find_sizes(question)
     if current:
         return current
     if followup:
-        return {f"{a}x{b}" for a, b in SIZE_PATTERN.findall(previous_question or "")}
+        return find_sizes(previous_question)
     return set()
+
+
+def dimension_constraint_note(
+    question: str, previous_question: str = "", followup: bool = False
+) -> str:
+    """Vincolo dimensionale fissato dall'utente, dichiarato al modello PRIMA che scriva."""
+    sizes = requested_sizes(question, previous_question, followup)
+    if not sizes:
+        return ""
+    return (
+        "\n\nVINCOLO DIMENSIONALE FISSATO DALL'UTENTE: "
+        + ", ".join(sorted(sizes))
+        + ". Proponi, consiglia ed elenca tra i selezionabili soltanto codici di questa misura. "
+        "Un codice di misura diversa puo' essere citato solo per dire che non corrisponde."
+    )
 
 
 def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
@@ -1650,9 +1789,22 @@ def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
         elif codes:
             recommended_code = recommended_code or codes[0]
 
+    # Anche nel testo: un paragrafo che nomina soltanto codici di misura diversa (nessun
+    # codice compatibile) proporrebbe cio' che l'utente ha escluso, quindi viene tolto.
+    # Un paragrafo che nomina insieme codici esclusi e compatibili resta: di norma spiega
+    # la differenza ("FLU2540 e' 152x203, per 160x200 il codice e' FLU2550").
+    kept_paragraphs: List[str] = []
+    for paragraph in re.split(r"\n\s*\n", head):
+        codes = line_codes(paragraph)
+        if codes and not any(size_ok(c) for c in codes):
+            removed.extend(codes)
+            continue
+        kept_paragraphs.append(paragraph)
+    head = "\n\n".join(kept_paragraphs)
+
     if not removed:
         return answer
-    print(f"[SELEZIONABILI] misura richiesta={sorted(allowed_sizes)} rimossi={removed}")
+    print(f"[SELEZIONABILI] misura richiesta={sorted(allowed_sizes)} rimossi={sorted(set(removed))}")
 
     if len(kept) == 1:
         recommended_code = next(iter(kept))
@@ -1673,7 +1825,8 @@ def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
         label = re.split(r"\s+[-–]\s+(?:VERIFICATO|VERIFICA NECESSARIA)", label, flags=re.I)[0]
         label = re.sub(rf",?\s*(?:codice\s+)?{re.escape(recommended_code)}\b", "", label, flags=re.I).strip(" ,-")
         kept_lines.append(f"{RECOMMENDED_PREFIX}: codice {recommended_code} - {label}")
-    return head.rstrip() + "\n\n" + "\n".join(kept_lines + tail_lines)
+    body = "\n".join(kept_lines + tail_lines)
+    return (head.strip() + "\n\n" + body) if head.strip() else body
 
 
 # ============================================================
