@@ -142,6 +142,23 @@ SEARCH_STOPWORDS = {
     "una", "uno", "the", "and", "or", "of", "to", "for", "with", "is", "are",
     "this", "that", "from", "what", "which", "please", "indica", "proponi",
     "spiega", "soluzione", "alternative", "alternativa", "prodotto", "prodotti",
+    # Parole di servizio della domanda: descrivono COSA restituire, non COSA cercare.
+    # Se restano nella ricerca premiano pagine casuali (es. "codice", "pagina", "diversi").
+    "cerco", "cerca", "vorrei", "voglio", "serve", "servirebbe", "indicami", "dimmi",
+    "spiegami", "mostrami", "elenca", "codice", "codici", "prezzo", "prezzi", "pagina",
+    "pagine", "misura", "misure", "catalogo", "esigenza", "esigenze", "meglio", "risponde",
+    "possibile", "versione", "versioni", "differenza", "differenze", "diversi", "diverse",
+    "stesso", "stessa", "stessi", "stesse", "dello", "degli", "se", "più", "altri", "altre",
+    "altro", "esistono", "esiste", "mio", "mia", "miei", "mie", "deve", "devono", "chiamarle",
+    "chiamarli", "dedurre", "code", "price", "page", "which", "best",
+}
+
+# Parole che introducono un'esclusione: i termini che seguono NON vanno cercati,
+# altrimenti il motore premia proprio le pagine che contengono ciò che l'utente rifiuta
+# (caso reale: "senza gambe o appoggi a terra" premiava la pagina dei "letti a terra").
+NEGATION_CUES = {
+    "senza", "non", "no", "né", "niente", "nessun", "nessuna", "nessuno",
+    "escludi", "escluso", "esclusa", "eccetto", "tranne", "without", "not", "except",
 }
 
 
@@ -150,6 +167,47 @@ def search_tokens(text: str) -> List[str]:
     folded = normalize(text.replace(",", "."))
     tokens = re.findall(r"[a-zàèéìòóùç0-9][a-zàèéìòóùç0-9_.-]*", folded)
     return [t for t in tokens if len(t) >= 2 and t not in SEARCH_STOPWORDS]
+
+
+def negated_search_tokens(text: str) -> set[str]:
+    """Token alfabetici che l'utente esclude ("senza X", "non ... X") fino alla punteggiatura."""
+    excluded: set[str] = set()
+    for clause in re.split(r"[.;:!?,\n]", (text or "").lower()):
+        words = re.findall(r"[a-zàèéìòóùç0-9]+", clause)
+        for i, word in enumerate(words):
+            if word in NEGATION_CUES:
+                for follower in words[i + 1:i + 11]:
+                    if not any(ch.isdigit() for ch in follower):
+                        excluded.add(follower)
+    return excluded
+
+
+def compact_page_text(text: str) -> str:
+    """Riduce gli spazi dell'impaginazione PDF: stesse informazioni, meta' dei caratteri."""
+    lines = [re.sub(r"[ \t]{2,}", "  ", line).strip() for line in (text or "").splitlines()]
+    return "\n".join(
+        line for line in lines if line and not line.startswith("## PAGINA PDF")
+    )
+
+
+def page_family_key(page_text: str) -> Optional[tuple]:
+    """Famiglia di prodotto dal titolo di pagina (es. 'FLUTTUA BED', 'FLUTTUA WILDWOOD BED',
+    'FLUTTUA_BED' -> ('FLUTTUA', 'BED')). Serve a recuperare insieme listino, versioni e
+    tavole tecniche dello stesso prodotto. Universale: usa solo il titolo in maiuscolo."""
+    title = ""
+    for line in page_text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("## PAGINA PDF"):
+            continue
+        title = stripped
+        break
+    match = re.match(r"([A-Z0-9][A-Z0-9_\-]*(?:[ _][A-Z0-9][A-Z0-9_\-]*)*)", title)
+    if not match:
+        return None
+    words = [w for w in re.split(r"[ _\-]+", match.group(1)) if w]
+    if not words or len(words[0]) < 3 or not re.search(r"[A-Z]", words[0]):
+        return None
+    return (words[0], words[-1]) if len(words) > 1 else (words[0],)
 
 
 def extract_document_codes(text: str) -> set[str]:
@@ -191,156 +249,208 @@ def load_document_index() -> None:
             DOCUMENT_PAGES.append({
                 "page": page_number,
                 "text": page_text,
+                "compact": compact_page_text(page_text),
+                "family": page_family_key(page_text),
                 "normalized": normalize(page_text),
                 "token_counts": Counter(page_token_list),
                 "token_set": set(page_token_list),
             })
 
+        families = Counter(p["family"] for p in DOCUMENT_PAGES if p["family"])
         print(
             f"[INFO] indice locale caricato: {len(DOCUMENT_PAGES)} pagine, "
-            f"{len(raw)} caratteri"
+            f"{len(raw)} caratteri, {len(families)} famiglie di prodotto riconosciute"
         )
     except Exception as e:
         print(f"[ERROR] caricando indice locale: {e}")
         DOCUMENT_PAGES = []
 
 
-def expand_multilingual_query(question: str) -> str:
-    """Traduce solo le parole di ricerca quando la domanda usa un alfabeto non latino."""
-    if not re.search(r"[\u0400-\u04ff\u0370-\u03ff\u0600-\u06ff]", question):
-        return question
+SEARCH_PLANNER_PROMPT = """
+Sei il PIANIFICATORE DI RICERCA di un catalogo tecnico bilingue italiano/inglese.
+Ricevi la richiesta di un cliente. NON rispondere alla domanda.
+Restituisci UNA sola riga di parole chiave con cui il catalogo descrive i prodotti
+che soddisfano la richiesta:
+- categoria di prodotto in italiano e in inglese;
+- soluzioni costruttive che realizzano l'esigenza espressa (esempio: "senza gambe" ->
+  fissato a parete, wall-mounted, sospeso; "poco profondo" -> profondita' ridotta, depth);
+- denominazioni commerciali di misura tradotte nelle misure standard (esempio:
+  matrimoniale -> 160x200 180x200 double; singolo -> 90x200 single);
+- numeri, misure e codici presenti nella richiesta, invariati.
+NON includere le parole che il cliente esclude o nega (dopo "senza", "non", "tranne").
+NON includere parole di servizio come codice, prezzo, pagina, differenza, versioni.
+Massimo 25 termini, separati da spazio. Nessuna spiegazione.
+"""
+
+
+def plan_search_terms(question: str) -> str:
+    """Traduce il bisogno del cliente nel lessico del catalogo (una chiamata breve, T=0).
+    In caso di errore restituisce stringa vuota: la ricerca lessicale resta attiva."""
     if client is None:
-        return question
+        return ""
     try:
         response = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Converti la richiesta in una riga di parole chiave italiane e inglesi "
-                        "utili per cercare in un catalogo bilingue. Conserva esattamente numeri, "
-                        "misure e codici. Non rispondere alla domanda e non aggiungere spiegazioni."
-                    ),
-                },
-                {"role": "user", "content": question},
+                {"role": "system", "content": SEARCH_PLANNER_PROMPT},
+                {"role": "user", "content": question[:3000]},
             ],
             temperature=0.0,
-            max_tokens=180,
+            max_tokens=160,
         )
-        keywords = (response.choices[0].message.content or "").strip()
-        return f"{question}\n{keywords}" if keywords else question
+        terms = (response.choices[0].message.content or "").strip()
+        return " ".join(terms.split())[:600]
     except Exception as e:
-        print(f"[WARN] espansione multilingua non riuscita: {e}")
-        return question
+        print(f"[WARN] pianificazione ricerca non riuscita: {e}")
+        return ""
+
+
+def expand_multilingual_query(question: str) -> str:
+    """Compatibilita': restituisce domanda + lessico del catalogo pianificato."""
+    terms = plan_search_terms(question)
+    return f"{question}\n{terms}" if terms else question
+
+
+FAMILY_MAX_PAGES = 25          # oltre questa soglia il titolo non identifica un prodotto
+LOCAL_CONTEXT_MAX_CHARS = 60000
 
 
 def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
-    """Recupera localmente pagine verificabili senza servizi vettoriali esterni."""
+    """Recupera localmente pagine verificabili senza servizi vettoriali esterni.
+
+    Correzioni rispetto alla versione precedente (caso "letto matrimoniale senza gambe"):
+    1. i termini negati dall'utente non vengono piu' cercati;
+    2. le parole di servizio (codice, prezzo, pagina...) non pesano;
+    3. un pianificatore traduce il bisogno nel lessico del catalogo (matrimoniale -> 160x200,
+       senza gambe -> fissato a parete);
+    4. la famiglia di prodotto piu' pertinente viene recuperata intera: listino, versioni e
+       tavole tecniche, dove stanno i dettagli costruttivi (es. la gamba telescopica).
+    """
     if not DOCUMENT_PAGES:
         return ""
 
-    expanded = expand_multilingual_query(query)
-    tokens = search_tokens(expanded)
+    planned_terms = plan_search_terms(query)
+    excluded = negated_search_tokens(query)
+    question_tokens = [t for t in search_tokens(query) if t not in excluded]
+    planned_tokens = [t for t in search_tokens(planned_terms) if t not in excluded]
     codes = extract_document_codes(query)
-    numbers = set(re.findall(r"\b\d+(?:[.,]\d+)?\b", query))
+    numbers = set(re.findall(r"\b\d+(?:[.,]\d+)?\b", query + " " + planned_terms))
+
+    # Il lessico pianificato vale piu' delle parole libere del cliente.
+    token_weights: Dict[str, float] = {}
+    for token in question_tokens:
+        token_weights[token] = max(token_weights.get(token, 0.0), 1.0)
+    for token in planned_tokens:
+        token_weights[token] = max(token_weights.get(token, 0.0), 1.6)
 
     token_df = {
         token: sum(1 for page in DOCUMENT_PAGES if token in page["token_set"])
-        for token in set(tokens)
+        for token in token_weights
     }
     scored: List[tuple[float, int]] = []
+    phrase = normalize(query)
     for idx, page in enumerate(DOCUMENT_PAGES):
-        text_norm = page["normalized"]
         text_upper = page["text"].upper()
         score = 0.0
-
-        for token in set(tokens):
+        for token, base_weight in token_weights.items():
             occurrences = page["token_counts"].get(token, 0)
             if occurrences:
                 rarity = math.log((len(DOCUMENT_PAGES) + 1) / (token_df[token] + 1)) + 1
-                weight = 3.0 if any(ch.isdigit() for ch in token) else 1.0
+                weight = base_weight * (3.0 if any(ch.isdigit() for ch in token) else 1.0)
                 score += weight * rarity * (1.0 + math.log(occurrences))
-
         for code in codes:
             if code in text_upper:
                 score += 80.0
         for number in numbers:
-            normalized_number = number.replace(",", ".")
-            if normalized_number in page["token_set"]:
+            if number.replace(",", ".") in page["token_set"]:
                 score += 2.0
-
-        phrase = normalize(query)
-        if phrase and len(phrase) > 8 and phrase in text_norm:
+        if phrase and len(phrase) > 8 and phrase in page["normalized"]:
             score += 100.0
         if score > 0:
             scored.append((score, idx))
-
     scored.sort(key=lambda item: item[0], reverse=True)
+
     selected: List[int] = []
 
-    # Se sono presenti codici esatti (tipico approfondimento), recupera prima e soltanto
-    # le pagine che li contengono e poche pagine adiacenti. Questo evita di reinviare
-    # l'intero catalogo a ogni domanda successiva.
-    query_norm = normalize(expanded)
-    if codes:
-        exact_matches: List[int] = []
-        for idx, page in enumerate(DOCUMENT_PAGES):
-            text_upper = page["text"].upper()
-            if any(code in text_upper for code in codes):
-                exact_matches.append(idx)
-        for idx in exact_matches:
-            for candidate_idx in (idx, idx - 1, idx + 1):
-                if (
-                    0 <= candidate_idx < len(DOCUMENT_PAGES)
-                    and candidate_idx not in selected
-                    and len(selected) < max_pages
-                ):
-                    selected.append(candidate_idx)
+    def add(idx: int) -> None:
+        if 0 <= idx < len(DOCUMENT_PAGES) and idx not in selected:
+            selected.append(idx)
 
-    # Solo nella prima ricerca generica sui mobili TV amplia alle schede della famiglia,
-    # ma rispetta sempre il numero massimo di pagine.
-    if not codes and re.search(r"\btv\b", query_norm):
+    query_norm = normalize(query + " " + planned_terms)
+    if codes:
+        # Approfondimento su codici esatti: comportamento invariato.
         for idx, page in enumerate(DOCUMENT_PAGES):
-            header = normalize(page["text"][:900])
-            if "tv units" in header and "optional optionals" not in header:
-                selected.append(idx)
+            if any(code in page["text"].upper() for code in codes):
+                for candidate_idx in (idx, idx - 1, idx + 1):
+                    if len(selected) < max_pages:
+                        add(candidate_idx)
+        for _, idx in scored:
             if len(selected) >= max_pages:
                 break
-
-    for score, idx in scored:
-        if idx not in selected:
-            selected.append(idx)
-        if len(selected) >= max_pages:
-            break
-
-    # Per i codici esatti includi anche la pagina adiacente, spesso sede di optional/note.
-    if codes and len(selected) < max_pages:
-        for _, idx in scored[:4]:
-            for neighbour in (idx - 1, idx + 1):
-                if 0 <= neighbour < len(DOCUMENT_PAGES) and neighbour not in selected:
-                    selected.append(neighbour)
+            add(idx)
+        max_chars = 32000
+    else:
+        if re.search(r"\btv\b", query_norm):
+            for idx, page in enumerate(DOCUMENT_PAGES):
+                header = normalize(page["text"][:900])
+                if "tv units" in header and "optional optionals" not in header:
+                    add(idx)
                 if len(selected) >= max_pages:
                     break
+
+        family_pages: Dict[tuple, List[int]] = {}
+        for idx, page in enumerate(DOCUMENT_PAGES):
+            if page.get("family"):
+                family_pages.setdefault(page["family"], []).append(idx)
+
+        # Ordine delle famiglie secondo la miglior pagina di ciascuna.
+        family_order: List[tuple] = []
+        best_page_of_family: Dict[tuple, int] = {}
+        for _, idx in scored:
+            fam = DOCUMENT_PAGES[idx].get("family")
+            if not fam or len(family_pages.get(fam, [])) > FAMILY_MAX_PAGES:
+                continue
+            if fam not in best_page_of_family:
+                best_page_of_family[fam] = idx
+                family_order.append(fam)
+            if len(family_order) >= 4:
+                break
+
+        # 1) ampiezza: la pagina migliore delle prime 4 famiglie (alternative reali);
+        for fam in family_order:
+            add(best_page_of_family[fam])
+        # 2) profondita': la prima famiglia intera, versioni e tavole tecniche comprese;
+        if family_order:
+            for idx in family_pages[family_order[0]]:
+                add(idx)
+        # 3) poi il resto per punteggio.
+        for _, idx in scored:
+            add(idx)
+            if len(selected) >= max(max_pages, 30):
+                break
+        max_chars = LOCAL_CONTEXT_MAX_CHARS
 
     if not selected:
         return ""
 
     blocks: List[str] = []
     total_chars = 0
-    max_chars = 32000 if codes else 50000
-    for idx in selected[:max_pages]:
+    for idx in selected:
         page = DOCUMENT_PAGES[idx]
-        block = f"\n===== PAGINA PDF {page['page']} =====\n{page['text']}\n"
+        body = page.get("compact") or page["text"]
+        block = f"\n===== PAGINA PDF {page['page']} =====\n{body}\n"
         if total_chars + len(block) > max_chars:
-            remaining = max_chars - total_chars
-            if remaining > 1500:
-                blocks.append(block[:remaining])
-            break
+            continue  # prova le pagine successive, piu' corte
         blocks.append(block)
         total_chars += len(block)
 
+    print(
+        "[RETRIEVAL] pagine="
+        + ",".join(str(DOCUMENT_PAGES[i]["page"]) for i in selected[:40])
+        + f" esclusi={sorted(excluded)[:12]} lessico='{planned_terms[:160]}'"
+    )
     return "".join(blocks).strip()
+
 
 # ============================================================
 # CARICAMENTO KB TECNICA (per meta / debug)
@@ -764,6 +874,24 @@ REGOLE OBBLIGATORIE:
     Se invece il criterio decisivo non e' documentato, presenta i prodotti esistenti senza
     fingere una superiorita' e chiedi quale portare in proposta preliminare.
 
+
+REGOLE UNIVERSALI DI FEDELTA' AL BISOGNO:
+A. ESCLUSIONI. Se l'utente esclude un elemento ("senza X", "niente X"), cercalo in TUTTE le
+   pagine del prodotto, comprese tavole tecniche, disegni quotati e note di montaggio.
+   Se X e' presente in ogni candidato, NON dichiarare il requisito soddisfatto: scrivi che
+   nessun prodotto documentato lo rispetta integralmente, proponi quello che lo avvicina di
+   piu' e indica con precisione cosa resta di X, con la pagina che lo prova.
+B. MISURE COMMERCIALI. Denominazioni come singolo, una piazza e mezza, matrimoniale, queen,
+   king indicano una classe di misura: la proposta principale deve appartenere a quella
+   classe. Non proporre mai una misura di classe diversa da quella richiesta. Se la
+   corrispondenza tra denominazione e misura non e' scritta nel documento, dichiaralo in una
+   frase e usa la misura standard piu' diffusa, mostrando le altre misure disponibili.
+C. VERSIONI. Pagine con lo stesso nome base di prodotto e codici con lo stesso prefisso sono
+   versioni dello stesso prodotto: presentale come versioni (per esempio con o senza
+   testiera, altezze, finiture), spiegando cosa cambia, e non come prodotti diversi.
+D. GRANDEZZE. Rispondi sulla grandezza chiesta. Non ricavare una grandezza da un'altra non
+   collegata (esempio: lo spazio libero sotto un elemento non si ricava dall'altezza di un
+   altro elemento). Usa la quota documentata; se non esiste, dichiaralo.
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
 Scrivi in testo semplice, senza Markdown e senza asterischi.
@@ -937,8 +1065,18 @@ REGOLE ASSOLUTE:
     resta da confermare e specifica che la proposta e' preliminare. Escludi soltanto i
     candidati INCOMPATIBILI o NON IDENTIFICATI.
 
+15. Non sostituire il prodotto principale con un altro prodotto e non cambiarne la misura:
+    non disponi delle pagine del documento, quindi puoi solo correggere, non rimpiazzare.
+16. Conserva integralmente le frasi che dichiarano un requisito NON rispettato o solo in parte
+    (per esempio un elemento escluso dall'utente ma presente nel prodotto): sono corrette.
+
 La conformita' ai vincoli viene prima dell'eleganza della risposta.
 """
+
+
+# La bozza dell'analisi completa arriva fino a 3000 token: con 1000 il controllo finale
+# la troncava. Il limite deve essere almeno pari a quello della bozza.
+VALIDATOR_MAX_TOKENS = 3200
 
 
 def validate_document_answer(
@@ -965,7 +1103,7 @@ def validate_document_answer(
                 model=OPENAI_DOCUMENT_MODEL,
                 instructions=CONSTRAINT_VALIDATOR_PROMPT,
                 input=validation_input,
-                max_output_tokens=1000,
+                max_output_tokens=VALIDATOR_MAX_TOKENS,
             )
             checked = (response.output_text or "").strip()
         else:
@@ -978,7 +1116,7 @@ def validate_document_answer(
                     {"role": "user", "content": validation_input},
                 ],
                 temperature=0.0,
-                max_tokens=1000,
+                max_tokens=VALIDATOR_MAX_TOKENS,
             )
             checked = (response.choices[0].message.content or "").strip()
         return checked or draft_answer
@@ -1148,6 +1286,24 @@ REGOLE:
     NECESSARIA. Per questi ultimi indica le verifiche aperte da riportare nella proposta
     preliminare. Escludi soltanto INCOMPATIBILI e NON IDENTIFICATI.
 
+
+REGOLE UNIVERSALI DI FEDELTA' AL BISOGNO:
+A. ESCLUSIONI. Se l'utente esclude un elemento ("senza X", "niente X"), cercalo in TUTTE le
+   pagine del prodotto, comprese tavole tecniche, disegni quotati e note di montaggio.
+   Se X e' presente in ogni candidato, NON dichiarare il requisito soddisfatto: scrivi che
+   nessun prodotto documentato lo rispetta integralmente, proponi quello che lo avvicina di
+   piu' e indica con precisione cosa resta di X, con la pagina che lo prova.
+B. MISURE COMMERCIALI. Denominazioni come singolo, una piazza e mezza, matrimoniale, queen,
+   king indicano una classe di misura: la proposta principale deve appartenere a quella
+   classe. Non proporre mai una misura di classe diversa da quella richiesta. Se la
+   corrispondenza tra denominazione e misura non e' scritta nel documento, dichiaralo in una
+   frase e usa la misura standard piu' diffusa, mostrando le altre misure disponibili.
+C. VERSIONI. Pagine con lo stesso nome base di prodotto e codici con lo stesso prefisso sono
+   versioni dello stesso prodotto: presentale come versioni (per esempio con o senza
+   testiera, altezze, finiture), spiegando cosa cambia, e non come prodotti diversi.
+D. GRANDEZZE. Rispondi sulla grandezza chiesta. Non ricavare una grandezza da un'altra non
+   collegata (esempio: lo spazio libero sotto un elemento non si ricava dall'altezza di un
+   altro elemento). Usa la quota documentata; se non esiste, dichiaralo.
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
 Scrivi in testo semplice, senza Markdown e senza asterischi.
