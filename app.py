@@ -1,9 +1,10 @@
 import os
 import json
+import hashlib
 import re
 import math
 import time
-from collections import Counter
+from collections import Counter, OrderedDict
 from typing import List, Dict, Any, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -87,7 +88,7 @@ if OPENAI_API_KEY:
 # FASTAPI APP
 # ============================================================
 
-app = FastAPI(title="Narratore-Risponditore - LAGO ELEMENTS DEMO")
+app = FastAPI(title="Narratore-Risponditore")
 
 app.add_middleware(
     CORSMiddleware,
@@ -375,57 +376,212 @@ def load_document_index() -> None:
 
         assign_code_root_families()
         build_code_sizes()
+        PAGE_BY_NUMBER.clear()
+        PAGE_BY_NUMBER.update({p["page"]: p for p in DOCUMENT_PAGES})
+        build_code_rows()
+        KNOWN_ROOTS.clear()  # ricalcolate al primo controllo, dopo il caricamento
         families = Counter(p["family"] for p in DOCUMENT_PAGES if p["family"])
         print(
             f"[INFO] indice locale caricato: {len(DOCUMENT_PAGES)} pagine, "
-            f"{len(raw)} caratteri, {len(families)} famiglie di prodotto riconosciute"
+            f"{len(raw)} caratteri, {len(families)} famiglie di prodotto riconosciute, "
+            f"{len(CODE_ROWS)} codici con riga di listino"
         )
     except Exception as e:
         print(f"[ERROR] caricando indice locale: {e}")
         DOCUMENT_PAGES = []
 
 
+# ============================================================
+# INDICE STRUTTURATO DELLE RIGHE DI LISTINO
+# ============================================================
+# Il testo estratto da un PDF impaginato separa le righe dalle intestazioni di colonna:
+# "160 x 200  160  208  72  FLU0450  3.336 3.399 ..." non dice quale numero sia il prezzo.
+# Per ogni codice si conserva la riga, l'ultima intestazione con "Codice/Code" e l'ultima
+# descrizione che la precede. Serve a due cose, entrambe universali:
+# 1) dare al modello righe leggibili (intestazione + descrizione + riga);
+# 2) verificare in modo deterministico codici, prezzi e pagine citati nella risposta.
+
+CODE_ROWS: Dict[str, List[Dict[str, Any]]] = {}
+CODE_HEADER_PATTERN = re.compile(r"\b(?:codice|code|cod\.|art\.|articolo|item)\b", re.I)
+NUMBER_TOKEN_PATTERN = re.compile(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?")
+
+
+def normalize_number(token: str) -> str:
+    """'3.336' e '3336' sono lo stesso importo; '2,5' resta '2,5'."""
+    return token.replace(".", "")
+
+
+def row_numbers(text: str) -> set:
+    return {normalize_number(n) for n in NUMBER_TOKEN_PATTERN.findall(text or "")}
+
+
+def _is_description_line(line: str) -> bool:
+    words = re.findall(r"[A-Za-zÀ-ÿ]{3,}", line)
+    digits = sum(ch.isdigit() for ch in line)
+    return len(words) >= 2 and digits <= len(line) * 0.2 and not CODE_HEADER_PATTERN.search(line)
+
+
+def build_code_rows() -> None:
+    CODE_ROWS.clear()
+    for page in DOCUMENT_PAGES:
+        header = ""
+        description = ""
+        title = re.sub(r"\s{2,}", "  ", page_title_line(page["text"]))
+        previous_was_header = False
+        page_lines = (page.get("compact") or "").splitlines()
+        for line_index, line in enumerate(page_lines):
+            is_header = CODE_HEADER_PATTERN.search(line) and not extract_document_codes(line)
+            # righe di sole sigle di colonna ("A  B  C  P"): completano l'intestazione
+            is_column_tags = bool(
+                re.fullmatch(r"(?:[A-Z]{1,3}\*{0,2}\s+){1,8}[A-Z]{1,3}\*{0,2}", line)
+                or re.search(r"(?:\s+[A-Z]{1,2}\*{0,2}){3,}\s*$", line)
+            ) and not extract_document_codes(line)
+            if is_header or (is_column_tags and previous_was_header):
+                # intestazioni consecutive (italiano, sigle, inglese) si sommano
+                header = f"{header} | {line}" if previous_was_header else line
+                previous_was_header = True
+                continue
+            previous_was_header = False
+            codes = extract_document_codes(line)
+            if not codes:
+                if _is_description_line(line):
+                    description = line
+                continue
+            for code in codes:
+                CODE_ROWS.setdefault(code, []).append({
+                    "page": page["page"],
+                    "title": title,
+                    "header": header,
+                    "description": description,
+                    "text": line,
+                    "numbers": row_numbers(line),
+                    # nei PDF impaginati un prezzo puo' scivolare sulla riga accanto
+                    "near_numbers": row_numbers(" ".join(
+                        page_lines[max(0, line_index - 1):line_index + 2]
+                    )),
+                })
+
+
+def code_pages(code: str) -> set:
+    return {row["page"] for row in CODE_ROWS.get(code, [])}
+
+
+def format_code_rows(codes: List[str], max_chars: int = 14000) -> str:
+    """Righe leggibili per il modello: pagina, titolo, intestazione, descrizione, riga."""
+    blocks: List[str] = []
+    total = 0
+    seen = set()
+    for code in codes:
+        for row in CODE_ROWS.get(code, []):
+            key = (code, row["page"], row["text"])
+            if key in seen:
+                continue
+            seen.add(key)
+            block = (
+                f"- {code} | pagina {row['page']} | {row['title'][:80]}\n"
+                f"  colonne: {row['header'][:220]}\n"
+                f"  descrizione: {row['description'][:160]}\n"
+                f"  riga: {row['text'][:260]}"
+            )
+            if total + len(block) > max_chars:
+                return "\n".join(blocks)
+            blocks.append(block)
+            total += len(block)
+    return "\n".join(blocks)
+
+
+def codes_in_evidence(dossier: str) -> List[str]:
+    """Codici presenti nelle pagine recuperate, nell'ordine in cui compaiono."""
+    ordered: List[str] = []
+    for page_number in re.findall(r"===== PAGINA PDF (\d+) =====", dossier):
+        page = PAGE_BY_NUMBER.get(int(page_number))
+        if not page:
+            continue
+        for line in (page.get("compact") or "").splitlines():
+            for code in extract_document_codes(line):
+                if code in CODE_ROWS and code not in ordered:
+                    ordered.append(code)
+    return ordered
+
+
+PAGE_BY_NUMBER: Dict[int, Dict[str, Any]] = {}
+KNOWN_ROOTS: set = set()
+
+
 SEARCH_PLANNER_PROMPT = """
-Sei il PIANIFICATORE DI RICERCA di un motore documentale universale.
+Sei il PIANIFICATORE di un motore documentale universale.
 Documento collegato: {document_context}.
-Ricevi la richiesta di un utente. NON rispondere alla domanda.
-Restituisci UNA sola riga di parole chiave con cui un documento di quel settore descrive
-le soluzioni che soddisfano la richiesta, in italiano e nelle altre lingue del documento:
-- la categoria della soluzione cercata;
-- le soluzioni tecniche o costruttive che realizzano l'esigenza espressa con parole comuni,
-  cioe' il nome tecnico della funzione e non la sua descrizione (esempi di altri settori:
-  "non deve temere la pioggia" -> IP65 impermeabile waterproof; "si monta senza forare"
-  -> fissaggio adesivo, adhesive; "regge un carico elevato" -> portata, load capacity);
-- le denominazioni commerciali di taglia o classe tradotte nei valori standard del settore
-  (esempi: taglia L -> misure della taglia; diametro nominale DN50 -> 50 mm);
-- numeri, misure e codici presenti nella richiesta, invariati.
-NON includere le parole che il cliente esclude o nega (dopo "senza", "non", "tranne").
-NON includere parole di servizio come codice, prezzo, pagina, differenza, versioni.
-Massimo 25 termini, separati da spazio. Nessuna spiegazione.
+Ricevi la richiesta di un utente ed eventualmente la sua domanda precedente.
+NON rispondere alla domanda. Restituisci SOLO un oggetto JSON con queste chiavi:
+- "termini": una riga di parole chiave (massimo 25) con cui un documento di quel settore
+  descrive le soluzioni che soddisfano la richiesta, in italiano e nelle altre lingue del
+  documento: la categoria della soluzione; il nome tecnico delle funzioni espresse a parole
+  comuni (esempi di altri settori: "non deve temere la pioggia" -> IP65 impermeabile
+  waterproof; "si monta senza forare" -> fissaggio adesivo, adhesive; "regge un carico
+  elevato" -> portata, load capacity); taglie o classi commerciali tradotte nei valori
+  standard del settore; numeri, misure e codici della richiesta invariati. NON includere
+  le parole escluse o negate dall'utente ne' parole di servizio (codice, prezzo, pagina).
+- "categoria": le sole parole che nominano il TIPO di prodotto richiesto, in italiano e
+  in inglese (esempio: "lampada lamp"). Stringa vuota se la richiesta non nomina un tipo.
+- "intento": uno tra "ricerca_esatta" (dati di un codice o di un prodotto nominato),
+  "raccomandazione" (trovare la soluzione adatta a un'esigenza), "confronto" (mettere a
+  confronto soluzioni nominate), "spiegazione" (come funziona, cosa significa).
+- "seguito": true se la richiesta prosegue la domanda precedente (sceglie, modifica o
+  approfondisce una soluzione gia' discussa), false se e' una richiesta nuova.
 """
 
+PLAN_CACHE: "OrderedDict[tuple, Dict[str, Any]]" = OrderedDict()
+PLAN_INTENTS = {"ricerca_esatta", "raccomandazione", "confronto", "spiegazione"}
 
-def plan_search_terms(question: str) -> str:
-    """Traduce il bisogno del cliente nel lessico del catalogo (una chiamata breve, T=0).
-    In caso di errore restituisce stringa vuota: la ricerca lessicale resta attiva."""
+
+def plan_request(question: str, previous_question: str = "") -> Dict[str, Any]:
+    """Una sola chiamata breve (T=0) che produce lessico, categoria, intento e seguito.
+    In caso di errore restituisce un piano vuoto: il motore deterministico resta attivo."""
+    empty = {"termini": "", "categoria": "", "intento": "", "seguito": None}
+    key = (question[:3000], previous_question[:800])
+    if key in PLAN_CACHE:
+        PLAN_CACHE.move_to_end(key)
+        return PLAN_CACHE[key]
     if client is None:
-        return ""
+        return empty
+    user_content = question[:3000]
+    if previous_question:
+        user_content = f"DOMANDA PRECEDENTE: {previous_question[:800]}\n\nRICHIESTA: {user_content}"
     try:
         response = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
             messages=[
                 {"role": "system", "content": SEARCH_PLANNER_PROMPT.format(
                     document_context=DOCUMENT_CONTEXT)},
-                {"role": "user", "content": question[:3000]},
+                {"role": "user", "content": user_content},
             ],
             temperature=0.0,
-            max_tokens=160,
+            max_tokens=260,
+            response_format={"type": "json_object"},
         )
-        terms = (response.choices[0].message.content or "").strip()
-        return " ".join(terms.split())[:600]
+        raw = (response.choices[0].message.content or "").strip()
+        try:
+            data = json.loads(raw)
+        except Exception:
+            data = {"termini": raw}  # risposta non JSON: la si usa come lessico
+        plan = {
+            "termini": " ".join(str(data.get("termini", "")).split())[:600],
+            "categoria": " ".join(str(data.get("categoria", "")).split())[:200],
+            "intento": data.get("intento") if data.get("intento") in PLAN_INTENTS else "",
+            "seguito": data.get("seguito") if isinstance(data.get("seguito"), bool) else None,
+        }
     except Exception as e:
-        print(f"[WARN] pianificazione ricerca non riuscita: {e}")
-        return ""
+        print(f"[WARN] pianificazione non riuscita: {e}")
+        return empty
+    PLAN_CACHE[key] = plan
+    if len(PLAN_CACHE) > 256:
+        PLAN_CACHE.popitem(last=False)
+    return plan
+
+
+def plan_search_terms(question: str) -> str:
+    """Compatibilita': solo il lessico del piano."""
+    return plan_request(question).get("termini", "")
 
 
 def expand_multilingual_query(question: str) -> str:
@@ -439,7 +595,9 @@ FAMILY_MAX_PAGES = 25          # oltre questa soglia il titolo non identifica un
 LOCAL_CONTEXT_MAX_CHARS = 60000
 
 
-def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
+def retrieve_local_evidence(
+    query: str, max_pages: int = 10, planned_terms: Optional[str] = None
+) -> str:
     """Recupera localmente pagine verificabili senza servizi vettoriali esterni.
 
     Principi universali (validi per qualunque documento e settore):
@@ -454,8 +612,11 @@ def retrieve_local_evidence(query: str, max_pages: int = 10) -> str:
     if not DOCUMENT_PAGES:
         return ""
 
-    planned_terms = plan_search_terms(query)
-    excluded = negated_search_tokens(query)
+    if planned_terms is None:
+        planned_terms = plan_search_terms(query)
+    # le esclusioni valgono per cio' che chiede l'utente, non per il testo della risposta
+    # precedente che accompagna un seguito ("non ha contenitore" non esclude "contenitore")
+    excluded = negated_search_tokens(query.split("Risposta precedente:")[0])
     question_tokens = [t for t in search_tokens(query) if t not in excluded]
     planned_tokens = [t for t in search_tokens(planned_terms) if t not in excluded]
     codes = extract_document_codes(query)
@@ -1152,6 +1313,18 @@ def is_contextual_followup(question: str) -> bool:
     if any(marker in q for marker in explicit_markers):
         return True
 
+    # Continuazioni brevi tipiche di una conversazione: "e per 180x200?", "invece in noce?",
+    # "quanto costa?". Si applica solo quando esiste un turno precedente (lo verifica
+    # build_document_query), quindi una domanda breve isolata resta una domanda nuova.
+    words = q.split()
+    if words and words[0] in {"e", "ed", "ma", "invece", "allora", "anche", "oppure", "and"}:
+        return True
+    if len(words) <= 5 and not extract_document_codes(question):
+        return True
+    pronouns = {"questo", "questa", "questi", "queste", "quello", "quella", "quelli", "quelle"}
+    if len(words) <= 8 and pronouns & set(words):
+        return True
+
     # Riconoscimento universale di riferimenti anaforici: funziona con prodotti,
     # procedure, documenti, soluzioni o codici di qualunque settore.
     reference_words = (
@@ -1164,6 +1337,7 @@ def is_contextual_followup(question: str) -> bool:
         "prodotto", "prodotti", "soluzione", "soluzioni", "alternativa",
         "alternative", "codice", "codici", "risposta", "risultato", "risultati",
         "documento", "documenti", "procedura", "procedure", "proposta", "proposte",
+        "versione", "versioni", "variante", "varianti",
     )
     return (
         any(word in q.split() for word in reference_words)
@@ -1175,10 +1349,12 @@ def build_document_query(
     question: str,
     previous_question: str = "",
     previous_answer: str = "",
+    planner_followup: Optional[bool] = None,
 ) -> tuple[str, bool]:
-    """Aggiunge memoria soltanto quando la nuova domanda richiama il turno precedente."""
+    """Aggiunge memoria soltanto quando la nuova domanda richiama il turno precedente.
+    Seguito = frasi di richiamo esplicite OPPURE giudizio del pianificatore."""
     has_memory = bool(previous_question.strip() and previous_answer.strip())
-    followup = has_memory and is_contextual_followup(question)
+    followup = has_memory and (is_contextual_followup(question) or planner_followup is True)
     if not followup:
         return question, False
 
@@ -1304,32 +1480,14 @@ def validate_document_answer(
         return draft_answer
 
 
-def call_document_quick_local(
-    question: str,
-    previous_question: str = "",
-    previous_answer: str = "",
-) -> str:
-    """Modalita' predefinita: ricerca locale e risposta breve DeepSeek."""
-    if client is None:
-        return "Il motore esterno non è disponibile (DEEPSEEK_API_KEY mancante)."
-    if not DOCUMENT_PAGES:
-        return "Archivio documentale locale non configurato."
+# ============================================================
+# FLUSSO UNIFICATO DEL NARRATORE-SUPERRISPONDITORE
+# ============================================================
+# piano (lessico, categoria, intento, seguito) -> ricerca -> righe di listino ->
+# risposta nel formato dell'intento -> controllo vincoli (solo se ci sono limiti numerici)
+# -> controllo documentale deterministico con correzione mirata.
 
-    try:
-        total_started = time.perf_counter()
-        document_query, is_followup = build_document_query(
-            question, previous_question, previous_answer
-        )
-        retrieval_started = time.perf_counter()
-        dossier = retrieve_local_evidence(document_query, max_pages=10)
-        retrieval_seconds = time.perf_counter() - retrieval_started
-        if not dossier:
-            return (
-                "Informazione non trovata nel documento collegato.\n\n"
-                + DOCUMENT_DISCLAIMER
-            )
-
-        quick_response_rules = """
+FORMAT_RACCOMANDAZIONE = """
 MODALITA' RISPOSTA CONSIGLIATA:
 - Produci una risposta breve, normalmente entro 300 parole.
 - Apri con una sola proposta principale documentata.
@@ -1355,70 +1513,242 @@ MODALITA' RISPOSTA CONSIGLIATA:
 - Scrivi in testo semplice, senza Markdown e senza asterischi.
 """
 
-        if is_followup:
-            quick_response_rules += """
+FORMAT_ESATTA = """
+FORMATO RICERCA ESATTA:
+- Rispondi subito con i dati richiesti del codice o del prodotto nominato: descrizione,
+  misure, varianti di prezzo, prezzo, pagina.
+- Usa le RIGHE DI LISTINO per attribuire ogni numero alla sua colonna.
+- Versioni dello stesso prodotto: al massimo una riga.
+- Niente motivazioni di adeguatezza, compromessi, alternative o domande di scelta.
+- Chiudi con la sezione "PRODOTTI SELEZIONABILI PER LA PROPOSTA" con il solo codice
+  richiesto, stato VERIFICATO.
+- Scrivi in testo semplice, senza Markdown e senza asterischi.
+"""
+
+FORMAT_CONFERMA = """
+FORMATO CONFERMA DI UNA SCELTA:
+- L'utente ha scelto una versione di una soluzione gia' discussa: individua il codice che
+  corrisponde esattamente alle scelte indicate (misura, versione, finitura) e confermalo
+  con dati, prezzo e pagina, usando le RIGHE DI LISTINO.
+- Rispondi a ogni domanda aggiuntiva cercando anche nelle schede tecniche della stessa
+  famiglia di prodotto.
+- Nessuna alternativa, salvo che la combinazione scelta non esista: in quel caso dillo e
+  indica la combinazione documentata piu' vicina.
+- Chiudi con "PRODOTTI SELEZIONABILI PER LA PROPOSTA" con il solo codice scelto e
+  nessuna domanda di scelta.
+- Scrivi in testo semplice, senza Markdown e senza asterischi.
+"""
+
+FORMAT_CONFRONTO = """
+FORMATO CONFRONTO:
+- Confronta le soluzioni nominate sugli stessi attributi, con dati e pagina di ciascuna.
+- Evidenzia le differenze; non proclamare un vincitore se l'utente non ha dato un criterio.
+- Chiudi con "PRODOTTI SELEZIONABILI PER LA PROPOSTA" con le soluzioni confrontate e UNA
+  domanda sul criterio di scelta dell'utente.
+- Scrivi in testo semplice, senza Markdown e senza asterischi.
+"""
+
+FORMAT_SPIEGAZIONE = """
+FORMATO SPIEGAZIONE:
+- Spiega con i dati del documento, citando le pagine, in modo chiaro e ordinato.
+- La sezione dei prodotti selezionabili serve solo se la spiegazione riguarda prodotti
+  da acquistare.
+- Scrivi in testo semplice, senza Markdown e senza asterischi.
+"""
+
+FOLLOWUP_RULES = """
 CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
 - La richiesta attuale dipende dal turno precedente.
-- Rispondi sugli stessi prodotti e codici presenti nella risposta precedente.
+- Resta sugli stessi prodotti e sulla stessa famiglia della risposta precedente.
 - Non introdurre o sostituire prodotti, famiglie o codici, salvo richiesta esplicita.
-- Se un dato necessario non e' documentato, dichiaralo senza cambiare candidato.
 - Mantieni validi i vincoli obbligatori gia' stabiliti dall'utente.
 """
 
+FORMAT_BY_INTENT = {
+    "ricerca_esatta": FORMAT_ESATTA,
+    "conferma": FORMAT_CONFERMA,
+    "confronto": FORMAT_CONFRONTO,
+    "spiegazione": FORMAT_SPIEGAZIONE,
+    "raccomandazione": FORMAT_RACCOMANDAZIONE,
+}
+
+CHOICE_PATTERN = re.compile(
+    r"\b(?:scelgo|sceglierei|voglio|vorrei|prendo|preferisco|cambio|invece|stessa|stesso|"
+    r"confermo|opto|va bene)\b",
+    re.I,
+)
+COMPARE_PATTERN = re.compile(
+    r"\b(?:confront\w*|differenz\w*|rispetto a|meglio tra|versus|vs\.?)\b", re.I
+)
+NUMERIC_LIMIT_PATTERN = re.compile(
+    r"\b(?:al massimo|massim[oa]|max|non (?:superi|superare|oltre|piu' di|più di)|entro|"
+    r"almeno|minim[oa]|min\.?|fino a|inferiore|superiore|meno di|oltre|tra \d+ e \d+)\b|[<>≤≥]",
+    re.I,
+)
+VALIDATOR_MODE = (os.getenv("VALIDATOR_MODE", "auto") or "auto").strip().lower()
+
+
+def needs_constraint_validation(question: str, previous_question: str, is_followup: bool) -> bool:
+    """Il controllo LLM dei vincoli serve quando la richiesta fissa limiti numerici."""
+    if VALIDATOR_MODE == "always":
+        return True
+    if VALIDATOR_MODE != "auto":
+        return False
+    text = question + (" " + previous_question if is_followup else "")
+    return bool(NUMERIC_LIMIT_PATTERN.search(text))
+
+
+def detect_intent(question: str, plan: Dict[str, Any], is_followup: bool) -> str:
+    """Priorita' ai segnali deterministici, poi al pianificatore. Il confronto viene
+    prima: "differenze tra X e Y" o "vorrei confrontare" non sono ne' ricerca ne' scelta."""
+    if COMPARE_PATTERN.search(question):
+        return "confronto"
+    if is_followup and (find_sizes(question) or CHOICE_PATTERN.search(question)):
+        return "conferma"
+    if not is_followup and extract_document_codes(question) & set(CODE_ROWS):
+        return "ricerca_esatta"
+    return plan.get("intento") or "raccomandazione"
+
+
+def absent_category_note(plan: Dict[str, Any]) -> str:
+    """Se nessuna parola che nomina il tipo di prodotto compare nel documento, il prodotto
+    non c'e': lo si dichiara al modello prima che scriva, per evitare sostituzioni."""
+    tokens = [t for t in search_tokens(plan.get("categoria", "")) if not t.isdigit()]
+    if not tokens or not DOCUMENT_PAGES:
+        return ""
+    def stem(token: str) -> str:
+        return token[:-1] if len(token) >= 5 else token
+
+    present = [
+        t for t in tokens
+        if any(any(w.startswith(stem(t)) for w in p["token_set"]) for p in DOCUMENT_PAGES)
+    ]
+    if present:
+        return ""
+    return (
+        "\n\nTIPO DI PRODOTTO NON PRESENTE: le parole che indicano il tipo di prodotto "
+        f"richiesto ({', '.join(tokens)}) non compaiono in nessuna pagina del documento. "
+        "Dichiara che il prodotto non e' presente nel documento collegato. Non proporre "
+        "prodotti di altro tipo come sostituti; puoi citare al massimo una categoria affine "
+        "presente, dichiarandola esplicitamente come prodotto diverso."
+    )
+
+
+def run_local_pipeline(
+    question: str, previous_question: str, previous_answer: str, mode: str,
+    followup_hint: Optional[bool] = None,
+) -> str:
+    if client is None:
+        return "Il motore esterno non è disponibile (DEEPSEEK_API_KEY mancante)."
+    if not DOCUMENT_PAGES:
+        return "Archivio documentale locale non configurato."
+    try:
+        started = time.perf_counter()
+        has_memory = bool(previous_question.strip() and previous_answer.strip())
+        plan = plan_request(question, previous_question if has_memory else "")
+        plan_seconds = time.perf_counter() - started
+
+        document_query, is_followup = build_document_query(
+            question, previous_question, previous_answer,
+            followup_hint if followup_hint is not None else plan.get("seguito"),
+        )
+        intent = detect_intent(question, plan, is_followup)
+
+        retrieval_started = time.perf_counter()
+        dossier = retrieve_local_evidence(
+            document_query, max_pages=14 if mode == "globale" else 10,
+            planned_terms=plan.get("termini", ""),
+        )
+        retrieval_seconds = time.perf_counter() - retrieval_started
+        if not dossier:
+            return "Informazione non trovata nel documento collegato.\n\n" + DOCUMENT_DISCLAIMER
+
+        # righe leggibili: prima i codici citati da utente e turno precedente
+        priority = [c for _, c in codes_mentioned(question + " " + (
+            previous_answer if is_followup else ""))]
+        row_codes = list(dict.fromkeys(
+            [c for c in priority if c in CODE_ROWS] + codes_in_evidence(dossier)
+        ))
+        rows_text = format_code_rows(row_codes, 12000)
+
+        if mode == "globale" and intent in {"raccomandazione", "confronto"}:
+            system_prompt = DOCUMENT_FULL_PROMPT.format(
+                document_context=DOCUMENT_CONTEXT, document_disclaimer=DOCUMENT_DISCLAIMER
+            )
+            max_tokens = 3000
+        else:
+            system_prompt = (DOCUMENT_RESPONDER_PROMPT + FORMAT_BY_INTENT[intent]).format(
+                document_disclaimer=DOCUMENT_DISCLAIMER
+            )
+            max_tokens = 3000 if mode == "globale" else 1500
+        if is_followup:
+            system_prompt += FOLLOWUP_RULES
+
         response_input = (
-            "RICHIESTA ORIGINALE:\n"
-            f"{document_query}\n\n"
-            "EVIDENZE DOCUMENTALI RECUPERATE:\n"
-            f"{dossier}\n\n"
-            "Formula ora la risposta consigliata usando esclusivamente queste evidenze."
+            f"RICHIESTA ORIGINALE:\n{document_query}\n\n"
+            f"TIPO DI RICHIESTA: {intent}"
             + dimension_constraint_note(question, previous_question, is_followup)
+            + absent_category_note(plan)
+            + (f"\n\nRIGHE DI LISTINO CON INTESTAZIONI DI COLONNA (usale per attribuire "
+               f"correttamente ogni numero):\n{rows_text}" if rows_text else "")
+            + f"\n\nEVIDENZE DOCUMENTALI (pagine complete):\n{dossier}\n\n"
+            "Formula ora la risposta usando esclusivamente queste evidenze."
         )
         generation_started = time.perf_counter()
         response = client.chat.completions.create(
             model=DEEPSEEK_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (DOCUMENT_RESPONDER_PROMPT + quick_response_rules).format(
-                        document_disclaimer=DOCUMENT_DISCLAIMER,
-                    ),
-                },
-                {"role": "user", "content": response_input},
-            ],
+            messages=[{"role": "system", "content": system_prompt},
+                      {"role": "user", "content": response_input}],
             temperature=0.1,
-            max_tokens=1300,
+            max_tokens=max_tokens,
         )
-        answer = (response.choices[0].message.content or "").strip()
+        answer = strip_markdown_emphasis((response.choices[0].message.content or "").strip())
         generation_seconds = time.perf_counter() - generation_started
         if not answer:
             return "Informazione non trovata nel documento collegato."
-        # Al controllo finale passiamo i vincoli originari in forma pulita, senza il dossier
-        # e senza la risposta precedente, che potrebbero confondere il confronto numerico.
-        validation_request = question
-        if is_followup and previous_question:
-            validation_request = (
-                "VINCOLI STABILITI NELLA DOMANDA PRECEDENTE:\n"
-                f"{previous_question[:2500]}\n\n"
-                "DOMANDA ATTUALE:\n"
-                f"{question}"
-            )
+
+        needs_validation = needs_constraint_validation(question, previous_question, is_followup)
         validation_started = time.perf_counter()
-        checked = validate_document_answer(
-            validation_request, answer, "deepseek_local"
-        )
+        if needs_validation:
+            validation_request = question
+            if is_followup and previous_question:
+                validation_request = (
+                    "VINCOLI STABILITI NELLA DOMANDA PRECEDENTE:\n"
+                    f"{previous_question[:2500]}\n\nDOMANDA ATTUALE:\n{question}"
+                )
+            answer = strip_markdown_emphasis(
+                validate_document_answer(validation_request, answer, "deepseek_local")
+            )
         validation_seconds = time.perf_counter() - validation_started
-        total_seconds = time.perf_counter() - total_started
+
+        control_started = time.perf_counter()
+        answer = apply_fact_control(answer, "deepseek_local")
+        control_seconds = time.perf_counter() - control_started
         print(
-            "[TIMING] deepseek_local rapido "
-            f"followup={is_followup} pages_chars={len(dossier)} "
-            f"retrieval={retrieval_seconds:.2f}s "
-            f"generation={generation_seconds:.2f}s "
-            f"validation={validation_seconds:.2f}s total={total_seconds:.2f}s"
+            f"[TIMING] {mode} intento={intent} seguito={is_followup} "
+            f"piano={plan_seconds:.2f}s ricerca={retrieval_seconds:.2f}s "
+            f"stesura={generation_seconds:.2f}s "
+            f"vincoli={'si' if needs_validation else 'no'} {validation_seconds:.2f}s "
+            f"controllo={control_seconds:.2f}s "
+            f"totale={time.perf_counter() - started:.2f}s pagine_chars={len(dossier)} "
+            f"righe={len(row_codes)}"
         )
-        return checked
+        return answer
     except Exception as e:
-        print(f"[ERROR] risposta documentale rapida: {e}")
+        print(f"[ERROR] flusso documentale {mode}: {e}")
         return "Si è verificato un errore durante la ricerca documentale."
+
+
+def call_document_quick_local(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
+) -> str:
+    """Risposta consigliata: flusso unificato in modalita' rapida."""
+    return run_local_pipeline(
+        question, previous_question, previous_answer, "rapido", followup_hint
+    )
 
 
 def call_document_retrieval(question: str) -> str:
@@ -1517,59 +1847,12 @@ def call_narratore_risponditore_local(
     question: str,
     previous_question: str = "",
     previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
 ) -> str:
-    """Analisi completa: ricerca locale e una chiamata DeepSeek."""
-    if client is None:
-        return "Il motore esterno non è disponibile (DEEPSEEK_API_KEY mancante)."
-    if not DOCUMENT_PAGES:
-        return "Archivio documentale locale non configurato."
-
-    try:
-        document_query, is_followup = build_document_query(
-            question, previous_question, previous_answer
-        )
-        full_instructions = DOCUMENT_FULL_PROMPT.format(
-            document_context=DOCUMENT_CONTEXT,
-            document_disclaimer=DOCUMENT_DISCLAIMER,
-        )
-        if is_followup:
-            full_instructions += """
-\nCONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
-La domanda attuale richiama il turno precedente. Mantieni gli stessi prodotti, codici,
-alternative e vincoli gia' stabiliti. Non sostituirli con altri candidati salvo richiesta
-esplicita. Se manca una prova documentale, dichiaralo senza cambiare prodotto.
-"""
-
-        dossier = retrieve_local_evidence(document_query, max_pages=14)
-        if not dossier:
-            return (
-                "Informazione non trovata nel documento collegato.\n\n"
-                + DOCUMENT_DISCLAIMER
-            )
-        response_input = (
-            "RICHIESTA:\n"
-            f"{document_query}\n\n"
-            "ESTRATTI DOCUMENTALI CON PAGINE:\n"
-            f"{dossier}\n\n"
-            "Rispondi utilizzando esclusivamente gli estratti sopra riportati."
-            + dimension_constraint_note(question, previous_question, is_followup)
-        )
-        response = client.chat.completions.create(
-            model=DEEPSEEK_MODEL,
-            messages=[
-                {"role": "system", "content": full_instructions},
-                {"role": "user", "content": response_input},
-            ],
-            temperature=0.1,
-            max_tokens=3000,
-        )
-        answer = (response.choices[0].message.content or "").strip()
-        if not answer:
-            return "Informazione non trovata nel documento collegato."
-        return validate_document_answer(document_query, answer, "deepseek_local")
-    except Exception as e:
-        print(f"[ERROR] analisi documentale completa: {e}")
-        return "Si è verificato un errore durante l'analisi documentale completa."
+    """Analisi completa: flusso unificato in modalita' globale."""
+    return run_local_pipeline(
+        question, previous_question, previous_answer, "globale", followup_hint
+    )
 
 
 def call_openai_vector_retrieval(question: str, max_results: int = 30) -> str:
@@ -1600,41 +1883,16 @@ def call_document_quick_vector(
     question: str,
     previous_question: str = "",
     previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
 ) -> str:
     """Risposta consigliata tramite OpenAI Vector Store."""
     document_query, is_followup = build_document_query(
-        question, previous_question, previous_answer
+        question, previous_question, previous_answer, followup_hint
     )
     dossier = call_openai_vector_retrieval(document_query, max_results=30)
 
-    quick_response_rules = """
-MODALITA' RISPOSTA CONSIGLIATA:
-- Produci una risposta breve, normalmente entro 300 parole.
-- Apri con una sola proposta principale documentata.
-- Riporta nome/codice, dati determinanti, prezzo pertinente, documento e pagina.
-- Spiega in massimo quattro punti perche' e' adatta e il compromesso principale.
-- Mostra al massimo due alternative realmente differenti.
-- Non inventare misure, prezzi, dotazioni o compatibilita'.
-- Concludi con una sola domanda che possa cambiare concretamente la scelta.
-- Non dedurre prestazioni, ventilazione, accessibilita', capacita' o gestione elettronica
-  da semplici differenze dimensionali senza una prova documentale esplicita.
-- Se i dati decisivi non permettono un vincitore, dichiaralo invece di sceglierne uno.
-- Classifica i candidati come VERIFICATO, VERIFICA NECESSARIA, INCOMPATIBILE o NON IDENTIFICATO.
-  Un requisito non documentato significa VERIFICA NECESSARIA, non incompatibilita'.
-- Nelle richieste di scelta o confronto termina con la sezione esatta
-  "PRODOTTI SELEZIONABILI PER LA PROPOSTA". Elenca nome, codice e stato dei candidati
-  VERIFICATI e di quelli in VERIFICA NECESSARIA, indicando per questi ultimi cosa deve essere
-  confermato nella proposta preliminare. Escludi soltanto INCOMPATIBILI e NON IDENTIFICATI.
-- Chiedi quale prodotto l'utente desidera portare in proposta.
-- Scrivi in testo semplice, senza Markdown e senza asterischi.
-"""
-    if is_followup:
-        quick_response_rules += """
-CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
-- Rispondi sugli stessi prodotti e codici presenti nella risposta precedente.
-- Non sostituire prodotti o alternative salvo richiesta esplicita.
-- Mantieni validi i vincoli obbligatori gia' stabiliti.
-"""
+    intent = detect_intent(question, {}, is_followup)
+    quick_response_rules = FORMAT_BY_INTENT[intent] + (FOLLOWUP_RULES if is_followup else "")
 
     response_input = (
         "RICHIESTA ORIGINALE:\n"
@@ -1655,17 +1913,22 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
     answer = (response.output_text or "").strip()
     if not answer:
         return "Informazione non trovata nel documento collegato."
-    return validate_document_answer(document_query, answer, "openai_vector")
+    answer = strip_markdown_emphasis(answer)
+    if needs_constraint_validation(question, previous_question, is_followup):
+        answer = strip_markdown_emphasis(
+            validate_document_answer(document_query, answer, "openai_vector"))
+    return apply_fact_control(answer, "openai_vector")
 
 
 def call_narratore_risponditore_vector(
     question: str,
     previous_question: str = "",
     previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
 ) -> str:
     """Analisi completa tramite OpenAI Vector Store."""
     document_query, is_followup = build_document_query(
-        question, previous_question, previous_answer
+        question, previous_question, previous_answer, followup_hint
     )
     instructions = DOCUMENT_FULL_PROMPT.format(
         document_context=DOCUMENT_CONTEXT,
@@ -1694,7 +1957,11 @@ Non sostituirli salvo richiesta esplicita dell'utente.
     answer = (response.output_text or "").strip()
     if not answer:
         return "Informazione non trovata nel documento collegato."
-    return validate_document_answer(document_query, answer, "openai_vector")
+    answer = strip_markdown_emphasis(answer)
+    if needs_constraint_validation(question, previous_question, is_followup):
+        answer = strip_markdown_emphasis(
+            validate_document_answer(document_query, answer, "openai_vector"))
+    return apply_fact_control(answer, "openai_vector")
 
 
 def active_document_engine() -> str:
@@ -1709,17 +1976,24 @@ def call_document_quick(
     question: str,
     previous_question: str = "",
     previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
 ) -> str:
     """Seleziona il motore rapido configurato e gestisce l'eventuale fallback."""
     if SEARCH_ENGINE == "deepseek_local":
-        return call_document_quick_local(question, previous_question, previous_answer)
+        return call_document_quick_local(
+            question, previous_question, previous_answer, followup_hint
+        )
     try:
-        return call_document_quick_vector(question, previous_question, previous_answer)
+        return call_document_quick_vector(
+            question, previous_question, previous_answer, followup_hint
+        )
     except Exception as e:
         print(f"[ERROR] OpenAI Vector rapido: {e}")
         if SEARCH_ENGINE == "automatic":
             print("[INFO] fallback automatico a DeepSeek locale")
-            return call_document_quick_local(question, previous_question, previous_answer)
+            return call_document_quick_local(
+            question, previous_question, previous_answer, followup_hint
+        )
         return "Si è verificato un errore durante la ricerca documentale."
 
 
@@ -1727,25 +2001,273 @@ def call_narratore_risponditore(
     question: str,
     previous_question: str = "",
     previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
 ) -> str:
     """Seleziona il motore completo configurato e gestisce l'eventuale fallback."""
     if SEARCH_ENGINE == "deepseek_local":
         return call_narratore_risponditore_local(
-            question, previous_question, previous_answer
+            question, previous_question, previous_answer, followup_hint
         )
     try:
         return call_narratore_risponditore_vector(
-            question, previous_question, previous_answer
+            question, previous_question, previous_answer, followup_hint
         )
     except Exception as e:
         print(f"[ERROR] OpenAI Vector completo: {e}")
         if SEARCH_ENGINE == "automatic":
             print("[INFO] fallback automatico a DeepSeek locale")
             return call_narratore_risponditore_local(
-                question, previous_question, previous_answer
+                question, previous_question, previous_answer, followup_hint
             )
         return "Si è verificato un errore durante l'analisi documentale completa."
 
+
+# ============================================================
+# CONTROLLO DOCUMENTALE DETERMINISTICO
+# ============================================================
+# Ogni codice, prezzo e pagina che la risposta attribuisce a un codice viene confrontato
+# con l'indice delle righe. Nessun modello linguistico: e' aritmetica sul documento.
+# Se trova incongruenze chiede UNA correzione mirata al modello, con le righe esatte;
+# cio' che resta incongruente viene segnalato in chiaro invece di arrivare al cliente
+# come dato certo.
+
+# punteggiatura dopo il numero ("3.436, pagina") ammessa: esclusi solo cifra o decimale
+PRICE_THOUSANDS = re.compile(r"(?<![\d,.])\d{1,3}(?:\.\d{3})+(?:,\d{2})?(?!\d)(?!,\d)")
+PRICE_CUE_WORD = re.compile(
+    r"\b(?:prezz\w*|costa|costano|costo|costi|listino|price\w*|preis\w*|prix)\b|€", re.I
+)
+# un numero NON e' un prezzo attribuito al codice se e' un risultato di calcolo, una
+# differenza, una quantita', un anno, una pagina o una misura con unita'
+NOT_PRICE_BEFORE = re.compile(
+    r"(?:=|\btotale\b|\bsomma\b|\bin (?:meno|piu'|più)\b|\bdifferenza\b|\brisparmi\w*|"
+    r"\bper \d+(?:\s+[a-zà-ÿ]+)?|\bx ?\d+\b|\bpag\w*\.?|\bpage\b|\bseite\b|\bp\.)\s*[:]?\s*$",
+    re.I,
+)
+NOT_PRICE_AFTER = re.compile(
+    r"^\s*(?:(?:€|euro)\s*)?(?:mm|cm|m\b|%|kg|g\b|w\b|v\b|°|pezz\w*|pz|posti|persone|anni|"
+    r"in (?:meno|piu'|più)|di (?:differenza|risparmio))",
+    re.I,
+)
+PRICE_SUFFIX = re.compile(
+    r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{2,6}(?:,\d{2})?)\s*(?:€|euro)\b", re.I
+)
+PAGE_CITE = re.compile(
+    r"\bpag(?:ina|ine|\.)?[\s*:]*(\d{1,4})(?:\s*[-–]\s*(\d{1,4}))?", re.I
+)
+SENTENCE_SPLIT = re.compile(r"\n+|(?<=;)\s+|(?<=[.!?])\s+(?=[A-ZÀ-Ý\-•])")
+
+
+def is_attributed_price(window: str, price: str) -> bool:
+    """Vero se almeno un'occorrenza del numero nella finestra e' un prezzo attribuito al
+    codice, e non un totale, una differenza, un anno, una pagina o una misura."""
+    for occurrence in re.finditer(r"(?<![\d.,])" + re.escape(price) + r"(?![\d])", window):
+        before = window[max(0, occurrence.start() - 18):occurrence.start()]
+        after = window[occurrence.end():occurrence.end() + 24]
+        if NOT_PRICE_BEFORE.search(before) or NOT_PRICE_AFTER.search(after):
+            continue
+        if re.fullmatch(r"(?:19|20)\d{2}", price):
+            continue  # anno (es. "listino 2024")
+        return True
+    return False
+
+
+def known_code_roots() -> set:
+    counts = Counter(code_root(c) for c in CODE_ROWS if code_root(c))
+    return {root for root, count in counts.items() if count >= 2}
+
+
+def codes_mentioned(text: str) -> List[tuple]:
+    """(posizione, codice) dei codici citati: noti all'indice, oppure con radice nota
+    (quindi plausibili ma inesistenti, es. FLU9999)."""
+    found: List[tuple] = []
+    if not KNOWN_ROOTS:
+        KNOWN_ROOTS.update(known_code_roots())
+    roots = KNOWN_ROOTS
+    for match in re.finditer(r"\b[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*\b|\b\d{5,}\b", text):
+        token = match.group(0).upper()
+        if MEASURE_PATTERN.fullmatch(token) or len(token) < 5:
+            continue
+        if token in CODE_ROWS:
+            found.append((match.start(), token))
+            continue
+        if re.search(r"[-/]", token):
+            # intervallo o elenco di codici: si verificano le parti, mai il token intero
+            offset = 0
+            for part in re.split(r"[-/]", token):
+                if part in CODE_ROWS:
+                    found.append((match.start() + token.find(part, offset), part))
+                offset += len(part) + 1
+            continue
+        if code_root(token) and code_root(token) in roots:
+            found.append((match.start(), token))
+    return found
+
+
+
+def check_answer_facts(answer: str) -> List[Dict[str, Any]]:
+    issues: List[Dict[str, Any]] = []
+    if not answer or not CODE_ROWS:
+        return issues
+    seen = set()
+    previous_mentions: List[tuple] = []
+    for sentence in SENTENCE_SPLIT.split(answer):
+        mentions = codes_mentioned(sentence)
+        if not mentions:
+            # Frase senza codice subito dopo una frase con UN solo codice, che non nomina
+            # un altro prodotto: i suoi prezzi si riferiscono a quel codice.
+            other_names = re.findall(r"(?<=\s)[A-ZÀ-Ý][a-zà-ÿ]+|[A-Z]{2,}", sentence[1:])
+            carry = len({c for _, c in previous_mentions}) == 1 and not other_names
+            previous_mentions = []
+            if not carry or not sentence.strip():
+                continue
+            mentions = [(0, prior_code)]
+            only_prices = True
+        else:
+            previous_mentions = mentions
+            prior_code = mentions[-1][1]
+            only_prices = False
+        for index, (position, code) in enumerate(mentions):
+            end = mentions[index + 1][0] if index + 1 < len(mentions) else len(sentence)
+            window = sentence[position:end]
+            if code not in CODE_ROWS:
+                key = ("codice", code)
+                if key not in seen:
+                    seen.add(key)
+                    issues.append({"tipo": "codice_inesistente", "codice": code,
+                                   "frase": sentence.strip()[:240]})
+                continue
+            rows = CODE_ROWS[code]
+            allowed_numbers = set().union(*(row["near_numbers"] for row in rows))
+            pages_of_code = {row["page"] for row in rows}
+            families = {PAGE_BY_NUMBER[p].get("family") for p in pages_of_code if p in PAGE_BY_NUMBER}
+            # della famiglia valgono solo le schede tecniche (pagine senza codici di listino):
+            # una pagina di listino di un'altra versione resta un errore
+            family_pages = {
+                p["page"] for p in DOCUMENT_PAGES
+                if p.get("family") and p.get("family") in families
+                and not (p.get("codes", set()) & CODE_ROWS.keys())
+            }
+            prices = set(PRICE_THOUSANDS.findall(window)) | set(PRICE_SUFFIX.findall(window))
+            for cue in PRICE_CUE_WORD.finditer(window):
+                # il primo numero dopo la parola "prezzo/costa/euro...", entro 40 caratteri,
+                # purche' non sia un numero di pagina
+                tail = window[cue.end():cue.end() + 40]
+                number = re.search(
+                    r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{2,6}(?:,\d{2})?)"
+                    r"(?!\d)(?![.,]\d)(?!\s*[x×])",
+                    tail,
+                )
+                if number and not re.search(r"pag\w*\.?\s*$", tail[:number.start()], re.I):
+                    prices.add(number.group(1))
+            for price in prices:
+                normalized = normalize_number(price)
+                if normalized in allowed_numbers:
+                    continue
+                if not is_attributed_price(window, price):
+                    continue
+                key = ("prezzo", code, normalized)
+                if key not in seen:
+                    seen.add(key)
+                    issues.append({"tipo": "prezzo_non_trovato", "codice": code, "valore": price,
+                                   "frase": sentence.strip()[:240]})
+            cite = None if only_prices else PAGE_CITE.search(window)
+            if cite:
+                first = int(cite.group(1))
+                last = int(cite.group(2)) if cite.group(2) else first
+                cited = set(range(min(first, last), max(first, last) + 1))
+                if not cited & (pages_of_code | family_pages):
+                    key = ("pagina", code, first)
+                    if key not in seen:
+                        seen.add(key)
+                        issues.append({"tipo": "pagina_errata", "codice": code,
+                                       "valore": cite.group(0),
+                                       "pagine_corrette": sorted(pages_of_code)[:8],
+                                       "frase": sentence.strip()[:240]})
+    return issues
+
+
+FACT_REPAIR_PROMPT = """
+Sei il CORRETTORE DOCUMENTALE. Ricevi una risposta e un elenco di incongruenze trovate
+confrontandola con le righe del documento. Correggi SOLO quei punti usando le righe fornite:
+codice inesistente -> sostituiscilo con il codice corretto della stessa riga, oppure togli
+l'affermazione; prezzo non trovato -> usa il prezzo presente nella riga del codice, indicando
+la colonna; pagina errata -> usa la pagina corretta, salvo che la pagina citata si riferisca
+chiaramente a un altro dato (in quel caso rendilo esplicito). Non cambiare nient'altro:
+stessa lingua, stessa struttura, stesse sezioni. Restituisci soltanto la risposta corretta.
+"""
+
+
+def repair_answer(answer: str, issues: List[Dict[str, Any]], provider: str) -> str:
+    codes = []
+    for issue in issues:
+        code = issue["codice"]
+        if code in CODE_ROWS:
+            codes.append(code)
+        else:  # codice inesistente: righe dei codici con la stessa radice citati nella frase
+            codes.extend(c for _, c in codes_mentioned(issue["frase"]) if c in CODE_ROWS)
+    elenco = "\n".join(
+        f"- {i['tipo']}: codice {i['codice']}"
+        + (f", valore '{i['valore']}'" if i.get("valore") else "")
+        + (f", pagine corrette {i['pagine_corrette']}" if i.get("pagine_corrette") else "")
+        + f"\n  frase: {i['frase']}"
+        for i in issues
+    )
+    payload = (
+        f"RISPOSTA:\n{answer}\n\nINCONGRUENZE:\n{elenco}\n\n"
+        f"RIGHE DEL DOCUMENTO:\n{format_code_rows(list(dict.fromkeys(codes)), 6000)}"
+    )
+    try:
+        if provider == "openai_vector" and openai_client is not None:
+            response = openai_client.responses.create(
+                model=OPENAI_DOCUMENT_MODEL, instructions=FACT_REPAIR_PROMPT,
+                input=payload, max_output_tokens=VALIDATOR_MAX_TOKENS,
+            )
+            return (response.output_text or "").strip() or answer
+        if client is not None:
+            response = client.chat.completions.create(
+                model=DEEPSEEK_MODEL,
+                messages=[{"role": "system", "content": FACT_REPAIR_PROMPT},
+                          {"role": "user", "content": payload}],
+                temperature=0.0, max_tokens=VALIDATOR_MAX_TOKENS,
+            )
+            return (response.choices[0].message.content or "").strip() or answer
+    except Exception as e:
+        print(f"[WARN] correzione documentale non riuscita: {e}")
+    return answer
+
+
+def apply_fact_control(answer: str, provider: str) -> str:
+    """Verifica deterministica, una correzione mirata se serve, segnalazione del residuo."""
+    issues = check_answer_facts(answer)
+    if not issues:
+        print("[CONTROLLO] 0 incongruenze")
+        return answer
+    print(f"[CONTROLLO] {len(issues)} incongruenze: " + "; ".join(
+        f"{i['tipo']} {i['codice']} {i.get('valore', '')}" for i in issues))
+    repaired = repair_answer(answer, issues, provider)
+    residual = check_answer_facts(repaired)
+    print(f"[CONTROLLO] dopo correzione: {len(residual)} incongruenze")
+    # Le pagine residue possono riferirsi a un altro dato della stessa frase: solo log.
+    serious = [i for i in residual if i["tipo"] != "pagina_errata"]
+    if serious:
+        note = "\n".join(
+            f"- {i['codice']}: "
+            + ("codice non presente nel documento" if i["tipo"] == "codice_inesistente"
+               else f"il valore {i['valore']} non compare nella riga del codice")
+            for i in serious
+        )
+        warning = "DATI DA VERIFICARE SUL DOCUMENTO:\n" + note
+        match = find_section(repaired, SELECTABLE_HEADER)
+        at = match.start() if match else -1
+        # prima della sezione dei selezionabili: resta nel testo, non entra nel preventivo
+        repaired = (repaired[:at].rstrip() + "\n\n" + warning + "\n\n" + repaired[at:]
+                    if at >= 0 else repaired + "\n\n" + warning)
+    return repaired
+
+
+# Memoria delle risposte: il catalogo e' statico, una domanda identica nello stesso contesto
+# riceve la stessa risposta verificata senza ripetere ricerca e chiamate al modello.
+ANSWER_CACHE: "OrderedDict[tuple, tuple]" = OrderedDict()
 
 SELECTABLE_HEADER = "PRODOTTI SELEZIONABILI PER LA PROPOSTA"
 RECOMMENDED_PREFIX = "PRODOTTO CONSIGLIATO E SELEZIONABILE PER LA PROPOSTA"
@@ -1788,52 +2310,86 @@ def strip_markdown_emphasis(text: str) -> str:
     return text.replace("**", "")
 
 
+def canonical_size(size: str) -> str:
+    """160x200 e 200x160 sono la stessa misura: si confrontano in forma ordinata."""
+    try:
+        parts = sorted(size.split("x"), key=float)
+    except ValueError:
+        return size
+    return "x".join(parts)
+
+
+def find_section(text: str, header: str) -> Optional[re.Match]:
+    """Posizione di un'intestazione cercata sul testo originale (non su upper():
+    caratteri come ß o legature cambiano lunghezza e sfalserebbero gli indici)."""
+    return re.search(re.escape(header), text or "", re.I)
+
+
 def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
     """Filtro deterministico della sezione PRODOTTI SELEZIONABILI.
 
     Un codice resta selezionabile solo se la sua misura documentata (riga di listino)
-    e' tra quelle fissate dall'utente. Codici senza misura documentata restano (dato non
-    trovato != incompatibile). Se resta un solo prodotto non si chiede di scegliere di
-    nuovo: viene dichiarato come prodotto consigliato e selezionabile."""
-    if not answer or not allowed_sizes or SELECTABLE_HEADER not in answer.upper():
+    e' tra quelle fissate dall'utente, in qualunque ordine siano scritte le dimensioni.
+    Codici senza misura documentata restano (dato non trovato != incompatibile).
+    Ogni elemento dell'elenco porta con se' le sue righe di continuazione.
+    Se il filtro togliesse TUTTI i prodotti, la risposta resta invariata: e' piu'
+    probabile un disallineamento di scrittura che l'assenza di ogni soluzione.
+    Se resta un solo prodotto non si chiede di scegliere di nuovo."""
+    header_match = find_section(answer, SELECTABLE_HEADER)
+    if not answer or not allowed_sizes or not header_match:
         return answer
+    allowed = {canonical_size(size) for size in allowed_sizes}
 
     def size_ok(code: str) -> bool:
         sizes = CODE_SIZES.get(code)
-        return (not sizes) or bool(sizes & allowed_sizes)
+        return (not sizes) or bool({canonical_size(x) for x in sizes} & allowed)
 
     def line_codes(line: str) -> List[str]:
         return [c for c in CODE_TOKEN_PATTERN.findall(line.upper()) if c in CODE_SIZES]
 
-    header_at = answer.upper().index(SELECTABLE_HEADER)
-    head, section = answer[:header_at], answer[header_at:]
+    head, section = answer[:header_match.start()], answer[header_match.start():]
     lines = section.splitlines()
-    kept_lines: List[str] = [lines[0]]
-    kept: Dict[str, str] = {}
+    bullet = re.compile(r"\s*(?:[-•*]|\d+[.)])\s+")
+
+    # 1) elementi dell'elenco con le loro righe di continuazione
+    items: List[Dict[str, Any]] = []
     tail_lines: List[str] = []
-    removed: List[str] = []
     recommended_code = ""
     in_tail = False
+    blank_seen = False
     for line in lines[1:]:
         codes = line_codes(line)
-        if RECOMMENDED_PREFIX in line.upper():
+        if re.search(re.escape(RECOMMENDED_PREFIX), line, re.I):
             if codes and size_ok(codes[0]):
                 recommended_code = codes[0]
             continue  # riscritta in fondo, coerente con il filtro
-        is_item = bool(codes) or bool(re.match(r"\s*(?:[-•*]|\d+[.)])\s+", line))
-        if not in_tail and codes:
-            if not all(size_ok(c) for c in codes[:1]):
-                removed.append(codes[0])
-                continue
-            kept.setdefault(codes[0], line)
-            kept_lines.append(line)
+        if in_tail:
+            tail_lines.append(line)
             continue
-        if not in_tail and line.strip() and not is_item:
-            in_tail = True
-        (tail_lines if in_tail else kept_lines).append(line)
+        if not line.strip():
+            blank_seen = True
+            continue
+        starts_item = bool(codes) or bool(bullet.match(line))
+        if starts_item and not (blank_seen and not codes and not bullet.match(line)):
+            items.append({"lines": [line], "codes": codes})
+            blank_seen = False
+            continue
+        if items and not blank_seen and "?" not in line:
+            items[-1]["lines"].append(line)  # continuazione dell'elemento precedente
+            continue
+        in_tail = True
+        tail_lines.append(line)
 
-    # anche un "consigliato" scritto prima della sezione deve rispettare la misura
-    head_rec = re.search(rf"{RECOMMENDED_PREFIX}\s*:([^\n]*)", head, re.I)
+    kept_items = [i for i in items if not i["codes"] or size_ok(i["codes"][0])]
+    removed = [i["codes"][0] for i in items if i["codes"] and not size_ok(i["codes"][0])]
+    kept_with_code = [i for i in kept_items if i["codes"]]
+    if removed and not kept_with_code:
+        print(f"[SELEZIONABILI] misura {sorted(allowed)}: nessun codice compatibile, "
+              "risposta lasciata invariata")
+        return answer
+
+    # 2) anche un "consigliato" scritto prima della sezione deve rispettare la misura
+    head_rec = re.search(rf"{re.escape(RECOMMENDED_PREFIX)}\s*:([^\n]*)", head, re.I)
     if head_rec:
         codes = line_codes(head_rec.group(1))
         if codes and not size_ok(codes[0]):
@@ -1842,10 +2398,7 @@ def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
         elif codes:
             recommended_code = recommended_code or codes[0]
 
-    # Anche nel testo: un paragrafo che nomina soltanto codici di misura diversa (nessun
-    # codice compatibile) proporrebbe cio' che l'utente ha escluso, quindi viene tolto.
-    # Un paragrafo che nomina insieme codici esclusi e compatibili resta: di norma spiega
-    # la differenza ("FLU2540 e' 152x203, per 160x200 il codice e' FLU2550").
+    # 3) nel testo: via i paragrafi che nominano SOLO codici di misura diversa
     kept_paragraphs: List[str] = []
     for paragraph in re.split(r"\n\s*\n", head):
         codes = line_codes(paragraph)
@@ -1857,10 +2410,11 @@ def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
 
     if not removed:
         return answer
-    print(f"[SELEZIONABILI] misura richiesta={sorted(allowed_sizes)} rimossi={sorted(set(removed))}")
+    print(f"[SELEZIONABILI] misura richiesta={sorted(allowed)} rimossi={sorted(set(removed))}")
 
-    if len(kept) == 1:
-        recommended_code = next(iter(kept))
+    kept_codes = list(dict.fromkeys(i["codes"][0] for i in kept_with_code))
+    if len(kept_codes) == 1:
+        recommended_code = kept_codes[0]
         # il prodotto e' gia' determinato: niente nuova richiesta di scelta
         tail_lines = [
             t for t in tail_lines
@@ -1868,17 +2422,15 @@ def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
                 r"\b(quale|quali|scegli|preferisci|desideri portare|vuoi portare)\b", t, re.I
             )
         ]
-    elif not kept:
-        kept_lines.append(
-            "Nessun prodotto documentato corrisponde alla misura indicata "
-            f"({', '.join(sorted(allowed_sizes))})."
-        )
-    if recommended_code and recommended_code in kept:
-        label = re.sub(r"^\s*(?:[-•*]|\d+[.)])\s*", "", kept[recommended_code]).strip()
+    body_lines = [lines[0]] + [line for item in kept_items for line in item["lines"]]
+    if recommended_code and recommended_code in kept_codes:
+        first_line = next(i["lines"][0] for i in kept_with_code if i["codes"][0] == recommended_code)
+        label = bullet.sub("", first_line, count=1).strip()
         label = re.split(r"\s+[-–]\s+(?:VERIFICATO|VERIFICA NECESSARIA)", label, flags=re.I)[0]
-        label = re.sub(rf",?\s*(?:codice\s+)?{re.escape(recommended_code)}\b", "", label, flags=re.I).strip(" ,-")
-        kept_lines.append(f"{RECOMMENDED_PREFIX}: codice {recommended_code} - {label}")
-    body = "\n".join(kept_lines + tail_lines)
+        label = re.sub(rf",?\s*(?:codice\s+)?{re.escape(recommended_code)}\b", "", label,
+                       flags=re.I).strip(" ,-")
+        body_lines.append(f"{RECOMMENDED_PREFIX}: codice {recommended_code} - {label}")
+    body = "\n".join(body_lines + ([""] + tail_lines if tail_lines else []))
     return (head.strip() + "\n\n" + body) if head.strip() else body
 
 
@@ -1916,10 +2468,14 @@ async def status():
     Riepilogo rapido dello stato backend.
     """
     return {
-        "status": "Narratore-Risponditore LAGO attivo",
+        "status": f"Narratore-Risponditore attivo · {DOCUMENT_CONTEXT}",
         "kb_blocks": len(KB_BLOCKS),
         "comm_blocks": len(COMM_ITEMS),
         "document_pages": len(DOCUMENT_PAGES),
+        "document_families": len({p.get("family") for p in DOCUMENT_PAGES if p.get("family")}),
+        "document_code_rows": len(CODE_ROWS),
+        "validator_mode": VALIDATOR_MODE,
+        "answer_cache_size": len(ANSWER_CACHE),
         "document_index_loaded": bool(DOCUMENT_PAGES),
         "engine": active_document_engine(),
         "engine_requested": SEARCH_ENGINE,
@@ -1989,24 +2545,47 @@ async def api_ask(req: QuestionRequest):
                     meta={"mode": document_mode},
                 )
 
-            if document_mode == "globale":
-                document_answer = call_narratore_risponditore(
-                    document_question, previous_question, previous_answer
-                )
+            has_memory = bool(previous_question and previous_answer)
+            cache_key = (
+                document_mode, document_question, previous_question[-800:],
+                hashlib.sha1(previous_answer.encode("utf-8")).hexdigest(),
+            )
+            cached = ANSWER_CACHE.get(cache_key)
+            if cached is not None:
+                # la memoria si consulta prima di qualunque chiamata al modello
+                ANSWER_CACHE.move_to_end(cache_key)
+                print("[CACHE] risposta gia' calcolata")
+                document_answer, is_followup_turn = cached
             else:
-                document_answer = call_document_quick(
-                    document_question, previous_question, previous_answer
+                planner_seguito = None
+                if has_memory and SEARCH_ENGINE != "openai_vector":
+                    planner_seguito = plan_request(document_question, previous_question).get("seguito")
+                is_followup_turn = has_memory and (
+                    is_contextual_followup(document_question) or planner_seguito is True
                 )
-
-            is_followup_turn = bool(
-                previous_question and previous_answer
-                and is_contextual_followup(document_question)
-            )
-            document_answer = strip_markdown_emphasis(document_answer)
-            document_answer = enforce_selectable_constraints(
-                document_answer,
-                requested_sizes(document_question, previous_question, is_followup_turn),
-            )
+                engine = call_narratore_risponditore if document_mode == "globale" else call_document_quick
+                document_answer = engine(
+                    document_question, previous_question, previous_answer, is_followup_turn
+                )
+                document_answer = strip_markdown_emphasis(document_answer)
+                document_answer = enforce_selectable_constraints(
+                    document_answer,
+                    requested_sizes(document_question, previous_question, is_followup_turn),
+                )
+                # in memoria solo risposte pulite: niente errori, niente avvisi residui,
+                # niente risposte nate senza pianificatore (verrebbero congelate peggiori)
+                plan_ok = SEARCH_ENGINE == "openai_vector" or (
+                    (document_question[:3000], previous_question[:800] if has_memory else "")
+                    in PLAN_CACHE
+                )
+                clean = not re.match(
+                    r"(Si è verificato|Informazione non trovata|Il motore esterno|Archivio)",
+                    document_answer,
+                ) and "DATI DA VERIFICARE" not in document_answer
+                if clean and plan_ok:
+                    ANSWER_CACHE[cache_key] = (document_answer, is_followup_turn)
+                    if len(ANSWER_CACHE) > 256:
+                        ANSWER_CACHE.popitem(last=False)
 
             return AnswerResponse(
                 answer=document_answer,
@@ -2014,11 +2593,8 @@ async def api_ask(req: QuestionRequest):
                 meta={
                     "mode": document_mode,
                     "engine": active_document_engine(),
-                    "used_previous_context": bool(
-                        previous_question
-                        and previous_answer
-                        and is_contextual_followup(document_question)
-                    ),
+                    "used_previous_context": bool(is_followup_turn),
+                    "cached": cached is not None,
                 },
             )
 
