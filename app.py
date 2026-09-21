@@ -1061,6 +1061,10 @@ F. CALCOLI DIRETTI. Se il documento fornisce i dati per un calcolo immediato (ma
 G. DOMANDA FINALE. Tutte le verifiche possibili sul documento vanno fatte nella risposta.
    La domanda finale riguarda soltanto una scelta dell'utente (versione, misura, finitura,
    priorita'), mai una verifica che il sistema dovrebbe fare da solo.
+H. ESCLUSO O NON INDICATO. Scrivi che un prodotto NON ha una caratteristica soltanto se il
+   documento lo dice esplicitamente, citando la dicitura e la pagina. Se il documento tace,
+   scrivi "non indicato nel documento" e tieni i due gruppi separati: non riunirli mai nella
+   stessa frase o nello stesso elenco.
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
 Scrivi in testo semplice, senza Markdown e senza asterischi.
@@ -1485,6 +1489,10 @@ F. CALCOLI DIRETTI. Se il documento fornisce i dati per un calcolo immediato (ma
 G. DOMANDA FINALE. Tutte le verifiche possibili sul documento vanno fatte nella risposta.
    La domanda finale riguarda soltanto una scelta dell'utente (versione, misura, finitura,
    priorita'), mai una verifica che il sistema dovrebbe fare da solo.
+H. ESCLUSO O NON INDICATO. Scrivi che un prodotto NON ha una caratteristica soltanto se il
+   documento lo dice esplicitamente, citando la dicitura e la pagina. Se il documento tace,
+   scrivi "non indicato nel documento" e tieni i due gruppi separati: non riunirli mai nella
+   stessa frase o nello stesso elenco.
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
 Scrivi in testo semplice, senza Markdown e senza asterischi.
@@ -1757,6 +1765,17 @@ def dimension_constraint_note(
     )
 
 
+def strip_markdown_emphasis(text: str) -> str:
+    """La pagina mostra testo semplice: grassetti e titoli Markdown apparirebbero come
+    simboli. Il prompt lo vieta, ma il modello non sempre obbedisce: si pulisce qui."""
+    if not text:
+        return text
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text, flags=re.S)
+    text = re.sub(r"__(.+?)__", r"\1", text, flags=re.S)
+    text = re.sub(r"(?m)^\s{0,3}#{1,6}\s+", "", text)
+    return text.replace("**", "")
+
+
 def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
     """Filtro deterministico della sezione PRODOTTI SELEZIONABILI.
 
@@ -1971,6 +1990,7 @@ async def api_ask(req: QuestionRequest):
                 previous_question and previous_answer
                 and is_contextual_followup(document_question)
             )
+            document_answer = strip_markdown_emphasis(document_answer)
             document_answer = enforce_selectable_constraints(
                 document_answer,
                 requested_sizes(document_question, previous_question, is_followup_turn),
