@@ -21,6 +21,10 @@ from openai import OpenAI
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 DATA_DIR = os.path.join(STATIC_DIR, "data")
+CATALOG_PDF_PATH = os.getenv(
+    "CATALOG_PDF_PATH",
+    os.path.join(STATIC_DIR, "catalogo.pdf"),
+).strip()
 
 MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
 COMM_PATH = os.path.join(DATA_DIR, "COMM.json")
@@ -759,6 +763,16 @@ REGOLE OBBLIGATORIE:
     "PRODOTTO CONSIGLIATO E SELEZIONABILE PER LA PROPOSTA: [nome e codice]".
     Se invece il criterio decisivo non e' documentato, presenta i prodotti esistenti senza
     fingere una superiorita' e chiedi quale portare in proposta preliminare.
+21. Non attribuire a una misura la funzione di un'altra: altezza della testiera,
+    del prodotto, del piano, del materasso e luce libera sottostante sono proprieta'
+    distinte. Usa per ognuna soltanto la denominazione attestata nella sua riga
+    del documento. Un'altezza maggiore non prova da sola maggiore spazio libero.
+22. Distingui modello, variante e alternativa: taglie, configurazioni e finiture
+    dello stesso modello sono varianti. Chiamale alternative realmente differenti
+    soltanto se la differenza funzionale richiesta e' documentata.
+23. Per ogni prezzo verifica che codice, configurazione, misura e categoria
+    coincidano nella stessa riga della fonte. Non assegnare un prezzo a una
+    categoria o a un optional se l'associazione non e' documentata.
 
 Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
 Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
@@ -804,6 +818,11 @@ METODO OBBLIGATORIO:
     richiesta; in tal caso usa una frase semplice e concreta, senza formule tecniche.
 13. Non definire una variante piu' bassa, alta, economica o capiente se i dati riportati
     sono uguali o non consentono il confronto.
+14. Distingui le etichette delle misure riportate nella fonte. Una misura della
+    testiera o della struttura non equivale all'altezza del piano d'appoggio;
+    lo spazio libero sottostante va riportato soltanto se documentato.
+15. Le taglie e configurazioni dello stesso modello sono varianti, non soluzioni
+    realmente differenti, salvo differenza funzionale espressamente documentata.
 
 FORMATO RAPIDO OBBLIGATORIO:
 - Apri con una sola proposta principale: nome/codice, dati determinanti, prezzo se pertinente,
@@ -932,6 +951,19 @@ REGOLE ASSOLUTE:
     VERIFICATI sia quelli in VERIFICA NECESSARIA. Per questi ultimi indica esattamente cosa
     resta da confermare e specifica che la proposta e' preliminare. Escludi soltanto i
     candidati INCOMPATIBILI o NON IDENTIFICATI.
+15. Confronta ogni affermazione decisiva con le evidenze documentali fornite.
+    Una misura puo' essere attribuita solo alla proprieta' indicata nella fonte:
+    non convertire l'altezza del prodotto, della testiera o del materasso in altezza
+    del piano o in spazio libero sotto il prodotto. Se l'etichetta e' ambigua,
+    indica che la funzione esatta della misura va verificata.
+16. Verifica che codice, misura, prezzo e categoria siano associati nella stessa
+    riga o tabella. Se una relazione non e' comprovata, elimina la relazione o
+    dichiara il dato da verificare, senza cancellare il prodotto esistente.
+17. Chiama variante una differente taglia, altezza, configurazione o finitura
+    dello stesso modello. Non promuoverla ad alternativa realmente differente
+    se non e' documentato il vantaggio pertinente alla richiesta.
+18. Se mancano evidenze sufficienti per controllare una frase, non dichiararla
+    verificata: mantieni soltanto i dati supportati e le verifiche aperte.
 
 La conformita' ai vincoli viene prima dell'eleganza della risposta.
 """
@@ -941,6 +973,7 @@ def validate_document_answer(
     question: str,
     draft_answer: str,
     provider: str,
+    documentary_evidence: str = "",
 ) -> str:
     """Revisione strutturale universale prima di consegnare la risposta all'utente."""
     if not draft_answer.strip():
@@ -951,6 +984,8 @@ def validate_document_answer(
         f"{question}\n\n"
         "BOZZA DA CONTROLLARE:\n"
         f"{draft_answer}\n\n"
+        "ESTRATTI DELLE FONTI (unica prova ammessa; possono essere parziali):\n"
+        f"{documentary_evidence[:22000] if documentary_evidence else 'Non disponibili'}\n\n"
         "Restituisci soltanto la risposta finale corretta."
     )
     try:
@@ -1082,7 +1117,7 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
             )
         validation_started = time.perf_counter()
         checked = validate_document_answer(
-            validation_request, answer, "deepseek_local"
+            validation_request, answer, "deepseek_local", dossier
         )
         validation_seconds = time.perf_counter() - validation_started
         total_seconds = time.perf_counter() - total_started
@@ -1204,7 +1239,7 @@ esplicita. Se manca una prova documentale, dichiaralo senza cambiare prodotto.
         answer = (response.choices[0].message.content or "").strip()
         if not answer:
             return "Informazione non trovata nel documento collegato."
-        return validate_document_answer(document_query, answer, "deepseek_local")
+        return validate_document_answer(document_query, answer, "deepseek_local", dossier)
     except Exception as e:
         print(f"[ERROR] analisi documentale completa: {e}")
         return "Si è verificato un errore durante l'analisi documentale completa."
@@ -1292,7 +1327,7 @@ CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
     answer = (response.output_text or "").strip()
     if not answer:
         return "Informazione non trovata nel documento collegato."
-    return validate_document_answer(document_query, answer, "openai_vector")
+    return validate_document_answer(document_query, answer, "openai_vector", dossier)
 
 
 def call_narratore_risponditore_vector(
@@ -1397,6 +1432,19 @@ async def root() -> FileResponse:
     return FileResponse(index_path)
 
 
+@app.get("/catalogo.pdf")
+async def catalog_pdf() -> FileResponse:
+    """Serve il documento originale al visualizzatore della pagina catalogo."""
+    if not CATALOG_PDF_PATH or not os.path.isfile(CATALOG_PDF_PATH):
+        raise HTTPException(status_code=404, detail="Catalogo PDF non disponibile")
+    return FileResponse(
+        CATALOG_PDF_PATH,
+        media_type="application/pdf",
+        filename=os.path.basename(CATALOG_PDF_PATH),
+        content_disposition_type="inline",
+    )
+
+
 @app.get("/api/status")
 async def status():
     """
@@ -1415,6 +1463,9 @@ async def status():
         "universal_constraint_validator": True,
         "narratore_risponditore": "attivo",
         "commercial_proposal_enabled": ENABLE_COMMERCIAL_PROPOSAL,
+        "catalog_viewer_ready": bool(
+            CATALOG_PDF_PATH and os.path.isfile(CATALOG_PDF_PATH)
+        ),
     }
 
 
