@@ -684,6 +684,37 @@ def format_evidence_rows(dossier: str, max_chars: int = 14000) -> str:
     return "\n".join(blocks)
 
 
+TECHNICAL_PAGES: Dict[tuple, List[int]] = {}
+TECHNICAL_PAGE_MAX_CHARS = 4000  # una tavola tecnica e' corta; oltre e' un catalogo
+
+
+def technical_pages_of(family: Optional[tuple]) -> List[int]:
+    """Indici delle tavole tecniche di una famiglia: pagine della famiglia senza righe di
+    listino (quote, appoggi, montaggio). Calcolate una volta, dopo il caricamento."""
+    if not family:
+        return []
+    if not TECHNICAL_PAGES and DOCUMENT_PAGES:
+        with_rows = {r["page"] for rows in CODE_ROWS.values() for r in rows}
+        for idx, page in enumerate(DOCUMENT_PAGES):
+            fam = page.get("family")
+            size = len(page.get("compact") or page.get("text") or "")
+            if fam and page["page"] not in with_rows and size <= TECHNICAL_PAGE_MAX_CHARS:
+                TECHNICAL_PAGES.setdefault(fam, []).append(idx)
+        TECHNICAL_PAGES.setdefault(("__calcolato__",), [])
+    return TECHNICAL_PAGES.get(family, [])
+
+
+def family_dossier(families: set) -> str:
+    """Tutte le pagine delle famiglie indicate, prese dall'indice (non dalle pagine inviate):
+    il controllo delle esclusioni deve vedere la tavola tecnica anche se la ricerca non
+    l'ha portata al modello."""
+    blocks = []
+    for page in DOCUMENT_PAGES:
+        if page.get("family") in families:
+            blocks.append(f"\n===== PAGINA PDF {page['page']} =====\n{page.get('compact') or page['text']}\n")
+    return "".join(blocks)
+
+
 def excluded_feature_stems(question: str) -> set:
     """Radici delle caratteristiche escluse ("senza gambe" -> gamb). Solo caratteristiche:
     "senza chiamarle" (un'azione) non conta; solo parole presenti nel documento."""
@@ -829,10 +860,16 @@ def apply_contradiction_control(answer: str, hits: List[Dict[str, Any]]) -> str:
         return answer
     print("[CONTRADDIZIONE] " + "; ".join(f"pagina {h['page']}: {h['line'][:80]}" for h in found))
     evidence = "\n".join(f"- pagina {h['page']} ({h['title']}): {h['line']}" for h in found)
+    # contesto: la pagina intera della prova (una tavola tecnica porta anche le quote)
+    context = "\n".join(
+        f"PAGINA {p}:\n{(PAGE_BY_NUMBER[p].get('compact') or PAGE_BY_NUMBER[p]['text'])[:2500]}"
+        for p in dict.fromkeys(h["page"] for h in found) if p in PAGE_BY_NUMBER
+    )
     try:
         repaired = generation_chat(
             CONTRADICTION_REPAIR_PROMPT,
-            f"RISPOSTA:\n{answer}\n\nRIGHE DEL DOCUMENTO:\n{evidence}",
+            f"RISPOSTA:\n{answer}\n\nRIGHE DEL DOCUMENTO:\n{evidence}"
+            f"\n\nCONTESTO DELLE PAGINE (usalo per quote e condizioni, citando la pagina):\n{context}",
             VALIDATOR_MAX_TOKENS, 0.0,
         ) or answer
     except Exception as e:
@@ -951,7 +988,7 @@ def expand_multilingual_query(question: str) -> str:
 
 FAMILY_BREADTH = 8            # quante unita' documentali diverse proporre come alternative
 FAMILY_MAX_PAGES = 25          # oltre questa soglia il titolo non identifica un prodotto
-LOCAL_CONTEXT_MAX_CHARS = 60000
+LOCAL_CONTEXT_MAX_CHARS = 70000  # +10k per le tavole tecniche delle famiglie candidate
 
 
 def retrieve_local_evidence(
@@ -1097,6 +1134,13 @@ def retrieve_local_evidence(
         # 1) ampiezza: la pagina migliore delle prime famiglie (alternative reali);
         for fam in family_order:
             add(best_page_of_family[fam])
+        # 1b) le tavole tecniche di quelle famiglie (pagine senza righe di listino: quote,
+        #     appoggi, montaggio). Sono corte e decidono le esigenze funzionali; senza questa
+        #     regola il limite di caratteri le scartava quando la famiglia scelta dal modello
+        #     non era la prima per punteggio (caso reale: pagina 461 persa).
+        for fam in family_order:
+            for idx in technical_pages_of(fam):
+                add(idx)
         # 2) profondita': la prima famiglia intera, versioni e tavole tecniche comprese;
         if family_order:
             for idx in family_pages[family_order[0]]:
@@ -1112,19 +1156,24 @@ def retrieve_local_evidence(
         return ""
 
     blocks: List[str] = []
+    sent: List[int] = []
+    skipped: List[int] = []
     total_chars = 0
     for idx in selected:
         page = DOCUMENT_PAGES[idx]
         body = page.get("compact") or page["text"]
         block = f"\n===== PAGINA PDF {page['page']} =====\n{body}\n"
         if total_chars + len(block) > max_chars:
+            skipped.append(page["page"])
             continue  # prova le pagine successive, piu' corte
         blocks.append(block)
+        sent.append(page["page"])
         total_chars += len(block)
 
     print(
-        "[RETRIEVAL] pagine="
-        + ",".join(str(DOCUMENT_PAGES[i]["page"]) for i in selected[:40])
+        "[RETRIEVAL] pagine inviate="
+        + ",".join(str(p) for p in sent[:40])
+        + (f" scartate_per_limite={','.join(str(p) for p in skipped[:20])}" if skipped else "")
         + f" esclusi={sorted(excluded)[:12]} lessico='{planned_terms[:160]}'"
     )
     return "".join(blocks).strip()
@@ -1945,6 +1994,12 @@ interamente a terra, quando l'obiettivo e' lo spazio libero sotto; "senza cavi" 
 non ha alimentazione, quando l'obiettivo e' una luce sempre accesa). Se nessun prodotto
 rispetta integralmente un'esclusione, scegli quello che realizza meglio l'obiettivo e
 dichiara con precisione lo scostamento (cosa resta, dove, con la pagina).
+TAVOLE TECNICHE: le pagine della famiglia senza listino (quote, appoggi, montaggio) sono
+la prova per le esigenze funzionali. Prima di scrivere "non indicato" o "senza X",
+controllale: se riportano la quota o l'elemento, citali con la pagina.
+VERSIONE BASE: se l'esigenza e' una funzione (spazio, misura, portata), la SCELTA e' la
+versione piu' semplice della famiglia che la realizza (codice, prezzo, pagina); le
+varianti di testiera, finitura o decoro sono versioni dello stesso prodotto, da citare dopo.
 Dopo </analisi> scrivi la risposta per il cliente nel formato indicato, coerente con la SCELTA.
 """
 
@@ -2146,10 +2201,13 @@ def run_local_pipeline(
 
         control_started = time.perf_counter()
         answer = apply_fact_control(answer, "deepseek_local")
-        answer = apply_contradiction_control(
-            answer,
-            exclusion_hits(question + (" " + previous_question if is_followup else ""), dossier),
-        )
+        exclusion_question = question + (" " + previous_question if is_followup else "")
+        hits = exclusion_hits(exclusion_question, dossier)
+        # anche le pagine delle famiglie citate nella risposta, prese dall'indice intero
+        seen_hits = {(h["page"], h["line"]) for h in hits}
+        hits += [h for h in exclusion_hits(exclusion_question, family_dossier(answer_families(answer)))
+                 if (h["page"], h["line"]) not in seen_hits]
+        answer = apply_contradiction_control(answer, hits)
         control_seconds = time.perf_counter() - control_started
         print(
             f"[TIMING] {mode} modello={generation_provider()}/{generation_model_name()} "
