@@ -598,11 +598,12 @@ def exclusion_evidence_note(question: str, dossier: str, max_items: int = 12) ->
     if not hits:
         return ""
     return (
-        "\n\nPROVE DA CONFRONTARE CON CIO' CHE L'UTENTE ESCLUDE ("
-        + ", ".join(sorted(stems)) + "...): righe delle pagine inviate che ne parlano. "
-        "Per ogni prodotto proposto dichiara se l'elemento escluso e' presente, assente o "
-        "non indicato, citando queste righe; non dichiarare un requisito soddisfatto se una "
-        "di queste righe riguarda quel prodotto e dice il contrario.\n" + "\n".join(hits)
+        "\n\nRIGHE CHE PARLANO DI CIO' CHE L'UTENTE ESCLUDE ("
+        + ", ".join(sorted(stems)) + "...). Servono a dichiarare con precisione, per il "
+        "prodotto scelto, se l'elemento escluso e' presente, assente o non indicato. Non "
+        "decidono la scelta: la scelta si fa sull'OBIETTIVO dell'utente (vedi analisi). "
+        "Una riga che dice \"senza X\" non rende un prodotto adatto se ne annulla "
+        "l'obiettivo.\n" + "\n".join(hits)
     )
 
 
@@ -1694,6 +1695,42 @@ FORMATO SPIEGAZIONE:
 - Scrivi in testo semplice, senza Markdown e senza asterischi.
 """
 
+NARRATOR_ANALYSIS = """
+PRIMA DI RISPONDERE, IL NARRATORE RAGIONA. Scrivi per primo un blocco racchiuso tra
+<analisi> e </analisi>, che il cliente non vedra', con queste righe:
+OBIETTIVO: il risultato che l'utente vuole ottenere, con parole tue (non la ripetizione
+  delle sue parole). Esempio: "spazio libero sotto" significa volume utilizzabile tra
+  pavimento e prodotto, non la semplice assenza di una parola nel catalogo.
+VINCOLI: misure, classi, esclusioni. Per ogni esclusione scrivi a quale obiettivo serve.
+CANDIDATI: al massimo 5, uno per riga: nome, codice rappresentativo, pagina, come
+  realizza l'obiettivo (prova), cosa viola o non e' indicato.
+SCELTA: il candidato che realizza MEGLIO L'OBIETTIVO e gli scostamenti da dichiarare.
+REGOLA DECISIVA: rispettare alla lettera un'esclusione non basta. Un prodotto che rispetta
+la parola ma annulla l'obiettivo va scartato (esempi: "senza gambe" perche' appoggia
+interamente a terra, quando l'obiettivo e' lo spazio libero sotto; "senza cavi" perche'
+non ha alimentazione, quando l'obiettivo e' una luce sempre accesa). Se nessun prodotto
+rispetta integralmente un'esclusione, scegli quello che realizza meglio l'obiettivo e
+dichiara con precisione lo scostamento (cosa resta, dove, con la pagina).
+Dopo </analisi> scrivi la risposta per il cliente nel formato indicato, coerente con la SCELTA.
+"""
+
+ANALYSIS_BLOCK = re.compile(r"<analisi>.*?</analisi>\s*", re.S | re.I)
+
+
+def split_analysis(text: str) -> tuple:
+    """Separa l'analisi interna del Narratore dalla risposta per il cliente."""
+    match = ANALYSIS_BLOCK.search(text or "")
+    if not match:
+        # analisi aperta e mai chiusa: tutto cio' che segue <analisi> e' interno
+        open_at = re.search(r"<analisi>", text or "", re.I)
+        if open_at:
+            return text[open_at.end():].strip(), text[:open_at.start()].strip()
+        return "", (text or "").strip()
+    analysis = match.group(0)
+    answer = (text[:match.start()] + text[match.end():]).strip()
+    return re.sub(r"</?analisi>", "", analysis, flags=re.I).strip(), answer
+
+
 FOLLOWUP_RULES = """
 CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
 - La richiesta attuale dipende dal turno precedente.
@@ -1719,8 +1756,11 @@ COMPARE_PATTERN = re.compile(
     r"\b(?:confront\w*|differenz\w*|rispetto a|meglio tra|versus|vs\.?)\b", re.I
 )
 NUMERIC_LIMIT_PATTERN = re.compile(
+    # un limite e' tale solo se accompagnato da un numero ("al massimo 180 cm",
+    # "non superi i 170", "tra 150 e 200"): "massimo spazio" non e' un vincolo numerico
     r"\b(?:al massimo|massim[oa]|max|non (?:superi|superare|oltre|piu' di|più di)|entro|"
-    r"almeno|minim[oa]|min\.?|fino a|inferiore|superiore|meno di|oltre|tra \d+ e \d+)\b|[<>≤≥]",
+    r"almeno|minim[oa]|min\.?|fino a|inferiore a|superiore a|meno di|oltre)\W+(?:\w+\W+){0,3}?\d"
+    r"|\btra \d+(?:[.,]\d+)? e \d+|[<>≤≥]\s*\d",
     re.I,
 )
 VALIDATOR_MODE = (os.getenv("VALIDATOR_MODE", "auto") or "auto").strip().lower()
@@ -1823,6 +1863,9 @@ def run_local_pipeline(
             max_tokens = 3000 if mode == "globale" else 1100
         if is_followup:
             system_prompt += FOLLOWUP_RULES
+        if intent in {"raccomandazione", "confronto", "conferma"}:
+            system_prompt += NARRATOR_ANALYSIS
+            max_tokens += 700  # spazio per l'analisi, che non arriva al cliente
 
         response_input = (
             f"RICHIESTA ORIGINALE:\n{document_query}\n\n"
@@ -1844,7 +1887,23 @@ def run_local_pipeline(
             temperature=0.1,
             max_tokens=max_tokens,
         )
-        answer = strip_markdown_emphasis((response.choices[0].message.content or "").strip())
+        analysis, answer = split_analysis((response.choices[0].message.content or "").strip())
+        if not answer and analysis:
+            # analisi non chiusa (risposta troncata): si rigenera senza analisi, per non
+            # lasciare il cliente senza risposta
+            print("[NARRATORE] analisi non chiusa: nuova stesura senza analisi")
+            response = client.chat.completions.create(
+                model=DEEPSEEK_MODEL,
+                messages=[{"role": "system",
+                           "content": system_prompt.replace(NARRATOR_ANALYSIS, "")},
+                          {"role": "user", "content": response_input}],
+                temperature=0.1,
+                max_tokens=max_tokens,
+            )
+            answer = (response.choices[0].message.content or "").strip()
+        answer = strip_markdown_emphasis(answer)
+        if analysis:
+            print("[NARRATORE] " + " | ".join(line.strip() for line in analysis.splitlines() if line.strip())[:1500])
         generation_seconds = time.perf_counter() - generation_started
         if not answer:
             return "Informazione non trovata nel documento collegato."
