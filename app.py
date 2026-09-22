@@ -2733,6 +2733,49 @@ def check_answer_facts(answer: str) -> List[Dict[str, Any]]:
                                        "valore": cite.group(0),
                                        "pagine_corrette": sorted(pages_of_code)[:8],
                                        "frase": sentence.strip()[:240]})
+    issues.extend(check_product_names(answer, seen))
+    return issues
+
+
+NAMED_CODE = re.compile(
+    r"([A-ZÀ-Ý][A-ZÀ-Ý0-9_'’\- ]{2,60}?)\s*[,:]?\s*(?:codice|cod\.)\s+([A-Z0-9][A-Z0-9._/-]*\d[A-Z0-9._/-]*)"
+)
+
+
+def product_name_of(code: str) -> str:
+    """Nome del prodotto della riga: il titolo della pagina fino alla prima colonna."""
+    rows = CODE_ROWS.get(code) or []
+    return re.split(r"\s{2,}|//", rows[0]["title"])[0].strip() if rows else ""
+
+
+def name_words(name: str) -> set:
+    return {w for w in re.findall(r"[a-zà-ÿ0-9]+", name.lower().replace("_", " ").replace("-", " "))
+            if len(w) >= 3}
+
+
+def check_product_names(answer: str, seen: set) -> List[Dict[str, Any]]:
+    """Nome e codice devono essere dello STESSO prodotto: "FLUTTUA_BED, codice FLU1810"
+    e' sbagliato se FLU1810 sta nella tabella di FLUTTUA WILDWOOD BED. Si confronta solo
+    dentro la stessa famiglia (stessa prima parola): altrove il nome commerciale del modello
+    ("Steps" per un codice di SEDIE) puo' legittimamente differire dal titolo della pagina."""
+    issues = []
+    for match in NAMED_CODE.finditer(answer or ""):
+        written, code = match.group(1).strip(" -"), match.group(2).rstrip(".,")
+        correct = product_name_of(code)
+        if not correct:
+            continue
+        written_words, correct_words = name_words(written), name_words(correct)
+        first_written = re.findall(r"[a-zà-ÿ0-9]+", written.lower().replace("_", " "))
+        first_correct = re.findall(r"[a-zà-ÿ0-9]+", correct.lower())
+        if not first_written or not first_correct:
+            continue
+        if first_correct[0] not in first_written:
+            continue
+        missing = correct_words - written_words
+        if missing and ("nome", code) not in seen:
+            seen.add(("nome", code))
+            issues.append({"tipo": "nome_errato", "codice": code, "valore": written,
+                           "nome_corretto": correct, "frase": match.group(0)[:240]})
     return issues
 
 
@@ -2742,7 +2785,9 @@ confrontandola con le righe del documento. Correggi SOLO quei punti usando le ri
 codice inesistente -> sostituiscilo con il codice corretto della stessa riga, oppure togli
 l'affermazione; prezzo non trovato -> usa il prezzo presente nella riga del codice, indicando
 la colonna; pagina errata -> usa la pagina corretta, salvo che la pagina citata si riferisca
-chiaramente a un altro dato (in quel caso rendilo esplicito). Non cambiare nient'altro:
+chiaramente a un altro dato (in quel caso rendilo esplicito); nome errato -> il codice
+appartiene al prodotto indicato come nome corretto: usa quel nome ovunque quel codice e' citato
+(una versione della stessa famiglia e' un prodotto con nome e prezzi propri). Non cambiare nient'altro:
 stessa lingua, stessa struttura, stesse sezioni. Restituisci soltanto la risposta corretta.
 """
 
@@ -2759,6 +2804,7 @@ def repair_answer(answer: str, issues: List[Dict[str, Any]], provider: str) -> s
         f"- {i['tipo']}: codice {i['codice']}"
         + (f", valore '{i['valore']}'" if i.get("valore") else "")
         + (f", pagine corrette {i['pagine_corrette']}" if i.get("pagine_corrette") else "")
+        + (f", nome corretto '{i['nome_corretto']}'" if i.get("nome_corretto") else "")
         + f"\n  frase: {i['frase']}"
         for i in issues
     )
@@ -2797,6 +2843,8 @@ def apply_fact_control(answer: str, provider: str) -> str:
         note = "\n".join(
             f"- {i['codice']}: "
             + ("codice non presente nel documento" if i["tipo"] == "codice_inesistente"
+               else f"il codice appartiene a {i['nome_corretto']}, non a {i['valore']}"
+               if i["tipo"] == "nome_errato"
                else f"il valore {i['valore']} non compare nella riga del codice")
             for i in serious
         )
