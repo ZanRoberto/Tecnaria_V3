@@ -768,7 +768,7 @@ def exclusion_hits(question: str, dossier: str, max_items: int = 12) -> List[Dic
             seen_lines.add((page_number, line))
             per_family[family] += 1
             hits.append({"page": page_number, "family": family, "title": title,
-                         "line": line[:160], "stems": matched})
+                         "line": line[:160], "stems": matched, "all_stems": sorted(stems)})
             if len(hits) >= max_items:
                 return hits
     return hits
@@ -820,25 +820,37 @@ def exclusion_contradictions(answer: str, hits: List[Dict[str, Any]]) -> List[Di
         return []
     body = re.split(re.escape(SELECTABLE_HEADER), answer, flags=re.I)[0]
     families = answer_families(answer)
+    # nomi di famiglia del documento ("air bed", "bed-in bed"): una frase che nomina
+    # un'ALTRA famiglia parla di quella. Servono prima e ultima parola, non una sola
+    # (parole come "a" o "set" sono anche parole comuni).
+    known_families = {
+        tuple(w.lower() for w in f) for f in (p.get("family") for p in DOCUMENT_PAGES)
+        if f and len(f) >= 2 and len(f[0]) >= 3
+    }
+    sentences = [s for s in re.split(r"(?<=[.!?])\s+|\n+", body) if s.strip()]
     found = []
     for hit in hits:
         if hit["family"] not in families:
             continue
-        for stem in hit["stems"]:
-            if not re.search(NEGATION_CLAIM + re.escape(stem), body, re.I):
+        own = tuple(w.lower() for w in hit["family"])
+        # tutte le esclusioni della stessa domanda ("senza gambe o altri appoggi a terra"
+        # e' un'unica esclusione): negare una qualsiasi contraddice la prova
+        stems = hit.get("all_stems") or hit["stems"]
+        distinctive = [
+            w[:-1] for w in re.findall(r"[a-zà-ÿ]{5,}", hit["line"].lower())
+            if not any(w.startswith(s) for s in stems) and w not in SEARCH_STOPWORDS
+        ]
+        for sentence in sentences:
+            lowered = sentence.lower()
+            words = set(re.findall(r"[a-zà-ÿ0-9]+", lowered.replace("-", "")))
+            named = {f for f in known_families if f[0] in words and f[-1] in words}
+            if named and own not in named:
+                continue  # la frase parla di un altro prodotto
+            if not any(re.search(NEGATION_CLAIM + re.escape(s), lowered, re.I) for s in stems):
                 continue
-            # prova gia' citata? una parola distintiva della riga (es. "telescopica")
-            # compare entro 60 caratteri da una menzione dell'elemento escluso
-            distinctive = [
-                w[:-1] for w in re.findall(r"[a-zà-ÿ]{5,}", hit["line"].lower())
-                if not w.startswith(stem) and w not in SEARCH_STOPWORDS
-            ]
-            lowered = body.lower()
-            acknowledged = any(
-                any(word in lowered[max(0, m.start() - 60):m.end() + 60] for word in distinctive)
-                for m in re.finditer(re.escape(stem), lowered)
-            )
-            if not acknowledged:
+            # la frase stessa deve citare la prova (es. "telescopica"): una nota in fondo
+            # non rende vera una frase che dichiara l'assenza
+            if not any(word in lowered for word in distinctive):
                 found.append(hit)
                 break
     return found
@@ -847,10 +859,16 @@ def exclusion_contradictions(answer: str, hits: List[Dict[str, Any]]) -> List[Di
 CONTRADICTION_REPAIR_PROMPT = """
 Sei il CORRETTORE DOCUMENTALE. La risposta dichiara assente un elemento che l'utente voleva
 evitare, ma il documento lo mostra presente sullo stesso prodotto (righe fornite).
-Correggi SOLO questo: dichiara con precisione che l'elemento e' presente come indicato dalla
-riga (con la pagina) e che cosa significa rispetto all'obiettivo dell'utente. Non cambiare
-prodotto se resta la scelta migliore; non aggiungere altro. Stessa lingua, stessa struttura,
-stesse sezioni. Restituisci soltanto la risposta corretta.
+Correggi SOLO questo, ma OVUNQUE:
+- riscrivi OGNI frase che dichiara assente l'elemento (o gli appoggi, o "nessuna gamba"),
+  anche nei selezionabili: nella frase stessa scrivi che cosa il documento indica, con la
+  pagina. Non aggiungere un paragrafo in fondo lasciando le frasi sbagliate;
+- se una frase dice "non indicato" una quota o un dato che il CONTESTO DELLE PAGINE riporta,
+  riscrivila con il dato e la pagina;
+- la prova vale per tutte le versioni della stessa famiglia citate nella risposta;
+- spiega in una frase che cosa significa rispetto all'obiettivo dell'utente.
+Non cambiare prodotto se resta la scelta migliore; non aggiungere altro. Stessa lingua,
+stessa struttura, stesse sezioni, stessa lunghezza circa. Restituisci soltanto la risposta.
 """
 
 
@@ -1763,6 +1781,12 @@ def build_document_query(
     """Aggiunge memoria soltanto quando la nuova domanda richiama il turno precedente.
     Seguito = frasi di richiamo esplicite OPPURE giudizio del pianificatore."""
     has_memory = bool(previous_question.strip() and previous_answer.strip())
+    # la stessa domanda ripetuta e' una richiesta nuova, non un approfondimento: altrimenti
+    # la risposta precedente (anche se sbagliata) vincola la nuova (caso reale: "Confermo i
+    # due letti gia' indicati")
+    if has_memory and normalize(re.sub(r"^(?:\s*/\w+)+\s", " ", question)) == normalize(
+            re.sub(r"^(?:\s*/\w+)+\s", " ", previous_question)):
+        return question, False
     followup = has_memory and (is_contextual_followup(question) or planner_followup is True)
     if not followup:
         return question, False
