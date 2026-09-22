@@ -818,8 +818,13 @@ def answer_families(answer: str) -> set:
 def exclusion_contradictions(answer: str, hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     if not answer or not hits:
         return []
-    body = re.split(re.escape(SELECTABLE_HEADER), answer, flags=re.I)[0]
+    parts = re.split(re.escape(SELECTABLE_HEADER), answer, flags=re.I)
+    body = parts[0]
     families = answer_families(answer)
+    # famiglie PROPOSTE (quelle nei selezionabili): per loro la prova sull'elemento escluso
+    # va sempre dichiarata. Tacerla e' come negarla, con qualunque parafrasi ("nessun
+    # elemento tocca il pavimento" sfugge a ogni elenco di negazioni).
+    proposed = answer_families(parts[1]) if len(parts) > 1 else set()
     # nomi di famiglia del documento ("air bed", "bed-in bed"): una frase che nomina
     # un'ALTRA famiglia parla di quella. Servono prima e ultima parola, non una sola
     # (parole come "a" o "set" sono anche parole comuni).
@@ -840,6 +845,9 @@ def exclusion_contradictions(answer: str, hits: List[Dict[str, Any]]) -> List[Di
             w[:-1] for w in re.findall(r"[a-zà-ÿ]{5,}", hit["line"].lower())
             if not any(w.startswith(s) for s in stems) and w not in SEARCH_STOPWORDS
         ]
+        if hit["family"] in proposed and not any(word in body.lower() for word in distinctive):
+            found.append(hit)  # omissione: la prova non compare da nessuna parte
+            continue
         for sentence in sentences:
             lowered = sentence.lower()
             words = set(re.findall(r"[a-zà-ÿ0-9]+", lowered.replace("-", "")))
