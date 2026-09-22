@@ -1,0 +1,259 @@
+[
+  {
+    "nome": "letto sospeso - raccomandazione",
+    "turni": [
+      "Cerco un letto matrimoniale che lasci più spazio possibile libero sotto, senza gambe o altri appoggi a terra. Quale prodotto del catalogo risponde meglio a questa esigenza? Indicami codice, misura del materasso, prezzo e pagina. Se esistono più versioni dello stesso letto, spiegami la differenza senza chiamarle prodotti diversi. Non dedurre lo spazio libero dall'altezza della testiera."
+    ],
+    "deve": [
+      "RISPOSTA\\s*\\n[^\\n]*FLUTTUA",
+      "FLU0",
+      "telescopic",
+      "423|424"
+    ],
+    "non_deve": [
+      "LAGOLINEA[^\\n]{0,80}VERIFICATO",
+      "90 ?x ?200[^\\n]{0,60}(consigli|principale)",
+      "DATI DA VERIFICARE",
+      "non ha gambe n[eé] piedini",
+      "elimina davvero ogni appoggio",
+      "RISPOSTA\\s*\\n[^\\n]*(BED-IN|ALE0)"
+    ],
+    "pagine": [
+      423,
+      424,
+      461
+    ],
+    "lessico_registrato": "letto matrimoniale bed 160x200 180x200 double sospeso floating wall-mounted fissato a parete senza gambe spazio libero sotto",
+    "max_parole": 260
+  },
+  {
+    "nome": "letto sospeso - ricerca di riserva senza pianificatore (solo offline)",
+    "turni": [
+      "Cerco un letto matrimoniale che lasci più spazio possibile libero sotto, senza gambe o altri appoggi a terra. Quale prodotto del catalogo risponde meglio a questa esigenza? Indicami codice, misura del materasso, prezzo e pagina. Se esistono più versioni dello stesso letto, spiegami la differenza senza chiamarle prodotti diversi. Non dedurre lo spazio libero dall'altezza della testiera."
+    ],
+    "pagine": [
+      423,
+      461
+    ],
+    "solo_offline": true
+  },
+  {
+    "nome": "letto sospeso - conferma 160x200 con quota e appoggi",
+    "turni": [
+      "Cerco un letto matrimoniale che lasci più spazio possibile libero sotto, senza gambe o altri appoggi a terra. Quale prodotto del catalogo risponde meglio a questa esigenza? Indicami codice, misura del materasso, prezzo e pagina.",
+      "Per la soluzione consigliata scelgo il materasso 160 × 200 con testiera imbottita alta 72 cm, fissata a parete. Confermami codice, prezzo e pagina, e dimmi a che altezza da terra sta il pianale e se ha appoggi a terra."
+    ],
+    "risposta_precedente_simulata": "FLUTTUA BED codice FLU005 160x200 pagina 423, versioni con testiera FLU0450 pagina 424",
+    "deve": [
+      "FLU0450",
+      "3\\.336",
+      "424",
+      "telescopic",
+      "27,[45]|42,[45]",
+      "461"
+    ],
+    "non_deve": [
+      "FLU0440",
+      "FLU0640",
+      "(quale|quali)[^\\n]{0,60}verifich",
+      "DATI DA VERIFICARE"
+    ],
+    "pagine": [
+      424,
+      461
+    ],
+    "max_parole": 260
+  },
+  {
+    "nome": "letto sospeso - cambio misura 180x200",
+    "turni": [
+      "Cerco un letto matrimoniale che lasci più spazio possibile libero sotto, senza gambe o altri appoggi a terra. Quale prodotto del catalogo risponde meglio a questa esigenza? Indicami codice, misura del materasso, prezzo e pagina.",
+      "Per la soluzione consigliata scelgo il materasso 160 × 200 con testiera imbottita alta 72 cm, fissata a parete. Confermami codice, prezzo e pagina.",
+      "Per la soluzione consigliata cambio idea: voglio il materasso 180 × 200, stessa testiera alta 72 cm. Codice, prezzo e pagina?"
+    ],
+    "risposta_precedente_simulata": "FLUTTUA BED codice FLU0450 160x200 3.336 pagina 424",
+    "deve": [
+      "FLU0460",
+      "3\\.569",
+      "424"
+    ],
+    "non_deve": [
+      "FLU0450[^\\n]{0,40}VERIFICATO",
+      "FLU0440",
+      "DATI DA VERIFICARE"
+    ],
+    "pagine": [
+      424
+    ],
+    "max_parole": 260
+  },
+  {
+    "nome": "tavolo allungabile entro 170 cm",
+    "turni": [
+      "Mi serve un tavolo allungabile che da chiuso non superi i 170 cm di lunghezza. Quali soluzioni ci sono? Codice, misure da chiuso e da aperto, prezzo e pagina."
+    ],
+    "deve": [
+      "TAV172",
+      "5\\.267",
+      "5\\.565",
+      "TAV176",
+      "5\\.708",
+      "6\\.100",
+      "333"
+    ],
+    "non_deve": [
+      "TAV173[^\\n]{0,60}VERIFICATO",
+      "TAV177[^\\n]{0,60}VERIFICATO",
+      "DATI DA VERIFICARE"
+    ],
+    "pagine": [
+      333
+    ],
+    "max_parole": 260
+  },
+  {
+    "nome": "sedie impilabili - nessuna",
+    "turni": [
+      "Cerco sedie impilabili per un locale: quali modelli del catalogo lo sono?"
+    ],
+    "deve": [
+      "non impilabil|not stackable",
+      "nessun|non risulta|non (è|e') present"
+    ],
+    "non_deve": [
+      "PRODOTTI SELEZIONABILI PER LA PROPOSTA\\s*\\n\\s*-[^\\n]*\\bVERIFICATO\\b"
+    ],
+    "pagine": [
+      388,
+      389,
+      390
+    ],
+    "max_parole": 260
+  },
+  {
+    "nome": "codice esatto SED071",
+    "turni": [
+      "Quanto costa il codice SED071 e che prodotto è?"
+    ],
+    "deve": [
+      "Steps",
+      "503",
+      "389"
+    ],
+    "non_deve": [
+      "perch[eéè] (è|e') adatt",
+      "DATI DA VERIFICARE"
+    ],
+    "pagine": [
+      389
+    ],
+    "max_parole": 260
+  },
+  {
+    "nome": "prodotto assente - cucina",
+    "turni": [
+      "Avete una cucina componibile con isola centrale? Dammi codice e prezzo."
+    ],
+    "deve": [
+      "non (è|e') present|non (è|e') disponibil|non compar|non trovat|non (è|e') inclus"
+    ],
+    "non_deve": [
+      "\\bVERIFICATO\\b"
+    ],
+    "pagine": [],
+    "max_parole": 260
+  },
+  {
+    "nome": "tavolino rotondo vetro diametro 90",
+    "turni": [
+      "Tavolino rotondo con piano in vetro, diametro 90 cm: quali versioni ci sono e quanto costano?"
+    ],
+    "deve": [
+      "DI91013",
+      "1\\.023",
+      "1\\.175",
+      "DI91004",
+      "1\\.036",
+      "1\\.187",
+      "168"
+    ],
+    "non_deve": [
+      "DATI DA VERIFICARE"
+    ],
+    "pagine": [
+      168
+    ],
+    "max_parole": 260
+  },
+  {
+    "nome": "tavolino - scelta altezza e piano opaco",
+    "turni": [
+      "Tavolino rotondo con piano in vetro, diametro 90 cm: quali versioni ci sono e quanto costano?",
+      "Per la soluzione consigliata voglio l'altezza 37,9 con piano opaco: codice e prezzo?"
+    ],
+    "risposta_precedente_simulata": "AIR ROUND COFFEE TABLE vetro DI91013 DI91004 XGlass DI91503 DI91504 pagina 168",
+    "deve": [
+      "DI91004[^\\n]{0,80}1\\.187|DI91504[^\\n]{0,80}1\\.302|1\\.187[^\\n]{0,80}DI91004|1\\.302[^\\n]{0,80}DI91504"
+    ],
+    "non_deve": [
+      "DATI DA VERIFICARE"
+    ],
+    "pagine": [
+      168
+    ],
+    "max_parole": 260
+  },
+  {
+    "nome": "mobile TV entro 180 cm",
+    "turni": [
+      "Cerco un mobile TV largo al massimo 180 cm, basso e poco profondo. Quali soluzioni del catalogo rispettano questi limiti? Indicami codice, misure, prezzo e pagina."
+    ],
+    "deve": [
+      "pagin[ae]\\s*(29|3\\d|4\\d|5\\d|6[0-6])\\b"
+    ],
+    "non_deve": [
+      "DATI DA VERIFICARE"
+    ],
+    "gruppi_pagine": [
+      [
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      [
+        43,
+        44
+      ],
+      [
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59
+      ],
+      [
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66
+      ]
+    ],
+    "max_parole": 260
+  }
+]
