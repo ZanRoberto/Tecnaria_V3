@@ -255,5 +255,27 @@
       ]
     ],
     "max_parole": 260
+  },
+  {
+    "nome": "codice numerico - composizione 1272",
+    "turni": [
+      "Quanto costa la composizione 1272 e che cosa comprende? Dammi misure, prezzo e pagina."
+    ],
+    "deve": [
+      "1272",
+      "147,2",
+      "182,7",
+      "3\\.715",
+      "400"
+    ],
+    "non_deve": [
+      "1272[^\\n]{0,60}\\b639\\b",
+      "DATI DA VERIFICARE",
+      "perch[eéè] (è|e') adatt"
+    ],
+    "pagine": [
+      400
+    ],
+    "max_parole": 260
   }
 ]
