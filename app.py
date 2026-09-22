@@ -2976,7 +2976,7 @@ def collaudo_page() -> str:
     status = (f"<p class='run'>In corso: {esc(COLLAUDO_STATE['progress'])} "
               "- la pagina si aggiorna da sola.</p>" if running else "")
     refresh = "<meta http-equiv='refresh' content='10'>" if running else ""
-    empty = "" if models else "<p>Nessun collaudo eseguito. Apri /collaudo?modello=deepseek-chat</p>"
+    empty = "" if models or running else "<p>Nessun collaudo eseguito. Apri /collaudo?modello=deepseek-chat</p>"
     return f"""<!doctype html><html lang='it'><head><meta charset='utf-8'>{refresh}
 <meta name='viewport' content='width=device-width, initial-scale=1'><title>Collaudo</title>
 <style>body{{font-family:system-ui,sans-serif;margin:24px;background:#f6f4f1;color:#1b1b1b}}
@@ -2992,6 +2992,14 @@ async def collaudo(modello: str = "", token: str = ""):
     if COLLAUDO_TOKEN and token != COLLAUDO_TOKEN:
         raise HTTPException(status_code=403, detail="token del collaudo mancante o errato")
     model = re.sub(r"[^A-Za-z0-9._-]", "", modello)[:60]
+    if model and re.match(r"(?:gpt|o\d)", model, re.I) and openai_client is None:
+        # nessun ripiego silenzioso: il confronto tra modelli deve essere vero
+        return HTMLResponse(
+            "<p>Per provare un modello OpenAI serve la variabile OPENAI_API_KEY su Render.</p>",
+            status_code=400,
+        )
+    if model and not re.match(r"(?:gpt|o\d)", model, re.I) and client is None:
+        return HTMLResponse("<p>Manca DEEPSEEK_API_KEY su Render.</p>", status_code=400)
     with COLLAUDO_LOCK:
         if model and not COLLAUDO_STATE["running"]:
             if not collaudo_cases():
