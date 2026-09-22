@@ -16,7 +16,10 @@
       "DATI DA VERIFICARE",
       "non ha gambe n[eé] piedini",
       "elimina davvero ogni appoggio",
-      "RISPOSTA\\s*\\n[^\\n]*(BED-IN|ALE0)"
+      "RISPOSTA\\s*\\n[^\\n]*(BED-IN|ALE0)",
+      "senza gambe n[eé] appoggi",
+      "(quota|spazio)[^\\n]{0,60}non (è|e') indicat",
+      "non hanno appoggi|senza appoggi a terra|nessuna gamba"
     ],
     "pagine": [
       423,
