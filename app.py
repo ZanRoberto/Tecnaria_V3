@@ -2544,10 +2544,10 @@ def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
 
     Un codice resta selezionabile solo se la sua misura documentata (riga di listino)
     e' tra quelle fissate dall'utente, in qualunque ordine siano scritte le dimensioni.
-    Codici senza misura documentata restano (dato non trovato != incompatibile).
+    Codici senza misura documentata non sono selezionabili per una misura tassativa:
+    rimangono candidati da verificare, senza essere dichiarati incompatibili.
     Ogni elemento dell'elenco porta con se' le sue righe di continuazione.
-    Se il filtro togliesse TUTTI i prodotti, la risposta resta invariata: e' piu'
-    probabile un disallineamento di scrittura che l'assenza di ogni soluzione.
+    Se il filtro toglie tutti i prodotti, nessuno entra nella proposta.
     Se resta un solo prodotto non si chiede di scegliere di nuovo."""
     header_match = find_section(answer, SELECTABLE_HEADER)
     if not answer or not allowed_sizes or not header_match:
@@ -2556,10 +2556,10 @@ def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
 
     def size_ok(code: str) -> bool:
         sizes = CODE_SIZES.get(code)
-        return (not sizes) or bool({canonical_size(x) for x in sizes} & allowed)
+        return bool(sizes) and bool({canonical_size(x) for x in sizes} & allowed)
 
     def line_codes(line: str) -> List[str]:
-        return [c for c in CODE_TOKEN_PATTERN.findall(line.upper()) if c in CODE_SIZES]
+        return [c for c in CODE_TOKEN_PATTERN.findall(line.upper()) if c in CODE_ROWS]
 
     head, section = answer[:header_match.start()], answer[header_match.start():]
     lines = section.splitlines()
@@ -2594,13 +2594,11 @@ def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
         in_tail = True
         tail_lines.append(line)
 
-    kept_items = [i for i in items if not i["codes"] or size_ok(i["codes"][0])]
-    removed = [i["codes"][0] for i in items if i["codes"] and not size_ok(i["codes"][0])]
+    kept_items = [i for i in items if i["codes"] and all(size_ok(c) for c in i["codes"])]
+    removed = [c for i in items for c in i["codes"] if not size_ok(c)]
     kept_with_code = [i for i in kept_items if i["codes"]]
     if removed and not kept_with_code:
-        print(f"[SELEZIONABILI] misura {sorted(allowed)}: nessun codice compatibile, "
-              "risposta lasciata invariata")
-        return answer
+        print(f"[SELEZIONABILI] misura {sorted(allowed)}: nessun codice con misura provata")
 
     # 2) anche un "consigliato" scritto prima della sezione deve rispettare la misura
     head_rec = re.search(rf"{re.escape(RECOMMENDED_PREFIX)}\s*:([^\n]*)", head, re.I)
@@ -2627,6 +2625,12 @@ def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
     print(f"[SELEZIONABILI] misura richiesta={sorted(allowed)} rimossi={sorted(set(removed))}")
 
     kept_codes = list(dict.fromkeys(i["codes"][0] for i in kept_with_code))
+    if not kept_codes:
+        body = (head.strip() + "\n\n" if head.strip() else "") + SELECTABLE_HEADER + (
+            "\nNessun prodotto selezionabile con la misura richiesta e documentata. "
+            "I prodotti senza misura attestata restano da verificare."
+        )
+        return body
     if len(kept_codes) == 1:
         recommended_code = kept_codes[0]
         # il prodotto e' gia' determinato: niente nuova richiesta di scelta
