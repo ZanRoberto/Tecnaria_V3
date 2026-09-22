@@ -2652,6 +2652,83 @@ def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
     return (head.strip() + "\n\n" + body) if head.strip() else body
 
 
+def explicit_dimension_limits(question: str) -> Dict[str, float]:
+    """Legge solo massimi dichiarati esplicitamente; altre formulazioni restano al modello."""
+    result: Dict[str, float] = {}
+    axes = {"profondita": "profondità", "larghezza": "larghezza", "altezza": "altezza"}
+    clean = question.lower().replace("'", "")
+    for axis in axes:
+        terms = (r"profond(?:ita|o|a)" if axis == "profondita" else
+                 r"largh(?:ezza|o|a)" if axis == "larghezza" else r"alt(?:ezza|o|a)")
+        patterns = (
+            rf"{terms}\W*(?:al\W+)?(?:massim\w*|max\.?|non\W+superior\w*\W+a|entro)\W*(\d+(?:[.,]\d+)?)\W*cm",
+            rf"(?:al\W+massimo|massim\w*|max\.?)\W*(\d+(?:[.,]\d+)?)\W*cm\W*(?:di\W+)?{terms}",
+        )
+        for pattern in patterns:
+            match = re.search(pattern, clean, re.I)
+            if match:
+                result[axis] = float(match.group(1).replace(",", "."))
+                break
+    return result
+
+
+def enforce_documented_maxima(answer: str, question: str) -> str:
+    """Non permette una proposta se la risposta o la riga del codice provano
+    che un massimo esplicito e' superato. Nessuna misura viene inferita da altre."""
+    limits = explicit_dimension_limits(question)
+    section = find_section(answer, SELECTABLE_HEADER)
+    if not limits or not section:
+        return answer
+    head, tail = answer[:section.start()], answer[section.start():]
+    paragraphs = re.split(r"\n\s*\n", head)
+    kept, rejected = [], []
+    axis_words = {"profondita": r"profondit[àa]|profond[oa]|depth",
+                  "larghezza": r"larghezza|largo|larga|width",
+                  "altezza": r"altezza|alto|alta|height"}
+
+    def conflicts(candidate: str) -> bool:
+        sources = [candidate]
+        codes = [c for c in CODE_TOKEN_PATTERN.findall(candidate.upper()) if c in CODE_ROWS]
+        for code in codes:
+            sources += [row["text"] for row in CODE_ROWS[code]]
+            sources += [p for p in paragraphs if re.search(rf"\b{re.escape(code)}\b", p, re.I)]
+        # Descrizione della composizione citata nel testo: utilizzabile anche
+        # quando la lista contiene un nome, ma non un codice SKU.
+        if not codes:
+            label = re.sub(r"^\s*[-•*]\s*", "", candidate).split(",", 1)[0]
+            if len(label) >= 12:
+                sources += [p for p in paragraphs if label[:12].lower() in p.lower()]
+        for source in sources:
+            normalized = source.lower().replace("'", "")
+            for axis, maximum in limits.items():
+                for match in re.finditer(rf"(?:{axis_words[axis]})\W*(?:max\W*)?(\d+(?:[.,]\d+)?)\W*cm", normalized, re.I):
+                    if float(match.group(1).replace(",", ".")) > maximum:
+                        return True
+        return False
+
+    lines = tail.splitlines()
+    for line in lines[1:]:
+        if not line.lstrip().startswith(("- ", "• ", "* ")):
+            kept.append(line)
+            continue
+        codes = [c for c in CODE_TOKEN_PATTERN.findall(line.upper()) if c in CODE_ROWS]
+        # Importi del tipo 3.150 + 1.631 non identificano prodotti.
+        pseudo_codes = bool(re.search(r"\bcodici?\s+\d{1,3}[.,]\d{3}\b", line, re.I))
+        if pseudo_codes or conflicts(line):
+            rejected.append(line)
+        else:
+            kept.append(line)
+    if not rejected:
+        return answer
+    kept_products = [line for line in kept if line.lstrip().startswith(("- ", "• ", "* "))]
+    if not kept_products:
+        kept = ["Nessun prodotto selezionabile: le misure documentate superano un limite richiesto."]
+        head = ("Nessuna soluzione documentata soddisfa tutti i limiti indicati.\n\n"
+                + head)
+    print(f"[VINCOLI] esclusi dalla proposta {len(rejected)} candidati")
+    return head.rstrip() + "\n\n" + SELECTABLE_HEADER + "\n" + "\n".join(kept).strip()
+
+
 # ============================================================
 # ENDPOINTS
 # ============================================================
@@ -2789,6 +2866,10 @@ async def api_ask(req: QuestionRequest):
                 document_answer = enforce_selectable_constraints(
                     document_answer,
                     requested_sizes(document_question, previous_question, is_followup_turn),
+                )
+                document_answer = enforce_documented_maxima(
+                    document_answer,
+                    document_question + (" " + previous_question if is_followup_turn else ""),
                 )
                 # in memoria solo risposte pulite: niente errori, niente avvisi residui,
                 # niente risposte nate senza pianificatore (verrebbero congelate peggiori)
