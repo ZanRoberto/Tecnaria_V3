@@ -19,7 +19,8 @@
       "RISPOSTA\\s*\\n[^\\n]*(BED-IN|ALE0)",
       "senza gambe n[eé] appoggi",
       "(quota|spazio)[^\\n]{0,60}non (è|e') indicat",
-      "non hanno appoggi|senza appoggi a terra|nessuna gamba"
+      "non hanno appoggi|senza appoggi a terra|nessuna gamba",
+      "altezz\\w* (del )?pianale[^\\n]{0,20}\\b(85|88|107)\\b"
     ],
     "pagine": [
       423,
@@ -278,6 +279,29 @@
     ],
     "pagine": [
       400
+    ],
+    "max_parole": 260
+  },
+  {
+    "nome": "letto 160x200 testiera 72 tessuto cliente con budget",
+    "turni": [
+      "Cerco un letto matrimoniale 160 × 200 sospeso, senza gambe o appoggi a terra, con testiera imbottita alta 72 cm in tessuto del cliente. Il budget massimo per il letto è 3.400. Codice, prezzo, pagina, e dimmi se rientro nel budget."
+    ],
+    "deve": [
+      "FLU0450",
+      "3\\.336",
+      "424",
+      "telescopic"
+    ],
+    "non_deve": [
+      "AIR BED[^\\n]{0,40}FLU0450",
+      "FLU0450[^\\n]{0,60}(3\\.399|3\\.481|3\\.645)",
+      "DATI DA VERIFICARE",
+      "non (è|e') present|non risulta disponibil"
+    ],
+    "pagine": [
+      424,
+      461
     ],
     "max_parole": 260
   }
