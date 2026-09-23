@@ -2939,6 +2939,7 @@ def check_answer_facts(answer: str, question: str = "") -> List[Dict[str, Any]]:
                                        "pagine_corrette": sorted(pages_of_code)[:8],
                                        "frase": sentence.strip()[:240]})
     issues.extend(check_product_names(answer, seen))
+    issues.extend(check_wrong_family(answer, seen))
     return issues
 
 
@@ -2956,6 +2957,52 @@ def product_name_of(code: str) -> str:
 def name_words(name: str) -> set:
     return {w for w in re.findall(r"[a-zà-ÿ0-9]+", name.lower().replace("_", " ").replace("-", " "))
             if len(w) >= 3}
+
+
+FAMILY_ROOTS: Dict[str, set] = {}
+
+
+def known_family_words() -> set:
+    """Prime parole dei nomi di famiglia del documento (AIR, STEEL, FLUTTUA...), con le radici
+    dei codici di ciascuna: due nomi che condividono la radice dei codici sono lo stesso
+    prodotto visto da due nomi (un modello dentro una categoria), non un errore."""
+    if not FAMILY_ROOTS and DOCUMENT_PAGES:
+        for code, rows in CODE_ROWS.items():
+            for row in rows:
+                family = PAGE_BY_NUMBER.get(row["page"], {}).get("family")
+                if family and len(family[0]) >= 3 and family[0] != "CODICI":
+                    FAMILY_ROOTS.setdefault(family[0].lower(), set()).add(code_root(code))
+    return set(FAMILY_ROOTS)
+
+
+def check_wrong_family(answer: str, seen: set) -> List[Dict[str, Any]]:
+    """Il codice citato in una frase che nomina un'ALTRA famiglia ("AIR BED, codice FLU0450")
+    e' un errore di prodotto: la frase deve nominare la famiglia del codice."""
+    issues = []
+    families = known_family_words()
+    for sentence in SENTENCE_SPLIT.split(answer or ""):
+        tokens = re.findall(r"[A-Za-zÀ-ÿ0-9]+", sentence.replace("_", " "))
+        words = {w.lower() for w in tokens}
+        # un nome di prodotto e' scritto con l'iniziale maiuscola: "fissaggio" non e' un marchio
+        capitalized = {w.lower() for w in tokens if w[:1].isupper()}
+        named = families & capitalized
+        if not named:
+            continue
+        for _, code in codes_mentioned(sentence):
+            correct = product_name_of(code)
+            own = re.findall(r"[a-zà-ÿ0-9]+", correct.lower())
+            if not correct or not own or own[0] in words or own[0] not in families:
+                continue
+            # se la famiglia nominata usa la stessa radice di codici, e' lo stesso prodotto
+            if any(code_root(code) in FAMILY_ROOTS.get(name, set()) for name in named):
+                continue
+            if ("nome", code) in seen:
+                continue
+            seen.add(("nome", code))
+            issues.append({"tipo": "nome_errato", "codice": code,
+                           "valore": " ".join(sorted(named)).upper(),
+                           "nome_corretto": correct, "frase": sentence.strip()[:240]})
+    return issues
 
 
 def check_product_names(answer: str, seen: set) -> List[Dict[str, Any]]:
