@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -56,6 +56,9 @@ OPENAI_DOCUMENT_MODEL = (
 
 # Archivio locale indicizzato. Non dipende da OpenAI o da un Vector Store.
 DOCUMENT_INDEX_PATH = os.path.join(DATA_DIR, "document_index_COMPLETO.txt")
+# schede prodotto costruite dal PDF con le coordinate (build_schede.py): ogni valore e'
+# legato alla sua colonna. Facoltative: senza, il motore usa le righe di testo.
+PRODUCT_CARDS_PATH = os.path.join(DATA_DIR, "schede_prodotto.json")
 
 # Il motore NAR/SUP resta universale. Questi valori descrivono soltanto
 # l'azienda e il patrimonio documentale collegati alla singola installazione.
@@ -501,12 +504,14 @@ def load_document_index() -> None:
             VOCABULARY.update(p["token_set"])
         build_code_rows()
         sync_page_codes_with_rows()
+        load_product_cards()
         KNOWN_ROOTS.clear()  # ricalcolate al primo controllo, dopo il caricamento
         families = Counter(p["family"] for p in DOCUMENT_PAGES if p["family"])
         print(
             f"[INFO] indice locale caricato: {len(DOCUMENT_PAGES)} pagine, "
             f"{len(raw)} caratteri, {len(families)} famiglie di prodotto riconosciute, "
-            f"{len(CODE_ROWS)} codici con riga di listino"
+            f"{len(CODE_ROWS)} codici con riga di listino, "
+            f"{sum(len(v) for v in PRODUCT_CARDS.values())} schede prodotto con colonne"
         )
     except Exception as e:
         print(f"[ERROR] caricando indice locale: {e}")
@@ -524,6 +529,114 @@ def load_document_index() -> None:
 # 2) verificare in modo deterministico codici, prezzi e pagine citati nella risposta.
 
 CODE_ROWS: Dict[str, List[Dict[str, Any]]] = {}
+PRODUCT_CARDS: Dict[tuple, List[Dict[str, Any]]] = {}
+CARD_DIMENSION = re.compile(
+    r"larghezz|width|profondit|depth|altezz|height|materass|mattress|diametr|diameter|lunghezz|length",
+    re.I)
+CARD_PRICE = re.compile(r"^\d{1,3}(?:\.\d{3})+(?:,\d{2})?$|^\d{2,4}(?:,\d{2})?$")
+
+
+def load_product_cards() -> None:
+    """Schede (codice, pagina) -> valori per colonna. Si tengono solo le schede di codici
+    che il motore conosce su quella pagina: la scheda arricchisce, non inventa codici."""
+    PRODUCT_CARDS.clear()
+    if not os.path.exists(PRODUCT_CARDS_PATH):
+        print(f"[WARN] schede prodotto non trovate: {PRODUCT_CARDS_PATH}")
+        return
+    try:
+        with open(PRODUCT_CARDS_PATH, encoding="utf-8") as handle:
+            cards = json.load(handle).get("schede", [])
+    except Exception as e:
+        print(f"[WARN] schede prodotto non leggibili: {e}")
+        return
+    for card in cards:
+        code, page = card.get("codice"), card.get("pagina")
+        if code in CODE_ROWS and any(r["page"] == page for r in CODE_ROWS[code]):
+            PRODUCT_CARDS.setdefault((code, page), []).append(card)
+
+
+def card_numbers(code: str) -> set:
+    """Numeri delle schede del codice (tutte le pagine), normalizzati come nel controllo."""
+    numbers = set()
+    for (c, _), cards in PRODUCT_CARDS.items():
+        if c != code:
+            continue
+        for card in cards:
+            for value in list(card["prezzi"].values()) + list(card["attributi"].values()):
+                for token in re.findall(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?", value):
+                    numbers.add(normalize_number(token))
+    return numbers
+
+
+def format_card(card: Dict[str, Any]) -> str:
+    attributes = "; ".join(f"{k}={v}" for k, v in card["attributi"].items())
+    prices = "; ".join(f"{k}={v}" for k, v in card["prezzi"].items())
+    parts = [f"- {card['codice']} | pagina {card['pagina']} | {card['prodotto']}"]
+    if card.get("versione"):
+        parts.append(f"versione: {card['versione']}")
+    if attributes:
+        parts.append(attributes)
+    if prices:
+        parts.append(f"prezzi/colonne: {prices}")
+    if card.get("senza_intestazione"):
+        parts.append("valori senza intestazione: " + ", ".join(card["senza_intestazione"]))
+    return " | ".join(parts)
+
+
+def first_price(card: Dict[str, Any]) -> Optional[float]:
+    for value in card["prezzi"].values():
+        token = value.split()[0] if value else ""
+        if CARD_PRICE.match(token) and "." in token or re.fullmatch(r"\d{3,4}", token or ""):
+            try:
+                return float(token.replace(".", "").replace(",", "."))
+            except ValueError:
+                return None
+    return None
+
+
+def family_overview(dossier: str, max_families: int = 3, max_lines: int = 16) -> str:
+    """Gerarchia famiglia -> prodotto -> versione delle famiglie piu' presenti tra le pagine
+    inviate, con pagine, numero di codici e fascia di prezzo (primo prezzo di ogni riga).
+    E' il perimetro della scelta: la versione base e le varianti si vedono a colpo d'occhio."""
+    pages = [int(p) for p in re.findall(r"===== PAGINA PDF (\d+) =====", dossier)]
+    families = Counter(PAGE_BY_NUMBER[p].get("family") for p in pages if p in PAGE_BY_NUMBER)
+    families.pop(None, None)
+    blocks = []
+    for family, _ in families.most_common(max_families):
+        groups: Dict[tuple, Dict[str, Any]] = {}
+        for (code, page), cards in PRODUCT_CARDS.items():
+            if PAGE_BY_NUMBER.get(page, {}).get("family") != family:
+                continue
+            for card in cards:
+                # prodotto = riga con almeno due misure (materasso, larghezza, altezza...);
+                # le righe senza misure sono accessori e restano nelle righe di listino
+                if sum(1 for k in card["attributi"] if CARD_DIMENSION.search(k)) < 2:
+                    continue
+                key = (card["prodotto"], card.get("versione") or "")
+                group = groups.setdefault(key, {"pages": set(), "codes": set(), "prices": []})
+                group["pages"].add(page)
+                group["codes"].add(code)
+                price = first_price(card)
+                if price:
+                    group["prices"].append(price)
+        if not groups:
+            continue
+        lines = []
+        for (product, version), g in sorted(
+                groups.items(), key=lambda kv: (min(kv[1]["pages"]), min(kv[1]["prices"] or [0]))):
+            if len(g["codes"]) < 2:
+                continue  # un codice isolato e' un accessorio: resta nelle righe
+            span = ""
+            if g["prices"]:
+                low, high = min(g["prices"]), max(g["prices"])
+                fmt = lambda v: f"{v:,.0f}".replace(",", ".")
+                span = f" | prezzi da {fmt(low)} a {fmt(high)}"
+            pages_text = ",".join(str(p) for p in sorted(g["pages"])[:6])
+            lines.append(f"  - {product} | {version or 'versione non indicata'} | pagine {pages_text}"
+                         f" | {len(g['codes'])} codici{span}")
+        if lines:
+            blocks.append(f"FAMIGLIA {' '.join(family)}:\n" + "\n".join(lines[:max_lines]))
+    return "\n".join(blocks)
 CODE_HEADER_PATTERN = re.compile(r"\b(?:codice|code|cod\.|art\.|articolo|item)\b", re.I)
 NUMBER_TOKEN_PATTERN = re.compile(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?")
 
@@ -639,7 +752,41 @@ def format_code_rows(codes: List[str], max_chars: int = 14000) -> str:
     return "\n".join(blocks)
 
 
-def format_evidence_rows(dossier: str, max_chars: int = 14000) -> str:
+def rows_with_sizes(dossier: str, wanted: set, max_chars: int = 7000) -> tuple:
+    """Prima di tutto le righe che portano proprio la misura chiesta, da qualunque pagina:
+    il limite di caratteri non deve far sparire la riga che risponde alla domanda."""
+    if not wanted:
+        return "", set()
+    blocks, used, total = [], set(), 0
+    per_family: Counter = Counter()  # righe per pagina
+    for page_number in (int(p) for p in re.findall(r"===== PAGINA PDF (\d+) =====", dossier)):
+        page = PAGE_BY_NUMBER.get(page_number)
+        if not page:
+            continue
+        for line in (page.get("compact") or "").splitlines():
+            for code in line_codes_on_page(line, page_number):
+                if code in used or code not in CODE_ROWS:
+                    continue
+                cards = PRODUCT_CARDS.get((code, page_number))
+                text = (" ".join(format_card(c) for c in cards) if cards else line)
+                if not (wanted & find_sizes(text)):
+                    continue
+                # al massimo due righe per pagina: entrano tutte le pagine, non solo le prime
+                if per_family[page_number] >= 2:
+                    continue
+                per_family[page_number] += 1
+                block = "\n".join(format_card(c) for c in cards[:1]) if cards else \
+                    f"- {code} | pagina {page_number} | riga: {line[:220]}"
+                if total + len(block) > max_chars:
+                    return "\n".join(blocks), used
+                blocks.append(block)
+                used.add(code)
+                total += len(block)
+    return "\n".join(blocks), used
+
+
+def format_evidence_rows(dossier: str, max_chars: int = 14000, priority_pages: Optional[set] = None,
+                         skip_codes: Optional[set] = None) -> str:
     """Righe di listino delle SOLE pagine inviate al modello. Prima le pagine della
     famiglia piu' rappresentata (il prodotto su cui si decide), poi le altre. Un codice
     presente su molte pagine (accessorio) compare una volta sola: senza questa regola le
@@ -647,12 +794,14 @@ def format_evidence_rows(dossier: str, max_chars: int = 14000) -> str:
     pages = [int(p) for p in re.findall(r"===== PAGINA PDF (\d+) =====", dossier)]
     families = Counter(PAGE_BY_NUMBER[p].get("family") for p in pages if p in PAGE_BY_NUMBER)
     families.pop(None, None)
+    priority = priority_pages or set()
     order = sorted(
         range(len(pages)),
-        key=lambda i: (-families.get(PAGE_BY_NUMBER.get(pages[i], {}).get("family"), 0), i),
+        key=lambda i: (0 if pages[i] in priority else 1,
+                       -families.get(PAGE_BY_NUMBER.get(pages[i], {}).get("family"), 0), i),
     )
     blocks: List[str] = []
-    seen_codes: set = set()
+    seen_codes: set = set(skip_codes or ())
     total = 0
     last_context = None
     for i in order:
@@ -667,6 +816,16 @@ def format_evidence_rows(dossier: str, max_chars: int = 14000) -> str:
                 seen_codes.add(code)
                 row = next((r for r in CODE_ROWS[code] if r["page"] == page_number), None)
                 if row is None:
+                    continue
+                cards = PRODUCT_CARDS.get((code, page_number))
+                if cards:
+                    # scheda con colonne: il significato di ogni numero e' esplicito
+                    block = "\n".join(format_card(card) for card in cards[:2])
+                    if total + len(block) > max_chars:
+                        return "\n".join(blocks)
+                    blocks.append(block)
+                    total += len(block)
+                    last_context = None
                     continue
                 context_key = (page_number, row["header"], row["description"])
                 block = f"- {code} | pagina {page_number} | riga: {row['text'][:220]}"
@@ -1167,6 +1326,20 @@ def retrieve_local_evidence(
         for fam in family_order:
             for idx in technical_pages_of(fam):
                 add(idx)
+        # 1c) delle prime famiglie, le pagine di listino che contengono la misura chiesta:
+        #     senza questa regola la misura richiesta poteva restare fuori quando la famiglia
+        #     giusta non era la prima per punteggio (caso reale: pagina 424 persa)
+        wanted_sizes = find_sizes(query)
+        if wanted_sizes:
+            for fam in family_order[:3]:
+                taken = 0
+                for idx in family_pages.get(fam, []):
+                    page = DOCUMENT_PAGES[idx]
+                    if taken >= 3:
+                        break
+                    if page.get("codes") and wanted_sizes & find_sizes(page.get("compact") or ""):
+                        add(idx)
+                        taken += 1
         # 2) profondita': la prima famiglia intera, versioni e tavole tecniche comprese;
         if family_order:
             for idx in family_pages[family_order[0]]:
@@ -2168,9 +2341,19 @@ def run_local_pipeline(
             previous_answer if is_followup else ""))]
         priority = list(dict.fromkeys(c for c in priority if c in CODE_ROWS))
         rows_text = format_code_rows(priority, 4000) if priority else ""
-        evidence_rows = format_evidence_rows(dossier, 14000 - len(rows_text))
+        # le pagine che contengono la misura chiesta vanno in cima alle righe: il limite di
+        # caratteri non deve far sparire proprio la riga della misura richiesta
+        wanted = find_sizes(question + (" " + previous_question if is_followup else ""))
+        size_pages = {int(p) for p in re.findall(r"===== PAGINA PDF (\d+) =====", dossier)
+                      if wanted & find_sizes(PAGE_BY_NUMBER.get(int(p), {}).get("compact") or "")
+                      } if wanted else set()
+        size_rows, size_codes = rows_with_sizes(dossier, wanted)
+        evidence_rows = format_evidence_rows(
+            dossier, 14000 - len(rows_text) - len(size_rows), size_pages, size_codes)
+        evidence_rows = "\n".join(part for part in (size_rows, evidence_rows) if part)
         rows_text = "\n".join(part for part in (rows_text, evidence_rows) if part)
         row_codes = re.findall(r"^- (\S+) \|", rows_text, re.M)
+        overview = family_overview(dossier) if intent in {"raccomandazione", "confronto"} else ""
 
         if mode == "globale" and intent in {"raccomandazione", "confronto"}:
             system_prompt = DOCUMENT_FULL_PROMPT.format(
@@ -2195,8 +2378,16 @@ def run_local_pipeline(
             + absent_category_note(plan)
             + exclusion_evidence_note(question + (" " + previous_question if is_followup else ""),
                                       dossier)
-            + (f"\n\nRIGHE DI LISTINO CON INTESTAZIONI DI COLONNA (usale per attribuire "
-               f"correttamente ogni numero):\n{rows_text}" if rows_text else "")
+            + (f"\n\nPANORAMICA DELLE FAMIGLIE (prodotto | versione | pagine | codici | fascia "
+               f"di prezzo): e' il perimetro della scelta; la versione piu' semplice che realizza "
+               f"l'obiettivo viene prima delle varianti.\n{overview}" if overview else "")
+            + (f"\n\nSCHEDE E RIGHE DI LISTINO. Nelle schede ogni valore e' gia' assegnato alla "
+               f"sua colonna (nome IT/EN): il significato di un numero e' SOLO quello della sua "
+               f"colonna. Non attribuire a un numero un significato che la colonna non dice "
+               f"(es. un valore di Altezza/Height non e' l'altezza del pianale); confronta le "
+               f"versioni colonna per colonna e di' in quale colonna differiscono. Un valore "
+               f"'unico del gruppo' vale per tutte le righe del gruppo. Un valore senza "
+               f"intestazione non va interpretato.\n{rows_text}" if rows_text else "")
             + f"\n\nEVIDENZE DOCUMENTALI (pagine complete):\n{dossier}\n\n"
             "Formula ora la risposta usando esclusivamente queste evidenze."
         )
@@ -2232,7 +2423,8 @@ def run_local_pipeline(
         validation_seconds = time.perf_counter() - validation_started
 
         control_started = time.perf_counter()
-        answer = apply_fact_control(answer, "deepseek_local")
+        answer = apply_fact_control(
+            answer, "deepseek_local", question + " " + (previous_question if is_followup else ""))
         exclusion_question = question + (" " + previous_question if is_followup else "")
         hits = exclusion_hits(exclusion_question, dossier)
         # anche le pagine delle famiglie citate nella risposta, prese dall'indice intero
@@ -2650,8 +2842,10 @@ def codes_mentioned(text: str) -> List[tuple]:
 
 
 
-def check_answer_facts(answer: str) -> List[Dict[str, Any]]:
+def check_answer_facts(answer: str, question: str = "") -> List[Dict[str, Any]]:
     issues: List[Dict[str, Any]] = []
+    # i numeri scritti dall'utente (budget, limiti) non sono prezzi attribuiti dal documento
+    question_numbers = {normalize_number(n) for n in NUMBER_TOKEN_PATTERN.findall(question or "")}
     if not answer or not CODE_ROWS:
         return issues
     seen = set()
@@ -2694,6 +2888,9 @@ def check_answer_facts(answer: str) -> List[Dict[str, Any]]:
                 row["numbers"] if row.get("has_price", True) else row["near_numbers"]
                 for c in sentence_codes for row in CODE_ROWS[c]
             ))
+            # i valori della scheda (colonne dal PDF) valgono quanto quelli della riga
+            for c in sentence_codes:
+                allowed_numbers |= card_numbers(c)
             pages_of_code = {row["page"] for row in rows}
             families = {PAGE_BY_NUMBER[p].get("family") for p in pages_of_code if p in PAGE_BY_NUMBER}
             # della famiglia valgono solo le schede tecniche (pagine senza codici di listino):
@@ -2717,7 +2914,7 @@ def check_answer_facts(answer: str) -> List[Dict[str, Any]]:
                     prices.add(number.group(1))
             for price in prices:
                 normalized = normalize_number(price)
-                if normalized in allowed_numbers:
+                if normalized in allowed_numbers or normalized in question_numbers:
                     continue
                 if not is_attributed_price(window, price):
                     continue
@@ -2834,16 +3031,16 @@ def repair_answer(answer: str, issues: List[Dict[str, Any]], provider: str) -> s
     return answer
 
 
-def apply_fact_control(answer: str, provider: str) -> str:
+def apply_fact_control(answer: str, provider: str, question: str = "") -> str:
     """Verifica deterministica, una correzione mirata se serve, segnalazione del residuo."""
-    issues = check_answer_facts(answer)
+    issues = check_answer_facts(answer, question)
     if not issues:
         print("[CONTROLLO] 0 incongruenze")
         return answer
     print(f"[CONTROLLO] {len(issues)} incongruenze: " + "; ".join(
         f"{i['tipo']} {i['codice']} {i.get('valore', '')}" for i in issues))
     repaired = repair_answer(answer, issues, provider)
-    residual = check_answer_facts(repaired)
+    residual = check_answer_facts(repaired, question)
     print(f"[CONTROLLO] dopo correzione: {len(residual)} incongruenze")
     # Le pagine residue possono riferirsi a un altro dato della stessa frase: solo log.
     serious = [i for i in residual if i["tipo"] != "pagina_errata"]
@@ -3049,6 +3246,38 @@ async def root() -> FileResponse:
     return FileResponse(index_path)
 
 
+# Catalogo diviso in parti (static/catalogo/catalogo_p401-500.pdf ...): ogni parte resta sotto
+# i 25 MB che GitHub accetta dal browser e si carica piu' in fretta del PDF intero.
+CATALOG_PARTS_DIR = os.path.join(STATIC_DIR, "catalogo")
+CATALOG_PART_NAME = re.compile(r"^catalogo_p(\d+)-(\d+)\.pdf$", re.I)
+
+
+def catalog_parts() -> List[tuple]:
+    if not os.path.isdir(CATALOG_PARTS_DIR):
+        return []
+    parts = []
+    for name in os.listdir(CATALOG_PARTS_DIR):
+        match = CATALOG_PART_NAME.match(name)
+        if match:
+            parts.append((int(match.group(1)), int(match.group(2)), name))
+    return sorted(parts)
+
+
+def catalog_available() -> bool:
+    return bool(catalog_parts()) or bool(CATALOG_PDF_PATH and os.path.isfile(CATALOG_PDF_PATH))
+
+
+@app.get("/catalogo/pagina/{page}")
+async def catalog_page(page: int):
+    """Apre la pagina N del catalogo originale: la parte che la contiene, alla pagina giusta."""
+    for first, last, name in catalog_parts():
+        if first <= page <= last:
+            return RedirectResponse(f"/static/catalogo/{name}#page={page - first + 1}", status_code=307)
+    if CATALOG_PDF_PATH and os.path.isfile(CATALOG_PDF_PATH):
+        return RedirectResponse(f"/catalogo.pdf#page={page}", status_code=307)
+    raise HTTPException(status_code=404, detail="Pagina del catalogo non disponibile")
+
+
 @app.get("/catalogo.pdf")
 async def catalog_pdf() -> FileResponse:
     """Serve il documento originale al visualizzatore della pagina catalogo."""
@@ -3085,6 +3314,8 @@ async def status():
         "universal_constraint_validator": True,
         "narratore_risponditore": "attivo",
         "commercial_proposal_enabled": ENABLE_COMMERCIAL_PROPOSAL,
+        "catalog_pdf_available": catalog_available(),
+        "product_cards": sum(len(v) for v in PRODUCT_CARDS.values()),
         "catalog_viewer_ready": bool(
             CATALOG_PDF_PATH and os.path.isfile(CATALOG_PDF_PATH)
         ),
