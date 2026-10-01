@@ -1,96 +1,105 @@
-import os
-import json
-import hashlib
-import html
-import threading
-import re
-import math
-import time
-from collections import Counter, OrderedDict
-from typing import List, Dict, Any, Optional
+                    (document_question[:3000], previous_question[:800] if has_memory else "")
+                    in PLAN_CACHE
+                )
+                clean = not re.match(
+                    r"(Si è verificato|Informazione non trovata|Il motore esterno|Archivio)",
+                    document_answer,
+                ) and "DATI DA VERIFICARE" not in document_answer
+                if clean and plan_ok and use_cache:
+                    ANSWER_CACHE[cache_key] = (document_answer, is_followup_turn)
+                    if len(ANSWER_CACHE) > 256:
+                        ANSWER_CACHE.popitem(last=False)
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+            return AnswerResponse(
+                answer=document_answer,
+                source="narratore_risponditore",
+                meta={
+                    "mode": document_mode,
+                    "engine": active_document_engine(),
+                    "used_previous_context": bool(is_followup_turn),
+                    "cached": cached is not None,
+                },
+            )
 
-from openai import OpenAI
+        # 1) DOMANDE AZIENDALI / COMMERCIALI → SOLO COMM.JSON
+        if is_commercial_question(q_norm):
+            comm_block = match_comm(q_norm)
+            if comm_block:
+                answer = comm_block.get("response_variants", {}).get("gold", {}).get("it")
+                if not answer:
+                    answer = comm_block.get("answer_it") or comm_block.get("answer", "")
+                return AnswerResponse(
+                    answer=answer,
+                    source="json_comm",
+                    meta={"comm_id": comm_block.get("id")},
+                )
+            else:
+                return AnswerResponse(
+                    answer=(
+                        "Le informazioni richieste rientrano nei dati aziendali/commerciali. "
+                        "Per sicurezza è necessario fare riferimento ai canali ufficiali Tecnaria."
+                    ),
+                    source="json_comm_fallback",
+                    meta={},
+                )
 
-# ============================================================
-# CONFIG BASE
-# ============================================================
+        # 2) DESCRIZIONE SITUAZIONALE → NARRATORE + SUPERRISPONDITORE
+        if is_situational(question_raw):
+            # Step 1: Narratore legge la situazione
+            analisi_narratore = call_deepseek(
+                SYSTEM_PROMPT_NARRATORE,
+                question_raw,
+                temperature=0.2
+            )
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-DATA_DIR = os.path.join(STATIC_DIR, "data")
-CATALOG_PDF_PATH = os.getenv(
-    "CATALOG_PDF_PATH",
-    os.path.join(STATIC_DIR, "catalogo.pdf"),
-).strip()
+            # Step 2: Superrisponditore risponde con contesto completo
+            contesto_super = (
+                f"DESCRIZIONE CLIENTE:\n{question_raw}\n\n"
+                f"ANALISI NARRATORE:\n{analisi_narratore}\n\n"
+                f"Ora dai la risposta tecnica completa."
+            )
+            risposta_super = call_deepseek(
+                SYSTEM_PROMPT_SUPERRISPONDITORE,
+                contesto_super,
+                temperature=0.2
+            )
 
-MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
-COMM_PATH = os.path.join(DATA_DIR, "COMM.json")
+            risposta_finale = (
+                f"📋 ANALISI SITUAZIONE\n\n{analisi_narratore}"
+                f"\n\n{'─' * 40}\n\n"
+                f"💡 RISPOSTA TECNICA\n\n{risposta_super}"
+            )
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
-DEEPSEEK_MODEL = (os.getenv("DEEPSEEK_MODEL", "deepseek-chat") or "deepseek-chat").strip()
-DEEPSEEK_BASE_URL = (
-    os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-    or "https://api.deepseek.com"
-).strip()
+            return AnswerResponse(
+                answer=risposta_finale,
+                source="oracolo_narratore_superrisponditore",
+                meta={
+                    "narratore": analisi_narratore,
+                    "superrisponditore": risposta_super,
+                    "used_deepseek": True,
+                },
+            )
 
-# Selettore del motore documentale:
-# - deepseek_local: indice locale + DeepSeek
-# - openai_vector: Vector Store + OpenAI
-# - automatic: prova OpenAI Vector e, in caso di errore, passa a DeepSeek locale
-SEARCH_ENGINE = (os.getenv("SEARCH_ENGINE", "deepseek_local") or "deepseek_local").strip().lower()
-if SEARCH_ENGINE not in {"deepseek_local", "openai_vector", "automatic"}:
-    print(f"[WARN] SEARCH_ENGINE non valido: {SEARCH_ENGINE}; uso deepseek_local")
-    SEARCH_ENGINE = "deepseek_local"
+        # 3) DOMANDE TECNICHE DIRETTE → DEEPSEEK GOLD TECNARIA
+        gpt_answer = call_deepseek(SYSTEM_PROMPT_GOLD, question_raw, temperature=0.2)
+        kb_block = match_from_kb(question_raw)
+        kb_id = kb_block.get("id") if kb_block else None
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-OPENAI_VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
-OPENAI_DOCUMENT_MODEL = (
-    os.getenv("OPENAI_DOCUMENT_MODEL", "gpt-4o") or "gpt-4o"
-).strip()
+        return AnswerResponse(
+            answer=gpt_answer,
+            source="deepseek_gold_tecnaria",
+            meta={
+                "used_deepseek": True,
+                "kb_id": kb_id,
+            },
+        )
 
-# Archivio locale indicizzato. Non dipende da OpenAI o da un Vector Store.
-DOCUMENT_INDEX_PATH = os.path.join(DATA_DIR, "document_index_COMPLETO.txt")
-# schede prodotto costruite dal PDF con le coordinate (build_schede.py): ogni valore e'
-# legato alla sua colonna. Facoltative: senza, il motore usa le righe di testo.
-PRODUCT_CARDS_PATH = os.path.join(DATA_DIR, "schede_prodotto.json")
-
-# Il motore NAR/SUP resta universale. Questi valori descrivono soltanto
-# l'azienda e il patrimonio documentale collegati alla singola installazione.
-DOCUMENT_CONTEXT = os.getenv(
-    "DOCUMENT_CONTEXT",
-    "Catalogo LAGO ELEMENTS February 2024 IT/EN",
-).strip()
-DOCUMENT_DISCLAIMER = os.getenv(
-    "DOCUMENT_DISCLAIMER",
-    (
-        "I dati appartengono al catalogo LAGO ELEMENTS February 2024 IT/EN; "
-        "prezzi e condizioni devono essere verificati commercialmente prima "
-        "di formulare un'offerta definitiva."
-    ),
-).strip()
-
-# Interruttore commerciale: per impostazione predefinita la funzione non e'
-# visibile. Su Render puo' essere attivata impostando il valore a "true".
-ENABLE_COMMERCIAL_PROPOSAL = os.getenv(
-    "ENABLE_COMMERCIAL_PROPOSAL", "false"
-).strip().lower() in {"1", "true", "yes", "on"}
-
-# Modello che SCRIVE la risposta (stesura, controllo vincoli, correzione documentale).
-# Il pianificatore resta sul modello veloce DEEPSEEK_MODEL. Di default non cambia nulla.
-#   GENERATION_PROVIDER = deepseek | openai
-#   GENERATION_MODEL    = es. deepseek-chat, deepseek-reasoner, gpt-4o, gpt-5, o4-mini
-GENERATION_PROVIDER = (os.getenv("GENERATION_PROVIDER", "deepseek") or "deepseek").strip().lower()
-GENERATION_MODEL = (os.getenv("GENERATION_MODEL", "") or "").strip()
-
-client: Optional[OpenAI] = None
-if DEEPSEEK_API_KEY:
-    client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
-
-openai_client: Optional[OpenAI] = None
-if OPENAI_API_KEY:
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] /api/ask: {e}")
+        return AnswerResponse(
+            answer="Si è verificato un problema interno. Contatta l’Ufficio Tecnico Tecnaria.",
+            source="error",
+            meta={"exception": str(e)},
+        )
