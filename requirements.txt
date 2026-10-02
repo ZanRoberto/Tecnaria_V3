@@ -7,7 +7,7 @@ python-multipart>=0.0.12,<1
 pydantic>=2.8,<3
 pdfplumber
 pypdf
-
+docling
 
 
 
