@@ -1,0 +1,6870 @@
+import os
+import json
+import hashlib
+import html
+import threading
+import traceback
+import unicodedata
+import re
+import math
+import time
+from collections import Counter, OrderedDict
+from typing import List, Dict, Any, Optional
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from openai import OpenAI
+from docling_bridge import read_cache, read_cards
+from pdf_reasoning_core import (request_constraints_text, budget_limit, budget_matches, without_old_budget,
+    remove_replaced_dimensions, respective_prices, european_number)
+
+# ============================================================
+# CONFIG BASE
+# ============================================================
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+DATA_DIR = os.path.join(STATIC_DIR, "data")
+
+# ============================================================
+# CLIENTE ATTIVO — la manopola
+# ============================================================
+# Un solo progetto, piu' aziende. Su Render si imposta CLIENTE=gessi e riparte:
+# indice, schede, catalogo sfogliabile, marchio e batteria di collaudo vengono
+# tutti dalla cartella di quel cliente. Il motore non cambia: le sue regole si
+# ricavano dal documento (vocabolario dalle righe bilingui, prezzo dalla
+# posizione rispetto al codice, titolo dalla riga con lettere), non da liste
+# scritte per una azienda.
+#
+#   static/clienti/<nome>/
+#       indice.txt            obbligatorio - lo produce strumenti/costruisci_indice.py
+#       schede.json           facoltativo  - valori legati alle colonne
+#       catalogo/             facoltativo  - PDF a parti, per il rimando alla pagina
+#       marchio.json          facoltativo  - nome, prodotto, contesto, avvertenza
+#       casi_collaudo.json    facoltativo  - la sua batteria di prova
+#
+# Se la cartella del cliente non esiste, si usano i percorsi storici in
+# static/data: LAGO continua a funzionare senza spostare un file.
+CLIENTE = re.sub(r"[^a-z0-9_-]", "", os.getenv("CLIENTE", "lago").strip().lower())[:40] or "lago"
+CLIENTI_DIR = os.path.join(STATIC_DIR, "clienti")
+CLIENTE_DIR = os.path.join(CLIENTI_DIR, CLIENTE)
+
+
+def file_del_cliente(nome: str, ripiego: str, cliente: str = "") -> str:
+    """Il file del cliente attivo. Il ripiego sui percorsi storici vale SOLO se quel
+    cliente non ha una cartella propria.
+
+    Qui si e' giocata la differenza fra un sistema multiazienda e un disastro: con
+    il ripiego sempre attivo, un cliente che non aveva ancora le proprie schede si
+    ritrovava a usare quelle di un altro, in silenzio, e avrebbe mostrato a Gessi i
+    prezzi di LAGO. Un file che manca deve mancare: il motore lavora con quello che
+    ha e lo dichiara. Il ripiego serve a una cosa sola, non spostare i file di LAGO
+    che stavano in static/data prima che i clienti esistessero.
+    """
+    cartella = os.path.join(CLIENTI_DIR, cliente) if cliente else CLIENTE_DIR
+    proprio = os.path.join(cartella, nome)
+    if os.path.exists(proprio):
+        return proprio
+    if os.path.isdir(cartella) and not os.path.isfile(os.path.join(cartella, "ripiego")):
+        return proprio          # non esiste: il motore lo dichiarera' mancante
+    return ripiego
+
+
+def clienti_disponibili() -> List[str]:
+    if not os.path.isdir(CLIENTI_DIR):
+        return []
+    return sorted(
+        nome for nome in os.listdir(CLIENTI_DIR)
+        if os.path.isdir(os.path.join(CLIENTI_DIR, nome))
+        and any(os.path.isfile(os.path.join(CLIENTI_DIR, nome, f))
+                for f in ("indice.txt", "marchio.json"))
+    )
+
+
+def marchio_del_cliente(cliente: str = "") -> Dict[str, str]:
+    """Nomi da mostrare nell'interfaccia. Senza marchio.json si ricava dal nome
+    della cartella: meglio un nome in maiuscolo che il marchio di un altro."""
+    cliente = cliente or CLIENTE
+    predefinito = {
+        "marchio": cliente.upper(),
+        "prodotto": cliente.upper(),
+        "contesto": "",
+        "avvertenza": "",
+    }
+    percorso = os.path.join(CLIENTI_DIR, cliente, "marchio.json")
+    if os.path.isfile(percorso):
+        try:
+            with open(percorso, encoding="utf-8") as flusso:
+                predefinito.update({k: str(v) for k, v in json.load(flusso).items()})
+        except (OSError, ValueError) as errore:
+            print(f"[CLIENTE] marchio.json illeggibile ({errore}): uso il nome della cartella")
+    return predefinito
+
+
+MARCHIO = marchio_del_cliente()
+CATALOG_PDF_PATH = os.getenv(
+    "CATALOG_PDF_PATH",
+    file_del_cliente("catalogo.pdf", os.path.join(STATIC_DIR, "catalogo.pdf")),
+).strip()
+
+MASTER_PATH = os.path.join(DATA_DIR, "ctf_system_COMPLETE_GOLD_master.json")
+COMM_PATH = os.path.join(DATA_DIR, "COMM.json")
+
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
+DEEPSEEK_MODEL = (os.getenv("DEEPSEEK_MODEL", "deepseek-chat") or "deepseek-chat").strip()
+DEEPSEEK_BASE_URL = (
+    os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    or "https://api.deepseek.com"
+).strip()
+
+# Selettore del motore documentale:
+# - deepseek_local: indice locale + DeepSeek
+# - openai_vector: Vector Store + OpenAI
+# - automatic: prova OpenAI Vector e, in caso di errore, passa a DeepSeek locale
+SEARCH_ENGINE = (os.getenv("SEARCH_ENGINE", "deepseek_local") or "deepseek_local").strip().lower()
+if SEARCH_ENGINE not in {"deepseek_local", "openai_vector", "automatic"}:
+    print(f"[WARN] SEARCH_ENGINE non valido: {SEARCH_ENGINE}; uso deepseek_local")
+    SEARCH_ENGINE = "deepseek_local"
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+OPENAI_VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
+OPENAI_DOCUMENT_MODEL = (
+    os.getenv("OPENAI_DOCUMENT_MODEL", "gpt-4o") or "gpt-4o"
+).strip()
+
+# Archivio locale indicizzato. Non dipende da OpenAI o da un Vector Store.
+DOCUMENT_INDEX_PATH = file_del_cliente(
+    "indice.txt", os.path.join(DATA_DIR, "document_index_COMPLETO.txt"))
+# schede prodotto costruite dal PDF con le coordinate (build_schede.py): ogni valore e'
+# legato alla sua colonna. Facoltative: senza, il motore usa le righe di testo.
+PRODUCT_CARDS_PATH = file_del_cliente(
+    "schede.json", os.path.join(DATA_DIR, "schede_prodotto.json"))
+DOCLING_CACHE_PATH = os.getenv("DOCLING_CACHE_PATH", os.path.join(DATA_DIR, "docling_document.json"))
+DOCLING_ENABLED = os.getenv("DOCLING_ENABLED", "false").lower() in {"1", "true", "yes"}
+DOCLING_PAGES = {}
+DOCLING_STATE = "not_loaded"
+DOCLING_CARDS = []
+DOCLING_CARD_REPORT = {}
+
+# Il motore NAR/SUP resta universale. Questi valori descrivono soltanto
+# l'azienda e il patrimonio documentale collegati alla singola installazione.
+DOCUMENT_CONTEXT = (
+    os.getenv("DOCUMENT_CONTEXT", "").strip()
+    or MARCHIO.get("contesto", "").strip()
+    or f"Catalogo {MARCHIO.get('prodotto') or CLIENTE.upper()}"
+)
+DOCUMENT_DISCLAIMER = (
+    os.getenv("DOCUMENT_DISCLAIMER", "").strip()
+    or MARCHIO.get("avvertenza", "").strip()
+    or (
+        f"I dati appartengono a {DOCUMENT_CONTEXT}; prezzi e condizioni devono "
+        "essere verificati commercialmente prima di formulare un'offerta definitiva."
+    )
+)
+
+# Interruttore commerciale: per impostazione predefinita la funzione non e'
+# visibile. Su Render puo' essere attivata impostando il valore a "true".
+ENABLE_COMMERCIAL_PROPOSAL = os.getenv(
+    "ENABLE_COMMERCIAL_PROPOSAL", "false"
+).strip().lower() in {"1", "true", "yes", "on"}
+
+# Modello che SCRIVE la risposta (stesura, controllo vincoli, correzione documentale).
+# Il pianificatore resta sul modello veloce DEEPSEEK_MODEL. Di default non cambia nulla.
+#   GENERATION_PROVIDER = deepseek | openai
+#   GENERATION_MODEL    = es. deepseek-chat, deepseek-reasoner, gpt-4o, gpt-5, o4-mini
+GENERATION_PROVIDER = (os.getenv("GENERATION_PROVIDER", "deepseek") or "deepseek").strip().lower()
+GENERATION_MODEL = (os.getenv("GENERATION_MODEL", "") or "").strip()
+
+client: Optional[OpenAI] = None
+if DEEPSEEK_API_KEY:
+    client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
+
+openai_client: Optional[OpenAI] = None
+if OPENAI_API_KEY:
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
+GENERATION_OVERRIDE = threading.local()
+
+
+def generation_provider() -> str:
+    override = getattr(GENERATION_OVERRIDE, "model", "")
+    if override:
+        return "openai" if re.match(r"(?:gpt|o\d)", override, re.I) else "deepseek"
+    return GENERATION_PROVIDER
+
+
+def generation_model_name() -> str:
+    override = getattr(GENERATION_OVERRIDE, "model", "")
+    if override:
+        return override
+    if GENERATION_MODEL:
+        return GENERATION_MODEL
+    return OPENAI_DOCUMENT_MODEL if GENERATION_PROVIDER == "openai" else DEEPSEEK_MODEL
+
+
+def is_reasoning_model(model: str) -> bool:
+    """Modelli che ragionano prima di rispondere: niente temperatura, budget piu' ampio."""
+    return bool(re.match(r"(?:o\d|gpt-5|deepseek-reasoner)", model or "", re.I))
+
+
+def generation_chat(system: str, user: str, max_tokens: int, temperature: float = 0.1) -> str:
+    """Una chiamata al modello che scrive, qualunque sia il fornitore configurato."""
+    model = generation_model_name()
+    provider = generation_provider()
+    reasoning = is_reasoning_model(model)
+    use_openai = provider == "openai" and openai_client is not None
+    if provider == "openai" and openai_client is None:
+        print("[WARN] GENERATION_PROVIDER=openai ma OPENAI_API_KEY mancante: uso DeepSeek")
+        model = DEEPSEEK_MODEL
+        reasoning = False
+    target = openai_client if use_openai else client
+    if target is None:
+        return ""
+    kwargs: Dict[str, Any] = {
+        "model": model,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user", "content": user}],
+    }
+    if use_openai:
+        # i modelli OpenAI recenti usano max_completion_tokens; per quelli che ragionano
+        # il budget comprende anche il ragionamento interno
+        kwargs["max_completion_tokens"] = max(max_tokens * 4, 6000) if reasoning else max_tokens
+    else:
+        # deepseek-reasoner conta anche il ragionamento: piu' margine
+        kwargs["max_tokens"] = min(max(max_tokens * 3, 8000), 32000) if reasoning else max_tokens
+    if not reasoning:
+        kwargs["temperature"] = temperature
+    try:
+        response = target.chat.completions.create(**kwargs)
+    except Exception as error:
+        if reasoning and "max_tokens" in kwargs and "max_tokens" in str(error).lower():
+            kwargs["max_tokens"] = 8000  # limite piu' basso accettato da alcune versioni
+            response = target.chat.completions.create(**kwargs)
+        else:
+            raise
+    return (response.choices[0].message.content or "").strip()
+
+
+# ============================================================
+# FASTAPI APP
+# ============================================================
+
+app = FastAPI(title="Narratore-Risponditore")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+if not os.path.isdir(STATIC_DIR):
+    os.makedirs(STATIC_DIR, exist_ok=True)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+# ============================================================
+# MODELLI Pydantic
+# ============================================================
+
+class QuestionRequest(BaseModel):
+    question: str
+    previous_question: Optional[str] = None
+    previous_answer: Optional[str] = None
+    # Chi chiama l'API direttamente puo' dire il cliente qui invece che
+    # nell'indirizzo. Senza, risponde il cliente predefinito.
+    cliente: Optional[str] = None
+
+
+class AnswerResponse(BaseModel):
+    answer: str
+    source: str
+    meta: Dict[str, Any]
+
+# ============================================================
+# NORMALIZZAZIONE TESTO
+# ============================================================
+
+def normalize(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"[^\w\sàèéìòóùç]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+# ============================================================
+# INDICE DOCUMENTALE LOCALE
+# ============================================================
+
+DOCUMENT_PAGES: List[Dict[str, Any]] = []
+
+SEARCH_STOPWORDS = {
+    "a", "ad", "al", "alla", "alle", "anche", "che", "con", "da", "dal",
+    "dalla", "de", "dei", "del", "della", "delle", "di", "e", "ed", "gli",
+    "ha", "i", "il", "in", "la", "le", "lo", "ma", "mi", "non", "o", "per",
+    "piu", "quale", "quali", "questa", "questo", "sono", "su", "tra", "un",
+    "una", "uno", "the", "and", "or", "of", "to", "for", "with", "is", "are",
+    "this", "that", "from", "what", "which", "please", "indica", "proponi",
+    "spiega", "soluzione", "alternative", "alternativa", "prodotto", "prodotti",
+    # Parole di servizio della domanda: descrivono COSA restituire, non COSA cercare.
+    # Se restano nella ricerca premiano pagine casuali (es. "codice", "pagina", "diversi").
+    "cerco", "cerca", "vorrei", "voglio", "serve", "servirebbe", "indicami", "dimmi",
+    "spiegami", "mostrami", "elenca", "codice", "codici", "prezzo", "prezzi", "pagina",
+    "pagine", "misura", "misure", "catalogo", "esigenza", "esigenze", "meglio", "risponde",
+    "possibile", "versione", "versioni", "differenza", "differenze", "diversi", "diverse",
+    "stesso", "stessa", "stessi", "stesse", "dello", "degli", "se", "più", "altri", "altre",
+    "altro", "esistono", "esiste", "mio", "mia", "miei", "mie", "deve", "devono", "code",
+    # unita' di misura: accompagnano un vincolo numerico, non identificano un prodotto
+    "cm", "mm", "mt", "kg", "gr", "lt", "ml", "kw", "cm2", "mm2", "m2", "m3", "price", "page", "which", "best",
+}
+
+# Parole che introducono un'esclusione: i termini che seguono NON vanno cercati,
+# altrimenti il motore premia proprio le pagine che contengono ciò che l'utente rifiuta
+# (caso reale: "senza gambe o appoggi a terra" premiava la pagina dei "letti a terra").
+NEGATION_CUES = {
+    "senza", "non", "no", "né", "niente", "nessun", "nessuna", "nessuno",
+    "escludi", "escluso", "esclusa", "eccetto", "tranne", "without", "not", "except",
+}
+
+
+def search_tokens(text: str) -> List[str]:
+    """Token robusti per codici, misure e termini in italiano/inglese."""
+    folded = normalize(text.replace(",", "."))
+    tokens = re.findall(r"[a-zàèéìòóùç0-9][a-zàèéìòóùç0-9_.-]*", folded)
+    return [t for t in tokens if len(t) >= 2 and t not in SEARCH_STOPWORDS]
+
+
+def negated_search_tokens(text: str) -> set[str]:
+    """Token alfabetici che l'utente esclude ("senza X", "non ... X") fino alla punteggiatura."""
+    excluded: set[str] = set()
+    for clause in re.split(r"[.;:!?,\n]", (text or "").lower()):
+        words = re.findall(r"[a-zàèéìòóùç0-9]+", clause)
+        for i, word in enumerate(words):
+            if word in NEGATION_CUES:
+                for follower in words[i + 1:i + 11]:
+                    if not any(ch.isdigit() for ch in follower):
+                        excluded.add(follower)
+    return excluded
+
+
+def compact_page_text(text: str) -> str:
+    """Riduce gli spazi dell'impaginazione PDF: stesse informazioni, meta' dei caratteri."""
+    lines = [re.sub(r"[ \t]{2,}", "  ", line).strip() for line in (text or "").splitlines()]
+    return "\n".join(
+        line for line in lines
+        if line
+        and not line.startswith("## PAGINA PDF")
+        and not line.startswith("```")
+        and not re.fullmatch(r"PAGINA_PDF\s*:\s*\S*", line)
+    )
+
+
+def _title_word_ok(word: str) -> bool:
+    """Parola da titolo: contiene cifre (36e8, V16) o lettere in prevalenza maiuscole."""
+    letters = [ch for ch in word if ch.isalpha()]
+    if any(ch.isdigit() for ch in word):
+        return bool(letters) or len(word) >= 2
+    return bool(letters) and sum(ch.isupper() for ch in letters) / len(letters) >= 0.6
+
+
+# ============================================================
+# LINGUE AMMESSE: italiano e inglese
+# ============================================================
+# Misurato il 6ott2026: la stessa domanda in spagnolo, tedesco e russo riceveva
+# TRE VOLTE la stessa risposta sbagliata, perche' l'unica cosa che il motore
+# riconosceva era "36e8", il nome della gamma, che sopravvive a qualsiasi lingua.
+# Il resto della frase era rumore e il motore pescava una famiglia a caso. Senza
+# dirlo.
+#
+# Il riconoscimento NON guarda il contenuto: provato, e non separa. Tre domande
+# italiane vere della batteria usano parole che il catalogo non ha ("madia",
+# "soggiorno", "alimentatori") e cadevano sotto la soglia, mentre il francese ci
+# stava sopra. Si guardano invece le parole di servizio — il, la, con, di contro
+# the, of, with — che sono grammatica: fisse per sempre, uguali per ogni cliente
+# e per ogni documento. Non sono un vocabolario di dominio da aggiornare.
+#
+# Misura: 11 su 11 sulla decisione "italiano o inglese, si' o no", e zero falsi
+# positivi sui 70 turni della batteria.
+PAROLE_DI_SERVIZIO = {
+    "it": {"il","lo","la","i","gli","le","un","uno","una","di","del","della","dei","delle",
+           "da","in","con","su","per","tra","fra","che","non","mi","ti","ci","vi","si","sono",
+           "e","ed","ma","se","come","quanto","quale","quali","questo","questa","ho","ha",
+           "hanno","vorrei","serve","cerco","costa","anche","piu","molto","dove","quando",
+           "poi","gia","nel","nella","al","alla","dal","sul"},
+    "en": {"the","a","an","of","to","in","on","for","with","and","or","is","are","was","were",
+           "be","been","have","has","had","do","does","did","how","what","which","that","this",
+           "these","those","i","you","we","they","it","my","your","our","much","many","need",
+           "want","can","would","should","there","here","from","by","at","as"},
+    "es": {"el","la","los","las","un","una","unos","unas","de","del","al","en","con","por","para",
+           "que","no","se","es","son","esta","estan","como","cuanto","cuanta","cual","cuales",
+           "este","estos","tengo","tiene","quiero","busco","necesito","muy","donde","cuando",
+           "pero","tambien","desde","hasta","sobre"},
+    "fr": {"le","les","une","des","du","au","aux","dans","avec","pour","par","que","qui","ne",
+           "pas","est","sont","etait","comme","combien","quel","quelle","quels","ce","cette",
+           "ces","nous","vous","ils","elles","tres","ou","quand","mais","aussi","depuis","sur",
+           "chez","coute"},
+    "de": {"der","die","das","den","dem","des","ein","eine","einen","einem","und","oder","ist",
+           "sind","war","waren","mit","von","zu","fur","auf","im","am","nicht","wie","was",
+           "welche","dieser","diese","dieses","ich","wir","sie","haben","hat","kostet","sehr",
+           "wo","wann","aber","auch","breit","hoch"},
+}
+LINGUE_AMMESSE = {c.strip() for c in os.getenv("LINGUE_AMMESSE", "it,en").split(",") if c.strip()}
+
+
+def _senza_accenti(testo: str) -> str:
+    testo = unicodedata.normalize("NFKD", (testo or "").lower())
+    return "".join(c for c in testo if not unicodedata.combining(c))
+
+
+def lingua_della_domanda(question: str) -> str:
+    """it, en, es, fr, de, 'non-latino' oppure 'ignota'."""
+    alfabeto = re.sub(r"[\s\d\W]", "", question or "", flags=re.UNICODE)
+    if alfabeto and sum(1 for c in alfabeto if ord(c) > 0x24F) / len(alfabeto) > .3:
+        return "non-latino"
+    # Parole di una lettera escluse: "36e8" viene spezzato dalla regex e produce
+    # una "e" che regalava un punto all'italiano a ogni domanda con un codice.
+    parole = [w for w in (_senza_accenti(x) for x in re.findall(r"[A-Za-zÀ-ÿ']+", question or ""))
+              if len(w) >= 2]
+    punti = {k: sum(1 for w in parole if w in v) for k, v in PAROLE_DI_SERVIZIO.items()}
+    nostre = max(punti[c] for c in LINGUE_AMMESSE if c in punti)
+    altre = max([p for k, p in punti.items() if k not in LINGUE_AMMESSE] or [0])
+    if nostre and nostre > altre:
+        return max((c for c in LINGUE_AMMESSE if c in punti), key=lambda c: punti[c])
+    vincente = max(punti, key=punti.get)
+    # Pari fra una lingua ammessa e una no: non si indovina, si respinge.
+    return vincente if punti[vincente] else "ignota"
+
+
+def lingua_non_supportata(question: str) -> Optional[str]:
+    """La risposta da dare quando la domanda non e' in una lingua ammessa.
+
+    Si dichiara invece di indovinare: una risposta sbagliata e sicura e' il danno
+    peggiore che questo motore possa fare a chi lo porta da un cliente.
+    """
+    trovata = lingua_della_domanda(question)
+    if trovata in LINGUE_AMMESSE or trovata == "ignota":
+        return None
+    nomi = {"es": "spagnolo", "fr": "francese", "de": "tedesco",
+            "non-latino": "un alfabeto non latino", "it": "italiano", "en": "inglese"}
+    ammesse = " e ".join(nomi.get(c, c) for c in sorted(LINGUE_AMMESSE))
+    return (
+        f"La domanda sembra scritta in {nomi.get(trovata, trovata)}. "
+        f"Questo assistente risponde soltanto in {ammesse}, perche' il documento "
+        f"collegato e' scritto in quelle lingue: su una domanda in un'altra lingua "
+        f"riconoscerebbe soltanto il codice del prodotto e risponderebbe a caso.\n\n"
+        f"Riscrivi la domanda in {ammesse} e la elaboro."
+    )
+
+
+def page_title_line(page_text: str) -> str:
+    """Prima riga di contenuto della pagina che possa essere un nome di prodotto.
+
+    Prima si prendeva la prima riga non vuota, qualunque fosse. Su 621 righe di
+    listino il titolo risultava una stringa di sole misure ("18,4 18,4 18,4",
+    "92  110,4  147,2"): pagine in cui l'impaginato mette le quote sopra al nome.
+    Quel titolo non identifica niente, entra nel punteggio come se fosse un nome e
+    puo' far vincere la scheda sbagliata. Un nome di prodotto contiene lettere:
+    e' vero in questo catalogo come in qualsiasi altro, quindi la riga di sole
+    cifre si salta e si continua a cercare. Se la pagina non ha nessuna riga con
+    lettere, il titolo resta vuoto: meglio nessun titolo che un titolo falso.
+    """
+    ripiego = ""
+    for line in page_text.splitlines():
+        stripped = line.strip()
+        if (
+            not stripped
+            or stripped.startswith("## PAGINA PDF")
+            or stripped.startswith("```")
+            or re.fullmatch(r"[A-Z_]+\s*:\s*\S*", stripped)
+        ):
+            continue
+        if re.search(r"[A-Za-z]{2,}", stripped):
+            return stripped
+        if not ripiego:
+            ripiego = stripped
+    return ""
+
+
+def page_family_key(page_text: str) -> Optional[tuple]:
+    """Unita' documentale dal titolo di pagina, per qualunque impaginazione:
+    'FLUTTUA BED' / 'FLUTTUA WILDWOOD BED' / 'FLUTTUA_BED' -> ('FLUTTUA', 'BED');
+    '36e8 TV UNITS' e '2658    36e8 TV UNITS' -> ('36E8', 'UNITS'); 'N.O.W. TV UNITS' -> ('NOW', 'UNITS').
+    Regole generali: salta metadati e numeri iniziali, taglia a separatori di colonna,
+    accetta solo parole da titolo. Se non c'e' un titolo, decide la radice dei codici."""
+    content_lines = []
+    for line in page_text.splitlines():
+        stripped = line.strip()
+        # Salta intestazione e metadati dell'indice ("## PAGINA PDF 423",
+        # "PAGINA_PDF: 423", "PAGINA_CATALOGO: 423", recinto ```text).
+        if (
+            not stripped
+            or stripped.startswith("## PAGINA PDF")
+            or stripped.startswith("```")
+            or re.fullmatch(r"[A-Z_]+\s*:\s*\S*", stripped)
+        ):
+            continue
+        content_lines.append(stripped)
+        if len(content_lines) >= 3:
+            break
+    for line in content_lines:
+        for segment in re.split(r"\s{2,}|//|\s\|\s|\s[-–]\s", line):
+            words = segment.replace("_", " ").split()
+            while words and re.fullmatch(r"[\d.,]+", words[0]):
+                words.pop(0)  # quote o numeri davanti al titolo
+            title_words: List[str] = []
+            for word in words:
+                if not _title_word_ok(word):
+                    break
+                title_words.append(re.sub(r"[^A-Z0-9]", "", word.upper()))
+            title_words = [w for w in title_words if w]
+            if not title_words or not re.search(r"[A-Z]", "".join(title_words)):
+                continue
+            if len("".join(title_words)) < 3:
+                continue
+            # singolare/plurale sono lo stesso prodotto (UNIT/UNITS, TABLE/TABLES)
+            last = title_words[-1]
+            if len(last) > 3 and last.endswith("S") and not last.endswith("SS"):
+                last = last[:-1]
+            return (title_words[0], last) if len(title_words) > 1 else (title_words[0],)
+        # la prima riga con lettere decide: se non e' un titolo, niente titolo
+        if re.search(r"[A-Za-z]{3,}", line):
+            return None
+    return None
+
+
+# Codici numerici corti (es. composizioni "1272"): si distinguono da misure, anni e prezzi
+# solo con una prova. Prova 1: l'indice per codice del documento stesso ("Articolo Pagina").
+# Prova 2: una parola guida vicina ("codice 1272", "composizione 1272"). Prova 3 (righe di
+# listino): il numero apre una riga sotto un'intestazione la cui prima colonna e' il codice.
+INDEXED_CODES: Dict[str, set] = {}
+NUMERIC_CODE_TOKEN = re.compile(r"(?<![\d.,])(\d{3,5}(?:[A-Z]|-\d{1,2})?)\*?(?![\d,]|\.\d)")
+CODE_CUE = re.compile(r"(?:codic\w*|cod\.|articol\w*|art\.|composizion\w*|item|code)\W{0,3}$", re.I)
+
+
+def extract_document_codes(text: str, page: Optional[int] = None) -> set[str]:
+    """Estrae codici prodotto plausibili senza scambiare parole normali per codici.
+    page: pagina del documento da cui viene il testo (abilita i codici dell'indice)."""
+    candidates = re.findall(r"\b[A-Za-z0-9][A-Za-z0-9_-]{3,}\b", text or "")
+    codes: set[str] = set()
+    for match in NUMERIC_CODE_TOKEN.finditer(text or ""):
+        token = match.group(1)
+        pages = INDEXED_CODES.get(token)
+        if not pages:
+            continue
+        if page is not None:
+            if page in pages:
+                codes.add(token)
+        elif CODE_CUE.search((text or "")[max(0, match.start() - 25):match.start()]):
+            codes.add(token)
+    for candidate in candidates:
+        # Un codice deve contenere almeno una cifra. I codici solo numerici
+        # sono accettati da 5 cifre in su, evitando prezzi, anni e misure.
+        if len(candidate) < 5:
+            continue
+        if not any(ch.isdigit() for ch in candidate):
+            continue
+        if candidate.isdigit() and len(candidate) < 5:
+            continue
+        # Una misura (160x200, 90X200X30) non e' un codice: prima veniva cercata come
+        # codice e trascinava nel contesto tutte le pagine che la contengono.
+        if MEASURE_PATTERN.fullmatch(candidate):
+            continue
+        codes.add(candidate.upper())
+    return codes
+
+
+MEASURE_PATTERN = re.compile(r"\d+(?:[.,]\d+)?(?:[xX×]\d+(?:[.,]\d+)?)+")
+# Misure a 2 o 3 dimensioni in qualunque settore: 160x200, 60 x 120 x 30, 2,5x10.
+SIZE_PATTERN = re.compile(
+    # confini: niente cifra (o cifra+separatore decimale) prima, niente cifra (o separatore
+    # decimale+cifra) dopo; la punteggiatura di fine frase ("180 x 200," / "200.") e' ammessa.
+    r"(?<!\d)(?<!\d[.,])(\d{1,4}(?:[.,]\d+)?)\s*[xX×]\s*(\d{1,4}(?:[.,]\d+)?)"
+    r"(?:\s*[xX×]\s*(\d{1,4}(?:[.,]\d+)?))?(?!\d)(?![.,]\d)"
+)
+
+
+def find_sizes(text: str) -> set:
+    """Misure normalizzate ('60,5 X 120' -> '60.5x120')."""
+    return {
+        "x".join(part.replace(",", ".") for part in groups if part)
+        for groups in SIZE_PATTERN.findall(text or "")
+    }
+CODE_TOKEN_PATTERN = re.compile(r"\b[A-Z][A-Z0-9_-]*\d[A-Z0-9_-]*\b")
+CODE_SIZES: Dict[str, set] = {}
+
+
+def code_root(code: str) -> str:
+    """Radice alfabetica di un codice (FLU0450 -> FLU, CTF090 -> CTF)."""
+    match = re.match(r"[A-Z]{2,}", code)
+    return match.group(0) if match else ""
+
+
+def assign_code_root_families() -> None:
+    """Per le pagine senza titolo riconoscibile l'unita' documentale e' la radice di codice
+    dominante sulla pagina. Cosi' il raggruppamento non dipende dall'impaginazione di un
+    singolo editore: funziona con titoli in maiuscolo, con soli codici o con entrambi."""
+    for page in DOCUMENT_PAGES:
+        if page.get("family"):
+            continue
+        roots = Counter(code_root(c) for c in page.get("codes", set()) if code_root(c))
+        if roots:
+            root, count = roots.most_common(1)[0]
+            if count >= 2:
+                page["family"] = ("CODICI", root)
+
+
+def build_indexed_codes() -> None:
+    """Se il documento ha un indice per codice (tabella "Articolo/Item ... Pagina/Page"),
+    ogni coppia codice-pagina diventa una prova: quel numero, su quella pagina, e' un codice.
+    Si tiene la coppia solo se il codice compare davvero sulla pagina indicata."""
+    INDEXED_CODES.clear()
+    index_pages = [
+        p for p in DOCUMENT_PAGES
+        if re.search(r"(?:articolo|item|codice|code)\s+(?:pagina|page)\b", p["text"], re.I)
+        or re.search(r"index by (?:item )?code|indice per (?:articolo|codice)", p["text"], re.I)
+    ]
+    by_number = {p["page"]: p for p in DOCUMENT_PAGES}
+    for page in index_pages:
+        for match in re.finditer(
+            r"(?<![\w.,])(\d{3,5}(?:[A-Z]|-\d{1,2})?)\*?\s+(?:[A-Z]\s+)?(\d{1,4})(?![\w.,])",
+            page["text"],
+        ):
+            code, target = match.group(1), int(match.group(2))
+            target_page = by_number.get(target)
+            if target_page and target != page["page"] and re.search(
+                rf"(?<![\d.,]){re.escape(code)}(?![\d,])", target_page["text"]
+            ):
+                INDEXED_CODES.setdefault(code, set()).add(target)
+
+
+def build_code_sizes() -> None:
+    """Associa a ogni codice le misure scritte sulla sua stessa riga di listino
+    (es. 'Q 152 x 203 ... FLU0440' -> 152x203). Serve a filtrare i prodotti
+    selezionabili quando l'utente ha fissato una misura."""
+    CODE_SIZES.clear()
+    for page in DOCUMENT_PAGES:
+        for line in page["text"].splitlines():
+            sizes = find_sizes(line)
+            if len(sizes) != 1:
+                continue  # riga ambigua: nessuna associazione
+            for code in CODE_TOKEN_PATTERN.findall(line.upper()):
+                if MEASURE_PATTERN.fullmatch(code) or len(code) < 5:
+                    continue
+                CODE_SIZES.setdefault(code, set()).update(sizes)
+
+
+def load_document_index() -> None:
+    global DOCUMENT_PAGES, DOCLING_PAGES, DOCLING_STATE, DOCLING_CARDS, DOCLING_CARD_REPORT
+    DOCLING_PAGES, DOCLING_STATE = read_cache(DOCLING_CACHE_PATH, CATALOG_PDF_PATH) if DOCLING_ENABLED else ({}, "disabled")
+    extracted, DOCLING_CARD_REPORT = read_cards(DOCLING_CACHE_PATH) if DOCLING_STATE == "ready" else ([], {})
+    # Extraction coordinates do not prove faithful values: never certify Docling cards.
+    DOCLING_CARDS = []
+    if extracted:
+        DOCLING_CARD_REPORT['experimental_cards_not_certified'] = len(extracted)
+    print(f"[DOCLING] state={DOCLING_STATE} pages={len(DOCLING_PAGES)}")
+    DOCUMENT_PAGES = []
+    if not os.path.exists(DOCUMENT_INDEX_PATH):
+        print(f"[WARN] indice documentale non trovato: {DOCUMENT_INDEX_PATH}")
+        if not DOCLING_PAGES:
+            return
+
+    try:
+        raw = ""
+        if os.path.exists(DOCUMENT_INDEX_PATH):
+            with open(DOCUMENT_INDEX_PATH, "r", encoding="utf-8", errors="replace") as f:
+                raw = f.read()
+
+        marker = re.compile(r"(?m)^## PAGINA PDF\s+(\d+)\s*$")
+        matches = list(marker.finditer(raw))
+        for index, match in enumerate(matches):
+            start = match.start()
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(raw)
+            page_text = raw[start:end].strip()
+            page_number = int(match.group(1))
+            page_token_list = search_tokens(page_text)
+            DOCUMENT_PAGES.append({
+                "page": page_number,
+                "text": page_text,
+                "compact": compact_page_text(page_text),
+                "codes": extract_document_codes(page_text),
+                "family": page_family_key(page_text),
+                "title_tokens": set(search_tokens(page_title_line(page_text))),
+                "normalized": normalize(page_text),
+                "token_counts": Counter(page_token_list),
+                "token_set": set(page_token_list),
+            })
+
+        build_indexed_codes()
+        for page in DOCUMENT_PAGES:
+            page["codes"] = extract_document_codes(page["text"], page["page"])
+        assign_code_root_families()
+        build_code_sizes()
+        PAGE_BY_NUMBER.clear()
+        PAGE_BY_NUMBER.update({p["page"]: p for p in DOCUMENT_PAGES})
+        VOCABULARY.clear()
+        for p in DOCUMENT_PAGES:
+            VOCABULARY.update(p["token_set"])
+        build_code_rows()
+        build_title_synonyms()
+        sync_page_codes_with_rows()
+        load_product_cards()
+        for page in DOCUMENT_PAGES:
+            extra = DOCLING_PAGES.get(page["page"], "")
+            if extra:
+                tokens = search_tokens(extra)
+                page["token_counts"].update(tokens)
+                page["token_set"].update(tokens)
+                page["normalized"] += " " + normalize(extra)
+                VOCABULARY.update(tokens)
+        KNOWN_ROOTS.clear()  # ricalcolate al primo controllo, dopo il caricamento
+        families = Counter(p["family"] for p in DOCUMENT_PAGES if p["family"])
+        print(
+            f"[INFO] indice locale caricato: {len(DOCUMENT_PAGES)} pagine, "
+            f"{len(raw)} caratteri, {len(families)} famiglie di prodotto riconosciute, "
+            f"{len(CODE_ROWS)} codici con riga di listino, "
+            f"{sum(len(v) for v in PRODUCT_CARDS.values())} schede prodotto con colonne"
+        )
+    except Exception as e:
+        print(f"[ERROR] caricando indice locale: {e}")
+        DOCUMENT_PAGES = []
+
+
+# ============================================================
+# INDICE STRUTTURATO DELLE RIGHE DI LISTINO
+# ============================================================
+# Il testo estratto da un PDF impaginato separa le righe dalle intestazioni di colonna:
+# "160 x 200  160  208  72  FLU0450  3.336 3.399 ..." non dice quale numero sia il prezzo.
+# Per ogni codice si conserva la riga, l'ultima intestazione con "Codice/Code" e l'ultima
+# descrizione che la precede. Serve a due cose, entrambe universali:
+# 1) dare al modello righe leggibili (intestazione + descrizione + riga);
+# 2) verificare in modo deterministico codici, prezzi e pagine citati nella risposta.
+
+CODE_ROWS: Dict[str, List[Dict[str, Any]]] = {}
+PRODUCT_CARDS: Dict[tuple, List[Dict[str, Any]]] = {}
+CARD_DIMENSION = re.compile(
+    r"larghezz|width|profondit|depth|altezz|height|materass|mattress|diametr|diameter|lunghezz|length",
+    re.I)
+CARD_PRICE = re.compile(r"^\d{1,3}(?:\.\d{3})+(?:,\d{2})?$|^\d{2,4}(?:,\d{2})?$")
+
+
+def load_product_cards() -> None:
+    """Schede (codice, pagina) -> valori per colonna. Si tengono solo le schede di codici
+    che il motore conosce su quella pagina: la scheda arricchisce, non inventa codici."""
+    PRODUCT_CARDS.clear()
+    if 'requested_price_labels' in globals():
+        requested_price_labels.cache_clear()
+    if '_etichette_della_scheda' in globals():
+        _etichette_della_scheda.cache_clear()
+
+    cards = []
+    if os.path.exists(PRODUCT_CARDS_PATH):
+        try:
+            with open(PRODUCT_CARDS_PATH, encoding="utf-8") as handle:
+                cards = json.load(handle).get("schede", [])
+        except Exception as e:
+            print(f"[WARN] schede prodotto non leggibili: {e}")
+    else:
+        print(f"[WARN] schede prodotto non trovate: {PRODUCT_CARDS_PATH}")
+    # Only existing structured cards participate in deterministic certification.
+    for card in cards:
+        code, page = card.get("codice"), card.get("pagina")
+        if code in CODE_ROWS and any(r["page"] == page for r in CODE_ROWS[code]):
+            PRODUCT_CARDS.setdefault((code, page), []).append(card)
+        elif card.get("provenienza") and page in PAGE_BY_NUMBER:
+            PRODUCT_CARDS.setdefault((code, page), []).append(card)
+            text = " ".join([code] + list(card.get("attributi", {}).values()) + list(card.get("prezzi", {}).values()))
+            CODE_ROWS.setdefault(code, []).append({"page": page, "title": card.get("prodotto", ""),
+                "header": " | ".join(card.get("attributi", {})) + " | " + " | ".join(card.get("prezzi", {})),
+                "description": card.get("prodotto", ""), "text": text, "numbers": row_numbers(text),
+                "has_price": bool(card.get("prezzi")), "near_numbers": set()})
+    if 'costruisci_assi' in globals():
+        costruisci_assi()
+
+
+def card_numbers(code: str) -> set:
+    """Numeri delle schede del codice (tutte le pagine), normalizzati come nel controllo."""
+    numbers = set()
+    for (c, _), cards in PRODUCT_CARDS.items():
+        if c != code:
+            continue
+        for card in cards:
+            for value in list(card["prezzi"].values()) + list(card["attributi"].values()):
+                for token in re.findall(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?", value):
+                    numbers.add(normalize_number(token))
+    return numbers
+
+
+def format_card(card: Dict[str, Any]) -> str:
+    attributes = "; ".join(f"{k}={v}" for k, v in card["attributi"].items())
+    prices = "; ".join(f"{k}={v}" for k, v in card["prezzi"].items())
+    parts = [f"- {card['codice']} | pagina {card['pagina']} | {card['prodotto']}"]
+    if card.get("versione"):
+        parts.append(f"versione: {card['versione']}")
+    if attributes:
+        parts.append(attributes)
+    if prices:
+        parts.append(f"prezzi/colonne: {prices}")
+    if card.get("senza_intestazione"):
+        parts.append("valori senza intestazione: " + ", ".join(card["senza_intestazione"]))
+    return " | ".join(parts)
+
+
+def first_price(card: Dict[str, Any]) -> Optional[float]:
+    for value in card["prezzi"].values():
+        token = value.split()[0] if value else ""
+        if CARD_PRICE.match(token) and "." in token or re.fullmatch(r"\d{3,4}", token or ""):
+            try:
+                return float(token.replace(".", "").replace(",", "."))
+            except ValueError:
+                return None
+    return None
+
+
+def family_overview(dossier: str, max_families: int = 3, max_lines: int = 16) -> str:
+    """Gerarchia famiglia -> prodotto -> versione delle famiglie piu' presenti tra le pagine
+    inviate, con pagine, numero di codici e fascia di prezzo (primo prezzo di ogni riga).
+    E' il perimetro della scelta: la versione base e le varianti si vedono a colpo d'occhio."""
+    pages = [int(p) for p in re.findall(r"===== PAGINA PDF (\d+) =====", dossier)]
+    families = Counter(PAGE_BY_NUMBER[p].get("family") for p in pages if p in PAGE_BY_NUMBER)
+    families.pop(None, None)
+    blocks = []
+    for family, _ in families.most_common(max_families):
+        groups: Dict[tuple, Dict[str, Any]] = {}
+        for (code, page), cards in PRODUCT_CARDS.items():
+            if PAGE_BY_NUMBER.get(page, {}).get("family") != family:
+                continue
+            for card in cards:
+                # prodotto = riga con almeno due misure (materasso, larghezza, altezza...);
+                # le righe senza misure sono accessori e restano nelle righe di listino
+                if sum(1 for k in card["attributi"] if CARD_DIMENSION.search(k)) < 2:
+                    continue
+                key = (card["prodotto"], card.get("versione") or "")
+                group = groups.setdefault(key, {"pages": set(), "codes": set(), "prices": []})
+                group["pages"].add(page)
+                group["codes"].add(code)
+                price = first_price(card)
+                if price:
+                    group["prices"].append(price)
+        if not groups:
+            continue
+        lines = []
+        for (product, version), g in sorted(
+                groups.items(), key=lambda kv: (min(kv[1]["pages"]), min(kv[1]["prices"] or [0]))):
+            if len(g["codes"]) < 2:
+                continue  # un codice isolato e' un accessorio: resta nelle righe
+            span = ""
+            if g["prices"]:
+                low, high = min(g["prices"]), max(g["prices"])
+                fmt = lambda v: f"{v:,.0f}".replace(",", ".")
+                span = f" | prezzi da {fmt(low)} a {fmt(high)}"
+            pages_text = ",".join(str(p) for p in sorted(g["pages"])[:6])
+            lines.append(f"  - {product} | {version or 'versione non indicata'} | pagine {pages_text}"
+                         f" | {len(g['codes'])} codici{span}")
+        if lines:
+            blocks.append(f"FAMIGLIA {' '.join(family)}:\n" + "\n".join(lines[:max_lines]))
+    return "\n".join(blocks)
+CODE_HEADER_PATTERN = re.compile(r"\b(?:codice|code|cod\.|art\.|articolo|item)\b", re.I)
+# Assorbimento delle intestazioni che vanno a capo (vedi build_code_rows).
+# Misurato sul catalogo LAGO: righe di listino con prezzi senza nome di colonna
+# 46% -> 15%. Se il collaudo peggiora, si mette False e si torna al comportamento
+# precedente senza altre modifiche.
+HEADER_WRAP_ABSORB = os.getenv("HEADER_WRAP_ABSORB", "true").strip().lower() not in ("0", "false", "no")
+NUMBER_TOKEN_PATTERN = re.compile(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?")
+
+
+def normalize_number(token: str) -> str:
+    """'3.336' e '3336' sono lo stesso importo; '2,5' resta '2,5'."""
+    return token.replace(".", "")
+
+
+def row_numbers(text: str) -> set:
+    return {normalize_number(n) for n in NUMBER_TOKEN_PATTERN.findall(text or "")}
+
+
+# Quante righe di descrizione si tengono per ogni blocco. Due bastano per la
+# coppia italiano/inglese di questo catalogo; il valore e' una soglia, non un
+# elenco di parole, quindi non va aggiornato documento per documento.
+DESCRIZIONE_RIGHE = int(os.getenv("DESCRIZIONE_RIGHE", "3"))
+NORMALIZZA_TITOLO = os.getenv("NORMALIZZA_TITOLO", "1") not in ("0", "false", "no")
+# Quanto pesa un aggancio nella descrizione rispetto a uno nel titolo.
+# Misurato: 0,5 lasciava vincere "U TABLE" su "tavolo rotondo"; 1,3 rompeva B17.
+# A 0,8 i 12 casi fanno 8 su 12 nei primi tre con zero assenti, il massimo
+# misurato, e la domanda sul tavolo tondo risponde giusto.
+PESO_DESCRIZIONE = float(os.getenv("PESO_DESCRIZIONE", "0.8"))
+
+
+def _is_description_line(line: str) -> bool:
+    words = re.findall(r"[A-Za-zÀ-ÿ]{3,}", line)
+    digits = sum(ch.isdigit() for ch in line)
+    return len(words) >= 2 and digits <= len(line) * 0.2 and not CODE_HEADER_PATTERN.search(line)
+
+
+# ------------------------------------------------------------------
+# Vocabolario italiano-inglese ricavato DAL DOCUMENTO, non scritto a mano.
+#
+# I titoli del catalogo sono in inglese ("36E8 BEDSIDE TABLES") mentre il
+# rivenditore scrive in italiano ("comodino"): senza una corrispondenza la
+# ricerca descrittiva non trova niente e risponde "non ho recuperato schede".
+# Il documento pero' la corrispondenza la dichiara da solo, nelle righe
+# bilingui con il doppio slash, a cominciare dall'indice:
+#     Como' e comodini//Dressers and bedside tables
+#     Madie, tv units, como'//Sideboards, TV units, dressers
+# I due lati usano lo stesso separatore e hanno lo stesso numero di parti:
+# allineandole si ottiene il dizionario. Se il catalogo cambia, il dizionario
+# si rifa' da solo al caricamento: non c'e' nessuna lista da aggiornare.
+# ------------------------------------------------------------------
+TITLE_SYNONYMS: Dict[str, set] = {}
+BILINGUAL_SPLIT = re.compile(r"\s*(?:,|\be\b|\band\b|&|/)\s*")
+BILINGUAL_STOP_IT = {"con", "per", "del", "della", "dei", "delle", "che", "non", "una", "uno", "gli", "sul", "dal"}
+BILINGUAL_STOP_EN = {"with", "and", "for", "the", "from", "into", "out", "per", "not", "all", "only", "their", "its"}
+
+
+def build_title_synonyms() -> None:
+    TITLE_SYNONYMS.clear()
+    conteggio: Dict[str, Dict[str, int]] = {}
+    for page in DOCUMENT_PAGES:
+        for line in (page.get("compact") or "").splitlines():
+            line = line.strip()
+            if "//" not in line or len(line) > 80 or re.search(r"\d{3}", line):
+                continue
+            italiano, _, inglese = line.partition("//")
+            parti_it = [p for p in BILINGUAL_SPLIT.split(italiano.strip()) if p.strip()]
+            parti_en = [p for p in BILINGUAL_SPLIT.split(inglese.strip()) if p.strip()]
+            if not parti_it or len(parti_it) != len(parti_en) or len(parti_it) > 4:
+                continue
+            for pi, pe in zip(parti_it, parti_en):
+                ti = {w for w in re.findall(r"[a-zà-ÿ0-9]+", pi.lower()) if len(w) > 2} - BILINGUAL_STOP_IT
+                te = {w for w in re.findall(r"[a-zà-ÿ0-9]+", pe.lower()) if len(w) > 2} - BILINGUAL_STOP_EN
+                if not ti or not te or ti == te or len(ti) > 3 or len(te) > 3:
+                    continue
+                for parola in ti - te:
+                    for resa in te - ti:
+                        conteggio.setdefault(parola, {}).setdefault(resa, 0)
+                        conteggio[parola][resa] += 1
+    for parola, rese in conteggio.items():
+        migliore = max(rese.values())
+        scelte = {resa for resa, n in rese.items() if n * 2 >= migliore}   # solo le piu' attestate
+        # singolare e plurale: la domanda dice "comodino", l'indice dice "comodini"
+        for chiave in {parola, parola[:-1] if len(parola) > 4 else parola,
+                       parola[:-2] if len(parola) > 5 else parola}:
+            TITLE_SYNONYMS.setdefault(chiave, set()).update(scelte)
+    print(f"[VOCABOLARIO] {len(conteggio)} parole italiane ricavate dalle righe bilingui del documento")
+
+
+def synonyms_for(token: str) -> set:
+    for chiave in (token, token[:-1], token[:-2]):
+        if chiave in TITLE_SYNONYMS:
+            return TITLE_SYNONYMS[chiave]
+    return set()
+
+
+RESA_QUOTA_MASSIMA = float(os.getenv("RESA_QUOTA_MASSIMA", "0.10"))
+
+
+def derived_title_tokens(tokens, title_frequency) -> tuple:
+    """Rese inglesi delle parole italiane della domanda, divise in due pesi.
+
+    Peso pieno quando la parola italiana non compare in nessun titolo: "madia"
+    non c'e' da nessuna parte, quindi "sideboard" NON e' un allargamento, e' la
+    sola rappresentazione di quella parola, ed e' la parola che dice che cosa
+    l'utente cerca. Mezzo peso quando la parola italiana nei titoli c'e' gia':
+    li' la resa allarga soltanto, e non deve poter dirottare la scelta.
+    """
+    pieno, mezzo = set(), set()
+    schede = title_frequency.get("__schede__") or sum(
+        len(g) for g in PRODUCT_CARDS.values()) or 1
+    for token in tokens:
+        rese = synonyms_for(token) - set(tokens)
+        # UNA RESA CHE STA SU UN QUARTO DEL CATALOGO NON DISTINGUE NIENTE.
+        #
+        # Misurato il 7ott2026 sul caso D12. La domanda diceva "comodino 36e8
+        # ... qual e' la finitura piu' economica". Da "comodino" la resa e'
+        # "bedside" (3,4% delle schede): giusta, e identifica il prodotto. Ma da
+        # "finitura" usciva anche "optionals" (14,4%) e "optional" (25,5%), e
+        # quel bonus metteva un SET DI VETRI da 92 euro davanti al comodino vero
+        # da 777. Il motore avrebbe risposto con il prezzo di un accessorio.
+        #
+        # Una soglia sulla parola di partenza non serviva: "finitura" sta sul
+        # 6,4% delle schede e "tavolo" sul 4,2%, non si distinguono. La soglia
+        # giusta e' sull'ARRIVO: se la parola a cui si traduce compare su un
+        # quarto del catalogo, non e' una caratteristica, e' aria. Vale per
+        # qualsiasi documento, perche' la soglia si misura sul documento.
+        rese = {r for r in rese
+                if title_frequency.get(r, 0) <= RESA_QUOTA_MASSIMA * schede}
+        if not rese:
+            continue
+        (pieno if not title_frequency.get(token) else mezzo).update(rese)
+    return pieno, mezzo - pieno
+
+
+def build_code_rows() -> None:
+    CODE_ROWS.clear()
+    for page in DOCUMENT_PAGES:
+        header = ""
+        description = ""
+        title = re.sub(r"\s{2,}", "  ", page_title_line(page["text"]))
+        previous_was_header = False
+        page_lines = (page.get("compact") or "").splitlines()
+        for line_index, line in enumerate(page_lines):
+            is_header = CODE_HEADER_PATTERN.search(line) and not extract_document_codes(line)
+            # righe di sole sigle di colonna ("A  B  C  P"): completano l'intestazione
+            is_column_tags = bool(
+                re.fullmatch(r"(?:[A-Z]{1,3}\*{0,2}\s+){1,8}[A-Z]{1,3}\*{0,2}", line)
+                or re.search(r"(?:\s+[A-Z]{1,2}\*{0,2}){3,}\s*$", line)
+            ) and not extract_document_codes(line)
+            # Intestazione che va a capo. In un listino bilingue i nomi delle colonne
+            # occupano piu' righe e solo UNA contiene la parola "Codice": le altre
+            # (i nomi delle finiture, "Watt", "Gambe vetro fume' grigio") finivano
+            # scartate come descrizione, e i prezzi restavano numeri senza colonna.
+            # Si assorbe la riga che segue un'intestazione se e' fatta di etichette:
+            # piu' colonne, nessun codice, quasi nessuna cifra.
+            is_label_wrap = False
+            if HEADER_WRAP_ABSORB and previous_was_header and not extract_document_codes(line):
+                colonne = [c for c in re.split(r"\s{2,}", line.strip()) if c]
+                cifre = sum(ch.isdigit() for ch in line)
+                is_label_wrap = len(colonne) >= 2 and cifre <= len(line) * 0.08
+            if is_header or ((is_column_tags or is_label_wrap) and previous_was_header):
+                # intestazioni consecutive (italiano, sigle, inglese) si sommano
+                header = f"{header} | {line}" if previous_was_header else line
+                previous_was_header = True
+                continue
+            previous_was_header = False
+            codes = extract_document_codes(line, page["page"])
+            first_column = re.split(r"\s{2,}|\s\|\s", header.strip())[0].lower() if header else ""
+            lead = re.match(r"\s*(\d{3,6}[A-Z]?)\*?\s{2,}", line)
+            if lead and re.match(r"(?:composizion|composition|codic|code|articol|art|item)", first_column) \
+                    and len(NUMBER_TOKEN_PATTERN.findall(line)) >= 3:
+                codes.add(lead.group(1))  # prima colonna "Codice/Composizione": e' il codice
+            if not codes:
+                if _is_description_line(line):
+                    # Si TIENE anche la riga precedente, non solo l'ultima.
+                    # In questo catalogo la descrizione e' scritta due volte, prima
+                    # in italiano e subito sotto in inglese:
+                    #     Tavolo Air Soft rotondo vetro
+                    #     Round glass Air Soft table
+                    # Tenendo solo l'ultima si buttava via tutto l'italiano, e un
+                    # rivenditore che scrive "rotondo" interrogava un indice in
+                    # inglese: la parola non esisteva da nessuna parte e la domanda
+                    # finiva su un'altra famiglia di prodotti. Il vocabolario
+                    # bilingue non bastava, perche' impara solo dalle righe scritte
+                    # con il doppio slash e "rotondo" li' non compare mai.
+                    pezzi = [p for p in (description.split(" | ") if description else []) if p]
+                    pezzi.append(line.strip())
+                    description = " | ".join(pezzi[-DESCRIZIONE_RIGHE:])
+                continue
+            # Riga che porta SOLO il codice (le composizioni sono fatte cosi'):
+            #     1240
+            #     Componenti  Larghezza  Profondita'  Altezza
+            #     Totale composizione
+            #     457,6  40,6  265,7  11.466
+            # Il totale sta su un'altra riga, quindi il codice arrivava al modello
+            # nudo e il prezzo non risultava da nessuna parte. Peggio: sulla stessa
+            # pagina una composizione senza totale porta un asterisco, e il modello
+            # applicava quella legenda anche a chi il totale ce l'ha — rispondendo
+            # "prezzo da calcolare" su una composizione che costa 11.466.
+            # Qui la riga si porta dietro il suo blocco "Totale composizione".
+            if len(codes) == 1 and re.fullmatch(r"\s*[A-Za-z0-9_-]+\*?\s*", line):
+                coda = []
+                for seguente in page_lines[line_index + 1:line_index + 7]:
+                    if re.fullmatch(r"\s*[A-Za-z0-9_-]+\*?\s*", seguente):
+                        break                      # e' gia' il codice successivo
+                    if re.search(r"totale\s+composizione|composition\s+total", seguente, re.I) \
+                            or re.fullmatch(r"[\d.,\s*]+", seguente.strip()):
+                        coda.append(seguente.strip())
+                if any(NUMBER_TOKEN_PATTERN.search(c) for c in coda):
+                    line = line.strip() + "  " + "  ".join(coda)
+
+            for code in codes:
+                position = line.upper().find(code)
+                after_code = line[position + len(code):] if position >= 0 else line
+                CODE_ROWS.setdefault(code, []).append({
+                    "page": page["page"],
+                    "title": title,
+                    "header": header,
+                    "description": description,
+                    "text": line,
+                    "numbers": row_numbers(line),
+                    # la riga porta gia' un importo? (migliaia o numero di 3-5 cifre dopo il codice)
+                    "has_price": bool(re.search(
+                        r"\d{1,3}(?:\.\d{3})+|(?<![\d,.])\d{3,5}(?![\d,]|\.\d)", after_code)),
+                    # nei PDF impaginati un prezzo puo' scivolare sulla riga accanto
+                    "near_numbers": row_numbers(" ".join(
+                        page_lines[max(0, line_index - 1):line_index + 2]
+                    )),
+                })
+    drop_index_reference_rows()
+
+
+def drop_index_reference_rows() -> int:
+    """Toglie le righe dell'indice per codice del documento: non sono righe di listino.
+
+    Un catalogo comincia con il proprio indice: righe fatte di coppie "codice
+    numero-di-pagina". Entravano in CODE_ROWS come righe di listino e quei numeri
+    di pagina venivano letti come prezzi: 106 codici rispondevano con un importo
+    che era il numero della pagina su cui cercarli.
+
+    Come si riconosce un indice senza sapere nulla del documento: il numero
+    accanto al codice e' una pagina che CONTIENE quel codice. Un prezzo non punta
+    mai a se stesso. Serve questo test e non la forma della riga, perche' la forma
+    e' identica a quella di un listino di accessori a quattro colonne: a pagina 527
+    "P22005 83 P22006 84" sono codici con il loro prezzo in euro, e scartarli
+    avrebbe cancellato venti prodotti veri. Nessuna riga viene tolta se e' l'unica
+    che quel codice possiede: un codice senza riga di listino si dichiara
+    (unknown_code_answer), non si inventa.
+    """
+    if not DOCUMENT_PAGES:
+        return 0
+    testo_pagina = {p["page"]: p.get("text", "") for p in DOCUMENT_PAGES}
+    ultima = max(testo_pagina)
+    noti = set(CODE_ROWS)
+
+    def rimandi(testo: str) -> bool:
+        # Guardia: una riga di listino porta sempre una misura decimale o un importo
+        # a migliaia. Senza nessuno dei due non si sta guardando una riga di prezzi.
+        if re.search(r"\d+,\d|\d{1,3}\.\d{3}", testo):
+            return False
+        tokens = testo.split()
+        codici_nella_riga = risolte = 0
+        for primo, secondo in zip(tokens, tokens[1:]):
+            codice = primo.rstrip("*")
+            if codice not in noti:
+                continue
+            codici_nella_riga += 1
+            if not re.fullmatch(r"\d{1,3}", secondo) or not 1 <= int(secondo) <= ultima:
+                continue
+            if codice in testo_pagina.get(int(secondo), ""):
+                risolte += 1
+        # almeno due rimandi che si risolvono, e la meta' dei codici della riga:
+        # un codice isolato con accanto un numero non basta a chiamarla indice.
+        return risolte >= 2 and risolte * 2 >= codici_nella_riga
+
+    tolte = 0
+    for codice, righe in list(CODE_ROWS.items()):
+        tenute = [r for r in righe if not rimandi(r.get("text", ""))]
+        if tenute and len(tenute) < len(righe):
+            tolte += len(righe) - len(tenute)
+            CODE_ROWS[codice] = tenute
+    if tolte:
+        print(f"[INDICE] scartate {tolte} righe di rimando (indice per codice del documento)")
+    return tolte
+
+
+def sync_page_codes_with_rows() -> None:
+    for code, rows in CODE_ROWS.items():
+        for row in rows:
+            page = PAGE_BY_NUMBER.get(row["page"])
+            if page is not None:
+                page.setdefault("codes", set()).add(code)
+
+
+def line_codes_on_page(line: str, page_number: int) -> set:
+    """Codici di una riga di una pagina nota: estrazione + codici di listino di quella pagina."""
+    codes = extract_document_codes(line, page_number)
+    for token in re.findall(r"(?<![\d.,])\d{3,6}[A-Z]?(?![\d,])", line):
+        if token in CODE_ROWS and any(r["page"] == page_number for r in CODE_ROWS[token]):
+            codes.add(token)
+    return codes
+
+
+def code_pages(code: str) -> set:
+    return {row["page"] for row in CODE_ROWS.get(code, [])}
+
+
+def format_code_rows(codes: List[str], max_chars: int = 14000) -> str:
+    """Righe leggibili per il modello: pagina, titolo, intestazione, descrizione, riga."""
+    blocks: List[str] = []
+    total = 0
+    seen = set()
+    for code in codes:
+        for row in CODE_ROWS.get(code, []):
+            key = (code, row["page"], row["text"])
+            if key in seen:
+                continue
+            seen.add(key)
+            block = (
+                f"- {code} | pagina {row['page']} | {row['title'][:80]}\n"
+                f"  colonne: {row['header'][:220]}\n"
+                f"  descrizione: {row['description'][:160]}\n"
+                f"  riga: {row['text'][:260]}"
+            )
+            if total + len(block) > max_chars:
+                return "\n".join(blocks)
+            blocks.append(block)
+            total += len(block)
+    return "\n".join(blocks)
+
+
+def rows_with_sizes(dossier: str, wanted: set, max_chars: int = 7000) -> tuple:
+    """Prima di tutto le righe che portano proprio la misura chiesta, da qualunque pagina:
+    il limite di caratteri non deve far sparire la riga che risponde alla domanda."""
+    if not wanted:
+        return "", set()
+    blocks, used, total = [], set(), 0
+    per_family: Counter = Counter()  # righe per pagina
+    for page_number in (int(p) for p in re.findall(r"===== PAGINA PDF (\d+) =====", dossier)):
+        page = PAGE_BY_NUMBER.get(page_number)
+        if not page:
+            continue
+        for line in (page.get("compact") or "").splitlines():
+            for code in line_codes_on_page(line, page_number):
+                if code in used or code not in CODE_ROWS:
+                    continue
+                cards = PRODUCT_CARDS.get((code, page_number))
+                text = (" ".join(format_card(c) for c in cards) if cards else line)
+                if not (wanted & find_sizes(text)):
+                    continue
+                # al massimo due righe per pagina: entrano tutte le pagine, non solo le prime
+                if per_family[page_number] >= 2:
+                    continue
+                per_family[page_number] += 1
+                block = "\n".join(format_card(c) for c in cards[:1]) if cards else \
+                    f"- {code} | pagina {page_number} | riga: {line[:220]}"
+                if total + len(block) > max_chars:
+                    return "\n".join(blocks), used
+                blocks.append(block)
+                used.add(code)
+                total += len(block)
+    return "\n".join(blocks), used
+
+
+def format_evidence_rows(dossier: str, max_chars: int = 14000, priority_pages: Optional[set] = None,
+                         skip_codes: Optional[set] = None) -> str:
+    """Righe di listino delle SOLE pagine inviate al modello. Prima le pagine della
+    famiglia piu' rappresentata (il prodotto su cui si decide), poi le altre. Un codice
+    presente su molte pagine (accessorio) compare una volta sola: senza questa regola le
+    luci o i pannelli ripetuti riempivano il blocco e sparivano le righe dei prodotti."""
+    pages = [int(p) for p in re.findall(r"===== PAGINA PDF (\d+) =====", dossier)]
+    families = Counter(PAGE_BY_NUMBER[p].get("family") for p in pages if p in PAGE_BY_NUMBER)
+    families.pop(None, None)
+    priority = priority_pages or set()
+    order = sorted(
+        range(len(pages)),
+        key=lambda i: (0 if pages[i] in priority else 1,
+                       -families.get(PAGE_BY_NUMBER.get(pages[i], {}).get("family"), 0), i),
+    )
+    blocks: List[str] = []
+    seen_codes: set = set(skip_codes or ())
+    total = 0
+    last_context = None
+    for i in order:
+        page_number = pages[i]
+        page = PAGE_BY_NUMBER.get(page_number)
+        if not page:
+            continue
+        for line in (page.get("compact") or "").splitlines():
+            for code in line_codes_on_page(line, page_number):
+                if code not in CODE_ROWS or code in seen_codes:
+                    continue
+                seen_codes.add(code)
+                row = next((r for r in CODE_ROWS[code] if r["page"] == page_number), None)
+                if row is None:
+                    continue
+                cards = PRODUCT_CARDS.get((code, page_number))
+                if cards:
+                    # scheda con colonne: il significato di ogni numero e' esplicito
+                    block = "\n".join(format_card(card) for card in cards[:2])
+                    if total + len(block) > max_chars:
+                        return "\n".join(blocks)
+                    blocks.append(block)
+                    total += len(block)
+                    last_context = None
+                    continue
+                context_key = (page_number, row["header"], row["description"])
+                block = f"- {code} | pagina {page_number} | riga: {row['text'][:220]}"
+                if context_key != last_context:
+                    block = (
+                        f"[pagina {page_number} | {row['title'][:70]}]\n"
+                        f"  colonne: {row['header'][:200]}\n"
+                        f"  descrizione: {row['description'][:140]}\n" + block
+                    )
+                    last_context = context_key
+                if total + len(block) > max_chars:
+                    return "\n".join(blocks)
+                blocks.append(block)
+                total += len(block)
+    return "\n".join(blocks)
+
+
+TECHNICAL_PAGES: Dict[tuple, List[int]] = {}
+TECHNICAL_PAGE_MAX_CHARS = 4000  # una tavola tecnica e' corta; oltre e' un catalogo
+
+
+def technical_pages_of(family: Optional[tuple]) -> List[int]:
+    """Indici delle tavole tecniche di una famiglia: pagine della famiglia senza righe di
+    listino (quote, appoggi, montaggio). Calcolate una volta, dopo il caricamento."""
+    if not family:
+        return []
+    if not TECHNICAL_PAGES and DOCUMENT_PAGES:
+        with_rows = {r["page"] for rows in CODE_ROWS.values() for r in rows}
+        for idx, page in enumerate(DOCUMENT_PAGES):
+            fam = page.get("family")
+            size = len(page.get("compact") or page.get("text") or "")
+            if fam and page["page"] not in with_rows and size <= TECHNICAL_PAGE_MAX_CHARS:
+                TECHNICAL_PAGES.setdefault(fam, []).append(idx)
+        TECHNICAL_PAGES.setdefault(("__calcolato__",), [])
+    return TECHNICAL_PAGES.get(family, [])
+
+
+def family_dossier(families: set) -> str:
+    """Tutte le pagine delle famiglie indicate, prese dall'indice (non dalle pagine inviate):
+    il controllo delle esclusioni deve vedere la tavola tecnica anche se la ricerca non
+    l'ha portata al modello."""
+    blocks = []
+    for page in DOCUMENT_PAGES:
+        if page.get("family") in families:
+            blocks.append(f"\n===== PAGINA PDF {page['page']} =====\n{page.get('compact') or page['text']}\n")
+    return "".join(blocks)
+
+
+def excluded_feature_stems(question: str) -> set:
+    """Radici delle caratteristiche escluse ("senza gambe" -> gamb). Solo caratteristiche:
+    "senza chiamarle" (un'azione) non conta; solo parole presenti nel documento."""
+    feature_cues = {"senza", "niente", "nessun", "nessuna", "nessuno", "without", "no"}
+    excluded: set = set()
+    for clause in re.split(r"[.;:!?,\n]", (question or "").lower()):
+        words = re.findall(r"[a-zà-ÿ]+", clause)
+        for i, word in enumerate(words):
+            if word in feature_cues:
+                for follower in words[i + 1:i + 7]:
+                    if re.search(r"(?:are|ere|ire|arl[aeio]|erl[aeio]|irl[aeio])$", follower):
+                        break
+                    excluded.add(follower)
+    stems = {
+        token[:-1] if len(token) >= 5 else token
+        for token in excluded
+        if len(token) >= 4 and token not in SEARCH_STOPWORDS
+    }
+    return {s for s in stems if any(w.startswith(s) for w in (VOCABULARY or set()))}
+
+
+def exclusion_hits(question: str, dossier: str, max_items: int = 12) -> List[Dict[str, Any]]:
+    """Righe delle pagine inviate che nominano cio' che l'utente esclude, con pagina e
+    famiglia. Prima la famiglia principale; al massimo due righe per famiglia."""
+    stems = excluded_feature_stems(question)
+    if not stems:
+        return []
+    pages = [int(p) for p in re.findall(r"===== PAGINA PDF (\d+) =====", dossier)]
+    families = Counter(PAGE_BY_NUMBER[p].get("family") for p in pages if p in PAGE_BY_NUMBER)
+    families.pop(None, None)
+    pages = [pages[i] for i in sorted(
+        range(len(pages)),
+        key=lambda i: (-families.get(PAGE_BY_NUMBER.get(pages[i], {}).get("family"), 0), i),
+    )]
+    hits: List[Dict[str, Any]] = []
+    per_family: Counter = Counter()
+    seen_lines: set = set()
+    for page_number in pages:
+        page = PAGE_BY_NUMBER.get(page_number)
+        if not page:
+            continue
+        family = page.get("family")
+        title = re.sub(r"\s{2,}", " ", page_title_line(page["text"]))[:50]
+        for line in (page.get("compact") or "").splitlines():
+            if CODE_HEADER_PATTERN.search(line) or line == page_title_line(page["text"]).strip():
+                continue  # intestazioni e titoli non sono prove
+            words = re.findall(r"[a-zà-ÿ]+", line.lower())
+            matched = sorted({s for s in stems for w in words if w.startswith(s)})
+            if not matched or per_family[family] >= 2 or (page_number, line) in seen_lines:
+                continue
+            seen_lines.add((page_number, line))
+            per_family[family] += 1
+            hits.append({"page": page_number, "family": family, "title": title,
+                         "line": line[:160], "stems": matched, "all_stems": sorted(stems)})
+            if len(hits) >= max_items:
+                return hits
+    return hits
+
+
+def exclusion_evidence_note(question: str, dossier: str, max_items: int = 12) -> str:
+    """Le prove sulle esclusioni, davanti al modello prima che scriva."""
+    hits = exclusion_hits(question, dossier, max_items)
+    if not hits:
+        return ""
+    stems = sorted({s for h in hits for s in h["stems"]})
+    return (
+        "\n\nRIGHE CHE PARLANO DI CIO' CHE L'UTENTE ESCLUDE ("
+        + ", ".join(stems) + "...). Servono a dichiarare con precisione, per il "
+        "prodotto scelto, se l'elemento escluso e' presente, assente o non indicato. Non "
+        "decidono la scelta: la scelta si fa sull'OBIETTIVO dell'utente (vedi analisi). "
+        "Una riga che dice \"senza X\" non rende un prodotto adatto se ne annulla "
+        "l'obiettivo.\n"
+        + "\n".join(f"- pagina {h['page']} ({h['title']}): {h['line']}" for h in hits)
+    )
+
+
+# ------------------------------------------------------------
+# CONTROLLO DELLE CONTRADDIZIONI SULLE ESCLUSIONI
+# ------------------------------------------------------------
+# Se la risposta dichiara ASSENTE un elemento escluso dall'utente ("senza gambe", "nessuna
+# gamba") per un prodotto la cui famiglia, nelle pagine inviate, lo mostra PRESENTE, e la
+# risposta non cita quella prova, la risposta contraddice il documento: si corregge con la
+# riga esatta, e se la correzione non riesce la prova viene comunque mostrata al cliente.
+
+NEGATION_CLAIM = (
+    r"(?:senza|nessun[aoe]?|non (?:ha|hanno|presenta|presentano|prevede|prevedono|poggia|"
+    r"poggiano|ci sono)|priv[oaie] d[ie]|assenz[ae] d[ie]|elimin\w*|zero)\s+(?:[\w'’]+\s+){0,3}?"
+)
+
+
+def answer_families(answer: str) -> set:
+    families = set()
+    for _, code in codes_mentioned(answer):
+        for row in CODE_ROWS.get(code, []):
+            page = PAGE_BY_NUMBER.get(row["page"])
+            if page and page.get("family"):
+                families.add(page["family"])
+    return families
+
+
+def exclusion_contradictions(answer: str, hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    if not answer or not hits:
+        return []
+    parts = re.split(re.escape(SELECTABLE_HEADER), answer, flags=re.I)
+    body = parts[0]
+    families = answer_families(answer)
+    # famiglie PROPOSTE (quelle nei selezionabili): per loro la prova sull'elemento escluso
+    # va sempre dichiarata. Tacerla e' come negarla, con qualunque parafrasi ("nessun
+    # elemento tocca il pavimento" sfugge a ogni elenco di negazioni).
+    proposed = answer_families(parts[1]) if len(parts) > 1 else set()
+    # nomi di famiglia del documento ("air bed", "bed-in bed"): una frase che nomina
+    # un'ALTRA famiglia parla di quella. Servono prima e ultima parola, non una sola
+    # (parole come "a" o "set" sono anche parole comuni).
+    known_families = {
+        tuple(w.lower() for w in f) for f in (p.get("family") for p in DOCUMENT_PAGES)
+        if f and len(f) >= 2 and len(f[0]) >= 3
+    }
+    sentences = [s for s in re.split(r"(?<=[.!?])\s+|\n+", body) if s.strip()]
+    found = []
+    for hit in hits:
+        if hit["family"] not in families:
+            continue
+        own = tuple(w.lower() for w in hit["family"])
+        # tutte le esclusioni della stessa domanda ("senza gambe o altri appoggi a terra"
+        # e' un'unica esclusione): negare una qualsiasi contraddice la prova
+        stems = hit.get("all_stems") or hit["stems"]
+        distinctive = [
+            w[:-1] for w in re.findall(r"[a-zà-ÿ]{5,}", hit["line"].lower())
+            if not any(w.startswith(s) for s in stems) and w not in SEARCH_STOPWORDS
+        ]
+        if hit["family"] in proposed and not any(word in body.lower() for word in distinctive):
+            found.append(hit)  # omissione: la prova non compare da nessuna parte
+            continue
+        for sentence in sentences:
+            lowered = sentence.lower()
+            words = set(re.findall(r"[a-zà-ÿ0-9]+", lowered.replace("-", "")))
+            named = {f for f in known_families if f[0] in words and f[-1] in words}
+            if named and own not in named:
+                continue  # la frase parla di un altro prodotto
+            if not any(re.search(NEGATION_CLAIM + re.escape(s), lowered, re.I) for s in stems):
+                continue
+            # la frase stessa deve citare la prova (es. "telescopica"): una nota in fondo
+            # non rende vera una frase che dichiara l'assenza
+            if not any(word in lowered for word in distinctive):
+                found.append(hit)
+                break
+    return found
+
+
+CONTRADICTION_REPAIR_PROMPT = """
+Sei il CORRETTORE DOCUMENTALE. La risposta dichiara assente un elemento che l'utente voleva
+evitare, ma il documento lo mostra presente sullo stesso prodotto (righe fornite).
+Correggi SOLO questo, ma OVUNQUE:
+- riscrivi OGNI frase che dichiara assente l'elemento (o gli appoggi, o "nessuna gamba"),
+  anche nei selezionabili: nella frase stessa scrivi che cosa il documento indica, con la
+  pagina. Non aggiungere un paragrafo in fondo lasciando le frasi sbagliate;
+- se una frase dice "non indicato" una quota o un dato che il CONTESTO DELLE PAGINE riporta,
+  riscrivila con il dato e la pagina;
+- la prova vale per tutte le versioni della stessa famiglia citate nella risposta;
+- spiega in una frase che cosa significa rispetto all'obiettivo dell'utente.
+Non cambiare prodotto se resta la scelta migliore; non aggiungere altro. Stessa lingua,
+stessa struttura, stesse sezioni, stessa lunghezza circa. Restituisci soltanto la risposta.
+"""
+
+
+def apply_contradiction_control(answer: str, hits: List[Dict[str, Any]]) -> str:
+    found = exclusion_contradictions(answer, hits)
+    if not found:
+        return answer
+    print("[CONTRADDIZIONE] " + "; ".join(f"pagina {h['page']}: {h['line'][:80]}" for h in found))
+    evidence = "\n".join(f"- pagina {h['page']} ({h['title']}): {h['line']}" for h in found)
+    # contesto: la pagina intera della prova (una tavola tecnica porta anche le quote)
+    context = "\n".join(
+        f"PAGINA {p}:\n{(PAGE_BY_NUMBER[p].get('compact') or PAGE_BY_NUMBER[p]['text'])[:2500]}"
+        for p in dict.fromkeys(h["page"] for h in found) if p in PAGE_BY_NUMBER
+    )
+    try:
+        repaired = generation_chat(
+            CONTRADICTION_REPAIR_PROMPT,
+            f"RISPOSTA:\n{answer}\n\nRIGHE DEL DOCUMENTO:\n{evidence}"
+            f"\n\nCONTESTO DELLE PAGINE (usalo per quote e condizioni, citando la pagina):\n{context}",
+            VALIDATOR_MAX_TOKENS, 0.0,
+        ) or answer
+    except Exception as e:
+        print(f"[WARN] correzione della contraddizione non riuscita: {e}")
+        repaired = answer
+    if exclusion_contradictions(repaired, found):
+        # la correzione non ha funzionato: la prova arriva comunque al cliente
+        warning = "ATTENZIONE, DAL DOCUMENTO:\n" + evidence
+        match = find_section(repaired, SELECTABLE_HEADER)
+        repaired = (repaired[:match.start()].rstrip() + "\n\n" + warning + "\n\n"
+                    + repaired[match.start():]) if match else repaired + "\n\n" + warning
+    print(f"[CONTRADDIZIONE] dopo correzione: {len(exclusion_contradictions(repaired, found))}")
+    return repaired
+
+
+def codes_in_evidence(dossier: str) -> List[str]:
+    """Codici presenti nelle pagine recuperate, nell'ordine in cui compaiono."""
+    ordered: List[str] = []
+    for page_number in re.findall(r"===== PAGINA PDF (\d+) =====", dossier):
+        page = PAGE_BY_NUMBER.get(int(page_number))
+        if not page:
+            continue
+        for line in (page.get("compact") or "").splitlines():
+            for code in line_codes_on_page(line, int(page_number)):
+                if code in CODE_ROWS and code not in ordered:
+                    ordered.append(code)
+    return ordered
+
+
+PAGE_BY_NUMBER: Dict[int, Dict[str, Any]] = {}
+KNOWN_ROOTS: set = set()
+VOCABULARY: set = set()
+
+
+SEARCH_PLANNER_PROMPT = """
+Sei il PIANIFICATORE di un motore documentale universale.
+Documento collegato: {document_context}.
+Ricevi la richiesta di un utente ed eventualmente la sua domanda precedente.
+NON rispondere alla domanda. Restituisci SOLO un oggetto JSON con queste chiavi:
+- "termini": una riga di parole chiave (massimo 25) con cui un documento di quel settore
+  descrive le soluzioni che soddisfano la richiesta, in italiano e nelle altre lingue del
+  documento: la categoria della soluzione; il nome tecnico delle funzioni espresse a parole
+  comuni (esempi di altri settori: "non deve temere la pioggia" -> IP65 impermeabile
+  waterproof; "si monta senza forare" -> fissaggio adesivo, adhesive; "regge un carico
+  elevato" -> portata, load capacity); taglie o classi commerciali tradotte nei valori
+  standard del settore; numeri, misure e codici della richiesta invariati. NON includere
+  le parole escluse o negate dall'utente ne' parole di servizio (codice, prezzo, pagina).
+- "categoria": le sole parole che nominano il TIPO di prodotto richiesto, in italiano e
+  in inglese (esempio: "lampada lamp"). Stringa vuota se la richiesta non nomina un tipo.
+- "condizioni": elenco (massimo 4) delle CARATTERISTICHE che il prodotto deve avere
+  secondo la richiesta: materiale, forma, colore, finitura, una parte di cui e' fatto.
+  Una sola parola ciascuna, come l'ha scritta l'utente, e solo parole PRESENTI nella
+  richiesta. NON e' una condizione: il tipo di prodotto (sta in "categoria"), una misura,
+  un prezzo, un codice, e soprattutto nessun verbo o parola di cortesia. Esempi:
+  "tavolo tondo con gambe in legno" -> ["tondo", "gambe", "legno"];
+  "madia in marmo di Carrara"       -> ["marmo", "carrara"];
+  "quanto costa il comodino 36e8?"  -> [] (nessuna caratteristica richiesta);
+  "cosa posso proporre al cliente?" -> [] ("posso" e "proporre" sono verbi).
+  Elenco vuoto se la richiesta non chiede nessuna caratteristica.
+- "intento": uno tra "ricerca_esatta" (dati di un codice o di un prodotto nominato),
+  "raccomandazione" (trovare la soluzione adatta a un'esigenza), "confronto" (mettere a
+  confronto soluzioni nominate), "spiegazione" (come funziona, cosa significa).
+- "seguito": true se la richiesta prosegue la domanda precedente (sceglie, modifica o
+  approfondisce una soluzione gia' discussa), false se e' una richiesta nuova.
+"""
+
+PLAN_CACHE: "OrderedDict[tuple, Dict[str, Any]]" = OrderedDict()
+PLAN_INTENTS = {"ricerca_esatta", "raccomandazione", "confronto", "spiegazione"}
+CONDIZIONI_MAX = 4
+
+
+def condizioni_dichiarate(grezze, question: str) -> List[str]:
+    """Filtra le caratteristiche proposte dal pianificatore.
+
+    Perche' un filtro su una risposta del modello: il 7ott2026 ho provato tre
+    regole statistiche per ricavare le condizioni dal testo della domanda
+    (parole assenti dalle schede; parole presenti su altre schede; parole
+    assenti da tutto il documento). Tutte e tre, misurate sui 65 casi, si
+    accendevano sui VERBI - "spendo", "vuole", "prendere", "venduto" - perche'
+    nessuna statistica distingue un materiale da un verbo. Lo sa il modello,
+    che la lingua la conosce. Ma di cio' che dice il modello si tiene solo
+    quello che e' verificabile: ogni condizione deve comparire nella domanda.
+    Una caratteristica inventata dal pianificatore farebbe dichiarare non
+    soddisfatta una cosa che il cliente non ha mai chiesto, che e' lo stesso
+    danno di prima al contrario.
+    """
+    if not isinstance(grezze, (list, tuple)):
+        return []
+    nella_domanda = set(search_tokens(question))
+    tenute: List[str] = []
+    for voce in grezze:
+        parola = " ".join(str(voce).split()).strip().lower()
+        if not parola or len(parola) < 3 or " " in parola:
+            continue
+        if not any(ch.isalpha() for ch in parola):
+            continue
+        pezzi = search_tokens(parola)
+        if not pezzi or pezzi[0] not in nella_domanda:
+            continue      # non e' scritta nella richiesta: si scarta
+        if pezzi[0] in tenute:
+            continue
+        tenute.append(pezzi[0])
+    return tenute[:CONDIZIONI_MAX]
+
+
+def plan_request(question: str, previous_question: str = "") -> Dict[str, Any]:
+    """Una sola chiamata breve (T=0) che produce lessico, categoria, intento e seguito.
+    In caso di errore restituisce un piano vuoto: il motore deterministico resta attivo."""
+    empty = {"termini": "", "categoria": "", "intento": "", "seguito": None, "condizioni": []}
+    key = (question[:3000], previous_question[:800])
+    if key in PLAN_CACHE:
+        PLAN_CACHE.move_to_end(key)
+        return PLAN_CACHE[key]
+    if client is None:
+        return empty
+    user_content = question[:3000]
+    if previous_question:
+        user_content = f"DOMANDA PRECEDENTE: {previous_question[:800]}\n\nRICHIESTA: {user_content}"
+    try:
+        response = client.chat.completions.create(
+            model=DEEPSEEK_MODEL,
+            messages=[
+                {"role": "system", "content": SEARCH_PLANNER_PROMPT.format(
+                    document_context=DOCUMENT_CONTEXT)},
+                {"role": "user", "content": user_content},
+            ],
+            temperature=0.0,
+            max_tokens=260,
+            response_format={"type": "json_object"},
+        )
+        raw = (response.choices[0].message.content or "").strip()
+        try:
+            data = json.loads(raw)
+        except Exception:
+            data = {"termini": raw}  # risposta non JSON: la si usa come lessico
+        plan = {
+            "termini": " ".join(str(data.get("termini", "")).split())[:600],
+            "categoria": " ".join(str(data.get("categoria", "")).split())[:200],
+            "intento": data.get("intento") if data.get("intento") in PLAN_INTENTS else "",
+            "seguito": data.get("seguito") if isinstance(data.get("seguito"), bool) else None,
+            # Le condizioni non si prendono per buone: si tengono solo quelle che
+            # compaiono davvero nella richiesta. Se il pianificatore inventa una
+            # caratteristica, il motore finirebbe per dichiarare non soddisfatta
+            # una cosa che il cliente non ha mai chiesto.
+            "condizioni": condizioni_dichiarate(data.get("condizioni"), question),
+        }
+    except Exception as e:
+        print(f"[WARN] pianificazione non riuscita: {e}")
+        return empty
+    PLAN_CACHE[key] = plan
+    if len(PLAN_CACHE) > 256:
+        PLAN_CACHE.popitem(last=False)
+    return plan
+
+
+def plan_search_terms(question: str) -> str:
+    """Compatibilita': solo il lessico del piano."""
+    return plan_request(question).get("termini", "")
+
+
+def expand_multilingual_query(question: str) -> str:
+    """Compatibilita': restituisce domanda + lessico del catalogo pianificato."""
+    terms = plan_search_terms(question)
+    return f"{question}\n{terms}" if terms else question
+
+
+FAMILY_BREADTH = 8            # quante unita' documentali diverse proporre come alternative
+FAMILY_MAX_PAGES = 25          # oltre questa soglia il titolo non identifica un prodotto
+LOCAL_CONTEXT_MAX_CHARS = 70000  # +10k per le tavole tecniche delle famiglie candidate
+
+
+def retrieve_local_evidence(
+    query: str, max_pages: int = 10, planned_terms: Optional[str] = None
+) -> str:
+    """Recupera localmente pagine verificabili senza servizi vettoriali esterni.
+
+    Principi universali (validi per qualunque documento e settore):
+    1. i termini che l'utente esclude ("senza X", "non X") non vengono cercati;
+    2. le parole di servizio della domanda (codice, prezzo, pagina...) non pesano;
+    3. un pianificatore traduce il bisogno espresso a parole comuni nel lessico tecnico
+       del documento collegato;
+    4. l'unita' documentale piu' pertinente (stesso prodotto: listino, versioni, schede
+       tecniche) viene recuperata intera, perche' i dettagli decisivi stanno spesso nelle
+       schede tecniche e non nella pagina del listino.
+    """
+    if not DOCUMENT_PAGES:
+        return ""
+
+    if planned_terms is None:
+        planned_terms = plan_search_terms(query)
+    # le esclusioni valgono per cio' che chiede l'utente, non per il testo della risposta
+    # precedente che accompagna un seguito ("non ha contenitore" non esclude "contenitore")
+    excluded = negated_search_tokens(query.split("Risposta precedente:")[0])
+    question_tokens = [t for t in search_tokens(query) if t not in excluded]
+    planned_tokens = [t for t in search_tokens(planned_terms) if t not in excluded]
+    codes = extract_document_codes(query)
+    numbers = set(re.findall(r"\b\d+(?:[.,]\d+)?\b", query + " " + planned_terms))
+
+    # Il lessico pianificato vale piu' delle parole libere del cliente.
+    token_weights: Dict[str, float] = {}
+    for token in question_tokens:
+        token_weights[token] = max(token_weights.get(token, 0.0), 1.0)
+    for token in planned_tokens:
+        token_weights[token] = max(token_weights.get(token, 0.0), 1.6)
+
+    token_df = {
+        token: sum(1 for page in DOCUMENT_PAGES if token in page["token_set"])
+        for token in token_weights
+    }
+    scored: List[tuple[float, int]] = []
+    phrase = normalize(query)
+    for idx, page in enumerate(DOCUMENT_PAGES):
+        score = 0.0
+        for token, base_weight in token_weights.items():
+            occurrences = page["token_counts"].get(token, 0)
+            if occurrences:
+                rarity = math.log((len(DOCUMENT_PAGES) + 1) / (token_df[token] + 1)) + 1
+                # Numeri puri (180, 72) sono vincoli da verificare, non l'identita' di cio'
+                # che si cerca: pesano poco. Identificativi alfanumerici (36e8, dn50) pesano molto.
+                if re.fullmatch(r"[\d.,]+", token):
+                    weight = base_weight * 0.5
+                elif any(ch.isdigit() for ch in token):
+                    weight = base_weight * 3.0
+                else:
+                    weight = base_weight
+                score += weight * rarity * (1.0 + math.log(occurrences))
+                # Il titolo dice che cosa e' la pagina: una parola cercata nel titolo
+                # identifica il prodotto, la stessa parola nel corpo e' solo un dettaglio.
+                if token in page.get("title_tokens", ()):
+                    score += 3.0 * weight * rarity
+        score += 80.0 * len(codes & page.get("codes", set()))
+        for number in numbers:
+            if number.replace(",", ".") in page["token_set"]:
+                score += 2.0
+        if phrase and len(phrase) > 8 and phrase in page["normalized"]:
+            score += 100.0
+        if score > 0:
+            scored.append((score, idx))
+    scored.sort(key=lambda item: item[0], reverse=True)
+
+    selected: List[int] = []
+
+    def add(idx: int) -> None:
+        if 0 <= idx < len(DOCUMENT_PAGES) and idx not in selected:
+            selected.append(idx)
+
+    query_norm = normalize(query + " " + planned_terms)
+    if codes:
+        # Approfondimento su codici esatti (tipico secondo turno).
+        # 1) pagine che contengono i codici, prima quelle che ne contengono di piu';
+        matches = []
+        for idx, page in enumerate(DOCUMENT_PAGES):
+            hits = len(codes & page.get("codes", set()))
+            if hits:
+                matches.append((hits, idx))
+        matches.sort(key=lambda item: (-item[0], item[1]))
+        for _, idx in matches:
+            add(idx)
+        # 2) la famiglia di quei prodotti, tavole tecniche comprese: i dettagli costruttivi
+        #    (quote, appoggi, montaggio) non stanno sulla pagina del listino;
+        family_sizes = Counter(p.get("family") for p in DOCUMENT_PAGES if p.get("family"))
+        for _, idx in matches[:3]:
+            fam = DOCUMENT_PAGES[idx].get("family")
+            if fam and family_sizes[fam] <= FAMILY_MAX_PAGES:
+                for other_idx, other in enumerate(DOCUMENT_PAGES):
+                    if other.get("family") == fam:
+                        add(other_idx)
+        # 3) poi i punteggi.
+        for _, idx in scored:
+            if len(selected) >= max(max_pages, 30):
+                break
+            add(idx)
+        max_chars = LOCAL_CONTEXT_MAX_CHARS
+    else:
+        family_pages: Dict[tuple, List[int]] = {}
+        for idx, page in enumerate(DOCUMENT_PAGES):
+            if page.get("family"):
+                family_pages.setdefault(page["family"], []).append(idx)
+
+        # Categoria richiesta: parole della domanda (o del lessico) che nel documento
+        # compaiono nei titoli di piu' pagine, cioe' nomi di categoria ("TV", "BED", ...).
+        # Le alternative si cercano prima dentro quella categoria, poi altrove.
+        category_tokens = {
+            token for token in token_weights
+            if not re.fullmatch(r"[\d.,]+", token)
+            and sum(1 for page in DOCUMENT_PAGES if token in page.get("title_tokens", ())) >= 2
+        }
+
+        def in_category(fam: tuple) -> bool:
+            return any(
+                category_tokens & DOCUMENT_PAGES[i].get("title_tokens", set())
+                for i in family_pages.get(fam, [])
+            )
+
+        # Ordine delle famiglie secondo la miglior pagina di ciascuna.
+        family_order: List[tuple] = []
+        best_page_of_family: Dict[tuple, int] = {}
+        for _, idx in scored:
+            fam = DOCUMENT_PAGES[idx].get("family")
+            if not fam or len(family_pages.get(fam, [])) > FAMILY_MAX_PAGES:
+                continue
+            if fam not in best_page_of_family:
+                best_page_of_family[fam] = idx
+                family_order.append(fam)
+        if category_tokens:
+            family_order = (
+                [f for f in family_order if in_category(f)]
+                + [f for f in family_order if not in_category(f)]
+            )
+        family_order = family_order[:FAMILY_BREADTH]
+
+        # 1) ampiezza: la pagina migliore delle prime famiglie (alternative reali);
+        for fam in family_order:
+            add(best_page_of_family[fam])
+        # 1b) le tavole tecniche di quelle famiglie (pagine senza righe di listino: quote,
+        #     appoggi, montaggio). Sono corte e decidono le esigenze funzionali; senza questa
+        #     regola il limite di caratteri le scartava quando la famiglia scelta dal modello
+        #     non era la prima per punteggio (caso reale: pagina 461 persa).
+        for fam in family_order:
+            for idx in technical_pages_of(fam):
+                add(idx)
+        # 1c) delle prime famiglie, le pagine di listino che contengono la misura chiesta:
+        #     senza questa regola la misura richiesta poteva restare fuori quando la famiglia
+        #     giusta non era la prima per punteggio (caso reale: pagina 424 persa)
+        wanted_sizes = find_sizes(query)
+        if wanted_sizes:
+            for fam in family_order[:3]:
+                taken = 0
+                for idx in family_pages.get(fam, []):
+                    page = DOCUMENT_PAGES[idx]
+                    if taken >= 3:
+                        break
+                    if page.get("codes") and wanted_sizes & find_sizes(page.get("compact") or ""):
+                        add(idx)
+                        taken += 1
+        # 2) profondita': la prima famiglia intera, versioni e tavole tecniche comprese;
+        if family_order:
+            for idx in family_pages[family_order[0]]:
+                add(idx)
+        # 3) poi il resto per punteggio.
+        for _, idx in scored:
+            add(idx)
+            if len(selected) >= max(max_pages, 30):
+                break
+        max_chars = LOCAL_CONTEXT_MAX_CHARS
+
+    if not selected:
+        return ""
+
+    blocks: List[str] = []
+    sent: List[int] = []
+    skipped: List[int] = []
+    total_chars = 0
+    for idx in selected:
+        page = DOCUMENT_PAGES[idx]
+        body = page.get("compact") or page["text"]
+        block = f"\n===== PAGINA PDF {page['page']} =====\n{body}\n"
+        if total_chars + len(block) > max_chars:
+            skipped.append(page["page"])
+            continue  # prova le pagine successive, piu' corte
+        blocks.append(block)
+        sent.append(page["page"])
+        total_chars += len(block)
+
+    print(
+        "[RETRIEVAL] pagine inviate="
+        + ",".join(str(p) for p in sent[:40])
+        + (f" scartate_per_limite={','.join(str(p) for p in skipped[:20])}" if skipped else "")
+        + f" esclusi={sorted(excluded)[:12]} lessico='{planned_terms[:160]}'"
+    )
+    supplement = []
+    supplement_chars = 0
+    for page_number in sent:
+        extra = DOCLING_PAGES.get(page_number, "")
+        if not extra:
+            continue
+        block = f"\n===== DOCLING PAGINA PDF {page_number} =====\n{extra}\n"
+        if supplement_chars + len(block) > 20000:
+            continue  # never cut a table in the middle
+        supplement.append(block)
+        supplement_chars += len(block)
+    return ("".join(blocks) + "".join(supplement)).strip()
+
+
+# ============================================================
+# CARICAMENTO KB TECNICA (per meta / debug)
+# ============================================================
+
+KB_BLOCKS: List[Dict[str, Any]] = []
+
+
+def load_kb() -> None:
+    global KB_BLOCKS
+    if not os.path.exists(MASTER_PATH):
+        print(f"[WARN] MASTER_PATH non trovato: {MASTER_PATH}")
+        KB_BLOCKS = []
+        return
+
+    try:
+        with open(MASTER_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        if isinstance(data, dict) and "blocks" in data:
+            KB_BLOCKS = data["blocks"]
+        elif isinstance(data, list):
+            KB_BLOCKS = data
+        else:
+            KB_BLOCKS = []
+
+        print(f"[INFO] KB caricata: {len(KB_BLOCKS)} blocchi")
+    except Exception as e:
+        print(f"[ERROR] caricando KB: {e}")
+        KB_BLOCKS = []
+
+
+def score_block(question_norm: str, block: Dict[str, Any]) -> float:
+    triggers = " ".join(block.get("triggers", []))
+    q_it = block.get("question_it", "")
+    text = normalize(triggers + " " + q_it)
+    if not text:
+        return 0.0
+
+    q_words = set(question_norm.split())
+    b_words = set(text.split())
+    if not q_words or not b_words:
+        return 0.0
+
+    common = q_words & b_words
+    if not common:
+        return 0.0
+
+    return len(common) / max(len(q_words), 1)
+
+
+def match_from_kb(question: str, threshold: float = 0.18) -> Optional[Dict[str, Any]]:
+    if not KB_BLOCKS:
+        return None
+    qn = normalize(question)
+    best_block: Optional[Dict[str, Any]] = None
+    best_score = 0.0
+    for b in KB_BLOCKS:
+        s = score_block(qn, b)
+        if s > best_score:
+            best_score = s
+            best_block = b
+    if best_score < threshold:
+        return None
+    return best_block
+
+
+load_kb()
+
+# ============================================================
+# CARICAMENTO COMM (dati aziendali/commerciali)
+# ============================================================
+
+COMM_ITEMS: List[Dict[str, Any]] = []
+
+
+def load_comm() -> None:
+    global COMM_ITEMS
+    if not os.path.exists(COMM_PATH):
+        print(f"[WARN] COMM_PATH non trovato: {COMM_PATH}")
+        COMM_ITEMS = []
+        return
+
+    try:
+        with open(COMM_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        if isinstance(data, dict) and "items" in data:
+            COMM_ITEMS = data["items"]
+        elif isinstance(data, list):
+            COMM_ITEMS = data
+        else:
+            COMM_ITEMS = []
+
+        print(f"[INFO] COMM caricata: {len(COMM_ITEMS)} blocchi COMM")
+    except Exception as e:
+        print(f"[ERROR] caricando COMM: {e}")
+        COMM_ITEMS = []
+
+
+def is_commercial_question(q: str) -> bool:
+    q = q.lower()
+    keywords = [
+        "partita iva", "p.iva", "p iva", "codice fiscale",
+        "rea", "registro imprese", "camera di commercio",
+        "indirizzo", "sede", "dove si trova tecnaria",
+        "telefono", "numero di telefono", "recapito",
+        "email", "mail", "posta elettronica",
+        "orari", "orario", "apertura", "chiusura",
+        "codice sdi", "sdi", "codice destinatario",
+        "fatturazione elettronica",
+        "dati aziendali", "dati societari", "azienda tecnaria",
+    ]
+    return any(k in q for k in keywords)
+
+
+def match_comm(question: str) -> Optional[Dict[str, Any]]:
+    if not COMM_ITEMS:
+        return None
+
+    q = normalize(question)
+    best: Optional[Dict[str, Any]] = None
+    best_score = 0
+
+    for item in COMM_ITEMS:
+        local_score = 0
+        for tag in item.get("tags", []):
+            tag_norm = tag.lower()
+            if tag_norm and tag_norm in q:
+                local_score += 1
+
+        if local_score > best_score:
+            best_score = local_score
+            best = item
+
+    return best if best_score >= 1 else None
+
+
+load_comm()
+load_document_index()
+
+# ============================================================
+# LLM: PROMPT TECNARIA GOLD
+# ============================================================
+
+SYSTEM_PROMPT_GOLD = """
+Sei un tecnico–commerciale senior di Tecnaria S.p.A. con più di 20 anni di esperienza
+su tutti i sistemi:
+- CTF + P560 per solai misti acciaio–calcestruzzo
+- VCEM / CTCEM per solai in laterocemento
+- CTL / CTL MAXI per solai legno–calcestruzzo
+- DIAPASON per travetti in laterocemento
+- GTS, accessori e fissaggi correlati
+- procedure di posa, verifica colpi, card, limiti, normativa, casi di non validità.
+
+REGOLE OBBLIGATORIE:
+
+1. Rispondi esclusivamente nel mondo Tecnaria S.p.A.
+   Non parlare mai di prodotti di altre aziende (trattori, proiettori, macchine da cucire, ecc.).
+
+2. Per i CTF cita sempre la chiodatrice P560 e i "chiodi idonei Tecnaria".
+
+3. Per il sistema DIAPASON:
+   - NON utilizza chiodi.
+   - Si fissa con UNA vite strutturale in ogni piastra.
+   - Non citare mai P560 o chiodi in relazione ai DIAPASON.
+
+4. Se la domanda riguarda più famiglie (es. CTF + DIAPASON), distingui sempre in modo netto i due sistemi
+   e spiega le differenze operative.
+
+5. Non inventare MAI valori numerici se non sono confermati dalle istruzioni Tecnaria:
+   - numero di chiodi
+   - passo
+   - spessori
+   - lunghezze
+   - profondità
+   - resistenze
+   - distanze
+   - quantità
+   Se il dato non è certo, usa esattamente la frase:
+   "Questo valore va verificato nelle istruzioni Tecnaria o con l’Ufficio Tecnico."
+
+6. Se invece il valore numerico è presente nella documentazione Tecnaria, DEVI riportarlo esattamente.
+   Non usare formulazioni vaghe.
+
+7. Non inventare mai dati aziendali (indirizzo, P.IVA, SDI, telefono, nominativi).
+   Se arrivano domande su questo, vengono gestite da un modulo COMM separato.
+
+8. Stile della risposta:
+   - tecnico-ingegneristico
+   - chiaro, aziendale, senza marketing
+   - se utile, usa elenchi puntati
+   - spiega sempre perché la soluzione è corretta
+   - evita frasi generiche tipo "dipende": specifica sempre cosa dipende da cosa.
+
+9. Se la domanda è fuori dal mondo Tecnaria, scrivi:
+   "Il sistema risponde solo su prodotti, posa e applicazioni Tecnaria S.p.A."
+
+10. Se la domanda contiene un errore tecnico evidente, correggilo gentilmente
+    e spiega la versione corretta.
+
+Questo è un sistema GOLD: precisione massima, nessuna invenzione,
+risposte chiare, determinate e ingegneristiche.
+"""
+
+SYSTEM_PROMPT_NARRATORE = """
+Sei il Narratore di Tecnaria S.p.A.
+Il tuo compito è leggere la descrizione di una situazione di cantiere o di un problema tecnico
+e identificare:
+1. Cosa è chiaro nella situazione descritta
+2. Cosa manca per poter dare una risposta tecnica corretta
+3. Il rischio principale se si procede senza i dati mancanti
+
+Rispondi SEMPRE in italiano con questa struttura esatta:
+
+SITUAZIONE: [cosa hai capito in 2-3 righe]
+DATI MANCANTI: [lista puntata dei dati necessari]
+RISCHIO: [cosa succede se si procede senza quei dati]
+DOMANDA CRITICA: [UNA sola domanda — la più importante da fare adesso]
+
+Sii diretto e tecnico. Mai vago. Mai generico.
+"""
+
+SYSTEM_PROMPT_SUPERRISPONDITORE = """
+Sei il Superrisponditore tecnico di Tecnaria S.p.A.
+Ricevi:
+- La descrizione originale del cliente
+- L'analisi del Narratore con i dati mancanti
+- La domanda critica identificata
+
+Il tuo compito è dare la risposta tecnica più completa possibile
+basandoti sui dati disponibili, indicando chiaramente
+cosa è certo e cosa richiede verifica in loco.
+
+Regole:
+1. Non inventare valori numerici — se non li conosci usa:
+   "Verificare nelle istruzioni Tecnaria o con l'Ufficio Tecnico"
+2. Distingui sempre tra dati certi e ipotesi
+3. Se i dati sono insufficienti, spiega cosa raccogliere prima di procedere
+4. Concludi sempre con i passi concreti successivi
+
+Stile: tecnico, diretto, aziendale. Niente marketing.
+"""
+
+
+def is_situational(question: str) -> bool:
+    """
+    Rileva se la domanda descrive una situazione
+    invece di fare una domanda tecnica diretta.
+    """
+    q = question.lower()
+    triggers = [
+        "ho un solaio", "abbiamo un solaio", "c'è un solaio",
+        "ho un cantiere", "abbiamo un cantiere",
+        "vorrei rinforzare", "voglio rinforzare", "devo rinforzare",
+        "ho delle travi", "abbiamo delle travi",
+        "il cliente ha", "il progettista chiede",
+        "situazione", "caso", "problema",
+        "ho solo", "abbiamo solo", "non abbiamo",
+        "non so", "non siamo sicuri",
+        "edificio", "palazzo", "capannone", "villa",
+        "anni '", "anni 6", "anni 7", "anni 8", "anni 9",
+        "struttura esistente", "struttura vecchia",
+        "foto", "rilievo", "stratigrafia",
+    ]
+    return any(t in q for t in triggers)
+
+
+def call_deepseek(prompt_system: str, question: str, temperature: float = 0.3) -> str:
+    """
+    Wrapper unico per chiamare DeepSeek tramite API compatibile OpenAI.
+    """
+    if client is None:
+        return "Il motore esterno non è disponibile (DEEPSEEK_API_KEY mancante)."
+
+    try:
+        completion = client.chat.completions.create(
+            model=DEEPSEEK_MODEL,
+            messages=[
+                {"role": "system", "content": prompt_system},
+                {"role": "user", "content": question},
+            ],
+            temperature=temperature,
+            top_p=1.0,
+        )
+        return (completion.choices[0].message.content or "").strip()
+    except Exception as e:
+        print(f"[ERROR] chiamando DeepSeek: {e}")
+        return "Si è verificato un errore nella chiamata al motore esterno."
+
+
+DOCUMENT_RETRIEVAL_PROMPT = """
+Sei il RICERCATORE DOCUMENTALE di un motore professionale universale.
+L'ambiente documentale corrente e': {document_context}.
+
+Usa esclusivamente i documenti collegati. Non usare memoria generale, web o supposizioni.
+Il tuo compito non e' formulare la risposta finale, ma preparare un DOSSIER DI EVIDENZE
+completo, verificabile e utile al Narratore.
+
+METODO UNIVERSALE:
+1. Comprendi se la richiesta e' una ricerca esatta, una spiegazione, un confronto oppure
+   una richiesta di consiglio/soluzione.
+2. Per una ricerca esatta verifica prima la corrispondenza esatta di codici e riferimenti.
+3. Per confronti o consigli non fermarti al primo risultato compatibile: recupera piu'
+   candidati pertinenti, fino a 8 quando disponibili.
+4. Per ogni candidato riporta soltanto dati documentati: identificativo, descrizione,
+   funzione/destinazione, caratteristiche, misure, condizioni, prezzo, documento e pagina.
+5. Conserva le differenze importanti tra candidati. Non decidere che tutti i risultati che
+   superano una soglia minima siano equivalenti.
+6. Un limite massimo o minimo definisce l'ammissibilita', ma non autorizza a massimizzare o
+   minimizzare automaticamente quel valore. Cerca varianti distribuite nell'intervallo
+   ammissibile quando la preferenza dell'utente non e' esplicita.
+7. Distingui un dato mancante da un dato non applicabile e da un dato contraddittorio.
+8. Se fonti o versioni discordano, riportale entrambe con documento, pagina e versione.
+9. Non combinare nella stessa affermazione valori provenienti da prodotti, righe o pagine
+   differenti, salvo che il documento dichiari esplicitamente la relazione.
+10. Non inventare mai numeri, caratteristiche, compatibilita', motivazioni o relazioni.
+11. Indica sempre documento e pagina/riferimento quando disponibili.
+
+Restituisci un dossier leggibile e neutrale. Non scegliere ancora il vincitore e non citare
+mai strumenti, infrastruttura, API, modelli o identificativi tecnici.
+"""
+
+DOCUMENT_NARRATOR_PROMPT = """
+Sei il NARRATORE ANALITICO di un motore universale. Lavori in qualsiasi settore e non devi
+applicare regole fisse legate a uno specifico prodotto, documento o mercato.
+
+Ricevi la richiesta originale e un dossier di sole evidenze documentali. Devi costruire
+internamente la struttura decisionale prima che il Superrisponditore parli con l'utente.
+
+METODO OBBLIGATORIO:
+1. Classifica la richiesta: ricerca_esatta, spiegazione, confronto o raccomandazione.
+2. Identifica l'obiettivo reale dell'utente.
+3. Separa:
+   - vincoli obbligatori;
+   - preferenze e priorita';
+   - valori approssimativi e tolleranze;
+   - destinazione d'uso;
+   - informazioni mancanti capaci di cambiare la decisione.
+4. Valuta ogni candidato su quattro livelli:
+   - AMMISSIBILITA': rispetta tutti i vincoli obbligatori?
+   - PERTINENZA: soddisfa realmente il bisogno e la funzione richiesta?
+   - OPPORTUNITA': e' preferibile alle alternative documentate?
+   - DIMOSTRABILITA': ogni affermazione e' sostenuta da documento e riferimento?
+5. Distingui sempre "formalmente compatibile" da "realmente consigliabile".
+6. Non trasformare automaticamente un limite massimo/minimo in un valore obiettivo.
+7. Ottimizza un valore soltanto se l'utente lo richiede esplicitamente o se la destinazione
+   d'uso lo rende necessario sulla base di evidenze documentali.
+8. Espressioni vaghe come "basso", "leggero", "economico" o "compatto" non significano
+   automaticamente "il piu' basso", "il piu' leggero", "il meno caro" o "il piu' piccolo".
+9. Non usare un singolo attributo per decidere quando la richiesta contiene piu' esigenze.
+10. Penalizza dati mancanti, funzione incerta, scostamenti rilevanti e prove insufficienti.
+11. Se piu' candidati ammissibili rappresentano usi o compromessi sostanzialmente diversi,
+    individua una proposta provvisoria equilibrata, conserva le varianti e prepara come
+    domanda critica quella che puo' cambiare la graduatoria. Non chiedere prima il budget
+    se funzione, dimensione, prestazione o capacita' sono ancora indeterminate.
+12. Se manca un dato decisivo, non simulare certezza: prepara una sola domanda critica.
+13. Se non esiste una soluzione dimostrabile, dichiaralo invece di forzare una proposta.
+14. Classifica ogni candidato identificato in quattro stati:
+    - VERIFICATO: tutti i requisiti obbligatori sono provati;
+    - VERIFICA NECESSARIA: il candidato esiste, nessuna prova lo rende incompatibile, ma
+      uno o piu' requisiti non sono documentati;
+    - INCOMPATIBILE: almeno un dato documentato viola un requisito;
+    - NON IDENTIFICATO: esistenza o identita' non sono dimostrate.
+    Non confondere mai assenza di informazione con incompatibilita'.
+
+Produci un'analisi interna concisa con: tipo richiesta, obiettivo, vincoli, preferenze,
+candidati esclusi e motivo, graduatoria dei candidati ammissibili, scelta motivata,
+alternative, dati mancanti, eventuale domanda critica e riferimenti documentali.
+Non aggiungere conoscenze esterne e non citare l'infrastruttura.
+"""
+
+DOCUMENT_RESPONDER_PROMPT = """
+Sei il SUPERRISPONDITORE DOCUMENTALE. Trasforma il lavoro del Narratore in una risposta
+professionale, utile e comprensibile, valida in qualsiasi settore.
+
+REGOLE OBBLIGATORIE:
+1. Usa soltanto il dossier documentale e il controllo del Narratore.
+2. Rispondi direttamente all'obiettivo dell'utente, non limitarti a ripetere parole trovate.
+3. Per una ricerca esatta restituisci il dato esatto e la sua prova.
+4. Per una raccomandazione presenta come principale soltanto una soluzione che superi
+   ammissibilita', pertinenza, opportunita' e dimostrabilita'.
+5. Spiega perche' la soluzione e' adatta e quali compromessi presenta.
+6. Se utile, presenta alternative chiarendo quando sarebbero preferibili.
+7. Non presentare come assolutamente migliore una soluzione quando una preferenza non
+   dichiarata puo' cambiare la scelta. In quel caso chiamala "soluzione inizialmente piu'
+   equilibrata" e mostra fino a tre varianti realmente differenti.
+8. Non trasformare un limite in un obiettivo di massimizzazione o minimizzazione.
+9. La domanda finale deve riguardare prima l'informazione che modifica maggiormente la
+   scelta; budget e finitura vengono dopo funzione, compatibilita', prestazione, dimensione
+   o capacita', salvo che l'utente abbia indicato il prezzo come priorita'.
+10. Se manca un dato decisivo, comunica cio' che e' gia' certo e poni una sola domanda finale.
+11. Se le fonti sono contraddittorie, mostra il conflitto senza scegliere arbitrariamente.
+12. Se una informazione non e' documentata, scrivi: "Informazione non trovata nel documento collegato."
+13. Riporta documento e pagina/riferimento per le affermazioni determinanti.
+14. Non rimandare genericamente l'utente alla consultazione del documento: fornisci la
+    soluzione e usa il riferimento come prova.
+15. Non mostrare l'analisi interna e non usare parole come dossier, ranking interno,
+    punteggio, pipeline o evidenze recuperate. Non citare Vector Store, File Search, OpenAI,
+    modelli, embedding, API o identificativi tecnici.
+16. Non dedurre la superiorita' di un prodotto da caratteristiche non collegate direttamente
+    alla richiesta. Per esempio, una minore altezza esterna non dimostra automaticamente
+    maggiore ventilazione, capacita', accessibilita' o migliore gestione elettronica.
+17. Se mancano i dati decisivi per stabilire un vincitore su un criterio richiesto, dichiaralo
+    chiaramente. Non assegnare comunque un vincitore arbitrario.
+18. Distingui sempre quattro stati universali, senza regole legate a una marca o settore:
+    - VERIFICATO: esistenza e tutti i requisiti obbligatori sono documentati;
+    - VERIFICA NECESSARIA: il prodotto esiste ed e' identificato, nessun dato documentato
+      viola i requisiti, ma manca la prova di uno o piu' requisiti;
+    - INCOMPATIBILE: almeno un dato documentato viola un requisito obbligatorio;
+    - NON IDENTIFICATO: mancano codice o riferimento sufficienti a provare l'esistenza.
+    Un dato mancante non equivale mai a un dato contrario.
+19. Nelle richieste di scelta, confronto o raccomandazione aggiungi una sezione intitolata
+    esattamente "PRODOTTI SELEZIONABILI PER LA PROPOSTA". Inserisci i prodotti VERIFICATI
+    e quelli in VERIFICA NECESSARIA, entro il numero massimo di righe indicato dal formato.
+    Per ciascuno indica nome, codice, stato e, se necessario,
+    i requisiti ancora da confermare. Non inserire prodotti INCOMPATIBILI o NON IDENTIFICATI.
+    I prodotti in VERIFICA NECESSARIA possono entrare soltanto in una proposta preliminare,
+    che deve riportare chiaramente le verifiche ancora aperte.
+20. Se un solo prodotto e' chiaramente preferibile e documentato, scrivi anche:
+    "PRODOTTO CONSIGLIATO E SELEZIONABILE PER LA PROPOSTA: [nome e codice]".
+    Se invece il criterio decisivo non e' documentato, presenta i prodotti esistenti senza
+    fingere una superiorita' e chiedi quale portare in proposta preliminare.
+
+
+REGOLE UNIVERSALI DI FEDELTA' AL BISOGNO:
+A. ESCLUSIONI. Se l'utente esclude un elemento ("senza X", "niente X"), cercalo in TUTTE le
+   pagine del prodotto, comprese tavole tecniche, disegni quotati e note di montaggio.
+   Se X e' presente in ogni candidato, NON dichiarare il requisito soddisfatto: scrivi che
+   nessun prodotto documentato lo rispetta integralmente, proponi quello che lo avvicina di
+   piu' e indica con precisione cosa resta di X, con la pagina che lo prova.
+B. TAGLIE E CLASSI. Quando l'utente usa una denominazione di taglia o classe (formato,
+   taglia, portata, diametro nominale, classe di misura commerciale), la proposta principale
+   deve appartenere a quella classe; non proporre mai una classe diversa da quella richiesta.
+   Se la corrispondenza tra denominazione e valori non e' scritta nel documento, dichiaralo
+   in una frase, usa la corrispondenza standard del settore e mostra le altre classi disponibili.
+C. VERSIONI. Pagine con lo stesso nome base di prodotto e codici con la stessa radice sono
+   versioni dello stesso prodotto: presentale come versioni (per esempio accessori, altezze,
+   finiture, portate), spiegando cosa cambia, e non come prodotti diversi.
+D. GRANDEZZE. Rispondi sulla grandezza chiesta. Non ricavare una grandezza da un'altra non
+   collegata (l'ingombro totale non e' la quota di un componente, la portata di un elemento
+   non e' quella dell'insieme). Cerca la quota anche nelle schede e nei disegni tecnici;
+   se non esiste, dichiaralo.
+E. COMPONENTI NOMINATI. Un componente citato in tabelle, legende, disegni o note di
+   montaggio (per esempio "foro su X", "fissaggio di X", "regolazione di X") esiste nel
+   prodotto: dichiaralo come presente con la pagina che lo prova. Non trasformarlo in dubbio
+   e non chiedere di verificarlo.
+F. CALCOLI DIRETTI. Se il documento fornisce i dati per un calcolo immediato (massimo o minimo,
+   numero di posizioni, passo, somma di elementi), esegui il calcolo e mostra il procedimento
+   in una riga, indicando le pagine dei dati usati.
+G. DOMANDA FINALE. Tutte le verifiche possibili sul documento vanno fatte nella risposta.
+   La domanda finale riguarda soltanto una scelta dell'utente (versione, misura, finitura,
+   priorita'), mai una verifica che il sistema dovrebbe fare da solo.
+H. ESCLUSO O NON INDICATO. Scrivi che un prodotto NON ha una caratteristica soltanto se il
+   documento lo dice esplicitamente, citando la dicitura e la pagina. Se il documento tace,
+   scrivi "non indicato nel documento" e tieni i due gruppi separati: non riunirli mai nella
+   stessa frase o nello stesso elenco.
+I. RICERCA ESATTA. Se la richiesta chiede i dati di un codice o di un prodotto nominato,
+   rispondi con i dati richiesti e la pagina che li prova (per i prezzi, anche la pagina
+   delle condizioni che ne definisce la natura, se presente negli estratti). Niente
+   "perche' e' adatta", niente compromessi e niente domanda di scelta: l'utente ha gia'
+   scelto. Le versioni dello stesso prodotto si possono citare in una riga. Nella sezione
+   PRODOTTI SELEZIONABILI indica soltanto il codice richiesto.
+Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
+Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
+Scrivi in testo semplice, senza Markdown e senza asterischi.
+In chiusura aggiungi questa nota, senza modificarne il significato:
+{document_disclaimer}
+"""
+
+DOCUMENT_QUICK_PROMPT = """
+Sei il NARRATORE-RISPONDITORE DOCUMENTALE in modalita' RAPIDA GUIDATA.
+L'ambiente documentale corrente e': {document_context}.
+
+Usa esclusivamente i documenti collegati. Non usare memoria generale, web o supposizioni.
+Devi comprendere il bisogno dell'utente, confrontare i risultati pertinenti e dare una risposta
+utile in una sola elaborazione, senza mostrare il ragionamento interno.
+
+METODO OBBLIGATORIO:
+1. Separa vincoli tassativi, preferenze, valori approssimativi e destinazione d'uso.
+2. Escludi i candidati che violano un vincolo tassativo.
+3. Non trasformare automaticamente un limite massimo/minimo nel valore da massimizzare o
+   minimizzare. Parole come basso, compatto o economico non significano automaticamente
+   il piu' basso, il piu' piccolo o il meno caro.
+4. Se l'utente dichiara di non avere ancora scelto tra due priorita' opposte (per esempio
+   profilo molto basso oppure maggiore contenimento), NON scegliere uno dei due estremi.
+   La proposta principale deve essere una variante intermedia documentata che conservi
+   entrambe le possibilita'. Gli estremi vanno mostrati soltanto come alternative. Se non
+   esiste una variante intermedia dimostrabile, poni la domanda decisiva invece di forzare
+   una scelta estrema.
+5. Scegli una proposta principale equilibrata valutando insieme funzione, misure,
+   caratteristiche, prezzo e qualita' delle prove documentali.
+6. Distingui sempre una soluzione formalmente compatibile da una realmente consigliabile.
+7. Non combinare valori appartenenti a prodotti o pagine differenti.
+8. Non inventare dati. Se un'informazione richiesta non e' documentata, scrivi:
+   "Informazione non trovata nel documento collegato."
+9. Riporta sempre documento e numero di pagina per la proposta principale e per le
+   alternative. Un codice o il nome di una sezione non sostituiscono il numero di pagina.
+   Se la pagina non e' presente nei risultati, dichiaralo esplicitamente.
+10. Non rimandare l'utente a leggere il documento: dai direttamente la risposta.
+11. Non citare strumenti, Vector Store, File Search, OpenAI, API, modelli o identificativi tecnici.
+12. Non inventare misure interne, volume utile, numero di oggetti contenibili o dotazioni
+    non dichiarate. Puoi confrontare normalmente le dimensioni esterne documentate. Parla
+    dell'assenza delle misure interne soltanto quando quel dato e' davvero decisivo per la
+    richiesta; in tal caso usa una frase semplice e concreta, senza formule tecniche.
+13. Non definire una variante piu' bassa, alta, economica o capiente se i dati riportati
+    sono uguali o non consentono il confronto.
+14. NON FARE AFFERMAZIONI GENERALI SUL DOCUMENTO. Hai davanti alcune pagine, non il
+    catalogo intero: una frase come "le gambe dei tavoli tondi sono in vetro", "la
+    finitura legno esiste solo come top", "nessun prodotto ha questa caratteristica"
+    e' una regola su migliaia di pagine ricavata dalle poche che hai in mano, e basta
+    una famiglia che non hai visto per renderla falsa davanti al cliente.
+    Vietate le parole che estendono: solo, soltanto, mai, nessun/nessuna, tutti/tutte,
+    sempre, unicamente, esclusivamente, in nessun caso — riferite al documento.
+    Vale anche per i SUPERLATIVI: "la piu' ampia", "la piu' capiente", "l'unica".
+    Un superlativo senza il criterio e' un'affermazione su tutto il catalogo.
+    Se lo usi, di' SEMPRE rispetto a che cosa e dentro quale insieme:
+      sbagliato: "la composizione Happening piu' ampia a catalogo e' la 1491"
+      giusto   : "fra le composizioni Happening che ho esaminato, la 1491 occupa la
+                  superficie maggiore (400 x 390); la 1495 e' piu' larga (427) ma
+                  meno profonda (176)"
+    Al loro posto dichiara CHE COSA HAI TROVATO e DOVE:
+      sbagliato: "le gambe dei tavoli tondi sono in vetro"
+      giusto   : "sulle pagine che ho esaminato (337, 347, 332) le gambe risultano in
+                  vetro extra-chiaro o fume' grigio; non ho trovato una versione con
+                  gambe in legno fra queste"
+    Una condizione richiesta e non soddisfatta si dichiara cosi': non soddisfatta nelle
+    schede esaminate, con l'elenco delle pagine. Mai come una proprieta' del catalogo.
+
+FORMATO RAPIDO OBBLIGATORIO:
+- Apri con una sola proposta principale: nome/codice, dati determinanti, prezzo se pertinente,
+  documento e pagina.
+- Spiega in massimo 4 punti perche' e' adatta e segnala il compromesso principale.
+- Mostra al massimo 2 alternative, ciascuna in 2-3 righe, solo se davvero significative.
+- Concludi con UNA domanda guidata che possa cambiare la scelta o avviare l'approfondimento.
+- Non superare normalmente 260 parole. Evita tabelle estese e liste complete di tutte le finiture;
+  fornisci gli altri dettagli soltanto se l'utente li chiede.
+- Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
+  Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
+  Scrivi in testo semplice, senza Markdown e senza asterischi.
+
+In chiusura aggiungi questa nota, senza modificarne il significato:
+{document_disclaimer}
+"""
+
+
+def is_contextual_followup(question: str) -> bool:
+    """Riconosce una domanda che dipende esplicitamente dalla risposta precedente."""
+    q = normalize(question)
+    explicit_markers = (
+        "soluzione consigliata", "proposta consigliata", "soluzione precedente",
+        "risposta precedente", "alternativa compatibile", "le alternative",
+        "tra le soluzioni", "tra la soluzione", "tra i prodotti",
+        "quella consigliata", "quello consigliato", "la prima", "la seconda",
+        "il primo", "il secondo", "entrambe", "entrambi", "queste soluzioni",
+        "questi prodotti", "prodotti appena individuati", "prodotti individuati",
+        "soluzioni appena individuate", "soluzioni individuate", "prodotti trovati",
+        "soluzioni trovate", "quelli trovati", "quelle trovate", "sopra indicati",
+        "sopra indicate", "appena indicati", "appena indicate", "stessi codici",
+        "classificane", "verificali", "verificale", "approfondisci",
+        "confrontale", "confrontali",
+    )
+    if any(marker in q for marker in explicit_markers):
+        return True
+
+    # Continuazioni brevi tipiche di una conversazione: "e per 180x200?", "invece in noce?",
+    # "quanto costa?". Si applica solo quando esiste un turno precedente (lo verifica
+    # build_document_query), quindi una domanda breve isolata resta una domanda nuova.
+    words = q.split()
+    if words and words[0] in {"e", "ed", "ma", "invece", "allora", "anche", "oppure", "and"}:
+        return True
+    if q.rstrip(" ?.!") in {"quanto costa", "quanto costano", "quale consigli", "perché", "why", "how much"}:
+        return True
+    pronouns = {"questo", "questa", "questi", "queste", "quello", "quella", "quelli", "quelle"}
+    if len(words) <= 8 and pronouns & set(words):
+        return True
+
+    # Riconoscimento universale di riferimenti anaforici: funziona con prodotti,
+    # procedure, documenti, soluzioni o codici di qualunque settore.
+    reference_words = (
+        "appena", "precedente", "precedenti", "sopra", "questo", "questa",
+        "questi", "queste", "quello", "quella", "quelli", "quelle",
+        "ciascuno", "ciascuna", "entrambi", "entrambe", "stesso", "stessa",
+        "stessi", "stesse", "suddetto", "suddetta", "suddetti", "suddette",
+    )
+    referenced_objects = (
+        "prodotto", "prodotti", "soluzione", "soluzioni", "alternativa",
+        "alternative", "codice", "codici", "risposta", "risultato", "risultati",
+        "documento", "documenti", "procedura", "procedure", "proposta", "proposte",
+        "versione", "versioni", "variante", "varianti",
+    )
+    return (
+        any(word in q.split() for word in reference_words)
+        and any(obj in q.split() for obj in referenced_objects)
+    )
+
+
+def positive_request_text(question: str) -> str:
+    """Esclude dal lessico della finitura quella esplicitamente sostituita."""
+    text = re.sub(r"(\b(?:preferisco|preferirei|voglio|prefer)\s+[^.;!?\n]+?)\s+(?:al|alla|anziché|anziche|invece di|rather than)\s+[^.;!?\n]+", r"\1", question, flags=re.I)
+    text = re.sub(r"\b(?:passa|passare|cambia|cambiare)\s+da\s+[^.;!?\n]+?\s+a\s+", '', text, flags=re.I)
+    text = re.sub(r"\bnon\s+[^.;!?\n]+?\s+ma\s+", '', text, flags=re.I)
+    return text
+
+
+def document_context_scope(question: str, previous_question: str, previous_answer: str):
+    """La memoria richiede un richiamo esplicito; una richiesta completa apre un nuovo turno."""
+    q = normalize(re.sub(r"^(?:\s*/\w+)+\s*", "", question))
+    explicit_new = re.search(r"^(?:nuova domanda|nuova richiesta|ricominciamo|ripartiamo|new question)\b", q)
+    standalone = re.search(r"^(?:ora\s+)?(?:cerco|devo|vorrei|ho bisogno|mi serve|i need|i am looking|find me)\b", q)
+    repeated = q == normalize(re.sub(r"^(?:\s*/\w+)+\s*", "", previous_question))
+    contextual = is_contextual_followup(question) or bool(re.search(r"^(?:ora\s+)?(?:preferisco|preferirei|mantieni|abbassa|abbasso|aumenta|aumento|riduci|riduco|aggiungo|aggiungi|porta|porto|passa da|cambia da)\b", q))
+    constraint_continuation = bool(parse_dimension_limits(question) or budget_matches(question)) and bool(
+        re.search(r"^(?:con|ora|da ora|nuovo|nuova|budget|prezzo|costo|altezza|larghezza|profondit)|nuovo vincolo", q))
+    contextual = contextual or constraint_continuation
+    if explicit_new or standalone or repeated or not contextual:
+        return '', '', False
+    if not previous_question or not previous_answer:
+        return '', '', False
+    new_limits = parse_dimension_limits(question)
+    changed_axes = {axis for axis, _, _ in new_limits}
+    changed_budget = bool(budget_matches(question))
+    if changed_budget:
+        previous_question = without_old_budget(previous_question)
+    # Finiture riconosciute dalle colonne del catalogo, senza marchi o codici preimpostati.
+    labels = {label for groups in PRODUCT_CARDS.values() for card in groups for label in card.get('prezzi', {})}
+    label_tokens = {t for label in labels for t in search_tokens(label)}
+    new_finish = set(search_tokens(positive_request_text(request_constraints_text(question)))) & label_tokens
+    old_finish = set(search_tokens(previous_question)) & label_tokens
+    changed_finish = bool(new_finish - old_finish)
+    if changed_finish:
+        for token in old_finish - new_finish:
+            previous_question = re.sub(rf"\b{re.escape(token)}\b", '', previous_question, flags=re.I)
+    if changed_axes:
+        previous_question = remove_replaced_dimensions(previous_question, new_limits, DIMENSION_ALIASES)
+    # Keep the previous answer: its identities are history, never evidence of current eligibility.
+    return previous_question, previous_answer, True
+
+
+def build_document_query(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+    planner_followup: Optional[bool] = None,
+) -> tuple[str, bool]:
+    """Aggiunge memoria soltanto quando la nuova domanda richiama il turno precedente.
+    Seguito = frasi di richiamo esplicite OPPURE giudizio del pianificatore."""
+    previous_question, previous_answer, scoped_followup = document_context_scope(question, previous_question, previous_answer)
+    has_memory = scoped_followup
+    # la stessa domanda ripetuta e' una richiesta nuova, non un approfondimento: altrimenti
+    # la risposta precedente (anche se sbagliata) vincola la nuova (caso reale: "Confermo i
+    # due letti gia' indicati")
+    if has_memory and normalize(re.sub(r"^(?:\s*/\w+)+\s", " ", question)) == normalize(
+            re.sub(r"^(?:\s*/\w+)+\s", " ", previous_question)):
+        return question, False
+    followup = has_memory and scoped_followup
+    if not followup:
+        return question, False
+
+    # La memoria serve per continuita', ma non deve trasformarsi in un nuovo catalogo.
+    # Conserviamo integralmente la domanda precedente (dove sono espressi i vincoli)
+    # e limitiamo la risposta precedente alla parte utile per codici e scelte.
+    compact_previous_question = previous_question[:2500]
+    changed_constraints = bool(parse_dimension_limits(question)) or bool(budget_matches(question))
+    compact_previous_answer = previous_answer[:5000]
+
+    query = (
+        "DOMANDA ATTUALE:\n"
+        f"{question}\n\n"
+        "CONTESTO PRECEDENTE: i vincoli espliciti attuali sostituiscono quelli precedenti della stessa grandezza.\n"
+        f"Domanda precedente: {compact_previous_question}\n"
+        f"Risposta precedente: {compact_previous_answer}\n\n" +
+        ("I limiti sono cambiati: confronta prima i CODICI DEL TURNO PRECEDENTE e dichiara per ciascuno resta/escluso con motivo. Poi ripeti la selezione; ogni sostituto e un nuovo candidato, mai un prodotto precedente.\n" if changed_constraints else "") +
+        "La domanda attuale e' un approfondimento. Cerca e verifica gli stessi prodotti, "
+        "codici e alternative nominati nella risposta precedente. Non sostituirli con altri "
+        "prodotti, salvo richiesta esplicita dell'utente."
+    )
+    if changed_constraints:
+        query = query.split("La domanda attuale e' un approfondimento.")[0]
+    return query, True
+
+
+CONSTRAINT_VALIDATOR_PROMPT = """
+Sei il CONTROLLORE UNIVERSALE DEI VINCOLI di un sistema documentale professionale.
+Ricevi la richiesta originale e una bozza di risposta gia' prodotta.
+
+Devi restituire direttamente la risposta finale corretta, senza descrivere il controllo.
+
+REGOLE ASSOLUTE:
+1. Individua tutti i vincoli tassativi espressi dall'utente: massimi, minimi, intervalli,
+   uguaglianze, quantita', dimensioni, peso, capacita', prezzo, date, caratteristiche,
+   compatibilita', esclusioni e condizioni obbligatorie.
+2. Controlla matematicamente ogni numero. Un valore superiore a un massimo o inferiore a
+   un minimo e' incompatibile, anche quando lo scostamento e' piccolo.
+3. Non trasformare mai una tolleranza in una deroga. Esempio generale: se il massimo e' X,
+   qualsiasi valore maggiore di X deve essere escluso.
+4. Applica ogni limite soltanto alla grandezza e all'unita' cui si riferisce. Non confondere
+   larghezza, altezza, profondita', peso, prezzo, quantita' o altre proprieta'.
+5. Se le unita' sono convertibili, convertile prima del confronto.
+6. Elimina completamente dalla proposta principale e dalle alternative ogni candidato che
+   viola anche un solo vincolo tassativo. Non citarlo, non elencarlo e non usarlo come
+   alternativa negativa, salvo che l'utente chieda espressamente quali candidati sono stati
+   esclusi e perche'.
+7. Non inventare codici, prezzi o caratteristiche. Cerca alternative nelle evidenze
+   e nelle schede verificate fornite. I candidati con requisiti mancanti possono essere
+   descritti come da verificare, ma non sono selezionabili come compatibili.
+8. Correggi anche frasi logicamente contraddittorie come "184 e' entro 180" o "rispetta tutti
+   i limiti" quando i valori riportati dimostrano il contrario.
+9. Conserva lingua, riferimenti documentali, disclaimer e informazioni corrette della bozza.
+10. Non citare questo controllo, modelli, API, strumenti o infrastrutture.
+11. Elimina motivazioni non dimostrate o logicamente scollegate. Una differenza di altezza,
+    larghezza, profondita' o prezzo non prova da sola migliore ventilazione, accessibilita',
+    capacita' interna o gestione degli apparecchi.
+12. Se la bozza attribuisce un vincitore ma i dati decisivi richiesti non sono documentati,
+    sostituisci quella conclusione con una dichiarazione di non determinabilita'.
+13. Classifica ogni candidato identificato come VERIFICATO, VERIFICA NECESSARIA,
+    INCOMPATIBILE o NON IDENTIFICATO. Un'informazione mancante produce VERIFICA NECESSARIA,
+    non INCOMPATIBILE. Usa INCOMPATIBILE soltanto quando esiste una prova documentale contraria.
+14. Nella sezione PRODOTTI SELEZIONABILI PER LA PROPOSTA conserva soltanto candidati
+    verificati su tutti i requisiti obbligatori. Se mancano dati non certificarli.
+
+15. Non sostituire il prodotto principale con un altro prodotto e non cambiarne la misura:
+    non disponi delle pagine del documento, quindi puoi solo correggere, non rimpiazzare.
+16. Conserva integralmente le frasi che dichiarano un requisito NON rispettato o solo in parte
+    (per esempio un elemento escluso dall'utente ma presente nel prodotto): sono corrette.
+
+La conformita' ai vincoli viene prima dell'eleganza della risposta.
+"""
+
+
+# La bozza dell'analisi completa arriva fino a 3000 token: con 1000 il controllo finale
+# la troncava. Il limite deve essere almeno pari a quello della bozza.
+VALIDATOR_MAX_TOKENS = 3200
+
+
+def validate_document_answer(
+    question: str,
+    draft_answer: str,
+    provider: str,
+    evidence: str = "",
+) -> str:
+    """Revisione strutturale universale prima di consegnare la risposta all'utente."""
+    if not draft_answer.strip():
+        return draft_answer
+
+    validation_input = (
+        "RICHIESTA ORIGINALE:\n"
+        f"{question}\n\n"
+        "BOZZA DA CONTROLLARE:\n"
+        f"{draft_answer}\n\n"
+        f"EVIDENZE DOCUMENTALI DA VERIFICARE:\n{evidence}\n\n"
+        "Restituisci soltanto la risposta finale corretta."
+    )
+    try:
+        if provider == "openai_vector":
+            if openai_client is None:
+                return draft_answer
+            response = openai_client.responses.create(
+                model=OPENAI_DOCUMENT_MODEL,
+                instructions=CONSTRAINT_VALIDATOR_PROMPT,
+                input=validation_input,
+                max_output_tokens=VALIDATOR_MAX_TOKENS,
+            )
+            checked = (response.output_text or "").strip()
+        else:
+            if client is None and openai_client is None:
+                return draft_answer
+            checked = generation_chat(
+                CONSTRAINT_VALIDATOR_PROMPT, validation_input, VALIDATOR_MAX_TOKENS, 0.0
+            )
+        return checked or draft_answer
+    except Exception as e:
+        print(f"[WARN] controllo universale dei vincoli non riuscito: {e}")
+        return draft_answer
+
+
+# ============================================================
+# FLUSSO UNIFICATO DEL NARRATORE-SUPERRISPONDITORE
+# ============================================================
+# piano (lessico, categoria, intento, seguito) -> ricerca -> righe di listino ->
+# risposta nel formato dell'intento -> controllo vincoli (solo se ci sono limiti numerici)
+# -> controllo documentale deterministico con correzione mirata.
+
+LAYOUT_COMMON = """
+FORMA OBBLIGATORIA (testo semplice, niente Markdown, niente asterischi, niente tabelle):
+- Massimo 200 parole prima della sezione dei selezionabili. Frasi brevi.
+- Un solo codice per prodotto: quello della misura o versione richiesta (se l'utente non
+  l'ha indicata, la misura standard della classe richiesta). Le altre misure in UNA riga:
+  "Disponibile anche in: ...". Mai elenchi di tutti i codici di una pagina.
+- Non descrivere i prodotti scartati uno per uno: al massimo una riga che dice quali
+  tipologie sono escluse e perche'.
+- Nella sezione PRODOTTI SELEZIONABILI PER LA PROPOSTA al massimo 3 righe, una per
+  prodotto, nella forma: "- Nome prodotto, codice XXX - VERIFICATO" oppure
+  "- Nome prodotto, codice XXX - VERIFICA NECESSARIA: cosa resta da confermare".
+"""
+
+FORMAT_RACCOMANDAZIONE = """
+FORMATO RACCOMANDAZIONE. Scrivi esattamente queste sezioni, nell'ordine, con il titolo
+in maiuscolo su una riga propria; ometti una sezione solo se non ha contenuto.
+
+RISPOSTA
+Una o due frasi: prodotto consigliato, codice, misura, prezzo, pagina.
+
+PERCHE'
+Al massimo 3 righe che iniziano con "- ", ciascuna con la prova (pagina).
+
+DA SAPERE
+Solo cio' che il cliente deve sapere prima di scegliere: requisiti non pienamente
+rispettati, elementi presenti che l'utente voleva evitare, montaggio, quote. Con pagina.
+
+VERSIONI
+Solo se la domanda chiede versioni, varianti, alternative o altre misure, e solo se
+esistono: al massimo 4 righe "- cosa cambia: codice, prezzo, pagina" (per la stessa
+misura della risposta).
+Altrimenti NON scrivere la parola VERSIONI: salta la sezione.
+Ogni codice citato qui deve avere una sua RIGA DI LISTINO fra quelle fornite, e le
+misure che gli attribuisci devono essere quelle della sua riga. Non scrivere che una
+versione ha "pari misura" se la sua riga porta misure diverse: scrivi le sue.
+
+ALTERNATIVA
+Al massimo una, solo se e' davvero diversa e utile: una riga con codice, prezzo, pagina.
+
+DOMANDA
+Una sola domanda su una scelta dell'utente.
+
+PRODOTTI SELEZIONABILI PER LA PROPOSTA
+"""+ LAYOUT_COMMON
+
+FORMAT_ESATTA = """
+FORMATO RICERCA ESATTA. Sezioni, titolo in maiuscolo su una riga propria:
+
+RISPOSTA
+I dati richiesti del codice o del prodotto nominato in due o tre frasi: che cos'e',
+misure, prezzo (con le varianti di prezzo se ci sono), pagina. Usa le RIGHE DI LISTINO
+per attribuire ogni numero alla sua colonna.
+
+VERSIONI
+Scrivi questa sezione SOLO se la domanda chiede versioni, varianti, alternative o
+altre misure. Se la domanda chiede un dato di un codice, NON scrivere la parola
+VERSIONI: salta la sezione. Una sezione scritta per obbligo e' il posto dove si
+inventa. Se la scrivi: una riga.
+Ogni codice citato qui deve avere una sua RIGA DI LISTINO fra quelle fornite, e le
+misure che gli attribuisci devono essere quelle della sua riga. Non scrivere che una
+versione ha "pari misura" o "stessa altezza" se la sua riga porta misure diverse:
+scrivi le misure che la riga porta davvero.
+Non aggiungere caratteristiche costruttive (materiali della struttura, fissaggi,
+optional) che non siano scritte nelle righe o nel testo della pagina del codice
+richiesto: una caratteristica di un altro gruppo di prodotti della stessa pagina non
+vale per questo codice.
+
+PRODOTTI SELEZIONABILI PER LA PROPOSTA
+Il solo codice richiesto, stato VERIFICATO. Nessuna motivazione, nessuna alternativa,
+nessuna domanda di scelta. Scrivi il titolo di questa sezione esattamente cosi':
+PRODOTTI SELEZIONABILI PER LA PROPOSTA
+"""+ LAYOUT_COMMON
+
+FORMAT_CONFERMA = """
+FORMATO CONFERMA DI UNA SCELTA. Sezioni, titolo in maiuscolo su una riga propria:
+
+RISPOSTA
+Il codice che corrisponde esattamente alle scelte indicate (misura, versione, finitura),
+con prezzo e pagina, usando le RIGHE DI LISTINO. Se la combinazione non esiste, dillo e
+indica la combinazione documentata piu' vicina.
+
+DETTAGLI RICHIESTI
+Una riga "- " per ogni domanda aggiuntiva dell'utente, con la prova (pagina), cercando
+anche nelle schede tecniche della stessa famiglia.
+
+PRODOTTI SELEZIONABILI PER LA PROPOSTA
+Il solo codice scelto. Nessuna alternativa, nessuna domanda di scelta.
+"""+ LAYOUT_COMMON
+
+FORMAT_CONFRONTO = """
+FORMATO CONFRONTO (sezioni RISPOSTA, DIFFERENZE, DOMANDA, poi i selezionabili):
+- Confronta le soluzioni nominate sugli stessi attributi, con dati e pagina di ciascuna.
+- Evidenzia le differenze; non proclamare un vincitore se l'utente non ha dato un criterio.
+- Chiudi con "PRODOTTI SELEZIONABILI PER LA PROPOSTA" con le soluzioni confrontate e UNA
+  domanda sul criterio di scelta dell'utente.
+- Scrivi in testo semplice, senza Markdown e senza asterischi.
+"""+ LAYOUT_COMMON
+
+FORMAT_SPIEGAZIONE = """
+FORMATO SPIEGAZIONE:
+- Spiega con i dati del documento, citando le pagine, in modo chiaro e ordinato.
+- La sezione dei prodotti selezionabili serve solo se la spiegazione riguarda prodotti
+  da acquistare.
+- Scrivi in testo semplice, senza Markdown e senza asterischi.
+"""
+
+NARRATOR_ANALYSIS = """
+PRIMA DI RISPONDERE, IL NARRATORE RAGIONA. Scrivi per primo un blocco racchiuso tra
+<analisi> e </analisi>, che il cliente non vedra', con queste righe:
+OBIETTIVO: il risultato che l'utente vuole ottenere, con parole tue (non la ripetizione
+  delle sue parole). Esempio: "spazio libero sotto" significa volume utilizzabile tra
+  pavimento e prodotto, non la semplice assenza di una parola nel catalogo.
+VINCOLI: misure, classi, esclusioni. Per ogni esclusione scrivi a quale obiettivo serve.
+CANDIDATI: al massimo 5, uno per riga: nome, codice rappresentativo, pagina, come
+  realizza l'obiettivo (prova), cosa viola o non e' indicato.
+SCELTA: il candidato che realizza MEGLIO L'OBIETTIVO e gli scostamenti da dichiarare.
+REGOLA DECISIVA: rispettare alla lettera un'esclusione non basta. Un prodotto che rispetta
+la parola ma annulla l'obiettivo va scartato (esempi: "senza gambe" perche' appoggia
+interamente a terra, quando l'obiettivo e' lo spazio libero sotto; "senza cavi" perche'
+non ha alimentazione, quando l'obiettivo e' una luce sempre accesa). Se nessun prodotto
+rispetta integralmente un'esclusione, scegli quello che realizza meglio l'obiettivo e
+dichiara con precisione lo scostamento (cosa resta, dove, con la pagina).
+TAVOLE TECNICHE: le pagine della famiglia senza listino (quote, appoggi, montaggio) sono
+la prova per le esigenze funzionali. Prima di scrivere "non indicato" o "senza X",
+controllale: se riportano la quota o l'elemento, citali con la pagina.
+VERSIONE BASE: se l'esigenza e' una funzione (spazio, misura, portata), la SCELTA e' la
+versione piu' semplice della famiglia che la realizza (codice, prezzo, pagina); le
+varianti di testiera, finitura o decoro sono versioni dello stesso prodotto, da citare dopo.
+Dopo </analisi> scrivi la risposta per il cliente nel formato indicato, coerente con la SCELTA.
+"""
+
+ANALYSIS_BLOCK = re.compile(r"<analisi>.*?</analisi>\s*", re.S | re.I)
+
+
+def split_analysis(text: str) -> tuple:
+    """Separa l'analisi interna del Narratore dalla risposta per il cliente."""
+    match = ANALYSIS_BLOCK.search(text or "")
+    if not match:
+        # analisi aperta e mai chiusa: tutto cio' che segue <analisi> e' interno
+        open_at = re.search(r"<analisi>", text or "", re.I)
+        if open_at:
+            return text[open_at.end():].strip(), text[:open_at.start()].strip()
+        return "", (text or "").strip()
+    analysis = match.group(0)
+    answer = (text[:match.start()] + text[match.end():]).strip()
+    return re.sub(r"</?analisi>", "", analysis, flags=re.I).strip(), answer
+
+
+FOLLOWUP_RULES = """
+CONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
+- La richiesta attuale dipende dal turno precedente.
+- Resta sugli stessi prodotti e sulla stessa famiglia della risposta precedente.
+- Non introdurre o sostituire prodotti, famiglie o codici, salvo richiesta esplicita.
+- Mantieni validi i vincoli obbligatori gia' stabiliti dall'utente.
+"""
+
+FORMAT_BY_INTENT = {
+    "ricerca_esatta": FORMAT_ESATTA,
+    "conferma": FORMAT_CONFERMA,
+    "confronto": FORMAT_CONFRONTO,
+    "spiegazione": FORMAT_SPIEGAZIONE,
+    "raccomandazione": FORMAT_RACCOMANDAZIONE,
+}
+
+CHOICE_PATTERN = re.compile(
+    r"\b(?:scelgo|sceglierei|voglio|vorrei|prendo|preferisco|cambio|invece|stessa|stesso|"
+    r"confermo|opto|va bene)\b",
+    re.I,
+)
+COMPARE_PATTERN = re.compile(
+    r"\b(?:confront\w*|differenz\w*|rispetto a|meglio tra|versus|vs\.?)\b", re.I
+)
+NUMERIC_LIMIT_PATTERN = re.compile(
+    # un limite e' tale solo se accompagnato da un numero ("al massimo 180 cm",
+    # "non superi i 170", "tra 150 e 200"): "massimo spazio" non e' un vincolo numerico
+    r"\b(?:al massimo|massim[oa]|max|non (?:superi|superare|oltre|piu' di|più di)|entro|"
+    r"almeno|minim[oa]|min\.?|fino a|inferiore a|superiore a|meno di|oltre)\W+(?:\w+\W+){0,3}?\d"
+    r"|\btra \d+(?:[.,]\d+)? e \d+|[<>≤≥]\s*\d",
+    re.I,
+)
+VALIDATOR_MODE = (os.getenv("VALIDATOR_MODE", "auto") or "auto").strip().lower()
+
+
+def needs_constraint_validation(question: str, previous_question: str, is_followup: bool) -> bool:
+    """Il controllo LLM dei vincoli serve quando la richiesta fissa limiti numerici."""
+    if VALIDATOR_MODE == "always":
+        return True
+    if VALIDATOR_MODE != "auto":
+        return False
+    text = question + (" " + previous_question if is_followup else "")
+    return bool(NUMERIC_LIMIT_PATTERN.search(text))
+
+
+CODE_REQUEST_CUE = re.compile(r"\b(?:codic\w*|cod\.|articol\w*|art\.|item|code)\b", re.I)
+
+
+def unknown_requested_codes(question: str) -> List[str]:
+    """Codici nominati esplicitamente dall'utente che l'indice NON conosce.
+
+    Serve a non trasformare una ricerca in un consiglio. detect_intent sceglie
+    "ricerca_esatta" solo se il codice sta in CODE_ROWS; se non c'e', la domanda
+    scivola su "raccomandazione" e il cliente si vede rispondere "non ho
+    recuperato schede sufficienti per confermare una scelta" a una domanda in cui
+    non chiedeva nessuna scelta. Il codice sconosciuto va detto, non mascherato.
+    """
+    # Prima qui serviva per forza la parola "codice"/"articolo" accanto al codice.
+    # Un codice incollato nudo ("TAW565", "quanto costa LD8052?") non veniva
+    # riconosciuto e la domanda scivolava in raccomandazione: e' il fallimento che
+    # ha fatto rispondere "non ho recuperato schede complete" a chi chiedeva un
+    # prezzo. La parola non proteggeva da nulla: extract_document_codes pretende
+    # una forma da codice, e su 70 domande reali della batteria non ha mai letto
+    # come codice una misura, un numero di pagina, un anno, una percentuale o un
+    # nome di gamma ("36e8", "250 x 100", "55,2", "pagina 316", "2024", "35%").
+    named = extract_document_codes(question)
+    if not named or (named & set(CODE_ROWS)):
+        return []
+    return sorted(named)
+
+
+def unknown_code_answer(codes: List[str]) -> str:
+    elenco = ", ".join(codes)
+    return (
+        f"Il codice richiesto non è nell'indice del documento: {elenco}. "
+        "Non significa che il prodotto non esista nel catalogo: significa che "
+        "quella riga di listino non è stata indicizzata, quindi non posso "
+        "attribuirne prezzo e misure con una prova.\n\n"
+        f"Ho cercato {elenco} tra i {len(CODE_ROWS)} codici con riga di listino "
+        f"delle {len(DOCUMENT_PAGES)} pagine indicizzate.\n\n"
+        "Verifica la grafia del codice, oppure cercalo per descrizione e misure."
+    )
+
+
+def detect_intent(question: str, plan: Dict[str, Any], is_followup: bool) -> str:
+    """Priorita' ai segnali deterministici, poi al pianificatore. Il confronto viene
+    prima: "differenze tra X e Y" o "vorrei confrontare" non sono ne' ricerca ne' scelta."""
+    if COMPARE_PATTERN.search(question):
+        return "confronto"
+    if is_followup and (find_sizes(question) or CHOICE_PATTERN.search(question)):
+        return "conferma"
+    if not is_followup and extract_document_codes(question) & set(CODE_ROWS):
+        return "ricerca_esatta"
+    return plan.get("intento") or "raccomandazione"
+
+
+def absent_category_note(plan: Dict[str, Any]) -> str:
+    """Se nessuna parola che nomina il tipo di prodotto compare nel documento, il prodotto
+    non c'e': lo si dichiara al modello prima che scriva, per evitare sostituzioni."""
+    tokens = [t for t in search_tokens(plan.get("categoria", "")) if not t.isdigit()]
+    if not tokens or not DOCUMENT_PAGES:
+        return ""
+    def stem(token: str) -> str:
+        return token[:-1] if len(token) >= 5 else token
+
+    present = [
+        t for t in tokens
+        if any(any(w.startswith(stem(t)) for w in p["token_set"]) for p in DOCUMENT_PAGES)
+    ]
+    if present:
+        return ""
+    return (
+        "\n\nTIPO DI PRODOTTO NON PRESENTE: le parole che indicano il tipo di prodotto "
+        f"richiesto ({', '.join(tokens)}) non compaiono in nessuna pagina del documento. "
+        "Dichiara che il prodotto non e' presente nel documento collegato. Non proporre "
+        "prodotti di altro tipo come sostituti; puoi citare al massimo una categoria affine "
+        "presente, dichiarandola esplicitamente come prodotto diverso."
+    )
+
+
+# ============================================================
+# QUANDO IL MOTORE SI FERMA, DEVE DIRLO
+# ============================================================
+# Il 7 ottobre 2026 il credito DeepSeek si e' esaurito nel mezzo della notte.
+# Da quel momento OGNI domanda ha restituito "Si e' verificato un errore durante
+# la ricerca documentale": una frase in italiano corretto, indistinguibile da una
+# risposta. Il collaudo l'ha trattata come una risposta qualunque, ci ha cercato
+# dentro i prezzi attesi, non li ha trovati, e ha scritto 64 volte "manca: 3.413".
+# Novanta batterie, una notte intera, per non misurare niente.
+#
+# La causa vera era in una riga di log su Render e in nessun altro posto.
+#
+# Regola che ne discende, e vale per qualsiasi documento e qualsiasi fornitore:
+# un guasto non si traveste mai da risposta. Esce in chiaro, con il prefisso
+# MOTORE_FERMO, e chi legge capisce in due secondi se deve ricaricare un credito
+# o correggere del codice.
+
+MOTORE_FERMO = "MOTORE FERMO"
+ERRORI_IN_CHIARO = os.getenv("ERRORI_IN_CHIARO", "1") not in ("0", "false", "no")
+
+# Le cause che non sono difetti del programma: nessuna riga di codice le ripara.
+MOTIVI_NOTI = (
+    (r"insufficient\s*balance|insufficient[_ ]quota|exceeded\s+your\s+current\s+quota|"
+     r"\b402\b|payment\s+required|arrears|out\s+of\s+credit",
+     "credito del fornitore del modello esaurito: va ricaricato, non e' un difetto del programma"),
+    (r"invalid[_ ]api[_ ]key|incorrect\s+api\s+key|authentication|unauthorized|\b401\b",
+     "chiave del fornitore del modello non valida o scaduta"),
+    (r"rate[_ ]limit|too\s+many\s+requests|\b429\b",
+     "troppe richieste al minuto verso il fornitore del modello: attendere e riprovare"),
+    (r"timeout|timed\s*out|read\s+operation",
+     "il fornitore del modello non ha risposto entro il tempo massimo"),
+    (r"model[_ ]not[_ ]found|does\s+not\s+exist|unknown\s+model|deprecat",
+     "il modello richiesto non esiste piu' con questo nome"),
+    (r"connection|temporarily\s+unavailable|\b50[23]\b|bad\s+gateway",
+     "il fornitore del modello non e' raggiungibile in questo momento"),
+)
+
+
+def causa_tecnica(error: BaseException) -> str:
+    """Traduce l'eccezione in una causa leggibile, conservando il testo originale."""
+    grezzo = " ".join(f"{type(error).__name__}: {error}".split())
+    for schema, spiegazione in MOTIVI_NOTI:
+        if re.search(schema, grezzo, re.I):
+            return f"{spiegazione} · [{grezzo[:300]}]"
+    return grezzo[:400]
+
+
+def risposta_di_guasto(error: BaseException, dove: str) -> str:
+    """Il messaggio che arriva a chi ha fatto la domanda quando il motore si ferma."""
+    causa = causa_tecnica(error)
+    print(f"[ERROR] {dove}: {causa}")
+    traceback.print_exc()
+    if not ERRORI_IN_CHIARO:
+        return "Si è verificato un errore durante la ricerca documentale."
+    return f"{MOTORE_FERMO} — {causa}"
+
+
+def motore_fermo(answer: str) -> bool:
+    """Riconosce una risposta che non e' una risposta. Il collaudo si ferma qui."""
+    testo = (answer or "").strip()
+    return (testo.startswith(MOTORE_FERMO)
+            or "errore durante la ricerca documentale" in testo.lower()
+            or "motore esterno non è disponibile" in testo.lower()
+            or "archivio documentale locale non configurato" in testo.lower())
+
+
+# ============================================================
+# UN VINCOLO CHIESTO E NON TROVATO SI DICHIARA
+# ============================================================
+# Difetto #1 di APERTI.md, il piu' pericoloso davanti a un cliente.
+#
+#   Domanda:  "Cerco un tavolo tondo con top in vetro e gambe in legno"
+#   Risposta: "Soluzione documentata piu' pertinente: SNIP COFFEE TABLE..."
+#             (un tavolino quadrato, 43x43, vetro sopra e vetro sotto)
+#
+# Le cifre erano giuste. Ma di tre vincoli non ne era soddisfatto nessuno, e
+# nessuno veniva dichiarato: sparivano. E' la bugia detta con sicurezza, che e'
+# il danno peggiore - peggio di "non lo so", perche' il cliente ci costruisce
+# sopra un'offerta.
+#
+# Il principio e' gia' applicato ai codici: un codice che non e' nell'indice
+# viene dichiarato (unknown_code_answer), non trasformato in un consiglio. Qui
+# si estende alle PAROLE: una condizione chiesta che sulle schede proposte non
+# trova riscontro si dichiara, non si ignora.
+#
+# Misurato il 7ott2026 su quella domanda: delle sei parole di contenuto
+# (tavolo tondo top vetro gambe legno) una sola, "vetro", ha riscontro sulle
+# schede proposte.
+#
+# ATTENZIONE a non generare falsi allarmi, che sarebbero peggio del difetto:
+# un motore che rifiuta cose giuste e' inutilizzabile. Tre protezioni:
+#   1. le parole italiane SONO nelle schede (gambe 340, legno 40, rotondo 47):
+#      i riscontri si cercano in italiano, non serve tradurre;
+#   2. per le parole in inglese si usa il ponte gia' esistente
+#      (derived_title_tokens: tavolo->table, vetro->glass);
+#   3. una parola assente che e' pezzo di una parola che il documento usa
+#      davvero vale come presente: "tondo" sta dentro "rotondo", che il
+#      catalogo usa 47 volte. Regola generale, nessun sinonimo scritto a mano.
+#
+# E la nota NON ordina di rifiutare: dice di DICHIARARE. La differenza e' che
+# un prodotto parzialmente adatto resta proponibile, dichiarando cosa manca.
+
+PAROLE_NON_VINCOLANTI = {
+    'catalogo', 'prodotto', 'prodotti', 'prezzo', 'prezzi', 'costo', 'costa',
+    'disponibili', 'disponibile', 'misure', 'misura', 'dimensioni', 'cerco',
+    'vorrei', 'avete', 'quale', 'quali', 'quanto', 'quanta', 'serve', 'bisogno',
+    'cliente', 'proposta', 'soluzione', 'versione', 'modello', 'modelli',
+    'euro', 'listino', 'pagina', 'codice', 'codici', 'scheda', 'schede',
+    # parole generiche di arredo e di misura: non sono condizioni, sono il modo
+    # normale di parlare. "mobile TV largo 184" chiede una larghezza, non un
+    # prodotto fatto di "mobile" e di "largo".
+    'mobile', 'mobili', 'arredo', 'elemento', 'pezzo', 'complemento',
+    'largo', 'larga', 'larghezza', 'alto', 'alta', 'altezza', 'profondo',
+    'profonda', 'profondita', 'lungo', 'lunga', 'lunghezza', 'diametro',
+    'spazio', 'parete', 'stanza', 'camera', 'soggiorno', 'ambiente',
+    'circa', 'massimo', 'minimo', 'budget', 'spesa', 'finitura', 'finiture',
+    'colore', 'colori', 'variante', 'varianti', 'opzione', 'opzioni',
+}
+VINCOLI_MIN_LUNGHEZZA = 4      # sotto questa soglia una parola non e' un vincolo
+VINCOLI_SOTTOSTRINGA_MIN = 5   # "tondo" dentro "rotondo": serve una radice vera
+
+
+def _parole_di_scheda(card) -> set:
+    """Tutte le parole che una scheda porta: titolo, descrizione, etichette di
+    colonna e valori. E' li' che sta l'italiano del documento bilingue."""
+    pezzi = [str(card.get('prodotto', ''))]
+    for gruppo in ('prezzi', 'misure'):
+        for chiave, valore in (card.get(gruppo) or {}).items():
+            pezzi.append(f"{chiave} {valore}")
+    parole = set(search_tokens(" ".join(pezzi)))
+    try:
+        parole |= parole_di_descrizione(card)
+    except Exception:
+        pass
+    return parole
+
+
+_FREQUENZE_SCHEDE: Dict[str, int] = {}
+
+
+def _frequenze_delle_schede() -> Counter:
+    """Quante schede usano ogni parola. Si calcola una volta sola: scorrere 4346
+    schede a ogni domanda costerebbe su ogni risposta, e l'insieme non cambia
+    finche' non si cambia cliente."""
+    global _FREQUENZE_SCHEDE
+    atteso = sum(len(g) for g in PRODUCT_CARDS.values())
+    if not _FREQUENZE_SCHEDE or _FREQUENZE_SCHEDE.get("__schede__") != atteso:
+        conta = Counter(t for gruppi in PRODUCT_CARDS.values() for c in gruppi
+                        for t in _parole_di_scheda(c))
+        conta["__schede__"] = atteso
+        _FREQUENZE_SCHEDE = conta
+    return _FREQUENZE_SCHEDE
+
+
+def vincoli_senza_riscontro(question: str, cards: List[Dict[str, Any]],
+                            condizioni: Optional[List[str]] = None) -> Dict[str, str]:
+    """Condizioni chieste che sulle schede proposte non trovano riscontro.
+
+    Le condizioni arrivano dal pianificatore (plan_request -> "condizioni"), gia'
+    filtrate: sono parole scritte dall'utente e riconosciute come caratteristiche.
+    Senza pianificatore - chiave assente, chiamata fallita, piano vuoto - questa
+    funzione non restituisce niente e il motore si comporta esattamente come
+    prima. E' una scelta: meglio tacere che inventare un rifiuto.
+
+    Restituisce {parola: dove manca}, con due valori distinti perche' la
+    risposta al cliente e' diversa:
+      'schede'    la caratteristica esiste nel catalogo, ma non su questi prodotti
+      'documento' non compare da nessuna parte nel documento
+    """
+    if not cards:
+        return {}
+    chieste = {t for t in (condizioni or [])
+               if len(t) >= VINCOLI_MIN_LUNGHEZZA
+               and any(ch.isalpha() for ch in t)
+               and t not in PAROLE_NON_VINCOLANTI}
+    if not chieste:
+        return {}
+
+    sulle_schede = set()
+    for card in cards:
+        sulle_schede |= _parole_di_scheda(card)
+    nel_documento = set()
+    for page in DOCUMENT_PAGES:
+        nel_documento |= set(page.get("token_set") or ())
+
+    frequenze = _frequenze_delle_schede()
+
+    def copre(parola: str, insieme: set) -> bool:
+        if parola in insieme:
+            return True
+        # Il genere dell'aggettivo, come in requested_price_labels.
+        #
+        # Lo stesso difetto, lo stesso giorno, in due funzioni diverse: il
+        # 7ott2026 la radice italiana e' stata messa in requested_price_labels
+        # e non qui, e alla prima prova dal vivo il motore ha scritto "la parola
+        # laccata non compare nelle schede allegate" su una domanda in cui la
+        # colonna Laccato Lacquered c'era eccome. Non e' una svista isolata: e'
+        # la conseguenza di avere sette funzioni che rileggono la domanda
+        # ognuna per conto suo. Finche' non leggono tutte dallo stesso lessico,
+        # ogni correzione va ripetuta a mano e una delle sette resta indietro.
+        radice_chiesta = radice_italiana(parola)
+        if any(radice_italiana(w) == radice_chiesta for w in insieme):
+            return True
+        # radice: "tondo" dentro "rotondo"
+        return len(parola) >= VINCOLI_SOTTOSTRINGA_MIN and any(
+            parola in w and len(w) <= len(parola) + 3 for w in insieme)
+
+    mancanti: Dict[str, str] = {}
+    codici_citati = {c.lower() for _, c in codes_mentioned(question)}
+    for parola in sorted(chieste):
+        if parola in codici_citati or parola.upper() in CODE_ROWS:
+            continue      # un codice non e' una condizione: ha gia' la sua strada
+        if copre(parola, sulle_schede):
+            continue
+        # IL PONTE SI INTERROGA PAROLA PER PAROLA, non su tutta la domanda.
+        # Interrogandolo in blocco si ottiene l'unione delle rese di tutte le
+        # parole, e basta che UNA sia tradotta perche' tutte sembrino coperte.
+        # Misurato il 7ott2026: in blocco segnalava "comodino" e "como" come
+        # condizioni non soddisfatte su domande perfettamente valide, perche'
+        # le schede sono in inglese (BEDSIDE TABLES, DRESSERS). Parola per
+        # parola il ponte restituisce madia->sideboard, comodino->bedside,
+        # divano->sofas, e giustamente NIENTE per tondo, legno, gambe, marmo:
+        # quelle non sono categorie tradotte, sono condizioni vere.
+        try:
+            pieno, mezzo = derived_title_tokens({parola}, frequenze)
+            rese = pieno | mezzo
+        except Exception:
+            rese = set()
+        if rese & sulle_schede:
+            continue
+        # QUI SI SEPARA UNA CONDIZIONE DA UN MODO DI PARLARE, e senza nessuna
+        # lista di verbi scritta a mano.
+        #
+        # Misurato il 7ott2026 sui 65 casi: la prima versione si accendeva su
+        # "posso", "prendere", "spendo", "vuole", "cosa", "venduto". Sono verbi
+        # di una domanda normale, e segnalarli come condizioni non soddisfatte
+        # avrebbe fatto dire al motore assurdita' su domande valide.
+        #
+        # La differenza misurabile: una CONDIZIONE e' una cosa che un prodotto
+        # puo' avere, quindi il catalogo la scrive su almeno una scheda
+        # (gambe 340, legno 40, rotondo 47, pelle 56, cassetti 18). Un VERBO
+        # non sta su nessuna scheda: sta nella prosa delle pagine.
+        #
+        #   usata su qualche scheda, non su queste  -> condizione non soddisfatta
+        #   su nessuna scheda e in nessuna pagina   -> il documento non ne parla
+        #   su nessuna scheda ma presente in pagina -> prosa: si tace
+        #
+        # Il terzo caso e' quello che tiene fuori i verbi, ed e' anche il motivo
+        # per cui questa regola non va "aggiornata" quando arriva un documento
+        # nuovo: si misura sul documento stesso.
+        su_qualche_scheda = frequenze.get(parola, 0) > 0 or any(
+            frequenze.get(r, 0) > 0 for r in rese)
+        if su_qualche_scheda:
+            mancanti[parola] = 'schede'
+            continue
+        if not (copre(parola, nel_documento) or rese & nel_documento):
+            mancanti[parola] = 'documento'
+    return mancanti
+
+
+def nota_budget_non_raggiungibile(question: str, cards: List[Dict[str, Any]]) -> str:
+    """Se nessun candidato rientra nel budget, lo si dichiara con la cifra.
+
+    Difetto D04, misurato il 7ott2026. Domanda: "Ho 1.200 euro per una madia
+    36e8 larga 220,8 laccata: cosa posso prendere?". La piu' economica a quella
+    larghezza costa 1.320. Il motore ha elencato tre prodotti senza prezzi,
+    senza dire che nessuno rientrava. Il cliente se ne accorge dopo, con
+    l'offerta in mano, ed e' il modo peggiore di accorgersene.
+
+    Il calcolo e' aritmetico, non serve il modello: si prende il minimo dei
+    prezzi che rispettano le etichette chieste e lo si confronta col budget.
+    Se qualcosa rientra, questa nota non esiste.
+    """
+    tetto = requested_budget(question)
+    if tetto is None or not cards:
+        return ""
+    # IL TETTO SI DICHIARA SEMPRE, anche quando qualcosa rientra.
+    #
+    # Senza questa riga il modello deve ripescare il budget dal testo della
+    # domanda, in mezzo a centomila caratteri di prezzi del catalogo. Il
+    # 7ott2026, su "mi bastano 3.500 euro?", ha confrontato i totali con 3.532
+    # - un prezzo vero di pagina 51 - e ha dichiarato fuori budget una spesa di
+    # 3.288 euro. Il numero giusto ce l'avevamo gia' calcolato: va scritto, non
+    # lasciato cercare.
+    intestazione = (
+        f"\n\nBUDGET DICHIARATO DAL CLIENTE: {tetto:g} euro. E' QUESTA la cifra con "
+        f"cui confrontare prezzi e totali, e nessun'altra: nessun importo che leggi "
+        f"nelle pagine del catalogo e' il budget. Quando dici se una soluzione "
+        f"rientra, scrivi il confronto per esteso (totale, budget, differenza) e "
+        f"controllalo prima di concludere.")
+    migliore = None
+    for card in cards:
+        for valore in (matching_card_prices(card, question) or {}).values():
+            prezzo = european_number(valore)
+            if prezzo is None:
+                continue
+            if prezzo <= tetto:
+                return intestazione   # qualcosa rientra: basta dichiarare il tetto
+            if migliore is None or prezzo < migliore[0]:
+                migliore = (prezzo, card)
+    if migliore is None:
+        return intestazione
+    prezzo, card = migliore
+    return intestazione + (
+            f"\n\nNESSUN PRODOTTO RIENTRA NEL BUDGET. Il tetto dichiarato e' "
+            f"{tetto:g} euro; la soluzione documentata meno costosa fra quelle che "
+            f"rispettano le altre condizioni e' il codice {card['codice']} a "
+            f"{prezzo:g} euro (pagina {card['pagina']}), cioe' {prezzo - tetto:g} euro "
+            f"sopra il budget. DILLO COME PRIMA COSA, con la cifra: non elencare "
+            f"prodotti lasciando credere che rientrino. Dopo averlo detto puoi "
+            f"indicare la soluzione piu' vicina, dichiarando di quanto sfora.")
+
+
+def nota_condizioni_di_pagina(cards: List[Dict[str, Any]], limite: int = 4) -> str:
+    """Le frasi scritte sulla pagina che una tabella non porta mai.
+
+    Maggiorazioni, esclusioni, "non e' incluso", "non riducibile": sono
+    condizioni che un'offerta si deve portare dietro, e stanno nella prosa
+    accanto alla tabella, non nelle colonne. Il caso C04 e' fallito per questo:
+    alla domanda "tavolo Air Wildwood 160 x 85 di profondita'" il motore ha
+    risposto "non esiste", mentre la pagina dichiara che la profondita' si
+    riduce con una maggiorazione del 35%, minimo 80 cm. Ha detto di no a una
+    vendita possibile, che commercialmente e' peggio di un errore di prezzo.
+
+    Le frasi le estrae gia' CONDIZIONE_PAGINA dalle pagine dei candidati: qui
+    si limitano a entrare anche nel flusso principale, dove prima non
+    arrivavano (page_conditions era collegata solo alla risposta alternativa).
+    """
+    if not cards:
+        return ""
+    pagine = list(dict.fromkeys(c['pagina'] for c in cards[:12]))
+    frasi = page_conditions(pagine, limite=limite)
+    if not frasi:
+        return ""
+    return ("\n\nCONDIZIONI SCRITTE SULLE PAGINE DEI CANDIDATI. Sono vincolanti e "
+            "non compaiono nelle tabelle. Se una riguarda la richiesta, riportala "
+            "nella risposta; in particolare, se dichiara una MAGGIORAZIONE o un "
+            "limite per ottenere la misura chiesta, la misura si puo' avere a quella "
+            "condizione: non rispondere che non esiste.\n- " + "\n- ".join(frasi))
+
+
+def nota_vincoli_non_documentati(question: str, cards: List[Dict[str, Any]],
+                                 condizioni: Optional[List[str]] = None) -> str:
+    """La nota che entra nel prompt. Dichiara, non rifiuta."""
+    mancanti = vincoli_senza_riscontro(question, cards, condizioni)
+    if not mancanti:
+        return ""
+    sulle_schede = [p for p, dove in mancanti.items() if dove == 'schede']
+    fuori = [p for p, dove in mancanti.items() if dove == 'documento']
+    righe = ["\n\nCONDIZIONI CHIESTE CHE NON TROVANO RISCONTRO."]
+    if sulle_schede:
+        righe.append(
+            "Queste parole della richiesta non compaiono in nessuna delle schede qui "
+            f"allegate: {', '.join(sulle_schede)}. Nel documento esistono, ma non su "
+            "questi prodotti. DICHIARALO apertamente: di' quali condizioni il prodotto "
+            "che proponi NON soddisfa. Non chiamare 'soluzione piu' pertinente' un "
+            "prodotto che lascia scoperta una condizione senza dirlo.")
+    if fuori:
+        righe.append(
+            f"Queste parole non compaiono in nessuna pagina del documento: {', '.join(fuori)}. "
+            "Dichiara che il documento non riporta questa caratteristica, invece di "
+            "ignorarla o di sostituirla con una vicina.")
+    righe.append(
+        "Un prodotto che soddisfa solo una parte della richiesta si puo' proporre "
+        "lo stesso: si propone dicendo cosa manca.")
+    return " ".join(righe)
+
+
+def run_local_pipeline(
+    question: str, previous_question: str, previous_answer: str, mode: str,
+    followup_hint: Optional[bool] = None,
+) -> str:
+    if client is None and not (GENERATION_PROVIDER == "openai" and openai_client is not None):
+        return "Il motore esterno non è disponibile (DEEPSEEK_API_KEY mancante)."
+    if not DOCUMENT_PAGES:
+        return "Archivio documentale locale non configurato."
+    try:
+        started = time.perf_counter()
+        has_memory = bool(previous_question.strip() and previous_answer.strip())
+        plan = plan_request(question, previous_question if has_memory else "")
+        plan_seconds = time.perf_counter() - started
+
+        document_query, is_followup = build_document_query(
+            question, previous_question, previous_answer,
+            followup_hint if followup_hint is not None else plan.get("seguito"),
+        )
+        intent = detect_intent(question, plan, is_followup)
+
+        retrieval_started = time.perf_counter()
+        dossier = retrieve_local_evidence(
+            document_query, max_pages=14 if mode == "globale" else 10,
+            planned_terms=plan.get("termini", ""),
+        )
+        # le schede candidate si calcolano UNA volta: servono al contesto e alle
+        # tre note che lo accompagnano
+        candidati_in_contesto = verified_dimension_candidates(document_query)[:SCHEDE_IN_CONTESTO]
+        dossier = certified_candidate_evidence(document_query) + "\n" + dossier
+        retrieval_seconds = time.perf_counter() - retrieval_started
+        if not dossier:
+            return "Informazione non trovata nel documento collegato.\n\n" + DOCUMENT_DISCLAIMER
+
+        # righe leggibili: prima i codici citati da utente e turno precedente, poi le righe
+        # delle pagine inviate (famiglia principale prima, accessori ripetuti una volta)
+        priority = [c for _, c in codes_mentioned(question + " " + (
+            previous_answer if is_followup else ""))]
+        priority = list(dict.fromkeys(c for c in priority if c in CODE_ROWS))
+        rows_text = format_code_rows(priority, 4000) if priority else ""
+        # le pagine che contengono la misura chiesta vanno in cima alle righe: il limite di
+        # caratteri non deve far sparire proprio la riga della misura richiesta
+        wanted = find_sizes(question + (" " + previous_question if is_followup else ""))
+        size_pages = {int(p) for p in re.findall(r"===== PAGINA PDF (\d+) =====", dossier)
+                      if wanted & find_sizes(PAGE_BY_NUMBER.get(int(p), {}).get("compact") or "")
+                      } if wanted else set()
+        size_rows, size_codes = rows_with_sizes(dossier, wanted)
+        evidence_rows = format_evidence_rows(
+            dossier, 14000 - len(rows_text) - len(size_rows), size_pages, size_codes)
+        evidence_rows = "\n".join(part for part in (size_rows, evidence_rows) if part)
+        rows_text = "\n".join(part for part in (rows_text, evidence_rows) if part)
+        row_codes = re.findall(r"^- (\S+) \|", rows_text, re.M)
+        overview = family_overview(dossier) if intent in {"raccomandazione", "confronto"} else ""
+
+        if mode == "globale" and intent in {"raccomandazione", "confronto"}:
+            system_prompt = DOCUMENT_FULL_PROMPT.format(
+                document_context=DOCUMENT_CONTEXT, document_disclaimer=DOCUMENT_DISCLAIMER
+            )
+            max_tokens = 3000
+        else:
+            system_prompt = (DOCUMENT_RESPONDER_PROMPT + FORMAT_BY_INTENT[intent]).format(
+                document_disclaimer=DOCUMENT_DISCLAIMER
+            )
+            max_tokens = 3000 if mode == "globale" else 1100
+        if is_followup:
+            system_prompt += FOLLOWUP_RULES
+        if intent in {"raccomandazione", "confronto", "conferma"}:
+            system_prompt += NARRATOR_ANALYSIS
+            max_tokens += 700  # spazio per l'analisi, che non arriva al cliente
+
+        response_input = (
+            f"RICHIESTA ORIGINALE:\n{document_query}\n\n"
+            f"TIPO DI RICHIESTA: {intent}"
+            + dimension_constraint_note(question, previous_question, is_followup)
+            + absent_category_note(plan)
+            + nota_vincoli_non_documentati(
+                question, candidati_in_contesto, plan.get("condizioni"))
+            + nota_budget_non_raggiungibile(question, candidati_in_contesto)
+            + nota_condizioni_di_pagina(candidati_in_contesto)
+            + exclusion_evidence_note(question + (" " + previous_question if is_followup else ""),
+                                      dossier)
+            + (f"\n\nPANORAMICA DELLE FAMIGLIE (prodotto | versione | pagine | codici | fascia "
+               f"di prezzo): e' il perimetro della scelta; la versione piu' semplice che realizza "
+               f"l'obiettivo viene prima delle varianti.\n{overview}" if overview else "")
+            + (f"\n\nSCHEDE E RIGHE DI LISTINO. Nelle schede ogni valore e' gia' assegnato alla "
+               f"sua colonna (nome IT/EN): il significato di un numero e' SOLO quello della sua "
+               f"colonna. Non attribuire a un numero un significato che la colonna non dice "
+               f"(es. un valore di Altezza/Height non e' l'altezza del pianale); confronta le "
+               f"versioni colonna per colonna e di' in quale colonna differiscono. Un valore "
+               f"'unico del gruppo' vale per tutte le righe del gruppo. Un valore senza "
+               f"intestazione non va interpretato.\n{rows_text}" if rows_text else "")
+            + f"\n\nEVIDENZE DOCUMENTALI (pagine complete):\n{dossier}\n\n"
+            "Formula ora la risposta usando esclusivamente queste evidenze."
+        )
+        generation_started = time.perf_counter()
+        raw_answer = generation_chat(system_prompt, response_input, max_tokens, 0.1)
+        analysis, answer = split_analysis(raw_answer)
+        if not answer and analysis:
+            # analisi non chiusa (risposta troncata): si rigenera senza analisi, per non
+            # lasciare il cliente senza risposta
+            print("[NARRATORE] analisi non chiusa: nuova stesura senza analisi")
+            answer = generation_chat(
+                system_prompt.replace(NARRATOR_ANALYSIS, ""), response_input, max_tokens, 0.1
+            )
+        answer = strip_markdown_emphasis(answer)
+        if analysis:
+            print("[NARRATORE] " + " | ".join(line.strip() for line in analysis.splitlines() if line.strip())[:1500])
+        generation_seconds = time.perf_counter() - generation_started
+        if not answer:
+            return "Informazione non trovata nel documento collegato."
+
+        needs_validation = needs_constraint_validation(question, previous_question, is_followup)
+        validation_started = time.perf_counter()
+        if needs_validation:
+            validation_request = question
+            if is_followup and previous_question:
+                validation_request = (
+                    "VINCOLI STABILITI NELLA DOMANDA PRECEDENTE:\n"
+                    f"{previous_question[:2500]}\n\nDOMANDA ATTUALE:\n{question}"
+                )
+            answer = strip_markdown_emphasis(
+                validate_document_answer(validation_request, answer, "deepseek_local", dossier + "\n" + rows_text)
+            )
+        validation_seconds = time.perf_counter() - validation_started
+
+        control_started = time.perf_counter()
+        answer = apply_fact_control(
+            answer, "deepseek_local", question + " " + (previous_question if is_followup else ""))
+        exclusion_question = question + (" " + previous_question if is_followup else "")
+        hits = exclusion_hits(exclusion_question, dossier)
+        # anche le pagine delle famiglie citate nella risposta, prese dall'indice intero
+        seen_hits = {(h["page"], h["line"]) for h in hits}
+        hits += [h for h in exclusion_hits(exclusion_question, family_dossier(answer_families(answer)))
+                 if (h["page"], h["line"]) not in seen_hits]
+        answer = apply_contradiction_control(answer, hits)
+        control_seconds = time.perf_counter() - control_started
+        print(
+            f"[TIMING] {mode} modello={generation_provider()}/{generation_model_name()} "
+            f"intento={intent} seguito={is_followup} "
+            f"piano={plan_seconds:.2f}s ricerca={retrieval_seconds:.2f}s "
+            f"stesura={generation_seconds:.2f}s "
+            f"vincoli={'si' if needs_validation else 'no'} {validation_seconds:.2f}s "
+            f"controllo={control_seconds:.2f}s "
+            f"totale={time.perf_counter() - started:.2f}s pagine_chars={len(dossier)} "
+            f"righe={len(row_codes)}"
+        )
+        return answer
+    except Exception as e:
+        return risposta_di_guasto(e, f"flusso documentale {mode}")
+
+
+def call_document_quick_local(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
+) -> str:
+    """Risposta consigliata: flusso unificato in modalita' rapida."""
+    return run_local_pipeline(
+        question, previous_question, previous_answer, "rapido", followup_hint
+    )
+
+
+def call_document_retrieval(question: str) -> str:
+    """Compatibilita': restituisce direttamente le pagine recuperate localmente."""
+    dossier = retrieve_local_evidence(question, max_pages=12)
+    return dossier or "Informazione non trovata nel documento collegato."
+
+
+DOCUMENT_FULL_PROMPT = """
+Sei il NARRATORE-SUPERRISPONDITORE DOCUMENTALE in modalita' ANALISI COMPLETA.
+L'ambiente documentale corrente e': {document_context}.
+
+Usa esclusivamente i documenti collegati. In un'unica elaborazione devi cercare, verificare,
+confrontare e spiegare le soluzioni pertinenti, senza mostrare passaggi o ragionamenti interni.
+
+REGOLE:
+1. Separa vincoli tassativi, preferenze, tolleranze, destinazione d'uso e dati mancanti.
+2. Escludi le soluzioni che violano vincoli tassativi e non confondere compatibilita'
+   dimensionale con reale opportunita'.
+3. Non trasformare limiti massimi o minimi in obiettivi automatici.
+4. Se l'utente e' indeciso tra priorita' opposte, la proposta principale deve essere una
+   soluzione intermedia documentata, non uno degli estremi. Mostra gli estremi come scenari
+   alternativi. Se non esiste una soluzione intermedia dimostrabile, poni la domanda decisiva.
+5. Presenta una proposta principale equilibrata e fino a 5 alternative realmente diverse,
+   organizzate per scenario o priorita'. Evita varianti ridondanti.
+6. Per ogni soluzione riporta codice, dati determinanti, prezzo pertinente, compromesso,
+   nome del documento e numero di pagina.
+7. Un codice o una sezione non sostituiscono la pagina. Se la pagina non e' disponibile,
+   scrivi: "Numero di pagina non trovato nel documento collegato."
+8. Non inventare dati e non combinare valori di prodotti o pagine differenti.
+9. Non inventare misure interne, volume utile o dotazioni non dichiarate. Confronta
+   normalmente le dimensioni esterne documentate e segnala l'assenza di misure interne
+   soltanto quando e' realmente determinante per rispondere alla domanda.
+10. Non definire una soluzione piu' bassa, alta, economica o capiente se i dati sono uguali
+   o insufficienti per dimostrarlo.
+11. Non usare conoscenze esterne, non rimandare genericamente al catalogo e non citare
+    strumenti, Vector Store, File Search, OpenAI, API, modelli o identificativi tecnici.
+12. Concludi con una sintesi netta e UNA domanda capace di cambiare la scelta.
+13. Non superare normalmente 700 parole.
+14. Non dedurre prestazioni o vantaggi non documentati da semplici differenze dimensionali.
+15. Classifica i candidati come VERIFICATO, VERIFICA NECESSARIA, INCOMPATIBILE o NON
+    IDENTIFICATO. Un dato mancante non e' una prova di incompatibilita'.
+16. Nelle richieste di scelta o confronto termina con "PRODOTTI SELEZIONABILI PER LA
+    PROPOSTA" ed elenca nome, codice e stato dei candidati VERIFICATI e di quelli in VERIFICA
+    NECESSARIA. Per questi ultimi indica le verifiche aperte da riportare nella proposta
+    preliminare. Escludi soltanto INCOMPATIBILI e NON IDENTIFICATI.
+
+
+REGOLE UNIVERSALI DI FEDELTA' AL BISOGNO:
+A. ESCLUSIONI. Se l'utente esclude un elemento ("senza X", "niente X"), cercalo in TUTTE le
+   pagine del prodotto, comprese tavole tecniche, disegni quotati e note di montaggio.
+   Se X e' presente in ogni candidato, NON dichiarare il requisito soddisfatto: scrivi che
+   nessun prodotto documentato lo rispetta integralmente, proponi quello che lo avvicina di
+   piu' e indica con precisione cosa resta di X, con la pagina che lo prova.
+B. TAGLIE E CLASSI. Quando l'utente usa una denominazione di taglia o classe (formato,
+   taglia, portata, diametro nominale, classe di misura commerciale), la proposta principale
+   deve appartenere a quella classe; non proporre mai una classe diversa da quella richiesta.
+   Se la corrispondenza tra denominazione e valori non e' scritta nel documento, dichiaralo
+   in una frase, usa la corrispondenza standard del settore e mostra le altre classi disponibili.
+C. VERSIONI. Pagine con lo stesso nome base di prodotto e codici con la stessa radice sono
+   versioni dello stesso prodotto: presentale come versioni (per esempio accessori, altezze,
+   finiture, portate), spiegando cosa cambia, e non come prodotti diversi.
+D. GRANDEZZE. Rispondi sulla grandezza chiesta. Non ricavare una grandezza da un'altra non
+   collegata (l'ingombro totale non e' la quota di un componente, la portata di un elemento
+   non e' quella dell'insieme). Cerca la quota anche nelle schede e nei disegni tecnici;
+   se non esiste, dichiaralo.
+E. COMPONENTI NOMINATI. Un componente citato in tabelle, legende, disegni o note di
+   montaggio (per esempio "foro su X", "fissaggio di X", "regolazione di X") esiste nel
+   prodotto: dichiaralo come presente con la pagina che lo prova. Non trasformarlo in dubbio
+   e non chiedere di verificarlo.
+F. CALCOLI DIRETTI. Se il documento fornisce i dati per un calcolo immediato (massimo o minimo,
+   numero di posizioni, passo, somma di elementi), esegui il calcolo e mostra il procedimento
+   in una riga, indicando le pagine dei dati usati.
+G. DOMANDA FINALE. Tutte le verifiche possibili sul documento vanno fatte nella risposta.
+   La domanda finale riguarda soltanto una scelta dell'utente (versione, misura, finitura,
+   priorita'), mai una verifica che il sistema dovrebbe fare da solo.
+H. ESCLUSO O NON INDICATO. Scrivi che un prodotto NON ha una caratteristica soltanto se il
+   documento lo dice esplicitamente, citando la dicitura e la pagina. Se il documento tace,
+   scrivi "non indicato nel documento" e tieni i due gruppi separati: non riunirli mai nella
+   stessa frase o nello stesso elenco.
+I. RICERCA ESATTA. Se la richiesta chiede i dati di un codice o di un prodotto nominato,
+   rispondi con i dati richiesti e la pagina che li prova (per i prezzi, anche la pagina
+   delle condizioni che ne definisce la natura, se presente negli estratti). Niente
+   "perche' e' adatta", niente compromessi e niente domanda di scelta: l'utente ha gia'
+   scelto. Le versioni dello stesso prodotto si possono citare in una riga. Nella sezione
+   PRODOTTI SELEZIONABILI indica soltanto il codice richiesto.
+Rispondi nella stessa lingua usata dall'utente, salvo sua diversa richiesta.
+Mantieni invariati codici, prezzi, misure, unita', nomi propri e riferimenti.
+Scrivi in testo semplice, senza Markdown e senza asterischi.
+In chiusura aggiungi questa nota, senza modificarne il significato:
+{document_disclaimer}
+"""
+
+
+def call_narratore_risponditore_local(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
+) -> str:
+    """Analisi completa: flusso unificato in modalita' globale."""
+    return run_local_pipeline(
+        question, previous_question, previous_answer, "globale", followup_hint
+    )
+
+
+def call_openai_vector_retrieval(question: str, max_results: int = 30) -> str:
+    """Cerca le evidenze nel Vector Store OpenAI. Solleva l'errore per consentire il fallback."""
+    if openai_client is None:
+        raise RuntimeError("OPENAI_API_KEY mancante")
+    if not OPENAI_VECTOR_STORE_ID:
+        raise RuntimeError("OPENAI_VECTOR_STORE_ID mancante")
+
+    response = openai_client.responses.create(
+        model=OPENAI_DOCUMENT_MODEL,
+        instructions=DOCUMENT_RETRIEVAL_PROMPT.format(
+            document_context=DOCUMENT_CONTEXT,
+        ),
+        input=question,
+        tools=[{
+            "type": "file_search",
+            "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
+            "max_num_results": max_results,
+        }],
+        include=["file_search_call.results"],
+    )
+    dossier = (response.output_text or "").strip()
+    return dossier or "Informazione non trovata nel documento collegato."
+
+
+def call_document_quick_vector(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
+) -> str:
+    """Risposta consigliata tramite OpenAI Vector Store."""
+    document_query, is_followup = build_document_query(
+        question, previous_question, previous_answer, followup_hint
+    )
+    dossier = certified_candidate_evidence(document_query) + "\n" + call_openai_vector_retrieval(document_query, max_results=30)
+
+    intent = detect_intent(question, {}, is_followup)
+    quick_response_rules = FORMAT_BY_INTENT[intent] + (FOLLOWUP_RULES if is_followup else "")
+
+    response_input = (
+        "RICHIESTA ORIGINALE:\n"
+        f"{document_query}\n\n"
+        "EVIDENZE DOCUMENTALI RECUPERATE:\n"
+        f"{dossier}\n\n"
+        "Formula la risposta usando esclusivamente queste evidenze."
+            + dimension_constraint_note(question, previous_question, is_followup)
+    )
+    response = openai_client.responses.create(
+        model=OPENAI_DOCUMENT_MODEL,
+        instructions=(DOCUMENT_RESPONDER_PROMPT + quick_response_rules).format(
+            document_disclaimer=DOCUMENT_DISCLAIMER,
+        ),
+        input=response_input,
+        max_output_tokens=1300,
+    )
+    answer = (response.output_text or "").strip()
+    if not answer:
+        return "Informazione non trovata nel documento collegato."
+    answer = strip_markdown_emphasis(answer)
+    if needs_constraint_validation(question, previous_question, is_followup):
+        answer = strip_markdown_emphasis(
+            validate_document_answer(document_query, answer, "openai_vector", locals().get("dossier", "")))
+    return apply_fact_control(answer, "openai_vector")
+
+
+def call_narratore_risponditore_vector(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
+) -> str:
+    """Analisi completa tramite OpenAI Vector Store."""
+    document_query, is_followup = build_document_query(
+        question, previous_question, previous_answer, followup_hint
+    )
+    instructions = DOCUMENT_FULL_PROMPT.format(
+        document_context=DOCUMENT_CONTEXT,
+        document_disclaimer=DOCUMENT_DISCLAIMER,
+    )
+    if is_followup:
+        instructions += """
+\nCONTINUITA' CONVERSAZIONALE OBBLIGATORIA:
+Mantieni gli stessi prodotti, codici, alternative e vincoli del turno precedente.
+Non sostituirli salvo richiesta esplicita dell'utente.
+"""
+
+    response = openai_client.responses.create(
+        model=OPENAI_DOCUMENT_MODEL,
+        instructions=instructions,
+        input=document_query
+        + certified_candidate_evidence(document_query)
+        + dimension_constraint_note(question, previous_question, is_followup),
+        tools=[{
+            "type": "file_search",
+            "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
+            "max_num_results": 40,
+        }],
+        include=["file_search_call.results"],
+        max_output_tokens=3000,
+    )
+    answer = (response.output_text or "").strip()
+    if not answer:
+        return "Informazione non trovata nel documento collegato."
+    answer = strip_markdown_emphasis(answer)
+    if needs_constraint_validation(question, previous_question, is_followup):
+        answer = strip_markdown_emphasis(
+            validate_document_answer(document_query, answer, "openai_vector", locals().get("dossier", "")))
+    return apply_fact_control(answer, "openai_vector")
+
+
+def active_document_engine() -> str:
+    """Restituisce il motore effettivamente configurato, senza esporre chiavi o ID."""
+    if SEARCH_ENGINE == "automatic":
+        vector_ready = bool(openai_client and OPENAI_VECTOR_STORE_ID)
+        return "automatic_vector_first" if vector_ready else "automatic_local_fallback"
+    return SEARCH_ENGINE
+
+
+def call_document_quick(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
+) -> str:
+    """Seleziona il motore rapido configurato e gestisce l'eventuale fallback."""
+    if SEARCH_ENGINE == "deepseek_local":
+        return call_document_quick_local(
+            question, previous_question, previous_answer, followup_hint
+        )
+    try:
+        return call_document_quick_vector(
+            question, previous_question, previous_answer, followup_hint
+        )
+    except Exception as e:
+        print(f"[ERROR] OpenAI Vector rapido: {causa_tecnica(e)}")
+        if SEARCH_ENGINE == "automatic":
+            print("[INFO] fallback automatico a DeepSeek locale")
+            return call_document_quick_local(
+            question, previous_question, previous_answer, followup_hint
+        )
+        return risposta_di_guasto(e, "OpenAI Vector rapido")
+
+
+def call_narratore_risponditore(
+    question: str,
+    previous_question: str = "",
+    previous_answer: str = "",
+    followup_hint: Optional[bool] = None,
+) -> str:
+    """Seleziona il motore completo configurato e gestisce l'eventuale fallback."""
+    if SEARCH_ENGINE == "deepseek_local":
+        return call_narratore_risponditore_local(
+            question, previous_question, previous_answer, followup_hint
+        )
+    try:
+        return call_narratore_risponditore_vector(
+            question, previous_question, previous_answer, followup_hint
+        )
+    except Exception as e:
+        print(f"[ERROR] OpenAI Vector completo: {e}")
+        if SEARCH_ENGINE == "automatic":
+            print("[INFO] fallback automatico a DeepSeek locale")
+            return call_narratore_risponditore_local(
+                question, previous_question, previous_answer, followup_hint
+            )
+        return "Si è verificato un errore durante l'analisi documentale completa."
+
+
+# ============================================================
+# CONTROLLO DOCUMENTALE DETERMINISTICO
+# ============================================================
+# Ogni codice, prezzo e pagina che la risposta attribuisce a un codice viene confrontato
+# con l'indice delle righe. Nessun modello linguistico: e' aritmetica sul documento.
+# Se trova incongruenze chiede UNA correzione mirata al modello, con le righe esatte;
+# cio' che resta incongruente viene segnalato in chiaro invece di arrivare al cliente
+# come dato certo.
+
+# punteggiatura dopo il numero ("3.436, pagina") ammessa: esclusi solo cifra o decimale
+PRICE_THOUSANDS = re.compile(r"(?<![\d,.])\d{1,3}(?:\.\d{3})+(?:,\d{2})?(?!\d)(?!,\d)")
+PRICE_CUE_WORD = re.compile(
+    r"\b(?:prezz\w*|costa|costano|costo|costi|listino|price\w*|preis\w*|prix)\b|€", re.I
+)
+# un numero NON e' un prezzo attribuito al codice se e' un risultato di calcolo, una
+# differenza, una quantita', un anno, una pagina o una misura con unita'
+NOT_PRICE_BEFORE = re.compile(
+    r"(?:=|\btotale\b|\bsomma\b|\bin (?:meno|piu'|più)\b|\bdifferenza\b|\brisparmi\w*|"
+    r"\bbudget(?: residuo)?\b|\blimite(?: di spesa)?\b|\bper \d+(?:\s+[a-zà-ÿ]+)?|\bx ?\d+\b|\bpag\w*\.?|\bpage\b|\bseite\b|\bp\.)\s*[:]?\s*$",
+    re.I,
+)
+NOT_PRICE_AFTER = re.compile(
+    r"^\s*(?:(?:€|euro)\s*)?(?:mm|cm|m\b|%|kg|g\b|w\b|v\b|°|pezz\w*|pz|posti|persone|anni|"
+    r"in (?:meno|piu'|più)|di (?:differenza|risparmio))",
+    re.I,
+)
+PRICE_SUFFIX = re.compile(
+    r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{2,6}(?:,\d{2})?)\s*(?:€|euro)\b", re.I
+)
+PAGE_CITE = re.compile(
+    r"\bpag(?:ina|ine|\.)?[\s*:]*(\d{1,4})(?:\s*[-–]\s*(\d{1,4}))?", re.I
+)
+SENTENCE_SPLIT = re.compile(r"\n+|(?<=;)\s+|(?<=[.!?])\s+(?=[A-ZÀ-Ý\-•])")
+
+
+def accessory_price_named(sentence: str, normalized: str, pages: set) -> bool:
+    """Un importo che nel documento sta su una riga SENZA codice (accessorio, optional) e'
+    accettato solo se la frase nomina quella riga (una parola distintiva in comune)."""
+    sentence_words = {w[:-1] for w in re.findall(r"[a-zà-ÿ]{5,}", sentence.lower())}
+    for page_number in pages:
+        page = PAGE_BY_NUMBER.get(page_number)
+        if not page:
+            continue
+        for line in (page.get("compact") or "").splitlines():
+            if normalized not in row_numbers(line) or line_codes_on_page(line, page_number):
+                continue
+            line_words = {w[:-1] for w in re.findall(r"[a-zà-ÿ]{5,}", line.lower())}
+            if sentence_words & line_words:
+                return True
+    return False
+
+
+def is_attributed_price(window: str, price: str) -> bool:
+    """Vero se almeno un'occorrenza del numero nella finestra e' un prezzo attribuito al
+    codice, e non un totale, una differenza, un anno, una pagina o una misura."""
+    for occurrence in re.finditer(r"(?<![\d.,])" + re.escape(price) + r"(?![\d])", window):
+        before = window[max(0, occurrence.start() - 18):occurrence.start()]
+        after = window[occurrence.end():occurrence.end() + 24]
+        if NOT_PRICE_BEFORE.search(before) or NOT_PRICE_AFTER.search(after):
+            continue
+        if re.fullmatch(r"(?:19|20)\d{2}", price) and not PRICE_CUE_WORD.search(window) and not re.match(r"\s*(?:euro|€)", after, re.I):
+            continue  # anno (es. "listino 2024")
+        return True
+    return False
+
+
+def known_code_roots() -> set:
+    counts = Counter(code_root(c) for c in CODE_ROWS if code_root(c))
+    return {root for root, count in counts.items() if count >= 2}
+
+
+def codes_mentioned(text: str) -> List[tuple]:
+    """(posizione, codice) dei codici citati: noti all'indice, oppure con radice nota
+    (quindi plausibili ma inesistenti, es. FLU9999)."""
+    found: List[tuple] = []
+    if not KNOWN_ROOTS:
+        KNOWN_ROOTS.update(known_code_roots())
+    roots = KNOWN_ROOTS
+    for match in NUMERIC_CODE_TOKEN.finditer(text or ""):
+        # codice solo numerico nel testo di una risposta: vale solo con parola guida
+        token = match.group(1)
+        if token in CODE_ROWS and CODE_CUE.search(text[max(0, match.start() - 25):match.start()]):
+            found.append((match.start(), token))
+    for match in re.finditer(
+        r"\b[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*(?:\s*/\s*[A-Za-z0-9]+)*\b|\b\d{5,}\b", text
+    ):
+        token = re.sub(r"\s+", "", match.group(0).upper())
+        if MEASURE_PATTERN.fullmatch(token) or len(token) < 5:
+            continue
+        if token in CODE_ROWS:
+            found.append((match.start(), token))
+            continue
+        if re.search(r"[-/]", token):
+            # intervallo o elenco di codici, anche abbreviato: FLU2210/2220/2230 vale
+            # FLU2210, FLU2220, FLU2230. Si verificano le parti, mai il token intero.
+            parts = re.split(r"[-/]", token)
+            first = parts[0]
+            for part in parts:
+                candidate = part
+                if part.isdigit() and first and len(part) < len(first):
+                    candidate = first[: len(first) - len(part)] + part
+                if candidate in CODE_ROWS:
+                    found.append((match.start(), candidate))
+            continue
+        if code_root(token) and code_root(token) in roots:
+            found.append((match.start(), token))
+    return found
+
+
+
+def comparison_price_owners(answer: str) -> Dict[str, set]:
+    """Prezzi espliciti dei prodotti nel testo: il contesto non autorizza nuovi importi."""
+    owners = {}
+    for sentence in SENTENCE_SPLIT.split(answer or ""):
+        mentions = codes_mentioned(sentence)
+        for index, (position, code) in enumerate(mentions):
+            end = mentions[index + 1][0] if index + 1 < len(mentions) else len(sentence)
+            window = sentence[position:end]
+            if re.search(r"\bcontro\b|\bin meno\b|\bin più\b|\bdifferenza\b", window, re.I):
+                continue
+            for price in set(PRICE_THOUSANDS.findall(window)) | set(PRICE_SUFFIX.findall(window)):
+                value = normalize_number(price)
+                if code in CODE_ROWS and value in card_numbers(code):
+                    owners.setdefault(value, set()).add(code)
+    return owners
+
+
+def check_answer_facts(answer: str, question: str = "") -> List[Dict[str, Any]]:
+    issues: List[Dict[str, Any]] = []
+    # i numeri scritti dall'utente (budget, limiti) non sono prezzi attribuiti dal documento
+    question_numbers = {normalize_number(n) for n in NUMBER_TOKEN_PATTERN.findall(question or "")}
+    if not answer or not CODE_ROWS:
+        return issues
+    seen = set()
+    previous_mentions: List[tuple] = []
+    comparison_owners = comparison_price_owners(answer)
+    calculated_operations = []
+    arithmetic_number = r"\d+(?:\.\d{3})*(?:[,\.]\d+)?"
+    for operation in re.finditer(rf"({arithmetic_number})\s*([-−+])\s*({arithmetic_number})\s*=\s*({arithmetic_number})", answer):
+        a, b, result = (float(normalize_number(operation.group(i)).replace(',', '.')) for i in (1, 3, 4))
+        operands = [normalize_number(operation.group(i)) for i in (1, 3)]
+        grounded = all(v in comparison_owners or v in question_numbers for v in operands)
+        expected = a - b if operation.group(2) in '-−' else a + b
+        if grounded and abs(expected - result) < .005:
+            calculated_operations.append((operation.group(0), {normalize_number(operation.group(i)) for i in (1, 3, 4)}))
+        elif grounded:
+            issues.append({'tipo': 'calcolo_errato', 'codice': '', 'valore': operation.group(0),
+                           'frase': operation.group(0), 'risultato_corretto': expected})
+    for sentence in SENTENCE_SPLIT.split(answer):
+        calculated_values = set().union(*(values for operation, values in calculated_operations if operation in sentence))
+        mentions = codes_mentioned(sentence)
+        if not mentions:
+            # Frase senza codice subito dopo una frase con UN solo codice, che non nomina
+            # un altro prodotto: i suoi prezzi si riferiscono a quel codice.
+            other_names = re.findall(r"(?<=\s)[A-ZÀ-Ý][a-zà-ÿ]+|[A-Z]{2,}", sentence[1:])
+            carry = len({c for _, c in previous_mentions}) == 1 and not other_names
+            previous_mentions = []
+            if not carry or not sentence.strip():
+                continue
+            mentions = [(0, prior_code)]
+            only_prices = True
+        else:
+            previous_mentions = mentions
+            prior_code = mentions[-1][1]
+            only_prices = False
+        mapped_prices = respective_prices(sentence, mentions, PRICE_THOUSANDS, PRICE_SUFFIX)
+        for index, (position, code) in enumerate(mentions):
+            end = mentions[index + 1][0] if index + 1 < len(mentions) else len(sentence)
+            window = sentence[position:end]
+            if code not in CODE_ROWS:
+                key = ("codice", code)
+                if key not in seen:
+                    seen.add(key)
+                    issues.append({"tipo": "codice_inesistente", "codice": code,
+                                   "frase": sentence.strip()[:240]})
+                continue
+            rows = CODE_ROWS[code]
+            # un prezzo e' accettato se appartiene alla riga di QUALSIASI codice della
+            # stessa frase: negli elenchi ("A, B e C a 4.560 / 4.595 / 4.799") l'ordine dei
+            # numeri non dice a quale codice appartengono; un falso allarme davanti al
+            # cliente costa piu' di un'attribuzione non verificata dentro un elenco
+            sentence_codes = {c for _, c in mentions if c in CODE_ROWS} | {code}
+            # prezzo valido solo sulla STESSA riga del codice; la riga accanto conta soltanto
+            # se la riga del codice non porta nessun importo (prezzo finito a capo)
+            allowed_numbers = set().union(*(
+                row["numbers"] if row.get("has_price", True) else row["near_numbers"]
+                for c in {code} for row in CODE_ROWS[c]
+            ))
+            # i valori della scheda (colonne dal PDF) valgono quanto quelli della riga
+            for c in {code}:
+                allowed_numbers |= card_numbers(c)
+            pages_of_code = {row["page"] for row in rows}
+            families = {PAGE_BY_NUMBER[p].get("family") for p in pages_of_code if p in PAGE_BY_NUMBER}
+            # della famiglia valgono solo le schede tecniche (pagine senza codici di listino):
+            # una pagina di listino di un'altra versione resta un errore
+            family_pages = {
+                p["page"] for p in DOCUMENT_PAGES
+                if p.get("family") and p.get("family") in families
+                and not (p.get("codes", set()) & CODE_ROWS.keys())
+            }
+            prices = set(PRICE_THOUSANDS.findall(window)) | set(PRICE_SUFFIX.findall(window))
+            for cue in PRICE_CUE_WORD.finditer(window):
+                # il primo numero dopo la parola "prezzo/costa/euro...", entro 40 caratteri,
+                # purche' non sia un numero di pagina
+                tail = window[cue.end():cue.end() + 40]
+                number = re.search(
+                    r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d{2,6}(?:,\d{2})?)"
+                    r"(?!\d)(?![.,]\d)(?!\s*[x×])",
+                    tail,
+                )
+                if number and not re.search(r"pag\w*\.?\s*$", tail[:number.start()], re.I):
+                    prices.add(number.group(1))
+            if mapped_prices is not None:
+                prices = {mapped_prices[code]} if code in mapped_prices else set()
+            for price in prices:
+                normalized = normalize_number(price)
+                pair = re.search(r"(\d{1,3}(?:\.\d{3})+(?:,\d{2})?)\s+contro\s+(\d{1,3}(?:\.\d{3})+(?:,\d{2})?)", window, re.I)
+                if pair and re.search(r"in meno|in più|differenza", window, re.I):
+                    first, second = map(normalize_number, pair.groups())
+                    # Il secondo prezzo appartiene all'altro prodotto già documentato.
+                    if (normalized == second and first in allowed_numbers
+                            and comparison_owners.get(second, set()) - {code}):
+                        continue
+                if normalized in allowed_numbers or normalized in calculated_values:
+                    continue
+                if mapped_prices is None and not is_attributed_price(window, price):
+                    continue
+                if accessory_price_named(sentence, normalized, pages_of_code):
+                    continue
+                key = ("prezzo", code, normalized)
+                if key not in seen:
+                    seen.add(key)
+                    issues.append({"tipo": "prezzo_non_trovato", "codice": code, "valore": price,
+                                   "frase": sentence.strip()[:240]})
+            cite = None if only_prices else PAGE_CITE.search(window)
+            if cite:
+                first = int(cite.group(1))
+                last = int(cite.group(2)) if cite.group(2) else first
+                cited = set(range(min(first, last), max(first, last) + 1))
+                if not cited & (pages_of_code | family_pages):
+                    key = ("pagina", code, first)
+                    if key not in seen:
+                        seen.add(key)
+                        issues.append({"tipo": "pagina_errata", "codice": code,
+                                       "valore": cite.group(0),
+                                       "pagine_corrette": sorted(pages_of_code)[:8],
+                                       "frase": sentence.strip()[:240]})
+    issues.extend(check_product_names(answer, seen))
+    issues.extend(check_wrong_family(answer, seen))
+    return issues
+
+
+NAMED_CODE = re.compile(
+    r"([A-ZÀ-Ý][A-ZÀ-Ý0-9_'’\- ]{2,60}?)\s*[,:]?\s*(?:codice|cod\.)\s+([A-Z0-9][A-Z0-9._/-]*\d[A-Z0-9._/-]*)"
+)
+
+
+def product_name_of(code: str) -> str:
+    """Nome del prodotto della riga: il titolo della pagina fino alla prima colonna."""
+    rows = CODE_ROWS.get(code) or []
+    return re.split(r"\s{2,}|//", rows[0]["title"])[0].strip() if rows else ""
+
+
+def name_words(name: str) -> set:
+    return {w for w in re.findall(r"[a-zà-ÿ0-9]+", name.lower().replace("_", " ").replace("-", " "))
+            if len(w) >= 3}
+
+
+FAMILY_ROOTS: Dict[str, set] = {}
+
+
+def known_family_words() -> set:
+    """Prime parole dei nomi di famiglia del documento (AIR, STEEL, FLUTTUA...), con le radici
+    dei codici di ciascuna: due nomi che condividono la radice dei codici sono lo stesso
+    prodotto visto da due nomi (un modello dentro una categoria), non un errore."""
+    if not FAMILY_ROOTS and DOCUMENT_PAGES:
+        for code, rows in CODE_ROWS.items():
+            for row in rows:
+                family = PAGE_BY_NUMBER.get(row["page"], {}).get("family")
+                if family and len(family[0]) >= 3 and family[0] != "CODICI":
+                    FAMILY_ROOTS.setdefault(family[0].lower(), set()).add(code_root(code))
+    return set(FAMILY_ROOTS)
+
+
+def check_wrong_family(answer: str, seen: set) -> List[Dict[str, Any]]:
+    """Il codice citato in una frase che nomina un'ALTRA famiglia ("AIR BED, codice FLU0450")
+    e' un errore di prodotto: la frase deve nominare la famiglia del codice."""
+    issues = []
+    families = known_family_words()
+    for sentence in SENTENCE_SPLIT.split(answer or ""):
+        tokens = re.findall(r"[A-Za-zÀ-ÿ0-9]+", sentence.replace("_", " "))
+        words = {w.lower() for w in tokens}
+        # un nome di prodotto e' scritto con l'iniziale maiuscola: "fissaggio" non e' un marchio
+        capitalized = {w.lower() for w in tokens if w[:1].isupper()}
+        named = families & capitalized
+        if not named:
+            continue
+        for _, code in codes_mentioned(sentence):
+            correct = product_name_of(code)
+            own = re.findall(r"[a-zà-ÿ0-9]+", correct.lower())
+            if not correct or not own or own[0] in words or own[0] not in families:
+                continue
+            # se la famiglia nominata usa la stessa radice di codici, e' lo stesso prodotto
+            if any(code_root(code) in FAMILY_ROOTS.get(name, set()) for name in named):
+                continue
+            if ("nome", code) in seen:
+                continue
+            seen.add(("nome", code))
+            issues.append({"tipo": "nome_errato", "codice": code,
+                           "valore": " ".join(sorted(named)).upper(),
+                           "nome_corretto": correct, "frase": sentence.strip()[:240]})
+    return issues
+
+
+def check_product_names(answer: str, seen: set) -> List[Dict[str, Any]]:
+    """Nome e codice devono essere dello STESSO prodotto: "FLUTTUA_BED, codice FLU1810"
+    e' sbagliato se FLU1810 sta nella tabella di FLUTTUA WILDWOOD BED. Si confronta solo
+    dentro la stessa famiglia (stessa prima parola): altrove il nome commerciale del modello
+    ("Steps" per un codice di SEDIE) puo' legittimamente differire dal titolo della pagina."""
+    issues = []
+    for match in NAMED_CODE.finditer(answer or ""):
+        written, code = match.group(1).strip(" -"), match.group(2).rstrip(".,")
+        correct = product_name_of(code)
+        if not correct:
+            continue
+        written_words, correct_words = name_words(written), name_words(correct)
+        first_written = re.findall(r"[a-zà-ÿ0-9]+", written.lower().replace("_", " "))
+        first_correct = re.findall(r"[a-zà-ÿ0-9]+", correct.lower())
+        if not first_written or not first_correct:
+            continue
+        if first_correct[0] not in first_written:
+            continue
+        missing = correct_words - written_words
+        if missing and ("nome", code) not in seen:
+            seen.add(("nome", code))
+            issues.append({"tipo": "nome_errato", "codice": code, "valore": written,
+                           "nome_corretto": correct, "frase": match.group(0)[:240]})
+    return issues
+
+
+FACT_REPAIR_PROMPT = """
+Sei il CORRETTORE DOCUMENTALE. Ricevi una risposta e un elenco di incongruenze trovate
+confrontandola con le righe del documento. Correggi SOLO quei punti usando le righe fornite:
+codice inesistente -> sostituiscilo con il codice corretto della stessa riga, oppure togli
+l'affermazione; prezzo non trovato -> usa il prezzo presente nella riga del codice, indicando
+la colonna; pagina errata -> usa la pagina corretta, salvo che la pagina citata si riferisca
+chiaramente a un altro dato (in quel caso rendilo esplicito); nome errato -> il codice
+appartiene al prodotto indicato come nome corretto: usa quel nome ovunque quel codice e' citato
+(una versione della stessa famiglia e' un prodotto con nome e prezzi propri). Non cambiare nient'altro:
+stessa lingua, stessa struttura, stesse sezioni. Restituisci soltanto la risposta corretta.
+"""
+
+
+def repair_answer(answer: str, issues: List[Dict[str, Any]], provider: str) -> str:
+    codes = []
+    for issue in issues:
+        code = issue["codice"]
+        if code in CODE_ROWS:
+            codes.append(code)
+        else:  # codice inesistente: righe dei codici con la stessa radice citati nella frase
+            codes.extend(c for _, c in codes_mentioned(issue["frase"]) if c in CODE_ROWS)
+    elenco = "\n".join(
+        f"- {i['tipo']}: codice {i['codice']}"
+        + (f", valore '{i['valore']}'" if i.get("valore") else "")
+        + (f", pagine corrette {i['pagine_corrette']}" if i.get("pagine_corrette") else "")
+        + (f", nome corretto '{i['nome_corretto']}'" if i.get("nome_corretto") else "")
+        + f"\n  frase: {i['frase']}"
+        for i in issues
+    )
+    payload = (
+        f"RISPOSTA:\n{answer}\n\nINCONGRUENZE:\n{elenco}\n\n"
+        f"RIGHE DEL DOCUMENTO:\n{format_code_rows(list(dict.fromkeys(codes)), 6000)}"
+    )
+    try:
+        if provider == "openai_vector" and openai_client is not None:
+            response = openai_client.responses.create(
+                model=OPENAI_DOCUMENT_MODEL, instructions=FACT_REPAIR_PROMPT,
+                input=payload, max_output_tokens=VALIDATOR_MAX_TOKENS,
+            )
+            return (response.output_text or "").strip() or answer
+        if client is not None or openai_client is not None:
+            return generation_chat(FACT_REPAIR_PROMPT, payload, VALIDATOR_MAX_TOKENS, 0.0) or answer
+    except Exception as e:
+        print(f"[WARN] correzione documentale non riuscita: {e}")
+    return answer
+
+
+def apply_fact_control(answer: str, provider: str, question: str = "") -> str:
+    """Verifica deterministica, una correzione mirata se serve, segnalazione del residuo."""
+    issues = check_answer_facts(answer, question)
+    if not issues:
+        print("[CONTROLLO] 0 incongruenze")
+        return answer
+    print(f"[CONTROLLO] {len(issues)} incongruenze: " + "; ".join(
+        f"{i['tipo']} {i['codice']} {i.get('valore', '')}" for i in issues))
+    repaired = repair_answer(answer, issues, provider)
+    residual = check_answer_facts(repaired, question)
+    print(f"[CONTROLLO] dopo correzione: {len(residual)} incongruenze")
+    # Le pagine residue possono riferirsi a un altro dato della stessa frase: solo log.
+    serious = [i for i in residual if i["tipo"] != "pagina_errata"]
+    if serious:
+        note = "\n".join(
+            f"- {i['codice']}: "
+            + ("codice non presente nel documento" if i["tipo"] == "codice_inesistente"
+               else f"il codice appartiene a {i['nome_corretto']}, non a {i['valore']}"
+               if i["tipo"] == "nome_errato"
+               else f"calcolo errato: {i['valore']}; risultato corretto {i['risultato_corretto']}"
+               if i["tipo"] == "calcolo_errato"
+               else f"il valore {i['valore']} non compare nella riga del codice")
+            for i in serious
+        )
+        warning = "DATI DA VERIFICARE SUL DOCUMENTO:\n" + note
+        match = find_section(repaired, SELECTABLE_HEADER)
+        if match:
+            blocked = {i['codice'] for i in serious}
+            head, tail = repaired[:match.end()], repaired[match.end():]
+            tail = '\n'.join(line for line in tail.splitlines()
+                             if not any(c in blocked for _, c in codes_mentioned(line)))
+            repaired = head + tail
+        match = find_section(repaired, SELECTABLE_HEADER)
+        at = match.start() if match else -1
+        # prima della sezione dei selezionabili: resta nel testo, non entra nel preventivo
+        repaired = (repaired[:at].rstrip() + "\n\n" + warning + "\n\n" + repaired[at:]
+                    if at >= 0 else repaired + "\n\n" + warning)
+    return repaired
+
+
+# Memoria delle risposte: il catalogo e' statico, una domanda identica nello stesso contesto
+# riceve la stessa risposta verificata senza ripetere ricerca e chiamate al modello.
+ANSWER_CACHE: "OrderedDict[tuple, tuple]" = OrderedDict()
+
+SELECTABLE_HEADER = "PRODOTTI SELEZIONABILI PER LA PROPOSTA"
+RECOMMENDED_PREFIX = "PRODOTTO CONSIGLIATO E SELEZIONABILE PER LA PROPOSTA"
+
+# ------------------------------------------------------------------
+# Una risposta che comincia con una di queste frasi NON e' una risposta: e' un
+# fallimento. Un elenco solo, usato sia per decidere la cache sia per dichiarare
+# context_valid. Prima erano due elenchi diversi e si contraddicevano: il
+# fallimento "Non ho recuperato schede complete" mancava nel controllo della
+# cache, veniva salvato come risposta buona e rigiocato identico a ogni
+# ripetizione della stessa domanda, anche dopo che l'indice era stato corretto.
+# ------------------------------------------------------------------
+FAILED_ANSWER_PREFIXES = (
+    "Non ho recuperato schede complete",
+    "Non ho trovato prove sufficienti",
+    "Non posso confermare",
+    "Nessun prodotto della proposta supera",
+    "Si è verificato",
+    "Si e' verificato",
+    "Informazione non trovata",
+    "Archivio",
+    "Il motore esterno",
+    "Il codice richiesto non è nell'indice",
+    "Il codice richiesto non e' nell'indice",
+)
+
+
+def answer_failed(answer: str) -> bool:
+    """Vero se la risposta e' un fallimento dichiarato: non va messa in cache
+    e non va presentata al cliente come un dato."""
+    if not answer or not answer.strip():
+        return True
+    return answer.strip().startswith(FAILED_ANSWER_PREFIXES) or "DATI DA VERIFICARE" in answer
+
+
+# Il titolo di sezione lo scrive il modello, e a volte lo storpia ("PROPOSA"
+# invece di "PROPOSTA"). Il frontend cerca il titolo esatto (index.html,
+# extractProposalCandidates): non trovandolo ripiega sulla scansione di TUTTA la
+# risposta, VERSIONI compresa, e nel preventivo puo' finire il codice di una
+# variante al posto di quello richiesto. Qui il titolo torna alla forma canonica
+# prima di uscire, qualunque cosa abbia scritto il modello.
+SECTION_TITLE_FIXES = (
+    (re.compile(r"(?im)^[ \t]*PRODOTT[OI][ \t]+CONSIGLIAT[OI][ \t]+E[ \t]+SELEZIONABIL\w*"
+                r"[ \t]+PER[ \t]+LA[ \t]+PROPOS\w*[ \t]*:"), RECOMMENDED_PREFIX + ":"),
+    (re.compile(r"(?im)^[ \t]*PRODOTTI[ \t]+SELEZIONABIL\w*[ \t]+PER[ \t]+LA[ \t]+PROPOS\w*"
+                r"[ \t]*:?[ \t]*$"), SELECTABLE_HEADER),
+)
+
+# Titoli di sezione che il formato impone: se sotto non c'e' niente, il titolo
+# resta a vuoto e il cliente legge una sezione che non dice nulla.
+OPTIONAL_SECTION_TITLES = ("VERSIONI", "ALTERNATIVA", "ALTERNATIVE", "DA SAPERE",
+                           "PERCHE'", "PERCHÉ", "PERCHE", "DOMANDA")
+
+
+def normalize_section_titles(answer: str) -> str:
+    for pattern, replacement in SECTION_TITLE_FIXES:
+        answer = pattern.sub(replacement, answer)
+    return answer
+
+
+# ------------------------------------------------------------------
+# L'elenco delle varianti esce solo se l'utente lo chiede.
+# Motivo, misurato: gli errori osservati in collaudo sono usciti TUTTI dalla
+# sezione VERSIONI, mai dalla risposta. E' una sezione che il formato impone:
+# quando non ha niente di solido da metterci, il modello la riempie lo stesso,
+# e li' attribuisce misure e caratteristiche che la riga di listino non dice
+# (celle unite, etichette centrate su piu' righe, gruppi di prodotto vicini).
+# Se chiedi una cosa, torna quella cosa.
+# ------------------------------------------------------------------
+VARIANTS_ONLY_IF_ASKED = os.getenv("VARIANTS_ONLY_IF_ASKED", "true").strip().lower() not in ("0", "false", "no")
+
+VARIANTS_REQUEST = re.compile(
+    r"\b(?:version[ei]|variant[ei]|alternativ\w*|altre\s+misur\w*|altri\s+model\w*|"
+    r"altre\s+taglie|altre\s+dimension\w*|altre\s+grandezz\w*|gamma|"
+    r"quali\s+misur\w*|che\s+misure\s+(?:ci\s+sono|esistono|sono\s+disponibili)|"
+    r"tutte\s+le\s+misur\w*|cos[.']?\s*altro\s+c[.']?\s*[eè]|"
+    r"altre\s+opzion\w*|other\s+version\w*|variant\w*|size\s+range)\b", re.I)
+
+SECTION_TITLE_LINE = re.compile(r"^[A-ZÀ-ÝÈÉ0-9][A-ZÀ-ÝÈÉ0-9 '’\-/]{2,}$")
+
+
+def variants_requested(question: str, previous_question: str = "", followup: bool = False) -> bool:
+    if VARIANTS_REQUEST.search(question or ""):
+        return True
+    return bool(followup and VARIANTS_REQUEST.search(previous_question or ""))
+
+
+def strip_variants_section(answer: str) -> str:
+    """Toglie il blocco VERSIONI: titolo e righe fino alla sezione successiva."""
+    lines = answer.splitlines()
+    out, dentro = [], False
+    for line in lines:
+        stripped = line.strip()
+        if not dentro and stripped.upper() == "VERSIONI":
+            dentro = True
+            continue
+        if dentro:
+            if not stripped:
+                continue
+            if SECTION_TITLE_LINE.match(stripped) or stripped.startswith("I dati appartengono"):
+                dentro = False
+            else:
+                continue
+        out.append(line)
+    return "\n".join(out)
+
+
+def drop_empty_sections(answer: str) -> str:
+    """Toglie i titoli di sezione rimasti senza contenuto. Se chiedi una cosa,
+    ti deve tornare quella cosa: una sezione vuota e' rumore, e una sezione che
+    il modello riempie per obbligo e' il posto dove inventa."""
+    lines = answer.splitlines()
+    keep, skip_blanks = [], False
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.upper() in OPTIONAL_SECTION_TITLES:
+            following = next((l.strip() for l in lines[index + 1:] if l.strip()), "")
+            empty = (
+                not following
+                or following.upper() in OPTIONAL_SECTION_TITLES
+                or following.upper().startswith(("PRODOTTI SELEZIONABILI", "PRODOTTO CONSIGLIATO"))
+                or following.startswith("I dati appartengono")
+            )
+            if empty:
+                skip_blanks = True
+                continue
+        if skip_blanks:
+            if not stripped:
+                continue
+            skip_blanks = False
+        keep.append(line)
+    return "\n".join(keep)
+
+
+def requested_sizes(question: str, previous_question: str = "", followup: bool = False) -> set:
+    """Misure fissate esplicitamente dall'utente: prima la domanda attuale, poi,
+    solo se e' un approfondimento, quella precedente."""
+    current = find_sizes(question)
+    if current:
+        return current
+    if followup:
+        return find_sizes(previous_question)
+    return set()
+
+
+def dimension_constraint_note(
+    question: str, previous_question: str = "", followup: bool = False
+) -> str:
+    """Vincolo dimensionale fissato dall'utente, dichiarato al modello PRIMA che scriva."""
+    sizes = requested_sizes(question, previous_question, followup)
+    if not sizes:
+        return ""
+    return (
+        "\n\nVINCOLO DIMENSIONALE FISSATO DALL'UTENTE: "
+        + ", ".join(sorted(sizes))
+        + ". Proponi, consiglia ed elenca tra i selezionabili soltanto codici di questa misura. "
+        "Un codice di misura diversa puo' essere citato solo per dire che non corrisponde."
+    )
+
+
+def strip_markdown_emphasis(text: str) -> str:
+    """La pagina mostra testo semplice: grassetti e titoli Markdown apparirebbero come
+    simboli. Il prompt lo vieta, ma il modello non sempre obbedisce: si pulisce qui."""
+    if not text:
+        return text
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text, flags=re.S)
+    text = re.sub(r"__(.+?)__", r"\1", text, flags=re.S)
+    text = re.sub(r"(?m)^\s{0,3}#{1,6}\s+", "", text)
+    return text.replace("**", "")
+
+
+def canonical_size(size: str) -> str:
+    """160x200 e 200x160 sono la stessa misura: si confrontano in forma ordinata."""
+    try:
+        parts = sorted(size.split("x"), key=float)
+    except ValueError:
+        return size
+    return "x".join(parts)
+
+
+def find_section(text: str, header: str) -> Optional[re.Match]:
+    """Posizione di un'intestazione cercata sul testo originale (non su upper():
+    caratteri come ß o legature cambiano lunghezza e sfalserebbero gli indici)."""
+    return re.search(re.escape(header), text or "", re.I)
+
+
+def enforce_selectable_constraints(answer: str, allowed_sizes: set) -> str:
+    """Filtro deterministico della sezione PRODOTTI SELEZIONABILI.
+
+    Un codice resta selezionabile solo se la sua misura documentata (riga di listino)
+    e' tra quelle fissate dall'utente, in qualunque ordine siano scritte le dimensioni.
+    Codici senza misura documentata restano (dato non trovato != incompatibile).
+    Ogni elemento dell'elenco porta con se' le sue righe di continuazione.
+    Se il filtro togliesse TUTTI i prodotti, la risposta resta invariata: e' piu'
+    probabile un disallineamento di scrittura che l'assenza di ogni soluzione.
+    Se resta un solo prodotto non si chiede di scegliere di nuovo."""
+    header_match = find_section(answer, SELECTABLE_HEADER)
+    if not answer or not allowed_sizes or not header_match:
+        return answer
+    allowed = {canonical_size(size) for size in allowed_sizes}
+
+    def size_ok(code: str) -> bool:
+        sizes = CODE_SIZES.get(code)
+        return (not sizes) or bool({canonical_size(x) for x in sizes} & allowed)
+
+    def line_codes(line: str) -> List[str]:
+        return [c for c in CODE_TOKEN_PATTERN.findall(line.upper()) if c in CODE_SIZES]
+
+    head, section = answer[:header_match.start()], answer[header_match.start():]
+    lines = section.splitlines()
+    bullet = re.compile(r"\s*(?:[-•*]|\d+[.)])\s+")
+
+    # 1) elementi dell'elenco con le loro righe di continuazione
+    items: List[Dict[str, Any]] = []
+    tail_lines: List[str] = []
+    recommended_code = ""
+    in_tail = False
+    blank_seen = False
+    for line in lines[1:]:
+        codes = line_codes(line)
+        if re.search(re.escape(RECOMMENDED_PREFIX), line, re.I):
+            if codes and size_ok(codes[0]):
+                recommended_code = codes[0]
+            continue  # riscritta in fondo, coerente con il filtro
+        if in_tail:
+            tail_lines.append(line)
+            continue
+        if not line.strip():
+            blank_seen = True
+            continue
+        starts_item = bool(codes) or bool(bullet.match(line))
+        if starts_item and not (blank_seen and not codes and not bullet.match(line)):
+            items.append({"lines": [line], "codes": codes})
+            blank_seen = False
+            continue
+        if items and not blank_seen and "?" not in line:
+            items[-1]["lines"].append(line)  # continuazione dell'elemento precedente
+            continue
+        in_tail = True
+        tail_lines.append(line)
+
+    kept_items = [i for i in items if not i["codes"] or size_ok(i["codes"][0])]
+    removed = [i["codes"][0] for i in items if i["codes"] and not size_ok(i["codes"][0])]
+    kept_with_code = [i for i in kept_items if i["codes"]]
+    if removed and not kept_with_code:
+        return "Nessun prodotto della proposta supera il controllo delle misure richieste. Occorre verificare le schede documentali prima di proporre una scelta."
+        print(f"[SELEZIONABILI] misura {sorted(allowed)}: nessun codice compatibile, "
+              "risposta lasciata invariata")
+        return answer
+
+    # 2) anche un "consigliato" scritto prima della sezione deve rispettare la misura
+    head_rec = re.search(rf"{re.escape(RECOMMENDED_PREFIX)}\s*:([^\n]*)", head, re.I)
+    if head_rec:
+        codes = line_codes(head_rec.group(1))
+        if codes and not size_ok(codes[0]):
+            removed.append(codes[0])
+            head = head[:head_rec.start()] + head[head_rec.end():]
+        elif codes:
+            recommended_code = recommended_code or codes[0]
+
+    # 3) nel testo: via i paragrafi che nominano SOLO codici di misura diversa
+    kept_paragraphs: List[str] = []
+    for paragraph in re.split(r"\n\s*\n", head):
+        codes = line_codes(paragraph)
+        if codes and not any(size_ok(c) for c in codes):
+            removed.extend(codes)
+            continue
+        kept_paragraphs.append(paragraph)
+    head = "\n\n".join(kept_paragraphs)
+
+    if not removed:
+        return answer
+    print(f"[SELEZIONABILI] misura richiesta={sorted(allowed)} rimossi={sorted(set(removed))}")
+
+    kept_codes = list(dict.fromkeys(i["codes"][0] for i in kept_with_code))
+    if len(kept_codes) == 1:
+        recommended_code = kept_codes[0]
+        # il prodotto e' gia' determinato: niente nuova richiesta di scelta
+        tail_lines = [
+            t for t in tail_lines
+            if not re.search(
+                r"\b(quale|quali|scegli|preferisci|desideri portare|vuoi portare)\b", t, re.I
+            )
+        ]
+    body_lines = [lines[0]] + [line for item in kept_items for line in item["lines"]]
+    if recommended_code and recommended_code in kept_codes:
+        first_line = next(i["lines"][0] for i in kept_with_code if i["codes"][0] == recommended_code)
+        label = bullet.sub("", first_line, count=1).strip()
+        label = re.split(r"\s+[-–]\s+(?:VERIFICATO|VERIFICA NECESSARIA)", label, flags=re.I)[0]
+        label = re.sub(rf",?\s*(?:codice\s+)?{re.escape(recommended_code)}\b", "", label,
+                       flags=re.I).strip(" ,-")
+        body_lines.append(f"{RECOMMENDED_PREFIX}: codice {recommended_code} - {label}")
+    body = "\n".join(body_lines + ([""] + tail_lines if tail_lines else []))
+    return (head.strip() + "\n\n" + body) if head.strip() else body
+
+
+# ============================================================
+# ENDPOINTS
+# ============================================================
+
+
+
+# ============================================================
+# GLI ASSI DELLE MISURE — li dichiara il documento
+# ============================================================
+# Fino all'8ott2026 qui c'era un elenco scritto a mano di quattro assi:
+# larghezza, profondita', altezza, lunghezza. Era "indipendente da marca e
+# settore" solo in apparenza: valeva per i prodotti che si misurano con quelle
+# quattro parole.
+#
+# Misurato l'8ott2026 dal vivo: "tavolo tondo Air Slim diametro 160, altezza
+# 76". Il diametro non era nell'elenco: la domanda risultava avere un vincolo
+# solo, l'altezza, e il motore ha proposto un tavolo RETTANGOLARE 200 x 100
+# come "soluzione piu' pertinente". 202 schede di prodotti tondi avevano la
+# colonna "Diametro Diameter" e nessuna domanda poteva usarla.
+#
+# La toppa ovvia era aggiungere "diametro" all'elenco. E' la quinta parola di
+# un elenco, e la sesta la scoprirebbe un cliente. Invece: UNA COLONNA DI
+# NUMERI SULLE SCHEDE E' UN ASSE. Il documento sa gia' come misura i suoi
+# prodotti - l'ha scritto nelle intestazioni - e il motore glielo chiede.
+# Su un catalogo di rubinetti le colonne saranno "Portata" o "Attacco", e
+# diventeranno assi senza che nessuno tocchi questo file.
+#
+# Quello che resta scritto a mano e' solo LINGUA, non prodotto: che "largo" e'
+# l'aggettivo di "larghezza" e "alto" di "altezza". Vale per qualunque
+# documento italiano.
+ASSI_DELLA_LINGUA = {
+    "width": r"larghezza|largo|larga|larghe|width",
+    "depth": r"profondità|profondita|profondo|profonda|depth",
+    "height": r"altezza|alto|alta|height",
+    "length": r"lunghezza|lungo|lunga|length",
+}
+DIMENSION_ALIASES = dict(ASSI_DELLA_LINGUA)   # lingua + assi del documento: lo riscrive costruisci_assi()
+ETICHETTE_DEGLI_ASSI: Dict[str, str] = {}     # etichetta di colonna -> asse
+ASSI_DAL_DOCUMENTO: Dict[str, Dict[str, Any]] = {}   # asse -> come lo si e' ricavato (per il rapporto)
+COLONNE_NON_LETTE: List[tuple] = []           # colonne di numeri che non sono diventate un asse
+
+NUMERO_DI_MISURA = re.compile(r"\s*\d+(?:[.,]\d+)?\s*(?:mm|cm|m)?\s*", re.I)
+# Le tre soglie sono misurate su LAGO l'8ott2026, non scelte:
+# - 0,6: "Diametro Diameter" ha 199 schede e 146 valori numerici puliti (73%);
+#   gli altri sono celle sporche ("120 Tavolo snack"). Con 0,8 l'asse per cui
+#   tutto questo e' nato restava fuori.
+# - 0,4% delle schede: sotto, le "colonne di numeri" sono intestazioni rotte
+#   delle pagine coi disegni ("structure LED lighting under", 6 schede;
+#   "frontale illuminazione Codice", 5). Un asse e' una colonna che il
+#   documento usa su tanti prodotti. Con questa soglia su LAGO restano
+#   diametro (199), L//W (141), H (84), P//D (82) e Pelle Panama (116).
+ASSE_QUOTA_NUMERICA = 0.6
+ASSE_QUOTA_SCHEDE = 0.004
+ASSE_SCHEDE_MINIME = 3        # su un documento piccolo: mai meno di tre schede
+ASSE_PAROLE_MASSIME = 4       # un'intestazione di misura e' corta; una lunga e' una frase finita li'
+
+
+def _parole_di_etichetta(etichetta: str) -> List[str]:
+    return [p for p in re.split(r"[\s/]+", etichetta) if p]
+
+
+def costruisci_assi() -> None:
+    """Ricava gli assi dalle colonne delle schede. Si chiama a ogni caricamento.
+
+    Tre casi, in quest'ordine, per ogni colonna di attributi fatta di numeri:
+
+    1. L'etichetta contiene una parola della lingua ("Larghezza Width"): e'
+       quell'asse.
+    2. L'etichetta e' una SIGLA ("L//W", "H", "P//D"): si scioglie con le
+       iniziali delle etichette intere che lo stesso documento usa altrove.
+       "L//W" sono le iniziali di "Larghezza Width". Misurato l'8ott2026: 141
+       schede di divani (pagine 188-258) hanno le misure sotto queste sigle,
+       e "divano largo 220" non le leggeva. Nessun cliente l'aveva ancora
+       chiesto: e' uscito contando.
+    3. Altrimenti e' un ASSE NUOVO, col nome che gli da' il documento:
+       "Diametro Diameter" diventa l'asse "diametro", riconosciuto nella
+       domanda dalle parole "diametro" e "diameter".
+
+    Un asse nuovo vale come vincolo solo quando il valore chiesto ESISTE in
+    quella colonna (vedi exact_dimension_requests): decide il documento, come
+    gia' per le coppie "55,2 x 36,8". Serve a non scambiare per misura un
+    numero che nella domanda sta accanto a una parola qualunque.
+    """
+    conteggio: Dict[str, List[int]] = {}
+    for gruppo in PRODUCT_CARDS.values():
+        for scheda in gruppo:
+            for etichetta, valore in (scheda.get('attributi') or {}).items():
+                voce = conteggio.setdefault(etichetta, [0, 0])
+                voce[0] += 1
+                voce[1] += 1 if NUMERO_DI_MISURA.fullmatch(str(valore)) else 0
+
+    alias = dict(ASSI_DELLA_LINGUA)
+    etichette: Dict[str, str] = {}
+    ricavati: Dict[str, Dict[str, Any]] = {}
+    scartate: List[tuple] = []
+    sigle = []
+    totale_schede = sum(len(g) for g in PRODUCT_CARDS.values())
+    minimo = max(ASSE_SCHEDE_MINIME, int(totale_schede * ASSE_QUOTA_SCHEDE))
+    # Le parole delle colonne di prezzo, ma solo di quelle il cui nome non
+    # porta un numero. "Pelle Panama B" nomina una finitura; "Diametro Diameter
+    # 200" (pagina dei tappeti: una colonna di prezzo per ogni diametro) nomina
+    # una MISURA usata come intestazione, e conferma che diametro e' un asse.
+    parole_dei_prezzi = {radice_italiana(t) for gruppo in PRODUCT_CARDS.values() for scheda in gruppo
+                         for etichetta in (scheda.get('prezzi') or {})
+                         if not any(c.isdigit() for c in etichetta)
+                         for t in search_tokens(etichetta)}
+    for etichetta, (schede, numeri) in sorted(conteggio.items(), key=lambda x: -x[1][0]):
+        if numeri < schede * ASSE_QUOTA_NUMERICA:
+            continue
+        asse = next((a for a, regex in ASSI_DELLA_LINGUA.items()
+                     if re.search(rf"\b(?:{regex})\b", etichetta, re.I)), None)
+        if asse:
+            # una parola della lingua nell'etichetta basta, anche su poche
+            # schede: e' il comportamento di sempre
+            etichette[etichetta] = asse
+            continue
+        if schede < minimo:
+            continue
+        parole = _parole_di_etichetta(etichetta)
+        if any(c.isdigit() for c in etichetta) or '(' in etichetta or len(parole) > ASSE_PAROLE_MASSIME:
+            scartate.append((etichetta, schede, "intestazione non leggibile come nome di misura"))
+            continue
+        if all(len(p) <= 2 and p.isalpha() for p in parole):
+            sigle.append((etichetta, schede, parole))
+            continue
+        nomi = [p.lower() for p in parole if len(p) >= 4 and p.isalpha()]
+        if not nomi:
+            scartate.append((etichetta, schede, "nessuna parola che possa nominare la misura"))
+            continue
+        # UNA PAROLA CHE IL DOCUMENTO USA PER UNA COLONNA DI PREZZO NON NOMINA
+        # UNA MISURA. Misurato l'8ott2026: la colonna "Pelle Panama" (116
+        # schede di divani, valori 10 / 1,60 / 2,25) e' fatta di numeri e
+        # stava diventando l'asse "pelle". Ma "Pelle Panama B/C/P" sono
+        # colonne di PREZZO: "pelle" e' una finitura. Come asse, toglieva la
+        # parola dalle finiture e i casi C10 e D15 ("divano in pelle") non
+        # riconoscevano piu' la finitura chiesta.
+        if any(radice_italiana(n) in parole_dei_prezzi for n in nomi):
+            scartate.append((etichetta, schede,
+                             "le sue parole nominano colonne di prezzo: e' una finitura, non una misura"))
+            continue
+        nome = nomi[0]
+        if nome not in alias:
+            # la vocale finale e' libera: "diametro" si riconosce anche in "diametri"
+            forme = [(n[:-1] + "[aeio]") if n[-1] in "aeio" and len(n) >= 5 else re.escape(n)
+                     for n in dict.fromkeys(nomi)]
+            alias[nome] = "|".join(forme)
+            ricavati[nome] = {"da": "intestazione", "etichette": [], "schede": 0, "parole": nomi}
+        etichette[etichetta] = nome
+        if nome in ricavati:
+            ricavati[nome]["etichette"].append(etichetta)
+            ricavati[nome]["schede"] += schede
+
+    # le sigle si sciolgono per ultime, quando le etichette intere sono note
+    for etichetta, schede, lettere in sigle:
+        candidati = set()
+        for intera, asse in etichette.items():
+            iniziali = {p[0].upper() for p in _parole_di_etichetta(intera) if p[:1].isalpha()}
+            if {l[0].upper() for l in lettere} <= iniziali:
+                candidati.add(asse)
+        if len(candidati) == 1:
+            asse = candidati.pop()
+            etichette[etichetta] = asse
+            ricavati.setdefault(f"{asse} (sigla {etichetta})",
+                                {"da": "sigla sciolta con le iniziali", "etichette": [etichetta],
+                                 "schede": schede, "parole": []})
+        else:
+            scartate.append((etichetta, schede,
+                             "sigla che non si scioglie in un solo asse" if candidati
+                             else "sigla senza un'etichetta intera a cui rimandare"))
+
+    radice = globals()
+    radice["DIMENSION_ALIASES"] = alias
+    radice["ETICHETTE_DEGLI_ASSI"] = etichette
+    radice["ASSI_DAL_DOCUMENTO"] = ricavati
+    radice["COLONNE_NON_LETTE"] = sorted(scartate, key=lambda x: -x[1])
+    radice["VALORI_DEGLI_ASSI"] = {}
+    if ricavati or scartate:
+        print(f"[ASSI] dal documento: {len(alias)} assi "
+              f"({', '.join(n for n in alias if n not in ASSI_DELLA_LINGUA) or 'nessuno nuovo'}); "
+              f"{len(scartate)} colonne di numeri non lette come misura")
+
+
+def nome_dell_asse(asse: str) -> str:
+    return {'width': 'larghezza', 'depth': 'profondità', 'height': 'altezza',
+            'length': 'lunghezza'}.get(asse, asse)
+
+
+VALORI_DEGLI_ASSI: Dict[str, List[float]] = {}   # asse ricavato -> i valori che il documento porta
+
+
+def valore_documentato(asse: str, valore: float) -> bool:
+    """Il documento ha almeno una scheda con questo valore su questo asse?
+
+    I valori si raccolgono una volta per asse e si tengono: rifare il giro
+    delle schede a ogni domanda costava secondi (misurato: l'autodiagnosi su
+    1.500 domande non finiva in dieci minuti).
+    """
+    if asse not in VALORI_DEGLI_ASSI:
+        valori = set()
+        for gruppo in PRODUCT_CARDS.values():
+            for scheda in gruppo:
+                valori.update(card_dimension_values(scheda, asse))
+        VALORI_DEGLI_ASSI[asse] = sorted(valori)
+    return any(abs(v - valore) <= 0.051 for v in VALORI_DEGLI_ASSI[asse])
+
+
+def parse_dimension_limits(question):
+    question = request_constraints_text(question)
+    limits = []
+    for wall in re.finditer(r"(?:parete|spazio utile)\s+(?:del[^.;]*?\s+)?(?:larg[ao]\s+)?(?:(?:da|di|of)\s+)?(\d+(?:[.,]\d+)?)\s*(cm|mm|m)\b", question, re.I):
+        bound = float(wall.group(1).replace(',', '.')) * {'mm': .1, 'm': 100}.get(wall.group(2).lower(), 1)
+        limits.append(('width', 'max', bound))
+    for axis, aliases in DIMENSION_ALIASES.items():
+        pattern = rf"\b(?:{aliases})\b"
+        for match in re.finditer(pattern, question, re.I):
+            tail = re.split(r"[;!?\n]", question[match.end():match.end()+100], maxsplit=1)[0]
+            tail = re.split(r"\b(?:" + '|'.join(DIMENSION_ALIASES.values()) + r")\b", tail, maxsplit=1, flags=re.I)[0]
+            transition = re.search(r"\bda\s+\d+(?:[.,]\d+)?\s*(?:cm|mm|m)?\s+a\s+", tail, re.I)
+            value_tail = tail[transition.end():] if transition else tail
+            value = re.search(r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(mm|cm|metri|metro|m)?\b", value_tail, re.I)
+            if not value:
+                continue
+            prefix = tail[:(transition.end() if transition else 0) + value.start()].lower()
+            before = question[max(0, match.start()-25):match.start()].lower()
+            qualifiers = prefix
+            if not re.search(r"massim|max|entro|super|fino|minim|min\b|almeno|least|most", prefix):
+                qualifiers = before
+                if not re.search(r"massim|max|entro|super|fino|minim|min\b|almeno|least|most", qualifiers):
+                    clause = re.split(r"[.;!?\n]", question[:match.start()])[-1]
+                    if re.search(r"\be\s+(?:l[’']|la\s+)?$", clause, re.I):
+                        qualifiers = clause.lower()
+            if re.search(r"massim|max|entro|superare|superi|non.{0,15}super|fino a|maximum|at most|no more|<=|≤", qualifiers):
+                op = "max"
+            elif re.search(r"minim|min\b|almeno|minimum|at least", qualifiers):
+                op = "min"
+            else:
+                continue  # nessuna uguaglianza inventata da una misura descrittiva
+            number = float(value.group(1).replace(',', '.'))
+            unit = (value.group(2) or 'cm').lower()
+            number *= {'mm': .1, 'm': 100, 'metro': 100, 'metri': 100}.get(unit, 1)
+            limits.append((axis, op, number))
+    # Current request precedes inherited context; first bound of each kind wins.
+    resolved = {}
+    for axis, op, bound in limits:
+        resolved.setdefault((axis, op), bound)
+    return [(axis, op, bound) for (axis, op), bound in resolved.items()]
+
+EXACT_DIM_SKIP = re.compile(
+    r"massim|max\b|entro|super|fino|minim|min\b|almeno|least|most|circa|intorno|"
+    r"all['’]incirca|pi[uù]\s+di|meno\s+di|oltre", re.I)
+
+
+def coppia_di_misure_letta_dal_documento(primo: float, secondo: float):
+    """Due numeri senza parole d'asse: "55,2 x 36,8". Chi legge decide il documento.
+
+    Il difetto, misurato il 7ott2026 sul caso D12 della batteria. La notazione
+    "A x B" veniva letta sempre come larghezza x PROFONDITA', perche' e' l'ordine
+    in cui il catalogo stampa le colonne. Ma un rivenditore che scrive "comodino
+    55,2 x 36,8" intende larghezza x ALTEZZA: quel comodino e' profondo 40,6. Il
+    filtro esatto non trovava nessuna scheda, ripiegava su tutti i 55,2 e ne
+    sceglieva uno con l'altezza sbagliata - rispondendo con prezzi veri su un
+    prodotto che non era quello chiesto. E' l'errore piu' insidioso di tutti,
+    perche' la risposta sembra giusta.
+
+    Non si indovina e non si scrive una regola per questo catalogo: si provano
+    tutte e due le letture e si tiene quella che il documento conferma. Misurato
+    su cinque coppie prese dalla batteria, una lettura esiste e l'altra e' vuota:
+
+        55,2  x 36,8    profondita':  0 schede    altezza: 17 schede
+        184   x 40,6    profondita': 92 schede    altezza:  0 schede
+        110,4 x 56      profondita': 12 schede    altezza:  0 schede
+        220,8 x 78,7    profondita':  0 schede    altezza:  5 schede
+        147,2 x 75,3    profondita':  0 schede    altezza: 54 schede
+
+    Se le confermasse entrambe - il documento sarebbe davvero ambiguo - si tiene
+    l'ordine stampato sul catalogo, che e' larghezza x profondita'. Se non ne
+    conferma nessuna si restituisce None e il chiamante tiene quello che aveva:
+    una misura non riconosciuta non deve far sparire il vincolo.
+    """
+    def quante(asse: str) -> int:
+        n = 0
+        for gruppi in PRODUCT_CARDS.values():
+            for card in gruppi:
+                larghezze = card_dimension_values(card, 'width') or []
+                altre = card_dimension_values(card, asse) or []
+                if any(abs(v - primo) <= 0.051 for v in larghezze) and \
+                   any(abs(v - secondo) <= 0.051 for v in altre):
+                    n += 1
+        return n
+
+    if not PRODUCT_CARDS:
+        return None
+    con_profondita = quante('depth')
+    con_altezza = quante('height')
+    if con_profondita and not con_altezza:
+        return [("width", primo), ("depth", secondo)]
+    if con_altezza and not con_profondita:
+        print(f"[MISURE] '{primo} x {secondo}' letto come larghezza x altezza "
+              f"({con_altezza} schede); come profondita' non esiste")
+        return [("width", primo), ("height", secondo)]
+    return None
+
+
+def exact_dimension_requests(question):
+    """Misure puntuali dichiarate dall'utente: "largo 92", "profondo 51", "92 cm di
+    larghezza". parse_dimension_limits le scarta di proposito, perche' una misura
+    descrittiva puo' essere approssimativa e non deve diventare un vincolo rigido.
+    Ma scartarle del tutto fa l'opposto: chi chiede 92 si vede elencare tutta la
+    tabella. Qui diventano una PREFERENZA: le schede che le rispettano vanno
+    davanti, e se nessuna le rispetta non si butta via niente — lo dice la risposta.
+    """
+    question = request_constraints_text(question)
+    found = []
+    # UN NUMERO APPARTIENE A UNA PAROLA SOLA. In "largo 73,6 alto 46" il 73,6
+    # e' la larghezza (forma diretta: parola, numero). La forma inversa
+    # (numero, parola) lo rileggeva come "73,6 alto" e aggiungeva un'altezza
+    # di 73,6 accanto a quella vera di 46: nessuna scheda le rispettava
+    # entrambe, la preferenza sulla misura si spegneva e i candidati
+    # passavano da pochi a 1.591. Trovato l'8ott2026 dalle domande generate
+    # dal documento; era in produzione. Prima si leggono tutte le forme
+    # dirette, e la forma inversa non tocca i numeri gia' presi.
+    presi = set()
+    for axis, aliases in DIMENSION_ALIASES.items():
+        for match in re.finditer(rf"\b(?:{aliases})\b", question, re.I):
+            before = question[max(0, match.start() - 25):match.start()]
+            tail = re.split(r"[;!?\n]", question[match.end():match.end() + 40], maxsplit=1)[0]
+            value = re.match(r"\s*(?:di|da|:)?\s*(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?\b", tail, re.I)
+            if not value:
+                continue
+            if EXACT_DIM_SKIP.search(before) or EXACT_DIM_SKIP.search(tail[:value.start(1)]):
+                continue
+            number = float(value.group(1).replace(',', '.'))
+            number *= {'mm': .1, 'm': 100}.get((value.group(2) or 'cm').lower(), 1)
+            found.append((axis, number))
+            presi.add(match.end() + value.start(1))
+    for axis, aliases in DIMENSION_ALIASES.items():
+        # forma inversa: "92 cm di larghezza"
+        for match in re.finditer(
+                # il numero non deve essere la coda di un nome di famiglia ("36e8 largo"):
+                # per questo il confine a sinistra esclude anche le lettere
+                rf"(?<![\w.,])(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?\s+(?:di\s+|in\s+)?(?:{aliases})\b",
+                question, re.I):
+            before = question[max(0, match.start() - 25):match.start()]
+            if EXACT_DIM_SKIP.search(before) or match.start(1) in presi:
+                continue
+            number = float(match.group(1).replace(',', '.'))
+            number *= {'mm': .1, 'm': 100}.get((match.group(2) or 'cm').lower(), 1)
+            found.append((axis, number))
+    # Notazione "250 x 100" o "128,8 x 82,8 x 36": e' il modo piu' naturale in cui
+    # un rivenditore scrive una misura, e non contiene nessuna parola d'asse. Senza
+    # questo, una domanda come "tavolo da 250 x 100" non ha nessun vincolo di misura
+    # e il confronto parte su tutto il catalogo.
+    if not found:
+        for sizes in find_sizes(question):
+            parti = []
+            for parte in str(sizes).split('x'):
+                if not parte:
+                    continue
+                try:
+                    parti.append(float(parte))
+                except ValueError:
+                    pass
+            found.extend(zip(("width", "depth", "height"), parti))
+            if len(parti) == 2:
+                found = coppia_di_misure_letta_dal_documento(parti[0], parti[1]) or found
+            break   # una sola misura composta per domanda
+    out = []
+    for axis, value in found:
+        # Un asse che viene dal documento vale solo se il documento ha quel
+        # valore: "diametro 160" esiste, e diventa un vincolo; un numero che
+        # sta per caso dopo una parola d'intestazione no.
+        if axis not in ASSI_DELLA_LINGUA and not valore_documentato(axis, value):
+            continue
+        if (axis, value) not in out:
+            out.append((axis, value))
+    return out
+
+
+def card_matches_exact(card, requests):
+    for axis, value in requests:
+        values = card_dimension_values(card, axis)
+        if not values or not any(abs(v - value) <= 0.051 for v in values):
+            return False
+    return True
+
+
+def card_dimension_values(card, axis):
+    found = []
+    regex = DIMENSION_ALIASES.get(axis)
+    for label, raw in card.get('attributi', {}).items():
+        dichiarato = ETICHETTE_DEGLI_ASSI.get(label)
+        if dichiarato is not None:
+            if dichiarato != axis:
+                continue
+        elif not regex or not re.search(regex, label, re.I):
+            continue
+        raw = str(raw)
+        number = re.fullmatch(r"\s*(\d+(?:[.,]\d+)?)\s*(mm|cm|m)?\s*", raw, re.I)
+        if number:
+            value = float(number.group(1).replace(',', '.'))
+            value *= {'mm': .1, 'm': 100}.get((number.group(2) or next(iter(re.findall(r'\b(mm|cm|m)\b', label, re.I)), 'cm')).lower(), 1)
+            found.append(value)
+    return found
+
+def card_matches_limits(card, limits):
+    for axis, op, bound in limits:
+        values = card_dimension_values(card, axis)
+        if len(set(values)) != 1:
+            return False  # dato mancante o ambiguo: non certificare la compatibilità
+        value = values[0]
+        if (op == 'max' and value > bound + 1e-8) or (op == 'min' and value < bound - 1e-8):
+            return False
+    return True
+
+def catalog_price_number(value):
+    """Importi europei: punti di migliaia, virgola decimale; nessuna valutazione di codice."""
+    raw = re.sub(r"(?:euro|eur|€)|\s", '', str(value), flags=re.I)
+    if not re.fullmatch(r"\d+(?:\.\d{3})*(?:,\d{1,2})?", raw):
+        return None
+    return float(raw.replace('.', '').replace(',', '.'))
+
+
+def requested_budget(question):
+    return budget_limit(question)
+
+
+def radice_italiana(token: str) -> str:
+    """Toglie la vocale finale alle parole lunghe: e' li' che l'italiano segna
+    genere e numero.
+
+    Difetto misurato il 7ott2026 sul caso D04. La domanda diceva "una madia 36e8
+    larga 220,8 LACCATA" e l'etichetta di colonna e' "Laccato Lacquered":
+    laccata != laccato, confronto fallito, finitura persa, e con lei il
+    controllo del budget che su quella finitura si doveva fare.
+
+    QUANTO PESA, misurato e non supposto, sui 65 casi della batteria:
+
+        casi che nominano una finitura .............. 31 / 65
+        con la forma scritta diversa dall'etichetta .. 5
+        di questi, falliti per questa ragione ........ 1   (D04)
+
+    Gli altri quattro passavano lo stesso: la finitura e' scritta anche nel
+    testo della pagina e il modello la legge da li'. Ha morso solo dove serviva
+    un conto - il confronto col budget - che non si arrangia leggendo.
+
+    Non e' una lista di sinonimi: e' una regola della lingua, vale per qualsiasi
+    documento italiano. Si applica solo da cinque lettere in su, perche' sotto
+    quella soglia togliere una vocale fa danni ("aria" -> "ari").
+    """
+    return token[:-1] if len(token) >= 5 and token[-1] in "aeio" else token
+
+
+# Al primo avvio le schede sono gia' caricate (load_document_index gira piu'
+# su, prima che costruisci_assi esista): gli assi si costruiscono qui. Ai
+# caricamenti successivi - un altro cliente, un documento nuovo - li rifa'
+# load_product_cards.
+costruisci_assi()
+
+
+def parole_di_finitura(question) -> set:
+    """Le parole della domanda che possono nominare una finitura: tutte, meno
+    i numeri e le parole delle misure.
+
+    Misurato l'8ott2026 con le domande generate dal documento: "Ho 2.929 euro
+    per AIR COFFEE TABLE largo 160 e profondo 90". Nessuna finitura nella
+    domanda, eppure il motore ne trovava una: l'etichetta "160" (un'intestazione
+    rotta di qualche scheda) agganciata dal numero 160, e in un altro caso
+    "CLOSET W 147,2 Profondita'" agganciata da "147,2" e da "profondo". Con
+    quella "finitura" la scheda giusta restava senza prezzi e risultava fuori
+    budget. Un numero e una parola d'asse sono gia' una misura: non possono
+    essere anche una finitura.
+    """
+    grezze = set(search_tokens(positive_request_text(request_constraints_text(question)))) - {
+        'prezzo', 'prezzi', 'price', 'euro', 'eur', 'base', 'standard', 'prodotto'}
+    assi = [re.compile(rf"(?:{regex})", re.I) for regex in DIMENSION_ALIASES.values()]
+    return {radice_italiana(t) for t in grezze
+            if any(c.isalpha() for c in t) and not any(a.fullmatch(t) for a in assi)}
+
+
+@__import__("functools").lru_cache(maxsize=256)
+def requested_price_labels(question):
+    """Finitura ancorata alle intestazioni reali: il miglior insieme di termini condivisi."""
+    query = parole_di_finitura(question)
+    labels = {label for groups in PRODUCT_CARDS.values() for card in groups for label in card.get('prezzi', {})}
+    # Quante etichette contengono ciascuna parola: serve a sapere se una parola
+    # condivisa e' distintiva o e' rumore.
+    frequenza = Counter(radice_italiana(t) for label in labels
+                        for t in set(search_tokens(label)))
+    soglia_rara = max(2, int(len(labels) * .2))
+
+    def condivise(label):
+        return query & {radice_italiana(t) for t in search_tokens(label)}
+
+    def aggancio_valido(label):
+        """Una sola parola in comune basta solo se quella parola significa qualcosa.
+
+        Senza questo controllo bastava una parola qualunque della domanda per
+        agganciare una colonna di prezzo e, con essa, tutta la famiglia di
+        prodotto sbagliata. Caso reale del collaudo: "Comodino 36e8 ... cosa gli
+        do?" agganciava l'etichetta malformata 'do Vetro opaco lass Matt glass'
+        per via del "do" di "cosa gli do", e rispondeva con i como' di pagina 499.
+        Una parola di due lettere non e' una finitura; una parola che compare in
+        meta' delle etichette non distingue niente.
+        """
+        comuni = condivise(label)
+        if len(comuni) >= 2:
+            return True
+        unica = next(iter(comuni), "")
+        return len(unica) >= 3 and frequenza[unica] <= soglia_rara
+
+    scores = {label: len(condivise(label)) for label in labels if aggancio_valido(label)}
+    best = max(scores.values(), default=0)
+    if not best:
+        return set()
+    matched = {label for label, score in scores.items() if score == best}
+    specificity = min(len(set(search_tokens(label))) for label in matched)
+    return {label for label in matched if len(set(search_tokens(label))) == specificity}
+
+
+@__import__("functools").lru_cache(maxsize=4096)
+def _etichette_della_scheda(question, etichette):
+    """Fra le etichette di UNA scheda, quelle che la domanda nomina meglio.
+
+    Stesso criterio di requested_price_labels - parole in comune, e una sola
+    parola basta solo se e' rara - ma misurato dentro la scheda invece che su
+    tutto il catalogo.
+    """
+    query = parole_di_finitura(question)
+    tutte = {label for groups in PRODUCT_CARDS.values() for card in groups
+             for label in card.get('prezzi', {})}
+    frequenza = Counter(radice_italiana(t) for label in tutte for t in set(search_tokens(label)))
+    soglia_rara = max(2, int(len(tutte) * .2))
+    punti = {}
+    for label in etichette:
+        comuni = query & {radice_italiana(t) for t in search_tokens(label)}
+        unica = next(iter(comuni), "")
+        if len(comuni) >= 2 or (len(comuni) == 1 and len(unica) >= 3
+                                and frequenza[unica] <= soglia_rara):
+            punti[label] = len(comuni)
+    migliore = max(punti.values(), default=0)
+    return frozenset(label for label, p in punti.items() if p == migliore) if migliore else frozenset()
+
+
+def _finitura_chiesta_davvero(question, card) -> bool:
+    """Le parole della domanda che agganciano un'etichetta di prezzo dicono una
+    finitura, o stanno solo ripetendo il nome di questo prodotto?"""
+    query = parole_di_finitura(question)
+    agganci = set()
+    for label in requested_price_labels(question):
+        agganci |= query & {radice_italiana(t) for t in search_tokens(label)}
+    del_prodotto = {radice_italiana(t) for t in search_tokens(card.get('prodotto', ''))}
+    try:
+        del_prodotto |= {radice_italiana(t) for t in parole_di_descrizione(card)}
+    except Exception:
+        pass
+    return bool(agganci - del_prodotto)
+
+
+def matching_card_prices(card, question, anche_proprie=True):
+    """I prezzi della scheda che rispondono alla domanda: della finitura
+    chiesta, e dentro il budget se c'e'.
+
+    'anche_proprie=False' da' il comportamento di prima (solo le etichette
+    scelte sul catalogo): lo usa cards_request_consistent per confrontare fra
+    loro le schede dello stesso codice. Provato a usare ovunque la versione
+    nuova e misurato: sul caso C13 ("alimentatori 24V per i LED") le schede
+    dello stesso codice su pagine diverse risultavano discordi e la guardia
+    bloccava CU1703 e CU1710, che sono la risposta giusta.
+
+    LA FINITURA SI CERCA ANCHE FRA LE ETICHETTE DELLA SCHEDA. Misurato l'8ott2026
+    dal vivo: "tavolo tondo Air Slim diametro 160 ... tra Wildwood, vetro e
+    XGlass, quali rientrano in 4.500 euro". requested_price_labels sceglie UNA
+    etichetta per tutto il catalogo - la piu' simile alla domanda - e qui ha
+    scelto "Wildwood Gambe vetro extra-chiaro". Il tavolo in vetro (TAV3203)
+    quella colonna non ce l'ha: le sue si chiamano "Vetro lucido ... Gambe vetro
+    extra-chiaro". Risultato: nessun prezzo riportato, scheda considerata
+    incoerente col budget, e la risposta del modello - anche giusta - sostituita
+    dal ripiego. Dei tre prodotti chiesti, l'unico che rientrava nel budget era
+    l'unico che il motore non riusciva a prezzare.
+
+    Quando la scheda non ha nessuna delle etichette scelte sul catalogo, si
+    guarda quali delle SUE etichette la domanda nomina. Se non ne nomina
+    nessuna resta com'era: nessun prezzo - quella scheda la finitura chiesta
+    non ce l'ha, ed e' giusto che non si presenti (una madia non laccata non
+    risponde a "madia laccata").
+    """
+    labels = requested_price_labels(question)
+    budget = requested_budget(question)
+    proprie = card.get('prezzi', {})
+    if anche_proprie and labels and not any(label in labels for label in proprie):
+        labels = _etichette_della_scheda(question, tuple(proprie))
+        if not labels:
+            # Nessuna etichetta della scheda risponde. Prima di concludere "non
+            # ha la finitura chiesta" bisogna sapere se una finitura e' stata
+            # chiesta davvero. Misurato l'8ott2026 con le domande generate dal
+            # documento: "Ho 475 euro per FLUTTUA BED ..." - nessuna finitura
+            # nella domanda - e la scheda da 474 euro risultava senza prezzi,
+            # quindi fuori budget. Le parole che avevano agganciato
+            # un'etichetta altrove nel catalogo erano le parole del TITOLO del
+            # prodotto. Sul campione il budget era applicato giusto 77 volte
+            # su 120.
+            #
+            # Se le parole che hanno fatto scattare la finitura stanno tutte
+            # nel titolo o nella descrizione di questa scheda, stanno
+            # nominando il prodotto, non una finitura: valgono tutti i prezzi.
+            if not _finitura_chiesta_davvero(question, card):
+                labels = set()
+            else:
+                return {}
+    values = {}
+    for label, raw in proprie.items():
+        if labels and label not in labels:
+            continue
+        price = catalog_price_number(raw)
+        if price is not None and (budget is None or price <= budget + 1e-8):
+            values[label] = price
+    return values
+
+
+def card_matches_request(card, question):
+    """Se la scheda puo' rispondere alla richiesta. L'etichetta di finitura NON
+    entra qui.
+
+    Prima entrava, e scartava ogni scheda priva di un prezzo sotto l'etichetta
+    agganciata: una eliminazione fatta PRIMA che qualcuno guardasse il resto
+    della domanda. "Tavolo rotondo con top in vetro" agganciava la colonna
+    "Top e struttura vetro" e con quella uccideva tutti i tavoli tondi, che la
+    colonna la chiamano "Gambe vetro extra-chiaro": restava un tavolino 43x43.
+
+    La finitura dice quale PREZZO riportare, non quale PRODOTTO scegliere. Resta
+    quindi in matching_card_prices (il prezzo) e diventa un vantaggio di
+    punteggio (il prodotto giusto con la finitura giusta vince), ma non elimina
+    piu' nessuno. Il budget invece elimina davvero: e' un vincolo sul prezzo.
+    """
+    if not card_matches_limits(card, parse_dimension_limits(question)):
+        return False
+    if requested_budget(question) is not None:
+        return bool(matching_card_prices(card, question))
+    return True
+
+
+def cards_request_consistent(cards, question):
+    if not cards or not all(card_matches_request(c, question) for c in cards):
+        return False
+    for axis, _, _ in parse_dimension_limits(question):
+        if len({v for c in cards for v in card_dimension_values(c, axis)}) != 1:
+            return False
+    if requested_budget(question) is not None or requested_price_labels(question):
+        fingerprints = {tuple(sorted(matching_card_prices(c, question, anche_proprie=False).items()))
+                        for c in cards}
+        if len(fingerprints) != 1:
+            return False
+    return True
+
+
+def requested_candidate_count(question):
+    if re.search(r"\b(?:due|two|2)\s+(?:modelli|prodotti|soluzioni|mobili|opzioni|proposte|contratti|garanzie|models|products|options)\b", question, re.I):
+        return 2
+    if re.search(r"\b(?:tre|three|3)\s+(?:modelli|prodotti|soluzioni|mobili|opzioni|proposte|contratti|garanzie|models|products|options)\b", question, re.I):
+        return 3
+    return None
+
+
+def strict_dimension_guard(answer, question):
+    limits = parse_dimension_limits(question)
+    # LA MISURA SECCA CHIESTA DAL CLIENTE VALE ANCHE QUI. Prima la guardia
+    # controllava solo i limiti ("massimo 120"), il budget e la finitura: una
+    # misura dichiarata ("diametro 160") non la guardava nessuno. Misurato
+    # l'8ott2026: con "tavolo tondo diametro 160" un tavolo rettangolare
+    # 200 x 100 fra i selezionabili passava la guardia senza obiezioni.
+    #
+    # Resta una PREFERENZA, come in verified_dimension_candidates: si applica
+    # solo se il documento ha almeno una scheda candidata con quella misura. Se
+    # non ne ha nessuna, non si blocca niente - lo dichiara la risposta.
+    esatte = exact_dimension_requests(question)
+    if esatte and not any(card_matches_exact(c, esatte)
+                          for c in verified_dimension_candidates(question)):
+        esatte = []
+    if (not limits and requested_budget(question) is None
+            and not requested_price_labels(question) and not esatte):
+        return answer
+    section = find_section(answer, SELECTABLE_HEADER)
+    candidate_text = answer[section.start():] if section else answer
+    codes = list(dict.fromkeys(code for _, code in codes_mentioned(candidate_text)))
+    invalid = []
+    for code in codes:
+        cards = [card for (c, _), group in PRODUCT_CARDS.items() if c == code for card in group]
+        # Tutte le schede devono concordare; un'occorrenza favorevole non basta.
+        if not cards_request_consistent(cards, question):
+            invalid.append(code)
+        elif esatte and cards and not any(card_matches_exact(c, esatte) for c in cards):
+            invalid.append(code)
+    if invalid:
+        print('[VINCOLI_STRUTTURALI] proposta bloccata: ' + ','.join(invalid))
+        return verified_candidates_answer(question)
+    if (section and not codes) or answer.startswith(('Nessun prodotto della proposta supera', 'Non posso confermare una soluzione compatibile')):
+        return verified_candidates_answer(question)
+    if re.search(r"sfrutt|pi[uù]['’]?\s+larg|larghezza disponibile|widest|maximize", question, re.I):
+        ranked = verified_dimension_candidates(question)
+        unique = list(dict.fromkeys(c['codice'] for c in ranked))
+        count = requested_candidate_count(question) or 2
+        if len(unique) >= count and unique[:count] != codes[:count]:
+            return verified_candidates_answer(question)
+    return answer
+
+
+# Il tetto di spesa si toglie con la stessa grammatica che lo riconosce
+# (pdf_reasoning_core.budget_matches), non con una seconda regex scritta qui:
+# due vocabolari del prezzo si disallineano al primo documento nuovo.
+
+
+def senza_budget(question):
+    """La domanda privata del tetto di spesa.
+
+    Il budget non deve ESCLUDERE schede dal confronto: se lo fa, toglie di mezzo i
+    prodotti veri (che costano) e lascia in gara gli accessori (che costano poco),
+    e la risposta slitta su un'altra categoria senza dirlo. Il tetto serve a
+    ordinare e a dichiarare che cosa ci sta dentro, non a decidere che cosa e'
+    pertinente. Caso reale: "1.200 euro per una madia 220,8" proponeva gli
+    optional di pagina 298 invece di dire che nessuna madia rientra.
+    """
+    return without_old_budget(question)
+
+
+DESCRIZIONE_PAROLE: Dict[tuple, set] = {}
+
+
+def parole_di_descrizione(card) -> set:
+    """Parole della descrizione di listino della scheda, italiano compreso.
+
+    Il titolo di una scheda in questo catalogo e' in inglese ("AIR SOFT TABLE");
+    la riga di listino porta invece la descrizione nelle due lingue. Qui si
+    prendono le parole di quella descrizione, cosi' una domanda in italiano
+    trova il prodotto senza bisogno di un dizionario scritto a mano.
+    """
+    chiave = (card.get('codice'), card.get('pagina'))
+    if chiave not in DESCRIZIONE_PAROLE:
+        parole = set()
+        for riga in CODE_ROWS.get(chiave[0], []):
+            if riga.get("page") == chiave[1]:
+                parole.update(search_tokens(riga.get("description") or ""))
+        DESCRIZIONE_PAROLE[chiave] = parole
+    return DESCRIZIONE_PAROLE[chiave]
+
+
+def verified_dimension_candidates(question):
+    question = senza_budget(question)
+    limits = parse_dimension_limits(question)
+    tokens = set(search_tokens(positive_request_text(request_constraints_text(question))))
+    # Categoria ancorata ai titoli: niente numeri puri, niente parole di servizio.
+    # ATTENZIONE: si scartano i numeri, NON i nomi di gamma che contengono cifre.
+    # "36e8" e' la parola piu' discriminante di questo catalogo e prima finiva fra
+    # gli scarti insieme a "184": risultato, "mobile TV 36e8 largo 184" pescava gli
+    # AIR TV UNITS e il codice giusto scendeva in ventunesima posizione.
+    # Un nome di gamma ha lettere oltre alle cifre; una misura no.
+    def _solo_numero(t):
+        return not any(c.isalpha() for c in t)
+    shared = {t for t in tokens if len(t) >= 2 and not _solo_numero(t)
+              and t not in {'catalogo','prodotto','prodotti','prezzo','prezzi','disponibili','misure','parete','wall','spazio','base','disponibile','larghezza','altezza','profondità'}}
+    # La rarita' di una parola va misurata sullo stesso insieme in cui la si cerca:
+    # titoli E descrizioni. Contando solo i titoli, una parola che compare nella
+    # sola descrizione aveva frequenza zero e il calcolo si rompeva.
+    title_frequency = Counter(
+        t for groups in PRODUCT_CARDS.values() for card in groups
+        for t in (set(search_tokens(card.get('prodotto', ''))) | parole_di_descrizione(card)))
+    total_cards = sum(len(groups) for groups in PRODUCT_CARDS.values())
+    # I titoli del catalogo sono in inglese, la domanda arriva in italiano: le rese
+    # ricavate dalle righe bilingui del documento entrano nel punteggio.
+    derived_pieno, derived_mezzo = derived_title_tokens(shared, title_frequency)
+    derived = derived_pieno | derived_mezzo
+    etichette_chieste = bool(requested_price_labels(question))
+    scored = []
+    seen = set()
+    for groups in PRODUCT_CARDS.values():
+        for card in groups:
+            title_tokens = set(search_tokens(card.get('prodotto','')))
+            # Alle parole del titolo (che in questo catalogo sono in inglese) si
+            # uniscono quelle della descrizione della riga, dove sta l'italiano:
+            # "Tavolo Air Soft rotondo vetro". Senza, chi scrive "rotondo" cerca
+            # una parola che nell'indice non esiste. Pesano la meta': il titolo
+            # identifica il prodotto, la descrizione lo racconta.
+            descr_tokens = parole_di_descrizione(card) - title_tokens
+            overlap = shared & title_tokens
+            overlap_descr = (shared & descr_tokens) - overlap
+            overlap_derived = ((derived & title_tokens) | (derived & descr_tokens)) - overlap - overlap_descr
+            siblings = PRODUCT_CARDS.get((card['codice'], card['pagina']), [card])
+            if (not overlap and not overlap_descr and not overlap_derived) \
+                    or not cards_request_consistent(siblings, question):
+                continue
+            key = (card['codice'], card['pagina'])
+            if key in seen:
+                continue
+            seen.add(key)
+            def idf(t):
+                return __import__('math').log(1 + total_cards / max(1, title_frequency[t]))
+            # Ogni insieme si normalizza per la propria lunghezza. Normalizzare
+            # tutto sul titolo era incoerente e produceva questo: due tavoli che
+            # agganciano entrambi solo nella DESCRIZIONE, e vince quello col
+            # titolo piu' corto. "U TABLE" (1 parola) batteva "AIR SLIM ROUND
+            # TABLE" (4 parole) su una domanda che diceva "rotondo", pur avendo
+            # un peso grezzo piu' basso: 3,53 contro 4,72.
+            import math as _m
+            peso_titolo = (sum(idf(t) for t in overlap)
+                           + sum(idf(t) for t in overlap_derived & derived_pieno)
+                           + .5 * sum(idf(t) for t in overlap_derived & derived_mezzo))
+            if title_tokens and NORMALIZZA_TITOLO:
+                peso_titolo /= _m.sqrt(len(title_tokens))
+            peso_descr = PESO_DESCRIZIONE * sum(idf(t) for t in overlap_descr)
+            if descr_tokens:
+                peso_descr /= _m.sqrt(len(descr_tokens))
+            peso = peso_titolo + peso_descr
+            # Un titolo che elenca piu' gamme ("36e8 | 36e8 GLASS | AIR SIDEBOARD
+            # - OPTIONAL") aggancia qualunque domanda e vince su un titolo preciso
+            # ("36e8 SIDEBOARD"), che e' quello che l'utente intende. Si divide per
+            # la radice del numero di parole del titolo: le parole in piu' contano,
+            # ma smettono di essere un vantaggio gratuito.
+            # La finitura chiesta non elimina piu', ma premia: fra due prodotti
+            # ugualmente pertinenti vince quello che quella finitura ce l'ha.
+            if etichette_chieste and matching_card_prices(card, question):
+                peso *= 1.6
+            scored.append((peso, card))
+    if not scored:
+        return []
+    best = max(score for score, _ in scored)
+    # Provata anche l'esclusione dei nomi di gamma da questa ammissione: misurata
+    # peggiore (8/13 contro 9/13, e due codici spariti). Resta com'era.
+    category_tokens = {t for t in shared if title_frequency[t] > 1}
+    selected = [(score, card) for score, card in scored
+                if score == best or category_tokens & set(search_tokens(card.get('prodotto', '')))]
+    # Misura secca dichiarata dall'utente: preferenza, non vincolo. Se almeno una
+    # scheda la rispetta si tengono solo quelle; se nessuna la rispetta restano
+    # tutte, e verified_candidates_answer lo dichiara invece di tacerlo.
+    esatte = exact_dimension_requests(question)
+    if esatte:
+        puntuali = [(s, c) for s, c in selected if card_matches_exact(c, esatte)]
+        if puntuali:
+            selected = puntuali
+    # L'ordine e' il punteggio di pertinenza. Senza questo riordino la lista
+    # conservava l'ordine di caricamento delle schede: la scheda piu' pertinente
+    # (punteggio piu' alto) poteva finire sotto una dozzina di schede peggiori di
+    # un'altra famiglia di prodotto. E' l'errore osservato sul LED per sideboard.
+    selected.sort(key=lambda coppia: (-coppia[0], coppia[1]['codice'], coppia[1]['pagina']))
+    candidates = [card for _, card in selected]
+
+    # IL PIU' ECONOMICO DI CHE COSA.
+    #
+    # Difetto misurato il 7ott2026 sul caso D12: "Sul comodino 36e8 da 55,2 x
+    # 36,8 qual e' la finitura piu' economica?". Il riordino per prezzo metteva
+    # primo ATY021, un SET DI VETRI da 92 euro largo 55,2 e alto 36,8 - davvero
+    # il piu' economico fra i candidati, e davvero non un comodino. Il comodino
+    # vero, 0075813 a 777, finiva terzo. Il riordino non sbagliava il prezzo:
+    # sbagliava l'insieme su cui lo cercava.
+    #
+    # Si tengono tutti i candidati - buttarne via e' il difetto opposto - ma chi
+    # non e' della categoria chiesta non puo' presentarsi per primo. La categoria
+    # arriva dalle parole della domanda e dalle loro rese, non da un elenco di
+    # tipi di prodotto scritto a mano.
+    # Il TIPO di prodotto, non la gamma. "36e8" e' il nome di una gamma e compare
+    # anche nel titolo degli accessori ("36e8 | 36e8 GLASS | AIR SIDEBOARD -
+    # OPTIONAL"): usandolo come categoria, l'optional risultava della categoria
+    # chiesta e restava primo. Un nome di gamma mescola lettere e cifre, un nome
+    # di tipo e' fatto di sole lettere - la stessa distinzione gia' usata piu'
+    # sopra per non scartare "36e8" fra i numeri.
+    # PROVATO E SCARTATO il 7ott2026: aggiungere qui TUTTE le rese, comprese
+    # quelle che il punteggio scarta perche' diffuse ("madia" -> "sideboard",
+    # 14,8% delle schede). L'idea era che per sapere COSA ha chiesto il cliente
+    # servisse completezza, e per pesare servisse discriminazione. Misurata: la
+    # guardia diventa cosi' larga da ammettere tutto, ATY021 - un set di vetri
+    # da 92 euro - torna primo su D12 e le prime posizioni scendono da 11 a 10.
+    #
+    # Resta un buco noto: su una domanda tipo "la madia piu' economica" la
+    # categoria non viene riconosciuta (la resa utile e' stata filtrata) e in
+    # cima finiscono gli accessori. E' il difetto 8 di APERTI.md, e la frequenza
+    # delle parole non basta a risolverlo: "optionals" 14,4% e "sideboard" 14,8%
+    # non si distinguono. Il tipo di prodotto va preso da dove c'e' davvero -
+    # il campo "categoria" del pianificatore - non calcolato a posteriori.
+    tipo_chiesto = {t for t in shared | derived
+                    if t.isalpha() and title_frequency.get(t, 0)}
+
+    def fuori_categoria(card) -> int:
+        # La categoria si cerca nel TITOLO E NELLA DESCRIZIONE, non solo nel
+        # titolo. Misurato il 7ott2026 su "una panca Air laccata, qual e' la
+        # piu' economica": i titoli di questo catalogo sono in inglese
+        # ("AIR BENCH") e la parola "panca" vive nella descrizione italiana
+        # della riga. Guardando il solo titolo, NESSUNA scheda risultava della
+        # categoria chiesta, la guardia non escludeva niente e in cima tornavano
+        # gli accessori da 66 euro. Una guardia che non trova mai la categoria
+        # e' peggio di nessuna guardia: sembra attiva e non lo e'.
+        if not tipo_chiesto:
+            return 0
+        parole = set(search_tokens(card.get('prodotto', '')))
+        try:
+            parole |= parole_di_descrizione(card)
+        except Exception:
+            pass
+        return 0 if tipo_chiesto & parole else 1
+
+    if re.search(r"sfrutt|pi[uù]['’]?\s+larg|larghezza disponibile|widest|maximize", question, re.I):
+        candidates.sort(key=lambda c: (
+            fuori_categoria(c),
+            -max(card_dimension_values(c, 'width') or [0]),
+            min(matching_card_prices(c, question).values(), default=float('inf')),
+            c['codice'], c['pagina']))
+    elif re.search(r"meno costos|pi[uù]['’]?\s+economic|prezzo pi[uù]['’]?\s+basso|cheapest|least expensive", question, re.I):
+        candidates.sort(key=lambda c: (
+            fuori_categoria(c),
+            min(matching_card_prices(c, question).values(), default=float('inf')),
+            -max(card_dimension_values(c, 'width') or [0]), c['codice']))
+    return candidates
+
+
+def previous_candidate_codes(previous_answer):
+    section = find_section(previous_answer, SELECTABLE_HEADER)
+    text = previous_answer[section.start():] if section else previous_answer.split("NUOVA SELEZIONE DOCUMENTALE", 1)[-1]
+    return list(dict.fromkeys(c for _, c in codes_mentioned(text)))
+
+
+def previous_candidate_status(previous_answer, effective_question):
+    limits = parse_dimension_limits(effective_question)
+    labels = requested_price_labels(effective_question)
+    budget = requested_budget(effective_question)
+    results = []
+    for code in previous_candidate_codes(previous_answer):
+        cards = [card for (c, _), group in PRODUCT_CARDS.items() if c == code for card in group]
+        if not cards:
+            results.append((code, "DA VERIFICARE", "scheda documentale non disponibile"))
+            continue
+        reasons = []
+        unknown = False
+        for axis, op, bound in limits:
+            values = {v for card in cards for v in card_dimension_values(card, axis)}
+            if len(values) != 1 or any(not card_dimension_values(c, axis) for c in cards):
+                unknown = True
+                reasons.append(f"{axis}: dato mancante o discordante")
+                continue
+            value = next(iter(values))
+            if (op == 'max' and value > bound) or (op == 'min' and value < bound):
+                reasons.append(f"{axis} {value:g} cm supera il massimo {bound:g} cm" if op == 'max'
+                               else f"{axis} {value:g} cm inferiore al minimo {bound:g} cm")
+        for card in cards:
+            raw_prices = {label: catalog_price_number(raw) for label, raw in card.get('prezzi', {}).items()
+                          if not labels or label in labels}
+            values = [v for v in raw_prices.values() if v is not None]
+            if (labels or budget is not None) and not values:
+                unknown = True
+                reasons.append("prezzo della finitura richiesta non documentato")
+            elif budget is not None and values and min(values) > budget:
+                reasons.append(f"prezzo {min(values):g} euro supera il budget {budget:g} euro")
+        if unknown:
+            status = "DA VERIFICARE"
+        else:
+            status = "ESCLUSO" if reasons else "RESTA COMPATIBILE"
+        results.append((code, status, "; ".join(dict.fromkeys(reasons)) or "rispetta i vincoli numerici e la finitura richiesti"))
+    return results
+
+
+def append_previous_candidate_status(answer, previous_answer, effective_question):
+    results = previous_candidate_status(previous_answer, effective_question)
+    if not results:
+        return answer
+    # Replace model-generated historical blocks with the authoritative current identities.
+    answer = re.sub(
+        r"(?im)^(?:RISPOSTA\s*\n)?(?:verifica|riesame|analisi)[^\n]*(?:turno precedente|prodotti precedenti|codici precedenti)[^\n]*(?:\n(?!\s*\n)[^\n]*)*",
+        '', answer).strip()
+    history = "VERIFICA DEI CODICI DEL TURNO PRECEDENTE\n" + "\n".join(
+        f"- {code}: {status}; {reason}." for code, status, reason in results)
+    # Remove categorical claims that contradict verified exclusions. Keep new proposal distinct.
+    if any(status != "RESTA COMPATIBILE" for _, status, _ in results):
+        answer = re.sub(r"[^\n.!?]*(?:entrambi|entrambe|nessuno dei due)[^\n.!?]*(?:restano compatibili|va escluso|vanno esclusi)[^\n.!?]*[.!?]?", "", answer, flags=re.I)
+    return history + "\n\nNUOVA SELEZIONE DOCUMENTALE\n" + answer.strip()
+
+
+# Quante schede candidate finiscono davvero nel contesto mandato al modello.
+#
+# Misurato il 7ott2026 sui 65 casi della batteria LAGO. La lista che esce da
+# verified_dimension_candidates e' gia' ordinata per pertinenza ma non aveva
+# alcun tetto, mentre le pagine (retrieve_local_evidence) ne hanno uno da 70.000
+# caratteri. Risultato: per "quanto costa la madia 36e8 SIDEBOARD laccata" il
+# motore spediva 1201 schede, 282.247 caratteri, l'80% del contesto totale; per
+# una domanda su uno specchio 917 schede, con il codice giusto in terza
+# posizione. Si pagava a peso una zavorra che il modello doveva anche leggere.
+#
+# Dove cade il codice atteso, sui 20 casi della batteria che ne dichiarano uno:
+#   posizione piu' profonda osservata ............ 63  (B01 madia 36e8 SIDEBOARD)
+#   tetto  40 -> perde codici attesi in 2 casi su 19
+#   tetto  80 -> li conserva tutti (19/19)
+#   tetto 120 -> li conserva tutti (19/19), margine quasi doppio sul 63
+# Scelto 120 per il margine. Il contesto scende da ~351.000 a ~97.000 caratteri.
+#
+# ATTENZIONE a dove si taglia: il tetto sta QUI, non dentro
+# verified_dimension_candidates. Quella funzione, per le domande di tipo "la piu'
+# larga" o "la meno costosa", riordina la lista per larghezza o prezzo DOPO aver
+# calcolato la pertinenza. Tagliando prima di quel riordino si butterebbe via
+# proprio la scheda che la domanda cerca.
+SCHEDE_IN_CONTESTO = int(os.getenv("SCHEDE_IN_CONTESTO", "120"))
+
+
+def certified_candidate_evidence(question):
+    cards = verified_dimension_candidates(question)
+    if not cards:
+        return ''
+    totale = len(cards)
+    if totale > SCHEDE_IN_CONTESTO:
+        cards = cards[:SCHEDE_IN_CONTESTO]
+        print(f"[SCHEDE] {totale} candidate, inviate le prime {len(cards)} per pertinenza")
+    avvertenza = ('' if totale <= SCHEDE_IN_CONTESTO else
+                  f'Questo elenco e\' la parte piu\' pertinente di {totale} schede candidate, '
+                  f'non il catalogo intero: non dichiarare che fuori da qui non esiste altro. ')
+    return ('\nSCHEDE CON DIMENSIONI VERIFICATE PER LA CATEGORIA RICHIESTA. '
+            'Questi candidati rispettano i limiti numerici; confronta anche funzione e '
+            'altre caratteristiche richieste. Le misure e i prezzi appartengono alle '
+            'rispettive colonne. Confronta TUTTE le schede elencate qui sotto, di tutte le famiglie, prima di scegliere. '
+            + avvertenza +
+            'Se la priorità è sfruttare la larghezza, confronta i candidati in ordine di larghezza '
+            'decrescente, poi prezzo crescente a parità di larghezza, e scegli i primi due codici distinti con la finitura richiesta documentata. '
+            'Non dichiarare un massimo senza confrontare tutte le schede elencate. '
+            'Non elencare tra i selezionabili prodotti che violano i limiti.\n'
+            + '\n'.join(format_card(c) for c in cards))
+
+# Condizioni scritte in chiaro sulla pagina, che le schede non portano mai: il
+# LED senza alimentatore si vende da solo e il cliente resta col mobile spento.
+CONDIZIONE_PAGINA = re.compile(
+    r"[^.\n]*\b(?:non\s+(?:e[''’]\s+)?inclus\w+|non\s+compres\w+|esclus[oa]\b|"
+    r"non\s+predispost\w+|prevedere\s+almeno|non\s+disponibil\w+|maggiorazione)\b[^.\n]*", re.I)
+
+
+def page_conditions(numeri, limite=3):
+    out = []
+    for numero in numeri:
+        page = PAGE_BY_NUMBER.get(int(numero))
+        if not page:
+            continue
+        for frase in CONDIZIONE_PAGINA.findall(page.get('compact') or ''):
+            frase = ' '.join(str(frase).split())
+            if not (15 <= len(frase) <= 170):
+                continue
+            riga = f"{frase} (pag. {numero})"
+            if riga not in out:
+                out.append(riga)
+            if len(out) >= limite:
+                return out
+    return out
+
+
+def verified_candidates_answer(question):
+    cards = verified_dimension_candidates(question)
+    unique = {}
+    for card in cards:
+        unique.setdefault(card['codice'], card)
+    count = requested_candidate_count(question)
+    ordinate = list(unique.values())
+    budget_chiesto = requested_budget(question)
+    fuori_budget = set()
+    if budget_chiesto is not None:
+        # COL BUDGET, PRIMA CHI CI STA DENTRO. Il budget non toglie schede dal
+        # confronto (vedi senza_budget), ma chi lo supera non puo' presentarsi
+        # come "soluzione piu' pertinente". Misurato l'8ott2026: con 4.500
+        # euro la prima scheda era il tavolo Wildwood da 4.677, senza prezzo
+        # accanto perche' il prezzo non rientrava, e quello in vetro da 4.127
+        # che rientrava stava terzo.
+        #
+        # MA SOLO DENTRO LO STESSO PRODOTTO. Provato senza questo limite e
+        # misurato sul caso D04 ("1.200 euro per una madia 36e8 larga 220,8
+        # laccata"): in cima saliva ATY027, un optional da 223 euro, come
+        # "soluzione piu' pertinente" - il difetto 8 di APERTI.md rifatto da
+        # capo. Chi rientra nel budget passa davanti solo alle schede che
+        # hanno il suo stesso titolo di prodotto di quella piu' pertinente: un
+        # tavolo in vetro che rientra supera lo stesso tavolo in Wildwood che
+        # non rientra; un accessorio non supera una madia.
+        fuori_budget = {id(c) for c in ordinate if not matching_card_prices(c, question)}
+        if ordinate:
+            prodotto = ordinate[0].get('prodotto')
+            stessi = [c for c in ordinate if c.get('prodotto') == prodotto]
+            dentro = [c for c in stessi if id(c) not in fuori_budget]
+            if dentro:
+                altri = [c for c in ordinate if c.get('prodotto') != prodotto]
+                ordinate = dentro + [c for c in stessi if id(c) in fuori_budget] + altri
+    chosen = ordinate[:count] if count else ordinate[:3]
+    if not chosen:
+        # Nessun candidato PERCHE' il budget esclude tutto: non e' un mancato
+        # recupero, e' un no. Va detto come un no, con la soglia piu' bassa che
+        # il catalogo documenta, altrimenti il rivenditore crede che il prodotto
+        # non esista e il cliente se ne va senza sapere quanto costerebbe.
+        budget = requested_budget(question)
+        if budget is not None:
+            senza_tetto = re.sub(r"(?i)\b(?:massim\w*|max\.?|budget|spesa|entro|fino a|non pi[uù] di)\b[^,.;\n]*",
+                                 " ", question)
+            alternative = verified_dimension_candidates(senza_tetto)
+            prezzi = [(min(matching_card_prices(c, senza_tetto).values(), default=None), c)
+                      for c in alternative]
+            prezzi = [(p, c) for p, c in prezzi if p is not None]
+            if prezzi:
+                p, c = min(prezzi, key=lambda x: x[0])
+                return (f"Nessuna soluzione documentata rientra in {budget:g} euro. "
+                        f"La piu' economica che il catalogo documenta per questa richiesta e' "
+                        f"{c['prodotto']}, codice {c['codice']}, pagina {c['pagina']}, a {('%g' % p).replace('.', ',')} euro.\n\n"
+                        + DOCUMENT_DISCLAIMER)
+        return ('Non ho recuperato schede complete sufficienti per confermare una scelta. '
+                'Questo non dimostra che nel catalogo non esistano prodotti compatibili.')
+    lines = []
+    # Misura chiesta e non trovata: si dichiara invece di elencare altre misure
+    # come se niente fosse. Era l'errore della domanda sul LED largo 92.
+    esatte = exact_dimension_requests(question)
+    mancanti = [(a, v) for a, v in esatte if not any(card_matches_exact(c, [(a, v)]) for c in chosen)]
+    if mancanti:
+        detta = '; '.join(f"{nome_dell_asse(a)} {('%g' % v).replace('.', ',')} cm" for a, v in mancanti)
+        lines.append(f"Nessuna delle schede confrontate ha {detta}. "
+                     "Qui sotto le misure che il catalogo documenta per questa famiglia: "
+                     "la misura richiesta va verificata con il rivenditore prima dell'offerta.")
+    # Se la misura chiesta non ce l'ha nessuna scheda, NON esiste una "soluzione piu'
+    # pertinente": quello che segue e' materiale di contesto, e va detto cosi'. La
+    # frase sbagliata non e' il prodotto proposto, e' la sicurezza con cui lo si
+    # propone: un rivenditore la legge come una risposta e la porta al cliente.
+    if mancanti:
+        lines.append("Quello che segue non e' una proposta ma il materiale documentato "
+                     "piu' vicino, da verificare prima di qualunque offerta.")
+    elif budget_chiesto is not None and id(chosen[0]) in fuori_budget:
+        # La scheda piu' pertinente NON rientra nel budget, e nessuna dello
+        # stesso prodotto rientra (altrimenti sarebbe passata davanti): non e'
+        # una "soluzione", e' un no. Si dice come un no, con la cifra piu'
+        # bassa che il documento porta per quel prodotto - calcolata su tutte
+        # le sue schede candidate, non solo sulle tre mostrate.
+        primo = chosen[0]
+        stesse = [c for c in unique.values() if c.get('prodotto') == primo.get('prodotto')]
+        soglie = [(min(matching_card_prices(c, senza_budget(question)).values(), default=None), c)
+                  for c in stesse]
+        soglie = [(p, c) for p, c in soglie if p is not None]
+        frase = (f"Nessuna scheda di {primo['prodotto']} che risponde alla richiesta rientra in "
+                 f"{budget_chiesto:g} euro.")
+        if soglie:
+            p, c = min(soglie, key=lambda x: x[0])
+            frase += (f" La piu' economica documentata e' il codice {c['codice']}, pagina {c['pagina']}, "
+                      f"a {('%g' % p).replace('.', ',')} euro.")
+        lines.append(frase + " Qui sotto le schede confrontate, con i loro prezzi.")
+    else:
+        primo = chosen[0]
+        lines.append(f"Soluzione documentata piu' pertinente: {primo['prodotto']}, codice {primo['codice']}, "
+                     f"pagina {primo['pagina']}."
+                     + (f" Confrontata con altre {len(chosen) - 1} schede della stessa richiesta." if len(chosen) > 1 else ""))
+    if re.search(r"sfrutt|pi[uù]['’]?\s+larg|larghezza disponibile|widest|maximize", question, re.I):
+        lines.append(f"Scelta secondo la priorità dimensionale: {chosen[0]['codice']}; massima larghezza tra le schede compatibili recuperate, poi prezzo più basso a parità di larghezza.")
+    elif re.search(r"meno costos|pi[uù]['’]?\s+economic|prezzo pi[uù]['’]?\s+basso|cheapest|least expensive", question, re.I):
+        lines.append(f"Scelta secondo la priorità economica: {chosen[0]['codice']}; prezzo più basso tra le schede compatibili recuperate.")
+    if count and len(chosen) < count:
+        lines.append(f'Ho verificato {len(chosen)} soluzione/i, meno delle {count} richieste.')
+    for card in chosen:
+        attrs = '; '.join(f"{label}: {value}" +
+            (' cm' if re.fullmatch(r"\d+(?:[.,]\d+)?", str(value)) and
+             any(re.search(alias, label, re.I) for alias in DIMENSION_ALIASES.values()) and
+             not re.search(r"\b(?:cm|mm|m)\b", label, re.I) else '')
+            for label, value in card.get('attributi', {}).items())
+        prices = matching_card_prices(card, question)
+        def _in_euro(coppie):
+            return '; '.join(f"{label}: {price:,.2f} euro".replace(',', '_').replace('.', ',').replace('_', '.')
+                             for label, price in coppie.items())
+        price_text = _in_euro(prices)
+        if not prices and budget_chiesto is not None and id(card) in fuori_budget:
+            # Fuori budget non vuol dire senza prezzo: si dice quanto costa e
+            # che non rientra, altrimenti chi legge vede un prodotto proposto
+            # senza cifra e non sa perche'.
+            # Tutti i suoi prezzi, non solo quelli della finitura agganciata:
+            # per dire che una scheda non rientra bisogna mostrare anche il
+            # suo prezzo piu' basso, altrimenti il "no" non e' dimostrato.
+            oltre = {label: catalog_price_number(raw)
+                     for label, raw in card.get('prezzi', {}).items()}
+            oltre = {label: p for label, p in oltre.items() if p is not None}
+            if oltre and min(oltre.values()) > budget_chiesto:
+                price_text = (f"FUORI BUDGET ({budget_chiesto:g} euro): " + _in_euro(oltre))
+        lines.append(f"{card['prodotto']}, codice {card['codice']}, pagina {card['pagina']}. {attrs}. {price_text}.")
+        width = card_dimension_values(card, 'width')
+        width_bounds = [bound for axis, op, bound in parse_dimension_limits(question) if axis == 'width' and op == 'max']
+        if width and width_bounds:
+            bound = min(width_bounds)
+            lines.append(f"Margine rispetto al limite di larghezza: {bound:g} − {width[0]:g} = {bound-width[0]:g} cm.")
+        budget = requested_budget(question)
+        if budget is not None and len(prices) == 1:
+            price = next(iter(prices.values()))
+            lines.append(f"Budget residuo: {budget:g} − {price:g} = {budget-price:g} euro.")
+        elif budget is not None and len(prices) > 1:
+            # Piu' versioni rientrano: il residuo si da' sulla piu' cara e sulla
+            # piu' economica, dichiarando quali sono. Prima, con due prezzi, il
+            # conto non veniva fatto affatto.
+            cara = max(prices, key=prices.get)
+            economica = min(prices, key=prices.get)
+            lines.append(f"Rientrano nel budget {len(prices)} versioni. "
+                         f"La piu' cara che rientra ({cara}): budget residuo "
+                         f"{budget:g} − {prices[cara]:g} = {budget-prices[cara]:g} euro. "
+                         f"La piu' economica ({economica}): "
+                         f"{budget:g} − {prices[economica]:g} = {budget-prices[economica]:g} euro.")
+    # Un confronto di prezzo ha senso solo fra proposte. Se la misura chiesta non
+    # esiste, quei due prodotti non sono in gara fra loro e la differenza e' un
+    # numero che suggerisce una scelta mai offerta.
+    if len(chosen) == 2 and not mancanti:
+        price_lists = [matching_card_prices(c, question) for c in chosen]
+        if all(len(values)==1 for values in price_lists):
+            a,b = [next(iter(values.values())) for values in price_lists]
+            lines.append(f"Differenza di prezzo: {max(a,b):g} − {min(a,b):g} = {abs(a-b):g} euro.")
+    condizioni = page_conditions(dict.fromkeys(c['pagina'] for c in chosen))
+    if condizioni:
+        intestazione = ('Condizioni scritte sulla pagina:' if mancanti
+                        else 'Condizioni scritte sulla pagina, da mettere in offerta:')
+        lines.append(intestazione + '\n- ' + '\n- '.join(condizioni))
+    lines.append('La verifica riguarda le misure e le colonne di prezzo riportate. '
+                 'Funzioni aggiuntive, montaggio e optional richiedono evidenza specifica; non sono certificati da questo confronto.')
+    lines.append(DOCUMENT_DISCLAIMER)
+    return '\n\n'.join(lines)
+
+@app.get("/")
+async def root(cliente: str = ""):
+    """L'interfaccia. Ogni cliente ha anche il suo indirizzo: /lago, /gessi."""
+    attiva_cliente_se_libero(cliente)
+    return pagina_interfaccia()
+
+
+def interfaccia_html() -> str:
+    """Il testo dell'interfaccia col marchio del cliente acceso in questo momento.
+
+    Restituisce la stringa e non la risposta HTTP, perche' una stringa si puo'
+    controllare: la prova verifica che il titolo, il marchio e la costante del
+    cliente siano quelli giusti e che non resti nessun segnaposto non sostituito.
+    """
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if not os.path.exists(index_path):
+        raise HTTPException(status_code=500, detail=f"index.html non trovato in {STATIC_DIR}")
+    # Il marchio viene dal cliente attivo. I segnaposto sono nell'HTML
+    # ({{MARCHIO}}, {{PRODOTTO}}, {{CONTESTO}}, {{CLIENTE}}): un file unico per
+    # tutti, niente copie dell'interfaccia da tenere allineate una per azienda.
+    with open(index_path, encoding="utf-8") as flusso:
+        pagina = flusso.read()
+    for chiave, valore in (("{{MARCHIO}}", MARCHIO.get("marchio") or CLIENTE.upper()),
+                           ("{{PRODOTTO}}", MARCHIO.get("prodotto") or CLIENTE.upper()),
+                           ("{{CONTESTO}}", DOCUMENT_CONTEXT),
+                           ("{{CLIENTE}}", CLIENTE)):
+        pagina = pagina.replace(chiave, html.escape(valore))
+    return pagina
+
+
+def pagina_interfaccia():
+    return HTMLResponse(interfaccia_html())
+
+
+# Catalogo diviso in parti (static/catalogo/catalogo_p401-500.pdf ...): ogni parte resta sotto
+# i 25 MB che GitHub accetta dal browser e si carica piu' in fretta del PDF intero.
+CATALOG_PARTS_DIR = file_del_cliente("catalogo", os.path.join(STATIC_DIR, "catalogo"))
+CATALOG_PART_NAME = re.compile(r"^catalogo_p(\d+)-(\d+)\.pdf$", re.I)
+
+
+def catalog_parts() -> List[tuple]:
+    if not os.path.isdir(CATALOG_PARTS_DIR):
+        return []
+    parts = []
+    for name in os.listdir(CATALOG_PARTS_DIR):
+        match = CATALOG_PART_NAME.match(name)
+        if match:
+            parts.append((int(match.group(1)), int(match.group(2)), name))
+    return sorted(parts)
+
+
+def catalog_available() -> bool:
+    return bool(catalog_parts()) or bool(CATALOG_PDF_PATH and os.path.isfile(CATALOG_PDF_PATH))
+
+
+# ============================================================
+# PIU' CLIENTI ACCESI INSIEME
+# ============================================================
+# La manopola ACCENDE un cliente, non ne spegne un altro: LAGO resta in piedi
+# quando si attiva Gessi, ognuno al proprio indirizzo (/lago, /gessi).
+#
+# Come e' fatto, e perche' cosi'. Il motore tiene il documento in 14 strutture a
+# livello di modulo, richiamate in 181 punti del file. Riscrivere quei 181 punti
+# per farli passare da un oggetto "cliente" e' il tipo di modifica che rompe LAGO
+# in silenzio. Qui invece ogni cliente possiede le PROPRIE 14 strutture, e
+# all'arrivo di una domanda il motore viene fatto puntare a quelle del cliente
+# richiesto: si scambia un riferimento, non si ricopia niente, quindi il cambio e'
+# istantaneo e i dati di un'azienda non passano mai per quelli di un'altra.
+#
+# Il prezzo da pagare, dichiarato: due domande per clienti diversi che arrivano
+# nello stesso istante si mettono in fila, perche' il motore ha un solo gruppo di
+# nomi. Per le dimostrazioni e' trasparente; se un giorno servono molti utenti in
+# parallelo, lo stesso codice si mette su un servizio per cliente e la fila
+# scompare, senza cambiare una riga.
+STATO_DEL_MOTORE = (
+    # strutture costruite dal documento
+    "DOCUMENT_PAGES", "PAGE_BY_NUMBER", "VOCABULARY", "CODE_ROWS", "PRODUCT_CARDS",
+    "TITLE_SYNONYMS", "KNOWN_ROOTS", "INDEXED_CODES", "CODE_SIZES", "ANSWER_CACHE",
+    "DOCLING_PAGES", "DOCLING_CARDS", "DOCLING_CARD_REPORT", "DOCLING_STATE",
+    # configurazione del cliente
+    "CLIENTE", "CLIENTE_DIR", "MARCHIO", "DOCUMENT_INDEX_PATH", "PRODUCT_CARDS_PATH",
+    "CATALOG_PARTS_DIR", "CATALOG_PDF_PATH", "DOCLING_CACHE_PATH",
+    "DOCUMENT_CONTEXT", "DOCUMENT_DISCLAIMER",
+    # gli assi ricavati dalle colonne di QUESTO cliente (costruisci_assi)
+    "DIMENSION_ALIASES", "ETICHETTE_DEGLI_ASSI", "ASSI_DAL_DOCUMENTO", "COLONNE_NON_LETTE",
+    "VALORI_DEGLI_ASSI",
+)
+CLIENTE_PREDEFINITO = CLIENTE
+STATO_PER_CLIENTE: Dict[str, Dict[str, Any]] = {}
+CLIENTE_LOCK = threading.RLock()
+
+
+def _stato_corrente() -> Dict[str, Any]:
+    radice = globals()
+    return {nome: radice[nome] for nome in STATO_DEL_MOTORE}
+
+
+def _applica(stato: Dict[str, Any]) -> None:
+    globals().update(stato)
+
+
+def _configura_per(cliente: str) -> None:
+    """Punta la configurazione del modulo sui file di quel cliente."""
+    radice = globals()
+    cartella = os.path.join(CLIENTI_DIR, cliente)
+    marchio = marchio_del_cliente(cliente)
+    contesto = (marchio.get("contesto") or "").strip() or f"Catalogo {marchio.get('prodotto') or cliente.upper()}"
+    radice.update({
+        "CLIENTE": cliente,
+        "CLIENTE_DIR": cartella,
+        "MARCHIO": marchio,
+        "DOCUMENT_INDEX_PATH": file_del_cliente(
+            "indice.txt", os.path.join(DATA_DIR, "document_index_COMPLETO.txt"), cliente),
+        "PRODUCT_CARDS_PATH": file_del_cliente(
+            "schede.json", os.path.join(DATA_DIR, "schede_prodotto.json"), cliente),
+        "CATALOG_PARTS_DIR": file_del_cliente(
+            "catalogo", os.path.join(STATIC_DIR, "catalogo"), cliente),
+        "CATALOG_PDF_PATH": file_del_cliente(
+            "catalogo.pdf", os.path.join(STATIC_DIR, "catalogo.pdf"), cliente),
+        "DOCLING_CACHE_PATH": file_del_cliente(
+            "docling_document.json", os.path.join(DATA_DIR, "docling_document.json"), cliente),
+        "DOCUMENT_CONTEXT": contesto,
+        "DOCUMENT_DISCLAIMER": (marchio.get("avvertenza") or "").strip() or (
+            f"I dati appartengono a {contesto}; prezzi e condizioni devono essere "
+            "verificati commercialmente prima di formulare un'offerta definitiva."),
+    })
+
+
+def cliente_valido(cliente: Optional[str]) -> str:
+    """Il nome richiesto se e' un cliente che esiste, altrimenti il predefinito."""
+    pulito = re.sub(r"[^a-z0-9_-]", "", (cliente or "").strip().lower())[:40]
+    if not pulito:
+        return CLIENTE_PREDEFINITO
+    if pulito == CLIENTE_PREDEFINITO or pulito in clienti_disponibili():
+        return pulito
+    return CLIENTE_PREDEFINITO
+
+
+def attiva_cliente_se_libero(cliente: Optional[str] = None) -> str:
+    """Come attiva_cliente, ma se il lucchetto e' occupato NON aspetta.
+
+    Serve alle pagine che solo mostrano (stato, collaudo, autodiagnosi,
+    interfaccia): aspettare li' significa bloccare il ciclo di eventi e con esso
+    tutta l'app. Meglio mostrare il cliente attualmente acceso che piantarsi.
+    """
+    if not CLIENTE_LOCK.acquire(blocking=False):
+        return CLIENTE
+    try:
+        return attiva_cliente(cliente)
+    finally:
+        CLIENTE_LOCK.release()
+
+
+def attiva_cliente(cliente: Optional[str] = None) -> str:
+    """Accende il cliente richiesto. Chi era acceso prima resta caricato in memoria."""
+    nome = cliente_valido(cliente)
+    with CLIENTE_LOCK:
+        if nome == CLIENTE and nome in STATO_PER_CLIENTE:
+            return nome
+        STATO_PER_CLIENTE[CLIENTE] = _stato_corrente()
+        if nome in STATO_PER_CLIENTE:
+            _applica(STATO_PER_CLIENTE[nome])
+            return nome
+        print(f"[CLIENTE] primo caricamento di '{nome}'")
+        _configura_per(nome)
+        # Oggetti NUOVI, non svuotati. Svuotandoli si svuotava anche la fotografia
+        # del cliente precedente, che li teneva per riferimento: tornando su LAGO
+        # tornavano le 568 pagine ma i codici erano i 22 di Gessi. Un cliente che
+        # vede i dati di un altro e' il difetto peggiore che questo sistema possa
+        # avere, e qui si vedeva solo mettendo i due a confronto.
+        radice = globals()
+        for nome_struttura in STATO_DEL_MOTORE[:14]:
+            esistente = radice.get(nome_struttura)
+            if isinstance(esistente, (dict, set, list)):
+                radice[nome_struttura] = type(esistente)()
+        load_document_index()
+        STATO_PER_CLIENTE[nome] = _stato_corrente()
+        return nome
+
+
+def clienti_accesi() -> List[str]:
+    return sorted(set(STATO_PER_CLIENTE) | {CLIENTE})
+
+
+
+@app.get("/catalogo/pagina/{page}")
+async def catalog_page(page: int, cliente: str = ""):
+    """Apre la pagina N del documento originale: la parte che la contiene, alla pagina giusta.
+
+    L'indirizzo del file si ricava dalla cartella del cliente attivo. Prima era
+    scritto fisso ("/static/catalogo/..."): andava bene finche' c'era un solo
+    cliente, ma il catalogo di un cliente nuovo sta in static/clienti/<nome>/catalogo
+    e il rimando avrebbe dato 404 su ogni pagina.
+    """
+    attiva_cliente(cliente)
+    sotto = os.path.relpath(CATALOG_PARTS_DIR, STATIC_DIR).replace(os.sep, "/")
+    for first, last, name in catalog_parts():
+        if first <= page <= last:
+            return RedirectResponse(f"/static/{sotto}/{name}#page={page - first + 1}",
+                                    status_code=307)
+    if CATALOG_PDF_PATH and os.path.isfile(CATALOG_PDF_PATH):
+        return RedirectResponse(f"/catalogo.pdf#page={page}", status_code=307)
+    raise HTTPException(status_code=404, detail="Pagina del catalogo non disponibile")
+
+
+@app.get("/catalogo.pdf")
+async def catalog_pdf() -> FileResponse:
+    """Serve il documento originale al visualizzatore della pagina catalogo."""
+    if not CATALOG_PDF_PATH or not os.path.isfile(CATALOG_PDF_PATH):
+        raise HTTPException(status_code=404, detail="Catalogo PDF non disponibile")
+    return FileResponse(
+        CATALOG_PDF_PATH,
+        media_type="application/pdf",
+        filename=os.path.basename(CATALOG_PDF_PATH),
+        content_disposition_type="inline",
+    )
+
+
+@app.get("/api/status")
+async def status(cliente: str = ""):
+    attiva_cliente_se_libero(cliente)
+    """
+    Riepilogo rapido dello stato backend.
+    """
+    return {
+        "cliente_attivo": CLIENTE,
+        "clienti_disponibili": clienti_disponibili(),
+        "clienti_accesi": clienti_accesi(),
+        "cliente_da_cartella_propria": os.path.isdir(CLIENTE_DIR),
+        "marchio": MARCHIO,
+        "file_in_uso": {
+            "indice": os.path.relpath(DOCUMENT_INDEX_PATH, BASE_DIR),
+            "schede": os.path.relpath(PRODUCT_CARDS_PATH, BASE_DIR),
+            "catalogo": os.path.relpath(CATALOG_PARTS_DIR, BASE_DIR),
+        },
+        "status": f"Narratore-Risponditore attivo · {DOCUMENT_CONTEXT}",
+        "kb_blocks": len(KB_BLOCKS),
+        "comm_blocks": len(COMM_ITEMS),
+        "document_pages": len(DOCUMENT_PAGES),
+        "document_families": len({p.get("family") for p in DOCUMENT_PAGES if p.get("family")}),
+        "document_code_rows": len(CODE_ROWS),
+        "validator_mode": VALIDATOR_MODE,
+        "generation_model": f"{GENERATION_PROVIDER}/{generation_model_name()}",
+        "answer_cache_size": len(ANSWER_CACHE),
+        "document_index_loaded": bool(DOCUMENT_PAGES),
+        "docling_enabled": DOCLING_ENABLED,
+        "docling_cards_certified": False,
+        "docling_state": DOCLING_STATE,
+        "docling_pages": len(DOCLING_PAGES),
+        "docling_cards": len(DOCLING_CARDS),
+        "docling_card_report": DOCLING_CARD_REPORT,
+        "engine_revision": "document_engine_v6",
+        "docling_used_in_local_retrieval": bool(DOCLING_PAGES) and SEARCH_ENGINE != "openai_vector",
+        "engine": active_document_engine(),
+        "engine_requested": SEARCH_ENGINE,
+        "deepseek_ready": bool(client and DOCUMENT_PAGES),
+        "openai_vector_ready": bool(openai_client and OPENAI_VECTOR_STORE_ID),
+        "universal_constraint_validator": True,
+        "narratore_risponditore": "attivo",
+        "commercial_proposal_enabled": ENABLE_COMMERCIAL_PROPOSAL,
+        "catalog_pdf_available": catalog_available(),
+        "product_cards": sum(len(v) for v in PRODUCT_CARDS.values()),
+        # Il visore e' pronto anche con il catalogo diviso in parti: guardare solo
+        # il PDF unico dichiarava "non pronto" mentre /catalogo/pagina/N funzionava.
+        "catalog_viewer_ready": catalog_available(),
+        "catalog_parts": [name for _, _, name in catalog_parts()],
+    }
+
+
+# ============================================================
+# COLLAUDO DAL BROWSER
+# ============================================================
+# /collaudo?modello=deepseek-chat esegue sul server la batteria di casi del documento
+# installato (static/data/casi_collaudo.json oppure casi_*.json) e mostra i risultati.
+# Ogni modello provato resta in tabella per il confronto. Il modello indicato vale solo
+# per il collaudo, non per gli utenti. Con COLLAUDO_TOKEN impostato serve ?token=...
+
+COLLAUDO_TOKEN = os.getenv("COLLAUDO_TOKEN", "").strip()
+COLLAUDO_STATE: Dict[str, Any] = {"running": None, "progress": "", "results": {},
+                                  "battito": 0.0}
+# Dopo quanti secondi senza avanzamento una batteria si considera morta. Serviva:
+# un collaudo che si pianta lascia acceso il segno "in corso", e un nuovo lancio
+# non fa nulla perche' crede ce ne sia gia' uno. L'unico modo di uscirne era
+# riavviare il servizio.
+COLLAUDO_SCADENZA = float(os.getenv("COLLAUDO_SCADENZA", "300"))
+
+
+def collaudo_bloccato() -> bool:
+    """La batteria segnata 'in corso' non da' segni di vita da troppo tempo."""
+    if not COLLAUDO_STATE["running"]:
+        return False
+    return (time.time() - (COLLAUDO_STATE.get("battito") or 0)) > COLLAUDO_SCADENZA
+COLLAUDO_LOCK = threading.Lock()
+
+
+def collaudo_cases() -> List[Dict[str, Any]]:
+    # La batteria appartiene al cliente: le domande di LAGO non misurano Gessi.
+    # Il ripiego su static/data vale solo per il cliente che non ha cartella propria.
+    candidates = [os.getenv("COLLAUDO_CASES", "").strip(),
+                  os.path.join(CLIENTE_DIR, "casi_collaudo.json")]
+    if os.path.isdir(CLIENTE_DIR):
+        candidates += sorted(
+            os.path.join(CLIENTE_DIR, f) for f in os.listdir(CLIENTE_DIR)
+            if f.startswith("casi_") and f.endswith(".json")
+        )
+    if not os.path.isdir(CLIENTE_DIR) or os.path.isfile(os.path.join(CLIENTE_DIR, "ripiego")):
+        candidates.append(os.path.join(DATA_DIR, "casi_collaudo.json"))
+        if os.path.isdir(DATA_DIR):
+            candidates += sorted(
+                os.path.join(DATA_DIR, f) for f in os.listdir(DATA_DIR)
+                if f.startswith("casi_") and f.endswith(".json")
+            )
+    for path in candidates:
+        if path and os.path.exists(path):
+            with open(path, encoding="utf-8") as handle:
+                return json.load(handle)
+    return []
+
+
+def readable_pattern(pattern: str) -> str:
+    """Espressione di controllo resa leggibile: '3\\.336' -> '3.336', 'a|b' -> 'a oppure b'."""
+    text = re.sub(r"\\s\*|\\n|\[\^\\n\]\{\d+,\d+\}|\[\^\\n\]\*|\\b|\\s", " ", pattern)
+    text = text.replace("\\.", ".").replace("|", " oppure ")
+    text = re.sub(r"[()\[\]?*+^$\\]", "", text)
+    return re.sub(r"\s{2,}", " ", text).strip()
+
+
+CITAZIONE_PAGINA = re.compile(r"\bpag(?:in[ae]|g?\.)\s*((?:\d{1,3}\s*(?:,|;|e|&)?\s*)+)", re.I)
+CIFRA_DICHIARATA = re.compile(r"\b\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?\b|\b\d+,\d{1,2}\b")
+
+
+def numeri_non_sulla_pagina(answer: str) -> List[str]:
+    """Ogni cifra scritta nella risposta deve comparire sulla pagina che la risposta cita.
+
+    Non e' un giudizio automatico: un totale calcolato (somma di due prezzi) non sta
+    sulla pagina e non e' un'invenzione. Questa funzione MISURA e mostra, non boccia.
+    Serve a rispondere a una domanda sola: il motore sta scrivendo numeri che nel
+    documento non esistono? Il controllo e' indipendente dal documento, quindi vale
+    per qualsiasi PDF, non solo per questo catalogo.
+    """
+    pagine = set()
+    for blocco in CITAZIONE_PAGINA.findall(answer):
+        pagine.update(int(n) for n in re.findall(r"\d{1,3}", blocco))
+    if not pagine:
+        return []
+    testo = " ".join(p.get("text", "") for p in DOCUMENT_PAGES if p.get("page") in pagine)
+    if not testo.strip():
+        return [f"pagina citata assente dall'indice: {sorted(pagine)}"]
+    presenti = set(CIFRA_DICHIARATA.findall(testo))
+    sospette, somme = [], set()
+    valori = [european_number(v) for v in presenti]
+    valori = [v for v in valori if v is not None]
+    for a in valori:
+        for b in valori:
+            somme.add(round(a + b, 2))
+    for cifra in dict.fromkeys(CIFRA_DICHIARATA.findall(answer)):
+        if cifra in presenti:
+            continue
+        valore = european_number(cifra)
+        if valore is not None and round(valore, 2) in somme:
+            continue  # totale calcolato da due numeri della pagina: lecito
+        sospette.append(cifra)
+    return sospette
+
+
+PAROLE_CHE_ESTENDONO = re.compile(
+    r"\b(?:solo|soltanto|unicamente|esclusivamente|mai|nessun[ao]?|nessuno|"
+    r"tutt[ieo]|sempre|in nessun caso|qualsiasi|ogni)\b", re.I)
+# Un superlativo e' un'affermazione su TUTTO il catalogo quanto un "solo" o un
+# "mai", ma travestita da descrizione. Osservato il 7ott2026 su una risposta per
+# il resto perfetta: "la composizione Happening piu' ampia a catalogo e' la 1491,
+# larghezza 400" - e due righe dopo proponeva la 1495, larga 427. Per superficie
+# occupata aveva ragione (400x390 contro 427x176), per larghezza no: aveva detto
+# "piu' ampia" senza dire rispetto a che cosa. Un rivenditore attento lo coglie,
+# e una volta colto non si fida piu' del resto, che era tutto esatto.
+SUPERLATIVI = re.compile(
+    r"\b(?:la |il |lo |le |i )?(?:piu['’’]\s+\w+|meno\s+\w+|massim[ao]|minim[ao]|"
+    r"unic[ao]|miglior\w*|peggior\w*|pi[uù]\s+\w+)\b", re.I)
+CRITERIO_DICHIARATO = re.compile(
+    r"\b(?:per |come |in |di )?(?:larghezz|profondit|altezz|diametr|prezzo|costo|"
+    r"superficie|ingombr|capacit|lunghezz|peso|fra (?:le|i|quell))\w*", re.I)
+SOGGETTO_DOCUMENTO = re.compile(
+    r"\b(?:catalogo|documento|listino|in nessuna scheda|nel documento|del catalogo)\b", re.I)
+
+
+def affermazioni_troppo_larghe(answer: str) -> List[str]:
+    """Frasi che dichiarano una regola sull'INTERO documento avendone vista una parte.
+
+    Il motore guarda alcune pagine e poi scrive "le gambe dei tavoli tondi sono in
+    vetro" o "la finitura legno esiste solo come top": basta una famiglia non vista
+    per renderle false, e sono false dette con sicurezza, che e' il danno peggiore
+    davanti a un cliente. Osservato due giorni di fila sullo stesso tipo di domanda.
+
+    Come per le cifre: qui si MISURA e si mostra, non si boccia. Una frase puo'
+    essere legittima ("il prezzo si riferisce solo al piano"): e' chi legge il
+    verbale a decidere. Si segnalano le frasi in cui una parola che estende sta
+    insieme a un soggetto che e' il documento o una categoria al plurale.
+    """
+    sospette = []
+    for frase in re.split(r"(?<=[.;:])\s+", answer or ""):
+        if len(frase) < 25 or not PAROLE_CHE_ESTENDONO.search(frase):
+            continue
+        # un verbo di esistenza o di stato accanto a una parola che estende: e' li'
+        # che nasce la regola inventata ("esistono solo", "sono sempre", "non compare mai")
+        esistenza = re.search(
+            r"\b(?:sono|hanno|esiston\w+|compaion\w+|risultan\w+|vengono|presentan\w+|"
+            r"e'|dispongon\w+|prevedon\w+)\b", frase, re.I)
+        if SOGGETTO_DOCUMENTO.search(frase) or esistenza:
+            sospette.append(" ".join(frase.split())[:150])
+    # Superlativo senza criterio: "la piu' ampia", "la piu' capiente", "l'unica".
+    # Si segnala solo quando NON e' detto rispetto a che cosa, perche' "la piu'
+    # larga fra quelle da 220,8" e' una frase legittima e misurabile.
+    for frase in re.split(r"(?<=[.;:])\s+", answer or ""):
+        if len(frase) < 20 or not SUPERLATIVI.search(frase):
+            continue
+        if CRITERIO_DICHIARATO.search(frase):
+            continue
+        pulita = " ".join(frase.split())[:150]
+        if pulita not in sospette:
+            sospette.append("superlativo senza criterio: " + pulita)
+    return sospette
+
+
+def esito_del_caso(answer: str, problemi: List[str]) -> str:
+    """Quattro esiti, non due. E' la correzione del difetto che e' costato la
+    notte del 6-7 ottobre 2026.
+
+    Il collaudo sapeva dire solo SUPERATO o FALLITO. Quando il motore si fermava
+    restituiva una frase ben scritta, il collaudo ci cercava dentro i prezzi
+    attesi, non li trovava, e scriveva "manca: 3.413". Identico a una risposta
+    sbagliata. Novanta batterie di fila a certificare che mancava un prezzo,
+    mentre il motore non partiva nemmeno.
+
+        OK         la risposta contiene quello che deve
+        SBAGLIATA  il motore ha risposto, il contenuto non va
+        VUOTO      il motore ha risposto, ma senza niente dentro
+        SCHIANTO   il motore non e' partito: la batteria si ferma qui
+
+    La differenza che conta: SBAGLIATA e' una misura del prodotto, SCHIANTO non
+    misura niente. Proseguire dopo uno schianto costa soldi veri al fornitore del
+    modello e non produce un solo dato utile.
+    """
+    testo = (answer or "").strip()
+    if motore_fermo(testo):
+        return "SCHIANTO"
+    if not testo:
+        return "VUOTO"
+    return "OK" if not problemi else "SBAGLIATA"
+
+
+def collaudo_check(answer: str, case: Dict[str, Any]) -> List[str]:
+    problems = []
+    for pattern in case.get("deve", []):
+        if not re.search(pattern, answer, re.I | re.S):
+            problems.append(f"manca: {readable_pattern(pattern)}")
+    for pattern in case.get("non_deve", []):
+        if re.search(pattern, answer, re.I | re.S):
+            problems.append(f"non doveva esserci: {readable_pattern(pattern)}")
+    limit = case.get("max_parole")
+    if limit:
+        words = len(re.split(SELECTABLE_HEADER, answer, flags=re.I)[0].split())
+        if words > limit:
+            problems.append(f"troppo lunga: {words} parole (massimo {limit})")
+    return problems
+
+
+def run_collaudo(model: str, cliente: str = "") -> None:
+    """Il collaudo gira su un thread proprio e RIFISSA il cliente prima di ogni
+    domanda, invece di tenere il lucchetto per tutta la batteria.
+
+    Tenerlo per tutta la durata sembrava prudente e invece piantava l'app intera:
+    la pagina del collaudo si aggiorna da sola ogni dieci secondi, ogni
+    aggiornamento chiedeva lo stesso lucchetto, e l'attesa avveniva dentro il
+    ciclo di eventi — quindi si bloccava ogni richiesta, compresa quella che
+    serviva a guardare il collaudo. Rifissare il cliente a ogni turno costa uno
+    scambio di riferimenti e protegge allo stesso modo.
+    """
+    import asyncio
+    cliente = cliente or CLIENTE_PREDEFINITO
+    chiave = f"{cliente}/{model}"
+    GENERATION_OVERRIDE.model = model
+    GENERATION_OVERRIDE.no_cache = True  # misura vera: niente risposte dalla memoria
+    results = []
+    COLLAUDO_STATE["battito"] = time.time()
+    try:
+        attiva_cliente(cliente)
+        cases = [c for c in collaudo_cases() if not c.get("solo_offline")]
+        for number, case in enumerate(cases, 1):
+            COLLAUDO_STATE["progress"] = f"{chiave}: caso {number} di {len(cases)} - {case['nome']}"
+            COLLAUDO_STATE["battito"] = time.time()
+            previous_question, previous_answer, answer, times = "", "", "", []
+            try:
+                for turn in case["turni"]:
+                    attiva_cliente(cliente)   # il cliente resta quello, turno per turno
+                    started = time.perf_counter()
+                    response = asyncio.run(api_ask(QuestionRequest(
+                        question=("/globale " if case.get("modalita") == "globale" else "/catalogo ") + turn,
+                        previous_question=previous_question,
+                        previous_answer=previous_answer,
+                    )))
+                    times.append(round(time.perf_counter() - started, 1))
+                    answer = response.answer
+                    previous_question, previous_answer = turn, answer
+                problems = collaudo_check(answer, case)
+            except Exception as error:
+                problems = [f"errore: {causa_tecnica(error)}"]
+                answer = f"{MOTORE_FERMO} — {causa_tecnica(error)}"
+            esito = esito_del_caso(answer, problems)
+            results.append({"nome": case["nome"], "ok": esito == "OK", "esito": esito,
+                            "problemi": problems,
+                            "tempi": times, "risposta": answer,
+                            "numeri_non_provati": numeri_non_sulla_pagina(answer),
+                            "affermazioni_larghe": affermazioni_troppo_larghe(answer)})
+            COLLAUDO_STATE["results"][chiave] = {"casi": results, "completo": False}
+            if esito == "SCHIANTO":
+                # Non si prosegue: gli altri casi darebbero lo stesso identico
+                # schianto, pagato una volta per caso al fornitore del modello.
+                fermata = (f"batteria interrotta al caso {number} di {len(cases)}: "
+                           f"il motore non ha risposto. {' '.join(answer.split())[:300]}")
+                print(f"[COLLAUDO] {fermata}")
+                COLLAUDO_STATE["results"][chiave] = {
+                    "casi": results, "completo": True, "interrotto": fermata}
+                return
+        COLLAUDO_STATE["results"][chiave] = {"casi": results, "completo": True}
+    finally:
+        GENERATION_OVERRIDE.model = ""
+        GENERATION_OVERRIDE.no_cache = False
+        COLLAUDO_STATE["running"] = None
+        COLLAUDO_STATE["progress"] = ""
+
+
+def collaudo_page() -> str:
+    esc = html.escape
+    running = COLLAUDO_STATE["running"]
+    models = list(COLLAUDO_STATE["results"].keys())
+    rows = ""
+    names: List[str] = []
+    for model in models:
+        for case in COLLAUDO_STATE["results"][model]["casi"]:
+            if case["nome"] not in names:
+                names.append(case["nome"])
+    for name in names:
+        cells = ""
+        for model in models:
+            case = next((c for c in COLLAUDO_STATE["results"][model]["casi"] if c["nome"] == name), None)
+            if case is None:
+                cells += "<td class='wait'>in attesa</td>"
+                continue
+            esito = case.get("esito") or ("OK" if case["ok"] else "SBAGLIATA")
+            badge = {
+                "OK": "<b class='ok'>SUPERATO</b>",
+                "SBAGLIATA": "<b class='ko'>RISPOSTA SBAGLIATA</b>",
+                "VUOTO": "<b class='ko'>VUOTO</b>",
+                "SCHIANTO": "<b class='crash'>SCHIANTO — il motore non è partito</b>",
+            }.get(esito, "<b class='ko'>FALLITO</b>")
+            detail = "".join(f"<li>{esc(p)}</li>" for p in case["problemi"])
+            cells += (
+                f"<td>{badge} <span class='t'>{' + '.join(str(t) for t in case['tempi'])} s</span>"
+                f"{'<ul>' + detail + '</ul>' if detail else ''}"
+                f"<details><summary>risposta</summary><pre>{esc(case['risposta'])}</pre></details></td>"
+            )
+        rows += f"<tr><th>{esc(name)}</th>{cells}</tr>"
+    header = "".join(
+        f"<th>{esc(m)}<br><span class='t'>"
+        f"{sum(c['ok'] for c in COLLAUDO_STATE['results'][m]['casi'])}/"
+        f"{len(COLLAUDO_STATE['results'][m]['casi'])} superati"
+        + (f", media {sum(sum(c['tempi']) for c in COLLAUDO_STATE['results'][m]['casi']) / max(1, sum(len(c['tempi']) for c in COLLAUDO_STATE['results'][m]['casi'])):.1f} s per risposta"
+           if COLLAUDO_STATE['results'][m]['casi'] else "")
+        + ("" if COLLAUDO_STATE['results'][m]['completo'] else " (in corso)")
+        + "</span></th>"
+        for m in models
+    )
+    attesa = COLLAUDO_STATE.get("progress") or "avvio in corso, il primo caso richiede qualche secondo"
+    status = (f"<p class='run'>In corso: {esc(attesa)} "
+              "- la pagina si aggiorna da sola.</p>" if running else "")
+    # Una batteria fermata per schianto non e' una batteria con molti fallimenti:
+    # e' una misura che non c'e'. Va detto in cima, non dedotto dalla tabella.
+    fermate = "".join(
+        f"<p class='stop'><b>{esc(m)}</b>: {esc(COLLAUDO_STATE['results'][m]['interrotto'])}</p>"
+        for m in models if COLLAUDO_STATE["results"][m].get("interrotto"))
+    # L'auto-aggiornamento punta a un indirizzo SENZA il parametro "modello".
+    # Prima ricaricava l'indirizzo corrente, che il comando di avvio ce l'ha
+    # dentro: appena una batteria finiva, l'aggiornamento successivo ne faceva
+    # partire un'altra, che cancellava la precedente. Per sempre, e senza lasciare
+    # traccia — ed e' per questo che lo storico non si vedeva mai.
+    solo_vista = f"/collaudo?cliente={CLIENTE}"
+    refresh = (f"<meta http-equiv='refresh' content='10;url={esc(solo_vista)}'>"
+               if running else "")
+    empty = "" if models or running else "<p>Nessun collaudo eseguito. Apri /collaudo?modello=deepseek-chat</p>"
+    return f"""<!doctype html><html lang='it'><head><meta charset='utf-8'>{refresh}
+<meta name='viewport' content='width=device-width, initial-scale=1'><title>Collaudo</title>
+<style>body{{font-family:system-ui,sans-serif;margin:24px;background:#f6f4f1;color:#1b1b1b}}
+table{{border-collapse:collapse;width:100%;background:#fff}}th,td{{border:1px solid #ddd;padding:8px;vertical-align:top;text-align:left;font-size:14px}}
+thead th{{background:#1b1b1b;color:#fff}}.ok{{color:#11772e}}.ko{{color:#b3261e}}.crash{{color:#fff;background:#b3261e;padding:2px 6px}}.t{{color:#666;font-weight:normal;font-size:12px}}
+pre{{white-space:pre-wrap;font-size:12px;background:#f3f3f3;padding:8px}}.run{{background:#fff3cd;padding:10px}}
+.stop{{background:#b3261e;color:#fff;padding:12px;font-size:15px}}ul{{margin:6px 0 0 18px;color:#b3261e}}</style></head>
+<body><h1>Collaudo Narratore-Superrisponditore</h1><p>{esc(DOCUMENT_CONTEXT)}</p>{fermate}{status}{empty}
+<table><thead><tr><th>Caso</th>{header}</tr></thead><tbody>{rows}</tbody></table></body></html>"""
+
+
+@app.get("/collaudo.txt", response_class=PlainTextResponse)
+async def collaudo_testo(modello: str = "deepseek-chat", caso: str = "", token: str = "",
+                         cliente: str = ""):
+    """Lo stesso collaudo in testo nudo: una riga per caso, leggibile senza interpretarla.
+
+    La pagina HTML contiene 65 risposte intere: chiunque la rilegga (una persona o un
+    programma) deve prima riassumerla, e un riassunto non vale come verbale. Qui il
+    verbale e' il testo. Con ?caso=NOME si ottiene la risposta integrale di quel caso.
+    """
+    if COLLAUDO_TOKEN and token != COLLAUDO_TOKEN:
+        raise HTTPException(status_code=403, detail="token del collaudo mancante o errato")
+    attiva_cliente_se_libero(cliente)
+    chiave = modello if "/" in modello else f"{CLIENTE}/{modello}"
+    dati = COLLAUDO_STATE["results"].get(chiave)
+    if not dati:
+        eseguiti = ", ".join(sorted(COLLAUDO_STATE["results"])) or "nessuno"
+        return (f"nessun collaudo per {chiave}. Eseguiti: {eseguiti}.\n"
+                f"Avvialo da /collaudo?cliente={CLIENTE}&modello={modello}")
+    casi = dati["casi"]
+    if caso:
+        trovato = next((c for c in casi if c["nome"].lower() == caso.lower()), None)
+        if not trovato:
+            return f"caso {caso} non presente fra i {len(casi)} eseguiti"
+        return (f"{trovato['nome']}  {'SUPERATO' if trovato['ok'] else 'FALLITO'}\n"
+                + "".join(f"problema: {p}\n" for p in trovato["problemi"])
+                + f"numeri non sulla pagina citata: {', '.join(trovato['numeri_non_provati']) or 'nessuno'}\n"
+                + "".join(f"affermazione troppo larga: {a}\n" for a in trovato.get("affermazioni_larghe", []))
+                + "-" * 60 + "\n" + trovato["risposta"])
+    superati = sum(c["ok"] for c in casi)
+    inventati = sum(len(c["numeri_non_provati"]) for c in casi)
+    larghe = sum(len(c.get("affermazioni_larghe", [])) for c in casi)
+    con_inventati = [c["nome"] for c in casi if c["numeri_non_provati"]]
+    righe = [f"{chiave} - {'completo' if dati['completo'] else 'IN CORSO'}",
+             f"superati {superati} su {len(casi)}",
+             f"cifre non riscontrate sulla pagina citata: {inventati}"
+             + (f" in {len(con_inventati)} casi ({', '.join(con_inventati)})" if con_inventati else ""),
+             f"affermazioni generali sul documento da verificare: {larghe}",
+             "-" * 70]
+    for c in casi:
+        righe.append(f"{c['nome']:<6} {'OK' if c['ok'] else 'KO'}  "
+                     f"{'+'.join(str(t) for t in c['tempi'])}s  "
+                     f"{'; '.join(c['problemi']) if c['problemi'] else ''}"
+                     + (f"  [cifre non provate: {', '.join(c['numeri_non_provati'])}]"
+                        if c["numeri_non_provati"] else ""))
+    return "\n".join(righe)
+
+
+@app.get("/collaudo")
+async def collaudo(modello: str = "", token: str = "", cliente: str = ""):
+    attiva_cliente_se_libero(cliente)
+    if COLLAUDO_TOKEN and token != COLLAUDO_TOKEN:
+        raise HTTPException(status_code=403, detail="token del collaudo mancante o errato")
+    model = re.sub(r"[^A-Za-z0-9._-]", "", modello)[:60]
+    if model and re.match(r"(?:gpt|o\d)", model, re.I) and openai_client is None:
+        # nessun ripiego silenzioso: il confronto tra modelli deve essere vero
+        return HTMLResponse(
+            "<p>Per provare un modello OpenAI serve la variabile OPENAI_API_KEY su Render.</p>",
+            status_code=400,
+        )
+    if model and not re.match(r"(?:gpt|o\d)", model, re.I) and client is None:
+        return HTMLResponse("<p>Manca DEEPSEEK_API_KEY su Render.</p>", status_code=400)
+    with COLLAUDO_LOCK:
+        if collaudo_bloccato() and modello:
+            # Si libera il posto SOLO se qualcuno ha chiesto esplicitamente di
+            # avviare (il parametro modello c'e'). L'auto-aggiornamento non lo fa
+            # piu': altrimenti la scadenza diventa il motore di un rilancio
+            # automatico invece di una via d'uscita.
+            print(f"[COLLAUDO] '{COLLAUDO_STATE['running']}' fermo da oltre "
+                  f"{COLLAUDO_SCADENZA:.0f}s: lo considero morto e libero il posto")
+            COLLAUDO_STATE["running"] = None
+            COLLAUDO_STATE["progress"] = ""
+        if model and not COLLAUDO_STATE["running"]:
+            if not collaudo_cases():
+                return HTMLResponse(
+                    f"<p>Nessun file casi_*.json per il cliente '{html.escape(CLIENTE)}'.</p>",
+                    status_code=404)
+            COLLAUDO_STATE["running"] = f"{CLIENTE}/{model}"
+            # Il risultato precedente si sposta nello storico invece di sparire.
+            precedente = COLLAUDO_STATE["results"].pop(f"{CLIENTE}/{model}", None)
+            if precedente and precedente.get("completo"):
+                COLLAUDO_STATE.setdefault("storico", []).append(
+                    {"chiave": f"{CLIENTE}/{model}", "quando": time.strftime("%d/%m %H:%M"),
+                     "superati": sum(c["ok"] for c in precedente["casi"]),
+                     "casi": len(precedente["casi"])})
+                COLLAUDO_STATE["storico"] = COLLAUDO_STATE["storico"][-20:]
+            threading.Thread(target=run_collaudo, args=(model, CLIENTE), daemon=True).start()
+    return HTMLResponse(collaudo_page())
+
+
+@app.post("/api/ask", response_model=AnswerResponse)
+async def api_ask(req: QuestionRequest):
+    """
+    Tre modalità:
+    1. COMM    — domande aziendali/commerciali → COMM.json
+    2. ORACOLO — descrizioni situazionali → Narratore → Superrisponditore
+    3. GOLD    — domande tecniche dirette → GPT GOLD
+    """
+    if req.cliente:
+        attiva_cliente(req.cliente)
+    question_raw = (req.question or "").strip()
+    # Lingua non ammessa: si dichiara subito, senza chiamare il modello. Prima la
+    # stessa domanda in spagnolo, tedesco e russo riceveva tre volte la stessa
+    # risposta sbagliata, con la sicurezza di una giusta.
+    avviso = lingua_non_supportata(re.sub(r"^/\w+\s*", "", question_raw))
+    if avviso:
+        print(f"[LINGUA] respinta: {lingua_della_domanda(question_raw)}")
+        return AnswerResponse(
+            answer=avviso, source="narratore_risponditore",
+            meta={"mode": "lingua_non_supportata", "cliente": CLIENTE,
+                  "lingua": lingua_della_domanda(question_raw),
+                  "lingue_ammesse": sorted(LINGUE_AMMESSE),
+                  "cached": False, "used_previous_context": False},
+        )
+    previous_question = (req.previous_question or "").strip()
+    previous_answer = (req.previous_answer or "").strip()
+    if not question_raw:
+        raise HTTPException(status_code=400, detail="Domanda vuota")
+
+    q_norm = question_raw.lower()
+
+    try:
+        # MODALITA' DOCUMENTALE:
+        # - /catalogo, /lago, /listino e /rapido: risposta rapida guidata (1 chiamata)
+        # - /globale: analisi estesa completa (1 chiamata)
+        document_prefix = next(
+            (
+                prefix
+                for prefix in ("/catalogo", "/lago", "/listino", "/rapido", "/globale")
+                if q_norm.startswith(prefix)
+            ),
+            None,
+        )
+        if document_prefix:
+            document_question = question_raw[len(document_prefix):].strip()
+            document_mode = "globale" if document_prefix == "/globale" else "rapido"
+
+            # Consente anche: /catalogo /globale domanda...
+            nested_mode = next(
+                (
+                    mode_prefix
+                    for mode_prefix in ("/globale", "/rapido")
+                    if document_question.lower().startswith(mode_prefix)
+                ),
+                None,
+            )
+            if nested_mode:
+                document_mode = "globale" if nested_mode == "/globale" else "rapido"
+                document_question = document_question[len(nested_mode):].strip()
+
+            if not document_question:
+                return AnswerResponse(
+                    answer=(
+                        "Scrivi la domanda dopo /catalogo. "
+                        "Usa /globale soltanto quando desideri l'analisi completa."
+                    ),
+                    source="narratore_risponditore",
+                    meta={"mode": document_mode},
+                )
+
+            # Codice nominato ma assente dall'indice: si dichiara, non si gira in
+            # una domanda di consiglio. Nessuna chiamata al modello.
+            codici_ignoti = unknown_requested_codes(document_question)
+            if codici_ignoti:
+                print(f"[CODICE_IGNOTO] {','.join(codici_ignoti)}")
+                return AnswerResponse(
+                    answer=unknown_code_answer(codici_ignoti),
+                    source="narratore_risponditore",
+                    meta={
+                        "mode": document_mode,
+                        "engine": active_document_engine(),
+                        "unknown_codes": codici_ignoti,
+                        "used_previous_context": False,
+                        "cached": False,
+                        "context_question": "",
+                        "context_valid": False,
+                    },
+                )
+
+            previous_question, previous_answer, scoped_followup = document_context_scope(
+                document_question, previous_question, previous_answer
+            )
+            has_memory = scoped_followup
+            cache_key = (
+                'document_engine_v6', 
+                document_mode, document_question, previous_question[-800:],
+                hashlib.sha1(previous_answer.encode("utf-8")).hexdigest(),
+                generation_model_name(),
+            )
+            use_cache = not getattr(GENERATION_OVERRIDE, "no_cache", False)
+            cached = ANSWER_CACHE.get(cache_key) if use_cache else None
+            if cached is not None:
+                # la memoria si consulta prima di qualunque chiamata al modello
+                ANSWER_CACHE.move_to_end(cache_key)
+                print("[CACHE] risposta gia' calcolata")
+                document_answer, is_followup_turn = cached
+            else:
+                is_followup_turn = scoped_followup
+                engine = call_narratore_risponditore if document_mode == "globale" else call_document_quick
+                document_answer = engine(
+                    document_question, previous_question, previous_answer, is_followup_turn
+                )
+                document_answer = strip_markdown_emphasis(document_answer)
+                document_answer = enforce_selectable_constraints(
+                    document_answer,
+                    requested_sizes(document_question, previous_question, is_followup_turn),
+                )
+                document_answer = strict_dimension_guard(
+                    document_answer, document_question + (" " + previous_question if is_followup_turn else "")
+                )
+                if is_followup_turn:
+                    document_answer = append_previous_candidate_status(
+                        document_answer, previous_answer,
+                        document_question + "\n" + previous_question)
+                # il titolo di sezione torna canonico prima di qualunque uso, e le
+                # sezioni imposte dal formato ma rimaste vuote si tolgono
+                document_answer = normalize_section_titles(document_answer)
+                if VARIANTS_ONLY_IF_ASKED and not variants_requested(
+                        document_question, previous_question, is_followup_turn):
+                    document_answer = strip_variants_section(document_answer)
+                document_answer = drop_empty_sections(document_answer)
+                # in memoria solo risposte pulite: niente errori, niente avvisi residui,
+                # niente risposte nate senza pianificatore (verrebbero congelate peggiori)
+                plan_ok = SEARCH_ENGINE == "openai_vector" or (
+                    (document_question[:3000], previous_question[:800] if has_memory else "")
+                    in PLAN_CACHE
+                )
+                clean = not answer_failed(document_answer)
+                if clean and plan_ok and use_cache:
+                    ANSWER_CACHE[cache_key] = (document_answer, is_followup_turn)
+                    if len(ANSWER_CACHE) > 256:
+                        ANSWER_CACHE.popitem(last=False)
+
+            return AnswerResponse(
+                answer=document_answer,
+                source="narratore_risponditore",
+                meta={
+                    "mode": document_mode,
+                    "engine": active_document_engine(),
+                    "used_previous_context": bool(is_followup_turn),
+                    "cached": cached is not None,
+                    "context_question": (positive_request_text(document_question) +
+                        ('\n' + previous_question if is_followup_turn else ''))[:12000],
+                    "context_valid": not answer_failed(document_answer),
+                },
+            )
+
+        # 1) DOMANDE AZIENDALI / COMMERCIALI → SOLO COMM.JSON
+        if is_commercial_question(q_norm):
+            comm_block = match_comm(q_norm)
+            if comm_block:
+                answer = comm_block.get("response_variants", {}).get("gold", {}).get("it")
+                if not answer:
+                    answer = comm_block.get("answer_it") or comm_block.get("answer", "")
+                return AnswerResponse(
+                    answer=answer,
+                    source="json_comm",
+                    meta={"comm_id": comm_block.get("id")},
+                )
+            else:
+                return AnswerResponse(
+                    answer=(
+                        "Le informazioni richieste rientrano nei dati aziendali/commerciali. "
+                        "Per sicurezza è necessario fare riferimento ai canali ufficiali Tecnaria."
+                    ),
+                    source="json_comm_fallback",
+                    meta={},
+                )
+
+        # 2) DESCRIZIONE SITUAZIONALE → NARRATORE + SUPERRISPONDITORE
+        if is_situational(question_raw):
+            # Step 1: Narratore legge la situazione
+            analisi_narratore = call_deepseek(
+                SYSTEM_PROMPT_NARRATORE,
+                question_raw,
+                temperature=0.2
+            )
+
+            # Step 2: Superrisponditore risponde con contesto completo
+            contesto_super = (
+                f"DESCRIZIONE CLIENTE:\n{question_raw}\n\n"
+                f"ANALISI NARRATORE:\n{analisi_narratore}\n\n"
+                f"Ora dai la risposta tecnica completa."
+            )
+            risposta_super = call_deepseek(
+                SYSTEM_PROMPT_SUPERRISPONDITORE,
+                contesto_super,
+                temperature=0.2
+            )
+
+            risposta_finale = (
+                f"📋 ANALISI SITUAZIONE\n\n{analisi_narratore}"
+                f"\n\n{'─' * 40}\n\n"
+                f"💡 RISPOSTA TECNICA\n\n{risposta_super}"
+            )
+
+            return AnswerResponse(
+                answer=risposta_finale,
+                source="oracolo_narratore_superrisponditore",
+                meta={
+                    "narratore": analisi_narratore,
+                    "superrisponditore": risposta_super,
+                    "used_deepseek": True,
+                },
+            )
+
+        # 3) DOMANDE TECNICHE DIRETTE → DEEPSEEK GOLD TECNARIA
+        gpt_answer = call_deepseek(SYSTEM_PROMPT_GOLD, question_raw, temperature=0.2)
+        kb_block = match_from_kb(question_raw)
+        kb_id = kb_block.get("id") if kb_block else None
+
+        return AnswerResponse(
+            answer=gpt_answer,
+            source="deepseek_gold_tecnaria",
+            meta={
+                "used_deepseek": True,
+                "kb_id": kb_id,
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] /api/ask: {e}")
+        return AnswerResponse(
+            answer="Si è verificato un problema interno. Contatta l’Ufficio Tecnico Tecnaria.",
+            source="error",
+            meta={"exception": str(e)},
+        )
+
+
+# L'indirizzo di ciascun cliente: /lago, /gessi. Va registrato per ULTIMO, dopo
+# ogni altra rotta, altrimenti si mangerebbe /api, /collaudo e /catalogo.
+@app.get("/autodiagnosi", response_class=PlainTextResponse)
+async def autodiagnosi_pagina(cliente: str = "", quanti: int = 300, seme: int = 7,
+                              forma: str = "", token: str = ""):
+    """Cruscotto dello stato del motore: domande generate DAL DOCUMENTO, non scritte.
+
+    Una batteria scritta a mano misura quello che chi l'ha scritta aveva gia' in
+    mente. Qui le domande nascono dalle righe di listino, con la risposta attesa
+    presa dalla stessa riga: nessuno puo' scriverle a favore del motore.
+
+    Misura il solo RECUPERO, cioe' quale scheda il motore mette in cima. Non
+    chiama nessun modello: non costa un token e ci mette un minuto su trecento
+    domande. E' dove stanno tutti i difetti trovati finora.
+    """
+    if COLLAUDO_TOKEN and token != COLLAUDO_TOKEN:
+        raise HTTPException(status_code=403, detail="token mancante o errato")
+    attiva_cliente(cliente)
+    with CLIENTE_LOCK:
+        try:
+            esito = esegui_autodiagnosi(max(1, min(quanti, 2000)), seme, forma)
+        except Exception as errore:                       # pragma: no cover
+            return f"autodiagnosi non eseguibile: {type(errore).__name__}: {errore}"
+    return esito
+
+
+def esegui_autodiagnosi(quanti: int, seme: int, forma: str = "", registro: Optional[list] = None) -> str:
+    """'registro', se dato, riceve le domande generate con il risultato atteso:
+    serve a rifare la stessa prova su un'altra versione del motore."""
+    import random
+    from collections import defaultdict
+
+    # LE MISURE SI PRENDONO DAGLI ASSI DEL DOCUMENTO, non da un elenco. Fino
+    # all'8ott2026 qui c'era scritto a mano "larghez -> larga, profond ->
+    # profonda, altezz -> alta, diametro -> di diametro": lo strumento che
+    # doveva trovare i buchi aveva lo stesso buco del motore. Una colonna che
+    # l'elenco non nominava non generava nessuna domanda, e quindi non
+    # risultava mai sbagliata: 141 schede di divani con le misure sotto
+    # "L//W" non sono mai state provate.
+    AGGETTIVO = {"width": "larga", "depth": "profonda", "height": "alta", "length": "lunga"}
+    SOSTANTIVO = {"width": "largo", "depth": "profondo", "height": "alto", "length": "lungo"}
+
+    def misure(card):
+        """[(asse, valore come sta scritto, numero), ...] per ogni asse che la scheda ha."""
+        fuori = []
+        for etichetta, valore in (card.get("attributi") or {}).items():
+            asse = ETICHETTE_DEGLI_ASSI.get(etichetta) or next(
+                (a for a, regex in DIMENSION_ALIASES.items()
+                 if re.search(rf"\b(?:{regex})\b", etichetta, re.I)), None)
+            testo = str(valore).strip()
+            if not asse or not re.fullmatch(r"\d+(?:[.,]\d+)?", testo):
+                continue
+            if asse not in [m[0] for m in fuori]:
+                fuori.append((asse, testo, float(testo.replace(",", "."))))
+        return fuori
+
+    def inversa(asse, testo):       # "184 larga", "160 di diametro"
+        return f"{testo} {AGGETTIVO[asse]}" if asse in AGGETTIVO else f"{testo} di {asse}"
+
+    def diretta(asse, testo):       # "largo 184", "diametro 160"
+        return f"{SOSTANTIVO[asse]} {testo}" if asse in SOSTANTIVO else f"{asse} {testo}"
+
+    def italiano(card):
+        for riga in CODE_ROWS.get(card["codice"], []):
+            if riga.get("page") != card["pagina"]:
+                continue
+            for pezzo in (riga.get("description") or "").split(" | "):
+                pezzo = pezzo.strip()
+                if len(pezzo) < 70 and re.match(
+                        r"^(tavol|mobil|comodin|letto|libreri|madia|credenz|scrivani|armadi|"
+                        r"poltron|divan|sedi|panc|contenitor|element|piano|specchi|"
+                        r"appendiabit|cassettier|como)", pezzo, re.I):
+                    return pezzo
+        return ""
+
+    def finitura(card):
+        for etichetta in (card.get("prezzi") or {}):
+            pulita = re.sub(r"\s*//.*", "", etichetta)
+            pulita = re.sub(r"\b(?:[A-Z][a-z]+\s+)*(?:glass|top|structure|legs|colour)\b.*$",
+                            "", pulita).strip()
+            if 3 <= len(pulita) <= 34 and re.search(r"[a-zA-Z]", pulita):
+                return pulita
+        return ""
+
+    def domande(card):
+        """[(forma, domanda, misure attese, budget atteso), ...]"""
+        titolo = (card.get("prodotto") or "").strip()
+        nome_it, fin = italiano(card), finitura(card)
+        prime = misure(card)[:2]
+        attese = [(a, n) for a, _, n in prime]
+        quote = " e ".join(inversa(a, v) for a, v, _ in prime)
+        quote_dirette = " e ".join(diretta(a, v) for a, v, _ in prime)
+        fuori = []
+        if titolo and quote:
+            fuori.append(("titolo+misure", f"Quanto costa {titolo} {quote}?", attese, None))
+            fuori.append(("titolo+misure dirette", f"Quanto costa {titolo} {quote_dirette}?",
+                          attese, None))
+        if nome_it and quote:
+            fuori.append(("italiano+misure", f"Cerco {nome_it} {quote}, quanto costa?", attese, None))
+        if nome_it and fin:
+            fuori.append(("italiano+finitura", f"Quanto costa {nome_it} in {fin}?", [], None))
+        if titolo and fin and quote:
+            fuori.append(("finitura", f"Quanto costa {titolo} {quote} in {fin}?", attese, None))
+        # IL BUDGET. Due domande per scheda, col risultato noto dalla scheda
+        # stessa: un euro sopra il suo prezzo piu' basso deve rientrare, un
+        # euro sotto no.
+        importi = [p for p in (catalog_price_number(v) for v in (card.get("prezzi") or {}).values())
+                   if p is not None]
+        if titolo and quote_dirette and importi:
+            soglia = min(importi)
+            fuori.append(("budget che basta",
+                          f"Ho {soglia + 1:.0f} euro per {titolo} {quote_dirette}: cosa posso prendere?",
+                          attese, True))
+            if soglia > 2:
+                fuori.append(("budget che non basta",
+                              f"Ho {soglia - 1:.0f} euro per {titolo} {quote_dirette}: cosa posso prendere?",
+                              attese, False))
+        return fuori
+
+    def gruppo(card):
+        return (card.get("prodotto") or "").strip().upper()
+
+    schede = [c for g in PRODUCT_CARDS.values() for c in g if c.get("prodotto")]
+    if not schede:
+        return "nessuna scheda prodotto per questo cliente: autodiagnosi non applicabile"
+    random.Random(seme).shuffle(schede)
+
+    conta = Counter()
+    per_forma = defaultdict(Counter)
+    esempi = defaultdict(list)
+    lettura = defaultdict(Counter)       # asse -> vincoli letti / non letti
+    non_letti = defaultdict(list)
+    budget = Counter()
+    budget_sbagliati = []
+    fatte = 0
+    for card in schede:
+        if fatte >= quanti:
+            break
+        for nome_forma, domanda, attese, basta in domande(card):
+            if forma and nome_forma != forma:
+                continue
+            if fatte >= quanti:
+                break
+            if registro is not None:
+                registro.append({"forma": nome_forma, "domanda": domanda, "codice": card["codice"],
+                                 "pagina": card["pagina"], "attese": attese, "basta": basta})
+            # 1. IL VINCOLO E' STATO LETTO? Prima ancora di guardare che cosa
+            # il motore propone: se "diametro 160" non diventa un vincolo, il
+            # resto e' fortuna.
+            lette = exact_dimension_requests(domanda)
+            for asse, numero in attese:
+                ok = any(a == asse and abs(v - numero) <= 0.051 for a, v in lette)
+                lettura[asse]["letto" if ok else "non letto"] += 1
+                if not ok and len(non_letti[asse]) < 3:
+                    non_letti[asse].append(f"   {domanda[:78]}\n      atteso {asse} = {numero:g}"
+                                           f"  ->  letto: {lette or 'niente'}")
+            # 2. IL BUDGET E' STATO APPLICATO?
+            if basta is not None:
+                rientra = bool(matching_card_prices(card, domanda))
+                if rientra == basta:
+                    budget["giusto"] += 1
+                else:
+                    budget["sbagliato"] += 1
+                    if len(budget_sbagliati) < 4:
+                        budget_sbagliati.append(
+                            f"   {domanda[:78]}\n      la scheda {card['codice']} "
+                            f"{'doveva rientrare e non rientra' if basta else 'non doveva rientrare e rientra'}"
+                            f" (budget letto: {requested_budget(domanda)})")
+            candidati = verified_dimension_candidates(domanda)
+            codici = [c["codice"] for c in candidati]
+            if card["codice"] in codici:
+                esito = "ok" if codici.index(card["codice"]) < 3 else "sepolta"
+            elif candidati and gruppo(candidati[0]) != gruppo(card):
+                esito = "confusa"
+            elif candidati:
+                esito = "variante"
+            else:
+                esito = "assente"
+            conta[esito] += 1
+            per_forma[nome_forma][esito] += 1
+            if esito != "ok" and len(esempi[esito]) < 5:
+                primo = candidati[0] if candidati else None
+                esempi[esito].append(
+                    f"   {domanda[:74]}\n      atteso {card['codice']} pag {card['pagina']}"
+                    f"  ->  primo: {(primo['codice'] + ' ' + gruppo(primo)[:24]) if primo else 'nessuno'}")
+            fatte += 1
+
+    righe = [f"AUTODIAGNOSI — cliente {CLIENTE} — {DOCUMENT_CONTEXT}",
+             f"domande generate dal documento: {fatte} (seme {seme})", "-" * 68,
+             f"  in cima o nei primi tre : {conta['ok']:5}  {conta['ok']/max(1,fatte)*100:5.1f}%"]
+    for nome, spiega in (("sepolta", "oltre la terza posizione  -> punteggio"),
+                         ("confusa", "in cima un'altra famiglia -> categoria"),
+                         ("variante", "famiglia giusta, scheda sbagliata -> attributi"),
+                         ("assente", "nessun candidato          -> filtro")):
+        righe.append(f"  {nome:9}: {conta[nome]:5}  {conta[nome]/max(1,fatte)*100:5.1f}%   {spiega}")
+    righe += ["", "per forma di domanda:"]
+    for nome_forma, c in sorted(per_forma.items()):
+        tot = sum(c.values())
+        righe.append(f"   {nome_forma:20} {c['ok']:4}/{tot:4}  ({c['ok']/max(1,tot)*100:5.1f}%)")
+    righe += ["", "-" * 68, "I VINCOLI DI MISURA SONO STATI LETTI? (per asse, su tutte le domande generate)"]
+    for asse in DIMENSION_ALIASES:
+        c = lettura.get(asse)
+        if not c:
+            continue
+        tot = c["letto"] + c["non letto"]
+        origine = "lingua" if asse in ASSI_DELLA_LINGUA else "dal documento"
+        righe.append(f"   {nome_dell_asse(asse):14} {c['letto']:4}/{tot:4}  ({c['letto']/max(1,tot)*100:5.1f}%)   asse: {origine}")
+    for asse, casi in non_letti.items():
+        righe += [f"  non letti su '{nome_dell_asse(asse)}':"] + casi
+    if budget:
+        tot = budget["giusto"] + budget["sbagliato"]
+        righe += ["", f"IL BUDGET E' STATO APPLICATO?  {budget['giusto']}/{tot}  "
+                      f"({budget['giusto']/max(1,tot)*100:.1f}%)"] + budget_sbagliati
+    righe += ["", "-" * 68, "GLI ASSI CHE IL DOCUMENTO DICHIARA (oltre a quelli della lingua)"]
+    for nome, dato in ASSI_DAL_DOCUMENTO.items():
+        righe.append(f"   {nome:28} {dato['schede']:5} schede   da: {dato['da']}"
+                     f"   colonne: {', '.join(dato['etichette'][:3])}")
+    if not ASSI_DAL_DOCUMENTO:
+        righe.append("   nessuno")
+    righe += ["", "COLONNE DI NUMERI CHE IL MOTORE NON SA USARE COME VINCOLO",
+              "(sono buchi trovati contando, prima che li trovi un cliente)"]
+    for etichetta, quante_schede, motivo in COLONNE_NON_LETTE[:15]:
+        righe.append(f"   {quante_schede:5} schede   «{etichetta[:44]}»   {motivo}")
+    if not COLONNE_NON_LETTE:
+        righe.append("   nessuna")
+    for nome in ("confusa", "sepolta", "variante", "assente"):
+        if esempi[nome]:
+            righe += ["", f"esempi di '{nome}':"] + esempi[nome]
+    righe += ["", "ATTENZIONE: questa percentuale e' un PAVIMENTO, non la precisione vera.",
+              "Alcune domande generate sono ambigue per costruzione (stesse misure, piu'",
+              "codici in finiture diverse): la scheda attesa e' una fra le valide e",
+              "contarla come unica sottostima il motore."]
+    return "\n".join(righe)
+
+
+
+# Questa rotta sta in fondo e cattura QUALUNQUE indirizzo di un solo segmento.
+# Finche' gli altri endpoint sono dichiarati sopra funzionano, ma un nome nuovo
+# che qualcuno si dimentica di mettere sopra sparisce dentro qui e risponde
+# "Nessun cliente 'salute'" invece di 404: l'endpoint c'e' nel codice, non
+# risponde, e nessun errore lo dice. E' successo il 7ott2026 cercando
+# /diagnostic, che in questo progetto non esiste (si chiama /api/status): la
+# risposta diceva che non esisteva il CLIENTE, mandando a cercare la cosa
+# sbagliata. Un nome riservato ora risponde per quello che e'.
+ROTTE_RISERVATE = {
+    "api", "catalogo", "collaudo", "autodiagnosi", "static", "uploads",
+    "docs", "redoc", "openapi.json", "favicon.ico", "health", "healthz",
+    "diagnostic", "status", "metrics", "robots.txt",
+}
+
+
+@app.get("/{cliente}")
+async def interfaccia_del_cliente(cliente: str):
+    nome = (cliente or "").strip().lower()
+    if nome in ROTTE_RISERVATE or "." in nome:
+        raise HTTPException(
+            status_code=404,
+            detail=(f"Indirizzo '/{cliente}' non esiste in questo servizio. "
+                    f"Lo stato del motore sta su /api/status, il collaudo su /collaudo."),
+        )
+    if cliente not in clienti_disponibili() and cliente != CLIENTE_PREDEFINITO:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Nessun cliente '{cliente}'. Disponibili: {', '.join(clienti_disponibili()) or 'nessuno'}",
+        )
+    attiva_cliente(cliente)
+    return pagina_interfaccia()
