@@ -22,6 +22,8 @@ from openai import OpenAI
 from docling_bridge import read_cache, read_cards
 from pdf_reasoning_core import (request_constraints_text, budget_limit, budget_matches, without_old_budget,
     remove_replaced_dimensions, respective_prices, european_number)
+from plaud_remote import (router as plaud_cloud_router, dashboard_router as plaud_dashboard_router,
+                          get_recording_bundle, verify_tenant_key)
 
 # ============================================================
 # CONFIG BASE
@@ -255,6 +257,8 @@ def generation_chat(system: str, user: str, max_tokens: int, temperature: float 
 # ============================================================
 
 app = FastAPI(title="Narratore-Risponditore")
+app.include_router(plaud_cloud_router)
+app.include_router(plaud_dashboard_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -5810,18 +5814,8 @@ def interfaccia_html() -> str:
                            ("{{CONTESTO}}", DOCUMENT_CONTEXT),
                            ("{{CLIENTE}}", CLIENTE)):
         pagina = pagina.replace(chiave, html.escape(valore))
-    # Accesso facoltativo al cruscotto Plaud locale. La pagina online non può
-    # leggere la sessione Plaud del PC: il collegamento apre il ponte locale,
-    # avviato dall'utente quando vuole analizzare una registrazione.
-    link_plaud = (
-        '<a href="http://127.0.0.1:4173" target="_blank" rel="noopener" '
-        'style="position:fixed;right:20px;bottom:20px;z-index:99999;'
-        'padding:13px 20px;border-radius:999px;background:#172b4d;color:#fff;'
-        'font:600 15px system-ui;text-decoration:none;box-shadow:0 6px 22px #0003">'
-        'Plaud · Analizza una registrazione</a>'
-    )
-    if re.search(r"</body\s*>", pagina, re.I):
-        pagina = re.sub(r"</body\s*>", link_plaud + "</body>", pagina, count=1, flags=re.I)
+    # Il vecchio collegamento locale a 127.0.0.1 e' rimosso. L'accesso PLAUD
+    # verra' esposto dal cruscotto autenticato tramite il connettore cloud OAuth.
     return pagina
 
 
@@ -7046,6 +7040,53 @@ domanda_catalogo (stringa o stringa vuota).
         "audio_downloaded": False,
         "stored_on_server": False,
     }
+
+
+def _plaud_text(value: Any) -> str:
+    """Estrae il testo dai risultati MCP senza interpretarne il contenuto."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join(filter(None, (_plaud_text(item) for item in value)))
+    if isinstance(value, dict):
+        if value.get("type") == "text" and isinstance(value.get("text"), str):
+            return value["text"]
+        preferred = ("content", "transcript", "source_list", "note_list", "text")
+        parts = [_plaud_text(value.get(key)) for key in preferred if key in value]
+        return "\n".join(filter(None, parts))
+    return ""
+
+
+@app.post("/api/plaud/cloud/analyze/{cliente}/{recording_id}")
+async def plaud_cloud_analyze(
+    cliente: str,
+    recording_id: str,
+    x_applaudi_tenant_key: Optional[str] = Header(None, alias="X-Applaudi-Tenant-Key"),
+):
+    """Recupera dal PLAUD del cliente e usa il Narratore gia' collaudato."""
+    tenant = verify_tenant_key(cliente, x_applaudi_tenant_key)
+    bundle = await get_recording_bundle(tenant, recording_id)
+    transcript = _plaud_text(bundle.get("transcript")).strip()
+    summary = _plaud_text(bundle.get("note")).strip()
+    detail = bundle.get("detail") or {}
+    if not transcript:
+        raise HTTPException(status_code=422, detail="PLAUD non ha restituito una trascrizione utilizzabile")
+    name = str(detail.get("name") or "Registrazione PLAUD") if isinstance(detail, dict) else "Registrazione PLAUD"
+    result = await plaud_analyze(
+        PlaudIngestRequest(
+            recording_id=recording_id,
+            recording_name=name,
+            transcript=transcript,
+            plaud_summary=summary,
+            cliente=tenant,
+        ),
+        PLAUD_INGEST_TOKEN,
+    )
+    result["source"] = "PLAUD Remote MCP"
+    result["stored_on_server"] = False
+    return result
 
 
 @app.get("/{cliente}")
