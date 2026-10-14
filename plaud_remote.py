@@ -341,9 +341,13 @@ async def recordings(tenant: str, query: Optional[str] = None, date_from: Option
 
 
 async def get_recording_bundle(tenant: str, recording_id: str) -> Dict[str, Any]:
-    transcript = await _mcp_call(tenant, "tools/call", {"name": "get_transcript", "arguments": {"id": recording_id}})
-    note = await _mcp_call(tenant, "tools/call", {"name": "get_note", "arguments": {"id": recording_id}})
-    detail = await _mcp_call(tenant, "tools/call", {"name": "get_file", "arguments": {"id": recording_id}})
+    # Il Remote MCP ufficiale di PLAUD espone l'identificativo come ``file_id``.
+    # ``id`` viene rifiutato dallo schema MCP con errore -32602, anche quando
+    # contiene un identificativo valido restituito da list_files.
+    arguments = {"file_id": recording_id}
+    transcript = await _mcp_call(tenant, "tools/call", {"name": "get_transcript", "arguments": arguments})
+    note = await _mcp_call(tenant, "tools/call", {"name": "get_note", "arguments": arguments})
+    detail = await _mcp_call(tenant, "tools/call", {"name": "get_file", "arguments": arguments})
     return {"detail": detail, "transcript": transcript, "note": note}
 
 
