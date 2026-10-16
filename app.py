@@ -24,6 +24,8 @@ from pdf_reasoning_core import (request_constraints_text, budget_limit, budget_m
     remove_replaced_dimensions, respective_prices, european_number)
 from plaud_remote import (router as plaud_cloud_router, dashboard_router as plaud_dashboard_router,
                           get_recording_bundle, verify_tenant_key)
+import whatsapp_gateway
+from whatsapp_gateway import router as whatsapp_router
 
 # ============================================================
 # CONFIG BASE
@@ -259,6 +261,7 @@ def generation_chat(system: str, user: str, max_tokens: int, temperature: float 
 app = FastAPI(title="Narratore-Risponditore")
 app.include_router(plaud_cloud_router)
 app.include_router(plaud_dashboard_router)
+app.include_router(whatsapp_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -6752,6 +6755,43 @@ async def api_ask(req: QuestionRequest):
             source="error",
             meta={"exception": str(e)},
         )
+
+
+# Private WhatsApp document adapter. Disabled unless explicitly configured in STAGING.
+# Tenant-to-document mapping is on the server, never extracted from WhatsApp text.
+async def _whatsapp_document_answer(tenant: str, question: str) -> str:
+    import asyncio
+    try:
+        mapping = json.loads(os.getenv('WHATSAPP_TENANT_DOCUMENT_CLIENT_JSON', '{}'))
+    except ValueError as exc:
+        raise RuntimeError('Invalid private document mapping') from exc
+    if not isinstance(mapping, dict):
+        raise RuntimeError('Invalid private document mapping')
+    document_client = mapping.get(tenant)
+    allowed = set(clienti_disponibili()) | {CLIENTE_PREDEFINITO}
+    if not document_client or document_client not in allowed:
+        raise RuntimeError('No authorized document workspace for WhatsApp tenant')
+
+    # The existing document engine uses shared module globals. Hold the same
+    # serialization lock throughout BOTH tenant activation AND answering.
+    # The function runs in a worker thread to avoid blocking the webhook loop.
+    def calculate():
+        with CLIENTE_LOCK:
+            attiva_cliente(document_client)
+            # Force the grounded document mode; do not allow incoming commands.
+            normalized = re.sub(r'^/\w+\s*', '', question).strip()
+            if not normalized:
+                raise ValueError('Empty document question')
+            import asyncio as _asyncio
+            answer = _asyncio.run(api_ask(QuestionRequest(question='/catalogo ' + normalized, cliente=document_client)))
+            if answer.meta.get('cliente') not in (None, document_client):
+                raise RuntimeError('Unexpected document tenant in reply')
+            if answer.source == 'error' or not answer.answer.strip():
+                raise RuntimeError('Document answer not available')
+            return answer.answer
+    return await asyncio.to_thread(calculate)
+
+whatsapp_gateway.document_responder = _whatsapp_document_answer
 
 
 # L'indirizzo di ciascun cliente: /lago, /gessi. Va registrato per ULTIMO, dopo
